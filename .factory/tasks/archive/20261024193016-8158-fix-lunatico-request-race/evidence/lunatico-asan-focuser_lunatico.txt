@@ -1,0 +1,25 @@
+Running Lunatico focuser
+  PASS held_poll_goto
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS held_poll_sync
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS held_poll_steps
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS held_poll_exp
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS held_poll_third
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS held_poll_abort
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS held_poll_disconnect
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS held_poll_return
+Lunatico focuser: all tests passed
+Lunatico focuser: 0 failing scenarios

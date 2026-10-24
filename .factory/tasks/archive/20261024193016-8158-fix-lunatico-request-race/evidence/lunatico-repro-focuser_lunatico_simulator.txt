@@ -1,0 +1,238 @@
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step goto 0 1900 0#' did not arrive
+integration/test_focuser_lunatico_simulator.c:899: assertion failed: lunatico_wait_for_command(command)
+  FAIL held_poll_goto
+Lunatico focuser: 1 test(s) failed
+FAIL: held_poll_goto (exit=1, signal=0)
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step setpos 0 1800#
+<- !step setpos 0 1800:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step setpos 0 0#' did not arrive
+integration/test_focuser_lunatico_simulator.c:899: assertion failed: lunatico_wait_for_command(command)
+  FAIL held_poll_sync
+Lunatico focuser: 1 test(s) failed
+FAIL: held_poll_sync (exit=1, signal=0)
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step goto 0 1700 0#
+<- !step goto 0 1700 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1749#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1700#
+-> !step goto 0 1500 0#
+<- !step goto 0 1500 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1650#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1600#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1549#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1500#
+  PASS held_poll_steps
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step goto 1 1900 0#' did not arrive
+integration/test_focuser_lunatico_simulator.c:899: assertion failed: lunatico_wait_for_command(command)
+  FAIL held_poll_exp
+Lunatico focuser: 1 test(s) failed
+FAIL: held_poll_exp (exit=1, signal=0)
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 2#
+<- !step delswlimits 2:0#
+-> !step movepow 2 1023#
+<- !step movepow 2 1023:0#
+-> !step stoppow 2 0#
+<- !step stoppow 2 0:0#
+-> !step model 2 0#
+<- !step model 2 0:0#
+-> !step halfstep 2 0#
+<- !step halfstep 2 0:0#
+-> !step getpos 2#
+<- !step getpos 2:1000#
+-> !step speedrangeus 2 10000 10000#
+<- !step speedrangeus 2 10000 10000:0#
+-> !step wiremode 2 0#
+<- !step wiremode 2 0:0#
+-> !step delswlimits 2#
+<- !step delswlimits 2:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 2#
+<- !step ismoving 2:0#
+-> !step getpos 2#
+<- !step getpos 2:1000#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step goto 2 1900 0#' did not arrive
+integration/test_focuser_lunatico_simulator.c:899: assertion failed: lunatico_wait_for_command(command)
+  FAIL held_poll_third
+Lunatico focuser: 1 test(s) failed
+FAIL: held_poll_third (exit=1, signal=0)
+Lunatico focuser: 4 failing scenarios

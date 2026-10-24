@@ -1,0 +1,318 @@
+Running Lunatico focuser
+  PASS identity_and_inventory
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS main_absolute_move
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS exp_absolute_move
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS third_absolute_move
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS no_op_goto
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS sync_without_moving
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS sync_to_zero_after_connect
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS relative_steps
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS relative_steps_clamp
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS abort_motion
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS abort_while_idle
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS speed
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS limits
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS inverted_limits
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS backlash
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS wiring
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS motor_settings
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS temperature
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS absent_temperature_sensor
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+    Focuser Lunatico (Main) FOCUSER_STEPS was updated without being defined
+    Focuser Lunatico (Main) FOCUSER_STEPS was updated without being defined
+  PASS temperature_compensation
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS manual_mode_does_not_compensate
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS focuser_mode
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:43:19.735947 Application: indigo_focuser_lunatico[lunatico_focuser_start_move:509]: lunatico_goto_position(2000, 0) failed
+  PASS goto_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:43:22.984360 Application: indigo_focuser_lunatico[lunatico_focuser_start_move:509]: lunatico_goto_position(1700, 0) failed
+  PASS relative_move_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:43:25.734546 Application: indigo_focuser_lunatico[lunatico_focuser_position:543]: lunatico_sync_position(4200) failed
+  PASS sync_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:43:27.632819 Application: indigo_focuser_lunatico[lunatico_focuser_abort:585]: lunatico_stop() failed
+  PASS stop_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:43:30.581840 Application: indigo_focuser_lunatico[lunatico_parse_value:93]: '!step ismoving 0#' -> '!step ismoving 0:invalid#' is not a valid reply
+21:43:30.582869 Application: indigo_focuser_lunatico[focuser_motion_finalizer:445]: Focuser status readback failed
+21:43:30.681369 Application: indigo_focuser_lunatico[lunatico_parse_value:93]: '!step ismoving 0#' -> '!step ismoving 0:invalid#' is not a valid reply
+21:43:30.681413 Application: indigo_focuser_lunatico[focuser_motion_finalizer:445]: Focuser status readback failed
+21:43:31.085949 Application: indigo_focuser_lunatico[lunatico_parse_value:93]: '!step ismoving 0#' -> '!step ismoving 0:invalid#' is not a valid reply
+21:43:31.086007 Application: indigo_focuser_lunatico[focuser_motion_finalizer:445]: Focuser status readback failed
+  PASS read_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:43:33.247157 Application: indigo_focuser_lunatico[lunatico_parse_value:93]: '!step ismoving 0#' -> '!step ismoving 0:invalid#' is not a valid reply
+21:43:33.248298 Application: indigo_focuser_lunatico[focuser_motion_finalizer:445]: Focuser status readback failed
+  PASS single_read_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+command '!step stop 0#' was never sent to the controller
+21:43:40.436654 Application: indigo_focuser_lunatico[focuser_motion_finalizer:485]: The focuser stalled at 1800
+  PASS stalled_move
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS motion_running_at_connect
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS sync_to_the_published_position
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS settings_during_motion
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+    Focuser Lunatico (Main) FOCUSER_STEPS was updated without being defined
+21:44:00.043644 Application: indigo_focuser_lunatico[lunatico_focuser_start_move:509]: lunatico_goto_position(1700, 0) failed
+    Focuser Lunatico (Main) FOCUSER_STEPS was updated without being defined
+    Focuser Lunatico (Main) FOCUSER_STEPS was updated without being defined
+    Focuser Lunatico (Main) FOCUSER_STEPS was updated without being defined
+  PASS failed_compensation_is_retried
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:05.144898 Application: indigo_focuser_lunatico[lunatico_configure_port:409]: lunatico_apply_step_mode() failed
+  PASS step_mode_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:06.386193 Application: indigo_focuser_lunatico[lunatico_focuser_connect:784]: lunatico_apply_wiring() failed
+  PASS wiring_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:07.725318 Application: indigo_focuser_lunatico[lunatico_configure_port:406]: lunatico_apply_motor_type() failed
+  PASS motor_type_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:08.964674 Application: indigo_focuser_lunatico[lunatico_configure_port:403]: lunatico_apply_power_control() failed
+  PASS power_control_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:10.205828 Application: indigo_focuser_lunatico[lunatico_focuser_connect:781]: lunatico_set_speed() failed
+  PASS speed_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:11.447773 Application: indigo_focuser_lunatico[lunatico_configure_port:400]: lunatico_delete_limits() failed
+21:44:11.448813 Application: indigo_focuser_lunatico[lunatico_focuser_connect:793]: lunatico_set_limits() failed
+21:44:11.570030 Application: indigo_focuser_lunatico[lunatico_focuser_limits:657]: lunatico_set_limits() failed
+  PASS limits_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS goto_overlapping_connect_poll
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:17.841917 Application: indigo_focuser_lunatico[lunatico_claim_port:225]: No response or the Main port does not exist on this hardware
+  PASS wrong_model
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:23.720742 Application: indigo_focuser_lunatico[lunatico_claim_port:225]: No response or the Main port does not exist on this hardware
+  PASS bootloader
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:29.607175 Application: indigo_focuser_lunatico[lunatico_parse_value:93]: '!seletek version#' -> '!seletek version:not-a-number#' is not a valid reply
+21:44:29.607594 Application: indigo_focuser_lunatico[lunatico_open:202]: '/dev/ttys003' does not answer as a Lunatico controller
+  PASS bad_version
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:38.597755 Application: indigo_focuser_lunatico[lunatico_vcommand:79]: '!seletek version#' -> no reply
+21:44:38.598532 Application: indigo_focuser_lunatico[lunatico_open:202]: '/dev/ttys003' does not answer as a Lunatico controller
+  PASS silent
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:44.409199 Application: indigo_focuser_lunatico[lunatico_parse_value:93]: '!seletek version#' -> 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is not a valid reply
+21:44:44.409667 Application: indigo_focuser_lunatico[lunatico_open:202]: '/dev/ttys003' does not answer as a Lunatico controller
+  PASS oversized
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:44:50.509544 Application: indigo_focuser_lunatico[lunatico_claim_port:225]: No response or the Exp port does not exist on this hardware
+  PASS limpet_has_no_exp_port
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:45:01.639627 Application: indigo_focuser_lunatico[lunatico_claim_port:225]: No response or the Third port does not exist on this hardware
+  PASS armadillo_has_no_third_port
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS reconnect
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS disconnect_during_motion
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS shared_connection
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS shutdown_refused_while_connected
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS powerbox
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS powerbox_names
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:45:39.127797 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(4) failed
+21:45:39.128883 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(3) failed
+21:45:39.129016 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(2) failed
+21:45:39.129154 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(1) failed
+21:45:39.234328 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(4) failed
+21:45:39.234480 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(3) failed
+21:45:39.234562 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(2) failed
+21:45:39.234637 Application: indigo_focuser_lunatico[lunatico_apply_outlets:1044]: lunatico_enable_power_outlet(1) failed
+  PASS powerbox_outlet_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+21:45:45.431771 Application: indigo_focuser_lunatico[lunatico_poll_sensors:1056]: lunatico_read_sensor(8) failed
+  PASS powerbox_sensor_failure
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS rotator_early_stop
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+  PASS rotator_on_exp
+Lunatico focuser: all tests passed
+Lunatico focuser: 0 failing scenarios

@@ -1,0 +1,3 @@
+filter	held_poll_abort
+plan	1	Lunatico focuser
+fail	Lunatico focuser	held_poll_abort

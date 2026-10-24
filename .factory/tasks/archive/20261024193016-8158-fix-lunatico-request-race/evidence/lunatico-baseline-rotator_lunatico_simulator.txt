@@ -1,0 +1,102 @@
+Running Lunatico rotator
+  PASS identity_and_inventory
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS early_stop
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS fractional_target
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS main_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS exp_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS third_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS goto_wraps
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS no_op_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS sync_without_moving
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS abort_motion
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS abort_while_idle
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS steps_per_revolution
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS limits
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS full_range_limits
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS limits_change_keeps_angle
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS direction
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS backlash
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:16.825190 Application: indigo_rotator_lunatico[lunatico_rotator_position:923]: lunatico_goto_position(2000) failed
+  PASS goto_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:19.476372 Application: indigo_rotator_lunatico[lunatico_rotator_resync:865]: lunatico_sync_position() failed
+21:43:20.133518 Application: indigo_rotator_lunatico[lunatico_rotator_position:935]: lunatico_sync_position(2700) failed
+  PASS sync_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:21.938089 Application: indigo_rotator_lunatico[lunatico_rotator_abort:957]: lunatico_stop() failed
+  PASS stop_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:24.192548 Application: indigo_rotator_lunatico[lunatico_parse_value:93]: '!step ismoving 0#' -> '!step ismoving 0:invalid#' is not a valid reply
+21:43:24.193399 Application: indigo_rotator_lunatico[rotator_motion_finalizer:876]: lunatico_is_moving() failed
+  PASS read_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:25.246651 Application: indigo_rotator_lunatico[lunatico_configure_port:400]: lunatico_delete_limits() failed
+21:43:25.249136 Application: indigo_rotator_lunatico[lunatico_rotator_connect:1029]: lunatico_set_limits() failed
+21:43:25.856084 Application: indigo_rotator_lunatico[lunatico_rotator_limits:991]: lunatico_set_limits() failed
+  PASS limits_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:26.800041 Application: indigo_rotator_lunatico[lunatico_claim_port:225]: No response or the Main port does not exist on this hardware
+  PASS wrong_model
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:35.793887 Application: indigo_rotator_lunatico[lunatico_vcommand:79]: '!seletek version#' -> no reply
+21:43:35.794256 Application: indigo_rotator_lunatico[lunatico_open:202]: '/dev/ttys003' does not answer as a Lunatico controller
+  PASS silent
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:43:41.597905 Application: indigo_rotator_lunatico[lunatico_parse_value:93]: '!seletek version#' -> 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is not a valid reply
+21:43:41.598285 Application: indigo_rotator_lunatico[lunatico_open:202]: '/dev/ttys003' does not answer as a Lunatico controller
+  PASS oversized
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS reconnect
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS exp_focuser
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS third_powerbox
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS disconnect_during_motion
+Lunatico rotator: all tests passed
+Lunatico rotator: 0 failing scenarios

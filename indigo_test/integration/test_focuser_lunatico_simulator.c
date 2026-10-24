@@ -877,6 +877,117 @@ cleanup:
 	stop();
 }
 
+// The poll is already in transport I/O when the bus admits this request.
+static void held_connect_poll_request(const simulator_driver_case *device, int port, bool sync, bool relative) {
+	SERIAL_CHECK_TRUE(lunatico_start(device, "FOCUSER"));
+	SERIAL_CHECK_TRUE(lunatico_set_switch(device, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, sync ? FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME : FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lunatico_wait_for_held_poll());
+	int target = sync ? 0 : 1900;
+	const char *property = relative ? FOCUSER_STEPS_PROPERTY_NAME : FOCUSER_POSITION_PROPERTY_NAME;
+	const char *item = relative ? FOCUSER_STEPS_ITEM_NAME : FOCUSER_POSITION_ITEM_NAME;
+	SERIAL_CHECK_TRUE(lunatico_set_number(device, property, item, relative ? 100 : target, INDIGO_BUSY_STATE));
+	if (!relative) {
+		// The framework rejects a second POSITION while the first is BUSY.
+		indigo_change_number_property_1(&simulator_test_client, device->device_name, property, item, 1700);
+	}
+	SERIAL_CHECK_TRUE(lunatico_release_poll());
+	if (relative) {
+		target = (port == 0 ? HOME_MAIN : HOME_OTHER) - 100;
+	}
+	char command[100];
+	snprintf(command, sizeof(command), sync ? "!step setpos %d %d#" : "!step goto %d %d 0#", port, target);
+	SERIAL_CHECK_TRUE(lunatico_wait_for_command(command));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, .1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position != NULL && position->number.target == target);
+	// A rejected duplicate must not leave stale ownership that blocks the next move.
+	SERIAL_CHECK_TRUE(lunatico_set_number(device, FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 1, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lunatico_set_switch(device, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lunatico_set_number(device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500, .1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	lunatico_release_poll();
+	stop();
+}
+
+static void held_poll_goto(void) {
+	held_connect_poll_request(&main_focuser, 0, false, false);
+}
+
+static void held_poll_sync(void) {
+	held_connect_poll_request(&main_focuser, 0, true, false);
+}
+
+static void held_poll_steps(void) {
+	held_connect_poll_request(&main_focuser, 0, false, true);
+}
+
+static void held_poll_exp(void) {
+	held_connect_poll_request(&exp_focuser, 1, false, false);
+}
+
+static void held_poll_third(void) {
+	held_connect_poll_request(&third_focuser, 2, false, false);
+}
+
+static void held_poll_return_to_initial_position(void) {
+	SERIAL_CHECK_TRUE(start_main());
+	SERIAL_CHECK_TRUE(select_goto_mode(&main_focuser));
+	SERIAL_CHECK_TRUE(lunatico_wait_for_held_poll());
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, HOME_MAIN, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lunatico_release_poll());
+	// The controller moved externally during this poll. Cached connect position
+	// must not turn the accepted return request into a false no-op completion.
+	SERIAL_CHECK_TRUE(lunatico_wait_for_command("!step goto 0 1800 0#"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, HOME_MAIN, .1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_target() == HOME_MAIN);
+cleanup:
+	lunatico_release_poll();
+	stop();
+}
+
+static void held_poll_cancel_request(bool disconnect) {
+	SERIAL_CHECK_TRUE(start_main());
+	SERIAL_CHECK_TRUE(select_goto_mode(&main_focuser));
+	SERIAL_CHECK_TRUE(lunatico_wait_for_held_poll());
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1900, INDIGO_BUSY_STATE));
+	indigo_change_switch_property_1(&simulator_test_client, main_focuser.device_name, disconnect ? CONNECTION_PROPERTY_NAME : FOCUSER_ABORT_MOTION_PROPERTY_NAME, disconnect ? CONNECTION_DISCONNECTED_ITEM_NAME : FOCUSER_ABORT_MOTION_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lunatico_release_poll());
+	if (disconnect) {
+		SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(!context.connected);
+		// Disconnect is FIFO: the earlier accepted move may start, then must stop.
+		SERIAL_CHECK_TRUE(lunatico_sent("!step stop 0#"));
+		char url[PATH_MAX];
+		lunatico_url(url, sizeof(url));
+		SERIAL_CHECK_TRUE(connect_serial_device(&main_focuser, url));
+		SERIAL_CHECK_TRUE(settle_after_connect(0));
+	} else {
+		SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	}
+	if (!disconnect) {
+		SERIAL_CHECK_TRUE(lunatico_not_sent("!step goto 0 1900 0#"));
+	}
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_focuser, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lunatico_wait_for_command("!step goto 0 2000 0#"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 2000, .1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	lunatico_release_poll();
+	stop();
+}
+
+static void held_poll_abort(void) {
+	held_poll_cancel_request(false);
+}
+
+static void held_poll_disconnect(void) {
+	held_poll_cancel_request(true);
+}
+
 // --------------------------------------------------------------------------------- identity refusal
 
 // The controller identity is verified at connect, so a wrong model, a
@@ -1157,6 +1268,14 @@ int main(void) {
 		{ "speed_failure", speed_failure_is_reported, "speed-error" },
 		{ "limits_failure", limits_failure_is_reported, "limits-error" },
 		{ "goto_overlapping_connect_poll", goto_overlapping_the_connect_poll, "normal" },
+		{ "held_poll_goto", held_poll_goto, "hold-initial-poll" },
+		{ "held_poll_sync", held_poll_sync, "hold-initial-poll" },
+		{ "held_poll_steps", held_poll_steps, "hold-initial-poll" },
+		{ "held_poll_exp", held_poll_exp, "hold-initial-poll" },
+		{ "held_poll_third", held_poll_third, "hold-initial-poll" },
+		{ "held_poll_abort", held_poll_abort, "hold-initial-poll" },
+		{ "held_poll_disconnect", held_poll_disconnect, "hold-initial-poll" },
+		{ "held_poll_return", held_poll_return_to_initial_position, "hold-initial-poll+poll-position-shift" },
 		{ "wrong_model", connection_is_refused, "wrong-model" },
 		{ "bootloader", connection_is_refused, "bootloader" },
 		{ "bad_version", connection_is_refused, "bad-version" },

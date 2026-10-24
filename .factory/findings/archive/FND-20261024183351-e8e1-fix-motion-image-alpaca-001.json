@@ -1,0 +1,29 @@
+{
+  "title": "Lunatico connection poll can overwrite a queued focuser request",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024183351-e8e1-fix-motion-image-alpaca",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261024193016-8158-fix-lunatico-request-race",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Accepted Lunatico POSITION/STEPS intent is preserved until its queued worker starts. Old initial/external polls retain measured private position without overwriting requested public target/state; compensation and abort/disconnect ownership are coordinated. Both generated exports are versioned and covered by deterministic held-poll regression tests.",
+  "evidence": "20261024193016-8158-fix-lunatico-request-race/verification.md and quality-review.md; unchanged-driver held-poll GOTO/SYNC failures, exact-command/arrival regressions across both exports, serial and UDP, and sanitizer checks.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024193016-8158-fix-lunatico-request-race/verification.md; queued request snapshots, synchronized publication and cancellation, fresh private readback, final complete recorded simulator verification.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024183351-e8e1-fix-motion-image-alpaca-001"
+}

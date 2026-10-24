@@ -36,7 +36,7 @@ driver lunatico {
 	label = "Lunatico Astronomia Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2026 Rumen G. Bogdanovski";
-	version = 20;
+	version = 21;
 	multi_device_support = true;
 	serial {
 		configurable_speed = true;
@@ -75,6 +75,7 @@ driver lunatico {
 		name = "Focuser Lunatico (Main)";
 		on_attach {
 			device->gp_bits = 0;
+			lunatico_focuser_bind_requests(device);
 			INFO_PROPERTY->count = 6;
 			INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, LUNATICO_BAUDRATE);
 		}
@@ -198,9 +199,12 @@ driver lunatico {
 				// An urgent abort can overtake a queued move, so the start
 				// handlers of this device are cancelled together with the
 				// completion poll they would have scheduled.
+				pthread_mutex_lock(&lunatico_request_mutex);
 				indigo_cancel_pending_handler(device, focuser_main_focuser_position_handler);
 				indigo_cancel_pending_handler(device, focuser_main_focuser_steps_handler);
 				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+				PORT_STATE.focuser_pending = 0;
+				pthread_mutex_unlock(&lunatico_request_mutex);
 				lunatico_focuser_abort(device);
 			}
 		}
@@ -280,6 +284,7 @@ driver lunatico {
 		name = "Focuser Lunatico (Exp)";
 		on_attach {
 			device->gp_bits = 1;
+			lunatico_focuser_bind_requests(device);
 			INFO_PROPERTY->count = 6;
 		}
 		on_connect {
@@ -402,9 +407,12 @@ driver lunatico {
 				// An urgent abort can overtake a queued move, so the start
 				// handlers of this device are cancelled together with the
 				// completion poll they would have scheduled.
+				pthread_mutex_lock(&lunatico_request_mutex);
 				indigo_cancel_pending_handler(device, focuser_exp_focuser_position_handler);
 				indigo_cancel_pending_handler(device, focuser_exp_focuser_steps_handler);
 				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+				PORT_STATE.focuser_pending = 0;
+				pthread_mutex_unlock(&lunatico_request_mutex);
 				lunatico_focuser_abort(device);
 			}
 		}
@@ -687,6 +695,7 @@ driver lunatico {
 		name = "Focuser Lunatico (Third)";
 		on_attach {
 			device->gp_bits = 2;
+			lunatico_focuser_bind_requests(device);
 			INFO_PROPERTY->count = 6;
 		}
 		on_connect {
@@ -809,9 +818,12 @@ driver lunatico {
 				// An urgent abort can overtake a queued move, so the start
 				// handlers of this device are cancelled together with the
 				// completion poll they would have scheduled.
+				pthread_mutex_lock(&lunatico_request_mutex);
 				indigo_cancel_pending_handler(device, focuser_third_focuser_position_handler);
 				indigo_cancel_pending_handler(device, focuser_third_focuser_steps_handler);
 				indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+				PORT_STATE.focuser_pending = 0;
+				pthread_mutex_unlock(&lunatico_request_mutex);
 				lunatico_focuser_abort(device);
 			}
 		}

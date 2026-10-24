@@ -1,0 +1,5 @@
+filter	held_poll
+plan	3	Lunatico rotator
+pass	Lunatico rotator	held_poll_focuser_goto
+pass	Lunatico rotator	held_poll_focuser_sync
+pass	Lunatico rotator	held_poll_focuser_steps
