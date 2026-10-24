@@ -143,6 +143,9 @@
 |  | 2026-09-27 21:34 | 3.0.0.22 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 |  | 2026-10-02 21:02 | 3.0.0.22 | mac arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
 |  | 2026-10-06 23:55 | 3.0.0.22 | linux arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
+| ccd_libcamera | 2026-10-25 00:04 | 3.0.0.1 | linux arm64 | ov5647 | 10 / 10 | ✅ OK |
+|  | 2026-10-25 00:08 | 3.0.0.1 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
+|  | 2026-10-25 00:08 | 3.0.0.1 | linux arm64 | fake SDK | 15 / 15 | ✅ OK |
 | ccd_mallin | 2026-09-27 21:34 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_meade | 2026-09-27 21:37 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_mi | 2026-09-27 08:00 | 3.0.0.39 | linux x64 | fake SDK | 18 / 18 | ✅ OK |

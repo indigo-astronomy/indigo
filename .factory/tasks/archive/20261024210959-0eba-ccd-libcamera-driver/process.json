@@ -1,0 +1,190 @@
+{
+  "version": 2,
+  "task": "20261024210959-0eba-ccd-libcamera-driver",
+  "scope": [
+    "indigo_linux_drivers/ccd_libcamera/*",
+    "indigo_tools/indigo_generator.c",
+    "indigo_test/integration/test_ccd_libcamera_sdk.c",
+    "indigo_test/hardware/test_ccd_libcamera_hw.c",
+    "indigo_test/integration/test_generator_architecture.c",
+    "indigo_test/Makefile",
+    "indigo_docs/DRIVER_GENERATOR_MIGRATION.md",
+    "indigo_docs/PROPERTIES.md",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/completions/20261024210959-0eba-ccd-libcamera-driver.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_libcamera"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_libcamera",
+        "--hw"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-ccd-libcamera-sdk-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-generator-architecture"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024210959-0eba-ccd-libcamera-driver.json": [
+      "100644",
+      "blob",
+      "95760afb0468f01b5d138334f0eb41f51a89b44c"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "99ba843a07c083862fb2eee69b6937fc9a43fb90"
+    ],
+    "Makefile": [
+      "100644",
+      "blob",
+      "25c4857e4b47f47f6295946bcfa1344638b94829"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "e689e4d45972eecfa43fbfdd552b899296b8d6b8"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "f049c11a157dbd4dda786885798f060871aaa75b"
+    ],
+    "indigo_docs/DRIVER_GENERATOR_MIGRATION.md": [
+      "100644",
+      "blob",
+      "51d27b8b160e650782b7a52640b9af72772b12dc"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "2735b0e7238d732fe12a25976f7438233509265c"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/Makefile.inc": [
+      "100644",
+      "blob",
+      "06367934840c4632c5083a38d9bf128a119c26c1"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/README.md": [
+      "100644",
+      "blob",
+      "c26e7300da1fb226b8465b27909e329a445cc625"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/REFACTOR.md": [
+      "100644",
+      "blob",
+      "fed18c5a47a523bae6276d1d90b5ac5e943d0af9"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.c": [
+      "100644",
+      "blob",
+      "50bfe6462003c73c758c4c6f95af9352d6b1905f"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.driver": [
+      "100644",
+      "blob",
+      "399ec19d369d8610909b8d03b56d5394a15075ed"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.h": [
+      "100644",
+      "blob",
+      "1c64322e92fefe322f635f1f2e8496fce02c200e"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera_bridge.cpp": [
+      "100644",
+      "blob",
+      "20c431e75822b592decd06a7f363b246c3a0f8b7"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera_bridge.h": [
+      "100644",
+      "blob",
+      "6f38ea692d8e411e1611aa65d57e93a6a12f57c7"
+    ],
+    "indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera_main.c": [
+      "100644",
+      "blob",
+      "1874d262e5b08a45092130b241920699256a7717"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "e78db932d0520d8a4d021dfa32ecc5909c27b41b"
+    ],
+    "indigo_test/hardware/test_ccd_libcamera_hw.c": [
+      "100644",
+      "blob",
+      "6725c41fc5aa358d47aa66b1ed57928477135e4d"
+    ],
+    "indigo_test/integration/test_ccd_libcamera_sdk.c": [
+      "100644",
+      "blob",
+      "3a2b080d8469880c7d1a0ff3161bc50b75fb1d4f"
+    ],
+    "indigo_test/integration/test_generator_architecture.c": [
+      "100644",
+      "blob",
+      "3076c14f910a6013aed5065e65c47047a527c849"
+    ],
+    "indigo_tools/indigo_generator.c": [
+      "100644",
+      "blob",
+      "eb6e192a6566e18d936602ec1cb91bd7da2fad9c"
+    ]
+  }
+}

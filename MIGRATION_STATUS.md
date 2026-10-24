@@ -51,6 +51,7 @@
 | ccd_dsi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
 | ccd_fli                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | ccd_iidc                | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 1 | ⏰ TODO - make libdc1394 for Windows |
+| ccd_libcamera           | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 15 / 10 | |
 | ccd_mallin              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_mi                  | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 18 / 1 | ⛔ Unix and Windows SDKs are not compatible |
 | ccd_ogma                | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |

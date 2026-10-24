@@ -1219,6 +1219,17 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CF0D358F8F5882920C409521 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		AACEA2F2A4191CF735E7F969 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		19341A077A426471B8AACFC8 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.inc; sourceTree = "<group>"; };
+		2FE2269AA279B630C829CE03 /* indigo_ccd_libcamera.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_libcamera.driver; sourceTree = "<group>"; };
+		53CB442E76523A5FB263A7CC /* indigo_ccd_libcamera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_libcamera.h; sourceTree = "<group>"; };
+		ED4C2194F77CBF658C3E8B28 /* indigo_ccd_libcamera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_libcamera.c; sourceTree = "<group>"; };
+		EEA16D7671A3C03B9B76F4FC /* indigo_ccd_libcamera_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_libcamera_main.c; sourceTree = "<group>"; };
+		E1CC2526DBC4EB1E47B25916 /* indigo_ccd_libcamera_bridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_libcamera_bridge.h; sourceTree = "<group>"; };
+		F476CF58402EC00523B2E4A0 /* indigo_ccd_libcamera_bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_libcamera_bridge.cpp; sourceTree = "<group>"; };
+		5F47C4F1FD80E5D3DF77E647 /* test_ccd_libcamera_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_libcamera_sdk.c; sourceTree = "<group>"; };
+		BCDEADDC1DF78BAA8791C854 /* test_ccd_libcamera_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_libcamera_hw.c; sourceTree = "<group>"; };
 		00CFF8D06EFB6552728C2DBA /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = process.json; sourceTree = "<group>"; };
 		01C8A12AD3E5DD2A5DB40382 /* concurrent-tasks.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "concurrent-tasks.md"; sourceTree = "<group>"; };
 		0210AB98FD1CE6EE401AC7B6 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = plan.md; sourceTree = "<group>"; };
@@ -12666,6 +12677,22 @@
 			path = aux_rts;
 			sourceTree = "<group>";
 		};
+		3B4226E2B8136B7F9661DD39 /* ccd_libcamera */ = {
+			isa = PBXGroup;
+			children = (
+				CF0D358F8F5882920C409521 /* README.md */,
+				AACEA2F2A4191CF735E7F969 /* REFACTOR.md */,
+				19341A077A426471B8AACFC8 /* Makefile.inc */,
+				2FE2269AA279B630C829CE03 /* indigo_ccd_libcamera.driver */,
+				53CB442E76523A5FB263A7CC /* indigo_ccd_libcamera.h */,
+				ED4C2194F77CBF658C3E8B28 /* indigo_ccd_libcamera.c */,
+				EEA16D7671A3C03B9B76F4FC /* indigo_ccd_libcamera_main.c */,
+				E1CC2526DBC4EB1E47B25916 /* indigo_ccd_libcamera_bridge.h */,
+				F476CF58402EC00523B2E4A0 /* indigo_ccd_libcamera_bridge.cpp */,
+			);
+			path = ccd_libcamera;
+			sourceTree = "<group>";
+		};
 		59C0C74E2564652D00916E8D /* aux_rpio */ = {
 			isa = PBXGroup;
 			children = (
@@ -15812,6 +15839,7 @@
 				C0DE20260921E00000000003 /* test_aux_geoptikflat_simulator.c */,
 				C0DE20260914C00100000002 /* test_aux_joystick_hid.c */,
 				49B981AB4CBB4A2489DD7064 /* test_aux_rpio_sysfs.c */,
+				5F47C4F1FD80E5D3DF77E647 /* test_ccd_libcamera_sdk.c */,
 				F2CA338B73DF48C78B5B7267 /* test_aux_asiair_sysfs.c */,
 				F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */,
 				9B2B121EFA1F4F77BCDD8053 /* test_aux_mgbox_simulator.c */,
@@ -16754,6 +16782,7 @@
 				C0DE20260922190000000001 /* powerbox_hotplug_test_common.h */,
 				59E4ADBA30600C0A002B1629 /* test_mount_synscan_hw.c */,
 				31394FFC665B4AD088017127 /* test_aux_rpio_hw.c */,
+				BCDEADDC1DF78BAA8791C854 /* test_ccd_libcamera_hw.c */,
 				BB585B0FF8074EBCA4FB2400 /* test_aux_asiair_hw.c */,
 				C0DE20260920190000000001 /* test_focuser_primaluce_hw.c */,
 				ADC414885E082C4228189144 /* test_aux_giotto_hw.c */,
@@ -16910,6 +16939,7 @@
 			children = (
 				9D74A55D2D4B660400A31003 /* aux_asiair */,
 				59C0C74E2564652D00916E8D /* aux_rpio */,
+				3B4226E2B8136B7F9661DD39 /* ccd_libcamera */,
 			);
 			path = indigo_linux_drivers;
 			sourceTree = "<group>";
