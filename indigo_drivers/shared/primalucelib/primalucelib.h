@@ -507,6 +507,8 @@ typedef struct {
 	// The reply of the last request; string tokens are NUL-terminated in place.
 	char response[PRIMALUCE_MAX_RESPONSE_SIZE];
 	jsmntok_t tokens[PRIMALUCE_MAX_TOKENS];
+	// The tokens the parser filled; a reply may use all PRIMALUCE_MAX_TOKENS, leaving no empty token after the last one.
+	int token_count;
 	jsmn_parser parser;
 } primalucelib_link;
 

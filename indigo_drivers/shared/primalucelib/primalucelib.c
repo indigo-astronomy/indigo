@@ -251,15 +251,15 @@ static bool primalucelib_parse_reply(primalucelib_link *link) {
 		}
 	}
 	memset(link->tokens, 0, sizeof(link->tokens));
+	link->token_count = 0;
 	jsmn_init(&link->parser);
-	if (*link->response == '"' || jsmn_parse(&link->parser, link->response, PRIMALUCE_MAX_RESPONSE_SIZE, link->tokens, PRIMALUCE_MAX_TOKENS) <= 0) {
+	int count = *link->response == '"' ? 0 : jsmn_parse(&link->parser, link->response, PRIMALUCE_MAX_RESPONSE_SIZE, link->tokens, PRIMALUCE_MAX_TOKENS);
+	if (count <= 0) {
 		INDIGO_DRIVER_DEBUG(link->driver_name, "Failed to parse");
 		return false;
 	}
-	for (int i = 0; i < PRIMALUCE_MAX_TOKENS; i++) {
-		if (link->tokens[i].type == JSMN_UNDEFINED) {
-			break;
-		}
+	link->token_count = count;
+	for (int i = 0; i < link->token_count; i++) {
 		if (link->tokens[i].type == JSMN_STRING) {
 			link->response[link->tokens[i].end] = 0;
 		}
@@ -371,29 +371,33 @@ void primalucelib_clear_last_error(primalucelib_link *link) {
 
 #pragma mark - Reply access
 
+// Every token index stays below link->token_count: a reply that fills the whole token array has no empty token after
+// its last one to stop at.
 static int primalucelib_find_token(primalucelib_link *link, int start, char *path[]) {
-	if (link->tokens[start].type != JSMN_OBJECT) {
+	if (start >= link->token_count || link->tokens[start].type != JSMN_OBJECT) {
 		return -1;
 	}
 	int count = link->tokens[start].size;
 	int index = start + 1;
 	char *name = *path;
 	for (int i = 0; i < count; i++) {
-		if (link->tokens[index].type != JSMN_STRING) {
+		if (index >= link->token_count || link->tokens[index].type != JSMN_STRING) {
 			return -1;
 		}
 		char *n = link->response + link->tokens[index].start;
 		int l = link->tokens[index].end - link->tokens[index].start;
 		if (strlen(name) == (size_t)l && !strncmp(n, name, l)) {
-			index++;
+			if (++index >= link->token_count) {
+				return -1;
+			}
 			if (*++path == NULL) {
 				return index;
 			}
 			return primalucelib_find_token(link, index, path);
 		} else {
+			// Skip the value of this member, nested ones included, to the next member of the object.
 			while (true) {
-				index++;
-				if (link->tokens[index].type == JSMN_UNDEFINED) {
+				if (++index >= link->token_count) {
 					return -1;
 				}
 				if (link->tokens[index].parent == start) {

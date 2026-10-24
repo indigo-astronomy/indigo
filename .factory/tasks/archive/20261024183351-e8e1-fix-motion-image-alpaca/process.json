@@ -208,6 +208,33 @@
       ],
       "result": "pass",
       "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_alpaca",
+        "--no-record"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
     }
   ],
   "risk_reviews": {
@@ -251,12 +278,12 @@
     "TEST_SUMMARY.md": [
       "100644",
       "blob",
-      "186861fff9ace3f6d7107c30dad5919bddaee368"
+      "264fbd4ee14e39925dcbe22deda02060907583ce"
     ],
     "indigo.xcodeproj/project.pbxproj": [
       "100755",
       "blob",
-      "59613457d7d2291df43d07f2d67750d3fa59ba37"
+      "2bf6fae5223a774b9f7bf75772dea27d4d54b7c8"
     ],
     "indigo_drivers/agent_alpaca/README.md": [
       "100644",

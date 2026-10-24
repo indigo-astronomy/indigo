@@ -100,6 +100,9 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
 - **Full state:** `{"req":{"get": ""}}` returns the whole controller state, about 3.9 kB on a
   SESTO SENSO 2 (**HW**). Some values are missing from this full reply but present in a
   targeted get: `MOT1.SPEED` reads `0` when asked directly.
+- **Reply limits:** a reply is read into an 8192-byte buffer and parsed into at most 1024 JSON tokens; a larger reply
+  is refused. A lookup never reads past the tokens the parser filled, also when a reply uses all 1024
+  (FND-20261024121920-3bd2-repository-audit-017).
 
 ## Controller
 

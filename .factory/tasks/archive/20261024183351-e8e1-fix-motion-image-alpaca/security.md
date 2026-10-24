@@ -15,3 +15,7 @@ Status-only MIGRATION_STATUS changes trigger the data-model risk signal: this fi
 Configured `./.factory/scripts/security` passes local boundary validation; it is not a vulnerability scan of every driver or server. No secrets/private datasets are introduced. All requested security031/input-boundary concerns have scoped fixes and regression evidence; no owner risk acceptance is claimed. The independently tracked pre-existing functional race task001 is open, nonblocking and has its next assignment in findings.md.
 
 Final scoped sign-off passes after complete final acceptance and independent quality/documentation reinspection; no whole-product, hardware, Linux/Windows or server-security certification is implied.
+
+## Authorized integration continuation
+
+Origin/master advanced independently after the original candidate. Its synchronization preserves c5193c103 and all original task source/test objects; only Xcode/summary metadata overlaps. Independent integration review passes and focused combined-candidate checks pass; exact evidence, authorizations and concurrency merge exception are in integration.md and integration-review.md. Process content identities for shared metadata are refreshed before the integration merge commit. Original review scope/limitations remain intact.

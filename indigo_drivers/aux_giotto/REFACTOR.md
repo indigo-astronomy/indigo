@@ -190,3 +190,11 @@ Found by the repository audit 20261024121920-3bd2-repository-audit as FND-202610
 
 - Simulated tests: 26 run, 26 passed: `2026-10-24 19:17 3.0.0.2 linux x64 simulator 26/26 OK`.
 - Hardware tests: 0 run for this change (the last hardware run, 8/8, was on 3.0.0.1).
+
+## Token lookup bound in primalucelib (3.0.0.3, 2026-10-24, task 20261024164718-0e69-primalucelib-token-bounds)
+
+FND-20261024121920-3bd2-repository-audit-017: a lookup in a reply that used all 1024 JSON tokens could read past the
+token array of the shared `primalucelib` (reproduced with AddressSanitizer at `primalucelib.c:399`). The library now
+bounds every lookup by the number of tokens the parser filled; the regression test is the library unit case "lookups
+stay within a full token array". This driver links the library, so its version is raised; nothing else in the driver
+changed. The recorded simulator run of this version is in README.md.

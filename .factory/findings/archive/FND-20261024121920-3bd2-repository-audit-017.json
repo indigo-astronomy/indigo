@@ -2,7 +2,7 @@
   "title": "PrimaLuce token lookup assumes an unused array sentinel",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024164718-0e69-primalucelib-token-bounds",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "- Location: indigo_drivers/shared/primalucelib/primalucelib.c:374-405, specifically 394-399; parser acceptance at 253-265; capacity in primalucelib.h:77-78,502-503. - Severity: medium; confidence: high from source; category: security/input validation. Owner: coordinator; status: open; nonblocking audit follow-up. - Evidence: parser accepts every positive jsmn return, including all 1024 allocated tokens; it does not retain the returned token count. The missing-key/subtree skip increments index and reads tokens[index] until an undefined sentinel or sibling is found, with no capacity/count bound. A completely occupied valid token array has no undefined sentinel after its last token. Searching for an absent field after a final nested subtree can therefore advance beyond tokens[1023]. The 8192-byte response buffer allows a token-dense JSON response to fill the token array. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-2). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-017; driver-ac-report.md alias AC-2; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261024164718-0e69-primalucelib-token-bounds verification.md: lookups_stay_within_a_full_token_array overflowed under ASan with the unchanged library (primalucelib_find_token, primalucelib.c:399) and is clean after the token count is kept in primalucelib_link and every lookup index is bounded by it; unit suite 30/30, focuser_primaluce 72/72, aux_giotto 26/26, aux_alto 29/29.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-017"
 }

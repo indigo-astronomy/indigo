@@ -69,3 +69,7 @@ Pre-existing findings remain separately tracked, including new task001; no new i
 After task/finding archival, `./.factory/scripts/check`, `./.factory/scripts/security` and `./.factory/scripts/maintenance check` pass; completion count62, uncovered work tasks10, full review not due. Archive preview reported0 Markdown link rewrites; findings references resolve the retained archive. Local master/origin-master remain the reviewed base.
 
 First staged whitespace check detected trailing spaces in captured RAW diagnostic transcript (not production code). These spaces were normalized and labelled; final staged whitespace check must pass before commit. Earlier unstaged checks could not inspect untracked evidence.
+
+## Authorized integration continuation
+
+Origin/master advanced independently after the original candidate. Its synchronization preserves c5193c103 and all original task source/test objects; only Xcode/summary metadata overlaps. Independent integration review passes and focused combined-candidate checks pass; exact evidence, authorizations and concurrency merge exception are in integration.md and integration-review.md. Process content identities for shared metadata are refreshed before the integration merge commit. Original review scope/limitations remain intact.
