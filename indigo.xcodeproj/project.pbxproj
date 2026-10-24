@@ -6838,6 +6838,9 @@
 		D1AD3E41C700DFC2B04CF29D /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		B8C6A43A702BFEB096C842F5 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		C6DE42A9200B27B4BDD7FF7B /* 20261024092953-7ee4-primaluce-giotto-alto-drivers.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024092953-7ee4-primaluce-giotto-alto-drivers.json"; sourceTree = "<group>"; };
+		991E6524B502845D91FAB7AD /* FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json"; sourceTree = "<group>"; };
+		527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_prop_tool_parser.c; sourceTree = "<group>"; };
+		56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_tool_input_safety.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15400,6 +15403,8 @@
 		59FA7BE9301D35FD00A35CFB /* unit */ = {
 			isa = PBXGroup;
 			children = (
+				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
+				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,
 				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
 				D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */,
 				C1709E72227841389E72BABD /* test_transport_cache_security.c */,
@@ -15966,8 +15971,12 @@
 				123D32CAD72422C25133316E /* FND-000003.json */,
 				B75F523ADB53F70E6C693D97 /* FND-000004.json */,
 				9C2B8FC2F863059D344B519D /* FND-000005.json */,
+				2365540113A4B7BEB46DD53C /* FND-000006.json */,
+				ABFBADC40CC38B3339EAD3FE /* FND-000036.json */,
+				9CBA640883230290891EF505 /* FND-000037.json */,
 				A37218AB75285F589283925B /* FND-000044.json */,
 				70F570AEDCA386A9012318DE /* FND-000045.json */,
+				A871B79485B04B3AE5D8D5D8 /* FND-000047.json */,
 				E0F6E84E9D9087EFE6B7874D /* FND-000049.json */,
 				A15CE3EC8BBDC629A0C6F9FF /* FND-000050.json */,
 				2A0AA01A7A81428E9DDF9E00 /* FND-000051.json */,
@@ -16011,6 +16020,7 @@
 				E3A4D504F64B7EFBD8E9395D /* FND-20261023180923-1f46-fix-synscan-autohome-001.json */,
 				4CF80F5E58EF814E36864291 /* FND-20261023193406-58c7-primaluce-arco-keep-enabled-001.json */,
 				39C2D7120F2C4C798108E829 /* FND-20261023195506-cdf8-fix-findings-xcode-001.json */,
+				991E6524B502845D91FAB7AD /* FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18479,7 +18489,6 @@
 			isa = PBXGroup;
 			children = (
 				D6B6C7FB5C82CBBC7413B7BF /* .gitkeep */,
-				2365540113A4B7BEB46DD53C /* FND-000006.json */,
 				4F289CFDBDBCB6998695DD1C /* FND-000007.json */,
 				502978F12EE8A8DBCE4B2C95 /* FND-000008.json */,
 				CA0BAF844270AA59BEAF3753 /* FND-000009.json */,
@@ -18509,8 +18518,6 @@
 				1D860E293268829AA8DA5004 /* FND-000033.json */,
 				BAC8C5B340672D8FD3998AEC /* FND-000034.json */,
 				CE588E113882E3807E94B6D4 /* FND-000035.json */,
-				ABFBADC40CC38B3339EAD3FE /* FND-000036.json */,
-				9CBA640883230290891EF505 /* FND-000037.json */,
 				F3DECF24795E3AC3DA9DCBED /* FND-000038.json */,
 				68D24B5CAFEB5EDD006F5F98 /* FND-000039.json */,
 				2048B08CCA83914EAB044C67 /* FND-000040.json */,
@@ -18518,7 +18525,6 @@
 				6E2602246846876C429DDA0F /* FND-000042.json */,
 				8287F73862A35BABD2C3B074 /* FND-000043.json */,
 				7450E0430AF64751EC0EAB96 /* FND-000046.json */,
-				A871B79485B04B3AE5D8D5D8 /* FND-000047.json */,
 				A5E060DA6D53BAE9D0228714 /* FND-000048.json */,
 				6311D3B9EFBA834667C6FC00 /* FND-000052.json */,
 				7D2F6E7882BFD52C2223D6CB /* FND-20261023065605-60d4-repository-audit-003.json */,

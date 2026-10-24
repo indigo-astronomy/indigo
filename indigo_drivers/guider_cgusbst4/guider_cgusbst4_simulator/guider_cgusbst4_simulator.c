@@ -2,8 +2,9 @@
 // All rights reserved.
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-// Protocol evidence and unresolved dialect difference: ../REFACTOR.md.
-// Default PHD2 dialect uses numeric directions; --profile indigo accepts letters.
+// Protocol evidence: ../REFACTOR.md. Numeric acceptance and silent letter rejection were
+// independently observed via a NYX-101 ST4 connection on 2026-10-24.
+// Default PHD2 dialect uses numeric directions; --profile indigo is a synthetic legacy dialect.
 // Behaviour checked against a physical CG-USB-ST4 on 2026-09-21: the adapter answers the 0x06
 // handshake with A in under a millisecond, answers it again while a pulse it is timing itself is
 // still running, and never answers a guide command at all - neither dialect is acknowledged and

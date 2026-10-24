@@ -1,0 +1,44 @@
+{
+  "title": "CGUSB-ST4 / NYX-101 ST4 DEC response is inverted relative to direct NYX guiding away from pole on both pier sides.",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024095945-ac63-verify-cgusbst4-dec-orientation",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261024101137-d0d9-verify-cgusbst4-dec-west",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261024102929-75ee-verify-cgusbst4-iexos",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261024105327-f79c-verify-nyx-same-st4-cable",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261024110344-6f51-close-cgusbst4-investigation",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Confirmed NYX ST4 DEC inversion remains uncorrected. Same adapter/cable produced expected N/S on iEXOS and reversed N/S on NYX relative to direct NYX guiding. On 2026-10-24 the owner ended investigation and closed the topic with driver mapping unchanged. No further action unless explicitly reopened.",
+  "evidence": "verification.md and orientation-probe.jsonl in task 20261024095945-ac63-verify-cgusbst4-dec-orientation; two repeats each of direct n/s and numeric 0/1, matched idle interval, stable pier side E; original park/settings restored.; W-side follow-up: task 20261024101137-d0d9-verify-cgusbst4-dec-west verification.md and west-orientation-probe.jsonl, two repeats per direction on stable W, MD-approved ordinary goto and exact original park/settings restored. iEXOS/cable comparison: task 20261024102929-75ee-verify-cgusbst4-iexos verification.md, iexos-orientation-probe.jsonl and measurement-summary.json; 480-query replacement-USB-cable stability pass, two repeats, original home restored within one RA microstep, tracking off. Same-cable NYX follow-up: task 20261024105327-f79c-verify-nyx-same-st4-cable same-cable-probe.jsonl, measurement-summary.json and verification.md. Nine intervals, stable E; parked/tracking-off/R6/DEC/target restored, exact RA counter differs by -80, explicitly accepted by owner; no park rewrite.",
+  "resolution": {
+    "kind": "accepted_risk",
+    "evidence": "Owner explicit 2026-10-24 stop/close instruction recorded in task 20261024110344-6f51-close-cgusbst4-investigation verification.md. Rationale: end this hardware-specific investigation and retain existing numeric driver mapping despite the documented NYX ST4 polarity difference. No fix claimed. Follow-up: none scheduled; reopen only at explicit owner request.",
+    "approved_by": "Peter Polakovic, explicit conversation instruction, 2026-10-24",
+    "duplicate_of": null
+  },
+  "id": "FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001"
+}

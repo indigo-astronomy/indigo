@@ -1,0 +1,19 @@
+{
+  "source_revision": "a94e122fbe358d877863cbc1b38ae8284edc91c4",
+  "exit": 0,
+  "projects": [
+    {
+      "project": "indigoapps6",
+      "status": "pending"
+    },
+    {
+      "project": "indigo",
+      "status": "current"
+    },
+    {
+      "project": "ai-factory-console",
+      "status": "pending"
+    }
+  ],
+  "limitation": "Current confirms applied lock only; target acceptance and committed checks reported separately. Other adopter writes not authorized."
+}

@@ -1,0 +1,4 @@
+Running CG-USB-ST4 Adapter
+  PASS open rollback, reconnect and shutdown rejection
+  PASS command mapping, completion and transport errors
+CG-USB-ST4 Adapter: all tests passed

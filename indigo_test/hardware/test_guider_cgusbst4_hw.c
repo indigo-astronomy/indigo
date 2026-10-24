@@ -25,18 +25,18 @@
 // a disconnect, reconnect and driver INIT/SHUTDOWN.
 //
 // The adapter only closes opto-isolated ST4 relays, so nothing moves unless a mount is wired to
-// it. Every scenario leaves both axes released.
+// it. Guide commands expire in the adapter; the optional NYX case also restores park and tracking.
 //
 // The adapter answers the ACK handshake and nothing else: a guide command is never acknowledged,
 // not even with an error, and the firmware keeps answering the handshake while a pulse is
 // running. A client therefore cannot tell from the adapter whether a guide command was understood
 // at all, which is why this suite asserts the driver's own state machine and the timing it
-// publishes rather than a device reply. See indigo_drivers/guider_cgusbst4/REFACTOR.md for what
-// that means for DRV-095.
+// publishes rather than a device reply. The optional CGUSBST4_NYX_PORT case separately verifies
+// actual mount motor response through ST4, including restoration of the initial mount state.
 //
 // cgusbst4_measures_guide_pulse_duration is the guiding-pulse measurement required by
-// indigo_drivers/AGENTS.override.md. The relay is timed by the driver, so the only endpoints a
-// client can observe are the request and the completion of the public property: this is software
+// indigo_drivers/AGENTS.md. Firmware times the relay; the driver times public completion. The
+// only endpoints visible without the NYX opt-in are request and public completion: this is software
 // completion timing of the real serial command path, not an electrical measurement of the relay
 // output.
 //
@@ -45,6 +45,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.h>
 #include "hardware_test_common.h"
 
@@ -313,6 +314,109 @@ static void cgusbst4_reinitializes(void) {
 	ASSERT_TRUE(pulse(3, 200, NULL));
 }
 
+// Optional independent motor-response check for the owner-authorized NYX-101/ST4 setup.
+// CGUSBST4_NYX_PORT opts into physical mount motion; the ordinary adapter suite stays parked.
+static bool nyx_command(indigo_uni_handle *mount, const char *command, char *reply, bool acknowledgement) {
+	if (indigo_uni_discard(mount) < 0 || indigo_uni_write(mount, command, strlen(command)) != (long)strlen(command)) {
+		return false;
+	}
+	if (reply == NULL) {
+		return true;
+	}
+	long count = indigo_uni_read_section2(mount, reply, acknowledgement ? 1 : 63, "#", "\r\n#", INDIGO_DELAY(1), INDIGO_DELAY(0.1));
+	printf("    NYX %s -> %s\n", command, count > 0 ? reply : "(no reply)");
+	return count > 0;
+}
+
+static bool nyx_motors(indigo_uni_handle *mount, long *ra, long *dec) {
+	char reply[64];
+	return nyx_command(mount, ":GX94#", reply, false) && sscanf(reply, "%ld:%ld", ra, dec) == 2;
+}
+
+static void cgusbst4_moves_nyx_through_st4(void) {
+	indigo_uni_handle *mount = NULL;
+	const char *error_message = NULL;
+	char reply[64];
+	bool changed = false, parked = false;
+	long idle_ra_start, idle_dec_start, idle_ra_end, idle_dec_end;
+	mount = indigo_uni_open_serial_with_config2(getenv("CGUSBST4_NYX_PORT"), "115200-8N1", INDIGO_LOG_DEBUG, &error_message);
+	if (mount == NULL) {
+		fprintf(stderr, "    NYX open: %s\n", error_message ? error_message : "failed");
+	}
+	HW_CHECK(mount != NULL);
+	HW_CHECK(nyx_command(mount, ":GVP#", reply, false) && !strcmp(reply, "NYX-101"));
+	HW_CHECK(nyx_command(mount, ":GVN#", reply, false));
+	HW_CHECK(nyx_command(mount, ":GU#", reply, false) && strchr(reply, 'P') && strchr(reply, 'n') && strstr(reply, "160"));
+	changed = true;
+	HW_CHECK(nyx_command(mount, ":hR#", reply, true) && reply[0] == '1');
+	HW_CHECK(nyx_command(mount, ":R1#", NULL, false));
+	HW_CHECK(nyx_command(mount, ":Te#", reply, true) && reply[0] == '1');
+	indigo_usleep(INDIGO_DELAY(1));
+	HW_CHECK(nyx_command(mount, ":GU#", reply, false) && strchr(reply, 'p') && !strchr(reply, 'n'));
+	HW_CHECK(nyx_motors(mount, &idle_ra_start, &idle_dec_start));
+	double idle_started = indigo_monotonic_time();
+	indigo_usleep(INDIGO_DELAY(0.6));
+	HW_CHECK(nyx_motors(mount, &idle_ra_end, &idle_dec_end));
+	double idle_elapsed = indigo_monotonic_time() - idle_started;
+	double idle_rate = (idle_ra_end - idle_ra_start) / idle_elapsed;
+	printf("    NYX idle RA %.3f steps/s, DEC %ld steps\n", idle_rate, idle_dec_end - idle_dec_start);
+	HW_CHECK(labs(idle_dec_end - idle_dec_start) <= 2);
+	for (int direction = 0; direction < 4; direction++) {
+		long before_ra, before_dec, after_ra, after_dec;
+		HW_CHECK(nyx_motors(mount, &before_ra, &before_dec));
+		double started = indigo_monotonic_time();
+		unsigned before = hw_revision(guider, axis_of(direction));
+		hw_request_number(guider, axis_of(direction), directions[direction], 500);
+		HW_CHECK(hw_wait_state(guider, axis_of(direction), before, INDIGO_BUSY_STATE, SHORT_TIMEOUT));
+		bool active = false;
+		for (int sample = 0; sample < 15; sample++) {
+			HW_CHECK(nyx_command(mount, ":GU#", reply, false));
+			// NYX reports either manual guide (g) or pulse guide (G), depending on rate.
+			if (strchr(reply, 'g') || strchr(reply, 'G')) {
+				active = true;
+				break;
+			}
+			indigo_usleep(INDIGO_DELAY(0.025));
+		}
+		HW_CHECK(active);
+		HW_CHECK(hw_wait_state(guider, axis_of(direction), before, INDIGO_OK_STATE, PULSE_TIMEOUT));
+		HW_CHECK(item_cleared(direction));
+		HW_CHECK(nyx_motors(mount, &after_ra, &after_dec));
+		double elapsed = indigo_monotonic_time() - started;
+		double corrected_ra = after_ra - before_ra - idle_rate * elapsed;
+		printf("    ST4 %s 500 ms: RA %ld steps, corrected %+.3f, DEC %+ld steps\n", directions[direction], after_ra - before_ra, corrected_ra, after_dec - before_dec);
+		if (direction < 2) {
+			// Do not impose a global N/S swap from the setup's qualified near-pole orientation.
+			HW_CHECK(labs(after_dec - before_dec) > 5);
+		} else {
+			HW_CHECK(direction == 2 ? corrected_ra < -5 : corrected_ra > 5);
+		}
+	}
+cleanup:
+	if (changed) {
+		bool halted = nyx_command(mount, ":Q#", NULL, false);
+		bool disabled = nyx_command(mount, ":Td#", reply, true) && reply[0] == '1';
+		bool park_requested = nyx_command(mount, ":hP#", reply, true) && reply[0] == '1';
+		if (!halted || !disabled || !park_requested) {
+			indigo_test_failures++;
+		}
+		for (int attempt = 0; attempt < 30; attempt++) {
+			if (nyx_command(mount, ":GU#", reply, false) && strchr(reply, 'P') && strchr(reply, 'n')) {
+				parked = true;
+				break;
+			}
+			indigo_usleep(INDIGO_DELAY(0.5));
+		}
+		if (!nyx_command(mount, ":R6#", NULL, false) || !parked || !nyx_command(mount, ":GU#", reply, false) || !strstr(reply, "160")) {
+			indigo_test_failures++;
+		}
+		printf("    NYX cleanup parked=%d status=%s\n", parked, reply);
+	}
+	if (mount != NULL) {
+		indigo_uni_close(&mount);
+	}
+}
+
 int main(int argc, char **argv) {
 	if (argc < 2 || strcmp(argv[1], "--run")) {
 		fprintf(stderr, "Physical CG-USB-ST4 test: run explicitly with --run (or make test-guider-cgusbst4-hw).\n");
@@ -340,7 +444,8 @@ int main(int argc, char **argv) {
 		{ "cgusbst4_measures_guide_pulse_duration", cgusbst4_measures_guide_pulse_duration },
 		{ "cgusbst4_survives_a_disconnect_during_a_pulse", cgusbst4_survives_a_disconnect_during_a_pulse },
 		{ "cgusbst4_reconnects", cgusbst4_reconnects },
-		{ "cgusbst4_reinitializes", cgusbst4_reinitializes }
+		{ "cgusbst4_reinitializes", cgusbst4_reinitializes },
+		{ "cgusbst4_moves_nyx_through_st4", cgusbst4_moves_nyx_through_st4 }
 	};
 	int result = 1;
 	bool started = false, initialized = false;
@@ -353,7 +458,8 @@ int main(int argc, char **argv) {
 	HW_CHECK(guider >= 0);
 	HW_CHECK(select_port());
 	HW_CHECK(hw_connect(guider, SHORT_TIMEOUT));
-	result = indigo_run_tests("CG-USB-ST4 hardware", tests, ARRAY_SIZE(tests));
+	const char *nyx_port = getenv("CGUSBST4_NYX_PORT");
+	result = indigo_run_tests("CG-USB-ST4 hardware", tests, ARRAY_SIZE(tests) - (nyx_port == NULL || !*nyx_port));
 cleanup:
 	if (!hw_disconnect(guider, SHORT_TIMEOUT)) {
 		indigo_test_failures++;

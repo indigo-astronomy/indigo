@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024113017-1e1c-fix-fnd-000036-000037",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive completed evidence, commit and validate candidate; integration/publication pending owner authorization.",
+  "blocker": null
+}

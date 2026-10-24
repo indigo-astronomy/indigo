@@ -1,0 +1,3 @@
+# Test plan
+
+AC-001: USB identifiers, no fuser/server owners, GVP/GVN/GU/GX94/Gm, owner cable continuity statement. AC-002: one idle plus eight motion intervals, two-second timed commands, paired signed reported DEC and motor deltas, stable pier side, position/time bounds. AC-003: read back exact original motors, park/tracking/rate and target after cleanup. AC-004: inspect final diff for unchanged constants/generated source and keep original NYX inversion finding open unless evidence supports closure. Controller telemetry is not optical astrometry or relay timing. No native rebuild needed for docs/evidence-only work; configured Factory checks/tests/security and immutable process gate required.

@@ -1,0 +1,805 @@
+{"event": "command", "monotonic": 14448.347407957, "fd": 3, "command": "ESGv!", "reply": "ESGvES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4!"}
+{"event": "command", "monotonic": 14448.39539229, "fd": 3, "command": "ESGi!", "reply": "ESGi1152000001040040000900060000001!"}
+{"event": "command", "monotonic": 14448.411396826, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14448.427390622, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14448.443389771, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14448.459390215, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14448.475388363, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14448.491391752, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "initial", "monotonic": 14448.491425011, "firmware": "ESGvES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4!", "config": "ESGi1152000001040040000900060000001!", "positions": [0, 0], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 324000.0}
+{"event": "command", "monotonic": 14448.492331766, "fd": 4, "command": "\u0006", "reply": "A"}
+{"event": "command", "monotonic": 14448.507383456, "fd": 3, "command": "ESSd01!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14448.5233849, "fd": 3, "command": "ESTr0000!", "reply": "ESGx0000!"}
+{"event": "command", "monotonic": 14448.539379752, "fd": 3, "command": "ESSr10000!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14448.555379641, "fd": 3, "command": "ESPt1000000!", "reply": "ESGt1000000!"}
+{"event": "command", "monotonic": 14448.571374715, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14448.587375252, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14448.603374345, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14448.619368734, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14448.635366252, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14448.651362234, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14448.667365789, "fd": 3, "command": "ESPt1038400!", "reply": "ESGt1038400!"}
+{"event": "command", "monotonic": 14448.683359734, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14448.699359771, "fd": 3, "command": "ESGp1!", "reply": "ESGp100000C!"}
+{"event": "command", "monotonic": 14448.715358438, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14448.731351827, "fd": 3, "command": "ESGr1!", "reply": "ESGr10960!"}
+{"event": "command", "monotonic": 14448.747352253, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14448.763344845, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14448.763366734, "target": [0, 230400], "restoring": false, "positions": [0, 12], "rates": [0, 2400], "directions": [1, 1], "dec_arcsec": 323996.25}
+{"event": "command", "monotonic": 14449.01931792, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14449.03531479, "fd": 3, "command": "ESGp1!", "reply": "ESGp100091D!"}
+{"event": "command", "monotonic": 14449.05131179, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14449.067312494, "fd": 3, "command": "ESGr1!", "reply": "ESGr13DB8!"}
+{"event": "command", "monotonic": 14449.083304698, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14449.099304494, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14449.099326883, "target": [0, 230400], "restoring": false, "positions": [0, 2333], "rates": [0, 15800], "directions": [1, 1], "dec_arcsec": 323270.9375}
+{"event": "command", "monotonic": 14449.355285624, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14449.371286698, "fd": 3, "command": "ESGp1!", "reply": "ESGp10021AD!"}
+{"event": "command", "monotonic": 14449.387279513, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14449.403278939, "fd": 3, "command": "ESGr1!", "reply": "ESGr17210!"}
+{"event": "command", "monotonic": 14449.419270717, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14449.435275161, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14449.43530155, "target": [0, 230400], "restoring": false, "positions": [0, 8621], "rates": [0, 29200], "directions": [1, 1], "dec_arcsec": 321305.9375}
+{"event": "command", "monotonic": 14449.691246371, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14449.707241408, "fd": 3, "command": "ESGp1!", "reply": "ESGp1004515!"}
+{"event": "command", "monotonic": 14449.723237853, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14449.739239465, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14449.755236372, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14449.77123128, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14449.771253002, "target": [0, 230400], "restoring": false, "positions": [0, 17685], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 318473.4375}
+{"event": "command", "monotonic": 14450.027207527, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14450.043202564, "fd": 3, "command": "ESGp1!", "reply": "ESGp100689D!"}
+{"event": "command", "monotonic": 14450.059199472, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14450.075198584, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14450.091189769, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14450.10718501, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14450.10720627, "target": [0, 230400], "restoring": false, "positions": [0, 26781], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 315630.9375}
+{"event": "command", "monotonic": 14450.363166665, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14450.379161165, "fd": 3, "command": "ESGp1!", "reply": "ESGp1008C1D!"}
+{"event": "command", "monotonic": 14450.395159054, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14450.411151573, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14450.427151722, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14450.443145148, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14450.443167519, "target": [0, 230400], "restoring": false, "positions": [0, 35869], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 312790.9375}
+{"event": "command", "monotonic": 14450.699118734, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14450.715120401, "fd": 3, "command": "ESGp1!", "reply": "ESGp100AFA5!"}
+{"event": "command", "monotonic": 14450.731119736, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14450.747117625, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14450.763110718, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14450.779113238, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14450.779134534, "target": [0, 230400], "restoring": false, "positions": [0, 44965], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 309948.4375}
+{"event": "command", "monotonic": 14451.035086898, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14451.051086621, "fd": 3, "command": "ESGp1!", "reply": "ESGp100D325!"}
+{"event": "command", "monotonic": 14451.067080177, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14451.083079178, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14451.099075789, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14451.115074883, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14451.115096531, "target": [0, 230400], "restoring": false, "positions": [0, 54053], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 307108.4375}
+{"event": "command", "monotonic": 14451.371045487, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14451.387039988, "fd": 3, "command": "ESGp1!", "reply": "ESGp100F6AD!"}
+{"event": "command", "monotonic": 14451.403050192, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14451.419044786, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14451.435041268, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14451.451041973, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14451.451079361, "target": [0, 230400], "restoring": false, "positions": [0, 63149], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 304265.9375}
+{"event": "command", "monotonic": 14451.707048193, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14451.723053009, "fd": 3, "command": "ESGp1!", "reply": "ESGp1011A35!"}
+{"event": "command", "monotonic": 14451.739052362, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14451.755058697, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14451.77105229, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14451.787052125, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14451.787088791, "target": [0, 230400], "restoring": false, "positions": [0, 72245], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 301423.4375}
+{"event": "command", "monotonic": 14452.042975605, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14452.058974384, "fd": 3, "command": "ESGp1!", "reply": "ESGp1013DB5!"}
+{"event": "command", "monotonic": 14452.074973182, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14452.090968572, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14452.106960295, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14452.122961963, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14452.123000666, "target": [0, 230400], "restoring": false, "positions": [0, 81333], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 298583.4375}
+{"event": "command", "monotonic": 14452.378927128, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14452.394931926, "fd": 3, "command": "ESGp1!", "reply": "ESGp101613D!"}
+{"event": "command", "monotonic": 14452.410925908, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14452.426926502, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14452.442924781, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14452.458920134, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14452.45895743, "target": [0, 230400], "restoring": false, "positions": [0, 90429], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 295740.9375}
+{"event": "command", "monotonic": 14452.714888676, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14452.730894437, "fd": 3, "command": "ESGp1!", "reply": "ESGp10184BD!"}
+{"event": "command", "monotonic": 14452.746887716, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14452.762886106, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14452.778888015, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14452.794878368, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14452.794914239, "target": [0, 230400], "restoring": false, "positions": [0, 99517], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 292900.9375}
+{"event": "command", "monotonic": 14453.050855928, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14453.066849078, "fd": 3, "command": "ESGp1!", "reply": "ESGp101A845!"}
+{"event": "command", "monotonic": 14453.082847209, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14453.098846303, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14453.114843675, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14453.130839195, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14453.130875084, "target": [0, 230400], "restoring": false, "positions": [0, 108613], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 290058.4375}
+{"event": "command", "monotonic": 14453.386805107, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14453.402807886, "fd": 3, "command": "ESGp1!", "reply": "ESGp101CBC5!"}
+{"event": "command", "monotonic": 14453.418808813, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14453.43480113, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14453.450793076, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14453.466794207, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14453.466830133, "target": [0, 230400], "restoring": false, "positions": [0, 117701], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 287218.4375}
+{"event": "command", "monotonic": 14453.722754588, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14453.738761553, "fd": 3, "command": "ESGp1!", "reply": "ESGp101EF4D!"}
+{"event": "command", "monotonic": 14453.754763314, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14453.77076139, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14453.786753873, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14453.802754541, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14453.802790393, "target": [0, 230400], "restoring": false, "positions": [0, 126797], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 284375.9375}
+{"event": "command", "monotonic": 14454.058730811, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14454.074736368, "fd": 3, "command": "ESGp1!", "reply": "ESGp10212D5!"}
+{"event": "command", "monotonic": 14454.090729277, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14454.106727575, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14454.122718837, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14454.138721709, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14454.138759968, "target": [0, 230400], "restoring": false, "positions": [0, 135893], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 281533.4375}
+{"event": "command", "monotonic": 14454.394690108, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14454.410693739, "fd": 3, "command": "ESGp1!", "reply": "ESGp1023655!"}
+{"event": "command", "monotonic": 14454.426687204, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14454.442686706, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14454.458689616, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14454.474683673, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14454.474722488, "target": [0, 230400], "restoring": false, "positions": [0, 144981], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 278693.4375}
+{"event": "command", "monotonic": 14454.730662745, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14454.746655784, "fd": 3, "command": "ESGp1!", "reply": "ESGp10259DD!"}
+{"event": "command", "monotonic": 14454.762654619, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14454.778653233, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14454.794645364, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14454.810646052, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14454.810683014, "target": [0, 230400], "restoring": false, "positions": [0, 154077], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 275850.9375}
+{"event": "command", "monotonic": 14455.066615827, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14455.082620773, "fd": 3, "command": "ESGp1!", "reply": "ESGp1027D55!"}
+{"event": "command", "monotonic": 14455.098613979, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14455.114613889, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14455.130604928, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14455.146605726, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14455.146641319, "target": [0, 230400], "restoring": false, "positions": [0, 163157], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 273013.4375}
+{"event": "command", "monotonic": 14455.402569705, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14455.418574541, "fd": 3, "command": "ESGp1!", "reply": "ESGp102A0DD!"}
+{"event": "command", "monotonic": 14455.434571265, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14455.450566268, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14455.466565677, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14455.482567828, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14455.482607254, "target": [0, 230400], "restoring": false, "positions": [0, 172253], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 270170.9375}
+{"event": "command", "monotonic": 14455.738528831, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14455.75453363, "fd": 3, "command": "ESGp1!", "reply": "ESGp102C45D!"}
+{"event": "command", "monotonic": 14455.770528484, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14455.786527153, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14455.8025251, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14455.818524399, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14455.81856114, "target": [0, 230400], "restoring": false, "positions": [0, 181341], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 267330.9375}
+{"event": "command", "monotonic": 14456.074492013, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14456.090494108, "fd": 3, "command": "ESGp1!", "reply": "ESGp102E7E5!"}
+{"event": "command", "monotonic": 14456.106492277, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14456.122486595, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14456.138482505, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14456.154478822, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14456.154515618, "target": [0, 230400], "restoring": false, "positions": [0, 190437], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 264488.4375}
+{"event": "command", "monotonic": 14456.410448158, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14456.426453938, "fd": 3, "command": "ESGp1!", "reply": "ESGp1030B6D!"}
+{"event": "command", "monotonic": 14456.442453478, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14456.458445759, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14456.47444441, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14456.490438468, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14456.490474616, "target": [0, 230400], "restoring": false, "positions": [0, 199533], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 261645.9375}
+{"event": "command", "monotonic": 14456.746403829, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14456.762408183, "fd": 3, "command": "ESGp1!", "reply": "ESGp1032EED!"}
+{"event": "command", "monotonic": 14456.778399482, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14456.794400356, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14456.810400044, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14456.826394843, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14456.826433509, "target": [0, 230400], "restoring": false, "positions": [0, 208621], "rates": [0, 39800], "directions": [1, 1], "dec_arcsec": 258805.9375}
+{"event": "command", "monotonic": 14457.082375685, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14457.098368706, "fd": 3, "command": "ESGp1!", "reply": "ESGp1035275!"}
+{"event": "command", "monotonic": 14457.114365801, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14457.130360712, "fd": 3, "command": "ESGr1!", "reply": "ESGr16C98!"}
+{"event": "command", "monotonic": 14457.1463589, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14457.162360569, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14457.162396995, "target": [0, 230400], "restoring": false, "positions": [0, 217717], "rates": [0, 27800], "directions": [1, 1], "dec_arcsec": 255963.4375}
+{"event": "command", "monotonic": 14457.418329152, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14457.434328525, "fd": 3, "command": "ESGp1!", "reply": "ESGp1036C65!"}
+{"event": "command", "monotonic": 14457.45032601, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14457.466327402, "fd": 3, "command": "ESGr1!", "reply": "ESGr13840!"}
+{"event": "command", "monotonic": 14457.482319461, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14457.498319779, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14457.498357223, "target": [0, 230400], "restoring": false, "positions": [0, 224357], "rates": [0, 14400], "directions": [1, 1], "dec_arcsec": 253888.4375}
+{"event": "command", "monotonic": 14457.754282311, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14457.770293611, "fd": 3, "command": "ESGp1!", "reply": "ESGp10376D8!"}
+{"event": "command", "monotonic": 14457.786285447, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14457.802278562, "fd": 3, "command": "ESGr1!", "reply": "ESGr103E8!"}
+{"event": "command", "monotonic": 14457.818277306, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14457.834271457, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14457.834307438, "target": [0, 230400], "restoring": false, "positions": [0, 227032], "rates": [0, 1000], "directions": [1, 1], "dec_arcsec": 253052.5}
+{"event": "command", "monotonic": 14458.090249527, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14458.106255641, "fd": 3, "command": "ESGp1!", "reply": "ESGp10378D7!"}
+{"event": "command", "monotonic": 14458.122252663, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14458.138252962, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14458.154251706, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14458.170253431, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14458.170292209, "target": [0, 230400], "restoring": false, "positions": [0, 227543], "rates": [0, 1600], "directions": [1, 1], "dec_arcsec": 252892.8125}
+{"event": "command", "monotonic": 14458.426257927, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14458.442264097, "fd": 3, "command": "ESGp1!", "reply": "ESGp1037ADC!"}
+{"event": "command", "monotonic": 14458.458262545, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14458.47426266, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14458.490263015, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14458.506262593, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14458.506298222, "target": [0, 230400], "restoring": false, "positions": [0, 228060], "rates": [0, 1600], "directions": [1, 1], "dec_arcsec": 252731.25}
+{"event": "command", "monotonic": 14458.762153427, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14458.778159838, "fd": 3, "command": "ESGp1!", "reply": "ESGp1037CE0!"}
+{"event": "command", "monotonic": 14458.794151842, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14458.810152475, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14458.826151386, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14458.842144667, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14458.842180408, "target": [0, 230400], "restoring": false, "positions": [0, 228576], "rates": [0, 1600], "directions": [1, 1], "dec_arcsec": 252570.0}
+{"event": "command", "monotonic": 14459.098114891, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14459.114117894, "fd": 3, "command": "ESGp1!", "reply": "ESGp1037EE5!"}
+{"event": "command", "monotonic": 14459.130111639, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14459.146111753, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14459.16211009, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14459.178105983, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14459.178143686, "target": [0, 230400], "restoring": false, "positions": [0, 229093], "rates": [0, 1600], "directions": [1, 1], "dec_arcsec": 252408.4375}
+{"event": "command", "monotonic": 14459.434080762, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14459.450078006, "fd": 3, "command": "ESGp1!", "reply": "ESGp10380E9!"}
+{"event": "command", "monotonic": 14459.466082195, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14459.482079199, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14459.498070722, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14459.514071522, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14459.514107096, "target": [0, 230400], "restoring": false, "positions": [0, 229609], "rates": [0, 1600], "directions": [1, 1], "dec_arcsec": 252247.1875}
+{"event": "command", "monotonic": 14459.770049825, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14459.786045588, "fd": 3, "command": "ESGp1!", "reply": "ESGp10382ED!"}
+{"event": "command", "monotonic": 14459.802044407, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14459.818043392, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14459.834039359, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14459.850038548, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14459.850074696, "target": [0, 230400], "restoring": false, "positions": [0, 230125], "rates": [0, 1600], "directions": [1, 1], "dec_arcsec": 252085.9375}
+{"event": "command", "monotonic": 14460.106010018, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14460.122011707, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14460.138004285, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14460.153998955, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14460.169996626, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14460.185993833, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14460.186033018, "target": [0, 230400], "restoring": false, "positions": [0, 230400], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 252000.0}
+{"event": "command", "monotonic": 14460.201992837, "fd": 3, "command": "ESSd01!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14460.217986952, "fd": 3, "command": "ESTr04B3!", "reply": "ESGx04B3!"}
+{"event": "command", "monotonic": 14461.225860919, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000031!"}
+{"event": "command", "monotonic": 14461.241865275, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14461.25786539, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14461.273857469, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14461.289855473, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14461.305850125, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "settled", "monotonic": 14461.305886495, "positions": [49, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}
+{"event": "command", "monotonic": 14461.321854907, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000036!"}
+{"event": "command", "monotonic": 14461.337854189, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14461.353853601, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14461.369848327, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14461.385846998, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14461.401840336, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14461.817792899, "fd": 3, "command": "ESGp0!", "reply": "ESGp000004E!"}
+{"event": "command", "monotonic": 14461.833796292, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14461.849787371, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14461.865789431, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14461.881780084, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14461.897779755, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14464.009548611, "fd": 3, "command": "ESGp0!", "reply": "ESGp00000B8!"}
+{"event": "command", "monotonic": 14464.025547376, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14464.041542418, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14464.057538349, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14464.073535058, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14464.089529304, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "trial", "monotonic": 14464.089576082, "name": "idle", "operation": null, "before": {"positions": [54, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "during": {"positions": [78, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "after": {"positions": [184, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "delta_dec_arcsec": 0.0, "delta_counts": [130, 0]}
+{"event": "command", "monotonic": 14464.105529217, "fd": 3, "command": "ESGp0!", "reply": "ESGp00000BC!"}
+{"event": "command", "monotonic": 14464.121526648, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14464.137522635, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14464.153523603, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14464.169515923, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14464.185516003, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14464.201518267, "fd": 3, "command": "ESPt10383D0!", "reply": "ESGt10383D0!"}
+{"event": "command", "monotonic": 14464.217519272, "fd": 3, "command": "ESGp0!", "reply": "ESGp00000C1!"}
+{"event": "command", "monotonic": 14464.233518333, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383FF!"}
+{"event": "command", "monotonic": 14464.249516005, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14464.265510529, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14464.281510497, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14464.297503762, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14464.297543058, "target": [0, 230352], "restoring": false, "positions": [193, 230399], "rates": [48, 48], "directions": [1, 0], "dec_arcsec": 252000.3125}
+{"event": "command", "monotonic": 14464.553486423, "fd": 3, "command": "ESGp0!", "reply": "ESGp00000D2!"}
+{"event": "command", "monotonic": 14464.569490299, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383EF!"}
+{"event": "command", "monotonic": 14464.585481434, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14464.601481829, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14464.617472834, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14464.633473488, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14464.633510895, "target": [0, 230352], "restoring": false, "positions": [210, 230383], "rates": [48, 48], "directions": [1, 0], "dec_arcsec": 252005.3125}
+{"event": "command", "monotonic": 14464.889464763, "fd": 3, "command": "ESGp0!", "reply": "ESGp00000E2!"}
+{"event": "command", "monotonic": 14464.905469954, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14464.921465386, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14464.937468169, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14464.953466156, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14464.969467384, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14464.969504254, "target": [0, 230352], "restoring": false, "positions": [226, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}
+{"event": "command", "monotonic": 14465.385378345, "fd": 3, "command": "ESGp0!", "reply": "ESGp00000FA!"}
+{"event": "command", "monotonic": 14465.40137361, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14465.417374319, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14465.433368381, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14465.449358442, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14465.46535967, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14467.577087597, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000164!"}
+{"event": "command", "monotonic": 14467.593086326, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14467.609085814, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14467.625080673, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14467.641077291, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14467.65707526, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "trial", "monotonic": 14467.657120575, "name": "direct_n_0", "operation": -48, "before": {"positions": [188, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "during": {"positions": [250, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "after": {"positions": [356, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "delta_dec_arcsec": 15.0, "delta_counts": [168, -48]}
+{"event": "command", "monotonic": 14467.673075433, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000168!"}
+{"event": "command", "monotonic": 14467.689070607, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14467.705073225, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14467.721069065, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14467.737066793, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14467.753062782, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14467.753121337, "fd": 4, "command": ":Mg02000#", "reply": ""}
+{"event": "command", "monotonic": 14468.169010566, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000180!"}
+{"event": "command", "monotonic": 14468.185009202, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383C7!"}
+{"event": "command", "monotonic": 14468.201007579, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14468.217008512, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14468.232999092, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14468.248993988, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14470.360742372, "fd": 3, "command": "ESGp0!", "reply": "ESGp00001EA!"}
+{"event": "command", "monotonic": 14470.376741879, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383A7!"}
+{"event": "command", "monotonic": 14470.39273435, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14470.408733709, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14470.424728179, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14470.440727854, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "trial", "monotonic": 14470.440772576, "name": "adapter_0_0", "operation": ":Mg02000#", "before": {"positions": [360, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "during": {"positions": [384, 230343], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252017.8125}, "after": {"positions": [490, 230311], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252027.8125}, "delta_dec_arcsec": 12.8125, "delta_counts": [130, -41]}
+{"event": "command", "monotonic": 14470.456725306, "fd": 3, "command": "ESGp0!", "reply": "ESGp00001EE!"}
+{"event": "command", "monotonic": 14470.472722369, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383A7!"}
+{"event": "command", "monotonic": 14470.488723766, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14470.504718662, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14470.520718929, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14470.536719418, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14470.536778511, "fd": 4, "command": ":Mg12000#", "reply": ""}
+{"event": "command", "monotonic": 14470.952674136, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000206!"}
+{"event": "command", "monotonic": 14470.968683533, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383B0!"}
+{"event": "command", "monotonic": 14470.984679485, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14471.000679159, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14471.016670574, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14471.032670915, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14473.144422814, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000270!"}
+{"event": "command", "monotonic": 14473.160426767, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14473.176423627, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14473.192417969, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14473.208409959, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14473.224411449, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "trial", "monotonic": 14473.224451689, "name": "adapter_1_0", "operation": ":Mg12000#", "before": {"positions": [494, 230311], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252027.8125}, "during": {"positions": [518, 230320], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252025.0}, "after": {"positions": [624, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "delta_dec_arcsec": -12.8125, "delta_counts": [130, 41]}
+{"event": "command", "monotonic": 14473.240413753, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000275!"}
+{"event": "command", "monotonic": 14473.256414577, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14473.272407992, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14473.288409834, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14473.304407731, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14473.320403017, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14473.336407174, "fd": 3, "command": "ESPt1038400!", "reply": "ESGt1038400!"}
+{"event": "command", "monotonic": 14473.352400553, "fd": 3, "command": "ESGp0!", "reply": "ESGp000027A!"}
+{"event": "command", "monotonic": 14473.368401913, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D1!"}
+{"event": "command", "monotonic": 14473.384400625, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14473.400398022, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14473.416391642, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14473.432385965, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14473.432424798, "target": [0, 230400], "restoring": false, "positions": [634, 230353], "rates": [48, 48], "directions": [1, 1], "dec_arcsec": 252014.6875}
+{"event": "command", "monotonic": 14473.688355882, "fd": 3, "command": "ESGp0!", "reply": "ESGp000028B!"}
+{"event": "command", "monotonic": 14473.704353576, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383E2!"}
+{"event": "command", "monotonic": 14473.720352881, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14473.736346686, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14473.752345991, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14473.768349703, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14473.768388777, "target": [0, 230400], "restoring": false, "positions": [651, 230370], "rates": [48, 48], "directions": [1, 1], "dec_arcsec": 252009.375}
+{"event": "command", "monotonic": 14474.024317546, "fd": 3, "command": "ESGp0!", "reply": "ESGp000029B!"}
+{"event": "command", "monotonic": 14474.040319925, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14474.056312563, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14474.072313739, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14474.088305155, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14474.10430446, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14474.104340367, "target": [0, 230400], "restoring": false, "positions": [667, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}
+{"event": "command", "monotonic": 14474.520248725, "fd": 3, "command": "ESGp0!", "reply": "ESGp00002B2!"}
+{"event": "command", "monotonic": 14474.536251697, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14474.552245539, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14474.568248085, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14474.584238279, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14474.600238029, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14476.711998366, "fd": 3, "command": "ESGp0!", "reply": "ESGp000031D!"}
+{"event": "command", "monotonic": 14476.727998524, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14476.743989608, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14476.759993636, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14476.775981997, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14476.791983137, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "trial", "monotonic": 14476.792035637, "name": "direct_s_0", "operation": 48, "before": {"positions": [629, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "during": {"positions": [690, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "after": {"positions": [797, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "delta_dec_arcsec": -15.0, "delta_counts": [168, 48]}
+{"event": "command", "monotonic": 14476.807988035, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000321!"}
+{"event": "command", "monotonic": 14476.823976138, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14476.839974499, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14476.855969176, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14476.871963426, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14476.88795601, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14476.903963483, "fd": 3, "command": "ESPt10383D0!", "reply": "ESGt10383D0!"}
+{"event": "command", "monotonic": 14476.919962529, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000326!"}
+{"event": "command", "monotonic": 14476.935955187, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383FE!"}
+{"event": "command", "monotonic": 14476.951963012, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14476.967953336, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14476.983955494, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14476.999949837, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14476.999978096, "target": [0, 230352], "restoring": false, "positions": [806, 230398], "rates": [48, 48], "directions": [1, 0], "dec_arcsec": 252000.625}
+{"event": "command", "monotonic": 14477.255914363, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000337!"}
+{"event": "command", "monotonic": 14477.27192341, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383EE!"}
+{"event": "command", "monotonic": 14477.287923604, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14477.30391804, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14477.31991742, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14477.335911282, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14477.335948856, "target": [0, 230352], "restoring": false, "positions": [823, 230382], "rates": [48, 48], "directions": [1, 0], "dec_arcsec": 252005.625}
+{"event": "command", "monotonic": 14477.591876589, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000347!"}
+{"event": "command", "monotonic": 14477.607878969, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14477.623869275, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14477.639867286, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14477.655867833, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14477.671869139, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14477.671908694, "target": [0, 230352], "restoring": false, "positions": [839, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}
+{"event": "command", "monotonic": 14478.087884381, "fd": 3, "command": "ESGp0!", "reply": "ESGp000035F!"}
+{"event": "command", "monotonic": 14478.103888614, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14478.119887383, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14478.135886449, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14478.151883644, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14478.167884191, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14480.279549778, "fd": 3, "command": "ESGp0!", "reply": "ESGp00003C9!"}
+{"event": "command", "monotonic": 14480.295546344, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14480.311544725, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14480.327539903, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14480.343536358, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14480.359537498, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "trial", "monotonic": 14480.359584091, "name": "direct_n_1", "operation": -48, "before": {"positions": [801, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "during": {"positions": [863, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "after": {"positions": [969, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "delta_dec_arcsec": 15.0, "delta_counts": [168, -48]}
+{"event": "command", "monotonic": 14480.375535101, "fd": 3, "command": "ESGp0!", "reply": "ESGp00003CD!"}
+{"event": "command", "monotonic": 14480.39153102, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14480.407532938, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14480.423534171, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14480.439527274, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14480.455531119, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14480.455592804, "fd": 4, "command": ":Mg02000#", "reply": ""}
+{"event": "command", "monotonic": 14480.87147348, "fd": 3, "command": "ESGp0!", "reply": "ESGp00003E5!"}
+{"event": "command", "monotonic": 14480.88747701, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383C7!"}
+{"event": "command", "monotonic": 14480.90347278, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14480.919475106, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14480.935472876, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14480.951472239, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14483.063231838, "fd": 3, "command": "ESGp0!", "reply": "ESGp000044F!"}
+{"event": "command", "monotonic": 14483.079235127, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383A7!"}
+{"event": "command", "monotonic": 14483.095224658, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14483.111226021, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14483.127223311, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14483.143222489, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "trial", "monotonic": 14483.143267322, "name": "adapter_0_1", "operation": ":Mg02000#", "before": {"positions": [973, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "during": {"positions": [997, 230343], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252017.8125}, "after": {"positions": [1103, 230311], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252027.8125}, "delta_dec_arcsec": 12.8125, "delta_counts": [130, -41]}
+{"event": "command", "monotonic": 14483.159222112, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000453!"}
+{"event": "command", "monotonic": 14483.175218827, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383A7!"}
+{"event": "command", "monotonic": 14483.191220561, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14483.207214629, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14483.223213122, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14483.239216004, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14483.239275615, "fd": 4, "command": ":Mg12000#", "reply": ""}
+{"event": "command", "monotonic": 14483.655170869, "fd": 3, "command": "ESGp0!", "reply": "ESGp000046B!"}
+{"event": "command", "monotonic": 14483.67117351, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383B0!"}
+{"event": "command", "monotonic": 14483.687165856, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14483.703165627, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14483.719158195, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14483.735158651, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14485.846911761, "fd": 3, "command": "ESGp0!", "reply": "ESGp00004D5!"}
+{"event": "command", "monotonic": 14485.862913311, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14485.878906509, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14485.894907855, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14485.910900368, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14485.926898492, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "trial", "monotonic": 14485.926940028, "name": "adapter_1_1", "operation": ":Mg12000#", "before": {"positions": [1107, 230311], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252027.8125}, "during": {"positions": [1131, 230320], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252025.0}, "after": {"positions": [1237, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "delta_dec_arcsec": -12.8125, "delta_counts": [130, 41]}
+{"event": "command", "monotonic": 14485.942903912, "fd": 3, "command": "ESGp0!", "reply": "ESGp00004DA!"}
+{"event": "command", "monotonic": 14485.958903276, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D0!"}
+{"event": "command", "monotonic": 14485.974897104, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14485.990897135, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14486.006894703, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14486.022890327, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14486.038894951, "fd": 3, "command": "ESPt1038400!", "reply": "ESGt1038400!"}
+{"event": "command", "monotonic": 14486.054886297, "fd": 3, "command": "ESGp0!", "reply": "ESGp00004DF!"}
+{"event": "command", "monotonic": 14486.070888217, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383D2!"}
+{"event": "command", "monotonic": 14486.086889248, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14486.102880335, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14486.118878774, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14486.134879138, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14486.134917434, "target": [0, 230400], "restoring": false, "positions": [1247, 230354], "rates": [48, 48], "directions": [1, 1], "dec_arcsec": 252014.375}
+{"event": "command", "monotonic": 14486.390843823, "fd": 3, "command": "ESGp0!", "reply": "ESGp00004F0!"}
+{"event": "command", "monotonic": 14486.406849095, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383E2!"}
+{"event": "command", "monotonic": 14486.422842738, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14486.438842176, "fd": 3, "command": "ESGr1!", "reply": "ESGr10030!"}
+{"event": "command", "monotonic": 14486.454833078, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14486.470833332, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14486.470869869, "target": [0, 230400], "restoring": false, "positions": [1264, 230370], "rates": [48, 48], "directions": [1, 1], "dec_arcsec": 252009.375}
+{"event": "command", "monotonic": 14486.726803096, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000500!"}
+{"event": "command", "monotonic": 14486.742802795, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14486.758800678, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14486.774796006, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14486.790794075, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14486.806795439, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14486.80683268, "target": [0, 230400], "restoring": false, "positions": [1280, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}
+{"event": "command", "monotonic": 14487.222747167, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000517!"}
+{"event": "command", "monotonic": 14487.238747847, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14487.25474062, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14487.270744003, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14487.286736109, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14487.302734548, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14489.414501219, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000582!"}
+{"event": "command", "monotonic": 14489.43050577, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14489.446502654, "fd": 3, "command": "ESGr0!", "reply": "ESGr00030!"}
+{"event": "command", "monotonic": 14489.46249702, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14489.478501145, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14489.494490234, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "trial", "monotonic": 14489.494532233, "name": "direct_s_1", "operation": 48, "before": {"positions": [1242, 230352], "rates": [48, 0], "directions": [1, 0], "dec_arcsec": 252015.0}, "during": {"positions": [1303, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "after": {"positions": [1410, 230400], "rates": [48, 0], "directions": [1, 1], "dec_arcsec": 252000.0}, "delta_dec_arcsec": -15.0, "delta_counts": [168, 48]}
+{"event": "command", "monotonic": 14491.606316002, "fd": 3, "command": "ESPt300000!", "reply": "ESGt3!"}
+{"event": "command", "monotonic": 14491.622320276, "fd": 3, "command": "ESTr0000!", "reply": "ESGx0000!"}
+{"event": "command", "monotonic": 14491.63832155, "fd": 3, "command": "ESSr10000!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14491.654322879, "fd": 3, "command": "ESGp0!", "reply": "ESGp00005EC!"}
+{"event": "command", "monotonic": 14491.670323209, "fd": 3, "command": "ESGp1!", "reply": "ESGp1038400!"}
+{"event": "command", "monotonic": 14491.686323835, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14491.702322942, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14491.718323234, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14491.734237731, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "cleanup_before_return", "monotonic": 14491.734273657, "positions": [1516, 230400], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 252000.0}
+{"event": "command", "monotonic": 14491.750243597, "fd": 3, "command": "ESPt0000000!", "reply": "ESGt0000000!"}
+{"event": "command", "monotonic": 14491.766235945, "fd": 3, "command": "ESPt1000000!", "reply": "ESGt1000000!"}
+{"event": "command", "monotonic": 14491.782238868, "fd": 3, "command": "ESGp0!", "reply": "ESGp00005D6!"}
+{"event": "command", "monotonic": 14491.79823603, "fd": 3, "command": "ESGp1!", "reply": "ESGp10383F6!"}
+{"event": "command", "monotonic": 14491.814230564, "fd": 3, "command": "ESGr0!", "reply": "ESGr002F6!"}
+{"event": "command", "monotonic": 14491.83022506, "fd": 3, "command": "ESGr1!", "reply": "ESGr10898!"}
+{"event": "command", "monotonic": 14491.846224149, "fd": 3, "command": "ESGd0!", "reply": "ESGd00!"}
+{"event": "command", "monotonic": 14491.86221733, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14491.86225333, "target": [0, 0], "restoring": true, "positions": [1494, 230390], "rates": [758, 2200], "directions": [0, 0], "dec_arcsec": 252003.125}
+{"event": "command", "monotonic": 14492.118184806, "fd": 3, "command": "ESGp0!", "reply": "ESGp00004CF!"}
+{"event": "command", "monotonic": 14492.134186339, "fd": 3, "command": "ESGp1!", "reply": "ESGp1037AE6!"}
+{"event": "command", "monotonic": 14492.150183928, "fd": 3, "command": "ESGr0!", "reply": "ESGr002F6!"}
+{"event": "command", "monotonic": 14492.166186683, "fd": 3, "command": "ESGr1!", "reply": "ESGr13DB8!"}
+{"event": "command", "monotonic": 14492.18217605, "fd": 3, "command": "ESGd0!", "reply": "ESGd00!"}
+{"event": "command", "monotonic": 14492.198177286, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14492.198216638, "target": [0, 0], "restoring": true, "positions": [1231, 228070], "rates": [758, 15800], "directions": [0, 0], "dec_arcsec": 252728.125}
+{"event": "command", "monotonic": 14492.454140374, "fd": 3, "command": "ESGp0!", "reply": "ESGp00003D0!"}
+{"event": "command", "monotonic": 14492.470138852, "fd": 3, "command": "ESGp1!", "reply": "ESGp1036252!"}
+{"event": "command", "monotonic": 14492.486137126, "fd": 3, "command": "ESGr0!", "reply": "ESGr002F6!"}
+{"event": "command", "monotonic": 14492.502133252, "fd": 3, "command": "ESGr1!", "reply": "ESGr17210!"}
+{"event": "command", "monotonic": 14492.518135674, "fd": 3, "command": "ESGd0!", "reply": "ESGd00!"}
+{"event": "command", "monotonic": 14492.534132208, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14492.534171449, "target": [0, 0], "restoring": true, "positions": [976, 221778], "rates": [758, 29200], "directions": [0, 0], "dec_arcsec": 254694.375}
+{"event": "command", "monotonic": 14492.790094819, "fd": 3, "command": "ESGp0!", "reply": "ESGp00002D0!"}
+{"event": "command", "monotonic": 14492.806099963, "fd": 3, "command": "ESGp1!", "reply": "ESGp1033EB2!"}
+{"event": "command", "monotonic": 14492.822099163, "fd": 3, "command": "ESGr0!", "reply": "ESGr002F6!"}
+{"event": "command", "monotonic": 14492.838093216, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14492.854090397, "fd": 3, "command": "ESGd0!", "reply": "ESGd00!"}
+{"event": "command", "monotonic": 14492.870092283, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14492.87013056, "target": [0, 0], "restoring": true, "positions": [720, 212658], "rates": [758, 39800], "directions": [0, 0], "dec_arcsec": 257544.375}
+{"event": "command", "monotonic": 14493.126055727, "fd": 3, "command": "ESGp0!", "reply": "ESGp00001D1!"}
+{"event": "command", "monotonic": 14493.142060167, "fd": 3, "command": "ESGp1!", "reply": "ESGp1031AE2!"}
+{"event": "command", "monotonic": 14493.158053571, "fd": 3, "command": "ESGr0!", "reply": "ESGr002F6!"}
+{"event": "command", "monotonic": 14493.174053086, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14493.190053157, "fd": 3, "command": "ESGd0!", "reply": "ESGd00!"}
+{"event": "command", "monotonic": 14493.206045468, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14493.20608232, "target": [0, 0], "restoring": true, "positions": [465, 203490], "rates": [758, 39800], "directions": [0, 0], "dec_arcsec": 260409.375}
+{"event": "command", "monotonic": 14493.462014654, "fd": 3, "command": "ESGp0!", "reply": "ESGp00000D1!"}
+{"event": "command", "monotonic": 14493.478019836, "fd": 3, "command": "ESGp1!", "reply": "ESGp102F71A!"}
+{"event": "command", "monotonic": 14493.494010388, "fd": 3, "command": "ESGr0!", "reply": "ESGr002F6!"}
+{"event": "command", "monotonic": 14493.5100112, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14493.526003474, "fd": 3, "command": "ESGd0!", "reply": "ESGd00!"}
+{"event": "command", "monotonic": 14493.542011675, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14493.542048156, "target": [0, 0], "restoring": true, "positions": [209, 194330], "rates": [758, 39800], "directions": [0, 0], "dec_arcsec": 263271.875}
+{"event": "command", "monotonic": 14493.797980254, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14493.813974176, "fd": 3, "command": "ESGp1!", "reply": "ESGp102D352!"}
+{"event": "command", "monotonic": 14493.829971543, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14493.845967188, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14493.86196613, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14493.87796533, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14493.878002052, "target": [0, 0], "restoring": true, "positions": [1, 185170], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 266134.375}
+{"event": "command", "monotonic": 14494.133937502, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14494.149940406, "fd": 3, "command": "ESGp1!", "reply": "ESGp102AF8A!"}
+{"event": "command", "monotonic": 14494.165934014, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14494.181934159, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14494.19793273, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14494.213926986, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14494.2139663, "target": [0, 0], "restoring": true, "positions": [1, 176010], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 268996.875}
+{"event": "command", "monotonic": 14494.469901121, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14494.48590034, "fd": 3, "command": "ESGp1!", "reply": "ESGp1028BC2!"}
+{"event": "command", "monotonic": 14494.501897004, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14494.51789902, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14494.533891035, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14494.549892921, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14494.549930403, "target": [0, 0], "restoring": true, "positions": [1, 166850], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 271859.375}
+{"event": "command", "monotonic": 14494.805857098, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14494.821861465, "fd": 3, "command": "ESGp1!", "reply": "ESGp10267FA!"}
+{"event": "command", "monotonic": 14494.837856907, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14494.853853701, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14494.869851161, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14494.885852213, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14494.885890713, "target": [0, 0], "restoring": true, "positions": [1, 157690], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 274721.875}
+{"event": "command", "monotonic": 14495.141816223, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14495.157814702, "fd": 3, "command": "ESGp1!", "reply": "ESGp1024432!"}
+{"event": "command", "monotonic": 14495.173815162, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14495.189814955, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14495.20581323, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14495.221808339, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14495.221846931, "target": [0, 0], "restoring": true, "positions": [1, 148530], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 277584.375}
+{"event": "command", "monotonic": 14495.477776979, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14495.493775032, "fd": 3, "command": "ESGp1!", "reply": "ESGp102206A!"}
+{"event": "command", "monotonic": 14495.50977277, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14495.52577412, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14495.541766858, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14495.557765855, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14495.557801707, "target": [0, 0], "restoring": true, "positions": [1, 139370], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 280446.875}
+{"event": "command", "monotonic": 14495.813732704, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14495.829736072, "fd": 3, "command": "ESGp1!", "reply": "ESGp101FCAA!"}
+{"event": "command", "monotonic": 14495.845728884, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14495.861728511, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14495.87772112, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14495.893721395, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14495.893758321, "target": [0, 0], "restoring": true, "positions": [1, 130218], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 283306.875}
+{"event": "command", "monotonic": 14496.149699966, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14496.165695093, "fd": 3, "command": "ESGp1!", "reply": "ESGp101D8E2!"}
+{"event": "command", "monotonic": 14496.181695201, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14496.197696495, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14496.213687437, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14496.229686934, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14496.229724749, "target": [0, 0], "restoring": true, "positions": [1, 121058], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 286169.375}
+{"event": "command", "monotonic": 14496.485647654, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14496.501651985, "fd": 3, "command": "ESGp1!", "reply": "ESGp101B512!"}
+{"event": "command", "monotonic": 14496.517650687, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14496.533646796, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14496.549638905, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14496.565639477, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14496.565675143, "target": [0, 0], "restoring": true, "positions": [1, 111890], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 289034.375}
+{"event": "command", "monotonic": 14496.821611738, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14496.837617235, "fd": 3, "command": "ESGp1!", "reply": "ESGp101914A!"}
+{"event": "command", "monotonic": 14496.8536144, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14496.869609175, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14496.885608025, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14496.901600615, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14496.901636504, "target": [0, 0], "restoring": true, "positions": [1, 102730], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 291896.875}
+{"event": "command", "monotonic": 14497.157566543, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14497.173569467, "fd": 3, "command": "ESGp1!", "reply": "ESGp1016D82!"}
+{"event": "command", "monotonic": 14497.189567094, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14497.205570388, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14497.221563423, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14497.23755768, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14497.23759481, "target": [0, 0], "restoring": true, "positions": [1, 93570], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 294759.375}
+{"event": "command", "monotonic": 14497.493526535, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14497.509530126, "fd": 3, "command": "ESGp1!", "reply": "ESGp10149BA!"}
+{"event": "command", "monotonic": 14497.525522291, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14497.541522918, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14497.557521231, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14497.573514618, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14497.573550637, "target": [0, 0], "restoring": true, "positions": [1, 84410], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 297621.875}
+{"event": "command", "monotonic": 14497.82951894, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14497.845522642, "fd": 3, "command": "ESGp1!", "reply": "ESGp10125F2!"}
+{"event": "command", "monotonic": 14497.861521436, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14497.877526397, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14497.893521414, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14497.909520412, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14497.909556819, "target": [0, 0], "restoring": true, "positions": [1, 75250], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 300484.375}
+{"event": "command", "monotonic": 14498.165528623, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14498.181449417, "fd": 3, "command": "ESGp1!", "reply": "ESGp1010222!"}
+{"event": "command", "monotonic": 14498.197445397, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14498.213444821, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14498.229444597, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14498.245438373, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14498.245475243, "target": [0, 0], "restoring": true, "positions": [1, 66082], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 303349.375}
+{"event": "command", "monotonic": 14498.501411881, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14498.517409435, "fd": 3, "command": "ESGp1!", "reply": "ESGp100DE62!"}
+{"event": "command", "monotonic": 14498.533406637, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14498.54940945, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14498.565399578, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14498.581393669, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14498.58143041, "target": [0, 0], "restoring": true, "positions": [1, 56930], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 306209.375}
+{"event": "command", "monotonic": 14498.837365607, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14498.853368458, "fd": 3, "command": "ESGp1!", "reply": "ESGp100BA9A!"}
+{"event": "command", "monotonic": 14498.869363901, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14498.885365547, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14498.901361823, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14498.917362748, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14498.917399155, "target": [0, 0], "restoring": true, "positions": [1, 47770], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 309071.875}
+{"event": "command", "monotonic": 14499.173322297, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14499.189324184, "fd": 3, "command": "ESGp1!", "reply": "ESGp10096D2!"}
+{"event": "command", "monotonic": 14499.20531922, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14499.221314329, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14499.237313161, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14499.253313493, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14499.253350048, "target": [0, 0], "restoring": true, "positions": [1, 38610], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 311934.375}
+{"event": "command", "monotonic": 14499.509281173, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14499.52528432, "fd": 3, "command": "ESGp1!", "reply": "ESGp100730A!"}
+{"event": "command", "monotonic": 14499.541283856, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14499.557283262, "fd": 3, "command": "ESGr1!", "reply": "ESGr19B78!"}
+{"event": "command", "monotonic": 14499.573282168, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14499.589275278, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14499.589310908, "target": [0, 0], "restoring": true, "positions": [1, 29450], "rates": [0, 39800], "directions": [1, 0], "dec_arcsec": 314796.875}
+{"event": "command", "monotonic": 14499.84524774, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14499.861251387, "fd": 3, "command": "ESGp1!", "reply": "ESGp1004F42!"}
+{"event": "command", "monotonic": 14499.877243571, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14499.893243532, "fd": 3, "command": "ESGr1!", "reply": "ESGr19858!"}
+{"event": "command", "monotonic": 14499.909246179, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14499.925242845, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14499.925279956, "target": [0, 0], "restoring": true, "positions": [1, 20290], "rates": [0, 39000], "directions": [1, 0], "dec_arcsec": 317659.375}
+{"event": "command", "monotonic": 14500.181207084, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14500.197211898, "fd": 3, "command": "ESGp1!", "reply": "ESGp1002BD2!"}
+{"event": "command", "monotonic": 14500.2132036, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14500.229204562, "fd": 3, "command": "ESGr1!", "reply": "ESGr16400!"}
+{"event": "command", "monotonic": 14500.245201561, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14500.261203893, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14500.261240356, "target": [0, 0], "restoring": true, "positions": [1, 11218], "rates": [0, 25600], "directions": [1, 0], "dec_arcsec": 320494.375}
+{"event": "command", "monotonic": 14500.517173264, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14500.533184448, "fd": 3, "command": "ESGp1!", "reply": "ESGp100147E!"}
+{"event": "command", "monotonic": 14500.54917741, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14500.565178724, "fd": 3, "command": "ESGr1!", "reply": "ESGr12FA8!"}
+{"event": "command", "monotonic": 14500.581175964, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14500.59716987, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14500.597205537, "target": [0, 0], "restoring": true, "positions": [1, 5246], "rates": [0, 12200], "directions": [1, 0], "dec_arcsec": 322360.625}
+{"event": "command", "monotonic": 14500.853147726, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14500.869150392, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000C91!"}
+{"event": "command", "monotonic": 14500.885142724, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14500.901143501, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14500.917134667, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14500.933137758, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14500.933173592, "target": [0, 0], "restoring": true, "positions": [1, 3217], "rates": [0, 1600], "directions": [1, 0], "dec_arcsec": 322994.6875}
+{"event": "command", "monotonic": 14501.189112392, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14501.205111021, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000A8D!"}
+{"event": "command", "monotonic": 14501.221109205, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14501.23710363, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14501.253102036, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14501.269097202, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14501.269132776, "target": [0, 0], "restoring": true, "positions": [1, 2701], "rates": [0, 1600], "directions": [1, 0], "dec_arcsec": 323155.9375}
+{"event": "command", "monotonic": 14501.525067467, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14501.541072337, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000889!"}
+{"event": "command", "monotonic": 14501.557071707, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14501.573070854, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14501.589062946, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14501.605063835, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14501.605100223, "target": [0, 0], "restoring": true, "positions": [1, 2185], "rates": [0, 1600], "directions": [1, 0], "dec_arcsec": 323317.1875}
+{"event": "command", "monotonic": 14501.861029844, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14501.877031343, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000684!"}
+{"event": "command", "monotonic": 14501.893029565, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14501.909022416, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14501.925022045, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14501.941024804, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14501.941060489, "target": [0, 0], "restoring": true, "positions": [1, 1668], "rates": [0, 1600], "directions": [1, 0], "dec_arcsec": 323478.75}
+{"event": "command", "monotonic": 14502.196987813, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14502.212992571, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000480!"}
+{"event": "command", "monotonic": 14502.228982793, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14502.244984014, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14502.260985384, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14502.276978402, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14502.277014569, "target": [0, 0], "restoring": true, "positions": [1, 1152], "rates": [0, 1600], "directions": [1, 0], "dec_arcsec": 323640.0}
+{"event": "command", "monotonic": 14502.532954432, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14502.548952561, "fd": 3, "command": "ESGp1!", "reply": "ESGp100027B!"}
+{"event": "command", "monotonic": 14502.56495282, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14502.580945672, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14502.596942449, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14502.612944282, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14502.61297969, "target": [0, 0], "restoring": true, "positions": [1, 635], "rates": [0, 1600], "directions": [1, 0], "dec_arcsec": 323801.5625}
+{"event": "command", "monotonic": 14502.868907815, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14502.884907166, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000077!"}
+{"event": "command", "monotonic": 14502.900902185, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14502.916904129, "fd": 3, "command": "ESGr1!", "reply": "ESGr10640!"}
+{"event": "command", "monotonic": 14502.932896203, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14502.948895351, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14502.948931184, "target": [0, 0], "restoring": true, "positions": [1, 119], "rates": [0, 1600], "directions": [1, 0], "dec_arcsec": 323962.8125}
+{"event": "command", "monotonic": 14503.204862068, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14503.220866124, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14503.236868235, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14503.252867512, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14503.268859419, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14503.284859086, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "position_progress", "monotonic": 14503.284895048, "target": [0, 0], "restoring": true, "positions": [1, 0], "rates": [0, 0], "directions": [1, 0], "dec_arcsec": 324000.0}
+{"event": "command", "monotonic": 14503.300852863, "fd": 3, "command": "ESSd01!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14503.316852807, "fd": 3, "command": "ESSd11!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14503.332857381, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000001!"}
+{"event": "command", "monotonic": 14503.348852084, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14503.364851158, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14503.380845547, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14503.39684301, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14503.412840991, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "restored", "monotonic": 14503.412878009, "positions": [1, 0], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 324000.0}
+{"event": "cleanup", "monotonic": 14503.412907509, "errors": [], "restored_ok": true}

@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "<stdin>", line 77, in <module>
+  File "<stdin>", line 22, in command
+termios.error: (5, 'Input/output error')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<stdin>", line 155, in <module>
+  File "<stdin>", line 35, in close
+termios.error: (5, 'Input/output error')

@@ -1,0 +1,121 @@
+{
+  "version": 2,
+  "task": "20261024113017-1e1c-fix-fnd-000036-000037",
+  "scope": [
+    "indigo_tools/indigo_prop_tool.c",
+    "indigo_tools/indigo_raw_crop.c",
+    "indigo_test/Makefile",
+    "indigo_test/unit/test_prop_tool_parser.c",
+    "indigo_test/unit/test_tool_input_safety.py",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/findings/active/FND-000036.json",
+    ".factory/findings/archive/FND-000036.json",
+    ".factory/findings/active/FND-000037.json",
+    ".factory/findings/archive/FND-000037.json",
+    ".factory/completions/20261024113017-1e1c-fix-fnd-000036-000037.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-tool-input-safety"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_tools",
+        "/Users/polakovic/Development/indigo/build/bin/indigo_prop_tool",
+        "/Users/polakovic/Development/indigo/build/bin/indigo_raw_crop"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024113017-1e1c-fix-fnd-000036-000037.json": [
+      "100644",
+      "blob",
+      "1c08cad7334035128f7b392e86b06d9b243d2559"
+    ],
+    ".factory/findings/active/FND-000036.json": null,
+    ".factory/findings/active/FND-000037.json": null,
+    ".factory/findings/archive/FND-000036.json": [
+      "100644",
+      "blob",
+      "d6e413756c184451a172808d576ff7b49013226a"
+    ],
+    ".factory/findings/archive/FND-000037.json": [
+      "100644",
+      "blob",
+      "47034ffd35c858d04f6d620b460b2bfd0ab733bd"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "7c8315f2f804921b8271e6a05b7b000726b58f63"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "c87507468e443558d663f5ac3e6e56e99712715d"
+    ],
+    "indigo_test/unit/test_prop_tool_parser.c": [
+      "100644",
+      "blob",
+      "6a1d7dae59c0bca5bd91e0de7600c9efb6e194b2"
+    ],
+    "indigo_test/unit/test_tool_input_safety.py": [
+      "100644",
+      "blob",
+      "d14245771ce82d10ff20e97b26f407c432c523da"
+    ],
+    "indigo_tools/indigo_prop_tool.c": [
+      "100644",
+      "blob",
+      "011ddf561dd18b5295f87262567c1a28d43b193c"
+    ],
+    "indigo_tools/indigo_raw_crop.c": [
+      "100644",
+      "blob",
+      "be667c8291d585d131826de9f8fda6f3b9f604f3"
+    ]
+  }
+}

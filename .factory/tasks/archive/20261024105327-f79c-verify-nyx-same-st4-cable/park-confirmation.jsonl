@@ -1,0 +1,24 @@
+{"event": "command", "monotonic": 15258.079113394, "port": 3, "command": ":GRH#", "reply": "08:16:58.6256"}
+{"event": "command", "monotonic": 15258.095106668, "port": 3, "command": ":GDH#", "reply": "+89*59:59.995"}
+{"event": "command", "monotonic": 15258.111097053, "port": 3, "command": ":GX94#", "reply": "63232:-39168"}
+{"event": "command", "monotonic": 15258.127096068, "port": 3, "command": ":GU#", "reply": "nNPzET160"}
+{"event": "command", "monotonic": 15258.143093453, "port": 3, "command": ":Gm#", "reply": "E"}
+{"event": "park_confirmation", "monotonic": 15258.143111546, "sample": 0, "ra_text": "08:16:58.6256", "dec_text": "+89*59:59.995", "ra_arcsec": 447279.38399999996, "dec_arcsec": 323999.995, "motors": [63232, -39168], "status": "nNPzET160", "side": "E"}
+{"event": "command", "monotonic": 15258.463106862, "port": 3, "command": ":GRH#", "reply": "08:16:59.0151"}
+{"event": "command", "monotonic": 15258.479124044, "port": 3, "command": ":GDH#", "reply": "+89*59:59.995"}
+{"event": "command", "monotonic": 15258.495116799, "port": 3, "command": ":GX94#", "reply": "63232:-39168"}
+{"event": "command", "monotonic": 15258.511114666, "port": 3, "command": ":GU#", "reply": "nNPzET160"}
+{"event": "command", "monotonic": 15258.527108829, "port": 3, "command": ":Gm#", "reply": "E"}
+{"event": "park_confirmation", "monotonic": 15258.527129237, "sample": 1, "ra_text": "08:16:59.0151", "dec_text": "+89*59:59.995", "ra_arcsec": 447285.2265, "dec_arcsec": 323999.995, "motors": [63232, -39168], "status": "nNPzET160", "side": "E"}
+{"event": "command", "monotonic": 15258.847136128, "port": 3, "command": ":GRH#", "reply": "08:16:59.3951"}
+{"event": "command", "monotonic": 15258.86313331, "port": 3, "command": ":GDH#", "reply": "+89*59:59.995"}
+{"event": "command", "monotonic": 15258.879131343, "port": 3, "command": ":GX94#", "reply": "63232:-39168"}
+{"event": "command", "monotonic": 15258.895130469, "port": 3, "command": ":GU#", "reply": "nNPzET160"}
+{"event": "command", "monotonic": 15258.911124817, "port": 3, "command": ":Gm#", "reply": "E"}
+{"event": "park_confirmation", "monotonic": 15258.911147243, "sample": 2, "ra_text": "08:16:59.3951", "dec_text": "+89*59:59.995", "ra_arcsec": 447290.9265, "dec_arcsec": 323999.995, "motors": [63232, -39168], "status": "nNPzET160", "side": "E"}
+{"event": "command", "monotonic": 15259.215145953, "port": 3, "command": ":GRH#", "reply": "08:16:59.7846"}
+{"event": "command", "monotonic": 15259.231145357, "port": 3, "command": ":GDH#", "reply": "+89*59:59.995"}
+{"event": "command", "monotonic": 15259.247145761, "port": 3, "command": ":GX94#", "reply": "63232:-39168"}
+{"event": "command", "monotonic": 15259.263145572, "port": 3, "command": ":GU#", "reply": "nNPzET160"}
+{"event": "command", "monotonic": 15259.279139143, "port": 3, "command": ":Gm#", "reply": "E"}
+{"event": "park_confirmation", "monotonic": 15259.279162161, "sample": 3, "ra_text": "08:16:59.7846", "dec_text": "+89*59:59.995", "ra_arcsec": 447296.769, "dec_arcsec": 323999.995, "motors": [63232, -39168], "status": "nNPzET160", "side": "E"}

@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+AssertionError
+make: Entering directory '/tmp/indigo-cgusbst4-20261024070358/indigo_test'
+rm -rf build
+make: Leaving directory '/tmp/indigo-cgusbst4-20261024070358/indigo_test'
+Removed only verified AppleDouble sidecars of our transferred files.
+Remote candidate source hashes match local final files.
+Temporary remote worktree removed without force; original checkout status:

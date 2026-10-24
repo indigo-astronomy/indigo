@@ -1,0 +1,69 @@
+{
+  "version": 2,
+  "task": "20261024095945-ac63-verify-cgusbst4-dec-orientation",
+  "scope": [
+    ".factory/findings/active/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json",
+    ".factory/completions/20261024095945-ac63-verify-cgusbst4-dec-orientation.json",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md"
+  ],
+  "checks": [
+    {
+      "command": [
+        "ssh",
+        "-A",
+        "-o",
+        "BatchMode=yes",
+        "indigo@indigosky.local",
+        "python3 -"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024095945-ac63-verify-cgusbst4-dec-orientation.json": [
+      "100644",
+      "blob",
+      "756bcbd79983fdd0694c170d2c80b5ae2cc71505"
+    ],
+    ".factory/findings/active/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json": [
+      "100644",
+      "blob",
+      "fdcbd3352717aba9906ab8d5917c170855b3d29f"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "a31f45417a0f8f1c6e42130b6364a0163b38c86d"
+    ],
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md": [
+      "100644",
+      "blob",
+      "03d24a08629656a10bbab5f0d73ba5caab6f2628"
+    ]
+  }
+}

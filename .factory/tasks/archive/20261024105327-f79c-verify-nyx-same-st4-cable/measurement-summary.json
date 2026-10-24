@@ -1,0 +1,116 @@
+{
+  "trials": [
+    {
+      "name": "idle",
+      "delta_dec_arcsec": -0.012000000016996637,
+      "delta_motor_steps": [
+        387,
+        0
+      ]
+    },
+    {
+      "name": "direct_n_0",
+      "delta_dec_arcsec": 15.037000000011176,
+      "delta_motor_steps": [
+        387,
+        90
+      ]
+    },
+    {
+      "name": "adapter_0_0",
+      "delta_dec_arcsec": -14.551999999996042,
+      "delta_motor_steps": [
+        387,
+        -87
+      ]
+    },
+    {
+      "name": "adapter_1_0",
+      "delta_dec_arcsec": 14.529000000009546,
+      "delta_motor_steps": [
+        386,
+        87
+      ]
+    },
+    {
+      "name": "direct_s_0",
+      "delta_dec_arcsec": -15.054000000003725,
+      "delta_motor_steps": [
+        387,
+        -90
+      ]
+    },
+    {
+      "name": "direct_n_1",
+      "delta_dec_arcsec": 15.03000000002794,
+      "delta_motor_steps": [
+        386,
+        90
+      ]
+    },
+    {
+      "name": "adapter_0_1",
+      "delta_dec_arcsec": -14.544999999983702,
+      "delta_motor_steps": [
+        386,
+        -87
+      ]
+    },
+    {
+      "name": "adapter_1_1",
+      "delta_dec_arcsec": 14.529000000009546,
+      "delta_motor_steps": [
+        387,
+        87
+      ]
+    },
+    {
+      "name": "direct_s_1",
+      "delta_dec_arcsec": -15.052999999985332,
+      "delta_motor_steps": [
+        387,
+        -90
+      ]
+    }
+  ],
+  "initial": {
+    "event": "initial",
+    "monotonic": 15010.628292291,
+    "ra_text": "08:12:49.9035",
+    "dec_text": "+89*59:59.995",
+    "ra_arcsec": 443548.5525,
+    "dec_arcsec": 323999.995,
+    "motors": [
+      63312,
+      -39168
+    ],
+    "status": "nNPezET160",
+    "side": "E"
+  },
+  "final": {
+    "event": "cleanup_final",
+    "monotonic": 15061.477293162,
+    "parked": true,
+    "errors": [],
+    "ra_text": "08:13:41.4341",
+    "dec_text": "+89*59:59.995",
+    "ra_arcsec": 444321.51149999996,
+    "dec_arcsec": 323999.995,
+    "motors": [
+      63232,
+      -39168
+    ],
+    "status": "nNPzET160",
+    "side": "E"
+  },
+  "residual_motor_steps": [
+    -80,
+    0
+  ],
+  "target": {
+    "event": "restored_target",
+    "monotonic": 15062.213330228,
+    "ra": "00:00:00",
+    "dec": "+00*00:00"
+  }
+}

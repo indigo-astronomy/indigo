@@ -26,7 +26,7 @@ driver cgusbst4 {
 	label = "CG-USB-ST4 Adapter";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 9;
+	version = 10;
 	serial {
 		pattern {
 			product = "USB to ST4 Astrogene_1000";
@@ -93,10 +93,10 @@ driver cgusbst4 {
 			}
 			on_change {
 				int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-				char direction = 'n';
+				char direction = '0';
 				if (duration <= 0) {
 					duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-					direction = 's';
+					direction = '1';
 				}
 				if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
 					INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -121,10 +121,10 @@ driver cgusbst4 {
 			}
 			on_change {
 				int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-				char direction = 'e';
+				char direction = '2';
 				if (duration <= 0) {
 					duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-					direction = 'w';
+					direction = '3';
 				}
 				if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
 					INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);

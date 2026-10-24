@@ -1,0 +1,2 @@
+{"event": "command", "monotonic": 14209.766918558, "fd": 3, "command": "ESGv!", "reply": ""}
+{"event": "cleanup", "monotonic": 14209.767007985, "errors": [], "restored_ok": true}

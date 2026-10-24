@@ -1,0 +1,17 @@
+# Handoff
+
+Coordinator/current parent sole writer. Task branch task/20261024111835-d602-sync-factory-policy created from fetched local master efb9923f57e0aa83059cff89ff08064e15c65374, then fast-forwarded original policy task commit 44a2ad43b3b3ee34ccf3478cc9019780fe7c99cd; this is the upgrade baseline. Original policy evidence retained, no shared target merge or push. Source task 20261024111621-467a-prefer-subagents supplies a verified unpublished local candidate.
+
+Allowed paths: AGENTS.md, .factory/template-lock.json, .factory/project.md, .factory/maintenance.json, own task and completion record. Other mapped files may change only if reviewed plan requires; no application/test/scoped rule changes intended. Current host supports file/shell/Git/in-host subagents, restricted network and escalated Git metadata. Exact model/effort and costs unknown, no budget defined; retain current host. Balanced reasoning/review tier recommended, economy for bookkeeping; no paid/provider switches. Retry zero.
+
+Transitions: coordinator discovery → analyst specification → planner/test designer plan → developer pending exact source pin. Owner update instruction is continuation of the same policy change with bounded audit deferral already approved; audit remains due after rollout, before unrelated work/release. Active findings reviewed in parent startup; preserve registry and unrelated branches.
+
+Next: source candidate completion, pinned plan review and apply. Integration/publication require separate owner authority; retain all unmerged branches.
+
+Developer: source candidate a94e122fbe358d877863cbc1b38ae8284edc91c4 passed 189 tests, independent review, committed process/export checks. Exact mapped/unmapped review in update-review.md; no conflicts and only AGENTS.md requires update. Next apply the exact pin with reviewed exclusions.
+
+Developer apply succeeded at exact pin without conflicts or accept-local overrides. Verifier compared every pre-existing findings/completion/state/check/review-policy file, full template map and INDIGO root-rule suffix: unchanged (preservation-after.json). Project facts now identify unpublished tested source pin, and existing bounded audit deferral records this owner-requested same-policy rollout continuation. Next configured checks and independent final target review.
+
+Transitions: verifier preservation/configured check/security passed; documenter recorded exact current pin; independent /root/policy_review passed target diff and independently confirmed preservation; parent security triage passed. Source fleet at exact candidate reports INDIGO current, other two aliases pending (fleet-summary.json). No other adopter write. Configured regression test still running. Next finalize acceptance, archive and validate target commit; audit remains due.
+
+Coordinator closure: all acceptance criteria and configured checks passed (188 regression tests). Final independent quality review/security triage pass; no new findings. Parent inspected administrative evidence and scoped diff. Complete/archive now, then commit and run final process/idempotent pin checks. Source candidate a94e122fbe358d877863cbc1b38ae8284edc91c4 remains clean and unpublished. Both shared-main integrations/publications and branch cleanup remain pending explicit owner authorization; preserve original and upgrade unmerged task branches and all unrelated pre-existing branches. Audit remains due after this bounded rollout.

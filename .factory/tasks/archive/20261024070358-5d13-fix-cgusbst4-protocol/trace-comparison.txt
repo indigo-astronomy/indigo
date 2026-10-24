@@ -1,0 +1,6 @@
+unnamed-0 -> phd2_dialect_directions-0: identical normalized semantic event order
+unnamed-2 -> wrong_identity-0: identical normalized semantic event order
+unnamed-4 -> silent_identity-0: identical normalized semantic event order
+unnamed-6 -> reconnect-0: identical normalized semantic event order
+unnamed-8 -> reconnect_during_pulse-0: identical normalized semantic event order
+Only intentional wire difference: ns ew letters become 01 23 digits, duration field unchanged.

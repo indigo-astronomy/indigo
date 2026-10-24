@@ -39,6 +39,7 @@ Follow .factory/routines/model-selection.md using .factory/openai-model-policy.j
 
 ## Workflow and responsibility
 - The coordinator assigns one accountable role per work item and records transitions.
+- Prefer subagents for separable subtasks and independent verification/review when supported by the host and authorized by the owner. Standing project authorization is sufficient for routine delegation within its scope; do not request it again. Assign explicit roles, inputs, paths and outputs, and preserve host restrictions and owner limits on providers, data sharing and additional charges.
 - Use the phase gates in .factory/workflow.md. Scale detail to risk; never claim unperformed work.
 - Specifications define behavior. Plans, tests, and implementation must not silently redefine it.
 - Resolve routine implementation choices autonomously. Escalate material ambiguity, scope changes, incompatible requirements, and risk acceptance to the owner.
@@ -63,7 +64,7 @@ Follow .factory/routines/model-selection.md using .factory/openai-model-policy.j
 
 ## Recurring repository review
 - At session start and task closure, the coordinator checks .factory/maintenance.json and follows .factory/routines/repository-review.md. This is the recurring repository audit, separate from a task's final-diff quality review.
-- Perform a full maintained-repository audit after five completed non-audit tasks or seven calendar days, whichever comes first, at the next agent session. Initial audit is due once the adopting project is configured. Explicitly load .factory/roles/repository-reviewer.md and record the full audit in its task's repository-review.md. Do not start unrelated work while an audit is overdue without owner-authorized deferral.
+- Perform a full maintained-repository audit after twenty completed non-audit tasks or seven calendar days, whichever comes first, at the next agent session. Initial audit is due once the adopting project is configured. Explicitly load .factory/roles/repository-reviewer.md and record the full audit in its task's repository-review.md. Do not start unrelated work while an audit is overdue without owner-authorized deferral.
 - AI slop is a specific inspection area within the broader repository review, not the name or scope of the whole audit. Findings require concrete impact and evidence. Never infer AI authorship or delete useful safeguards based on style. Preserve behavior, tests, security boundaries, and accepted requirements.
 - Resolve blocking findings, track nonblocking follow-up, and reverify fixes. Maintenance status is derived from durable per-task completion records; the coordinator owns policy and qualified audit declarations. A task diff review never resets the full-audit checkpoint. This rule does not create a background automation.
 

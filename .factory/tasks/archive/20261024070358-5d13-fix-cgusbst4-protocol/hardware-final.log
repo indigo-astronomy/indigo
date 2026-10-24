@@ -1,0 +1,346 @@
++ make -C /tmp/indigo-cgusbst4-20261024070358/indigo_drivers/guider_cgusbst4 -f ../../Makefile.drv all
+make: Entering directory '/tmp/indigo-cgusbst4-20261024070358/indigo_drivers/guider_cgusbst4'
+Definition: indigo_guider_cgusbst4.driver
+Sources:    indigo_guider_cgusbst4.c indigo_guider_cgusbst4_main.c
+Archive:    indigo_guider_cgusbst4.a
+SO library: indigo_guider_cgusbst4.so
+indigo_guider_cgusbst4.o
+Executable: indigo_guider_cgusbst4
+
+make: Leaving directory '/tmp/indigo-cgusbst4-20261024070358/indigo_drivers/guider_cgusbst4'
++ make test-guider-cgusbst4-hw HW_DEBUG=1
+gcc -g -fPIC -O3 -isystem/tmp/indigo-cgusbst4-20261024070358/indigo_libs -I/tmp/indigo-cgusbst4-20261024070358/indigo_drivers -I/tmp/indigo-cgusbst4-20261024070358/indigo_linux_drivers -I/tmp/indigo-cgusbst4-20261024070358/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include hardware/test_guider_cgusbst4_hw.c -o build/hardware/test_guider_cgusbst4_hw /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4.a -lm -lrt -lusb-1.0 -pthread -L/tmp/indigo-cgusbst4-20261024070358/build/lib -Wl,-rpath=\$ORIGIN/../lib,-rpath=\$ORIGIN/../drivers,-rpath=. -Wl,-rpath,/tmp/indigo-cgusbst4-20261024070358/build/lib -lindigo -lm -lpthread
+build/hardware/test_guider_cgusbst4_hw --run --debug
+09:19:53.155308 Application: Registered USB hotplug callback 1 for ffffffff:ffffffff
+09:19:53.168871 Application: indigo_select_matching_usbserial_device(): Selected new port for 'CG-USB-ST4 Adapter': auto:///dev/ttyACM0
+09:19:53.168911 Application: indigo_guider_cgusbst4: 'CG-USB-ST4 Adapter' attached
+Using port /dev/ttyACM0
+09:19:53.168982 Application: indigo_find_matching_pattern_index(): path = /dev/ttyACM0 matches pattern index 0 for 'CG-USB-ST4 Adapter'
+09:19:53.168999 Application: claim_serial_port(): 'CG-USB-ST4 Adapter' claimed /dev/ttyACM0
+09:19:53.169564 Application: 0 <- // /dev/ttyACM0 opened
+09:19:53.169594 Application: 0 <- 
+09:19:54.169671 Application: 0 -> A
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+09:19:54.169734 Application: Handler queue task for 'Queue CG-USB-ST4 Adapter' took 1.001s, longer than 0.100s limit
+Running CG-USB-ST4 hardware
+    device CG-USB-ST4 Adapter on /dev/ttyACM0
+  PASS cgusbst4_reports_identity_and_capabilities
+  PASS cgusbst4_publishes_the_property_contract
+09:19:54.170788 Application: 0 <- :Mg0 300#
+    GUIDER_GUIDE_DEC NORTH completed in 301.8 ms
+09:19:54.472544 Application: 0 <- :Mg1 300#
+    GUIDER_GUIDE_DEC SOUTH completed in 301.7 ms
+09:19:54.774287 Application: 0 <- :Mg2 300#
+    GUIDER_GUIDE_RA EAST completed in 301.7 ms
+09:19:55.076012 Application: 0 <- :Mg3 300#
+    GUIDER_GUIDE_RA WEST completed in 301.7 ms
+  PASS cgusbst4_pulses_in_all_four_directions
+09:19:55.377757 Application: 0 <- :Mg2 600#
+09:19:55.377765 Application: 0 <- :Mg0 600#
+    both axes completed in 601.4 ms
+  PASS cgusbst4_pulses_both_axes_at_once
+09:19:55.979174 Application: 0 <- :Mg23000#
+09:19:56.155368 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0003
+09:19:56.155411 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 0403:6015
+09:19:56.155414 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 04d8:ffe5
+09:19:56.155416 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 0403:6015
+09:19:56.155418 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 0424:2517
+09:19:56.155420 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0002
+09:19:56.155422 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 04e8:4001
+09:19:56.155424 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0003
+09:19:56.155425 Application: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0002
+09:19:56.179235 Application: 0 <- :Mg3 400#
+    replacement completed 400.2 ms after the second request
+  PASS cgusbst4_replaces_a_pulse_on_the_same_axis
+09:19:56.579491 Application: 0 <- :Mg13000#
+    zero request answered in 2.1 ms
+09:19:56.581554 Application: 0 <- :Mg1 200#
+  PASS cgusbst4_stops_on_a_zero_request
+    endpoint: public property request to OK completion, idle adapter, no other workload
+09:19:56.782703 Application: 0 <- :Mg0  20#
+09:19:56.803213 Application: 0 <- :Mg0  20#
+09:19:56.823745 Application: 0 <- :Mg0  20#
+09:19:56.844278 Application: 0 <- :Mg0  20#
+    NORTH  requested   20.0 ms  n=3  min   20.53  mean   20.53  median   20.53  p95   20.53  p99   20.53  max   20.53  sd   0.00  error  +0.53 ms (+2.66 %)  max |error|   0.53 ms
+09:19:56.864822 Application: 0 <- :Mg1  20#
+09:19:56.885356 Application: 0 <- :Mg1  20#
+09:19:56.905889 Application: 0 <- :Mg1  20#
+09:19:56.926423 Application: 0 <- :Mg1  20#
+    SOUTH  requested   20.0 ms  n=3  min   20.53  mean   20.53  median   20.53  p95   20.53  p99   20.53  max   20.53  sd   0.00  error  +0.53 ms (+2.67 %)  max |error|   0.53 ms
+09:19:56.946965 Application: 0 <- :Mg2  20#
+09:19:56.967498 Application: 0 <- :Mg2  20#
+09:19:56.988058 Application: 0 <- :Mg2  20#
+09:19:57.008606 Application: 0 <- :Mg2  20#
+    EAST   requested   20.0 ms  n=3  min   20.55  mean   20.55  median   20.55  p95   20.56  p99   20.56  max   20.56  sd   0.01  error  +0.55 ms (+2.75 %)  max |error|   0.56 ms
+09:19:57.029169 Application: 0 <- :Mg3  20#
+09:19:57.049715 Application: 0 <- :Mg3  20#
+09:19:57.070262 Application: 0 <- :Mg3  20#
+09:19:57.090824 Application: 0 <- :Mg3  20#
+    WEST   requested   20.0 ms  n=3  min   20.51  mean   20.54  median   20.55  p95   20.56  p99   20.56  max   20.56  sd   0.03  error  +0.54 ms (+2.69 %)  max |error|   0.56 ms
+09:19:57.111339 Application: 0 <- :Mg0  50#
+09:19:57.163356 Application: 0 <- :Mg0  50#
+09:19:57.214747 Application: 0 <- :Mg0  50#
+09:19:57.266102 Application: 0 <- :Mg0  50#
+    NORTH  requested   50.0 ms  n=3  min   51.36  mean   51.38  median   51.38  p95   51.39  p99   51.39  max   51.39  sd   0.02  error  +1.38 ms (+2.75 %)  max |error|   1.39 ms
+09:19:57.317504 Application: 0 <- :Mg1  50#
+09:19:57.368871 Application: 0 <- :Mg1  50#
+09:19:57.420206 Application: 0 <- :Mg1  50#
+09:19:57.471549 Application: 0 <- :Mg1  50#
+    SOUTH  requested   50.0 ms  n=3  min   51.34  mean   51.35  median   51.34  p95   51.37  p99   51.37  max   51.37  sd   0.02  error  +1.35 ms (+2.70 %)  max |error|   1.37 ms
+09:19:57.522933 Application: 0 <- :Mg2  50#
+09:19:57.574256 Application: 0 <- :Mg2  50#
+09:19:57.625599 Application: 0 <- :Mg2  50#
+09:19:57.676968 Application: 0 <- :Mg2  50#
+    EAST   requested   50.0 ms  n=3  min   51.34  mean   51.35  median   51.35  p95   51.37  p99   51.37  max   51.37  sd   0.01  error  +1.35 ms (+2.70 %)  max |error|   1.37 ms
+09:19:57.728322 Application: 0 <- :Mg3  50#
+09:19:57.779656 Application: 0 <- :Mg3  50#
+09:19:57.831026 Application: 0 <- :Mg3  50#
+09:19:57.882363 Application: 0 <- :Mg3  50#
+    WEST   requested   50.0 ms  n=3  min   51.34  mean   51.35  median   51.35  p95   51.37  p99   51.37  max   51.37  sd   0.02  error  +1.35 ms (+2.70 %)  max |error|   1.37 ms
+09:19:57.933723 Application: 0 <- :Mg0 100#
+09:19:58.034361 Application: 0 <- :Mg0 100#
+09:19:58.135025 Application: 0 <- :Mg0 100#
+09:19:58.235652 Application: 0 <- :Mg0 100#
+    NORTH  requested  100.0 ms  n=3  min  100.63  mean  100.65  median  100.65  p95  100.66  p99  100.66  max  100.66  sd   0.01  error  +0.65 ms (+0.65 %)  max |error|   0.66 ms
+09:19:58.336328 Application: 0 <- :Mg1 100#
+09:19:58.436964 Application: 0 <- :Mg1 100#
+09:19:58.537605 Application: 0 <- :Mg1 100#
+09:19:58.638256 Application: 0 <- :Mg1 100#
+    SOUTH  requested  100.0 ms  n=3  min  100.64  mean  100.65  median  100.65  p95  100.65  p99  100.65  max  100.65  sd   0.01  error  +0.65 ms (+0.65 %)  max |error|   0.65 ms
+09:19:58.738921 Application: 0 <- :Mg2 100#
+09:19:58.839548 Application: 0 <- :Mg2 100#
+09:19:58.940201 Application: 0 <- :Mg2 100#
+09:19:59.040856 Application: 0 <- :Mg2 100#
+    EAST   requested  100.0 ms  n=3  min  100.64  mean  100.65  median  100.65  p95  100.66  p99  100.66  max  100.66  sd   0.01  error  +0.65 ms (+0.65 %)  max |error|   0.66 ms
+09:19:59.141508 Application: 0 <- :Mg3 100#
+09:19:59.242197 Application: 0 <- :Mg3 100#
+09:19:59.342876 Application: 0 <- :Mg3 100#
+09:19:59.443548 Application: 0 <- :Mg3 100#
+    WEST   requested  100.0 ms  n=3  min  100.65  mean  100.67  median  100.67  p95  100.68  p99  100.68  max  100.68  sd   0.01  error  +0.67 ms (+0.67 %)  max |error|   0.68 ms
+09:19:59.544215 Application: 0 <- :Mg0 200#
+09:19:59.745496 Application: 0 <- :Mg0 200#
+09:19:59.946800 Application: 0 <- :Mg0 200#
+09:20:00.148093 Application: 0 <- :Mg0 200#
+    NORTH  requested  200.0 ms  n=3  min  201.29  mean  201.30  median  201.29  p95  201.30  p99  201.30  max  201.30  sd   0.01  error  +1.30 ms (+0.65 %)  max |error|   1.30 ms
+09:20:00.349404 Application: 0 <- :Mg1 200#
+09:20:00.550690 Application: 0 <- :Mg1 200#
+09:20:00.751982 Application: 0 <- :Mg1 200#
+09:20:00.953280 Application: 0 <- :Mg1 200#
+    SOUTH  requested  200.0 ms  n=3  min  201.29  mean  201.30  median  201.30  p95  201.31  p99  201.31  max  201.31  sd   0.01  error  +1.30 ms (+0.65 %)  max |error|   1.31 ms
+09:20:01.154610 Application: 0 <- :Mg2 200#
+09:20:01.355956 Application: 0 <- :Mg2 200#
+09:20:01.557277 Application: 0 <- :Mg2 200#
+09:20:01.758581 Application: 0 <- :Mg2 200#
+    EAST   requested  200.0 ms  n=3  min  201.29  mean  201.31  median  201.30  p95  201.32  p99  201.32  max  201.32  sd   0.01  error  +1.31 ms (+0.65 %)  max |error|   1.32 ms
+09:20:01.959889 Application: 0 <- :Mg3 200#
+09:20:02.161171 Application: 0 <- :Mg3 200#
+09:20:02.362466 Application: 0 <- :Mg3 200#
+09:20:02.563767 Application: 0 <- :Mg3 200#
+    WEST   requested  200.0 ms  n=3  min  201.30  mean  201.30  median  201.30  p95  201.31  p99  201.31  max  201.31  sd   0.01  error  +1.30 ms (+0.65 %)  max |error|   1.31 ms
+09:20:02.765092 Application: 0 <- :Mg0 500#
+09:20:03.266254 Application: 0 <- :Mg0 500#
+09:20:03.767441 Application: 0 <- :Mg0 500#
+09:20:04.268641 Application: 0 <- :Mg0 500#
+    NORTH  requested  500.0 ms  n=3  min  501.18  mean  501.19  median  501.19  p95  501.20  p99  501.20  max  501.20  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.20 ms
+09:20:04.769839 Application: 0 <- :Mg1 500#
+09:20:05.271017 Application: 0 <- :Mg1 500#
+09:20:05.772205 Application: 0 <- :Mg1 500#
+09:20:06.273391 Application: 0 <- :Mg1 500#
+    SOUTH  requested  500.0 ms  n=3  min  501.18  mean  501.19  median  501.19  p95  501.19  p99  501.19  max  501.19  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.19 ms
+09:20:06.774602 Application: 0 <- :Mg2 500#
+09:20:07.275767 Application: 0 <- :Mg2 500#
+09:20:07.776993 Application: 0 <- :Mg2 500#
+09:20:08.278153 Application: 0 <- :Mg2 500#
+    EAST   requested  500.0 ms  n=3  min  501.18  mean  501.19  median  501.18  p95  501.20  p99  501.20  max  501.20  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.20 ms
+09:20:08.779360 Application: 0 <- :Mg3 500#
+09:20:09.280638 Application: 0 <- :Mg3 500#
+09:20:09.781840 Application: 0 <- :Mg3 500#
+09:20:10.283021 Application: 0 <- :Mg3 500#
+    WEST   requested  500.0 ms  n=3  min  501.19  mean  501.19  median  501.19  p95  501.19  p99  501.19  max  501.19  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.19 ms
+    60 samples, worst signed error 1.39 ms
+  PASS cgusbst4_measures_guide_pulse_duration
+09:20:10.784264 Application: 0 <- :Mg33000#
+09:20:10.985827 Application: 0 <- // Closed
+09:20:10.985837 Application: indigo_guider_cgusbst4: Disconnected from /dev/ttyACM0
+    message: Disconnected from CG-USB-ST4 Adapter
+09:20:10.986403 Application: claim_serial_port(): 'CG-USB-ST4 Adapter' claimed /dev/ttyACM0
+09:20:10.986924 Application: 1 <- // /dev/ttyACM0 opened
+09:20:10.986937 Application: 1 <- 
+09:20:11.987015 Application: 1 -> A
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+09:20:11.987049 Application: Handler queue task for 'Queue CG-USB-ST4 Adapter' took 1.001s, longer than 0.100s limit
+09:20:11.988855 Application: 1 <- :Mg2 200#
+  PASS cgusbst4_survives_a_disconnect_during_a_pulse
+09:20:12.191791 Application: 1 <- // Closed
+09:20:12.191798 Application: indigo_guider_cgusbst4: Disconnected from /dev/ttyACM0
+    message: Disconnected from CG-USB-ST4 Adapter
+09:20:12.692282 Application: claim_serial_port(): 'CG-USB-ST4 Adapter' claimed /dev/ttyACM0
+09:20:12.692758 Application: 2 <- // /dev/ttyACM0 opened
+09:20:12.692771 Application: 2 <- 
+09:20:13.692846 Application: 2 -> A
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+09:20:13.692875 Application: Handler queue task for 'Queue CG-USB-ST4 Adapter' took 1.001s, longer than 0.100s limit
+09:20:13.694697 Application: 2 <- :Mg0 200#
+  PASS cgusbst4_reconnects
+09:20:13.897513 Application: 2 <- // Closed
+09:20:13.897521 Application: indigo_guider_cgusbst4: Disconnected from /dev/ttyACM0
+    message: Disconnected from CG-USB-ST4 Adapter
+09:20:13.998114 Application: indigo_guider_cgusbst4: 'CG-USB-ST4 Adapter' detached
+09:20:13.998318 Application: indigo_select_matching_usbserial_device(): Selected new port for 'CG-USB-ST4 Adapter': auto:///dev/ttyACM0
+09:20:13.998325 Application: indigo_guider_cgusbst4: 'CG-USB-ST4 Adapter' attached
+Using port /dev/ttyACM0
+09:20:13.998380 Application: indigo_find_matching_pattern_index(): path = /dev/ttyACM0 matches pattern index 0 for 'CG-USB-ST4 Adapter'
+09:20:13.998391 Application: claim_serial_port(): 'CG-USB-ST4 Adapter' claimed /dev/ttyACM0
+09:20:13.998956 Application: 3 <- // /dev/ttyACM0 opened
+09:20:13.998974 Application: 3 <- 
+09:20:14.999054 Application: 3 -> A
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+09:20:14.999096 Application: Handler queue task for 'Queue CG-USB-ST4 Adapter' took 1.001s, longer than 0.100s limit
+09:20:15.000863 Application: 3 <- :Mg3 200#
+  PASS cgusbst4_reinitializes
+09:20:15.205001 Application: 4 <- // /dev/ttyUSB0 opened
+09:20:15.205018 Application: 4 <- :GVP#
+09:20:15.211689 Application: 4 -> NYX-101
+    NYX :GVP# -> NYX-101
+09:20:15.211708 Application: 4 <- :GVN#
+09:20:15.227665 Application: 4 -> 1.32.1
+    NYX :GVN# -> 1.32.1
+09:20:15.227685 Application: 4 <- :GU#
+09:20:15.243676 Application: 4 -> nNPzET160
+    NYX :GU# -> nNPzET160
+09:20:15.243696 Application: 4 <- :hR#
+09:20:15.291652 Application: 4 -> 1
+    NYX :hR# -> 1
+09:20:15.291664 Application: 4 <- :R1#
+09:20:15.291672 Application: 4 <- :Te#
+09:20:15.307652 Application: 4 -> 1
+    NYX :Te# -> 1
+09:20:16.307735 Application: 4 <- :GU#
+09:20:16.315735 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:16.315756 Application: 4 <- :GX94#
+09:20:16.331738 Application: 4 -> 46961:-39168
+    NYX :GX94# -> 46961:-39168
+09:20:16.931820 Application: 4 <- :GX94#
+09:20:16.939731 Application: 4 -> 47053:-39168
+    NYX :GX94# -> 47053:-39168
+    NYX idle RA 151.319 steps/s, DEC 0 steps
+09:20:16.939755 Application: 4 <- :GX94#
+09:20:16.955729 Application: 4 -> 47054:-39168
+    NYX :GX94# -> 47054:-39168
+09:20:16.955761 Application: 4 <- :GU#
+09:20:16.955775 Application: 3 <- :Mg0 500#
+09:20:16.971726 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:16.996803 Application: 4 <- :GU#
+09:20:17.003724 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:17.028798 Application: 4 <- :GU#
+09:20:17.035725 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:17.060799 Application: 4 <- :GU#
+09:20:17.067728 Application: 4 -> NpeGzET110
+    NYX :GU# -> NpeGzET110
+09:20:17.455970 Application: 4 <- :GX94#
+09:20:17.467736 Application: 4 -> 47132:-39185
+    NYX :GX94# -> 47132:-39185
+    ST4 NORTH 500 ms: RA 78 steps, corrected +0.524, DEC -17 steps
+09:20:17.467758 Application: 4 <- :GX94#
+09:20:17.483737 Application: 4 -> 47134:-39186
+    NYX :GX94# -> 47134:-39186
+09:20:17.483766 Application: 4 <- :GU#
+09:20:17.483772 Application: 3 <- :Mg1 500#
+09:20:17.499729 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:17.524803 Application: 4 <- :GU#
+09:20:17.531728 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:17.556802 Application: 4 <- :GU#
+09:20:17.563730 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:17.588804 Application: 4 <- :GU#
+09:20:17.595734 Application: 4 -> NpeGzET110
+    NYX :GU# -> NpeGzET110
+09:20:17.983969 Application: 4 <- :GX94#
+09:20:17.995747 Application: 4 -> 47211:-39169
+    NYX :GX94# -> 47211:-39169
+    ST4 SOUTH 500 ms: RA 77 steps, corrected -0.478, DEC +17 steps
+09:20:17.995780 Application: 4 <- :GX94#
+09:20:18.011747 Application: 4 -> 47213:-39168
+    NYX :GX94# -> 47213:-39168
+09:20:18.011777 Application: 4 <- :GU#
+09:20:18.011783 Application: 3 <- :Mg2 500#
+09:20:18.027743 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:18.052818 Application: 4 <- :GU#
+09:20:18.059743 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:18.084818 Application: 4 <- :GU#
+09:20:18.091740 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:18.116823 Application: 4 <- :GU#
+09:20:18.123739 Application: 4 -> NpeGzET110
+    NYX :GU# -> NpeGzET110
+09:20:18.511971 Application: 4 <- :GX94#
+09:20:18.523754 Application: 4 -> 47260:-39168
+    NYX :GX94# -> 47260:-39168
+    ST4 EAST 500 ms: RA 47 steps, corrected -30.476, DEC +0 steps
+09:20:18.523778 Application: 4 <- :GX94#
+09:20:18.539742 Application: 4 -> 47261:-39168
+    NYX :GX94# -> 47261:-39168
+09:20:18.539773 Application: 4 <- :GU#
+09:20:18.539777 Application: 3 <- :Mg3 500#
+09:20:18.555737 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:18.580812 Application: 4 <- :GU#
+09:20:18.587737 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:18.612812 Application: 4 <- :GU#
+09:20:18.619740 Application: 4 -> NpezET110
+    NYX :GU# -> NpezET110
+09:20:18.644815 Application: 4 <- :GU#
+09:20:18.651743 Application: 4 -> NpeGzET110
+    NYX :GU# -> NpeGzET110
+09:20:19.039970 Application: 4 <- :GX94#
+09:20:19.051760 Application: 4 -> 47367:-39168
+    NYX :GX94# -> 47367:-39168
+    ST4 WEST 500 ms: RA 106 steps, corrected +28.522, DEC +0 steps
+09:20:19.051782 Application: 4 <- :Q#
+09:20:19.051790 Application: 4 <- :Td#
+09:20:19.067726 Application: 4 -> 1
+    NYX :Td# -> 1
+09:20:19.067738 Application: 4 <- :hP#
+09:20:19.083726 Application: 4 -> 1
+    NYX :hP# -> 1
+09:20:19.083738 Application: 4 <- :GU#
+09:20:19.099751 Application: 4 -> nIzET110
+    NYX :GU# -> nIzET110
+09:20:19.599834 Application: 4 <- :GU#
+09:20:19.611770 Application: 4 -> nIzET110
+    NYX :GU# -> nIzET110
+09:20:20.111852 Application: 4 <- :GU#
+09:20:20.123794 Application: 4 -> nIzET110
+    NYX :GU# -> nIzET110
+09:20:20.623875 Application: 4 <- :GU#
+09:20:20.635800 Application: 4 -> nIzET110
+    NYX :GU# -> nIzET110
+09:20:21.135879 Application: 4 <- :GU#
+09:20:21.147797 Application: 4 -> nNPzET110
+    NYX :GU# -> nNPzET110
+09:20:21.147814 Application: 4 <- :R6#
+09:20:21.147822 Application: 4 <- :GU#
+09:20:21.163794 Application: 4 -> nNPzET160
+    NYX :GU# -> nNPzET160
+    NYX cleanup parked=1 status=nNPzET160
+09:20:21.164613 Application: 4 <- // Closed
+  PASS cgusbst4_moves_nyx_through_st4
+CG-USB-ST4 hardware: all tests passed
+09:20:21.166234 Application: 3 <- // Closed
+09:20:21.166246 Application: indigo_guider_cgusbst4: Disconnected from /dev/ttyACM0
+    message: Disconnected from CG-USB-ST4 Adapter
+09:20:21.266787 Application: indigo_guider_cgusbst4: 'CG-USB-ST4 Adapter' detached
+139 driver(s) written to /tmp/indigo-cgusbst4-20261024070358/TEST_SUMMARY.md
+
+guider_cgusbst4: 11/11 OK
+recorded in indigo_drivers/guider_cgusbst4/README.md:
+2026-10-24 09:19 3.0.0.10 linux arm64 CG-USB-ST4 with NYX-101 ST4 11/11 OK

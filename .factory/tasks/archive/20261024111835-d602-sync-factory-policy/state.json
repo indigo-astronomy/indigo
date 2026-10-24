@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024111835-d602-sync-factory-policy",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive, commit and validate final candidate; main integration/publication pending authorization",
+  "blocker": null
+}

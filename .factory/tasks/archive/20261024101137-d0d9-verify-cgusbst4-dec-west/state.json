@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024101137-d0d9-verify-cgusbst4-dec-west",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive and commit complete W-side evidence; isolate physical ST4 path under the existing open finding without changing mapping.",
+  "blocker": null
+}

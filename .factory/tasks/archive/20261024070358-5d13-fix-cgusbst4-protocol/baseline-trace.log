@@ -1,0 +1,16 @@
+Running CG-USB-ST4 PTY
+  PASS indigo_dialect_directions
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS wrong_identity
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS silent_identity
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS reconnect
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS reconnect_during_pulse
+CG-USB-ST4 PTY: all tests passed
+CG-USB-ST4: 0 failing scenarios

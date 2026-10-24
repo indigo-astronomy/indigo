@@ -1,0 +1,16 @@
+{"event": "command", "monotonic": 14069.007398325, "fd": 3, "command": "ESGv!", "reply": "ESGvES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4!"}
+{"event": "command", "monotonic": 14069.055365942, "fd": 3, "command": "ESGi!", "reply": "ESGi1152000001040040000900060000001!"}
+{"event": "command", "monotonic": 14069.071366339, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14069.087363828, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14069.10335917, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14069.119357122, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14069.135355278, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14069.151351583, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "initial", "monotonic": 14069.151383879, "firmware": "ESGvES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4!", "config": "ESGi1152000001040040000900060000001!", "positions": [0, 0], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 324000.0}
+{"event": "command", "monotonic": 14069.15299406, "fd": 4, "command": "\u0006", "reply": "A"}
+{"event": "command", "monotonic": 14069.167355091, "fd": 3, "command": "ESPt1038400!", "reply": "ESGt1038400!"}
+{"event": "command", "monotonic": 14071.279040798, "fd": 3, "command": "ESPt300000!", "reply": "ESGt3!"}
+{"event": "command", "monotonic": 14071.295031065, "fd": 3, "command": "ESPt300000!", "reply": "ESGt3!"}
+{"event": "command", "monotonic": 14072.270876721, "fd": 3, "command": "ESTr0000!", "reply": "ESGx0000!"}
+{"event": "command", "monotonic": 14072.286876395, "fd": 3, "command": "ESSr10000!", "reply": "ESGr10000!"}
+{"event": "cleanup", "monotonic": 14072.286895858, "errors": ["('ESPt300000!', 'ESGt3!')"]}

@@ -28,4 +28,5 @@ Driver is developed and tested with:
 ## Testing
 
 - 2026-09-21 23:52 3.0.0.7 mac arm64 CG-USB-ST4 10/10 OK
-- 2026-09-27 22:39 3.0.0.8 mac arm64 simulator 7/7 OK
+- 2026-10-24 09:11 3.0.0.10 mac arm64 simulator 7/7 OK
+- 2026-10-24 09:19 3.0.0.10 linux arm64 CG-USB-ST4 with NYX-101 ST4 11/11 OK

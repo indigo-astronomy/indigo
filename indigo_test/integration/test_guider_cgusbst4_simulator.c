@@ -106,50 +106,42 @@ cleanup:
 	stop();
 }
 
-int main(int argc, char **argv) {
-	// "phd2_dialect_directions" reproduces DRV-095: the driver emits the INDIGO letter
-	// dialect, which a numeric PHD2-dialect device rejects. The protocol variant is not
-	// confirmed against hardware, so the scenario runs only with --known-defects.
-	bool known_defects_mode = false;
-	for (int i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "--known-defects")) {
-			known_defects_mode = true;
-		} else {
-			fprintf(stderr, "Usage: %s [--known-defects]\n", argv[0]);
-			return 1;
-		}
-	}
-	const indigo_test_case tests[] = { { "indigo_dialect_directions", directions }, { "phd2_dialect_directions", directions }, { "wrong_identity", identity_failure }, { "silent_identity", identity_failure }, { "reconnect", reconnect }, { "reconnect_during_pulse", reconnect_during_pulse } };
-	const char *profiles[] = { "indigo", "phd2", "wrong-identity", "silent", "indigo", "indigo" };
-	const bool defects[] = { false, true, false, false, false, false };
+int main(void) {
+	// Hardware confirms numeric directions; DRV-095 now runs as ordinary regression coverage.
+	const indigo_test_case tests[] = { { "phd2_dialect_directions", directions }, { "wrong_identity", identity_failure }, { "silent_identity", identity_failure }, { "reconnect", reconnect }, { "reconnect_during_pulse", reconnect_during_pulse } };
+	const char *profiles[] = { "phd2", "wrong-identity", "silent", "phd2", "phd2" };
 	setvbuf(stdout, NULL, _IOLBF, 0);
+	indigo_test_plan("CG-USB-ST4 PTY", ARRAY_SIZE(tests), NULL);
 	int failures = 0;
 	for (int i = 0; i < ARRAY_SIZE(tests); i++) {
-		if (defects[i] != known_defects_mode) { continue; }
 		const char *args[] = { "--profile", profiles[i], NULL };
-		if (!start_external_serial_simulator_with_args(&simulator, "build/integration/guider_cgusbst4_simulator", args)) { return 1; }
+		if (!start_external_serial_simulator_with_args(&simulator, "build/integration/guider_cgusbst4_simulator", args)) {
+			return 1;
+		}
+		indigo_current_test_name = tests[i].name;
 		fflush(NULL);
 		pid_t child = fork();
-		if (child == 0) { alarm(20); _exit(indigo_run_tests("CG-USB-ST4 PTY", tests + i, 1)); }
+		if (child == 0) {
+			alarm(20);
+			_exit(indigo_run_tests("CG-USB-ST4 PTY", tests + i, 1));
+		}
 		int status = 0;
 		pid_t waited;
-		do { waited = waitpid(child, &status, 0); } while (waited < 0 && errno == EINTR);
+		do {
+			waited = waitpid(child, &status, 0);
+		} while (waited < 0 && errno == EINTR);
 		char path[PATH_MAX];
 		snprintf(path, sizeof(path), "%s.events", simulator.ready_file);
+		capture_simulator_trace(&simulator);
 		unlink(path);
 		stop_external_serial_simulator(&simulator);
 		bool ok = child > 0 && waited >= 0 && WIFEXITED(status) && !WEXITSTATUS(status);
-		if (known_defects_mode) {
-			printf("%s %s (status %d)\n", ok ? "UNEXPECTED PASS" : "EXPECTED FAIL", tests[i].name, status);
-		} else if (!ok) {
+		if (!ok) {
 			failures++;
 			printf("FAIL %s (status %d)\n", tests[i].name, status);
 		}
 	}
-	if (known_defects_mode) {
-		printf("CG-USB-ST4 defect reproducers: done\n");
-		return 0;
-	}
+	indigo_test_plan_recorded = false;
 	printf("CG-USB-ST4: %d failing scenarios\n", failures);
 	return failures ? 1 : 0;
 }

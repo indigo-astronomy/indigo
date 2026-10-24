@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "task": "20261024105327-f79c-verify-nyx-same-st4-cable",
+  "scope": [
+    ".factory/findings/active/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json",
+    ".factory/completions/20261024105327-f79c-verify-nyx-same-st4-cable.json",
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024105327-f79c-verify-nyx-same-st4-cable.json": [
+      "100644",
+      "blob",
+      "c83a7e803bdbd410056c034ab8101038dc5239b1"
+    ],
+    ".factory/findings/active/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json": [
+      "100644",
+      "blob",
+      "c899b9cb7ef936b2390f23691d0212c1ac1e21f0"
+    ],
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md": [
+      "100644",
+      "blob",
+      "f97716d0793cefc983d3bb3a7d482221f47d955a"
+    ]
+  }
+}

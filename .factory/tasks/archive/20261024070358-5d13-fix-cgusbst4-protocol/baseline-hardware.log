@@ -1,0 +1,104 @@
++ make -C /tmp/indigo-cgusbst4-20261024070358/indigo_drivers/guider_cgusbst4 -f ../../Makefile.drv all
+make: Entering directory '/tmp/indigo-cgusbst4-20261024070358/indigo_drivers/guider_cgusbst4'
+Definition: indigo_guider_cgusbst4.driver
+Sources:    indigo_guider_cgusbst4.c indigo_guider_cgusbst4_main.c
+Archive:    indigo_guider_cgusbst4.a
+SO library: indigo_guider_cgusbst4.so
+indigo_guider_cgusbst4.o
+Executable: indigo_guider_cgusbst4
+
+/tmp/indigo-cgusbst4-20261024070358/build/bin/indigo_generator indigo_guider_cgusbst4.driver
+Reading indigo_guider_cgusbst4.driver ...
+Writing ./indigo_guider_cgusbst4.h ...
+Writing ./indigo_guider_cgusbst4_main.c ...
+Writing ./indigo_guider_cgusbst4.c ...
+gcc -g -fPIC -O3 -isystem/tmp/indigo-cgusbst4-20261024070358/indigo_libs -I/tmp/indigo-cgusbst4-20261024070358/indigo_drivers -I/tmp/indigo-cgusbst4-20261024070358/indigo_linux_drivers -I/tmp/indigo-cgusbst4-20261024070358/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT    -c -o indigo_guider_cgusbst4.o indigo_guider_cgusbst4.c
+ar -rv /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4.a indigo_guider_cgusbst4.o
+ar: creating /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4.a
+a - indigo_guider_cgusbst4.o
+gcc -shared -o /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4.so -Wl,--whole-archive /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4.a -Wl,--no-whole-archive   -lindigo -lm -lrt -lusb-1.0 -pthread -L/tmp/indigo-cgusbst4-20261024070358/build/lib -Wl,-rpath=\$ORIGIN/../lib,-rpath=\$ORIGIN/../drivers,-rpath=. -lusb-1.0
+gcc -g -fPIC -O3 -isystem/tmp/indigo-cgusbst4-20261024070358/indigo_libs -I/tmp/indigo-cgusbst4-20261024070358/indigo_drivers -I/tmp/indigo-cgusbst4-20261024070358/indigo_linux_drivers -I/tmp/indigo-cgusbst4-20261024070358/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT    -c -o indigo_guider_cgusbst4_main.o indigo_guider_cgusbst4_main.c
+gcc -o /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4 indigo_guider_cgusbst4_main.o /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4.a   -lindigo -lm -lrt -lusb-1.0 -pthread -L/tmp/indigo-cgusbst4-20261024070358/build/lib -Wl,-rpath=\$ORIGIN/../lib,-rpath=\$ORIGIN/../drivers,-rpath=. -lusb-1.0
+make: Leaving directory '/tmp/indigo-cgusbst4-20261024070358/indigo_drivers/guider_cgusbst4'
++ make test-guider-cgusbst4-hw
+mkdir -p build/hardware
+gcc -g -fPIC -O3 -isystem/tmp/indigo-cgusbst4-20261024070358/indigo_libs -I/tmp/indigo-cgusbst4-20261024070358/indigo_drivers -I/tmp/indigo-cgusbst4-20261024070358/indigo_linux_drivers -I/tmp/indigo-cgusbst4-20261024070358/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include hardware/test_guider_cgusbst4_hw.c -o build/hardware/test_guider_cgusbst4_hw /tmp/indigo-cgusbst4-20261024070358/build/drivers/indigo_guider_cgusbst4.a -lm -lrt -lusb-1.0 -pthread -L/tmp/indigo-cgusbst4-20261024070358/build/lib -Wl,-rpath=\$ORIGIN/../lib,-rpath=\$ORIGIN/../drivers,-rpath=. -Wl,-rpath,/tmp/indigo-cgusbst4-20261024070358/build/lib -lindigo -lm -lpthread
+build/hardware/test_guider_cgusbst4_hw --run
+Using port /dev/ttyACM0
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+Running CG-USB-ST4 hardware
+    device CG-USB-ST4 Adapter on /dev/ttyACM0
+  PASS cgusbst4_reports_identity_and_capabilities
+  PASS cgusbst4_publishes_the_property_contract
+    GUIDER_GUIDE_DEC NORTH completed in 301.7 ms
+    GUIDER_GUIDE_DEC SOUTH completed in 301.7 ms
+    GUIDER_GUIDE_RA EAST completed in 301.7 ms
+    GUIDER_GUIDE_RA WEST completed in 301.7 ms
+  PASS cgusbst4_pulses_in_all_four_directions
+    both axes completed in 601.4 ms
+  PASS cgusbst4_pulses_both_axes_at_once
+    replacement completed 400.2 ms after the second request
+  PASS cgusbst4_replaces_a_pulse_on_the_same_axis
+    zero request answered in 2.1 ms
+  PASS cgusbst4_stops_on_a_zero_request
+    endpoint: public property request to OK completion, idle adapter, no other workload
+    NORTH  requested   20.0 ms  n=3  min   20.51  mean   20.54  median   20.55  p95   20.55  p99   20.55  max   20.55  sd   0.02  error  +0.54 ms (+2.70 %)  max |error|   0.55 ms
+    SOUTH  requested   20.0 ms  n=3  min   20.55  mean   20.55  median   20.55  p95   20.55  p99   20.55  max   20.55  sd   0.00  error  +0.55 ms (+2.77 %)  max |error|   0.55 ms
+    EAST   requested   20.0 ms  n=3  min   20.54  mean   20.55  median   20.55  p95   20.55  p99   20.55  max   20.55  sd   0.01  error  +0.55 ms (+2.74 %)  max |error|   0.55 ms
+    WEST   requested   20.0 ms  n=3  min   20.55  mean   20.56  median   20.56  p95   20.56  p99   20.56  max   20.56  sd   0.01  error  +0.56 ms (+2.79 %)  max |error|   0.56 ms
+    NORTH  requested   50.0 ms  n=3  min   51.33  mean   51.35  median   51.35  p95   51.37  p99   51.37  max   51.37  sd   0.02  error  +1.35 ms (+2.70 %)  max |error|   1.37 ms
+    SOUTH  requested   50.0 ms  n=3  min   51.32  mean   51.35  median   51.35  p95   51.37  p99   51.37  max   51.37  sd   0.02  error  +1.35 ms (+2.69 %)  max |error|   1.37 ms
+    EAST   requested   50.0 ms  n=3  min   51.34  mean   51.35  median   51.35  p95   51.37  p99   51.37  max   51.37  sd   0.02  error  +1.35 ms (+2.70 %)  max |error|   1.37 ms
+    WEST   requested   50.0 ms  n=3  min   51.33  mean   51.35  median   51.35  p95   51.37  p99   51.37  max   51.37  sd   0.02  error  +1.35 ms (+2.70 %)  max |error|   1.37 ms
+    NORTH  requested  100.0 ms  n=3  min  100.64  mean  100.65  median  100.65  p95  100.66  p99  100.66  max  100.66  sd   0.01  error  +0.65 ms (+0.65 %)  max |error|   0.66 ms
+    SOUTH  requested  100.0 ms  n=3  min  100.64  mean  100.65  median  100.65  p95  100.66  p99  100.66  max  100.66  sd   0.01  error  +0.65 ms (+0.65 %)  max |error|   0.66 ms
+    EAST   requested  100.0 ms  n=3  min  100.64  mean  100.65  median  100.65  p95  100.66  p99  100.66  max  100.66  sd   0.01  error  +0.65 ms (+0.65 %)  max |error|   0.66 ms
+    WEST   requested  100.0 ms  n=3  min  100.65  mean  100.66  median  100.66  p95  100.68  p99  100.68  max  100.68  sd   0.01  error  +0.66 ms (+0.66 %)  max |error|   0.68 ms
+    NORTH  requested  200.0 ms  n=3  min  201.29  mean  201.30  median  201.29  p95  201.30  p99  201.30  max  201.30  sd   0.01  error  +1.30 ms (+0.65 %)  max |error|   1.30 ms
+    SOUTH  requested  200.0 ms  n=3  min  201.30  mean  201.56  median  201.33  p95  202.04  p99  202.04  max  202.04  sd   0.42  error  +1.56 ms (+0.78 %)  max |error|   2.04 ms
+    EAST   requested  200.0 ms  n=3  min  200.43  mean  201.01  median  201.29  p95  201.31  p99  201.31  max  201.31  sd   0.50  error  +1.01 ms (+0.51 %)  max |error|   1.31 ms
+    WEST   requested  200.0 ms  n=3  min  201.30  mean  201.41  median  201.30  p95  201.62  p99  201.62  max  201.62  sd   0.18  error  +1.41 ms (+0.70 %)  max |error|   1.62 ms
+    NORTH  requested  500.0 ms  n=3  min  501.18  mean  501.19  median  501.19  p95  501.19  p99  501.19  max  501.19  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.19 ms
+    SOUTH  requested  500.0 ms  n=3  min  501.18  mean  501.19  median  501.19  p95  501.20  p99  501.20  max  501.20  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.20 ms
+    EAST   requested  500.0 ms  n=3  min  501.18  mean  501.19  median  501.19  p95  501.20  p99  501.20  max  501.20  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.20 ms
+    WEST   requested  500.0 ms  n=3  min  501.18  mean  501.19  median  501.19  p95  501.19  p99  501.19  max  501.19  sd   0.01  error  +1.19 ms (+0.24 %)  max |error|   1.19 ms
+    60 samples, worst signed error 2.04 ms
+  PASS cgusbst4_measures_guide_pulse_duration
+    message: Disconnected from CG-USB-ST4 Adapter
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+  PASS cgusbst4_survives_a_disconnect_during_a_pulse
+    message: Disconnected from CG-USB-ST4 Adapter
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+  PASS cgusbst4_reconnects
+    message: Disconnected from CG-USB-ST4 Adapter
+Using port /dev/ttyACM0
+    message: Connected to CG-USB-ST4 Adapter on /dev/ttyACM0
+  PASS cgusbst4_reinitializes
+    NYX :GVP# -> NYX-101
+    NYX :GVN# -> 1.32.1
+    NYX :GU# -> nNPzET160
+    NYX :hR# -> 1
+    NYX :Te# -> 1
+    NYX :GU# -> NpezET110
+    NYX :GX94# -> 46890:-39168
+    NYX :GX94# -> 46982:-39168
+    NYX idle RA 151.315 steps/s, DEC 0 steps
+    NYX :GX94# -> 46983:-39168
+    NYX :GU# -> NpezET110
+hardware/test_guider_cgusbst4_hw.c:372: nyx_command(mount, ":GU#", reply, false) && strchr(reply, 'g')
+    NYX :Td# -> 1
+    NYX :hP# -> 1
+    NYX :GU# -> nIzET110
+    NYX :GU# -> nIzET110
+    NYX :GU# -> nIzET110
+    NYX :GU# -> nIzET110
+    NYX :GU# -> nNPzET110
+    NYX :GU# -> nNPzET160
+    NYX cleanup parked=1 status=nNPzET160
+  FAIL cgusbst4_moves_nyx_through_st4
+CG-USB-ST4 hardware: 1 test(s) failed
+    message: Disconnected from CG-USB-ST4 Adapter
+make: *** [Makefile:2818: test-guider-cgusbst4-hw] Error 1
+
+FAILED: test-guider-cgusbst4-hw
+guider_cgusbst4: 11/10 Failed

@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "task": "20261024111835-d602-sync-factory-policy",
+  "scope": [
+    "AGENTS.md",
+    ".factory/template-lock.json",
+    ".factory/project.md",
+    ".factory/maintenance.json",
+    ".factory/completions/20261024111835-d602-sync-factory-policy.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024111835-d602-sync-factory-policy.json": [
+      "100644",
+      "blob",
+      "5ca9992914905196a15396b3e16ada6d9c935faa"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "c86408b021afa2007db15a1dd0ee4bf916ff3eb7"
+    ],
+    ".factory/template-lock.json": [
+      "100644",
+      "blob",
+      "b663689bba21e8ff8d375cc46dc409989102d3b3"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "1cc4c10d76c2c9340bd14cc5be99284c66024024"
+    ]
+  }
+}

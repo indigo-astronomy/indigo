@@ -1,0 +1,3 @@
+# Test plan
+
+Directions are determined by signed reported declination away from the pole (not motor sign alone). Repeat order to expose reversal/backlash; require both adapter codes to move and compare direct NYX controls in the same unchanged side/state. Idle baseline estimates drift. Raw serial sends exactly the numeric frames whose emission by repaired driver 3.0.0.10 was separately verified in prior task. This tests physical adapter/mount orientation, not another driver lifecycle acceptance run. No change to driver or simulator. Use Python standard-library serial access with explicit timeouts and cleanup.

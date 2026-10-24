@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "task": "20261024070358-5d13-fix-cgusbst4-protocol",
+  "scope": [
+    ".factory/findings/active/FND-000006.json",
+    ".factory/findings/archive/FND-000006.json",
+    ".factory/completions/20261024070358-5d13-fix-cgusbst4-protocol.json",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/guider_cgusbst4/*",
+    "indigo_test/Makefile",
+    "indigo_test/hardware/test_guider_cgusbst4_hw.c",
+    "indigo_test/integration/test_guider_cgusbst4_simulator.c",
+    "indigo_test/integration/test_serial_outputs.c"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "guider_cgusbst4"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "ssh",
+        "-A",
+        "-o",
+        "BatchMode=yes",
+        "indigo@indigosky.local",
+        "cd /tmp/indigo-cgusbst4-20261024070358 && CGUSBST4_NYX_PORT=/dev/ttyUSB0 CGUSBST4_HW_PORT=/dev/ttyACM0 TZ=Europe/Bratislava python3 tools/run_driver_test.py guider_cgusbst4 --hw --type \"CG-USB-ST4 with NYX-101 ST4\" -- HW_DEBUG=1"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/tmp/test-cgusbst4-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024070358-5d13-fix-cgusbst4-protocol.json": [
+      "100644",
+      "blob",
+      "ca6186261af943dd449af05653a3dc3a2005e600"
+    ],
+    ".factory/findings/active/FND-000006.json": null,
+    ".factory/findings/archive/FND-000006.json": [
+      "100644",
+      "blob",
+      "ec90dc61da493b45bd5c721d6b6c2538845c4e9b"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "23d847ffafc2ab9b81b8055f5826ed320ae87c35"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "fee2f6e23f83e7e96803d58170dca5c192445f1f"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "e6bb4268037e43751f049035ce6570d16f1ea951"
+    ],
+    "indigo_drivers/guider_cgusbst4/README.md": [
+      "100644",
+      "blob",
+      "e5a304ba009fff08992c85b7cab616a8de44e33b"
+    ],
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md": [
+      "100644",
+      "blob",
+      "bf498c813a8f9d856dc02cfccd7544aa5fce56a3"
+    ],
+    "indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c": [
+      "100644",
+      "blob",
+      "5fc51654b810bab33f7bf3e2e20cc4c23021fd7d"
+    ],
+    "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.c": [
+      "100644",
+      "blob",
+      "b2e842a4a249a06bb65946814d3e3c2167e21642"
+    ],
+    "indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.driver": [
+      "100644",
+      "blob",
+      "09571f4123138f2f5ad0e27734d0ee6a6c728e5b"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "9fb9ac9cec0c5e8ab2722e5253b99cda0b4da1ab"
+    ],
+    "indigo_test/hardware/test_guider_cgusbst4_hw.c": [
+      "100644",
+      "blob",
+      "7c9caac92bed1d271002acde0f91c0178a402050"
+    ],
+    "indigo_test/integration/test_guider_cgusbst4_simulator.c": [
+      "100644",
+      "blob",
+      "c87ccfa50fe67201e45951c3f31f12075baa34a9"
+    ],
+    "indigo_test/integration/test_serial_outputs.c": [
+      "100644",
+      "blob",
+      "eb64113ed7e81d7e83ba694d5b8efba160a6fe11"
+    ]
+  }
+}

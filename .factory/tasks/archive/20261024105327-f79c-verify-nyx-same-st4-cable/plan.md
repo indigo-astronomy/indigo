@@ -1,0 +1,3 @@
+# Plan
+
+Use clean task branch based on main plus verified iEXOS evidence dependency. Read-only USB/serial state check first. Reuse the previously successful NYX off-pole probe with stable by-id paths, capture initial motors/settings/target and strengthen final restoration assertions. Perform a bounded ordinary goto at current RA and DEC +70 without forcing pier side or changing meridian settings, idle and repeated controls, then stop/park/restore. Compare with retained iEXOS measurements using the same cable. Update only evidence, existing finding and qualified CGUSB REFACTOR notes; run configured checks, separate same-agent quality/security review, archive and commit locally. Integration/publication pending.

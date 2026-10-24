@@ -295,7 +295,8 @@
 | gps_simulator | 2026-09-27 22:39 | 3.0.0.9 | mac arm64 | simulator | 4 / 4 | ✅ OK |
 | guider_asi | 2026-09-26 19:49 | 3.0.0.13 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 | guider_cgusbst4 | 2026-09-21 23:52 | 3.0.0.7 | mac arm64 | CG-USB-ST4 | 10 / 10 | ✅ OK |
-|  | 2026-09-27 22:39 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |
+|  | 2026-10-24 09:11 | 3.0.0.10 | mac arm64 | simulator | 7 / 7 | ✅ OK |
+|  | 2026-10-24 09:19 | 3.0.0.10 | linux arm64 | CG-USB-ST4 with NYX-101 ST4 | 11 / 11 | ✅ OK |
 | guider_gpusb | 2026-09-21 23:31 | 3.0.0.10 | mac arm64 | GPUSB | 10 / 10 | ✅ OK |
 |  | 2026-09-27 22:39 | 3.0.0.11 | mac arm64 | fake SDK | 20 / 20 | ✅ OK |
 |  | 2026-09-30 19:17 | 3.0.0.11 | linux arm64 | GPUSB Guider | 10 / 10 | ✅ OK |
