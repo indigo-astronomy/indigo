@@ -1,0 +1,19 @@
+{
+  "title": "Imager instance tests ignore failed teardown while reporting cleanup success",
+  "category": "quality",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024155149-8381-fix-core-audit-findings",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "The unchanged instance suite cleanup ignores shutdown and indigo_stop return values. A recorded 57/57 run logged an attached CCD simulator preventing bus stop but still reported cleanup success. Next: coordinator assigns test-maintenance work to verify shutdown/disconnection completion and make teardown failures fail the case; repeat full imager scope. This follow-up is distinct from the 15 repaired findings.",
+  "evidence": "indigo_test/integration/test_agent_imager_instances.c:416-430,626; final recorded agent_imager run 2026-10-24 (57 asserted cases pass), task findings.md and verification.md. Cleanup source unchanged from base 21efe303fe63575c3574f1579285828d9ba568cc.",
+  "resolution": null,
+  "id": "FND-20261024155149-8381-fix-core-audit-findings-001"
+}

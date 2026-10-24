@@ -32,6 +32,10 @@ BENCHMARKS = \
 	$(BENCHMARK_BUILD)/bench_mount_simulator_timing \
 	$(BENCHMARK_BUILD)/bench_mount_nexstar_guider_timing
 UNIT_TESTS = \
+	$(UNIT_BUILD)/test_mount_alignment_load \
+	$(UNIT_BUILD)/test_profile_selection \
+	$(UNIT_BUILD)/test_rgb48 \
+	$(UNIT_BUILD)/test_image_math \
 	$(UNIT_BUILD)/test_core_text_bounds \
 	$(UNIT_BUILD)/test_align_math \
 	$(UNIT_BUILD)/test_aux_math \
@@ -55,10 +59,11 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_raw_image \
 	$(UNIT_BUILD)/test_raw_to_fits
 ifeq ($(OS_DETECTED),Darwin)
-UNIT_TESTS += $(UNIT_BUILD)/test_usbserial_enumeration_macos
+UNIT_TESTS += $(UNIT_BUILD)/test_usbserial_enumeration_macos $(UNIT_BUILD)/test_service_discovery
 endif
 
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_file_names \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_numerics \
+	$(INTEGRATION_BUILD)/test_ccd_file_names \
 	$(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
 	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
@@ -3527,3 +3532,23 @@ test-gps-compliance-script:
 
 test-omnisim-startup:
 	python3 -B unit/test_omnisim_startup.py
+
+$(UNIT_BUILD)/test_image_math: unit/test_image_math.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+
+ifeq ($(OS_DETECTED),Darwin)
+$(UNIT_BUILD)/test_service_discovery: unit/test_service_discovery.c test_runner.h ../indigo_libs/indigo_service_discovery.c | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+endif
+
+$(INTEGRATION_BUILD)/test_agent_imager_numerics: integration/test_agent_imager_numerics.py ../indigo_drivers/agent_imager/indigo_agent_imager.c ../indigo_libs/indigo_platesolver.c ../indigo_libs/indigo_raw_utils.c ../indigo_libs/indigo/indigo_bus.h test_runner.h | $(INTEGRATION_BUILD)
+	CC="$(CC)" python3 $< $@
+
+$(UNIT_BUILD)/test_rgb48: unit/test_rgb48.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_mount_alignment_load: unit/test_mount_alignment_load.c test_runner.h ../indigo_libs/indigo_mount_driver.c | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_profile_selection: unit/test_profile_selection.c test_runner.h ../indigo_libs/indigo_driver.c | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS)

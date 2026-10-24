@@ -2742,10 +2742,7 @@ double indigo_atod(const char *str) {
 		for (dec = 0.1; *str && isdigit(*str); ++str, dec /= 10)
 			value += dec * (*str - '0');
 	}
-	if (*str == 'E' || *str == 'e') {
-		if (value == 0) {
-			value = 1;
-		}
+	if (value != 0 && (*str == 'E' || *str == 'e')) {
 		int ex = atoi(++str);
 		value *= pow(10, ex);
 	}

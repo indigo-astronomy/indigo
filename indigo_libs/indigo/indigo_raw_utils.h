@@ -128,6 +128,8 @@ INDIGO_EXTERN indigo_result indigo_selection_frame_digest_iterative(indigo_raw_t
 INDIGO_EXTERN indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest);
 INDIGO_EXTERN indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest);
 INDIGO_EXTERN indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *digest);
+/* DONUTS requires an included region of at least 12 pixels in each dimension,
+ * fully contained in the input frame. Unsupported regions return INDIGO_FAILED. */
 INDIGO_EXTERN indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *digest);
 INDIGO_EXTERN indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest);
 INDIGO_EXTERN indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y);

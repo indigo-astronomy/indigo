@@ -4,7 +4,7 @@
   "severity": "medium",
   "summary": "All saturated interior samples can be masked; dividing by real_count==0 yields NaN, while the caller only checks ==0. Next: define explicit no-valid-samples result, handle it in focus and cover fully saturated fixtures.",
   "evidence": "indigo_libs/indigo_raw_utils.c:1703-1753 and masked16/RGB equivalents; indigo_drivers/agent_imager/indigo_agent_imager.c:948,1695.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -12,8 +12,18 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "framework-formats-review.md",
       "revision": null
+    },
+    {
+      "id": "20261024155149-8381-fix-core-audit-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024155149-8381-fix-core-audit-findings/findings.md; verification.md: test_image_math / contrast_empty_mask_and_valid_samples; estimator review. All four pixel formats return finite zero for no accepted samples; imager rejects nonpositive/nonfinite contrast.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-032"
 }

@@ -34,3 +34,21 @@ Status: hardware-free validation of the Imager Agent alone, of its cooperation w
 - Simulated tests: 55 run, 55 passed (39 + 10 + 6) on macOS arm64 with `0x0300003E` through
   `tools/run_driver_test.py agent_imager --no-record`. Earlier: 53 run, 53 passed (39 + 8 + 6).
 - Hardware tests: 0 run, 0 passed.
+
+## Selected audit repairs (2026-10-24)
+
+Before implementation: task `20261024155149-8381-fix-core-audit-findings` scopes this change to derived focus handling (audit 033 and earlier audit 032). Existing architecture, protocol calls, properties and test coverage described above remain applicable. The affected driver is handwritten; no generator migration, transport change or property change is planned. Hardware testing: no devices used; macOS arm64 software tests only. Baseline `make -C indigo_test test-agent-imager` passed all existing cases with driver version `0x03000040` before this driver change. Detailed commands and retained results belong to the task verification report.
+
+Atomic plan:
+1. Capture the existing integration baseline and audit equal minima / invalid contrast paths: complete; baseline passed and source confirms zero-variance rejection.
+2. Repair focus reduction, reject unusable contrast and guard final focus motion: complete; exact zero-variance minima are retained, empty/nonfinite reductions fail and the final motion path checks derived finiteness. Driver version raised from `0x03000040` to `0x03000041`. Numerical regression fixture passes 54 assertions across two named cases under ASan/UBSan.
+3. Add numerical regression coverage, run existing integration and record the final driver run: complete; `python3 tools/run_driver_test.py agent_imager --no-build` recorded 57/57 asserted cases on macOS arm64 with `0x03000041` (2 numerical + 39 imager + 10 cooperation + 6 instance cases). The script updated README Testing and TEST_SUMMARY.md. All prerequisites had been rebuilt.
+4. Review the final diff, preserve properties/ABI and document limitations: complete; independent scoped review and final reinspection passed. No properties or ABI changed; no generator migration occurred. An unchanged instance-test cleanup ignores shutdown/stop return values and emitted one attached-device warning in the final run; separate nonblocking FND-20261024155149-8381-fix-core-audit-findings-001 tracks it. Successful case counts do not certify that teardown.
+
+Found defects: identical finite per-star minima produce zero standard deviation and every minimum is discarded by the strict outlier comparison; no surviving values produce a nonfinite focus command. Fully masked contrast can be nonfinite and previously escaped the zero-only estimator check. The planned fix keeps common minima and rejects invalid derived values before movement; it does not add generic change-property input validation.
+
+### Final test summary for selected audit repairs
+
+- Simulated tests: 57 run, 57 asserted cases passed through the recorded driver script; cleanup qualification above remains open and is not counted as independently verified cleanup. Intermediate full run: 56/56 with the numerical assertions grouped in one case.
+- Numerical fixture: 2 named cases / 54 assertions, ASan/UBSan passed. Shared image/math regression and defensive configuration/DNS fixtures also passed sanitizers; these are library tests, not additional simulated hardware cases.
+- Hardware tests: 0 run, 0 passed. Linux/Windows execution and physical timing were not tested.

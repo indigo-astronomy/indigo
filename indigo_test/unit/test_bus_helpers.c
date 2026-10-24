@@ -38,6 +38,26 @@ static void numeric_string_helpers_parse_and_format_values(void) {
 	ASSERT_STREQ("123.456", indigo_dtoa(123.456, buffer));
 }
 
+static void numeric_zero_exponents_and_format_status(void) {
+	char buffer[64];
+	const char *zeroes[] = { "0e0", "0e5", "-0e3", "+0.0E-4", "0e999" };
+	for (int i = 0; i < ARRAY_SIZE(zeroes); i++) {
+		double value = indigo_atod(zeroes[i]);
+		ASSERT_TRUE(isfinite(value));
+		ASSERT_TRUE(value == 0);
+	}
+	ASSERT_NEAR(0.0125, indigo_atod("1.25e-2"), 1e-12);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_format_number(buffer, sizeof(buffer), "%.2f", 12.5));
+	ASSERT_STREQ("12.50", buffer);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_format_number(buffer, sizeof(buffer), "%g", 0));
+	ASSERT_STREQ("0", buffer);
+	ASSERT_EQ_INT(INDIGO_FAILED, indigo_format_number(buffer, 3, "%.2f", 12.5));
+	ASSERT_STREQ("12", buffer);
+	ASSERT_EQ_INT(INDIGO_FAILED, indigo_format_number(buffer, 0, "%g", 1));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_format_number(buffer, sizeof(buffer), "%6.3m", 12.5));
+	ASSERT_STREQ("12:30", buffer);
+}
+
 static void sexagesimal_helpers_parse_and_format_values(void) {
 	ASSERT_NEAR(12.5, indigo_stod("12:30:00"), 1e-12);
 	ASSERT_NEAR(-0.5, indigo_stod("-0:30:00"), 1e-12);
@@ -282,6 +302,7 @@ static void refusal_of_a_busy_property_is_only_a_message(void) {
 
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "numeric_zero_exponents_and_format_status", numeric_zero_exponents_and_format_status },
 		{ "refusal_of_an_idle_property_publishes_alert", refusal_of_an_idle_property_publishes_alert },
 		{ "refusal_of_a_busy_property_is_only_a_message", refusal_of_a_busy_property_is_only_a_message },
 		{ "numeric_string_helpers_parse_and_format_values", numeric_string_helpers_parse_and_format_values },

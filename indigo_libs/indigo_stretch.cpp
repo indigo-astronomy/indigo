@@ -242,17 +242,20 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 
 // value - pixel value
 // native_shadows, native_highlights - shadows and highlights thresholds in input range
-// k1_k2 = k1 * k2
-// midtones_k2 = midtones / k2
+// k1, k2 - rational transfer coefficients without division by the midpoint term
 
-inline static uint8_t stretch(double value, int native_shadows, int native_highlights, double k1_k2, double midtones_k2) {
-	if (value < native_shadows) {
+inline static uint8_t stretch(double value, int native_shadows, int native_highlights, double k1, double k2, double midtones) {
+	if (value <= native_shadows) {
 		return 0;
-	} else if (value > native_highlights) {
+	} else if (value >= native_highlights) {
 		return 0xFF;
+	} else if (midtones == 0) {
+		return 0xFF;
+	} else if (midtones == 1) {
+		return 0;
 	} else {
 		const double input_floored = (value - native_shadows);
-		return (uint8_t)(k1_k2 * input_floored / (input_floored - midtones_k2));
+		return (uint8_t)(k1 * input_floored / (k2 * input_floored - midtones));
 	}
 }
 
@@ -271,11 +274,9 @@ template <typename T> void indigo_stretch(T *input_buffer, int step, int width, 
 	const int native_highlights = (int)(highlights * max_input);
 	const double k1 = (midtones - 1) * hs_range_factor * 0xFF / max_input;
 	const double k2 = ((2 * midtones) - 1) * hs_range_factor / max_input;
-	const double k1_k2 = k1 / k2;
-	const double midtones_k2 = midtones / k2;
 	if (size < MIN_SIZE_TO_PARALLELIZE) {
 		for (int i = 0; i < size; i++) {
-			output_buffer[i * step] = stretch(input_buffer[i * step] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
+			output_buffer[i * step] = stretch(input_buffer[i * step] / coef, native_shadows, native_highlights, k1, k2, midtones);
 		}
 	} else {
 		std::vector<std::thread> threads(max_threads);
@@ -286,7 +287,7 @@ template <typename T> void indigo_stretch(T *input_buffer, int step, int width, 
 				int end = start + chunk;
 				end = (end > size) ? size : end;
 				for (int i = start; i < end; i++) {
-					output_buffer[i * step] = stretch(input_buffer[i * step] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
+					output_buffer[i * step] = stretch(input_buffer[i * step] / coef, native_shadows, native_highlights, k1, k2, midtones);
 				}
 			});
 		}
@@ -311,18 +312,18 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 	int reference = 0;
 	double redCoef = 1, greenCoef = 1, blueCoef = 1;
 	if (totals) {
-		if (totals[0] > totals[1] && totals[0] > totals[2]) {
+		if (totals[0] >= totals[1] && totals[0] >= totals[2]) {
 			reference = 0;
-			greenCoef = (double)totals[1] / totals[0];
-			blueCoef = (double)totals[2] / totals[0];
-		} else if (totals[1] > totals[0] && totals[1] > totals[2]) {
+			greenCoef = (totals[1] && totals[0]) ? (double)totals[1] / totals[0] : 1;
+			blueCoef = (totals[2] && totals[0]) ? (double)totals[2] / totals[0] : 1;
+		} else if (totals[1] >= totals[0] && totals[1] >= totals[2]) {
 			reference = 1;
-			redCoef = (double)totals[0] / totals[1];
-			blueCoef = (double)totals[2] / totals[1];
+			redCoef = (totals[0] && totals[1]) ? (double)totals[0] / totals[1] : 1;
+			blueCoef = (totals[2] && totals[1]) ? (double)totals[2] / totals[1] : 1;
 		} else {
 			reference = 2;
-			redCoef = (double)totals[0] / totals[2];
-			greenCoef = (double)totals[1] / totals[2];
+			redCoef = (totals[0] && totals[2]) ? (double)totals[0] / totals[2] : 1;
+			greenCoef = (totals[1] && totals[2]) ? (double)totals[1] / totals[2] : 1;
 		}
 	}
 	const double hs_range_factor = highlights[reference] == shadows[reference] ? 1.0f : 1.0f / (highlights[reference] - shadows[reference]);
@@ -330,8 +331,6 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 	const int native_highlights = highlights[reference] * max_input;
 	const double k1 = (midtones[reference] - 1) * hs_range_factor * 0xFF / max_input;
 	const double k2 = ((2 * midtones[reference]) - 1) * hs_range_factor / max_input;
-	const double k1_k2 = k1 / k2;
-	const double midtones_k2 = midtones[1] / k2;
 	if (size < MIN_SIZE_TO_PARALLELIZE) {
 		int input_index = 0;
 		for (int row_index = 0; row_index < height; row_index++) {
@@ -339,9 +338,9 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 				double red = 0, green = 0, blue = 0;
 				int output_index = input_index * 3;
 				debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
-				output_buffer[output_index] = stretch(red / redCoef, native_shadows, native_highlights, k1_k2, midtones_k2);
-				output_buffer[output_index + 1] = stretch(green / greenCoef, native_shadows, native_highlights, k1_k2, midtones_k2);
-				output_buffer[output_index + 2] = stretch(blue / blueCoef, native_shadows, native_highlights, k1_k2, midtones_k2);
+				output_buffer[output_index] = stretch(red / redCoef, native_shadows, native_highlights, k1, k2, midtones[reference]);
+				output_buffer[output_index + 1] = stretch(green / greenCoef, native_shadows, native_highlights, k1, k2, midtones[reference]);
+				output_buffer[output_index + 2] = stretch(blue / blueCoef, native_shadows, native_highlights, k1, k2, midtones[reference]);
 				input_index++;
 			}
 		}
@@ -359,9 +358,9 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 						double red = 0, green = 0, blue = 0;
 						int output_index = input_index * 3;
 						debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
-						output_buffer[output_index] = stretch(red / redCoef, native_shadows, native_highlights, k1_k2, midtones_k2);
-						output_buffer[output_index + 1] = stretch(green / greenCoef, native_shadows, native_highlights, k1_k2, midtones_k2);
-						output_buffer[output_index + 2] = stretch(blue / blueCoef, native_shadows, native_highlights, k1_k2, midtones_k2);
+						output_buffer[output_index] = stretch(red / redCoef, native_shadows, native_highlights, k1, k2, midtones[reference]);
+						output_buffer[output_index + 1] = stretch(green / greenCoef, native_shadows, native_highlights, k1, k2, midtones[reference]);
+						output_buffer[output_index + 2] = stretch(blue / blueCoef, native_shadows, native_highlights, k1, k2, midtones[reference]);
 						input_index++;
 					}
 				}
@@ -390,22 +389,16 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 	const int red_native_highlights = (int)(highlights[0] * max_input);
 	const double red_k1 = (midtones[0] - 1) * red_hs_range_factor * 0xFF / max_input;
 	const double red_k2 = ((2 * midtones[0]) - 1) * red_hs_range_factor / max_input;
-	const double red_k1_k2 = red_k1 / red_k2;
-	const double red_midtones_k2 = midtones[0] / red_k2;
 	const double green_hs_range_factor = highlights[1] == shadows[1] ? 1.0f : 1.0f / (highlights[1] - shadows[1]);
 	const int green_native_shadows = (int)(shadows[1] * max_input);
 	const int green_native_highlights = (int)(highlights[1] * max_input);
 	const double green_k1 = (midtones[1] - 1) * green_hs_range_factor * 0xFF / max_input;
 	const double green_k2 = ((2 * midtones[1]) - 1) * green_hs_range_factor / max_input;
-	const double green_k1_k2 = green_k1 / green_k2;
-	const double green_midtones_k2 = midtones[1] / green_k2;
 	const double blue_hs_range_factor = highlights[2] == shadows[2] ? 1.0f : 1.0f / (highlights[2] - shadows[2]);
 	const int blue_native_shadows = (int)(shadows[2] * max_input);
 	const int blue_native_highlights = (int)(highlights[2] * max_input);
 	const double blue_k1 = (midtones[2] - 1) * blue_hs_range_factor * 0xFF / max_input;
 	const double blue_k2 = ((2 * midtones[2]) - 1) * blue_hs_range_factor / max_input;
-	const double blue_k1_k2 = blue_k1 / blue_k2;
-	const double blue_midtones_k2 = midtones[2] / blue_k2;
 	if (size < MIN_SIZE_TO_PARALLELIZE) {
 		int input_index = 0;
 		for (int row_index = 0; row_index < height; row_index++) {
@@ -413,9 +406,9 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 				double red = 0, green = 0, blue = 0;
 				int output_index = input_index * 3;
 				debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
-				output_buffer[output_index] = stretch(red, red_native_shadows, red_native_highlights, red_k1_k2, red_midtones_k2);
-				output_buffer[output_index + 1] = stretch(green, green_native_shadows, green_native_highlights, green_k1_k2, green_midtones_k2);
-				output_buffer[output_index + 2] = stretch(blue, blue_native_shadows, blue_native_highlights, blue_k1_k2, blue_midtones_k2);
+				output_buffer[output_index] = stretch(red, red_native_shadows, red_native_highlights, red_k1, red_k2, midtones[0]);
+				output_buffer[output_index + 1] = stretch(green, green_native_shadows, green_native_highlights, green_k1, green_k2, midtones[1]);
+				output_buffer[output_index + 2] = stretch(blue, blue_native_shadows, blue_native_highlights, blue_k1, blue_k2, midtones[2]);
 				input_index++;
 			}
 		}
@@ -433,9 +426,9 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 						double red = 0, green = 0, blue = 0;
 						int output_index = input_index * 3;
 						debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
-						output_buffer[output_index] = stretch(red, red_native_shadows, red_native_highlights, red_k1_k2, red_midtones_k2);
-						output_buffer[output_index + 1] = stretch(green, green_native_shadows, green_native_highlights, green_k1_k2, green_midtones_k2);
-						output_buffer[output_index + 2] = stretch(blue, blue_native_shadows, blue_native_highlights, blue_k1_k2, blue_midtones_k2);
+						output_buffer[output_index] = stretch(red, red_native_shadows, red_native_highlights, red_k1, red_k2, midtones[0]);
+						output_buffer[output_index + 1] = stretch(green, green_native_shadows, green_native_highlights, green_k1, green_k2, midtones[1]);
+						output_buffer[output_index + 2] = stretch(blue, blue_native_shadows, blue_native_highlights, blue_k1, blue_k2, midtones[2]);
 						input_index++;
 					}
 				}
@@ -616,18 +609,18 @@ void indigo_stretch_16(const uint16_t *input_buffer, int width, int height, uint
 void indigo_stretch_24(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
 	int reference = 0;
 	double coef[3] = { 1, 1, 1 };
-	if (totals[0] > totals[1] && totals[0] > totals[2]) {
+	if (totals[0] >= totals[1] && totals[0] >= totals[2]) {
 		reference = 0;
-		coef[1] = (double)totals[1] / totals[0];
-		coef[2] = (double)totals[2] / totals[0];
-	} else if (totals[1] > totals[0] && totals[1] > totals[2]) {
+		coef[1] = (totals[1] && totals[0]) ? (double)totals[1] / totals[0] : 1;
+		coef[2] = (totals[2] && totals[0]) ? (double)totals[2] / totals[0] : 1;
+	} else if (totals[1] >= totals[0] && totals[1] >= totals[2]) {
 		reference = 1;
-		coef[0] = (double)totals[0] / totals[1];
-		coef[2] = (double)totals[2] / totals[1];
+		coef[0] = (totals[0] && totals[1]) ? (double)totals[0] / totals[1] : 1;
+		coef[2] = (totals[2] && totals[1]) ? (double)totals[2] / totals[1] : 1;
 	} else {
 		reference = 2;
-		coef[0] = (double)totals[0] / totals[2];
-		coef[1] = (double)totals[1] / totals[2];
+		coef[0] = (totals[0] && totals[2]) ? (double)totals[0] / totals[2] : 1;
+		coef[1] = (totals[1] && totals[2]) ? (double)totals[1] / totals[2] : 1;
 	}
 	for (int i = 0; i < 3; i++) {
 		indigo_stretch(input_buffer + i, 3, width, height, output_buffer + i, shadows[reference], midtones[reference], highlights[reference], coef[i]);
@@ -637,18 +630,18 @@ void indigo_stretch_24(const uint8_t *input_buffer, int width, int height, uint8
 void indigo_stretch_48(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
 	int reference = 0;
 	double coef[3] = { 1, 1, 1 };
-	if (totals[0] > totals[1] && totals[0] > totals[2]) {
+	if (totals[0] >= totals[1] && totals[0] >= totals[2]) {
 		reference = 0;
-		coef[1] = (double)totals[1] / totals[0];
-		coef[2] = (double)totals[2] / totals[0];
-	} else if (totals[1] > totals[0] && totals[1] > totals[2]) {
+		coef[1] = (totals[1] && totals[0]) ? (double)totals[1] / totals[0] : 1;
+		coef[2] = (totals[2] && totals[0]) ? (double)totals[2] / totals[0] : 1;
+	} else if (totals[1] >= totals[0] && totals[1] >= totals[2]) {
 		reference = 1;
-		coef[0] = (double)totals[0] / totals[1];
-		coef[2] = (double)totals[2] / totals[1];
+		coef[0] = (totals[0] && totals[1]) ? (double)totals[0] / totals[1] : 1;
+		coef[2] = (totals[2] && totals[1]) ? (double)totals[2] / totals[1] : 1;
 	} else {
 		reference = 2;
-		coef[0] = (double)totals[0] / totals[2];
-		coef[1] = (double)totals[1] / totals[2];
+		coef[0] = (totals[0] && totals[2]) ? (double)totals[0] / totals[2] : 1;
+		coef[1] = (totals[1] && totals[2]) ? (double)totals[1] / totals[2] : 1;
 	}
 	for (int i = 0; i < 3; i++) {
 		indigo_stretch(input_buffer + i, 3, width, height, output_buffer + i, shadows[reference], midtones[reference], highlights[reference], coef[i]);

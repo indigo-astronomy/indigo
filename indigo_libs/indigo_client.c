@@ -577,29 +577,30 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 
 indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, double value) {
 	int format_length = (int)strlen(format);
-	if (!strcmp(format + format_length - 3, "10m")) {
+	if (format_length >= 3 && !strcmp(format + format_length - 3, "10m")) {
 		indigo_dtos_r(value, "%d:%02d:%06.3f", buffer, buffer_size);
 		return INDIGO_OK;
-	} else if (!strcmp(format + format_length - 2, "9m")) {
+	} else if (format_length >= 2 && !strcmp(format + format_length - 2, "9m")) {
 		indigo_dtos_r(value, "%d:%02d:%05.2f", buffer, buffer_size);
 		return INDIGO_OK;
-	} else if (!strcmp(format + format_length - 2, "8m")) {
+	} else if (format_length >= 2 && !strcmp(format + format_length - 2, "8m")) {
 		indigo_dtos_r(value, "%d:%02d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
-	} else if (!strcmp(format + format_length - 2, "6m")) {
+	} else if (format_length >= 2 && !strcmp(format + format_length - 2, "6m")) {
 		indigo_dtos_r(value, "%d:%02d:%02d", buffer, buffer_size);
 		return INDIGO_OK;
-	} else if (!strcmp(format + format_length - 2, "5m")) {
+	} else if (format_length >= 2 && !strcmp(format + format_length - 2, "5m")) {
 		indigo_dtos_r(value, "%d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
-	} else if (!strcmp(format + format_length - 2, "3m")) {
+	} else if (format_length >= 2 && !strcmp(format + format_length - 2, "3m")) {
 		indigo_dtos_r(value, "%d:%02d", buffer, buffer_size);
 		return INDIGO_OK;
-	} else if (!strcmp(format + format_length - 1, "m")) {
+	} else if (format_length >= 1 && !strcmp(format + format_length - 1, "m")) {
 		indigo_dtos_r(value, "%d:%02d:%04.1f", buffer, buffer_size);
 		return INDIGO_OK;
 	} else {
-		return snprintf(buffer, buffer_size, format, value) == 1 ? INDIGO_OK : INDIGO_FAILED;
+		int length = snprintf(buffer, buffer_size > 0 ? buffer_size : 0, format, value);
+		return length >= 0 && length < buffer_size ? INDIGO_OK : INDIGO_FAILED;
 	}
 	return INDIGO_FAILED;
 }

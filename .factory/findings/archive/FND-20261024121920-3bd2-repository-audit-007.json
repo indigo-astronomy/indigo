@@ -2,7 +2,7 @@
   "title": "JSON decoding loses escaped backslashes",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024155149-8381-fix-core-audit-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "indigo_json.c:510-533 checks fresh backslash before existing is_escaped; escaped backslash is never emitted, ordinary Windows paths lose separators and terminal escaped backslash can confuse closing quote. Same file encoder627ff and browser JSON.stringify emit escaped backslashes. Process escaped byte first, then fresh escape; test standard string roundtrips. Unicode escapes also unsupported but not separately claimed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-7). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-007; core-report.md alias CORE-7; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024155149-8381-fix-core-audit-findings/findings.md; verification.md: test_protocol_json / json_parser_preserves_escaped_text. Literal and terminal backslashes, quotes and controls roundtrip through the adapter/parser.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-007"
 }

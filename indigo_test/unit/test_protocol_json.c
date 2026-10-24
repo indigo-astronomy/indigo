@@ -46,6 +46,7 @@ typedef struct {
 	char last_item[INDIGO_NAME_SIZE];
 	double last_number_value;
 	bool last_switch_value;
+	char last_text_value[INDIGO_VALUE_SIZE];
 } protocol_json_context;
 
 static protocol_json_context context;
@@ -67,6 +68,8 @@ static indigo_result test_device_change_property(indigo_device *device, indigo_c
 		INDIGO_COPY_NAME(context.last_item, property->items[0].name);
 		if (property->type == INDIGO_NUMBER_VECTOR) {
 			context.last_number_value = property->items[0].number.value;
+		} else if (property->type == INDIGO_TEXT_VECTOR) {
+			INDIGO_COPY_VALUE(context.last_text_value, indigo_get_text_item_value(property->items));
 		} else if (property->type == INDIGO_SWITCH_VECTOR) {
 			context.last_switch_value = property->items[0].sw.value;
 		}
@@ -326,8 +329,33 @@ static void json_parser_ignores_malformed_fixture_without_change(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+static void json_parser_preserves_escaped_text(void) {
+	const char *values[] = { "C:\\Users\\observer\\images\\", "slash\\then\"quote", "\tline\nreturn\r" };
+	reset_context();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(&test_device));
+	for (int i = 0; i < (int)(sizeof(values) / sizeof(*values)); i++) {
+		indigo_uni_handle *output = indigo_uni_create_file("build/unit/protocol_json_escaped_text.tmp", INDIGO_LOG_NONE);
+		ASSERT_TRUE(output != NULL);
+		indigo_uni_printf(output, "{\"newTextVector\":{\"device\":\"%s\",\"name\":\"%s\",\"items\":[{\"name\":\"%s\",\"value\":\"%s\"}]}}\n", TEST_DEVICE_NAME, TEXT_PROPERTY_NAME, TEXT_ITEM_NAME, indigo_json_escape(values[i]));
+		indigo_uni_close(&output);
+		indigo_uni_handle *input = NULL;
+		indigo_client *client = new_input_adapter("build/unit/protocol_json_escaped_text.tmp", &input);
+		ASSERT_TRUE(client != NULL);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(client));
+		indigo_json_parse(NULL, client);
+		ASSERT_EQ_INT(INDIGO_TEXT_VECTOR, context.last_type);
+		ASSERT_STREQ(values[i], context.last_text_value);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(client));
+		close_input_adapter(client, &input);
+	}
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(&test_device));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "json_parser_preserves_escaped_text", json_parser_preserves_escaped_text },
 		{ "json_escape_handles_special_characters", json_escape_handles_special_characters },
 		{ "json_adapter_serializes_define_update_delete_and_blob_url", json_adapter_serializes_define_update_delete_and_blob_url },
 		{ "json_adapter_escapes_device_and_item_names", json_adapter_escapes_device_and_item_names },

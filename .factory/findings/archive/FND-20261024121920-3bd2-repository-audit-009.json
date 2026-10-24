@@ -2,7 +2,7 @@
   "title": "Profile selection probes the availability of profile zero",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024155149-8381-fix-core-audit-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "indigo_driver.c:1695 selected-profile loop probes test_config_file(...,0,...), independent of selectedi. With saved nonzero profile and absent profile0, CONFIG_LOAD disappears; start_config_restore724 returns early when count1. Probe selectedi; test absent0/present1 and converse. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-9). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-009; core-report.md alias CORE-9; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024155149-8381-fix-core-audit-findings/findings.md; verification.md: test_profile_selection. Profile1-only and profile0-only fixtures confirm LOAD availability follows the selected profile.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-009"
 }

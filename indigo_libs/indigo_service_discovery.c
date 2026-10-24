@@ -330,12 +330,22 @@ indigo_result indigo_start_service_browser(void (*callback)(indigo_service_disco
 #define WINAPI
 #endif
 
-static void *service_process_result_handler(DNSServiceRef s_ref) {
+typedef struct {
+	DNSServiceRef sd_ref;
+	char name[INDIGO_NAME_SIZE];
+	uint32_t interface_index;
+	void (*callback)(const char *name, uint32_t interface_index, const char *host, int port);
+} resolver_context;
+
+static void *service_process_result_handler(void *data) {
+	resolver_context *context = data;
+	DNSServiceRef s_ref = context->sd_ref;
 	DNSServiceErrorType result = DNSServiceProcessResult(s_ref);
 	if (result != kDNSServiceErr_NoError) {
 		INDIGO_ERROR(indigo_error("Failed to process result (%d)", result));
 	}
 	DNSServiceRefDeallocate(s_ref);
+	indigo_safe_free(context);
 	return NULL;
 }
 
@@ -356,15 +366,11 @@ static void copy_unescaped(char *to, const char *from) {
 	*to++ = 0;
 }
 
-static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *callback) {
+static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *data) {
+	resolver_context *context = data;
 	if (error_code != kDNSServiceErr_NoError) {
-		char name[INDIGO_NAME_SIZE], *dot;
-		copy_unescaped(name, full_name);
-		if ((dot = strchr(name, '.'))) {
-			*dot = 0;
-		}
-		INDIGO_ERROR(indigo_error("Service resolution failed for %s", name));
-		((void (*)(const char *name, uint32_t interface_index, const char *host, int port))callback)(name, interface_index, NULL, 0);
+		INDIGO_ERROR(indigo_error("Service resolution failed for %s (%d)", context->name, error_code));
+		context->callback(context->name, context->interface_index, NULL, 0);
 	} else if ((flags & kDNSServiceFlagsMoreComing) == 0) {
 		char name[INDIGO_NAME_SIZE], host[INDIGO_NAME_SIZE], *dot;
 		copy_unescaped(name, full_name);
@@ -377,23 +383,36 @@ static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags,
 		}
 		port = ntohs(port);
 		INDIGO_DEBUG(indigo_debug("Service %s resolved to %s:%d", name, host, port));
-		((void (*)(const char *name, uint32_t interface_index, const char *host, int port))callback)(name, interface_index, host, port);
+		context->callback(name, interface_index, host, port);
 	}
 }
 
 indigo_result indigo_resolve_service(const char *name, uint32_t interface_index, void (*callback)(const char *name, uint32_t interface_index, const char *host, int port)) {
 	INDIGO_DEBUG(indigo_debug("Resolving service %s", name));
-	DNSServiceRef sd_ref = NULL;
-	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, interface_index, name, "_indigo._tcp", "local.", resolver_callback, callback);
+	resolver_context *context = indigo_safe_malloc(sizeof(resolver_context));
+	INDIGO_COPY_NAME(context->name, name);
+	context->interface_index = interface_index;
+	context->callback = callback;
+	DNSServiceErrorType result = DNSServiceResolve(&context->sd_ref, 0, interface_index, name, "_indigo._tcp", "local.", resolver_callback, context);
 	if (result == kDNSServiceErr_NoError) {
-		indigo_async((void *(*)(void *))service_process_result_handler, sd_ref);
-		return INDIGO_OK;
+		if (indigo_async(service_process_result_handler, context)) {
+			return INDIGO_OK;
+		}
+		DNSServiceRefDeallocate(context->sd_ref);
+		indigo_safe_free(context);
+		INDIGO_ERROR(indigo_error("Failed to start resolver thread for %s", name));
+		return INDIGO_FAILED;
 	}
+	indigo_safe_free(context);
 	INDIGO_ERROR(indigo_error("Failed to resolve %s (%d)", name, result));
 	return INDIGO_FAILED;
 }
 
 static void WINAPI browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *callback) {
+	if (error_code != kDNSServiceErr_NoError) {
+		INDIGO_ERROR(indigo_error("Service browser callback failed (%d)", error_code));
+		return;
+	}
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
 		int count = 0;
 		if (flags & kDNSServiceFlagsAdd) {

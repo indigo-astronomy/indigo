@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000040
+#define DRIVER_VERSION 0x03000041
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1692,7 +1692,7 @@ static void streaming_batch_process(indigo_device *device) {
 static double estimator(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RMS contrast = %g", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
-		if (AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value == 0) {
+		if (!isfinite(AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value) || AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value <= 0) {
 			return NAN;
 		}
 		return AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
@@ -1930,18 +1930,33 @@ static int calculate_mode(int arr[], int n) {
 }
 
 static double reduce_ucurve_best_focus(double *best_focuses, int count) {
+	if (count <= 0) {
+		return NAN;
+	}
 	double avg_best_focus = 0;
 	for(int i = 0; i < count; i++) {
+		if (!isfinite(best_focuses[i])) {
+			return NAN;
+		}
 		avg_best_focus += best_focuses[i];
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus for star #%d is at position %.3f", i, best_focuses[i]);
 	}
 	avg_best_focus /= count;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Average best focus = %f", avg_best_focus);
+	if (!isfinite(avg_best_focus)) {
+		return NAN;
+	}
 	if (count < 4) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Not enough stars to calculate standard deviation using average best focus");
 		return avg_best_focus;
 	}
 	double best_focus_stddev = indigo_stddev(best_focuses, count);
+	if (!isfinite(best_focus_stddev)) {
+		return NAN;
+	}
+	if (best_focus_stddev == 0) {
+		return avg_best_focus;
+	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus standard deviation = %f", best_focus_stddev);
 	double best_focus = 0;
 	int used_values = 0;
@@ -1954,6 +1969,9 @@ static double reduce_ucurve_best_focus(double *best_focuses, int count) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC (-): Ignoring outlier best focus for star #%d at position %.3f", i, best_focuses[i]);
 		}
+	}
+	if (used_values == 0) {
+		return NAN;
 	}
 	best_focus /= used_values;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus after outlier removal = %f", best_focus);
@@ -2203,6 +2221,11 @@ static bool autofocus_ucurve(indigo_device *device) {
 	double best_focus = reduce_ucurve_best_focus(best_focuses, stars_used);
 	/* Calculate the steps to best focus */
 	double steps_to_focus = fabs(DEVICE_PRIVATE_DATA->focuser_position - best_focus);
+	if (!isfinite(best_focus) || !isfinite(steps_to_focus)) {
+		indigo_send_message(device, ALERT_PROPERTY, "U-Curve failed to calculate a finite best focus position");
+		focus_failed = true;
+		goto ucurve_finish;
+	}
 	indigo_send_message(device, IDLE_PROPERTY, "U-Curve found best focus at position %.3f", best_focus);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
 	if (!move_focuser_with_overshoot_if_needed(device, !moving_out, steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash, true)) {

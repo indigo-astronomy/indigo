@@ -1739,7 +1739,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	}
 	if (byte_per_pixel == 2 && !little_endian) {
 		uint16_t *raw = (uint16_t *)((char*)data + FITS_HEADER_SIZE);
-		for (unsigned long i = 0; i < size; i++) {
+		for (unsigned long i = 0; i < blobsize / sizeof(*raw); i++) {
 			uint16_t value = *raw;
 			*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 		}

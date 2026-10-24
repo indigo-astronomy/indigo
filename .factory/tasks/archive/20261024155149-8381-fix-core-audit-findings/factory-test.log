@@ -1,0 +1,8 @@
+Working directory: /Users/polakovic/Development/indigo
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+............................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 188 tests in 101.464s
+
+OK
+Configured test commands passed. Assess coverage separately.
