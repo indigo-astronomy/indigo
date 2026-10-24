@@ -34,3 +34,17 @@ Linux and Windows were not executed. Linux keeps the same non-serial ENOTTY expe
 ./.factory/scripts/test exited 0: 188 Factory regressions in 100.626 seconds, all passed. ./.factory/scripts/check was rerun after finding archival and exited 0: 99 active, 50 archived findings, current ADR index, valid project boundaries and clean whitespace. ./.factory/scripts/security was rerun after finding archival and exited 0. findings sync-project --check separately could not acquire its Git lock in the sandbox; the normal findings check already verified navigator synchronization and passed. The archive helper itself succeeded with escalation. No standalone sync pass is claimed.
 
 Canonical FND-000047 is closed as fixed with this verification report attached; prior origin references remain. Documentation/quality/security reviews cover the source and lifecycle diff. No product guide update was necessary. All acceptance criteria pass; no new unresolved finding in scope. Committed-candidate process results belong in the external delivery response.
+
+## Integration retest — 2026-10-24
+
+Owner authorized master integration, publication and local task-branch deletion. The target advanced to 83899ad9bb2187723d5ce977f763cb48c6b4ab33. Merge candidate 2531c67a6ab2672fc133aea551490d866e3c8f42 includes that target without conflict; original repair source is unchanged. All checks run from /Users/polakovic/Development/indigo, same Darwin host/toolchain, with the current agent as sole writer and verifier (not independent).
+
+- make -C indigo_test test-unit (elevated to permit local loopback): exit 0, all 21 unit executables passed, including the exact serial error assertion and both RAW suites. The Makefile dependency rule rebuilds libprimalucelib from incoming sources before its unit suite.
+- ./.factory/scripts/check: exit 0; 99 active/51 archived findings, current ADR index, valid boundaries and whitespace.
+- ./.factory/scripts/security: exit 0; local boundary check passed.
+- make -C indigo_test test-clean: exit 0; generated test binaries removed.
+- Temporary nonserial fixture inventory was empty after the unit run.
+
+AC-001..003 still pass. No source behavior change or new finding was introduced during synchronization. The final process manifest refreshes the merged Xcode identity while retaining the original test identity. Final commit and integration outcomes are reported externally, after committed-range verification.
+
+- ./.factory/scripts/test (integration retest): exit 0; 188 Factory regressions passed in 104.026 seconds.
