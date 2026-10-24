@@ -1,0 +1,59 @@
+{
+  "version": 2,
+  "task": "20261024110344-6f51-close-cgusbst4-investigation",
+  "scope": [
+    ".factory/findings/active/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json",
+    ".factory/findings/archive/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md",
+    ".factory/completions/20261024110344-6f51-close-cgusbst4-investigation.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024110344-6f51-close-cgusbst4-investigation.json": [
+      "100644",
+      "blob",
+      "50501ce08499bf19deea4ce5276d807bbcad2860"
+    ],
+    ".factory/findings/active/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json": null,
+    ".factory/findings/archive/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json": [
+      "100644",
+      "blob",
+      "fb46da7f48d1587502c1d42076a4f8ac9f0298e6"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "e3af50573f317af472e2d428d452dffc3a540b58"
+    ],
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md": [
+      "100644",
+      "blob",
+      "cfa40cf3500f672f68f452d449fa8aacb56c66fa"
+    ]
+  }
+}

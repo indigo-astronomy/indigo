@@ -191,6 +191,10 @@ Returning the same adapter and iEXOS-tested cable to NYX-101 firmware 1.32.1 rep
 
 The run restored parked/tracking-off/R6, DEC, side E and target, but the exact RA return assertion detected -80 motor steps versus the initial count. This residual and its disposition are retained in [same-cable verification](../../.factory/tasks/archive/20261024105327-f79c-verify-nyx-same-st4-cable/verification.md), together with the nonzero script exit; no stored park or counters were rewritten. This raw comparison does not change driver acceptance counts or certify optical/electrical pulse timing.
 
+## Investigation closure (2026-10-24)
+
+The owner ended this topic and requested no further investigation. The documented NYX ST4 polarity difference is retained as an accepted, uncorrected hardware-integration limitation; the orientation finding is archived by owner disposition, not marked fixed. Numeric mapping remains N/S/E/W = 0/1/2/3. No follow-up is scheduled; reopen only on explicit owner request. Prior measurements and the accepted park-return residual remain in their original reports. [Closure evidence](../../.factory/tasks/archive/20261024110344-6f51-close-cgusbst4-investigation/verification.md).
+
 ## Final test summary — numeric protocol repair
 
 - Simulated tests: 7 executed, 7 passed; additional sanitizer variant: 2 executed, 2 passed.
