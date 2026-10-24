@@ -6812,6 +6812,8 @@
 		66A49C98B3E3EE07085D9F9E /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		6F78A5813A358CC4B0C00143 /* 20261024002000-64d7-primaluce-usb-pattern-hw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024002000-64d7-primaluce-usb-pattern-hw.json"; sourceTree = "<group>"; };
 		991E6524B502845D91FAB7AD /* FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json"; sourceTree = "<group>"; };
+		527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_prop_tool_parser.c; sourceTree = "<group>"; };
+		56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_tool_input_safety.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15373,6 +15375,8 @@
 		59FA7BE9301D35FD00A35CFB /* unit */ = {
 			isa = PBXGroup;
 			children = (
+				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
+				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,
 				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
 				D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */,
 				C1709E72227841389E72BABD /* test_transport_cache_security.c */,
@@ -15938,6 +15942,8 @@
 				B75F523ADB53F70E6C693D97 /* FND-000004.json */,
 				9C2B8FC2F863059D344B519D /* FND-000005.json */,
 				2365540113A4B7BEB46DD53C /* FND-000006.json */,
+				ABFBADC40CC38B3339EAD3FE /* FND-000036.json */,
+				9CBA640883230290891EF505 /* FND-000037.json */,
 				A37218AB75285F589283925B /* FND-000044.json */,
 				70F570AEDCA386A9012318DE /* FND-000045.json */,
 				A871B79485B04B3AE5D8D5D8 /* FND-000047.json */,
@@ -18480,8 +18486,6 @@
 				1D860E293268829AA8DA5004 /* FND-000033.json */,
 				BAC8C5B340672D8FD3998AEC /* FND-000034.json */,
 				CE588E113882E3807E94B6D4 /* FND-000035.json */,
-				ABFBADC40CC38B3339EAD3FE /* FND-000036.json */,
-				9CBA640883230290891EF505 /* FND-000037.json */,
 				F3DECF24795E3AC3DA9DCBED /* FND-000038.json */,
 				68D24B5CAFEB5EDD006F5F98 /* FND-000039.json */,
 				2048B08CCA83914EAB044C67 /* FND-000040.json */,

@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <limits.h>
+#include <errno.h>
 
 #if !defined(INDIGO_WINDOWS)
 #include <net/if.h>
@@ -37,7 +38,6 @@
 #include <indigo/indigo_service_discovery.h>
 
 #define INDIGO_DEFAULT_PORT 7624
-#define REMINDER_MAX_SIZE 2048
 #define TEXT_LEN_TO_PRINT 80
 #define MAX_ITEMS 128
 
@@ -109,7 +109,9 @@ int read_file(const char *file_name, char **file_data) {
 
 void trim_ending_spaces(char * str) {
 	int len = (int)strlen(str);
-	while(isspace(str[len - 1])) str[--len] = '\0';
+	while (len > 0 && isspace((unsigned char)str[len - 1])) {
+		str[--len] = '\0';
+	}
 }
 
 
@@ -127,11 +129,15 @@ char* str_upper_case(char *str) {
 void trim_spaces(char * str) {
 	/* trim ending */
 	int len = (int)strlen(str);
-	while(isspace(str[len - 1])) str[--len] = '\0';
+	while (len > 0 && isspace((unsigned char)str[len - 1])) {
+		str[--len] = '\0';
+	}
 
 	/* trim begining */
 	int skip = 0;
-	while(isspace(str[skip])) skip++;
+	while (isspace((unsigned char)str[skip])) {
+		skip++;
+	}
 	if (skip) {
 		len = 0;
 		while (str[len + skip] != '\0') {
@@ -167,115 +173,130 @@ int process_quotes(char *value) {
 }
 
 
-int parse_list_property_string(const char *prop_string, property_list_request *plr) {
-	int res;
-	char format[1024];
+static bool copy_field(char *destination, size_t capacity, const char *start, const char *end) {
+	size_t length = end - start;
+	if (length == 0 || length >= capacity || memchr(start, '\r', length) || memchr(start, '\n', length)) {
+		return false;
+	}
+	memcpy(destination, start, length);
+	destination[length] = '\0';
+	return true;
+}
 
+int parse_list_property_string(const char *prop_string, property_list_request *plr) {
 	plr->device_name[0] = '\0';
 	plr->property_name[0] = '\0';
-
-	if ((prop_string == NULL) || ( *prop_string == '\0')) {
+	if (prop_string == NULL || *prop_string == '\0') {
 		return 0;
 	}
-
-	sprintf(format, "%%%d[^.].%%%ds", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE);
-	res = sscanf(prop_string, format, plr->device_name, plr->property_name);
-	if (res > 2) {
-		// errno = EINVAL;
+	const char *separator = strchr(prop_string, '.');
+	const char *end = prop_string + strlen(prop_string);
+	if (!copy_field(plr->device_name, sizeof(plr->device_name), prop_string, separator ? separator : end)) {
 		return -1;
 	}
-	trim_ending_spaces(plr->property_name);
-	return res;
+	if (separator == NULL) {
+		return 1;
+	}
+	if (!copy_field(plr->property_name, sizeof(plr->property_name), separator + 1, end)) {
+		return -1;
+	}
+	trim_spaces(plr->property_name);
+	return plr->property_name[0] ? 2 : -1;
 }
 
+static const char *parse_property_prefix(const char *text, char *device, char *property) {
+	if (text == NULL) {
+		return NULL;
+	}
+	const char *first = strchr(text, '.');
+	const char *second = first ? strchr(first + 1, '.') : NULL;
+	if (second == NULL || !copy_field(device, INDIGO_NAME_SIZE, text, first) || !copy_field(property, INDIGO_NAME_SIZE, first + 1, second)) {
+		return NULL;
+	}
+	return second + 1;
+}
 
 int parse_set_property_string(const char *prop_string, property_change_request *scr) {
-	int res;
-	char format[1024];
-	char remainder[REMINDER_MAX_SIZE];
-
-	if ((prop_string == NULL) || ( *prop_string == '\0')) {
-		// errno = EINVAL;
+	scr->item_count = 0;
+	const char *cursor = parse_property_prefix(prop_string, scr->device_name, scr->property_name);
+	if (cursor == NULL) {
 		return -1;
 	}
-
-	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
-	res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name[0], remainder);
-	if (res != 4) {
-		// errno = EINVAL;
-		return -1;
-	}
-	trim_ending_spaces(scr->item_name[0]);
-	trim_spaces(remainder);
-
-	scr->item_count = 1;
-	bool finished = false;
-	while(!finished) {
-		sprintf(format, "%%%d[^;];%%%d[^\r]s", INDIGO_VALUE_SIZE, REMINDER_MAX_SIZE);
-		res = sscanf(remainder, format, scr->value_string[scr->item_count-1], remainder);
-		trim_spaces(scr->value_string[scr->item_count-1]);
-		process_quotes(scr->value_string[scr->item_count-1]);
-		if (res == 1) {
-			finished = true;
-			break;
-		} else if (res == 2) {
-			trim_spaces(remainder);
-			scr->item_count++;
-			sprintf(format, "%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
-			res = sscanf(remainder, format, scr->item_name[scr->item_count-1], remainder);
-			if (res != 2) {
-				// errno = EINVAL;
-				return -1;
-			}
-			trim_spaces(scr->item_name[scr->item_count-1]);
-			trim_spaces(remainder);
-		} else {
-			// errno = EINVAL;
+	while (*cursor) {
+		if (scr->item_count >= MAX_ITEMS) {
 			return -1;
 		}
+		const char *end = strchr(cursor, ';');
+		if (end == NULL) {
+			end = cursor + strlen(cursor);
+		}
+		const char *equals = memchr(cursor, '=', end - cursor);
+		int index = scr->item_count;
+		if (equals == NULL || !copy_field(scr->item_name[index], sizeof(scr->item_name[index]), cursor, equals) || !copy_field(scr->value_string[index], sizeof(scr->value_string[index]), equals + 1, end)) {
+			return -1;
+		}
+		trim_spaces(scr->item_name[index]);
+		trim_spaces(scr->value_string[index]);
+		if (!scr->item_name[index][0] || !scr->value_string[index][0]) {
+			return -1;
+		}
+		process_quotes(scr->value_string[index]);
+		scr->item_count++;
+		if (*end == '\0' || end[1] == '\0') {
+			return scr->item_count;
+		}
+		cursor = end + 1;
 	}
-	return scr->item_count;
+	return -1;
 }
-
 
 int parse_get_property_string(const char *prop_string, property_get_request *sgr) {
-	int res;
-	char format[1024];
-	char remainder[REMINDER_MAX_SIZE];
-
-	if ((prop_string == NULL) || ( *prop_string == '\0')) {
-		// errno = EINVAL;
-		return -1;
-	}
-
-	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
-	res = sscanf(prop_string, format, sgr->device_name, sgr->property_name, remainder);
-	if (res != 3) {
-		// errno = EINVAL;
-		return -1;
-	}
-	trim_spaces(remainder);
-
 	sgr->item_count = 0;
-	bool finished = false;
-	while(!finished) {
-		sprintf(format, "%%%d[^;];%%%d[^\r]s", INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
-		res = sscanf(remainder, format, sgr->item_name[sgr->item_count], remainder);
-		trim_spaces(sgr->item_name[sgr->item_count]);
-		if (res == 1) {
-			sgr->item_count++;
-			finished = true;
-			break;
-		} else if (res == 2) {
-			sgr->item_count++;
-		} else {
-			// errno = EINVAL;
+	const char *cursor = parse_property_prefix(prop_string, sgr->device_name, sgr->property_name);
+	if (cursor == NULL) {
+		return -1;
+	}
+	while (*cursor) {
+		if (sgr->item_count >= MAX_ITEMS) {
 			return -1;
 		}
+		const char *end = strchr(cursor, ';');
+		if (end == NULL) {
+			end = cursor + strlen(cursor);
+		}
+		char *item = sgr->item_name[sgr->item_count];
+		if (!copy_field(item, sizeof(sgr->item_name[0]), cursor, end)) {
+			return -1;
+		}
+		trim_spaces(item);
+		if (!*item) {
+			return -1;
+		}
+		sgr->item_count++;
+		if (*end == '\0' || end[1] == '\0') {
+			return sgr->item_count;
+		}
+		cursor = end + 1;
 	}
-	return sgr->item_count;
+	return -1;
 }
 
+static bool parse_remote_server(const char *text, char *hostname, size_t capacity, int *port) {
+	const char *separator = strchr(text, ':');
+	if (!copy_field(hostname, capacity, text, separator ? separator : text + strlen(text))) {
+		return false;
+	}
+	if (separator) {
+		char *end;
+		errno = 0;
+		long value = strtol(separator + 1, &end, 10);
+		if (errno || end == separator + 1 || *end || value < 1 || value > 65535) {
+			return false;
+		}
+		*port = (int)value;
+	}
+	return true;
+}
 
 static void save_blob(char *filename, char *data, size_t length) {
 	indigo_uni_handle *handle = indigo_uni_create_file(filename, INDIGO_LOG_ERROR);
@@ -942,9 +963,9 @@ int main(int argc, const char * argv[]) {
 		} else if (!strcmp(argv[i], "-r") || !strcmp(argv[i], "--remote-server")) {
 			if (argc > i+1) {
 				i++;
-				char port_str[100];
-				if (sscanf(argv[i], "%[^:]:%s", hostname, port_str) > 1) {
-					port = atoi(port_str);
+				if (!parse_remote_server(argv[i], hostname, sizeof(hostname), &port)) {
+					fprintf(stderr, "Invalid remote server\n");
+					return 1;
 				}
 			} else {
 				fprintf(stderr, "No hostname specified\n");
