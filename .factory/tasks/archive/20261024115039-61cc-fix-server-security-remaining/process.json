@@ -130,7 +130,7 @@
     "indigo.xcodeproj/project.pbxproj": [
       "100755",
       "blob",
-      "4e3e97f6b2e668e1701478d0934e5e7460e13620"
+      "a3c0426e108f0ffa96d94d3b14f393ba022af160"
     ],
     "indigo_docs/PROTOCOLS.md": [
       "100644",
@@ -170,7 +170,7 @@
     "indigo_test/Makefile": [
       "100644",
       "blob",
-      "e33edcdb32b1cd81989217210e2e092e5d28465b"
+      "06099174478893775c36f0dfe62da422ccde1c65"
     ],
     "indigo_test/integration/test_transport_http_security.c": [
       "100644",

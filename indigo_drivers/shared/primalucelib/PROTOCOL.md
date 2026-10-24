@@ -12,6 +12,8 @@ Each command below says how it is known:
   `indigo_drivers/focuser_primaluce/REFACTOR.md`.
 - **HW (SESTO SENSO 3)**: verified on a SESTO SENSO 3 with an ARCO (application firmware 1.0.9, web
   03.06.01) over USB, tasks 011 to 013. Evidence: `indigo_drivers/focuser_primaluce/REFACTOR.md`.
+- **HW (GIOTTO)**: verified on a GIOTTO (application firmware 1.03.09, web 1.1) over USB. Evidence:
+  `indigo_drivers/aux_giotto/REFACTOR.md`.
 - **DOC**: described in the PrimaLuce Lab "Communication Protocol" v4.0 (05 Dec 2022, ESATTO,
   SESTOSENSO2 and ARCO models) and not used by `indigo_focuser_primaluce`.
 - **SIM**: used by `indigo_focuser_primaluce` and covered by its simulator, but not observed on
@@ -220,16 +222,33 @@ Full-state keys used by the focuser driver (**HW**):
 - **Angle range:** INDI maps 0–360° to the ±180° range the ARCO uses, counter-clockwise positive
   when seen from behind (**INDI**).
 
-## GIOTTO flat panel (INDI)
+## GIOTTO flat panel
 
-| Purpose | Request | Reply |
-| --- | --- | --- |
-| Maximum brightness | `{"req":{"get":{"MAX_BRIGHTNESS":""}}}` | number |
-| Brightness | `{"req":{"get":{"BRIGHTNESS":""}}}` / `{"req":{"set":{"BRIGHTNESS":512}}}` | number / `"done"` |
-| Light on / off | `{"req":{"get":{"LIGHT":""}}}` / `{"req":{"set":{"LIGHT":1}}}` | `1` or `0` / not read by INDI |
+Sources: the PrimaLuce Lab "GIOTTO Communication Protocol" v2.1 (20 Feb 2023) and a GIOTTO with application
+firmware 1.03.09, web 1.1, probed on 2026-10-24 (**HW (GIOTTO)**; transcript summary in
+`indigo_drivers/aux_giotto/REFACTOR.md`). Used by `indigo_aux_giotto`.
 
-INDI sends `set LIGHT` without reading a reply, so it is not known whether the panel answers
-it. The library expects `"done"`, like every other set.
+| Purpose | Request | Reply | Known |
+| --- | --- | --- | --- |
+| Full state | `{"req":{"get": ""}}` | as v2.1, plus `MOTOR`, `LIGHT_FADING_TIME`, `STRIPLIGHT_1`/`_2`, LAN fields; `NTC_T`, `VIN_12V`, `VIN_USB` are top-level strings | HW (GIOTTO) |
+| Light and brightness | `{"req":{"get":{"LIGHT":"","BRIGHTNESS":""}}}` | both fields in one reply | HW (GIOTTO) |
+| Temperature and supplies | `{"req":{"get":{"NTC_T":"","VIN_12V":"","VIN_USB":""}}}` | strings | HW (GIOTTO) |
+| Maximum brightness | `{"req":{"get":{"MAX_BRIGHTNESS":""}}}` | number (114 on the unit) | HW (GIOTTO) |
+| Light on / off | `{"req":{"set":{"LIGHT":1}}}` | `"done"`; any number is acknowledged, only `1` switches on | HW (GIOTTO) |
+| Brightness | `{"req":{"set":{"BRIGHTNESS":60}}}` | `"done"` for 0 to `MAX_BRIGHTNESS`, otherwise `"Error: invalid command"`; works with the light off | HW (GIOTTO) |
+| Preset | `{"req":{"set":{"PRESET_1":{"NAME":"low","BRIGHTNESS":20}}}}` | `"done"` per member, `NAME` applied first; the brightness of a preset without a name is refused (`"Error: invalid command"`), a named one takes 0 to `MAX_BRIGHTNESS`; an empty name deletes and keeps the brightness | HW (GIOTTO) |
+| Recall preset | `{"req":{"cmd":{"PRESET":1}}}` | `"done"`, sets the brightness only; `"Error: empty preset"`; above 9 `"Error: invalid command"` | HW (GIOTTO) |
+| Fading | `{"req":{"set":{"LIGHT_FADING":0}}}` | `"done"` | HW (GIOTTO) |
+| Light at power on | `{"req":{"set":{"LIGHT_ATPWON":1}}}` | `"done"` | HW (GIOTTO) |
+| LEDs | `{"req":{"cmd":{"DIMLEDS":"low"}}}` | `{"cmd":{"cmd":"done"}}` | HW (GIOTTO) |
+
+- **Members are independent:** a combined set is applied member by member, so `{"LIGHT":1,"BRIGHTNESS":200}`
+  switches the light on and refuses the brightness. The library sets one value per request.
+- **`LIGHT_STATUS`:** "off", "on" (light on, brightness 0) or "lighting"; "fading" never appeared with fading
+  enabled, so the driver does not use it.
+- **Unknown keys** answer `"Error: Obj's name not found or invalid command"` in their field; `get LOGLEVEL` is one.
+- **Malformed input** (garbage, a request split across writes) gets no reply.
+- **`LIGHT_FADING_TIME`** (10 on the unit) is accepted but undocumented; its unit is unknown.
 
 ## ALTO cover (INDI)
 

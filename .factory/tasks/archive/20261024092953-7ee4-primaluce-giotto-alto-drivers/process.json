@@ -1,0 +1,219 @@
+{
+  "version": 2,
+  "task": "20261024092953-7ee4-primaluce-giotto-alto-drivers",
+  "scope": [
+    "indigo_drivers/aux_giotto/*",
+    "indigo_drivers/shared/primalucelib/*",
+    "indigo_test/integration/test_aux_giotto_simulator.c",
+    "indigo_test/hardware/test_aux_giotto_hw.c",
+    "indigo_test/unit/test_primalucelib.c",
+    "indigo_test/Makefile",
+    "indigo_server/indigo_server.c",
+    "Makefile",
+    "indigo_windows.sln",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/PROPERTIES.md",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_giotto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_giotto",
+        "--hw",
+        "--port",
+        "/dev/ttyUSB0"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_primaluce",
+        "--no-record"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "input-parsing": "security.md",
+    "data-model": "security.md",
+    "dependencies": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024092953-7ee4-primaluce-giotto-alto-drivers.json": [
+      "100644",
+      "blob",
+      "3b53673005ed1d65e18f41c535812b83065d4681"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "5706b2632fcf8150e09c44a7cb79a88534602782"
+    ],
+    "Makefile": [
+      "100644",
+      "blob",
+      "47c8854ea2388c04bd2f7dd70aab89cdc2ea634f"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "0c2d6371c96f372d0657ac4cb524bba04a394e4b"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "0023a692d2b9f8c6d1b05108f223d92b258919ae"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "d74bc4d498e2f9e87e798b9e39398d7b799dd1d9"
+    ],
+    "indigo_drivers/aux_giotto/Makefile.inc": [
+      "100644",
+      "blob",
+      "6c8a652ab1f97a2cf2e88d7c8be85ab1f2959d2b"
+    ],
+    "indigo_drivers/aux_giotto/README.md": [
+      "100644",
+      "blob",
+      "16f9e17298027bec4716b5032d7b1230260deb7b"
+    ],
+    "indigo_drivers/aux_giotto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "944b1a7137c2ee54f3512390b198261318709ce1"
+    ],
+    "indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c": [
+      "100644",
+      "blob",
+      "3e3d986263135882c77cd400b8bfa2a054d66b45"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c": [
+      "100644",
+      "blob",
+      "bee2667fedef4837ceb3f327753f659f2755040d"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.driver": [
+      "100644",
+      "blob",
+      "6a3e031c7b9e869452ed25768445fc5e23b115da"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.h": [
+      "100644",
+      "blob",
+      "2c8dc041cf33facd73318b57fb7f045de40176d2"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.vcxproj": [
+      "100644",
+      "blob",
+      "071e4c13398aa45ab4861bc65f5606360216430b"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.vcxproj.filters": [
+      "100644",
+      "blob",
+      "91bd72c4919b2f9304796cd7e00e2c3c0cbf2e2c"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.vcxproj.user": [
+      "100644",
+      "blob",
+      "88a550947edbc3c5003a41726f0749201fdb6822"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto_main.c": [
+      "100644",
+      "blob",
+      "5338ebc8220cdcc168a8896a2898cee931029659"
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "d637a07feb2116c44c0c318445c9db151b29352f"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "57b6df41a10e9578d074fd9b09a2339d9f4bed7f"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.h": [
+      "100644",
+      "blob",
+      "1ad569223e7762c0e379c4f446d68eb935836b7c"
+    ],
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "b0a98ab40c93e4e5bbb7e3162517af208d7f0ec4"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "6b657e84d6d496d9d6fc9cd81d909d186ce78a4c"
+    ],
+    "indigo_test/hardware/test_aux_giotto_hw.c": [
+      "100644",
+      "blob",
+      "ddecba0fe98711631bbd2a139be0deaee8078d71"
+    ],
+    "indigo_test/integration/test_aux_giotto_simulator.c": [
+      "100644",
+      "blob",
+      "fff529b6b14f1081b65725088e9b71903c7cd2d6"
+    ],
+    "indigo_test/unit/test_primalucelib.c": [
+      "100644",
+      "blob",
+      "bf798f43768c55d4b32966c8ca3d01664fecbec8"
+    ],
+    "indigo_windows.sln": [
+      "100644",
+      "blob",
+      "a50fea66fd91619ee643b4c164af3d69e3ccfdd5"
+    ]
+  }
+}

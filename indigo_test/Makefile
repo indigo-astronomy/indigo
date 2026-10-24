@@ -200,6 +200,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_aux_fbc_simulator \
 	$(INTEGRATION_BUILD)/test_aux_flatmaster_simulator \
 	$(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator \
+	$(INTEGRATION_BUILD)/test_aux_giotto_simulator \
 	$(INTEGRATION_BUILD)/test_aux_flipflat_simulator \
 	$(INTEGRATION_BUILD)/test_ao_sx_simulator \
 	$(INTEGRATION_BUILD)/test_aux_upb3_simulator \
@@ -273,6 +274,7 @@ FOCUSER_NFOCUS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_nfocus.a
 FOCUSER_NSTEP_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_nstep.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_optec.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(PRIMALUCELIB) $(TEST_LDFLAGS) -lindigocat
+AUX_GIOTTO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_giotto.a $(PRIMALUCELIB) $(TEST_LDFLAGS) -lindigocat
 FOCUSER_PRODIGY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_prodigy.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ROBOFOCUS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_robofocus.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_STEELDRIVE2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_steeldrive2.a $(TEST_LDFLAGS) -lindigocat
@@ -654,6 +656,9 @@ $(INTEGRATION_BUILD)/aux_arteskyflat_simulator: ../indigo_drivers/aux_arteskyfla
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/aux_geoptikflat_simulator: ../indigo_drivers/aux_geoptikflat/aux_geoptikflat_simulator/aux_geoptikflat_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/giotto_simulator: ../indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c ../indigo_drivers/shared/primalucelib/jsmn.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/aux_astromechanics_simulator: ../indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -1200,6 +1205,9 @@ $(INTEGRATION_BUILD)/test_aux_wcv4ec_simulator: integration/test_aux_wcv4ec_simu
 
 $(INTEGRATION_BUILD)/test_aux_arteskyflat_simulator: integration/test_aux_arteskyflat_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_arteskyflat_simulator $(BUILD_DRIVERS)/indigo_aux_arteskyflat.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_ARTESKYFLAT_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_giotto_simulator: integration/test_aux_giotto_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/giotto_simulator $(BUILD_DRIVERS)/indigo_aux_giotto.a $(PRIMALUCELIB) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_GIOTTO_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_aux_geoptikflat_simulator: integration/test_aux_geoptikflat_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_geoptikflat_simulator $(BUILD_DRIVERS)/indigo_aux_geoptikflat.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_GEOPTIKFLAT_SIMULATOR_TEST_LDFLAGS)
@@ -2972,6 +2980,18 @@ AUX_ARTESKYFLAT_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_arteskyflat.a $(TE
 
 $(TEST_BUILD)/hardware/test_aux_arteskyflat_hw: hardware/test_aux_arteskyflat_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_arteskyflat.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_ARTESKYFLAT_HW_TEST_LDFLAGS)
+
+# A physical PrimaLuce Lab GIOTTO is opt-in and excluded from normal integration tests. THE PANEL LIGHTS UP; the
+# run restores the light, the brightness, the settings and the preset names it uses. Set GIOTTO_HW_PORT (or
+# 'run_driver_test.py aux_giotto --hw --port') to the port.
+.PHONY: test-aux-giotto-hw
+test-aux-giotto-hw: check-lib $(TEST_BUILD)/hardware/test_aux_giotto_hw
+	$(TEST_BUILD)/hardware/test_aux_giotto_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+
+AUX_GIOTTO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_giotto.a $(PRIMALUCELIB) $(TEST_LDFLAGS)
+
+$(TEST_BUILD)/hardware/test_aux_giotto_hw: hardware/test_aux_giotto_hw.c hardware/hardware_device_record.h hardware/hardware_test_common.h test_runner.h $(BUILD_DRIVERS)/indigo_aux_giotto.a $(PRIMALUCELIB) | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(AUX_GIOTTO_HW_TEST_LDFLAGS)
 
 # A physical ASTROMECHANICS Light Pollution Meter PRO, or the Arduino sketch aux_astromechanics_simulator.ino
 # on a board, is opt-in and excluded from normal integration tests. Nothing is written to the meter. Set
