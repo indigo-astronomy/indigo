@@ -122,8 +122,10 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
 | Sub-model | `{"req":{"srv":{"GET_MODEL_SUBMODEL":""}}}` | `"Model = SESTOSENSO3, SubModel = SESTOSENSO3SC, ARCO = Not enabled"` | INDI |
 | Recovery delay | `{"req":{"set":{"RECOVER_DELAY":30}}}` | SESTO SENSO 3, -1 to 120 s | INDI |
 
-- **WiFi credentials:** the credentials are inserted into the JSON without escaping, like the
-  driver always did. An SSID or password that contains `"` or `\` produces an invalid request.
+- **WiFi credentials:** SSID and password values are JSON escaped before insertion: quotes and
+  backslashes are escaped, control bytes use `\u00XX`, and other bytes (including UTF-8) are preserved.
+  Both setters support full INDIGO text items even at maximum escaping expansion; larger library
+  inputs that exceed the encoding buffers or complete request capacity fail without sending a partial request.
 - **Before restarting:** a driver must not restart the controller while another logical device
   still shares the link. `indigo_focuser_primaluce` refuses the WiFi mode change while the
   rotator is connected.

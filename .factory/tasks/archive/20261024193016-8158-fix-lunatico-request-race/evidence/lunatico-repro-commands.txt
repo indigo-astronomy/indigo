@@ -1,0 +1,244 @@
+## focuser_lunatico_simulator/unnamed-0.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!read temps 0#
+!read temps 0#
+!step ismoving 0#
+!step getpos 0#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## focuser_lunatico_simulator/unnamed-1.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!read temps 0#
+!read temps 0#
+!step ismoving 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step getpos 0#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## focuser_lunatico_simulator/unnamed-2.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!read temps 0#
+!read temps 0#
+!step ismoving 0#
+!step getpos 0#
+!step getpos 0#
+!step goto 0 1700 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step goto 0 1500 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!read temps 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+
+## focuser_lunatico_simulator/unnamed-3.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## focuser_lunatico_simulator/unnamed-4.events
+!seletek version#
+!seletek version#
+!step delswlimits 2#
+!step movepow 2 1023#
+!step stoppow 2 0#
+!step model 2 0#
+!step halfstep 2 0#
+!step getpos 2#
+!step speedrangeus 2 10000 10000#
+!step wiremode 2 0#
+!step delswlimits 2#
+!read temps 0#
+!read temps 0#
+!step ismoving 2#
+!step getpos 2#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## rotator_lunatico_simulator/unnamed-0.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## rotator_lunatico_simulator/unnamed-1.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step setpos 1 1000#
+!step getpos 1#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## rotator_lunatico_simulator/unnamed-2.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step getpos 1#
+!step goto 1 900 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+
+## rotator_lunatico_udp_simulator/unnamed-0.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## rotator_lunatico_udp_simulator/unnamed-1.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step setpos 1 1000#
+!step getpos 1#
+!read temps 0#
+!read temps 0#
+!read temps 0#
+
+## rotator_lunatico_udp_simulator/unnamed-2.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step getpos 1#
+!step goto 1 900 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#

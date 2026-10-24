@@ -1,0 +1,7 @@
+filter	held_poll
+plan	5	Lunatico focuser
+fail	Lunatico focuser	held_poll_goto
+fail	Lunatico focuser	held_poll_sync
+pass	Lunatico focuser	held_poll_steps
+fail	Lunatico focuser	held_poll_exp
+fail	Lunatico focuser	held_poll_third

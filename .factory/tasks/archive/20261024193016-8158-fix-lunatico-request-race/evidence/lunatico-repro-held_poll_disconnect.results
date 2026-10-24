@@ -1,0 +1,3 @@
+filter	held_poll_disconnect
+plan	1	Lunatico focuser
+pass	Lunatico focuser	held_poll_disconnect

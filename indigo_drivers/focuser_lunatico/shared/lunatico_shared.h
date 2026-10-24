@@ -115,6 +115,9 @@ typedef struct {
 	int focuser_failures, focuser_stalls;
 	// The focuser moves without a request of this driver (already running at connect).
 	bool focuser_external;
+	// Accepted bus requests waiting for their serialized worker; guarded by the request mutex.
+	unsigned focuser_pending;
+	double focuser_requested_position, focuser_requested_steps;
 	double rotator_position;
 	int32_t rotator_expected;
 	bool rotator_commanded;

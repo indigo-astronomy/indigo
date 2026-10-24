@@ -1,0 +1,22 @@
+Definition: indigo_focuser_lunatico.driver
+Sources:    indigo_focuser_lunatico.c indigo_focuser_lunatico_main.c
+Archive:    indigo_focuser_lunatico.a
+SO library: indigo_focuser_lunatico.dylib
+indigo_focuser_lunatico.o
+Executable: indigo_focuser_lunatico
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_focuser_lunatico.o indigo_focuser_lunatico.c
+/usr/bin/libtool -static -o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_lunatico.a indigo_focuser_lunatico.o
+/usr/bin/clang -shared -o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_lunatico.dylib -Wl,-force_load /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_lunatico.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+/usr/bin/clang -o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_lunatico indigo_focuser_lunatico_main.o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_lunatico.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+Definition: indigo_rotator_lunatico.driver
+Sources:    indigo_rotator_lunatico.c indigo_rotator_lunatico_main.c
+Archive:    indigo_rotator_lunatico.a
+SO library: indigo_rotator_lunatico.dylib
+indigo_rotator_lunatico.o
+Executable: indigo_rotator_lunatico
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_rotator_lunatico.o indigo_rotator_lunatico.c
+/usr/bin/libtool -static -o /Users/polakovic/Development/indigo/build/drivers/indigo_rotator_lunatico.a indigo_rotator_lunatico.o
+/usr/bin/clang -shared -o /Users/polakovic/Development/indigo/build/drivers/indigo_rotator_lunatico.dylib -Wl,-force_load /Users/polakovic/Development/indigo/build/drivers/indigo_rotator_lunatico.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+/usr/bin/clang -o /Users/polakovic/Development/indigo/build/drivers/indigo_rotator_lunatico indigo_rotator_lunatico_main.o /Users/polakovic/Development/indigo/build/drivers/indigo_rotator_lunatico.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0

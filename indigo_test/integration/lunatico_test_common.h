@@ -60,6 +60,26 @@ static bool lunatico_wait_for_poll_completion(void) {
 	return false;
 }
 
+// Observe/release the simulator's bounded reply hold without using its serial link.
+static bool lunatico_wait_for_held_poll(void) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.held", aux_simulator.ready_file);
+	for (int i = 0; i < 200; i++) {
+		if (!access(path, F_OK)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static bool lunatico_release_poll(void) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.release", aux_simulator.ready_file);
+	FILE *file = fopen(path, "w");
+	return file != NULL && fclose(file) == 0;
+}
+
 // Driver-specific property names. The pre-migration driver published one set of
 // LA_* names on both device classes; the migration renames them to the mandatory
 // X_ prefix and qualifies them by class, because the generator needs a distinct

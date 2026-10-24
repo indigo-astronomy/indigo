@@ -1,0 +1,7 @@
+Running PrimaluceLab
+FAIL: long_application_firmware (exit=-1, signal=5)
+Running PrimaluceLab
+FAIL: long_web_firmware (exit=-1, signal=5)
+Running PrimaluceLab
+FAIL: long_combined_firmware (exit=-1, signal=5)
+PrimaluceLab: 3 failing scenarios

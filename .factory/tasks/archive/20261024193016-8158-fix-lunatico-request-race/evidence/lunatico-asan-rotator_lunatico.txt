@@ -1,0 +1,10 @@
+Running Lunatico rotator
+  PASS held_poll_focuser_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_sync
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_steps
+Lunatico rotator: all tests passed
+Lunatico rotator: 0 failing scenarios

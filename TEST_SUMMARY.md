@@ -254,7 +254,7 @@
 | focuser_lacerta | 2026-10-10 02:23 | 3.0.0.10 | mac arm64 | simulator | 50 / 50 | ✅ OK |
 | focuser_lakeside | 2026-10-09 20:37 | 3.0.0.11 | linux arm64 | LakesideAstro Arduino simulator (ESP32-S3) | 8 / 8 | ✅ OK |
 |  | 2026-10-10 03:23 | 3.0.0.12 | mac arm64 | simulator | 42 / 42 | ✅ OK |
-| focuser_lunatico | 2026-10-24 21:02 | 3.0.0.20 | mac arm64 | simulator | 57 / 57 | ✅ OK |
+| focuser_lunatico | 2026-10-24 21:54 | 3.0.0.21 | mac arm64 | simulator | 65 / 65 | ✅ OK |
 | focuser_mjkzz | 2026-10-08 20:19 | 3.0.0.9 | linux arm64 | MJKZZ Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 |  | 2026-10-10 13:58 | 3.0.0.11 | mac arm64 | simulator | 48 / 48 | ✅ OK |
 | focuser_moonlite | 2026-10-09 20:46 | 3.0.0.15 | linux arm64 | MoonLite Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
@@ -271,9 +271,9 @@
 |  | 2026-10-03 19:54 | 3.0.0.16 | linux arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
 |  | 2026-10-05 22:15 | 3.0.0.22 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
 |  | 2026-10-11 09:56 | 3.0.0.25 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
-|  | 2026-10-23 09:41 | 3.0.0.29 | mac arm64 | simulator | 61 / 61 | ✅ OK |
 |  | 2026-10-23 21:07 | 3.0.0.34 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-24 20:16 | 3.0.0.41 | linux x64 | simulator | 72 / 72 | ✅ OK |
+|  | 2026-10-24 22:33 | 3.0.0.42 | mac arm64 | simulator | 76 / 76 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-10-09 21:53 | 3.0.0.11 | linux arm64 | Prodigy Arduino simulator (ESP32-S3) | 13 / 13 | ✅ OK |
 |  | 2026-10-10 03:54 | 3.0.0.12 | mac arm64 | simulator | 62 / 62 | ✅ OK |
@@ -381,7 +381,7 @@
 | polaralign_simulator | 2026-09-27 22:42 | 3.0.0.5 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_asi | 2026-10-11 02:34 | 3.0.0.10 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | rotator_falcon | 2026-09-27 22:41 | 3.0.0.10 | mac arm64 | simulator | 13 / 13 | ✅ OK |
-| rotator_lunatico | 2026-10-24 21:02 | 3.0.0.19 | mac arm64 | simulator | 58 / 58 | ✅ OK |
+| rotator_lunatico | 2026-10-24 21:54 | 3.0.0.20 | mac arm64 | simulator | 64 / 64 | ✅ OK |
 | rotator_optec | 2026-10-09 22:42 | 3.0.0.6 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 |  | 2026-10-09 22:45 | 3.0.0.6 | linux arm64 | Pyxis Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 | rotator_simulator | 2026-10-10 10:34 | 3.0.0.9 | mac arm64 | simulator | 9 / 9 | ✅ OK |

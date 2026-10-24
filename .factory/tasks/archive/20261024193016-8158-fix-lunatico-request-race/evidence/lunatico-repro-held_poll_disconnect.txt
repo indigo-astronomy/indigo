@@ -1,0 +1,94 @@
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step goto 0 2000 0#
+<- !step goto 0 2000 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1830#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1850#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1880#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1901#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1931#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1951#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1982#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:2000#
+  PASS held_poll_disconnect
+Lunatico focuser: all tests passed
+Lunatico focuser: 0 failing scenarios
