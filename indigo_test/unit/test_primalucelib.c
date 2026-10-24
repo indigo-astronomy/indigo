@@ -733,6 +733,65 @@ cleanup:
 	stop_peer();
 }
 
+// Replies as a GIOTTO (application firmware 1.03.09) gave them.
+static void flat_panel_state_presets_and_settings(void) {
+	bool on = false;
+	int brightness = -1;
+	double temperature = 0, supply = 0, usb = 0;
+	CHECK(start_peer(
+		"{\"res\":{\"get\":{\"LIGHT\":1,\"BRIGHTNESS\":30}}}\n",
+		"{\"res\":{\"get\":{\"LIGHT\":0}}}\n",
+		"{\"res\":{\"get\":{\"NTC_T\":\"31.96\",\"VIN_12V\":\"13.12\",\"VIN_USB\":\"5.33\"}}}\n",
+		"{\"res\":{\"get\":{\"VIN_12V\":\"13.12\"}}}\n",
+		"{\"res\":{\"set\":{\"BRIGHTNESS\":\"Error: invalid command\"}}}\n",
+		"{\"res\":{\"set\":{\"PRESET_2\":{\"BRIGHTNESS\":\"done\"}}}}\n",
+		"{\"res\":{\"set\":{\"PRESET_2\":{\"BRIGHTNESS\":\"Error: invalid command\"}}}}\n",
+		"{\"res\":{\"set\":{\"PRESET_2\":{\"NAME\":\"done\"}}}}\n",
+		"{\"res\":{\"cmd\":{\"PRESET\":\"done\"}}}\n",
+		"{\"res\":{\"cmd\":{\"PRESET\":\"Error: empty preset\"}}}\n",
+		"{\"res\":{\"set\":{\"LIGHT_FADING\":\"done\"}}}\n",
+		"{\"res\":{\"set\":{\"LIGHT_ATPWON\":\"done\"}}}\n",
+		"{\"res\":{\"get\":{\"PRESET_1\":{\"NAME\":\"low\",\"BRIGHTNESS\":20},\"PRESET_2\":{\"NAME\":\"\",\"BRIGHTNESS\":40},\"CALRESTART\":{\"CH1\":0,\"CH2\":1},\"LIGHT_FADING\":1,\"LIGHT_ATPWON\":0}}}\n",
+		NULL));
+	CHECK(primalucelib_panel_get_state(&test_link, &on, &brightness));
+	CHECK(on && brightness == 30);
+	// Both fields are required.
+	CHECK(!primalucelib_panel_get_state(&test_link, &on, &brightness));
+	CHECK(primalucelib_panel_get_environment(&test_link, &temperature, &supply, &usb));
+	CHECK(temperature > 31.95 && temperature < 31.97 && supply > 13.11 && supply < 13.13 && usb > 5.32 && usb < 5.34);
+	CHECK(!primalucelib_panel_get_environment(&test_link, &temperature, &supply, &usb));
+	// A refusal fails with the controller's reason.
+	CHECK(!primalucelib_panel_set_brightness(&test_link, 200));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: invalid command"));
+	CHECK(primalucelib_panel_set_preset_brightness(&test_link, 2, 40));
+	CHECK(!primalucelib_panel_set_preset_brightness(&test_link, 2, 0));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: invalid command"));
+	CHECK(primalucelib_panel_set_preset_name(&test_link, 2, "Middle"));
+	// A name that would break the JSON string is not sent.
+	CHECK(!primalucelib_panel_set_preset_name(&test_link, 2, "a\"b"));
+	CHECK(primalucelib_panel_recall_preset(&test_link, 1));
+	CHECK(!primalucelib_panel_recall_preset(&test_link, 3));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: empty preset"));
+	CHECK(primalucelib_panel_set_fading(&test_link, false));
+	CHECK(primalucelib_panel_set_light_at_power_on(&test_link, true));
+	CHECK(primalucelib_request(&test_link, "{\"req\":{\"get\":{\"PRESETS\":\"\"}}}"));
+	CHECK(primalucelib_reply_panel_preset_brightness(&test_link, 1) == 20);
+	CHECK(!strcmp(primalucelib_reply_stored_position_name(&test_link, 1), "low"));
+	CHECK(primalucelib_reply_panel_preset_brightness(&test_link, 2) == 40);
+	CHECK(primalucelib_reply_number(&test_link, PRIMALUCE_REPLY_PANEL_CALIBRATION_RESTART_CH2) == 1);
+	CHECK(primalucelib_reply_number(&test_link, PRIMALUCE_REPLY_PANEL_FADING) == 1);
+	CHECK(primalucelib_reply_has(&test_link, PRIMALUCE_REPLY_PANEL_LIGHT_AT_POWER_ON));
+	CHECK(request_matches(0, "{\"req\":{\"get\":{\"LIGHT\":\"\",\"BRIGHTNESS\":\"\"}}}"));
+	CHECK(request_matches(2, "{\"req\":{\"get\":{\"NTC_T\":\"\",\"VIN_12V\":\"\",\"VIN_USB\":\"\"}}}"));
+	CHECK(request_matches(5, "{\"req\":{\"set\":{\"PRESET_2\":{\"BRIGHTNESS\":40}}}}"));
+	CHECK(request_matches(7, "{\"req\":{\"set\":{\"PRESET_2\":{\"NAME\":\"Middle\"}}}}"));
+	CHECK(request_matches(8, "{\"req\":{\"cmd\":{\"PRESET\":1}}}"));
+	CHECK(request_matches(10, "{\"req\":{\"set\":{\"LIGHT_FADING\":0}}}"));
+	CHECK(request_matches(11, "{\"req\":{\"set\":{\"LIGHT_ATPWON\":1}}}"));
+cleanup:
+	stop_peer();
+}
+
 static void cover_commands(void) {
 	int position = -1;
 	CHECK(start_peer("{\"res\":{\"get\":{\"MOT1\":{\"POSITION\":100}}}}\n", "{\"res\":{\"set\":{\"MOT1\":{\"POSITION\":\"done\"}}}}\n", "{\"res\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"stop\",\"BUSY\":0}}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"done\"}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"done\"}}}}\n", NULL));
@@ -834,6 +893,7 @@ int main(void) {
 		{ "restart waits for the controller", restart_waits_for_the_controller },
 		{ "SESTO SENSO 3 extras", sestosenso3_extras },
 		{ "flat panel commands", flat_panel_commands },
+		{ "flat panel state, presets and settings", flat_panel_state_presets_and_settings },
 		{ "cover commands", cover_commands },
 		{ "models are recognized by prefix", models_are_recognized_by_prefix },
 		{ "HTTP URLs are split into host and port", http_urls_are_split_into_host_and_port },

@@ -1087,6 +1087,9 @@
 		C0DE20260916C0C000000012 /* indigo_ccd_uvc_libuvc.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20260916C0C000000003 /* indigo_ccd_uvc_libuvc.c */; };
 		C0DE20261022000000000007 /* primalucelib.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261022000000000004 /* primalucelib.c */; };
 		C0DE20261022000000000008 /* primalucelib.c in Sources */ = {isa = PBXBuildFile; fileRef = C0DE20261022000000000004 /* primalucelib.c */; };
+		AB2E97AD6535B7D7EA67E3D3 /* indigo_aux_giotto.h in Headers */ = {isa = PBXBuildFile; fileRef = DC66CEFDAFCB5B53840E7473 /* indigo_aux_giotto.h */; };
+		E0E1511BDF3BBFC485EDD70F /* indigo_aux_giotto.c in Sources */ = {isa = PBXBuildFile; fileRef = F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */; };
+		4DBA0DA9D2F91B7B7AE3ABC9 /* indigo_aux_giotto.c in Sources */ = {isa = PBXBuildFile; fileRef = F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -6811,6 +6814,30 @@
 		ED1BAC22857B9D651E95CCC1 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		66A49C98B3E3EE07085D9F9E /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		6F78A5813A358CC4B0C00143 /* 20261024002000-64d7-primaluce-usb-pattern-hw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024002000-64d7-primaluce-usb-pattern-hw.json"; sourceTree = "<group>"; };
+		20502CEAA434A0CAEC595E82 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "REFACTOR.md"; sourceTree = "<group>"; };
+		D164AC4C2D21AED85E0B0EC1 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Makefile.inc"; sourceTree = "<group>"; };
+		DC66CEFDAFCB5B53840E7473 /* indigo_aux_giotto.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "indigo_aux_giotto.h"; sourceTree = "<group>"; };
+		F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "indigo_aux_giotto.c"; sourceTree = "<group>"; };
+		C108AD5DC5B5D081BBFFFD78 /* indigo_aux_giotto_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "indigo_aux_giotto_main.c"; sourceTree = "<group>"; };
+		E8F63B4BEF6CEB5E5987C235 /* indigo_aux_giotto.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = "indigo_aux_giotto.driver"; sourceTree = "<group>"; };
+		213E0D9779D0AEA431BA1EFD /* indigo_aux_giotto.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "indigo_aux_giotto.vcxproj"; sourceTree = "<group>"; };
+		6CA7EDB4217A27761DCADC1A /* indigo_aux_giotto.vcxproj.filters */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "indigo_aux_giotto.vcxproj.filters"; sourceTree = "<group>"; };
+		B5DEA63C0C4937C934471E1C /* indigo_aux_giotto.vcxproj.user */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "indigo_aux_giotto.vcxproj.user"; sourceTree = "<group>"; };
+		2AEAB20B507D0F2678B38991 /* giotto_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "giotto_simulator.c"; sourceTree = "<group>"; };
+		6E0A971981317B3441EE9802 /* test_aux_giotto_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_aux_giotto_simulator.c"; sourceTree = "<group>"; };
+		ADC414885E082C4228189144 /* test_aux_giotto_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_aux_giotto_hw.c"; sourceTree = "<group>"; };
+		A8D93B09D2C2EF95A0B7635D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "README.md"; sourceTree = "<group>"; };
+		032AB0724042DC959A716329 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		7F442813ADDF8166CDE627EB /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		E5692BA14D6BF22E0E3875C0 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		87174B406848E65DD57E5A35 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		07CB9BECBE8249FDAD6E3266 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		2C08923CC17BDB9460404D40 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		B6CC44D42E242DA8FCBB94B4 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		4299792830BFFCF5902CA842 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		D1AD3E41C700DFC2B04CF29D /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		B8C6A43A702BFEB096C842F5 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		C6DE42A9200B27B4BDD7FF7B /* 20261024092953-7ee4-primaluce-giotto-alto-drivers.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024092953-7ee4-primaluce-giotto-alto-drivers.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -12625,6 +12652,7 @@
 				59399D882177D316002886CA /* focuser_optec */,
 				9DF312BB2C255D3800A35CE3 /* focuser_optecfl */,
 				59B3489229E728D80062C2EA /* focuser_primaluce */,
+				11940251409806666BAE1B24 /* aux_giotto */,
 				9D3E906B28995B140093C9EB /* focuser_prodigy */,
 				59E717D72D5022CD00BA2CBE /* focuser_qhy */,
 				59F682A3250FD48200ABD731 /* focuser_robofocus */,
@@ -15518,6 +15546,7 @@
 				C0DE20320920000500000010 /* test_focuser_fli_sdk.c */,
 				59FEFFD3301E7820007FB62D /* test_focuser_optecfl_simulator.c */,
 				5984A330303BA08F00D581D2 /* test_focuser_primaluce_simulator.c */,
+				6E0A971981317B3441EE9802 /* test_aux_giotto_simulator.c */,
 				5984A332303BA26100D581D2 /* test_focuser_prodigy_simulator.c */,
 				59FEFFCD301E6BCA007FB62D /* test_focuser_qhy_simulator.c */,
 				5984A334303BA3CF00D581D2 /* test_focuser_robofocus_simulator.c */,
@@ -15883,6 +15912,7 @@
 				5C4E7DC4E2F61A45BBB51368 /* 20261023234416-7c1d-xcode-navigator-sync */,
 				FA356D60509B10F1C686A7D4 /* 20261023235957-e03c-primaluce-usb-pattern */,
 				9C7D1752AD894F5477F9CAF3 /* 20261024002000-64d7-primaluce-usb-pattern-hw */,
+				E963D42F40446A4F56F4355C /* 20261024092953-7ee4-primaluce-giotto-alto-drivers */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -16312,6 +16342,7 @@
 				31394FFC665B4AD088017127 /* test_aux_rpio_hw.c */,
 				BB585B0FF8074EBCA4FB2400 /* test_aux_asiair_hw.c */,
 				C0DE20260920190000000001 /* test_focuser_primaluce_hw.c */,
+				ADC414885E082C4228189144 /* test_aux_giotto_hw.c */,
 				C0DE20260920230000000001 /* test_wheel_sx_hw.c */,
 				C0DE20260921003500000001 /* test_wheel_asi_hw.c */,
 				C0DE20260921000000000001 /* test_ao_sx_hw.c */,
@@ -18107,6 +18138,7 @@
 				B37F1A6ACDC661D0995FAB90 /* 20261023234416-7c1d-xcode-navigator-sync.json */,
 				E6D36D416585C2FC4E139EF0 /* 20261023235957-e03c-primaluce-usb-pattern.json */,
 				6F78A5813A358CC4B0C00143 /* 20261024002000-64d7-primaluce-usb-pattern-hw.json */,
+				C6DE42A9200B27B4BDD7FF7B /* 20261024092953-7ee4-primaluce-giotto-alto-drivers.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -19220,6 +19252,49 @@
 			path = "20261024002000-64d7-primaluce-usb-pattern-hw";
 			sourceTree = "<group>";
 		};
+		11940251409806666BAE1B24 /* aux_giotto */ = {
+			isa = PBXGroup;
+			children = (
+				20502CEAA434A0CAEC595E82 /* REFACTOR.md */,
+				A8D93B09D2C2EF95A0B7635D /* README.md */,
+				D164AC4C2D21AED85E0B0EC1 /* Makefile.inc */,
+				DC66CEFDAFCB5B53840E7473 /* indigo_aux_giotto.h */,
+				F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */,
+				C108AD5DC5B5D081BBFFFD78 /* indigo_aux_giotto_main.c */,
+				E8F63B4BEF6CEB5E5987C235 /* indigo_aux_giotto.driver */,
+				213E0D9779D0AEA431BA1EFD /* indigo_aux_giotto.vcxproj */,
+				6CA7EDB4217A27761DCADC1A /* indigo_aux_giotto.vcxproj.filters */,
+				B5DEA63C0C4937C934471E1C /* indigo_aux_giotto.vcxproj.user */,
+				BF8265841230841470663B5E /* giotto_simulator */,
+			);
+			path = aux_giotto;
+			sourceTree = "<group>";
+		};
+		BF8265841230841470663B5E /* giotto_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				2AEAB20B507D0F2678B38991 /* giotto_simulator.c */,
+			);
+			path = giotto_simulator;
+			sourceTree = "<group>";
+		};
+		E963D42F40446A4F56F4355C /* 20261024092953-7ee4-primaluce-giotto-alto-drivers */ = {
+			isa = PBXGroup;
+			children = (
+				032AB0724042DC959A716329 /* brief.md */,
+				7F442813ADDF8166CDE627EB /* handoff.md */,
+				E5692BA14D6BF22E0E3875C0 /* plan.md */,
+				87174B406848E65DD57E5A35 /* process.json */,
+				07CB9BECBE8249FDAD6E3266 /* quality-review.md */,
+				2C08923CC17BDB9460404D40 /* security.md */,
+				B6CC44D42E242DA8FCBB94B4 /* specification.md */,
+				4299792830BFFCF5902CA842 /* state.json */,
+				D1AD3E41C700DFC2B04CF29D /* test-plan.md */,
+				B8C6A43A702BFEB096C842F5 /* verification.md */,
+			);
+			path = "20261024092953-7ee4-primaluce-giotto-alto-drivers";
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -19563,6 +19638,7 @@
 				9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
 				59B348A029E854080062C2EA /* indigo_focuser_primaluce.h in Headers */,
+				AB2E97AD6535B7D7EA67E3D3 /* indigo_aux_giotto.h in Headers */,
 				59A68E20277DC3D0000439CC /* SVBCameraSDK.h in Headers */,
 				59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */,
 				599AD8A12552F64A0008D481 /* indigo_mount_nexstaraux.h in Headers */,
@@ -20113,6 +20189,7 @@
 				59E717D92D50234B00BA2CBE /* indigo_focuser_qhy.c in Sources */,
 				598A1BBA259BA94A00C0B34C /* indigo_timer.c in Sources */,
 				59B348B529E85FC50062C2EA /* indigo_focuser_primaluce.c in Sources */,
+				E0E1511BDF3BBFC485EDD70F /* indigo_aux_giotto.c in Sources */,
 				C0DE20261022000000000008 /* primalucelib.c in Sources */,
 				59A4132F2971E54C00F0A80B /* indigo_wheel_playerone.c in Sources */,
 				598A1BBB259BA94A00C0B34C /* indigo_dome_azimuth.c in Sources */,
@@ -20467,6 +20544,7 @@
 				595F2930211E211200380EF4 /* DDHidDevice.m in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
 				59B348A229E854080062C2EA /* indigo_focuser_primaluce.c in Sources */,
+				4DBA0DA9D2F91B7B7AE3ABC9 /* indigo_aux_giotto.c in Sources */,
 				C0DE20261022000000000007 /* primalucelib.c in Sources */,
 				9D3E90762899679A0093C9EB /* indigo_focuser_prodigy.c in Sources */,
 				9D743A5923FD573E0093319F /* indigo_rotator_simulator.c in Sources */,

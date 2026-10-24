@@ -103,6 +103,14 @@ char *PRIMALUCE_REPLY_PANEL_BRIGHTNESS[] = { "res", "get", "BRIGHTNESS", NULL };
 char *PRIMALUCE_REPLY_PANEL_BRIGHTNESS_ACK[] = { "res", "set", "BRIGHTNESS", NULL };
 char *PRIMALUCE_REPLY_PANEL_LIGHT[] = { "res", "get", "LIGHT", NULL };
 char *PRIMALUCE_REPLY_PANEL_LIGHT_ACK[] = { "res", "set", "LIGHT", NULL };
+char *PRIMALUCE_REPLY_PANEL_TEMPERATURE[] = { "res", "get", "NTC_T", NULL };
+char *PRIMALUCE_REPLY_PANEL_FADING[] = { "res", "get", "LIGHT_FADING", NULL };
+char *PRIMALUCE_REPLY_PANEL_FADING_ACK[] = { "res", "set", "LIGHT_FADING", NULL };
+char *PRIMALUCE_REPLY_PANEL_LIGHT_AT_POWER_ON[] = { "res", "get", "LIGHT_ATPWON", NULL };
+char *PRIMALUCE_REPLY_PANEL_LIGHT_AT_POWER_ON_ACK[] = { "res", "set", "LIGHT_ATPWON", NULL };
+char *PRIMALUCE_REPLY_PANEL_RECALL_PRESET_ACK[] = { "res", "cmd", "PRESET", NULL };
+char *PRIMALUCE_REPLY_PANEL_CALIBRATION_RESTART_CH1[] = { "res", "get", "CALRESTART", "CH1", NULL };
+char *PRIMALUCE_REPLY_PANEL_CALIBRATION_RESTART_CH2[] = { "res", "get", "CALRESTART", "CH2", NULL };
 char *PRIMALUCE_REPLY_COVER_POSITION[] = { "res", "get", "MOT1", "POSITION", NULL };
 char *PRIMALUCE_REPLY_COVER_POSITION_ACK[] = { "res", "set", "MOT1", "POSITION", NULL };
 char *PRIMALUCE_REPLY_COVER_MOTOR_STATE[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
@@ -934,7 +942,7 @@ bool primalucelib_panel_get_brightness(primalucelib_link *link, int *brightness)
 }
 
 bool primalucelib_panel_set_brightness(primalucelib_link *link, int brightness) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_BRIGHTNESS, brightness) && primalucelib_reply_is_done(link, PRIMALUCE_REPLY_PANEL_BRIGHTNESS_ACK);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_BRIGHTNESS, brightness) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_PANEL_BRIGHTNESS_ACK);
 }
 
 bool primalucelib_panel_get_light(primalucelib_link *link, bool *on) {
@@ -946,7 +954,62 @@ bool primalucelib_panel_get_light(primalucelib_link *link, bool *on) {
 }
 
 bool primalucelib_panel_set_light(primalucelib_link *link, bool on) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_LIGHT, on ? 1 : 0) && primalucelib_reply_is_done(link, PRIMALUCE_REPLY_PANEL_LIGHT_ACK);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_LIGHT, on ? 1 : 0) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_PANEL_LIGHT_ACK);
+}
+
+bool primalucelib_panel_get_state(primalucelib_link *link, bool *on, int *brightness) {
+	if (!primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_GET_STATE) || !primalucelib_reply_has(link, PRIMALUCE_REPLY_PANEL_LIGHT) || !primalucelib_reply_has(link, PRIMALUCE_REPLY_PANEL_BRIGHTNESS)) {
+		return false;
+	}
+	*on = primalucelib_reply_number(link, PRIMALUCE_REPLY_PANEL_LIGHT) == 1;
+	*brightness = (int)primalucelib_reply_number(link, PRIMALUCE_REPLY_PANEL_BRIGHTNESS);
+	return true;
+}
+
+bool primalucelib_panel_get_environment(primalucelib_link *link, double *temperature, double *supply, double *usb) {
+	if (!primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_GET_ENVIRONMENT) || !primalucelib_reply_has(link, PRIMALUCE_REPLY_PANEL_TEMPERATURE)) {
+		return false;
+	}
+	*temperature = primalucelib_reply_number(link, PRIMALUCE_REPLY_PANEL_TEMPERATURE);
+	*supply = primalucelib_reply_number(link, PRIMALUCE_REPLY_SUPPLY_VOLTAGE);
+	*usb = primalucelib_reply_number(link, PRIMALUCE_REPLY_USB_VOLTAGE);
+	return true;
+}
+
+bool primalucelib_panel_set_preset_brightness(primalucelib_link *link, int index, int brightness) {
+	char key[16];
+	snprintf(key, sizeof(key), PRIMALUCE_KEY_STORED_POSITION_PREFIX "%d", index);
+	char *path[] = { PRIMALUCE_KEY_RESPONSE, PRIMALUCE_VERB_SET, key, PRIMALUCE_KEY_BRIGHTNESS, NULL };
+	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_PRESET_BRIGHTNESS, index, brightness) && primalucelib_reply_is_acknowledged(link, path);
+}
+
+bool primalucelib_panel_set_preset_name(primalucelib_link *link, int index, const char *name) {
+	// The name is sent inside a JSON string without escaping.
+	if (strchr(name, '"') != NULL || strchr(name, '\\') != NULL) {
+		return false;
+	}
+	char key[16];
+	snprintf(key, sizeof(key), PRIMALUCE_KEY_STORED_POSITION_PREFIX "%d", index);
+	char *path[] = { PRIMALUCE_KEY_RESPONSE, PRIMALUCE_VERB_SET, key, PRIMALUCE_KEY_STORED_POSITION_NAME, NULL };
+	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_SET_STORED_NAME, index, name) && primalucelib_reply_is_acknowledged(link, path);
+}
+
+double primalucelib_reply_panel_preset_brightness(primalucelib_link *link, int index) {
+	char key[16];
+	snprintf(key, sizeof(key), PRIMALUCE_KEY_STORED_POSITION_PREFIX "%d", index);
+	return primalucelib_reply_member(link, key, PRIMALUCE_KEY_BRIGHTNESS);
+}
+
+bool primalucelib_panel_recall_preset(primalucelib_link *link, int index) {
+	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_RECALL_PRESET, index) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_PANEL_RECALL_PRESET_ACK);
+}
+
+bool primalucelib_panel_set_fading(primalucelib_link *link, bool enabled) {
+	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_FADING, enabled ? 1 : 0) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_PANEL_FADING_ACK);
+}
+
+bool primalucelib_panel_set_light_at_power_on(primalucelib_link *link, bool enabled) {
+	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_LIGHT_AT_POWER_ON, enabled ? 1 : 0) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_PANEL_LIGHT_AT_POWER_ON_ACK);
 }
 
 #pragma mark - Cover (ALTO)

@@ -769,6 +769,14 @@ Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SW
 
 Source: `indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c`.
 
+### aux_giotto
+
+Custom properties: `X_STATE` (read-only panel temperature, 12 V and USB supply), `X_PRESETS` (brightness of presets 1–9), `X_PRESET_NAMES` (an empty name deletes the preset), `X_PRESET_RECALL` (sets the brightness of a preset, the light keeps its state), `X_FADING`, `X_POWER_ON_LIGHT`, `X_LEDS`.
+
+Driver-specific use of existing properties: `AUX_LIGHT_SWITCH`, `AUX_LIGHT_INTENSITY` (the panel's brightness level, 0 to the factory `MAX_BRIGHTNESS`, not a percentage; settable with the light off).
+
+Source: `indigo_drivers/aux_giotto/indigo_aux_giotto.c`.
+
 ### aux_joystick
 
 Custom properties: `JOYSTICK_AXES`, `JOYSTICK_BUTTONS`, `JOYSTICK_MAPPING`, `JOYSTICK_OPTIONS`.

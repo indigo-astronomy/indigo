@@ -1,0 +1,657 @@
+// Copyright (c) 2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PrimaLuce Lab GIOTTO flat panel driver definition
+
+// version history
+// 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+
+driver giotto {
+	label = "PrimaluceLab GIOTTO Flat Panel";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
+	version = 1;
+	serial {
+		pattern {
+			// The panel uses the Silicon Labs CP2102N bridge with its default VID/PID and product string, as the
+			// PrimaLuce focusers do; the model check at connect tells them apart. The Windows port list carries no
+			// VID/PID, so the pattern does not match there.
+			product = "CP2102N";
+			vid = 0x10c4;
+			pid = 0xea60;
+		}
+	}
+	include {
+		#include "../shared/primalucelib/primalucelib.h"
+	}
+	define {
+		// The controller connection, see indigo_drivers/shared/primalucelib (linked as a static library).
+		#define LINK			(&PRIVATE_DATA->link)
+		// The light and the brightness are polled this often (seconds); the temperature and the supplies every
+		// ENVIRONMENT_TICKS polls.
+		#define POLL_PERIOD		2
+		#define ENVIRONMENT_TICKS	5
+	}
+	data {
+		primalucelib_link link;
+		// The light and brightness the panel reported or accepted last.
+		bool light;
+		int brightness;
+		int preset_brightness[PRIMALUCE_PANEL_PRESET_COUNT];
+		char preset_names[PRIMALUCE_PANEL_PRESET_COUNT][INDIGO_VALUE_SIZE];
+		indigo_item *leds_item, *fading_item, *power_on_item;
+		int environment_ticks;
+		bool poll_alert;
+	}
+	code {
+		static indigo_item *selected_item(indigo_property *property) {
+			for (int i = 0; i < property->count; i++) {
+				if (property->items[i].sw.value) {
+					return property->items + i;
+				}
+			}
+			return NULL;
+		}
+
+		// A refused switch request keeps the item the device has.
+		static void restore_switch(indigo_property *property, indigo_item *item) {
+			if (item != NULL) {
+				indigo_set_switch(property, item, true);
+			}
+			property->state = INDIGO_ALERT_STATE;
+		}
+
+		// Publishes property with the reason the controller gave for the last refusal, if it gave one.
+		static void update_with_refusal(indigo_device *device, indigo_property *property) {
+			const char *reason = primalucelib_last_error(LINK);
+			if (*reason) {
+				indigo_update_property(device, property, "%s", reason);
+			} else {
+				indigo_update_property(device, property, NULL);
+			}
+		}
+
+		static void giotto_publish_light(indigo_device *device) {
+			indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, PRIVATE_DATA->light ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
+			AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = PRIVATE_DATA->brightness;
+		}
+
+		static bool giotto_open(indigo_device *device, const char **error_message) {
+			if (primalucelib_open(LINK, DRIVER_NAME, DEVICE_PORT_ITEM->text.value, error_message)) {
+				char *text = primalucelib_get_model_name(LINK);
+				if (text != NULL && primalucelib_model_from_name(text) == PRIMALUCELIB_MODEL_GIOTTO) {
+					// Diagnostic output would interleave with the replies on the serial line.
+					primalucelib_disable_log_output(LINK);
+					// The full state stays in the link for on_connect. The brightness range comes from the factory
+					// calibration; without it nothing can be set.
+					if (primalucelib_get_state(LINK) && primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_MAX_BRIGHTNESS) > 0) {
+						return true;
+					}
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No brightness range in the panel state");
+					*error_message = "The panel reports no brightness range";
+				} else if (text != NULL) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "'%s' is not a GIOTTO", text);
+					*error_message = "The device is not a GIOTTO";
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply to the model request");
+				}
+				primalucelib_close(LINK);
+			}
+			return false;
+		}
+
+		static void giotto_close(indigo_device *device) {
+			if (primalucelib_is_open(LINK)) {
+				primalucelib_close(LINK);
+			}
+		}
+	}
+	aux {
+		name = "PrimaluceLab GIOTTO";
+		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		on_timer {
+			bool on;
+			int brightness;
+			if (primalucelib_panel_get_state(LINK, &on, &brightness)) {
+				// Changes made on the web page or by a WiFi client are published as they are found.
+				bool changed = on != PRIVATE_DATA->light || brightness != PRIVATE_DATA->brightness;
+				if (changed || PRIVATE_DATA->poll_alert) {
+					PRIVATE_DATA->light = on;
+					PRIVATE_DATA->brightness = brightness;
+					PRIVATE_DATA->poll_alert = false;
+					giotto_publish_light(device);
+					AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+					indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+				}
+			} else if (!PRIVATE_DATA->poll_alert) {
+				// A failed poll keeps the last values; the next good poll restores OK.
+				PRIVATE_DATA->poll_alert = true;
+				AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+				indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+			}
+			if (++PRIVATE_DATA->environment_ticks % ENVIRONMENT_TICKS == 0) {
+				double temperature, supply, usb;
+				if (primalucelib_panel_get_environment(LINK, &temperature, &supply, &usb)) {
+					X_STATE_TEMPERATURE_ITEM->number.value = temperature;
+					X_STATE_VIN_12V_ITEM->number.value = supply;
+					X_STATE_VIN_USB_ITEM->number.value = usb;
+					X_STATE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					X_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, X_STATE_PROPERTY, NULL);
+			}
+			indigo_execute_handler_in(device, POLL_PERIOD, aux_timer_callback);
+		}
+		on_connect {
+			// giotto_open() left the full state in the link.
+			char *text;
+			int max_brightness = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_MAX_BRIGHTNESS);
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_MODEL_NAME))) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, text);
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_APPLICATION_FIRMWARE))) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_WEB_FIRMWARE))) {
+					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
+					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+				}
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_SERIAL_NUMBER))) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
+			}
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			if (primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_CALIBRATION_RESTART_CH1) || primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_CALIBRATION_RESTART_CH2)) {
+				indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
+			}
+			PRIVATE_DATA->light = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_LIGHT) == 1;
+			PRIVATE_DATA->brightness = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_BRIGHTNESS);
+			AUX_LIGHT_INTENSITY_ITEM->number.max = max_brightness;
+			giotto_publish_light(device);
+			AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+			for (int i = 0; i < PRIMALUCE_PANEL_PRESET_COUNT; i++) {
+				PRIVATE_DATA->preset_brightness[i] = (int)primalucelib_reply_panel_preset_brightness(LINK, i + 1);
+				X_PRESETS_PROPERTY->items[i].number.max = max_brightness;
+				X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = PRIVATE_DATA->preset_brightness[i];
+				INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], (text = primalucelib_reply_stored_position_name(LINK, i + 1)) ? text : "");
+				INDIGO_COPY_VALUE(X_PRESET_NAMES_PROPERTY->items[i].text.value, PRIVATE_DATA->preset_names[i]);
+			}
+			indigo_set_switch(X_FADING_PROPERTY, primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_FADING) ? X_FADING_ON_ITEM : X_FADING_OFF_ITEM, true);
+			PRIVATE_DATA->fading_item = selected_item(X_FADING_PROPERTY);
+			indigo_set_switch(X_POWER_ON_LIGHT_PROPERTY, primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_LIGHT_AT_POWER_ON) ? X_POWER_ON_LIGHT_ON_ITEM : X_POWER_ON_LIGHT_OFF_ITEM, true);
+			PRIVATE_DATA->power_on_item = selected_item(X_POWER_ON_LIGHT_PROPERTY);
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_LEDS))) {
+				if (!strcmp(text, PRIMALUCE_LEDS_ON)) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_ON_ITEM, true);
+				} else if (!strcmp(text, PRIMALUCE_LEDS_LOW)) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_DIM_ITEM, true);
+				} else if (!strcmp(text, PRIMALUCE_LEDS_MIDDLE)) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_MIDDLE_ITEM, true);
+				} else {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_OFF_ITEM, true);
+				}
+			}
+			PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
+			X_STATE_TEMPERATURE_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_PANEL_TEMPERATURE);
+			X_STATE_VIN_12V_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_SUPPLY_VOLTAGE);
+			X_STATE_VIN_USB_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_USB_VOLTAGE);
+			PRIVATE_DATA->environment_ticks = 0;
+			PRIVATE_DATA->poll_alert = false;
+		}
+		on_disconnect {
+			// The light is switched off, as other flat panel drivers do; the panel keeps the brightness for the next use.
+			if (!primalucelib_panel_set_light(LINK, false)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to switch the light off");
+			}
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+		}
+		on_attach {
+			INFO_PROPERTY->count = 8;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+		}
+		switch AUX_LIGHT_SWITCH {
+			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Light (on/off)";
+			on_change {
+				bool on = AUX_LIGHT_SWITCH_ON_ITEM->sw.value;
+				if (primalucelib_panel_set_light(LINK, on)) {
+					PRIVATE_DATA->light = on;
+				} else {
+					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, PRIVATE_DATA->light ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
+					update_with_refusal(device, AUX_LIGHT_SWITCH_PROPERTY);
+					return;
+				}
+			}
+			item AUX_LIGHT_SWITCH_ON {
+				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
+				label = "On";
+				value = false;
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
+				label = "Off";
+				value = true;
+			}
+		}
+		number AUX_LIGHT_INTENSITY {
+			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Light intensity";
+			on_change {
+				// The brightness is a device level (0 to MAX_BRIGHTNESS); the panel keeps it while the light is off.
+				int brightness = (int)AUX_LIGHT_INTENSITY_ITEM->number.target;
+				if (primalucelib_panel_set_brightness(LINK, brightness)) {
+					PRIVATE_DATA->brightness = brightness;
+				} else {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+					AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = PRIVATE_DATA->brightness;
+					update_with_refusal(device, AUX_LIGHT_INTENSITY_PROPERTY);
+					return;
+				}
+			}
+			item AUX_LIGHT_INTENSITY {
+				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
+				label = "Intensity";
+				value = 0;
+				max = 100;
+				step = 1;
+				format = "%g";
+			}
+		}
+		number X_STATE {
+			name = "X_STATE";
+			group = AUX_ADVANCED_GROUP;
+			label = "State";
+			perm = INDIGO_RO_PERM;
+			item X_STATE_TEMPERATURE {
+				name = "TEMPERATURE";
+				label = "Temperature (°C)";
+				value = 0;
+				min = -50;
+				max = 100;
+				step = 0;
+			}
+			item X_STATE_VIN_12V {
+				name = "VIN_12V";
+				label = "12V power (V)";
+				value = 0;
+				min = 0;
+				max = 50;
+				step = 0;
+			}
+			item X_STATE_VIN_USB {
+				name = "VIN_USB";
+				label = "USB power (V)";
+				value = 0;
+				min = 0;
+				max = 10;
+				step = 0;
+			}
+		}
+		number X_PRESETS {
+			name = "X_PRESETS";
+			group = AUX_ADVANCED_GROUP;
+			label = "Preset brightness";
+			on_change {
+				// Only changed presets are written; the panel refuses the brightness of a preset without a name. The first
+				// refusal is reported.
+				char reason_text[INDIGO_VALUE_SIZE];
+				const char *reason = NULL;
+				for (int i = 0; i < PRIMALUCE_PANEL_PRESET_COUNT; i++) {
+					int brightness = (int)X_PRESETS_PROPERTY->items[i].number.target;
+					if (brightness == PRIVATE_DATA->preset_brightness[i]) {
+						continue;
+					}
+					if (primalucelib_panel_set_preset_brightness(LINK, i + 1, brightness)) {
+						PRIVATE_DATA->preset_brightness[i] = brightness;
+					} else {
+						X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+						if (reason == NULL && *primalucelib_last_error(LINK) && PRIVATE_DATA->preset_names[i][0] == 0) {
+							snprintf(reason_text, sizeof(reason_text), "Preset #%d needs a name before its brightness can be set", i + 1);
+							reason = reason_text;
+						} else if (reason == NULL && *primalucelib_last_error(LINK)) {
+							INDIGO_COPY_VALUE(reason_text, primalucelib_last_error(LINK));
+							reason = reason_text;
+						}
+					}
+					X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = PRIVATE_DATA->preset_brightness[i];
+				}
+				if (reason != NULL) {
+					indigo_update_property(device, X_PRESETS_PROPERTY, "%s", reason);
+					return;
+				}
+			}
+			item X_PRESETS_1 {
+				name = "PRESET_1";
+				label = "Preset #1";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_2 {
+				name = "PRESET_2";
+				label = "Preset #2";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_3 {
+				name = "PRESET_3";
+				label = "Preset #3";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_4 {
+				name = "PRESET_4";
+				label = "Preset #4";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_5 {
+				name = "PRESET_5";
+				label = "Preset #5";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_6 {
+				name = "PRESET_6";
+				label = "Preset #6";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_7 {
+				name = "PRESET_7";
+				label = "Preset #7";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_8 {
+				name = "PRESET_8";
+				label = "Preset #8";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_9 {
+				name = "PRESET_9";
+				label = "Preset #9";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+		}
+		text X_PRESET_NAMES {
+			name = "X_PRESET_NAMES";
+			group = AUX_ADVANCED_GROUP;
+			label = "Preset names";
+			on_change {
+				// An empty name deletes the preset. The first refusal is reported.
+				char reason_text[INDIGO_VALUE_SIZE];
+				const char *reason = NULL;
+				for (int i = 0; i < PRIMALUCE_PANEL_PRESET_COUNT; i++) {
+					char *name = X_PRESET_NAMES_PROPERTY->items[i].text.value;
+					if (!strcmp(name, PRIVATE_DATA->preset_names[i])) {
+						continue;
+					}
+					primalucelib_clear_last_error(LINK);
+					if (primalucelib_panel_set_preset_name(LINK, i + 1, name)) {
+						INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], name);
+					} else {
+						X_PRESET_NAMES_PROPERTY->state = INDIGO_ALERT_STATE;
+						if (reason == NULL && *primalucelib_last_error(LINK)) {
+							INDIGO_COPY_VALUE(reason_text, primalucelib_last_error(LINK));
+							reason = reason_text;
+						} else if (reason == NULL && (strchr(name, '"') != NULL || strchr(name, '\\') != NULL)) {
+							// The protocol has no escaping, so such a name is not sent.
+							reason = "A preset name cannot contain \" or \\";
+						}
+						INDIGO_COPY_VALUE(name, PRIVATE_DATA->preset_names[i]);
+					}
+				}
+				if (reason != NULL) {
+					indigo_update_property(device, X_PRESET_NAMES_PROPERTY, "%s", reason);
+					return;
+				}
+			}
+			item X_PRESET_NAMES_1 {
+				name = "PRESET_1";
+				label = "Preset #1";
+				value = "";
+			}
+			item X_PRESET_NAMES_2 {
+				name = "PRESET_2";
+				label = "Preset #2";
+				value = "";
+			}
+			item X_PRESET_NAMES_3 {
+				name = "PRESET_3";
+				label = "Preset #3";
+				value = "";
+			}
+			item X_PRESET_NAMES_4 {
+				name = "PRESET_4";
+				label = "Preset #4";
+				value = "";
+			}
+			item X_PRESET_NAMES_5 {
+				name = "PRESET_5";
+				label = "Preset #5";
+				value = "";
+			}
+			item X_PRESET_NAMES_6 {
+				name = "PRESET_6";
+				label = "Preset #6";
+				value = "";
+			}
+			item X_PRESET_NAMES_7 {
+				name = "PRESET_7";
+				label = "Preset #7";
+				value = "";
+			}
+			item X_PRESET_NAMES_8 {
+				name = "PRESET_8";
+				label = "Preset #8";
+				value = "";
+			}
+			item X_PRESET_NAMES_9 {
+				name = "PRESET_9";
+				label = "Preset #9";
+				value = "";
+			}
+		}
+		switch X_PRESET_RECALL {
+			name = "X_PRESET_RECALL";
+			group = AUX_ADVANCED_GROUP;
+			label = "Recall preset";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change {
+				int index = -1;
+				for (int i = 0; i < PRIMALUCE_PANEL_PRESET_COUNT; i++) {
+					if (X_PRESET_RECALL_PROPERTY->items[i].sw.value) {
+						index = i;
+					}
+					X_PRESET_RECALL_PROPERTY->items[i].sw.value = false;
+				}
+				if (index >= 0) {
+					int brightness;
+					// The panel sets the brightness of the preset and leaves the light as it is.
+					if (!primalucelib_panel_recall_preset(LINK, index + 1)) {
+						X_PRESET_RECALL_PROPERTY->state = INDIGO_ALERT_STATE;
+						update_with_refusal(device, X_PRESET_RECALL_PROPERTY);
+						return;
+					}
+					if (primalucelib_panel_get_brightness(LINK, &brightness)) {
+						PRIVATE_DATA->brightness = brightness;
+					}
+					AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = PRIVATE_DATA->brightness;
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+				}
+			}
+			item X_PRESET_RECALL_1 {
+				name = "PRESET_1";
+				label = "Preset #1";
+				value = false;
+			}
+			item X_PRESET_RECALL_2 {
+				name = "PRESET_2";
+				label = "Preset #2";
+				value = false;
+			}
+			item X_PRESET_RECALL_3 {
+				name = "PRESET_3";
+				label = "Preset #3";
+				value = false;
+			}
+			item X_PRESET_RECALL_4 {
+				name = "PRESET_4";
+				label = "Preset #4";
+				value = false;
+			}
+			item X_PRESET_RECALL_5 {
+				name = "PRESET_5";
+				label = "Preset #5";
+				value = false;
+			}
+			item X_PRESET_RECALL_6 {
+				name = "PRESET_6";
+				label = "Preset #6";
+				value = false;
+			}
+			item X_PRESET_RECALL_7 {
+				name = "PRESET_7";
+				label = "Preset #7";
+				value = false;
+			}
+			item X_PRESET_RECALL_8 {
+				name = "PRESET_8";
+				label = "Preset #8";
+				value = false;
+			}
+			item X_PRESET_RECALL_9 {
+				name = "PRESET_9";
+				label = "Preset #9";
+				value = false;
+			}
+		}
+		switch X_FADING {
+			name = "X_FADING";
+			group = AUX_ADVANCED_GROUP;
+			label = "Brightness fading";
+			on_change {
+				if (primalucelib_panel_set_fading(LINK, X_FADING_ON_ITEM->sw.value)) {
+					PRIVATE_DATA->fading_item = selected_item(X_FADING_PROPERTY);
+				} else {
+					restore_switch(X_FADING_PROPERTY, PRIVATE_DATA->fading_item);
+					update_with_refusal(device, X_FADING_PROPERTY);
+					return;
+				}
+			}
+			item X_FADING_ON {
+				name = "ON";
+				label = "Enabled";
+				value = true;
+			}
+			item X_FADING_OFF {
+				name = "OFF";
+				label = "Disabled";
+				value = false;
+			}
+		}
+		switch X_POWER_ON_LIGHT {
+			name = "X_POWER_ON_LIGHT";
+			group = AUX_ADVANCED_GROUP;
+			label = "Light at power on";
+			on_change {
+				if (primalucelib_panel_set_light_at_power_on(LINK, X_POWER_ON_LIGHT_ON_ITEM->sw.value)) {
+					PRIVATE_DATA->power_on_item = selected_item(X_POWER_ON_LIGHT_PROPERTY);
+				} else {
+					restore_switch(X_POWER_ON_LIGHT_PROPERTY, PRIVATE_DATA->power_on_item);
+					update_with_refusal(device, X_POWER_ON_LIGHT_PROPERTY);
+					return;
+				}
+			}
+			item X_POWER_ON_LIGHT_ON {
+				name = "ON";
+				label = "On";
+				value = false;
+			}
+			item X_POWER_ON_LIGHT_OFF {
+				name = "OFF";
+				label = "Off";
+				value = true;
+			}
+		}
+		switch X_LEDS {
+			name = "X_LEDS";
+			group = AUX_ADVANCED_GROUP;
+			label = "LEDs";
+			on_change {
+				bool result = false;
+				if (X_LEDS_OFF_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_OFF);
+				} else if (X_LEDS_DIM_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_LOW);
+				} else if (X_LEDS_MIDDLE_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_MIDDLE);
+				} else if (X_LEDS_ON_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_ON);
+				}
+				if (result) {
+					PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
+				} else {
+					restore_switch(X_LEDS_PROPERTY, PRIVATE_DATA->leds_item);
+				}
+			}
+			item X_LEDS_OFF {
+				name = "OFF";
+				label = "Off";
+				value = false;
+			}
+			item X_LEDS_DIM {
+				name = "DIM";
+				label = "Dim";
+				value = false;
+			}
+			item X_LEDS_MIDDLE {
+				name = "MIDDLE";
+				label = "Middle";
+				value = false;
+			}
+			item X_LEDS_ON {
+				name = "ON";
+				label = "On";
+				value = true;
+			}
+		}
+	}
+}

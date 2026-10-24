@@ -190,6 +190,10 @@ extern "C" {
 #define PRIMALUCE_KEY_LIGHT                       "LIGHT"
 #define PRIMALUCE_KEY_BRIGHTNESS                  "BRIGHTNESS"
 #define PRIMALUCE_KEY_MAX_BRIGHTNESS              "MAX_BRIGHTNESS"
+#define PRIMALUCE_KEY_LIGHT_FADING                "LIGHT_FADING"
+#define PRIMALUCE_KEY_LIGHT_AT_POWER_ON           "LIGHT_ATPWON"
+#define PRIMALUCE_KEY_PANEL_TEMPERATURE           "NTC_T"
+#define PRIMALUCE_KEY_PANEL_RECALL_PRESET         "PRESET"
 #define PRIMALUCE_KEY_COVER_POSITION              "POSITION"
 
 #pragma mark - Values
@@ -250,6 +254,8 @@ extern "C" {
 #define PRIMALUCE_MINIMUM_FIRMWARE_VERSION        3.05
 // Named focuser positions PRESET_1 to PRESET_9; the controller refuses position 0.
 #define PRIMALUCE_STORED_POSITION_COUNT           9
+// GIOTTO brightness presets PRESET_1 to PRESET_9.
+#define PRIMALUCE_PANEL_PRESET_COUNT              9
 // User run presets RUNPRESET_1 to RUNPRESET_3.
 #define PRIMALUCE_USER_RUN_PRESET_COUNT           3
 // SESTO SENSO 3 RECOVER_DELAY range in seconds.
@@ -343,6 +349,16 @@ extern "C" {
 #define PRIMALUCE_REQUEST_PANEL_GET_LIGHT                 "{\"req\":{\"get\":{\"LIGHT\":\"\"}}}"
 // 0 or 1
 #define PRIMALUCE_REQUEST_PANEL_SET_LIGHT                 "{\"req\":{\"set\":{\"LIGHT\":%d}}}"
+#define PRIMALUCE_REQUEST_PANEL_GET_STATE                 "{\"req\":{\"get\":{\"LIGHT\":\"\",\"BRIGHTNESS\":\"\"}}}"
+#define PRIMALUCE_REQUEST_PANEL_GET_ENVIRONMENT           "{\"req\":{\"get\":{\"NTC_T\":\"\",\"VIN_12V\":\"\",\"VIN_USB\":\"\"}}}"
+// index 1 to PRIMALUCE_PANEL_PRESET_COUNT, brightness
+#define PRIMALUCE_REQUEST_PANEL_SET_PRESET_BRIGHTNESS     "{\"req\":{\"set\":{\"PRESET_%d\":{\"BRIGHTNESS\":%d}}}}"
+// index 1 to PRIMALUCE_PANEL_PRESET_COUNT
+#define PRIMALUCE_REQUEST_PANEL_RECALL_PRESET             "{\"req\":{\"cmd\":{\"PRESET\":%d}}}"
+// 0 or 1
+#define PRIMALUCE_REQUEST_PANEL_SET_FADING                "{\"req\":{\"set\":{\"LIGHT_FADING\":%d}}}"
+// 0 or 1
+#define PRIMALUCE_REQUEST_PANEL_SET_LIGHT_AT_POWER_ON     "{\"req\":{\"set\":{\"LIGHT_ATPWON\":%d}}}"
 #define PRIMALUCE_REQUEST_COVER_GET_POSITION              "{\"req\":{\"get\":{\"MOT1\":{\"POSITION\":\"\"}}}}"
 // PRIMALUCE_COVER_CLOSED to PRIMALUCE_COVER_OPEN
 #define PRIMALUCE_REQUEST_COVER_SET_POSITION              "{\"req\":{\"set\":{\"MOT1\":{\"POSITION\":%d}}}}"
@@ -421,6 +437,14 @@ extern char *PRIMALUCE_REPLY_PANEL_BRIGHTNESS[];
 extern char *PRIMALUCE_REPLY_PANEL_BRIGHTNESS_ACK[];
 extern char *PRIMALUCE_REPLY_PANEL_LIGHT[];
 extern char *PRIMALUCE_REPLY_PANEL_LIGHT_ACK[];
+extern char *PRIMALUCE_REPLY_PANEL_TEMPERATURE[];
+extern char *PRIMALUCE_REPLY_PANEL_FADING[];
+extern char *PRIMALUCE_REPLY_PANEL_FADING_ACK[];
+extern char *PRIMALUCE_REPLY_PANEL_LIGHT_AT_POWER_ON[];
+extern char *PRIMALUCE_REPLY_PANEL_LIGHT_AT_POWER_ON_ACK[];
+extern char *PRIMALUCE_REPLY_PANEL_RECALL_PRESET_ACK[];
+extern char *PRIMALUCE_REPLY_PANEL_CALIBRATION_RESTART_CH1[];
+extern char *PRIMALUCE_REPLY_PANEL_CALIBRATION_RESTART_CH2[];
 extern char *PRIMALUCE_REPLY_COVER_POSITION[];
 extern char *PRIMALUCE_REPLY_COVER_POSITION_ACK[];
 extern char *PRIMALUCE_REPLY_COVER_MOTOR_STATE[];
@@ -623,13 +647,26 @@ extern bool primalucelib_rotator_start_calibration(primalucelib_link *link);
 extern bool primalucelib_rotator_stop_calibration(primalucelib_link *link);
 extern char *primalucelib_rotator_get_calibration_status(primalucelib_link *link);
 
-#pragma mark - Flat panel (GIOTTO, from the INDI driver, not verified on hardware)
+#pragma mark - Flat panel (GIOTTO, protocol v2.1, verified on a GIOTTO with application firmware 1.03.09)
 
+// A refused set or cmd fails with the controller's reason in primalucelib_last_error().
 extern bool primalucelib_panel_get_max_brightness(primalucelib_link *link, int *brightness);
 extern bool primalucelib_panel_get_brightness(primalucelib_link *link, int *brightness);
 extern bool primalucelib_panel_set_brightness(primalucelib_link *link, int brightness);
 extern bool primalucelib_panel_get_light(primalucelib_link *link, bool *on);
 extern bool primalucelib_panel_set_light(primalucelib_link *link, bool on);
+// Light and brightness in one request; both fields are required.
+extern bool primalucelib_panel_get_state(primalucelib_link *link, bool *on, int *brightness);
+// Panel temperature (NTC_T), 12 V and USB supply in one request; the temperature field is required.
+extern bool primalucelib_panel_get_environment(primalucelib_link *link, double *temperature, double *supply, double *usb);
+// Presets are numbered 1 to PRIMALUCE_PANEL_PRESET_COUNT; the panel refuses the brightness of a preset without a name.
+extern bool primalucelib_panel_set_preset_brightness(primalucelib_link *link, int index, int brightness);
+extern bool primalucelib_panel_set_preset_name(primalucelib_link *link, int index, const char *name);
+extern double primalucelib_reply_panel_preset_brightness(primalucelib_link *link, int index);
+// Sets the brightness of the preset; the light is not switched on.
+extern bool primalucelib_panel_recall_preset(primalucelib_link *link, int index);
+extern bool primalucelib_panel_set_fading(primalucelib_link *link, bool enabled);
+extern bool primalucelib_panel_set_light_at_power_on(primalucelib_link *link, bool enabled);
 
 #pragma mark - Cover (ALTO, from the INDI driver, not verified on hardware)
 
