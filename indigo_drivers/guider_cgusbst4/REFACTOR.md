@@ -171,9 +171,13 @@ Evidence and exact commands: [repair verification](../../.factory/tasks/archive/
 
 ## Off-pole DEC orientation follow-up (2026-10-24)
 
-An owner-authorized direct serial/ST4 cross-check at DEC approximately +70 degrees and unchanged east pier side confirms that the earlier DEC polarity difference persists away from the pole: 2 s adapter codes 0/1 changed reported DEC by about -14.552/+14.530 arcsec, while direct NYX n/s changed it by about +14.947/-14.970 arcsec. Each direction was repeated twice, idle drift was -0.011 arcsec and the side stayed E. This establishes an inversion in this composite CGUSB-ST4/cable/NYX-101 firmware 1.32.1 path, without isolating the responsible component or proving west-side behavior. Driver PHD2 mapping remains unchanged at the owner's request.
+An owner-authorized direct serial/ST4 cross-check at DEC approximately +70 degrees and unchanged east pier side confirms that the earlier DEC polarity difference persists away from the pole: 2 s adapter codes 0/1 changed reported DEC by about -14.552/+14.530 arcsec, while direct NYX n/s changed it by about +14.947/-14.970 arcsec. Each direction was repeated twice, idle drift was -0.011 arcsec and the side stayed E. This establishes an inversion in this composite CGUSB-ST4/cable/NYX-101 firmware 1.32.1 path, without isolating the responsible component. The subsequent W-side comparison is recorded below. Driver PHD2 mapping remains unchanged at the owner's request.
 
 The experiment restored exact parked motor positions, tracking off/R6 and the original target. It is a two-link physical orientation experiment, not an additional driver acceptance-suite run; existing simulator/hardware case counts below are unchanged. Finding: FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001. Raw commands, measurements, clearance and limits: [off-pole orientation verification](../../.factory/tasks/archive/20261024095945-ac63-verify-cgusbst4-dec-orientation/verification.md).
+
+## West-side DEC comparison (2026-10-24)
+
+A controller-predicted ordinary goto reached actual side W at DEC +70 without changing meridian limits. Repeated 2 s adapter codes 0/1 changed DEC by -14.539/-14.539 and +14.543/+14.542 arcsec respectively; direct NYX n/s had the expected positive/negative signs, and every observation stayed W. Thus the observed reversal persists on both E and W of this same ST4 stack; root-cause isolation across adapter, cable and NYX remains open. The driver mapping is unchanged. Original park/motor positions, side E, tracking off/R6 and target were restored. Detailed clearance, commands and readbacks: [W-side verification](../../.factory/tasks/archive/20261024101137-d0d9-verify-cgusbst4-dec-west/verification.md). The existing orientation finding tracks both sides; this raw experiment does not change driver acceptance case counts.
 
 ## Final test summary — numeric protocol repair
 
