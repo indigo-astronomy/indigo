@@ -83,7 +83,8 @@ static void usage(const char *name) {
 	printf("INDIGO_ALTO_EVENTS names a file receiving every accepted request.\n");
 	printf("INDIGO_ALTO_FAULT names a file holding '<key> <silent|garbage|reject|close|stall>', applied once to the next\n");
 	printf("request containing that key and then removed; an 'always_' prefix keeps it armed.\n");
-	printf("'external <position>' moves the cover as its web page does.\n");
+	printf("'external <position> [slow]' moves the cover as its web page does; 'slow' delays the reply to that request by\n");
+	printf("400 ms, so that a client request arrives while it is in flight.\n");
 }
 
 static void signal_handler(int sig) {
@@ -181,7 +182,8 @@ static const char *pending_fault(const char *request) {
 	if (file == NULL) {
 		return NULL;
 	}
-	bool parsed = fscanf(file, "%127s %63s", key, action) == 2;
+	char delay[16] = "";
+	bool parsed = fscanf(file, "%127s %63s %15s", key, action, delay) >= 2;
 	fclose(file);
 	if (parsed && !strcmp(key, "external")) {
 		int target = atoi(action);
@@ -189,7 +191,7 @@ static const char *pending_fault(const char *request) {
 			move_to_steps(target * (double)calibration_max / 100.0, SPEED);
 		}
 		unlink(path);
-		return NULL;
+		return strcmp(delay, "slow") ? NULL : "slow";
 	}
 	if (!parsed || strstr(request, key) == NULL) {
 		return NULL;
@@ -547,6 +549,10 @@ static void dispatch_command(const char *json) {
 		fflush(events);
 	}
 	const char *fault = pending_fault(json);
+	if (fault != NULL && !strcmp(fault, "slow")) {
+		usleep(400000);
+		fault = NULL;
+	}
 	if (fault != NULL && !strcmp(fault, "silent")) {
 		return;
 	}

@@ -641,6 +641,24 @@ cleanup:
 	driver_stop();
 }
 
+// A position request accepted while an idle poll is in flight is executed, even when that poll sees motion started
+// elsewhere: the poll neither follows that motion nor publishes over the request, the requested position is sent once
+// and the cover ends OK there.
+static void request_versus_poll(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(cover_is(100));
+	int polls = requests(MOTION_POLL_REQUEST);
+	SERIAL_CHECK_TRUE(fault("external", "70 slow"));
+	SERIAL_CHECK_TRUE(wait_for_requests(MOTION_POLL_REQUEST, polls + 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ALTO_NAME, X_COVER_POSITION_PROPERTY_NAME, X_COVER_POSITION_ITEM_NAME, 40));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"MOT1\":{\"POSITION\":40}}}}", 1));
+	SERIAL_CHECK_TRUE(cover_is(40));
+	SERIAL_CHECK_EQ_INT(1, requests("\"POSITION\":40"));
+	SERIAL_CHECK_TRUE(number_target(X_COVER_POSITION_PROPERTY_NAME, X_COVER_POSITION_ITEM_NAME) == 40);
+cleanup:
+	driver_stop();
+}
+
 // A request while the cover moves is refused; the move goes on.
 static void overlap_refused(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -858,6 +876,7 @@ int main(void) {
 		{ "stalled_move", stalled_move, "normal" },
 		{ "motion_readback_failures", motion_readback_failures, "normal" },
 		{ "external_motion_observed", external_motion_observed, "normal" },
+		{ "request_versus_poll", request_versus_poll, "normal" },
 		{ "overlap_refused", overlap_refused, "normal" },
 		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
 		{ "poll_failure", poll_failure, "normal" },

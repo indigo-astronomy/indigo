@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000001
+#define DRIVER_VERSION       0x03000002
 #define DRIVER_NAME          "indigo_aux_alto"
 #define DRIVER_LABEL         "PrimaluceLab ALTO Cover"
 #define AUX_DEVICE_NAME      "PrimaluceLab ALTO"
@@ -396,7 +396,12 @@ static void aux_timer_callback(indigo_device *device) {
 	int position;
 	char *state;
 	if (!PRIVATE_DATA->moving && !PRIVATE_DATA->external_motion) {
-		if (primalucelib_cover_get_motion(LINK, &position, &state)) {
+		bool polled = primalucelib_cover_get_motion(LINK, &position, &state);
+		// Outside a move a BUSY cover property means a request accepted meanwhile, whose handler is queued: the
+		// poll neither publishes over it nor follows motion it sees (the request's own move takes over); the next
+		// poll looks again.
+		bool request_pending = AUX_COVER_PROPERTY->state == INDIGO_BUSY_STATE || X_COVER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+		if (polled && !request_pending) {
 			if (PRIVATE_DATA->poll_alert || position != PRIVATE_DATA->last_position) {
 				PRIVATE_DATA->poll_alert = false;
 				PRIVATE_DATA->last_position = position;
@@ -418,7 +423,7 @@ static void aux_timer_callback(indigo_device *device) {
 				indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
 				indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
 			}
-		} else if (!PRIVATE_DATA->poll_alert) {
+		} else if (!polled && !request_pending && !PRIVATE_DATA->poll_alert) {
 			// A failed poll keeps the last values; the next good poll restores OK.
 			PRIVATE_DATA->poll_alert = true;
 			AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;

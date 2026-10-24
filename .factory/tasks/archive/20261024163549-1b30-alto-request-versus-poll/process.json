@@ -1,0 +1,100 @@
+{
+  "version": 2,
+  "task": "20261024163549-1b30-alto-request-versus-poll",
+  "scope": [
+    "indigo_drivers/aux_alto/*",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024163549-1b30-alto-request-versus-poll.json": [
+      "100644",
+      "blob",
+      "b6d927f0be34d719db4483febba3621f69cd59d5"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "696f746d8bb92042a7340211813e98b834d4f5ce"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "93a7976a01710b298839da4727439ac593530428"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "a5c83d9b0601c051126723f0eb1bc6f068c3b5fb"
+    ],
+    "indigo_drivers/aux_alto/README.md": [
+      "100644",
+      "blob",
+      "bb38053dafe5a8f43439ce95f085efae1b1db7c1"
+    ],
+    "indigo_drivers/aux_alto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "c5396347d02b253adce6a7ab330a5731975056e9"
+    ],
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c": [
+      "100644",
+      "blob",
+      "fc574e42ef774b70cbdba06e76b81b2c43a2ab21"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": [
+      "100644",
+      "blob",
+      "6cf381beefa05fc74bddb364727a83f08e62ca03"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver": [
+      "100644",
+      "blob",
+      "5004df12e9a5140162830b6a30f4a16af42f5675"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "d93b4a26c517c375cde49ba58bb70860abf77def"
+    ]
+  }
+}

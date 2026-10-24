@@ -41,7 +41,7 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - Next concrete step: commit after approval.
 
 ## Handoff history
-- 2026-10-24, coordinator: task created at the requester\'s request.
+- 2026-10-24, coordinator: task created at the requester's request.
 - 2026-10-24, developer, verifier and reviewers: reproduced, fixed, recorded run 26/26; reports written.
 
 ## Final delivery

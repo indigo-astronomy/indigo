@@ -7020,6 +7020,17 @@
 		02F4A9FE7AF42267A8B3615C /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		C4624FA85398ED6145D9A435 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		45B5D2DC2EB159498C4847BD /* 20261024161128-3861-giotto-request-versus-poll.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024161128-3861-giotto-request-versus-poll.json"; sourceTree = "<group>"; };
+		3429851DD0EEA20A0F7825DC /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		ECC99CCE967A400B998A3C48 /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		1F97FD4DC61C9E703F4948B5 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		497C285D7F28D470DEB2A463 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		0CCE793EB92BB5E3BF59F1E1 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		80433C4FA68B2ACDB9CDA458 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		C89E07F5180CCB926407B84A /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		58452E08C120017868C61514 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		1C01B5B6467DB573009B1209 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		86930612787CBD99B59DC1F7 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		F231AF989A68D78935FF0100 /* 20261024163549-1b30-alto-request-versus-poll.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024163549-1b30-alto-request-versus-poll.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16111,6 +16122,7 @@
 				E963D42F40446A4F56F4355C /* 20261024092953-7ee4-primaluce-giotto-alto-drivers */,
 				62635F9203EEE77C1CB1AF93 /* 20261024120152-52cb-primaluce-alto-driver */,
 				5DC96D018A773C735777EEF2 /* 20261024161128-3861-giotto-request-versus-poll */,
+				76F606C28596F7B228663CDC /* 20261024163549-1b30-alto-request-versus-poll */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18364,6 +18376,7 @@
 				C6DE42A9200B27B4BDD7FF7B /* 20261024092953-7ee4-primaluce-giotto-alto-drivers.json */,
 				381907C3542B8383E47DD6A6 /* 20261024120152-52cb-primaluce-alto-driver.json */,
 				45B5D2DC2EB159498C4847BD /* 20261024161128-3861-giotto-request-versus-poll.json */,
+				F231AF989A68D78935FF0100 /* 20261024163549-1b30-alto-request-versus-poll.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -19718,6 +19731,23 @@
 				C4624FA85398ED6145D9A435 /* verification.md */,
 			);
 			path = "20261024161128-3861-giotto-request-versus-poll";
+			sourceTree = "<group>";
+		};
+		76F606C28596F7B228663CDC /* 20261024163549-1b30-alto-request-versus-poll */ = {
+			isa = PBXGroup;
+			children = (
+				3429851DD0EEA20A0F7825DC /* brief.md */,
+				ECC99CCE967A400B998A3C48 /* handoff.md */,
+				1F97FD4DC61C9E703F4948B5 /* plan.md */,
+				497C285D7F28D470DEB2A463 /* process.json */,
+				0CCE793EB92BB5E3BF59F1E1 /* quality-review.md */,
+				80433C4FA68B2ACDB9CDA458 /* security.md */,
+				C89E07F5180CCB926407B84A /* specification.md */,
+				58452E08C120017868C61514 /* state.json */,
+				1C01B5B6467DB573009B1209 /* test-plan.md */,
+				86930612787CBD99B59DC1F7 /* verification.md */,
+			);
+			path = "20261024163549-1b30-alto-request-versus-poll";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

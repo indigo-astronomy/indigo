@@ -133,3 +133,26 @@ failed as expected.
 - Hardware tests: 9 run, 9 passed on the requester's ALTO1 (firmware 1.03.11): `2026-10-24 16:49 3.0.0.1 linux x64 ALTO1 9/9 OK`.
 - Library unit tests: 29 run, 29 passed (`test_primalucelib`); the GIOTTO simulator suite 25/25 after the shared preset helpers.
 - Not verified: the calibration on hardware (planned with the requester), Windows and macOS builds, WiFi, physical hot-plug.
+
+## Poll versus pending request (3.0.0.2, 2026-10-24, task 20261024163549-1b30-alto-request-versus-poll)
+
+The flaw the repository audit found in the GIOTTO driver (FND-20261024121920-3bd2-repository-audit-021, reviewed source
+before this driver existed) was present here too.
+
+2. **An idle poll interfered with a queued move request** (reproduced, then fixed).
+   - Impact: a request accepted while an idle poll was in flight (the framework copies it into the property, marks it BUSY
+     and queues the handler) was undone by that poll: when the poll saw motion started elsewhere it began following it, so
+     the request's handler then refused with "The cover is moving"; when it saw a different position it published that
+     position over the request's target. Reproduced: a position of 40 requested during a poll that saw an external move to
+     70 was never sent.
+   - Root cause: outside a move the idle poll did not check whether a request was pending.
+   - Fix: outside a move, a BUSY `AUX_COVER` or `X_COVER_POSITION` means a pending request; the poll then publishes
+     nothing, follows no motion and posts no ALERT, and the request's own move takes over.
+   - Simulator: `external <position> slow` delays the reply to the poll that sees the move by 400 ms.
+   - Regression test: `request_versus_poll` (40 sent once, the cover ends OK at 40 with target 40); it failed on 3.0.0.1.
+   - Hardware: not rerun; the race needs the simulator's delayed reply, and the motion the hardware suite covers is unchanged.
+
+## Final test summary (3.0.0.2)
+
+- Simulated tests: 29 run, 29 passed: `2026-10-24 19:36 3.0.0.2 linux x64 simulator 29/29 OK`.
+- Hardware tests: 0 run for this change (the last hardware run, 9/9, was on 3.0.0.1).
