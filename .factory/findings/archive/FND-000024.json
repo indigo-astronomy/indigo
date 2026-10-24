@@ -3,7 +3,7 @@
   "title": "OPTDRV-006: `mmap()` results are stored without checking for `MAP_FAILED`",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -11,9 +11,19 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024202957-6bd9-fix-ccd-rpi",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "OPTDRV-006: `mmap()` results are stored without checking for `MAP_FAILED`. A failed mapping is later read as image memory in `ReadFrame()` and later passed to `munmap()`, which can crash or corrupt exposure output under memory pressure or invalid buffer FDs. Check each mapping, unwind any mappings made for the request, and fail `StartCapture()` cleanly. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:35; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:787`, `ccd_rpi/indigo_ccd_rpi.cpp:788`, `ccd_rpi/indigo_ccd_rpi.cpp:624`, `ccd_rpi/indigo_ccd_rpi.cpp:627`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024202957-6bd9-fix-ccd-rpi/verification.md: mmap MAP_FAILED checked, shared plane fds mapped once with offsets; review-verified",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

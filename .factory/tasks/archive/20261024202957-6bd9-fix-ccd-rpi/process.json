@@ -1,0 +1,123 @@
+{
+  "version": 2,
+  "task": "20261024202957-6bd9-fix-ccd-rpi",
+  "scope": [
+    ".factory/completions/20261024202957-6bd9-fix-ccd-rpi.json",
+    ".factory/findings/active/FND-000021.json",
+    ".factory/findings/active/FND-000022.json",
+    ".factory/findings/active/FND-000023.json",
+    ".factory/findings/active/FND-000024.json",
+    ".factory/findings/active/FND-000025.json",
+    ".factory/findings/active/FND-000026.json",
+    ".factory/findings/active/FND-000027.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-030.json",
+    ".factory/findings/active/FND-20261024202957-6bd9-fix-ccd-rpi-001.json",
+    ".factory/findings/archive/FND-000021.json",
+    ".factory/findings/archive/FND-000022.json",
+    ".factory/findings/archive/FND-000023.json",
+    ".factory/findings/archive/FND-000024.json",
+    ".factory/findings/archive/FND-000025.json",
+    ".factory/findings/archive/FND-000026.json",
+    ".factory/findings/archive/FND-000027.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-030.json",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_optional_drivers/ccd_rpi/Makefile",
+    "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_optional_drivers/ccd_rpi"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "bash",
+        "rpi-hw-checks.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024202957-6bd9-fix-ccd-rpi.json": [
+      "100644",
+      "blob",
+      "1b2493675b873657f7bf959c10618b464a9785b1"
+    ],
+    ".factory/findings/active/FND-000021.json": null,
+    ".factory/findings/active/FND-000022.json": null,
+    ".factory/findings/active/FND-000023.json": null,
+    ".factory/findings/active/FND-000024.json": null,
+    ".factory/findings/active/FND-000025.json": null,
+    ".factory/findings/active/FND-000026.json": null,
+    ".factory/findings/active/FND-000027.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-030.json": null,
+    ".factory/findings/active/FND-20261024202957-6bd9-fix-ccd-rpi-001.json": [
+      "100644",
+      "blob",
+      "8f5d0445345c865ae79b3943922c575f9ba31b82"
+    ],
+    ".factory/findings/archive/FND-000021.json": [
+      "100644",
+      "blob",
+      "02425c99f05f32a4648f26dd3d101538873b055e"
+    ],
+    ".factory/findings/archive/FND-000022.json": [
+      "100644",
+      "blob",
+      "3bf7465e04e6f88d9488497cff4c8569ed659296"
+    ],
+    ".factory/findings/archive/FND-000023.json": [
+      "100644",
+      "blob",
+      "ba058a4425621eb55ec28f6dacc6e33e02b1c902"
+    ],
+    ".factory/findings/archive/FND-000024.json": [
+      "100644",
+      "blob",
+      "d15738b65aecdc9ccae44fcc34b15bc6cfe368d2"
+    ],
+    ".factory/findings/archive/FND-000025.json": [
+      "100644",
+      "blob",
+      "1c69854f4872520674db36fe828e0b9b98f9753c"
+    ],
+    ".factory/findings/archive/FND-000026.json": [
+      "100644",
+      "blob",
+      "d39005d0ddb6a20283bc801cd615baa61db2bd57"
+    ],
+    ".factory/findings/archive/FND-000027.json": [
+      "100644",
+      "blob",
+      "603b2f984349f093041e2f7e8284752ba1d55ba7"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-030.json": [
+      "100644",
+      "blob",
+      "9bcbf6e9e00418735b52ba8f8dee87933b683af9"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "839b18949d1c1790c25222b4525f895fd5fe5c3f"
+    ],
+    "indigo_optional_drivers/ccd_rpi/Makefile": [
+      "100644",
+      "blob",
+      "bd6ca56fc77d5902ed67d9f616fb224faac0e978"
+    ],
+    "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp": [
+      "100644",
+      "blob",
+      "ba67553031cfc0c1bf5759225ba968197850a13d"
+    ]
+  }
+}

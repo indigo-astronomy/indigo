@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024202957-6bd9-fix-ccd-rpi",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit, fast-forward master and push (owner authorized 2026-10-24); delete the task branch.",
+  "blocker": null
+}

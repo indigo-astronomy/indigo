@@ -7082,6 +7082,7 @@
 		E4CC06C39B76808F1E04A79B /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		8A86EACA36327F9958088950 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		ED71B1653FCDEF8BC4056523 /* 20261024164718-0e69-primalucelib-token-bounds.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024164718-0e69-primalucelib-token-bounds.json"; sourceTree = "<group>"; };
+		7CE754E6D88ACCCBE2D60593 /* FND-20261024202957-6bd9-fix-ccd-rpi-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024202957-6bd9-fix-ccd-rpi-001.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16239,6 +16240,13 @@
 				B75F523ADB53F70E6C693D97 /* FND-000004.json */,
 				9C2B8FC2F863059D344B519D /* FND-000005.json */,
 				2365540113A4B7BEB46DD53C /* FND-000006.json */,
+				DAD10109315479002ECDE2DB /* FND-000021.json */,
+				BA1E8F77B1577BBF32A3F120 /* FND-000022.json */,
+				1A14ED931088CA0DFC3E1229 /* FND-000023.json */,
+				BE1B83A35B82DBF0515C4B0F /* FND-000024.json */,
+				E78B911CDDFC1219F02A69EE /* FND-000025.json */,
+				FF0A05025FF72A25345AFA12 /* FND-000026.json */,
+				A3C916DDB02ADA2F15839ECA /* FND-000027.json */,
 				1530BEFF8F6EF5FB6D423313 /* FND-000030.json */,
 				ABFBADC40CC38B3339EAD3FE /* FND-000036.json */,
 				9CBA640883230290891EF505 /* FND-000037.json */,
@@ -16316,6 +16324,7 @@
 				4D7A1D5B71F18FDCF6778FB2 /* FND-20261024121920-3bd2-repository-audit-014.json */,
 				88D0B476DE86023D68DAE3F0 /* FND-20261024121920-3bd2-repository-audit-017.json */,
 				528367DC8FCEE4A6AE2ADFB2 /* FND-20261024121920-3bd2-repository-audit-021.json */,
+				89A4BC30E600C38FF5319EB6 /* FND-20261024121920-3bd2-repository-audit-030.json */,
 				EEBE2CD99837A0B568168FE1 /* FND-20261024121920-3bd2-repository-audit-031.json */,
 				2B186AA137E10460D4539C98 /* FND-20261024121920-3bd2-repository-audit-033.json */,
 				7507B014F96D723FAFCC419E /* FND-20261024121920-3bd2-repository-audit-035.json */,
@@ -18818,13 +18827,6 @@
 				6575AB7EB3748644ADC55EEB /* FND-000018.json */,
 				1DF5224DD284B0B53A43A993 /* FND-000019.json */,
 				AF47E6E132D8D85848C70B03 /* FND-000020.json */,
-				DAD10109315479002ECDE2DB /* FND-000021.json */,
-				BA1E8F77B1577BBF32A3F120 /* FND-000022.json */,
-				1A14ED931088CA0DFC3E1229 /* FND-000023.json */,
-				BE1B83A35B82DBF0515C4B0F /* FND-000024.json */,
-				E78B911CDDFC1219F02A69EE /* FND-000025.json */,
-				FF0A05025FF72A25345AFA12 /* FND-000026.json */,
-				A3C916DDB02ADA2F15839ECA /* FND-000027.json */,
 				BC82B300B40AE795785799B7 /* FND-000028.json */,
 				4592F0AEEBDA76DD09799F4E /* FND-000029.json */,
 				049168C319DF38E8227DE80A /* FND-000031.json */,
@@ -18901,7 +18903,6 @@
 				3690C39E0D05CFAA50DB4FDE /* FND-20261024121920-3bd2-repository-audit-027.json */,
 				B45CF94A9E99A43C2163CE5F /* FND-20261024121920-3bd2-repository-audit-028.json */,
 				A257BDCE52A20F59DF2731D6 /* FND-20261024121920-3bd2-repository-audit-029.json */,
-				89A4BC30E600C38FF5319EB6 /* FND-20261024121920-3bd2-repository-audit-030.json */,
 				FDF587060A598BD0CD463E0B /* FND-20261024121920-3bd2-repository-audit-032.json */,
 				372DAD6B9997C34D657A5700 /* FND-20261024121920-3bd2-repository-audit-034.json */,
 				AEACF9790C825FF02F232719 /* FND-20261024121920-3bd2-repository-audit-036.json */,
@@ -18909,6 +18910,7 @@
 				3A4916545E21E0C262D80B47 /* FND-20261024121920-3bd2-repository-audit-043.json */,
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
 				4F945538E804D77B129FE818 /* FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json */,
+				7CE754E6D88ACCCBE2D60593 /* FND-20261024202957-6bd9-fix-ccd-rpi-001.json */,
 			);
 			path = active;
 			sourceTree = "<group>";

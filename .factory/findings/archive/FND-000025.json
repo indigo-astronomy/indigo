@@ -3,7 +3,7 @@
   "title": "OPTDRV-007: The Raspberry Pi connection path appends mode items for every supported format/size without checking the allocated capacity of `CCD_MODE_PROPERTY` or resizing it",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -11,9 +11,19 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024202957-6bd9-fix-ccd-rpi",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "OPTDRV-007: The Raspberry Pi connection path appends mode items for every supported format/size without checking the allocated capacity of `CCD_MODE_PROPERTY` or resizing it. Cameras that report many formats or sizes can write past the base CCD mode property item array. Bound the count or resize the property before adding items. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:36; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:1129`, `ccd_rpi/indigo_ccd_rpi.cpp:1146`, `ccd_rpi/indigo_ccd_rpi.cpp:1165`, `ccd_rpi/indigo_ccd_rpi.cpp:1184`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024202957-6bd9-fix-ccd-rpi/verification.md: CCD_MODE resized with indigo_resize_property() to the collected mode count; hardware: 8 modes listed",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }
