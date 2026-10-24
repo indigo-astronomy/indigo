@@ -146,6 +146,7 @@ char *ptp_event_canon_code_label(uint16_t code) {
 		case ptp_event_canon_RequestGetEvent: return "RequestGetEvent_Canon";
 		case ptp_event_canon_ObjectAddedEx: return "ObjectAddedEx_Canon";
 		case ptp_event_canon_ObjectAddedEx2: return "ObjectAddedEx2_Canon";
+		case ptp_event_canon_ObjectAddedEx64LFN: return "ObjectAddedEx64LFN_Canon";
 		case ptp_event_canon_RequestObjectTransfer64: return "RequestObjectTransfer64_Canon";
 		case ptp_event_canon_RequestObjectTransfer64LFN: return "RequestObjectTransfer64LFN_Canon";
 		case ptp_event_canon_ObjectRemoved: return "ObjectRemoved_Canon";
@@ -823,6 +824,48 @@ static uint8_t *ptp_copy_image_format(uint8_t *source, uint64_t *target) {
 	return source;
 }
 
+// ObjectAddedEx64LFN carries a counted UTF-16 name; decode it with bounds checks.
+static bool ptp_canon_decode_lfn_name(uint8_t *source, uint32_t available, char *target, size_t target_size) {
+	if (available < 1) {
+		return false;
+	}
+	uint8_t count = *source++;
+	available--;
+	if ((uint32_t)count * 2 > available) {
+		return false;
+	}
+	size_t offset = 0;
+	for (int i = 0; i < count; i++) {
+		uint16_t code = (uint16_t)(source[0] | (source[1] << 8));
+		source += 2;
+		if (code >= 0xD800 && code <= 0xDFFF) {
+			// Lone surrogates cannot be encoded.
+			return false;
+		}
+		if (code < 0x80) {
+			if (offset + 1 >= target_size) {
+				return false;
+			}
+			target[offset++] = (char)code;
+		} else if (code < 0x800) {
+			if (offset + 2 >= target_size) {
+				return false;
+			}
+			target[offset++] = (char)(0xC0 | (code >> 6));
+			target[offset++] = (char)(0x80 | (code & 0x3F));
+		} else {
+			if (offset + 3 >= target_size) {
+				return false;
+			}
+			target[offset++] = (char)(0xE0 | (code >> 12));
+			target[offset++] = (char)(0x80 | ((code >> 6) & 0x3F));
+			target[offset++] = (char)(0x80 | (code & 0x3F));
+		}
+	}
+	target[offset] = 0;
+	return true;
+}
+
 static void ptp_canon_get_event(indigo_device *device) {
 	void *events_buffer = NULL;
 	uint32_t max_size;
@@ -1179,25 +1222,44 @@ static void ptp_canon_get_event(indigo_device *device) {
 				}
 				case ptp_event_canon_ObjectAddedEx:
 				case ptp_event_canon_ObjectAddedEx2:
+				case ptp_event_canon_ObjectAddedEx64LFN:
 				case ptp_event_canon_RequestObjectTransfer:
 				case ptp_event_canon_RequestObjectTransfer64:
 				case ptp_event_canon_RequestObjectTransfer64LFN: {
 					bool transfer = event == ptp_event_canon_RequestObjectTransfer || event == ptp_event_canon_RequestObjectTransfer64 || event == ptp_event_canon_RequestObjectTransfer64LFN;
-					uint32_t filename_offset = event == ptp_event_canon_ObjectAddedEx ? 0x28 : event == ptp_event_canon_ObjectAddedEx2 ? 0x2C : event == ptp_event_canon_RequestObjectTransfer64LFN ? 0 : 0x1C;
-					if (size < (filename_offset ? filename_offset + 1 : 0x25)) {
+					bool lfn = event == ptp_event_canon_ObjectAddedEx64LFN;
+					uint32_t filename_offset = event == ptp_event_canon_ObjectAddedEx ? 0x28 : event == ptp_event_canon_ObjectAddedEx2 ? 0x2C : event == ptp_event_canon_RequestObjectTransfer64LFN || lfn ? 0 : 0x1C;
+					if (size < (lfn ? 0x31 : filename_offset ? filename_offset + 1 : 0x25)) {
 						PRIVATE_DATA->last_error = ptp_response_GeneralError;
 						break;
 					}
 					uint32_t handle = 0, length = 0;
 					char filename[PTP_MAX_CHARS] = { 0 };
 					ptp_decode_uint32(source, &handle);
-					ptp_decode_uint32(source + (transfer ? 0x0C : 0x14), &length);
+					if (lfn) {
+						// ObjectAddedEx64LFN reports a 64-bit object size at a fixed offset.
+						uint64_t length64 = 0;
+						ptp_decode_uint64(source + 0x14, &length64);
+						if (length64 == 0 || length64 > UINT32_MAX) {
+							PRIVATE_DATA->last_error = ptp_response_GeneralError;
+							break;
+						}
+						length = (uint32_t)length64;
+					} else {
+						ptp_decode_uint32(source + (transfer ? 0x0C : 0x14), &length);
+					}
 					if (transfer && !CANON_PRIVATE_DATA->use_ram) {
 						// Release the host-transfer reservation before waiting for ObjectAddedEx.
 						ptp_transaction_1_0(device, ptp_operation_canon_TransferComplete, handle);
 						break;
 					}
-					if (filename_offset) {
+					if (lfn) {
+						// The name is a counted UTF-16 string, not NUL-terminated bytes.
+						if (!ptp_canon_decode_lfn_name(record + 0x30, size - 0x30, filename, sizeof(filename))) {
+							PRIVATE_DATA->last_error = ptp_response_GeneralError;
+							break;
+						}
+					} else if (filename_offset) {
 						// Offsets include the record header; these names are NUL-terminated bytes, not PTP strings.
 						uint8_t *name = record + filename_offset;
 						uint8_t *end = memchr(name, 0, size - filename_offset);
@@ -1233,7 +1295,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): handle = %08x, size = %u, name = '%s' skipped", ptp_event_canon_code_label(event), event, handle, length, filename);
 					} else {
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): handle = %08x, size = %u, name = '%s' downloading", ptp_event_canon_code_label(event), event, handle, length, filename);
-						if (event == ptp_event_canon_ObjectAddedEx || event == ptp_event_canon_ObjectAddedEx2) {
+						if (event == ptp_event_canon_ObjectAddedEx || event == ptp_event_canon_ObjectAddedEx2 || event == ptp_event_canon_ObjectAddedEx64LFN) {
 							void *buffer = NULL;
 							if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
 								const char *ext = strchr(filename, '.');
