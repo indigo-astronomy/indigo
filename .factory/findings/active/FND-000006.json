@@ -1,9 +1,9 @@
 {
   "id": "FND-000006",
-  "title": "DRV-095: Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation.",
+  "title": "DRV-095: Letter direction encoding is ineffective on tested CGUSB-ST4; numeric dialect confirmed, DEC orientation needs qualification.",
   "category": "functional",
   "severity": "medium",
-  "status": "blocked",
+  "status": "open",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -11,9 +11,14 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024064954-2f11-verify-cgusbst4-protocol",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "summary": "DRV-095: Direction encoding differs from upstream PHD2 (letters versus digits); device-protocol compatibility needs confirmation. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
-  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_drivers/REVIEW.md:134; historical locations: `guider_cgusbst4/indigo_guider_cgusbst4.driver:110`; legacy status: Open (protocol confirmation needed)",
+  "summary": "Hardware confirmed that letter n/s/e/w commands are silently ineffective on the tested CGUSB-ST4, while digits 0\u20133 activate NYX-101 ST4 and move motors. Next: implement numeric encoding; resolve setup-specific DEC inversion before claiming full compass-direction acceptance. No production fix applied.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_drivers/REVIEW.md:134; historical locations: `guider_cgusbst4/indigo_guider_cgusbst4.driver:110`; legacy status: Open (protocol confirmation needed); 2026-10-24 hardware experiment: task 20261024064954-2f11-verify-cgusbst4-protocol, verification.md and retained scripts/JSONL; numeric directions and padding accepted, DEC inversion relative to direct NYX controls remains qualified.",
   "resolution": null
 }

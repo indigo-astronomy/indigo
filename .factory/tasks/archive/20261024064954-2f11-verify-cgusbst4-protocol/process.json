@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "task": "20261024064954-2f11-verify-cgusbst4-protocol",
+  "scope": [
+    ".factory/findings/active/FND-000006.json",
+    ".factory/completions/20261024064954-2f11-verify-cgusbst4-protocol.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024064954-2f11-verify-cgusbst4-protocol.json": [
+      "100644",
+      "blob",
+      "b500dfb2663f852d780d4746d421d7f1753858a4"
+    ],
+    ".factory/findings/active/FND-000006.json": [
+      "100644",
+      "blob",
+      "2c6fcb4da74d7983d9814325776ffd07c52302f4"
+    ]
+  }
+}
