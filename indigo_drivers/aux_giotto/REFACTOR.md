@@ -164,3 +164,29 @@ dropped (`light_switch_refused`), failed poll not ALERT (`poll_failure`), recall
   `2026-10-24 14:31 3.0.0.1 linux x64 GIOTTO 8/8 OK`.
 - Library unit tests: 28 run, 28 passed (`test_primalucelib`).
 - Not verified: Windows and macOS builds (no tools here), the WiFi connection, physical hot-plug (not requested).
+
+## Poll versus pending request (3.0.0.2, 2026-10-24, task 20261024161128-3861-giotto-request-versus-poll)
+
+Found by the repository audit 20261024121920-3bd2-repository-audit as FND-20261024121920-3bd2-repository-audit-021.
+
+2. **A poll replaced a queued light or brightness request** (reproduced, then fixed).
+   - Impact: a client request accepted while an idle poll was in flight (the framework copies the request into the
+     property, marks it BUSY and queues the handler) was overwritten when that poll found a change made elsewhere or
+     recovered from ALERT: the poll published its readback over the value and target, and the handler then sent the old
+     value and reported success. Reproduced: a brightness of 40 requested during a poll that read 77 sent
+     `{"set":{"BRIGHTNESS":77}}` and never 40.
+   - Root cause: the poll published both light properties without checking whether a request was pending.
+   - Fix: after its exchange the poll leaves a BUSY property, and the value the driver remembers for it, untouched; the
+     ALERT of a failed poll skips it too. The next poll compares again. The switch and the intensity are handled
+     separately, so the other one is still published.
+   - Simulator: `external <light> <brightness> slow` delays the reply to the poll that sees the change by 400 ms, so a
+     request arrives while it is in flight.
+   - Regression test: `request_versus_poll` (40 sent once, 77 never, intensity OK at 40 with target 40); it failed on
+     3.0.0.1 with the journal above.
+   - Hardware: not rerun; the race needs the simulator's delayed reply to be reproducible, and the light and brightness
+     handling the hardware suite covers is unchanged otherwise.
+
+## Final test summary (3.0.0.2)
+
+- Simulated tests: 26 run, 26 passed: `2026-10-24 19:17 3.0.0.2 linux x64 simulator 26/26 OK`.
+- Hardware tests: 0 run for this change (the last hardware run, 8/8, was on 3.0.0.1).

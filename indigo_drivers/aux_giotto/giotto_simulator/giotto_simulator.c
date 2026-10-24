@@ -75,7 +75,8 @@ static void usage(const char *name) {
 	printf("INDIGO_GIOTTO_EVENTS names a file receiving every accepted request.\n");
 	printf("INDIGO_GIOTTO_FAULT names a file holding '<key> <silent|garbage|reject|close>', applied once to the next\n");
 	printf("request containing that key and then removed; an 'always_' prefix keeps it armed.\n");
-	printf("'external <light> <brightness>' changes the panel as its web page does.\n");
+	printf("'external <light> <brightness> [slow]' changes the panel as its web page does; 'slow' delays the reply to that\n");
+	printf("request by 400 ms, so that a client request arrives while it is in flight.\n");
 }
 
 static void signal_handler(int sig) {
@@ -140,11 +141,12 @@ static const char *pending_fault(const char *request) {
 		return NULL;
 	}
 	int external_light, external_brightness;
+	char delay[16] = "";
 	bool parsed = fscanf(file, "%127s %63s", key, action) == 2;
 	fclose(file);
 	if (parsed && !strcmp(key, "external") && sscanf(action, "%d", &external_light) == 1) {
 		file = fopen(path, "r");
-		if (file != NULL && fscanf(file, "%*s %d %d", &external_light, &external_brightness) == 2) {
+		if (file != NULL && fscanf(file, "%*s %d %d %15s", &external_light, &external_brightness, delay) >= 2) {
 			light = external_light == 1;
 			brightness = external_brightness;
 		}
@@ -152,7 +154,7 @@ static const char *pending_fault(const char *request) {
 			fclose(file);
 		}
 		unlink(path);
-		return NULL;
+		return strcmp(delay, "slow") ? NULL : "slow";
 	}
 	if (!parsed || strstr(request, key) == NULL) {
 		return NULL;
@@ -402,6 +404,10 @@ static void dispatch_command(const char *json) {
 		fflush(events);
 	}
 	const char *fault = pending_fault(json);
+	if (fault != NULL && !strcmp(fault, "slow")) {
+		usleep(400000);
+		fault = NULL;
+	}
 	if (fault != NULL && !strcmp(fault, "silent")) {
 		return;
 	}

@@ -576,6 +576,25 @@ cleanup:
 	driver_stop();
 }
 
+// A request accepted while a poll is in flight is not replaced by that poll's readback, even when the readback shows
+// a change made elsewhere (FND-20261024121920-3bd2-repository-audit-021): the requested brightness is sent once, the
+// old one never, and the intensity ends OK at the request.
+static void request_versus_poll(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(light_is(false, 0));
+	int polls = requests("{\"req\":{\"get\":{\"LIGHT\":\"\",\"BRIGHTNESS\":\"\"}}}");
+	SERIAL_CHECK_TRUE(fault("external", "1 77 slow"));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"get\":{\"LIGHT\":\"\",\"BRIGHTNESS\":\"\"}}}", polls + 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, GIOTTO_NAME, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 40));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"BRIGHTNESS\":40}}}", 1));
+	SERIAL_CHECK_TRUE(light_is(true, 40));
+	SERIAL_CHECK_EQ_INT(1, requests("\"BRIGHTNESS\":40"));
+	SERIAL_CHECK_EQ_INT(0, requests("\"BRIGHTNESS\":77"));
+	SERIAL_CHECK_TRUE(find_cached_item(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME)->number.target == 40);
+cleanup:
+	driver_stop();
+}
+
 // A failed poll publishes ALERT with the last values; the next good poll restores OK.
 static void poll_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -775,6 +794,7 @@ int main(void) {
 		{ "intensity_refused", intensity_refused, "normal" },
 		{ "intensity_unanswered", intensity_unanswered, "normal" },
 		{ "external_change_polled", external_change_polled, "normal" },
+		{ "request_versus_poll", request_versus_poll, "normal" },
 		{ "poll_failure", poll_failure, "normal" },
 		{ "environment_polled", environment_polled, "normal" },
 		{ "presets", presets, "normal" },

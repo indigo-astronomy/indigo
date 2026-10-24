@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000001
+#define DRIVER_VERSION       0x03000002
 #define DRIVER_NAME          "indigo_aux_giotto"
 #define DRIVER_LABEL         "PrimaluceLab GIOTTO Flat Panel"
 #define AUX_DEVICE_NAME      "PrimaluceLab GIOTTO"
@@ -272,24 +272,37 @@ static void aux_timer_callback(indigo_device *device) {
 	//+ aux.on_timer
 	bool on;
 	int brightness;
-	if (primalucelib_panel_get_state(LINK, &on, &brightness)) {
+	bool polled = primalucelib_panel_get_state(LINK, &on, &brightness);
+	// A request accepted meanwhile (the property is BUSY until its handler runs) owns its property: the poll
+	// neither publishes over it nor changes the value the handler compares with; the next poll looks again.
+	bool switch_free = AUX_LIGHT_SWITCH_PROPERTY->state != INDIGO_BUSY_STATE;
+	bool intensity_free = AUX_LIGHT_INTENSITY_PROPERTY->state != INDIGO_BUSY_STATE;
+	if (polled) {
 		// Changes made on the web page or by a WiFi client are published as they are found.
-		bool changed = on != PRIVATE_DATA->light || brightness != PRIVATE_DATA->brightness;
-		if (changed || PRIVATE_DATA->poll_alert) {
+		if (switch_free && (on != PRIVATE_DATA->light || PRIVATE_DATA->poll_alert)) {
 			PRIVATE_DATA->light = on;
-			PRIVATE_DATA->brightness = brightness;
-			PRIVATE_DATA->poll_alert = false;
-			giotto_publish_light(device);
-			AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, on ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
+			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+		}
+		if (intensity_free && (brightness != PRIVATE_DATA->brightness || PRIVATE_DATA->poll_alert)) {
+			PRIVATE_DATA->brightness = brightness;
+			AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = brightness;
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		}
+		PRIVATE_DATA->poll_alert = false;
 	} else if (!PRIVATE_DATA->poll_alert) {
 		// A failed poll keeps the last values; the next good poll restores OK.
 		PRIVATE_DATA->poll_alert = true;
-		AUX_LIGHT_SWITCH_PROPERTY->state = AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+		if (switch_free) {
+			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+		}
+		if (intensity_free) {
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+		}
 	}
 	if (++PRIVATE_DATA->environment_ticks % ENVIRONMENT_TICKS == 0) {
 		double temperature, supply, usb;

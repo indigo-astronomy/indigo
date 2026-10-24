@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024161128-3861-giotto-request-versus-poll",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit after the requester approves the plan.",
+  "blocker": null
+}
