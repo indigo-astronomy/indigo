@@ -1,0 +1,13 @@
+{
+  "exit": 0,
+  "before": {
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": "8696ba6fef5d7c4c48aa002c6603df0aafbe727559a25dccbddbe866d4ed61f7",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h": "89cce576d1b7615c392f57b5ffbb8fd68d19e12e34498e083b1019d2d503dd3f",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce_main.c": "044acef5ce50d9dcb671f016ca3caf2386b582100e728a538d05b84c902c79e3"
+  },
+  "after": {
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": "8696ba6fef5d7c4c48aa002c6603df0aafbe727559a25dccbddbe866d4ed61f7",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h": "89cce576d1b7615c392f57b5ffbb8fd68d19e12e34498e083b1019d2d503dd3f",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce_main.c": "044acef5ce50d9dcb671f016ca3caf2386b582100e728a538d05b84c902c79e3"
+  }
+}

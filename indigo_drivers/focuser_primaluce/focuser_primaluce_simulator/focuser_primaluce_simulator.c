@@ -56,6 +56,8 @@ static const char *lan_cfg = "ap";
 static const char *led_status = "on";
 static const char *model = "SESTOSENSO2";
 static const char *firmware = "3.10";
+static const char *web_firmware = "3.10";
+static char long_firmware[701];
 static bool report_abs_pos = true;
 static bool report_speed = true;
 static int calibration_restart = 0;
@@ -96,6 +98,7 @@ static void usage(const char *name) {
 	printf("  --profile <name>        normal, esatto, esatto-needs-calibration, sestosenso3,\n");
 	printf("                          sestosenso3-uncalibrated, sestosenso3-arco-uncalibrated,\n");
 	printf("                          no-abs-pos, no-speed, unsupported, old-firmware,\n");
+	printf("                          long-app, long-web, long-combined,\n");
 	printf("                          needs-calibration, external-motion or no-probe,\n");
 	printf("                          default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
@@ -168,6 +171,17 @@ static void apply_profile(void) {
 		motor_error = "CalRestart; CalRestart_WrongMaxPos; ";
 	} else if (!strcmp(options.profile, "unsupported")) {
 		model = "ARCO";
+	} else if (!strcmp(options.profile, "long-app") || !strcmp(options.profile, "long-web") || !strcmp(options.profile, "long-combined")) {
+		size_t length = !strcmp(options.profile, "long-combined") ? 300 : 700;
+		memset(long_firmware, 'x', length);
+		memcpy(long_firmware, "3.10", 4);
+		long_firmware[length] = 0;
+		if (strcmp(options.profile, "long-web")) {
+			firmware = long_firmware;
+		}
+		if (strcmp(options.profile, "long-app")) {
+			web_firmware = long_firmware;
+		}
 	} else if (!strcmp(options.profile, "old-firmware")) {
 		firmware = "3.00";
 	} else if (!strcmp(options.profile, "no-abs-pos")) {
@@ -344,7 +358,7 @@ static void send_state(int handle) {
 	sim_printf(handle,
 		"{\"res\":{\"get\":{%s"
 		"\"MODNAME\":\"%s\",\"SN\":\"SESTOSENSO20716\","
-		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"},\"LANCFG\":\"%s\","
+		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"%s\"},\"LANCFG\":\"%s\","
 		"\"WIFIAP\":{\"SSID\":\"SESTOSENSO20716\",\"PWD\":\"primalucelab\",\"STATUS\":\"%s\"},"
 		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
 		"\"EXT_T\":\"%s\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":%d,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
@@ -356,7 +370,7 @@ static void send_state(int handle) {
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%s,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, lan_cfg, wifi_status, external_temperature, led_status, arco_enabled, calibration_restart, calibration_restart || rotator_calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart || rotator_calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, web_firmware, lan_cfg, wifi_status, external_temperature, led_status, arco_enabled, calibration_restart, calibration_restart || rotator_calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart || rotator_calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -432,7 +446,7 @@ static void dispatch_command(int handle, const char *command) {
 	if (strstr(command, "\"MODNAME\"") != NULL) {
 		sim_printf(handle, "{\"res\":{\"get\":{\"MODNAME\":\"%s\"}}}\n", model);
 	} else if (strstr(command, "\"SWVERS\"") != NULL) {
-		sim_printf(handle, "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"3.10\"}}}}\n", firmware);
+		sim_printf(handle, "{\"res\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"%s\"}}}}\n", firmware, web_firmware);
 	} else if (strstr(command, "\"get\"") != NULL) {
 		send_state(handle);
 	} else if (strstr(command, "\"set\"") != NULL && strstr(command, "\"PRESET_") != NULL) {

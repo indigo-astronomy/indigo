@@ -872,6 +872,44 @@ cleanup:
 	driver_stop();
 }
 
+static const char *active_profile;
+
+static void long_firmware_metadata(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	char app[701], web[701], combined[1500], expected[INDIGO_VALUE_SIZE];
+	size_t length = !strcmp(active_profile, "long-combined") ? 300 : 700;
+	memset(app, 'x', length);
+	memcpy(app, "3.10", 4);
+	app[length] = 0;
+	memcpy(web, app, length + 1);
+	if (!strcmp(active_profile, "long-web")) {
+		strcpy(app, "3.10");
+	} else if (!strcmp(active_profile, "long-app")) {
+		strcpy(web, "3.10");
+	}
+	snprintf(combined, sizeof(combined), "%s / %s", app, web);
+	memcpy(expected, combined, sizeof(expected) - 1);
+	expected[sizeof(expected) - 1] = 0;
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, expected));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "SESTOSENSO20716"));
+cleanup:
+	driver_stop();
+}
+
+static void wifi_escaped_credentials(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_SSID_ITEM_NAME, "AP\"\\", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"WIFIAP\":{\"SSID\":\"AP\\\"\\\\\"", 1));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, X_WIFI_AP_PASSWORD_ITEM_NAME, "pw\"\\", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"PWD\":\"pw\\\"\\\\\"", 1));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, X_WIFI_STA_SSID_ITEM_NAME, "STA\"\\", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"WIFISTA\":{\"SSID\":\"STA\\\"\\\\\"", 1));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, X_WIFI_STA_PASSWORD_ITEM_NAME, "key\"\\", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"PWD\":\"key\\\"\\\\\"", 1));
+cleanup:
+	driver_stop();
+}
+
 // Firmware older than 3.05 is reported but still accepted.
 static void old_firmware(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -1949,6 +1987,10 @@ int main(void) {
 		{ "unsupported_device", unsupported_device, "unsupported" },
 		{ "handshake_timeout", handshake_timeout, "normal" },
 		{ "old_firmware", old_firmware, "old-firmware" },
+		{ "long_application_firmware", long_firmware_metadata, "long-app" },
+		{ "long_web_firmware", long_firmware_metadata, "long-web" },
+		{ "long_combined_firmware", long_firmware_metadata, "long-combined" },
+		{ "wifi_escaped_credentials", wifi_escaped_credentials, "normal" },
 		{ "needs_calibration", needs_calibration, "needs-calibration" },
 		{ "repeated_init_shutdown", repeated_init_shutdown, "normal" },
 		{ "shutdown_rejected_while_connected", shutdown_rejected_while_connected, "normal" },
@@ -2023,6 +2065,7 @@ int main(void) {
 		if (filter != NULL && strstr(cases[i].name, filter) == NULL) {
 			continue;
 		}
+		active_profile = cases[i].profile;
 		unlink(fault_path);
 		const char *arguments[] = { "--profile", cases[i].profile, NULL, NULL };
 		if (getenv("PRIMALUCE_TEST_TRACE") != NULL) {

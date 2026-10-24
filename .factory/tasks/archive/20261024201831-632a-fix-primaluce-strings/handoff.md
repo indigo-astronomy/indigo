@@ -1,0 +1,17 @@
+# Handoff
+
+Task 20261024201831-632a-fix-primaluce-strings; branch task/20261024201831-632a-fix-primaluce-strings; base caa4c7787. Sole writer: root Codex. Roles loaded: coordinator, analyst, planner, test-designer, developer. Transitions: specification and plan accepted; test design/baseline assigned to root. Allowed writes: focuser_primaluce driver/simulator/REFACTOR/test-run README, shared primalucelib source/protocol documentation, corresponding unit/integration tests, MIGRATION_STATUS.md, TEST_SUMMARY.md, Xcode finding references and task/finding/completion evidence.
+
+Balanced tier recommended for bounded protocol work; retain current owner host/model, exact model/settings unknown. No additional provider calls, model switch or charges; no supplied budget, actual cost unknown. Host supports shell, files, local Git and subagents; Git metadata mutations require sandbox escalation. Remote fetch succeeded; local master equals origin/master. Maintenance not due (12 uncovered tasks); no pending live upgrade. No hardware access assigned.
+
+Next: baseline and regressions, then developer implementation. Integration/push are unauthorized and remain pending.
+
+Test-designer → developer: regressions added; three oversized firmware profiles crash the original driver; baseline library 30/30 passed. Full original simulator continues in its original loaded executable with traces retained under /tmp until copied into task evidence. No concurrent source writer.
+
+Independent test-design review: review_contract subagent read the scoped contracts/tests and found no blocking coverage gap. Combined encoded request capacity was explicitly checked in the proposed helper; compiler syntax check with -Werror -Wmultichar passed. No production edits before characterization completes.
+
+Developer → verifier: original 71/71 simulator + 1/1 motion and 30/30 library baseline passed; both WiFi regressions failed and three firmware regressions crashed before repair. Bounded formatter and JSON encoder applied, version 42 generated. Universal build and strict library syntax check passed; final library 32/32 and sanitizer firmware 3/3 passed. Full recorded driver run and sanitizer library continue. Final independent quality/security review assigned to review_contract with sole write ownership of quality-review.md/security.md. Owner explicitly reaffirmed continuing through verification and commit, repairing known defects in their own software. No merge/push authority added.
+
+Verifier → documenter/coordinator: acceptance passed: recorded driver 76/76, library 32/32, sanitizer library 32/32 + firmware 3/3; universal build, strict library compile, Factory check/security and 188 Factory tests passed. Test records and protocol/REFACTOR/count documentation updated. Independent product/test quality and security reports pass. Both finding records are prepared for canonical closure. See verification.md for exact evidence.
+
+Owner explicitly ended verification and requested immediate commit ("uz nic neoveruj a urob commit"). Remaining full-trace comparison, final administrative reinspection, post-archive validation and committed-range process check are waived by that instruction and are not claimed as passed. No further tests were launched. Task execution is ready to commit; integration/publication/branch cleanup remain pending because no main merge/push was authorized. Preserve this task branch until integration is authorized. No full repository audit checkpoint was reset; starting uncovered count 12, completion adds one, calendar unchanged.
