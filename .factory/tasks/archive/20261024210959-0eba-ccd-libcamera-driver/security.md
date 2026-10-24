@@ -8,3 +8,6 @@ The driver talks only to the local libcamera library; no network endpoint, authe
 
 ## Checks and findings
 `./.factory/scripts/security` exit 0 (Factory process boundaries only). ASan/UBSan fake-bridge run clean for the driver object. No security finding, no risk acceptance. The C++ bridge is not sanitizer-instrumented on hardware.
+
+## Data-model path signal
+The conservative data-model rule matches `MIGRATION_STATUS.md` and `indigo_docs/DRIVER_GENERATOR_MIGRATION.md`. The first gains one new row for `ccd_libcamera` (status columns only, empty Comment column, existing rows unchanged); the second gains a documentation section for the `usb = false` SDK mode. No schema, stored user data, configuration format or data migration changes. This report covers that signal.

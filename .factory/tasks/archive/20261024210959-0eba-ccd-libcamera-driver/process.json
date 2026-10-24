@@ -78,7 +78,9 @@
       "evidence": "security.md"
     }
   ],
-  "risk_reviews": {},
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
   "reviews": [],
   "reviewed_content": {
     ".factory/completions/20261024210959-0eba-ccd-libcamera-driver.json": [
