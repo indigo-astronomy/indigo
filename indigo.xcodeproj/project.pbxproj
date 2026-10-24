@@ -6800,6 +6800,17 @@
 		884377EF83A7E77A2188696C /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		3F9DBDCC1312408A35787BE2 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		E6D36D416585C2FC4E139EF0 /* 20261023235957-e03c-primaluce-usb-pattern.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261023235957-e03c-primaluce-usb-pattern.json"; sourceTree = "<group>"; };
+		FCF88A845D5595A86669CAB3 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		48AC5EB0D6641BDEEF4DF501 /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		B56C3F34C304EA89953DF7F4 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		F4C219B1209176B49EDBDD32 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		726D9E42258FF4CEF794FE41 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		6B3E7247CF473CA887852551 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		36DDEE346012ACFDBED01BBC /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		894F218276E9DB33BB39B493 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		ED1BAC22857B9D651E95CCC1 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		66A49C98B3E3EE07085D9F9E /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		6F78A5813A358CC4B0C00143 /* 20261024002000-64d7-primaluce-usb-pattern-hw.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024002000-64d7-primaluce-usb-pattern-hw.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15871,6 +15882,7 @@
 				3D73C6395C64644A57EF3F3A /* 20261023231027-08cd-esatto-calibration-home */,
 				5C4E7DC4E2F61A45BBB51368 /* 20261023234416-7c1d-xcode-navigator-sync */,
 				FA356D60509B10F1C686A7D4 /* 20261023235957-e03c-primaluce-usb-pattern */,
+				9C7D1752AD894F5477F9CAF3 /* 20261024002000-64d7-primaluce-usb-pattern-hw */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18094,6 +18106,7 @@
 				FC4B69DE12C69F504B372F51 /* 20261023231027-08cd-esatto-calibration-home.json */,
 				B37F1A6ACDC661D0995FAB90 /* 20261023234416-7c1d-xcode-navigator-sync.json */,
 				E6D36D416585C2FC4E139EF0 /* 20261023235957-e03c-primaluce-usb-pattern.json */,
+				6F78A5813A358CC4B0C00143 /* 20261024002000-64d7-primaluce-usb-pattern-hw.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -19188,6 +19201,23 @@
 				3F9DBDCC1312408A35787BE2 /* verification.md */,
 			);
 			path = "20261023235957-e03c-primaluce-usb-pattern";
+			sourceTree = "<group>";
+		};
+		9C7D1752AD894F5477F9CAF3 /* 20261024002000-64d7-primaluce-usb-pattern-hw */ = {
+			isa = PBXGroup;
+			children = (
+				FCF88A845D5595A86669CAB3 /* brief.md */,
+				48AC5EB0D6641BDEEF4DF501 /* handoff.md */,
+				B56C3F34C304EA89953DF7F4 /* plan.md */,
+				F4C219B1209176B49EDBDD32 /* process.json */,
+				726D9E42258FF4CEF794FE41 /* quality-review.md */,
+				6B3E7247CF473CA887852551 /* security.md */,
+				36DDEE346012ACFDBED01BBC /* specification.md */,
+				894F218276E9DB33BB39B493 /* state.json */,
+				ED1BAC22857B9D651E95CCC1 /* test-plan.md */,
+				66A49C98B3E3EE07085D9F9E /* verification.md */,
+			);
+			path = "20261024002000-64d7-primaluce-usb-pattern-hw";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

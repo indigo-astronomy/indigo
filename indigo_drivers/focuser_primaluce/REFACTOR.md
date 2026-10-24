@@ -1127,4 +1127,9 @@ pattern; a CP2102N name behind `0403:6001` and a CP2104 behind `10c4:ea60` do no
 ## Final test summary (3.0.0.40)
 
 - Simulated tests: 72 run, 72 passed: `2026-10-24 03:01 3.0.0.40 linux x64 simulator 72/72 OK`.
-- Hardware: none; the controller was unplugged. The port preselection on a real CP2102N port is not verified.
+- Hardware (follow-up, task 20261024002000-64d7-primaluce-usb-pattern-hw): with the requester's SESTO SENSO 3 on
+  `/dev/ttyUSB0` (`10c4:ea60`, "CP2102N USB to UART Bridge Controller") and an Arduino Micro on `/dev/ttyACM0`
+  (`2341:8037`), `indigo_server -vvv indigo_focuser_primaluce` logged
+  "indigo_select_matching_usbserial_device(): Selected new port for 'PrimaluceLab Focuser': auto:///dev/ttyUSB0",
+  and connecting through that port identified the SESTOSENSO3. The ESATTO2 identity is the same (earlier logs).
+  This was not a `--hw` run.
