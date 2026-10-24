@@ -115,7 +115,13 @@
       "task": "20261024111058-4a00-prefer-subagents",
       "scope": "Complete the requested subagent preference policy change before the due repository audit",
       "checkpoint": "After this task, before unrelated work or release",
-      "resets_checkpoint": false
+      "resets_checkpoint": false,
+      "policy_rollout_continuation": {
+        "task": "20261024111835-d602-sync-factory-policy",
+        "authority": "Peter Polakovic explicitly requested transferring the same policies into AI Factory and updating INDIGO back from the template",
+        "checkpoint": "After this same policy rollout, before unrelated work or release",
+        "resets_checkpoint": false
+      }
     }
   },
   "timezone": "Europe/Bratislava"

@@ -39,6 +39,7 @@ Follow .factory/routines/model-selection.md using .factory/openai-model-policy.j
 
 ## Workflow and responsibility
 - The coordinator assigns one accountable role per work item and records transitions.
+- Prefer subagents for separable subtasks and independent verification/review when supported by the host and authorized by the owner. Standing project authorization is sufficient for routine delegation within its scope; do not request it again. Assign explicit roles, inputs, paths and outputs, and preserve host restrictions and owner limits on providers, data sharing and additional charges.
 - Use the phase gates in .factory/workflow.md. Scale detail to risk; never claim unperformed work.
 - Specifications define behavior. Plans, tests, and implementation must not silently redefine it.
 - Resolve routine implementation choices autonomously. Escalate material ambiguity, scope changes, incompatible requirements, and risk acceptance to the owner.
