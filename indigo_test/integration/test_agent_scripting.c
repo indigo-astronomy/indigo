@@ -232,8 +232,11 @@ static indigo_property *request_snapshot(void) {
 
 static bool js_state(const char *script, indigo_property_state state) {
 	unsigned before = revision(RUN);
-	REQUIRE(indigo_change_text_property_1(&observer, AGENT, RUN, "SCRIPT", script) == INDIGO_OK);
-	REQUIRE(wait_property(RUN, before, state));
+	REQUIRE(indigo_change_text_property_1_raw(&observer, AGENT, RUN, "SCRIPT", script) == INDIGO_OK);
+	if (!wait_property(RUN, before, state)) {
+		fprintf(stderr, "Messages:\n%s", messages);
+		return false;
+	}
 	REQUIRE(drain());
 	return true;
 }
@@ -584,7 +587,7 @@ static void on_load_existing(void) {
 }
 
 static void on_unload_execution(void) {
-	ASSERT_TRUE(add_script("Unload", "indigo_send_message('unload-ran');"));
+	ASSERT_TRUE(add_script("Unload", "indigo_define_text_property('" AGENT "','UNLOAD_SNAPSHOT','JS','Unload',{A:'first'},{A:{label:'A'}},'Ok','RW',null); indigo_update_text_property('" AGENT "','UNLOAD_SNAPSHOT',{A:Array(701).join('x')},'Ok',null); indigo_send_message('unload-ran');"));
 	ASSERT_TRUE(change_switch(ON_UNLOAD, "AGENT_SCRIPTING_SCRIPT_0", true));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_scripting(INDIGO_DRIVER_SHUTDOWN, NULL));
 	running = false;
@@ -801,6 +804,13 @@ static void define_update_redefine_delete(void) {
 	ASSERT_TRUE(has_message("text-deleted"));
 }
 
+static void queued_property_snapshots(void) {
+	ASSERT_TRUE(js("eventValues={}; var originalDefine=indigo_on_define_property, originalUpdate=indigo_on_update_property; function recordSnapshot(n,items){if(n.indexOf('SNAPSHOT_')===0){if(!eventValues[n])eventValues[n]=[];eventValues[n].push(items.A)}} indigo_on_define_property=function(d,n,label,items){recordSnapshot(n,items); return originalDefine.apply(this,arguments)}; indigo_on_update_property=function(d,n,items){recordSnapshot(n,items); return originalUpdate.apply(this,arguments)};"));
+	ASSERT_TRUE(js("var kinds=['text','number','switch','light']; var samples=[['first',Array(701).join('x'),'third','fourth'],[1,2,3,4],[true,false,true,false],['Ok','Busy','Alert','Idle']];"));
+	ASSERT_TRUE(js("for(var k=0;k<kinds.length;k++){var kind=kinds[k],name='SNAPSHOT_'+kind,values=samples[k],defs={A:{label:'A',format:'%g',min:0,max:10,step:1}}; var args=['" AGENT "',name,'JS','Snapshot',{A:values[0]},defs,'Ok']; if(kind!=='light')args.push('RW'); if(kind==='switch')args.push('ANY_OF_MANY'); args.push(null); this['indigo_define_'+kind+'_property'].apply(null,args); this['indigo_update_'+kind+'_property']('" AGENT "',name,{A:values[1]},'Busy',null); args[4]={A:values[2]}; this['indigo_redefine_'+kind+'_property'].apply(null,args); this['indigo_update_'+kind+'_property']('" AGENT "',name,{A:values[3]},'Alert',null);}"));
+	ASSERT_TRUE(check_js("kinds.every(function(kind,k){return JSON.stringify(eventValues['SNAPSHOT_'+kind])===JSON.stringify(samples[k])})"));
+}
+
 static void defaults_and_large_property(void) {
 	ASSERT_TRUE(js("indigo_define_switch_property('" AGENT "','DEFAULTS','JS','Defaults',{A:true},{A:{label:'A'}},'unknown','WO','unknown',null);"));
 	indigo_property *p = snapshot(AGENT, "DEFAULTS");
@@ -999,6 +1009,7 @@ static const indigo_test_case tests[] = {
 	{ "low-level change bindings", low_level_change_bindings },
 	{ "enumeration and BLOB enable bindings", enumeration_and_blob_enable },
 	{ "define update redefine delete bindings", define_update_redefine_delete },
+	{ "queued property snapshots", queued_property_snapshots },
 	{ "binding defaults and large property", defaults_and_large_property },
 	{ "cached property capacity and reuse", cached_property_capacity },
 	{ "boot.js cache and callbacks", boot_cache_and_callbacks },

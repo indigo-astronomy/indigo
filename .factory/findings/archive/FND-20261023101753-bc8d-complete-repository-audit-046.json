@@ -2,7 +2,7 @@
   "title": "Sequencer saves a live batch alias instead of a snapshot",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "helper-manual-review.md",
       "revision": null
+    },
+    {
+      "id": "20261024180111-5753-fix-scripting-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "`indigo_drivers/agent_scripting/library/Sequencer.js:1610-1622` stores `this.saved_batch = property.items`. `boot.js:114-118` updates that exact property.items object in place when the bus delivers changed values. Sequence.focus/focus_ignore_failure at373-384 deliberately expands save_batch\u2192set_batch(1,exposure)\u2192focus\u2192restore_batch. The set_batch acknowledgement overwrites the aliased COUNT/EXPOSURE; restore_batch therefore sends the focus batch values instead of restoring the original capture batch. Source proof follows actual cache mutation and the public focus wrapper; no live agent was changed. Remedy: copy the relevant primitive batch it Full source contracts: helper-manual-review.md H-02. Remedy: copy the relevant primitive batch item values into an independent object and clear/replace snapshots appropriately; test an original batch of several frames with a different exposure, focus success and ignore-failure, then assert restored original values. This is ordinary functional state restoration, not a security assessment of scripting.",
   "evidence": "helper-manual-review.md H-02; exact current source paths and firmware/script contracts retained there.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261024180111-5753-fix-scripting-findings findings.md and verification.md; recorded suite 63/63; native ASan/UBSan 36/36; independent quality/security review.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-046"
 }

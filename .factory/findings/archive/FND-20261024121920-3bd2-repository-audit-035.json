@@ -2,7 +2,7 @@
   "title": "Scripting queued property callbacks borrow cache pointers that can be reallocated",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024180111-5753-fix-scripting-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "Category security; severity medium; confidence high from source lifetime contract; Location: indigo_drivers/agent_scripting/indigo_agent_scripting.c:455-463,:477-483,:499,:725. Define/redefine/update callbacks receive the live cached property pointer as queued data. A later definition of the same named property resizes/reallocates that same cached object when more items are required; indigo_resize_property (indigo_libs/indigo_bus.c:1605-1607) calls realloc for non-BLOB growth. Pending handlers still hold the previous pointer. execute_script:1046-1058 evaluates ordinary script calls synchronously under the scripting mutex, while indigo_execute_handler_with_data enqueues work (indigo_driver.c:2266-2268, queue contract2221-2230). There is no property copy, reference-counted stable indirection or queue drain before mutation. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-7). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-035; driver-fm-report.md alias FM-7; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261024180111-5753-fix-scripting-findings findings.md and verification.md; recorded suite 63/63; native ASan/UBSan 36/36; independent quality/security review.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-035"
 }
