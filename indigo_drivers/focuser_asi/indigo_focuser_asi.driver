@@ -22,7 +22,7 @@ driver asi {
 	label = "ZWO ASI Focuser";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
-	version = 40;
+	version = 41;
 	multi_device_support = true;
 	include {
 		#include <stdbool.h>
@@ -205,7 +205,7 @@ driver asi {
 				PRIVATE_DATA->current_position = PRIVATE_DATA->last_polled = position;
 				FOCUSER_POSITION_ITEM->number.value = position;
 				if (!moving && !moving_hc) {
-					focuser_finish_motion(device, PRIVATE_DATA->aborted ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
+					focuser_finish_motion(device, PRIVATE_DATA->aborted || (!PRIVATE_DATA->external && position != PRIVATE_DATA->target_position) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
 					return;
 				}
 				if (PRIVATE_DATA->stalled_polls >= ASI_STALL_POLLS) {

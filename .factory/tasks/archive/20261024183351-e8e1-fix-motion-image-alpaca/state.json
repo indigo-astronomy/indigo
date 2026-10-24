@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024183351-e8e1-fix-motion-image-alpaca",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Verify the single committed candidate; integration/publication pending owner authorization.",
+  "blocker": null
+}

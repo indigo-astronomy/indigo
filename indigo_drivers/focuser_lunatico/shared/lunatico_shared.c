@@ -886,7 +886,12 @@ static void rotator_motion_finalizer(indigo_device *device) {
 	}
 	PORT_STATE.rotator_position = lunatico_rotator_degrees(device, position);
 	ROTATOR_POSITION_ITEM->number.value = PORT_STATE.rotator_position;
-	ROTATOR_POSITION_PROPERTY->state = !moving || PORT_STATE.rotator_position == PORT_STATE.rotator_target ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+	if (!moving || (PORT_STATE.rotator_commanded && position == PORT_STATE.rotator_expected)) {
+		ROTATOR_POSITION_PROPERTY->state = PORT_STATE.rotator_commanded && position != PORT_STATE.rotator_expected ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		PORT_STATE.rotator_commanded = false;
+	} else {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	}
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_execute_handler_in(device, LUNATICO_MOTION_POLL, rotator_motion_finalizer);
@@ -911,7 +916,6 @@ static bool lunatico_rotator_position(indigo_device *device) {
 		return false;
 	}
 	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		PORT_STATE.rotator_target = ROTATOR_POSITION_ITEM->number.target;
 		ROTATOR_POSITION_ITEM->number.value = current;
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -922,6 +926,8 @@ static bool lunatico_rotator_position(indigo_device *device) {
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			return false;
 		}
+		PORT_STATE.rotator_expected = target;
+		PORT_STATE.rotator_commanded = true;
 		return true;
 	}
 	indigo_property_state state = INDIGO_OK_STATE;
@@ -945,6 +951,7 @@ static bool lunatico_rotator_position(indigo_device *device) {
 static void lunatico_rotator_abort(indigo_device *device) {
 	// a running move, or one still queued, ends ALERT; an abort while idle leaves the state of the last move
 	bool in_motion = ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE;
+	PORT_STATE.rotator_commanded = false;
 	indigo_property_state state = INDIGO_OK_STATE;
 	if (!lunatico_stop(device)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_stop() failed");
@@ -1000,7 +1007,8 @@ static bool lunatico_rotator_connect(indigo_device *device, indigo_property *pow
 	// The current angle has to follow what the controller reports: the position
 	// handler skips a request that equals it, so a stale 0 here would silently
 	// swallow the first request for 0 deg.
-	PORT_STATE.rotator_position = PORT_STATE.rotator_target = lunatico_rotator_degrees(device, position);
+	PORT_STATE.rotator_commanded = false;
+	PORT_STATE.rotator_position = lunatico_rotator_degrees(device, position);
 	ROTATOR_POSITION_ITEM->number.value = PORT_STATE.rotator_position;
 	lunatico_rotator_resync(device);
 	if (!lunatico_set_speed(device, 0.1)) {

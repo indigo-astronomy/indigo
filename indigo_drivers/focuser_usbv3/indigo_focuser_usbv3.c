@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_usbv3"
 #define DRIVER_LABEL         "USB_Focus v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "USB_Focus v3"
@@ -59,7 +59,7 @@ typedef struct {
 	char configuration[INDIGO_VALUE_SIZE];
 	bool moving;
 	bool abort;
-	int motion_polls;
+	int motion_polls, expected_position;
 	int position_digits;
 	// the settings the controller last confirmed, shown again when a write fails
 	int speed, max_position, compensation, threshold, stepmode;
@@ -277,7 +277,7 @@ static void focuser_motion_finalizer(indigo_device *device) {
 	} else {
 		FOCUSER_POSITION_ITEM->number.value = position;
 		if (!PRIVATE_DATA->moving) {
-			FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->abort ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+			FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->abort || position != PRIVATE_DATA->expected_position ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 		} else if (--PRIVATE_DATA->motion_polls <= 0) {
 			usbv3_quit(device);
 			PRIVATE_DATA->moving = false;
@@ -303,6 +303,9 @@ static void usbv3_start_motion(indigo_device *device, int steps) {
 	PRIVATE_DATA->moving = false;
 	PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	// Reversed absolute motion changes the raw destination; compare with the issued travel.
+	PRIVATE_DATA->expected_position = (int)FOCUSER_POSITION_ITEM->number.value + steps;
+	PRIVATE_DATA->expected_position = (int)fmax(0, fmin(PRIVATE_DATA->max_position, PRIVATE_DATA->expected_position));
 	if (steps != 0) {
 		if (usbv3_command(device, "%c%05u", false, steps > 0 ? 'O' : 'I', abs(steps))) {
 			PRIVATE_DATA->moving = true;

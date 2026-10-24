@@ -1155,12 +1155,14 @@ static void backlash_overshoot(void) {
 	CHECK(goto_position(3000, INDIGO_OK_STATE, 10));
 	CHECK_EQ(1, rx_count("[STRG003100]"));
 	CHECK_EQ(3100, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(3000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(goto_position(5000, INDIGO_OK_STATE, 10));
 	CHECK_EQ(1, rx_count("[STRG005000]"));
 	CHECK_EQ(5000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 	CHECK(goto_position(4000, INDIGO_OK_STATE, 10));
 	CHECK_EQ(1, rx_count("[STRG003900]"));
 	CHECK_EQ(3900, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(4000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
 cleanup:
 	driver_down();
 }
@@ -1856,6 +1858,21 @@ cleanup:
 }
 
 // A move whose position stops changing while the controller reports motion ends ALERT with a stop, and a fresh move works.
+// A controller that stops early is idle, but has not reached its commanded endpoint.
+static void early_stop_keeps_requested_target(void) {
+	CHECK(start_connected());
+	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
+	CHECK(start_long_move(40000));
+	CHECK(control("position", "20000"));
+	CHECK(wait_settled(FOCUSER_POSITION_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 8));
+	CHECK_EQ(INDIGO_ALERT_STATE, state_of(FOCUSER_STEPS_PROPERTY_NAME));
+	CHECK_EQ(20000, value_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK_EQ(40000, target_of(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME));
+	CHECK(goto_position(21000, INDIGO_OK_STATE, 10));
+cleanup:
+	driver_down();
+}
+
 static void stalled_move_stops(void) {
 	CHECK(start_connected());
 	unsigned before = revision_of(FOCUSER_POSITION_PROPERTY_NAME);
@@ -2407,6 +2424,7 @@ static const dsd_case cases[] = {
 	{ "unconfirmed_abort_of_queued_move", unconfirmed_abort_of_queued_move, "af2", false },
 	{ "busy_motion_requests_rejected", busy_motion_requests_rejected, "af2", false },
 	{ "stop_ignored_then_retried", stop_ignored_then_retried, "af2", false },
+	{ "early_stop", early_stop_keeps_requested_target, "af2", false },
 	{ "stalled_move_stops", stalled_move_stops, "af2", false },
 	{ "move_command_refusals", move_command_refusals, "af2", false },
 	{ "poll_versus_request", poll_versus_request, "af2", false },

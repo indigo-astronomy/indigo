@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_focuser_dmfc"
 #define DRIVER_LABEL         "PegasusAstro DMFC Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus DMFC"
@@ -324,7 +324,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		if (PRIVATE_DATA->moving) {
 			FOCUSER_POSITION_ITEM->number.value = position;
 			if (!moving) {
-				dmfc_end_motion(device, INDIGO_OK_STATE, NULL);
+				dmfc_end_motion(device, PRIVATE_DATA->external_motion || position == (int)FOCUSER_POSITION_ITEM->number.target ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 			} else if (!changed && ++PRIVATE_DATA->stall_polls >= DMFC_STALL_POLLS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser stalled at %d, stopping it", position);
 				dmfc_command(device, "H");

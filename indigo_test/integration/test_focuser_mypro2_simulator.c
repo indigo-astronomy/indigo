@@ -1245,6 +1245,24 @@ cleanup:
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
 
+// A valid idle reply at an intermediate position is an unsuccessful commanded move.
+static void early_stop_keeps_requested_target(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("05", "early-stop"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(target_is(3000, 5000));
+	int polls = commands("00");
+	SERIAL_CHECK_TRUE(wait_for_commands("00", polls + 2));
+	SERIAL_CHECK_TRUE(target_is(3000, 5000));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3300, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(position_is(3300, 0));
+cleanup:
+	driver_stop();
+}
+
 int main(void) {
 	const simulated_case cases[] = {
 		{ "metadata", metadata, "normal" },
@@ -1268,6 +1286,7 @@ int main(void) {
 		{ "external_motion", external_motion, "normal" },
 		{ "moving_at_connect", moving_at_connect, "moving" },
 		{ "moving_query_fails", moving_query_fails, "normal" },
+		{ "early_stop", early_stop_keeps_requested_target, "normal" },
 		{ "stalled_move", stalled_move, "normal" },
 		{ "relative_start_read_fails", relative_start_read_fails, "normal" },
 		{ "poll_failure_recovery", poll_failure_recovery, "normal" },

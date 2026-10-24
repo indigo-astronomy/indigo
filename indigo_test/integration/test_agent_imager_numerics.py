@@ -55,6 +55,10 @@ if state_enum is None:
 
 preamble = r'''
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -69,15 +73,26 @@ preamble = r'''
 #define AGENT_GUIDER_START_PREVIEW_1_ITEM_NAME "preview"
 typedef struct {
 	void *device, *client;
+	char name[32];
 } indigo_device;
 static indigo_device filter;
 static struct {
 	indigo_property_state imager_process_state, imager_pause_state, imager_capture_state, guider_process_state;
 	bool abort_process_requested;
+	bool frame_saturated, use_aux_1;
+	void *last_image, *preview_image;
+	long last_image_size;
+	unsigned long preview_image_size;
+	char last_image_url[8];
+	int last_width, last_height;
+	pthread_mutex_t last_image_mutex;
+	indigo_property_state exposure_state;
+	double remaining_exposure_time;
 } data;
 #define FILTER_DEVICE_CONTEXT (&filter)
 #define INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA (&data)
 static int source, reply, delayed, sleeps, aborted, success_messages;
+static bool capture_testing;
 
 static char *indigo_filter_first_related_agent(void *device, const char *name) {
 	(void)device;
@@ -105,6 +120,10 @@ static void indigo_change_number_property_1(void *client, char *agent, char *pro
 	(void)agent;
 	(void)item;
 	(void)exposure;
+	if (capture_testing) {
+		data.exposure_state = INDIGO_BUSY_STATE;
+		return;
+	}
 	if (!strcmp(property, "capture") && !delayed) {
 		respond();
 	}
@@ -137,9 +156,116 @@ static void abort_exposure(indigo_device *device) {
 static void indigo_usleep(int usec) {
 	(void)usec;
 	sleeps++;
+	if (capture_testing) {
+		data.exposure_state = INDIGO_OK_STATE;
+		return;
+	}
 	if (delayed && sleeps == 2) {
 		respond();
 	}
+}
+'''
+boundary_preamble = r'''
+typedef struct {
+	uint32_t signature, width, height;
+} indigo_raw_header;
+#define INDIGO_RAW_MONO8 0x31574152
+#define INDIGO_RAW_MONO16 0x32574152
+#define INDIGO_RAW_RGB24 0x33574152
+#define INDIGO_RAW_RGB48 0x36574152
+#define INDIGO_DRIVER_ERROR(...) ((void)0)
+#define DRIVER_NAME "test"
+// Model the narrower supported platform for the extracted preview arithmetic.
+#undef SIZE_MAX
+#define SIZE_MAX UINT32_MAX
+#define DEVICE_PRIVATE_DATA ((void)device, &data)
+#define BUSY_TIMEOUT 1
+#define CCD_EXPOSURE_PROPERTY_NAME "exposure"
+#define CCD_EXPOSURE_ITEM_NAME "exposure"
+static struct property {
+	indigo_property_state state;
+	struct item {
+		struct { double value, target; } number;
+		struct { bool value; } sw;
+		struct { void *value; long size; char format[32]; } blob;
+	} item;
+} props[8];
+#define AGENT_PAUSE_PROCESS_PROPERTY (&props[0])
+#define AGENT_PAUSE_PROCESS_ITEM (&props[0].item)
+#define AGENT_ABORT_PROCESS_PROPERTY (&props[1])
+#define AGENT_IMAGER_BATCH_EXPOSURE_ITEM (&props[2].item)
+#define AGENT_IMAGER_STATS_EXPOSURE_ITEM (&props[3].item)
+#define AGENT_IMAGER_STATS_PROPERTY (&props[3])
+#define AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_ITEM (&props[4].item)
+#define AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM (&props[5].item)
+#define AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY (&props[6])
+#define AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM (&props[6].item)
+#define AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM (&props[7].item)
+#define AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM (&props[7].item)
+#define AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM (&props[7].item)
+#define AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_QUALITY_ITEM (&props[7].item)
+#define INDIGO_COPY_NAME(dst, src) strcpy(dst, src)
+#define indigo_safe_malloc malloc
+#define indigo_safe_realloc realloc
+static struct {
+	indigo_raw_header header;
+	unsigned char pixels[24];
+} raw_fixture;
+static long raw_fixture_size;
+static int bayer_calls, jpeg_calls, preview_updates;
+
+static bool indigo_download_blob(const char *url, void **image, long *size, void *format) {
+	(void)url;
+	(void)format;
+	*size = raw_fixture_size;
+	*image = malloc(*size);
+	memcpy(*image, &raw_fixture, *size);
+	return true;
+}
+
+static bool indigo_is_bayered_image(indigo_raw_header *header, size_t size) {
+	(void)header;
+	(void)size;
+	bayer_calls++;
+	return false;
+}
+
+static void indigo_equalize_bayer_channels(int type, void *pixels, int width, int height) {
+	(void)type;
+	(void)pixels;
+	(void)width;
+	(void)height;
+}
+
+static void indigo_update_property(indigo_device *device, struct property *property, const char *message) {
+	(void)device;
+	(void)message;
+	if (property == AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY) {
+		preview_updates++;
+	}
+}
+
+static void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *pixels, int width, int height, int bpp, void *bayer, void **jpeg, unsigned long *jpeg_size, void *histogram, void *histogram_size, double background, double clipping, int reference, int quality) {
+	(void)device;
+	(void)pixels;
+	(void)width;
+	(void)height;
+	(void)bpp;
+	(void)bayer;
+	(void)histogram;
+	(void)histogram_size;
+	(void)background;
+	(void)clipping;
+	(void)reference;
+	(void)quality;
+	jpeg_calls++;
+	*jpeg_size = 4;
+	*jpeg = malloc(4);
+	memcpy(*jpeg, "JPEG", 4);
+}
+
+static void indigo_sleep(int seconds) {
+	(void)seconds;
 }
 '''
 tests = r'''
@@ -199,10 +325,74 @@ static void exposure_acceptance_regressions(void) {
 	}
 }
 
+static void image_consumers_reject_malformed_frames(void) {
+	const indigo_raw_header invalid[] = {
+		{ INDIGO_RAW_MONO8, 0, 2 }, { INDIGO_RAW_MONO8, 2, 0 }, { 0, 2, 2 },
+		{ INDIGO_RAW_MONO8, UINT32_MAX, 2 }, { INDIGO_RAW_RGB48, 32768, 32768 }
+	};
+	memset(&data, 0, sizeof(data));
+	memset(props, 0, sizeof(props));
+	pthread_mutex_init(&data.last_image_mutex, NULL);
+	capture_testing = true;
+	AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_ITEM->sw.value = true;
+	for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]) + 2; i++) {
+		raw_fixture.header = i < sizeof(invalid) / sizeof(invalid[0]) ? invalid[i] : (indigo_raw_header) { INDIGO_RAW_MONO8, 2, 2 };
+		raw_fixture_size = i == sizeof(invalid) / sizeof(invalid[0]) ? 1 : sizeof(indigo_raw_header);
+		bayer_calls = jpeg_calls = preview_updates = 0;
+		ASSERT_FALSE(capture_frame(&filter));
+		ASSERT_EQ_INT(0, bayer_calls);
+		ASSERT_EQ_INT(0, data.last_width);
+		update_preview_image(&filter, &raw_fixture, raw_fixture_size, ".raw");
+		ASSERT_EQ_INT(0, jpeg_calls);
+		ASSERT_EQ_INT(1, preview_updates);
+		ASSERT_EQ_INT(INDIGO_ALERT_STATE, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state);
+	}
+	raw_fixture.header = (indigo_raw_header) { INDIGO_RAW_MONO16, 32768, 8192 };
+	jpeg_calls = preview_updates = 0;
+	update_preview_image(&filter, &raw_fixture, sizeof(indigo_raw_header) + (long)32768 * 8192 * 2, ".raw");
+	ASSERT_EQ_INT(0, jpeg_calls);
+	ASSERT_EQ_INT(1, preview_updates);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state);
+	free(data.last_image);
+	data.last_image = NULL;
+	pthread_mutex_destroy(&data.last_image_mutex);
+	capture_testing = false;
+}
+
+static void image_consumers_accept_complete_raw_formats(void) {
+	const int signatures[] = { INDIGO_RAW_MONO8, INDIGO_RAW_MONO16, INDIGO_RAW_RGB24, INDIGO_RAW_RGB48 };
+	const int bytes_per_pixel[] = { 1, 2, 3, 6 };
+	memset(&data, 0, sizeof(data));
+	memset(props, 0, sizeof(props));
+	pthread_mutex_init(&data.last_image_mutex, NULL);
+	capture_testing = true;
+	AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_ITEM->sw.value = true;
+	for (unsigned i = 0; i < sizeof(signatures) / sizeof(signatures[0]); i++) {
+		raw_fixture.header = (indigo_raw_header) { signatures[i], 2, 2 };
+		raw_fixture_size = sizeof(indigo_raw_header) + 4 * bytes_per_pixel[i];
+		bayer_calls = jpeg_calls = preview_updates = 0;
+		ASSERT_TRUE(capture_frame(&filter));
+		ASSERT_EQ_INT(1, bayer_calls);
+		ASSERT_EQ_INT(2, data.last_width);
+		ASSERT_EQ_INT(2, data.last_height);
+		update_preview_image(&filter, &raw_fixture, raw_fixture_size, ".raw");
+		ASSERT_EQ_INT(1, jpeg_calls);
+		ASSERT_EQ_INT(1, preview_updates);
+		ASSERT_EQ_INT(INDIGO_OK_STATE, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state);
+	}
+	free(data.last_image);
+	free(data.preview_image);
+	data.last_image = data.preview_image = NULL;
+	pthread_mutex_destroy(&data.last_image_mutex);
+	capture_testing = false;
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "focus minima regressions", focus_minima_regressions },
-		{ "exposure acceptance regressions", exposure_acceptance_regressions }
+		{ "exposure acceptance regressions", exposure_acceptance_regressions },
+		{ "image consumers reject malformed frames", image_consumers_reject_malformed_frames },
+		{ "image consumers accept complete RAW formats", image_consumers_accept_complete_raw_formats }
 	};
 	return indigo_run_tests("Imager numerics and platesolver acceptance", tests, sizeof(tests) / sizeof(tests[0]));
 }
@@ -211,6 +401,11 @@ source = '\n'.join([
 	'#include "' + str(root / "indigo_test/test_runner.h") + '"',
 	state_enum.group(0),
 	preamble,
+	boundary_preamble,
+	function(raw, "bool indigo_validate_raw_image("),
+	"static void wait_for_resume(indigo_device *device) { (void)device; }",
+	function(imager, "static bool capture_frame("),
+	function(platesolver, "static void update_preview_image("),
 	function(raw, "double indigo_stddev("),
 	function(imager, "static double reduce_ucurve_best_focus("),
 	function(platesolver, "static bool start_exposure("),
@@ -224,5 +419,5 @@ with tempfile.TemporaryDirectory(prefix="indigo-agent-numerics-") as directory:
 	c_file = Path(directory) / "test.c"
 	c_file.write_text(source)
 	output.parent.mkdir(parents=True, exist_ok=True)
-	command = compiler + ["-std=c11", "-Wall", "-Wextra", "-Werror", "-Wno-unused-function"] + cflags + [str(c_file), "-o", str(output)] + ldflags + ["-lm"]
+	command = compiler + ["-std=c11", "-Wall", "-Wextra", "-Werror", "-Wno-unused-function"] + cflags + [str(c_file), "-o", str(output)] + ldflags + ["-lm", "-lpthread"]
 	subprocess.run(command, check=True)

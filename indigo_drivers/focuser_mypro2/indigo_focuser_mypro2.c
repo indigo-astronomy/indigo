@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_focuser_mypro2"
 #define DRIVER_LABEL         "myFocuserPro2 Focuser"
 #define FOCUSER_DEVICE_NAME  "myFocuserPro2"
@@ -397,7 +397,7 @@ static void motion_finalizer(indigo_device *device) {
 			// a move the driver did not command ends where the controller stopped
 			FOCUSER_POSITION_ITEM->number.target = position;
 		}
-		mypro2_motion_state(device, INDIGO_OK_STATE);
+		mypro2_motion_state(device, PRIVATE_DATA->external_motion || position == PRIVATE_DATA->target_position ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
 	} else {
 		// progress keeps the BUSY state of the running move
 		FOCUSER_POSITION_ITEM->number.value = position;

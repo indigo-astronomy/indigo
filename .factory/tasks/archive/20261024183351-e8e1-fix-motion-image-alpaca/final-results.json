@@ -1,0 +1,18 @@
+{
+  "recorded_driver_cases": {
+    "agent_alpaca": 4,
+    "agent_imager": 63,
+    "focuser_asi": 24,
+    "focuser_dmfc": 40,
+    "focuser_dsd": 59,
+    "focuser_fc3": 40,
+    "focuser_mypro2": 36,
+    "focuser_usbv3": 42,
+    "focuser_lunatico": 57,
+    "rotator_lunatico": 58
+  },
+  "recorded_total": 423,
+  "raw_sanitizer_cases": 17,
+  "factory_tests": 188,
+  "hardware_run": 0
+}

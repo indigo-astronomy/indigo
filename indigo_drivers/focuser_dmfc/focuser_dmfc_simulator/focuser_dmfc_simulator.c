@@ -254,6 +254,10 @@ static void dispatch_command(int handle, const char *command) {
 			position = (int)serial_motion_update(&motion);
 			moving_status = motion.duration > 0;
 		}
+		if (!strcmp(fault, "early-stop")) {
+			serial_motion_start(&motion, position + (atoi(command + 2) - position) / 2, 1000);
+			return;
+		}
 		if (!strcmp(fault, "stall")) {
 			// the move is accepted, but the motor never turns
 			stalled = true;

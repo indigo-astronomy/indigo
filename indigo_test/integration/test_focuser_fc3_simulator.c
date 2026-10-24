@@ -1214,6 +1214,24 @@ cleanup:
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
 
+// A valid idle reply at an intermediate position is an unsuccessful commanded move.
+static void early_stop_keeps_requested_target(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(sync_position(1000));
+	SERIAL_CHECK_TRUE(fault("FM:", "early-stop"));
+	SERIAL_CHECK_TRUE(goto_position(5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(ended_at(3000, 5000));
+	SERIAL_CHECK_TRUE(wait_for_polls(2));
+	SERIAL_CHECK_TRUE(ended_at(3000, 5000));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(goto_position(3300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(3300));
+cleanup:
+	driver_stop();
+}
+
 int main(void) {
 	const simulated_case cases[] = {
 		{ "metadata", metadata, "normal" },
@@ -1251,6 +1269,7 @@ int main(void) {
 		{ "limits_contract", limits_contract, "normal" },
 		{ "settings_refused_during_motion", settings_refused_during_motion, "normal" },
 		{ "external_motion_during_session", external_motion_during_session, "normal" },
+		{ "early_stop", early_stop_keeps_requested_target, "normal" },
 		{ "stalled_move", stalled_move, "normal" },
 		{ "motion_poll_failures", motion_poll_failures, "normal" },
 		{ "request_survives_poll", request_survives_poll, "normal" },

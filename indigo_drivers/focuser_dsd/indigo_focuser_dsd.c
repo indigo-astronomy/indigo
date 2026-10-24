@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000017
+#define DRIVER_VERSION       0x03000018
 #define DRIVER_NAME          "indigo_focuser_dsd"
 #define DRIVER_LABEL         "Deep Sky Dad Focuser"
 #define FOCUSER_DEVICE_NAME  "Focuser DSD AF"
@@ -129,7 +129,7 @@ typedef struct {
 	indigo_property *x_dsd_timings_property;
 	//+ data
 	int focuser_version;
-	int current_position, target_position, max_position;
+	int current_position, target_position, expected_position, max_position;
 	bool positive_last_move, reverse;
 	double prev_temp;
 	bool has_temperature_sensor;
@@ -304,7 +304,7 @@ static void motion_finalizer(indigo_device *device) {
 	PRIVATE_DATA->poll_failures = 0;
 	PRIVATE_DATA->current_position = position;
 	if (moving == 0) {
-		dsd_end_motion(device, PRIVATE_DATA->aborted ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
+		dsd_end_motion(device, PRIVATE_DATA->aborted || (PRIVATE_DATA->moving && !PRIVATE_DATA->external && position != PRIVATE_DATA->expected_position) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 		return;
 	}
 	if (PRIVATE_DATA->moving) {
@@ -354,6 +354,8 @@ static bool dsd_start_motion(indigo_device *device, int position) {
 	}
 	// a started move replaces the pending connection or compensation poll
 	indigo_cancel_pending_handler(device, motion_finalizer);
+	// Software backlash changes the physical endpoint without changing the requested public target.
+	PRIVATE_DATA->expected_position = target;
 	PRIVATE_DATA->moving = true;
 	PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
 	PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;

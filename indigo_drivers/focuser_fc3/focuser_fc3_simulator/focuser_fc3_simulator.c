@@ -340,6 +340,12 @@ static void dispatch_command(int handle, const char *buffer) {
 			// a hand controller starts a move the driver did not command
 			target = atoi(argument);
 		}
+		if (!strcmp(fault, "early-stop")) {
+			target = position + (atoi(buffer + 3) - position) / 2;
+			sim_printf(handle, "%s\n", buffer);
+			pthread_mutex_unlock(&state_mutex);
+			return;
+		}
 		if (!strcmp(fault, "stall")) {
 			// the move is accepted, but the motor never turns
 			stalled = true;

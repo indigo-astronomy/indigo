@@ -27,6 +27,43 @@
 
 #include "../test_runner.h"
 
+static void raw_validation_accepts_complete_formats_and_metadata(void) {
+	struct {
+		indigo_raw_header header;
+		unsigned char pixels[24];
+		char extension[16];
+	} image = { { INDIGO_RAW_MONO8, 2, 2 }, { 0 }, "BAYERPAT=RGGB" };
+	const indigo_raw_type types[] = { INDIGO_RAW_MONO8, INDIGO_RAW_MONO16, INDIGO_RAW_RGB24, INDIGO_RAW_RGB48 };
+	const int bytes_per_pixel[] = { 1, 2, 3, 6 };
+	for (unsigned i = 0; i < sizeof(types) / sizeof(types[0]); i++) {
+		image.header.signature = types[i];
+		long size = sizeof(image.header) + 4 * bytes_per_pixel[i];
+		ASSERT_TRUE(indigo_validate_raw_image(&image, size));
+		ASSERT_TRUE(indigo_validate_raw_image(&image, sizeof(image)));
+		ASSERT_FALSE(indigo_validate_raw_image(&image, size - 1));
+	}
+}
+
+static void raw_validation_rejects_incomplete_and_unrepresentable_shapes(void) {
+	indigo_raw_header image = { INDIGO_RAW_MONO8, 2, 2 };
+	ASSERT_FALSE(indigo_validate_raw_image(NULL, sizeof(image)));
+	for (long size = -1; size < (long)sizeof(image); size++) {
+		ASSERT_FALSE(indigo_validate_raw_image(&image, size));
+	}
+	ASSERT_FALSE(indigo_validate_raw_image(&image, sizeof(image)));
+	const indigo_raw_header invalid[] = {
+		{ 0, 1, 1 }, { INDIGO_RAW_RGBA32, 1, 1 }, { INDIGO_RAW_MONO8, 0, 2 }, { INDIGO_RAW_MONO8, 2, 0 },
+		{ INDIGO_RAW_MONO8, UINT32_MAX, 2 }, { INDIGO_RAW_MONO8, 2, UINT32_MAX },
+		{ INDIGO_RAW_MONO8, 65536, 65536 }, { INDIGO_RAW_RGB48, INT_MAX, 2 }, { INDIGO_RAW_RGB48, 32768, 32768 }
+	};
+	for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+		ASSERT_FALSE(indigo_validate_raw_image(invalid + i, INT_MAX));
+	}
+#if LONG_MAX > INT_MAX
+	ASSERT_FALSE(indigo_validate_raw_image(&image, (long)INT_MAX + 1));
+#endif
+}
+
 static void raw_header_type_values_are_stable(void) {
 	ASSERT_EQ_INT(0x31574152, INDIGO_RAW_MONO8);
 	ASSERT_EQ_INT(0x32574152, INDIGO_RAW_MONO16);
@@ -239,6 +276,8 @@ static void selection_interior_star_preserves_measurements(void) {
 
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "raw_validation_accepts_complete_formats_and_metadata", raw_validation_accepts_complete_formats_and_metadata },
+		{ "raw_validation_rejects_incomplete_and_unrepresentable_shapes", raw_validation_rejects_incomplete_and_unrepresentable_shapes },
 		{ "selection_rejects_incomplete_rois", selection_rejects_incomplete_rois },
 		{ "selection_rejects_invalid_geometry", selection_rejects_invalid_geometry },
 		{ "selection_rejects_nonfinite_or_unrepresentable_centers", selection_rejects_nonfinite_or_unrepresentable_centers },

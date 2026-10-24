@@ -1,0 +1,19 @@
+{
+  "title": "Lunatico connection poll can overwrite a queued focuser request",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024183351-e8e1-fix-motion-image-alpaca",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Pre-existing connection completion poll treats motion as external and may replace a newly copied POSITION target before its queued handler runs. First full current-source suite observed requested1900 briefly then value/target1800 OK; initial sync0 also failed. The settle helper waits for ismoving receipt before subsequent readback publication and can expose the race. No focuser production code changed in the requested rotator completion repair. Next: scoped command-intent ownership fix and deterministic concurrent request regression; preserve generator approval boundary.",
+  "evidence": "20261024183351-e8e1-fix-motion-image-alpaca/findings.md; shared lunatico focuser_motion_finalizer external branch and generated POSITION callback/handler; current full-suite55/57 and targeted successful trace diagnostics.",
+  "resolution": null,
+  "id": "FND-20261024183351-e8e1-fix-motion-image-alpaca-001"
+}

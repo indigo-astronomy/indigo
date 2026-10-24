@@ -240,3 +240,30 @@ leaves the state unchanged. `abort_stops_motion_and_allows_a_fresh_move` asserts
 ports use the same function.
 
 Simulated tests: 54 run, 54 passed. Hardware tests: 0 run, 0 passed.
+
+## Stopped-short completion repair (2026-10-24)
+
+Shared repair plan, scope, baseline and found-defect rationale: `../focuser_lunatico/REFACTOR.md`, section Stopped-short completion repair. Rotator completion compares raw integer controller position with the quantized issued target; external connection motion and explicit abort remain distinct. No hardware testing planned. Atomic stages: baseline; early-stop and fractional-angle regressions; shared implementation and version regeneration; final simulator run. Results and pending coordinator checks are recorded below.
+
+Found defect: commanded motor stops before its physical endpoint yet reports OK. The regression requires ALERT, measured value and retained requested target. Fix compares the measured endpoint at idle; DSD stores the software-backlash endpoint, USBv3 stores signed raw travel after reversal and controller limit clipping, and Lunatico compares the quantized raw step endpoint. External motion remains independent and aborts keep their established ALERT behavior. No arbitrary tolerance is added to integral step reports.
+
+Plan progression: early-stop reproducer added and failed before the production change; comparison and version increment implemented, followed by unchanged-generator regeneration and focused verification (details below).
+
+### Repair verification and handoff
+
+Baseline source: `463eb538daf440fa0f459b53a5f02fa949e244ed`. Isolated checkout `/private/tmp/indigo-motion-20261024`, macOS arm64, universal driver archives (arm64/x86_64), existing parent build library used at `/Users/polakovic/Development/indigo/build/lib`. Original suite: `./build/integration/test_rotator_lunatico_simulator` from `indigo_test/`: 27/27 passed, exit 0. Serial/shared original and fixed drivers built with `make -C indigo_drivers/<driver> -f ../../Makefile.drv all`; ASI compiled through the fake-SDK target. Test targets built with `make -C indigo_test build/integration/test_<driver>_<kind>`.
+
+Early-stop regression: 1 run, 0 passed against the original implementation (expected defect reproduction), then 1 run, 1 passed after the fix. Both Lunatico exports have separate executable rotator regressions; the focuser export uses its Exp rotator. The second-export baseline executable was compiled from retained original generated/shared sources. No tests or expectations were weakened.
+
+Selected post-fix simulator/fake-SDK checks: 2 run, 2 passed. Full commands, filters, exit codes and output are retained in the parent task verification evidence. The focused run covers this driver's early-stop case and relevant existing external/hand-controller or geometry cases. DSD software-backlash overshoot, USBv3 reversed absolute arrival, and fractional Lunatico angle quantization pass. Final recorded full suites, platform checks and quality review remain assigned to the coordinator. `git diff --check` passed. No property inventory changed.
+
+Atomic plan status: baseline build and all eight original existing-suite executions completed; defect reproducer completed; production repair, driver version increment and unchanged-generator output regeneration completed; focused regression verification completed. Coordinator owns final recorded full suites and review.
+
+### Repair test summary
+
+- Simulated tests for the selected post-fix checks: 2 executed, 2 passed. Expected failing original early-stop reproduction: 1 executed, 0 passed, intentionally retained as defect evidence.
+- Hardware tests for this repair: 0 executed, 0 passed. Linux/Windows, real SDK/device behavior and hardware mechanics remain unverified.
+
+Final reinspection removed an unnecessary external-poll target rewrite introduced during the repair, preserving the original request target semantics. The raw-step ownership/completion checks remain. Ordinary test setup now drains the observed in-flight initial poll through a no-op marker on the same device/master queue, without relying on deduplicated property updates. Explicit overlap tests remain intact. All15 focused serial/UDP/regression setup checks passed before the final complete recorded58/58 run (29 serial+29 UDP), version0x03000013, macOS arm64. Earlier sandbox bind denial and source/test retry failures are retained in task verification.
+
+Final test summary for this repair: full simulated cases58 run,58 passed; hardware0 run,0 passed. Both generated exports were rebuilt after shared implementation changes; final generator reproduction is byte-identical. This supersedes pending coordinator checks above. Native other-platform/real-hardware results remain unverified.

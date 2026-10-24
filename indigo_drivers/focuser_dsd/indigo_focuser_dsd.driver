@@ -22,7 +22,7 @@ driver dsd {
 	label = "Deep Sky Dad Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2019-2026 Rumen G. Bogdanovski";
-	version = 23;
+	version = 24;
 	serial {
 		configurable_speed = true;
 	}
@@ -43,7 +43,7 @@ driver dsd {
 	}
 	data {
 		int focuser_version;
-		int current_position, target_position, max_position;
+		int current_position, target_position, expected_position, max_position;
 		bool positive_last_move, reverse;
 		double prev_temp;
 		bool has_temperature_sensor;
@@ -213,7 +213,7 @@ driver dsd {
 			PRIVATE_DATA->poll_failures = 0;
 			PRIVATE_DATA->current_position = position;
 			if (moving == 0) {
-				dsd_end_motion(device, PRIVATE_DATA->aborted ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
+				dsd_end_motion(device, PRIVATE_DATA->aborted || (PRIVATE_DATA->moving && !PRIVATE_DATA->external && position != PRIVATE_DATA->expected_position) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE);
 				return;
 			}
 			if (PRIVATE_DATA->moving) {
@@ -263,6 +263,8 @@ driver dsd {
 			}
 			// a started move replaces the pending connection or compensation poll
 			indigo_cancel_pending_handler(device, motion_finalizer);
+			// Software backlash changes the physical endpoint without changing the requested public target.
+			PRIVATE_DATA->expected_position = target;
 			PRIVATE_DATA->moving = true;
 			PRIVATE_DATA->external = PRIVATE_DATA->aborted = false;
 			PRIVATE_DATA->poll_failures = PRIVATE_DATA->stalled_polls = 0;

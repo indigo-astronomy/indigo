@@ -13,6 +13,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <errno.h>
+#include <limits.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_raw_utils.h>
@@ -49,6 +50,28 @@ static int median3(int a, int b, int c) {
 }
 
 #define SAMPLES 50000
+
+bool indigo_validate_raw_image(const void *image, long size) {
+	if (image == NULL || size < (long)sizeof(indigo_raw_header) || size > INT_MAX) {
+		return false;
+	}
+	indigo_raw_header header;
+	memcpy(&header, image, sizeof(header));
+	size_t bytes_per_pixel;
+	switch (header.signature) {
+		case INDIGO_RAW_MONO8: bytes_per_pixel = 1; break;
+		case INDIGO_RAW_MONO16: bytes_per_pixel = 2; break;
+		case INDIGO_RAW_RGB24: bytes_per_pixel = 3; break;
+		case INDIGO_RAW_RGB48: bytes_per_pixel = 6; break;
+		default:
+			return false;
+	}
+	if (header.width == 0 || header.height == 0 || header.width > INT_MAX / bytes_per_pixel || header.height > INT_MAX / bytes_per_pixel / header.width) {
+		return false;
+	}
+	size_t pixel_bytes = (size_t)header.width * header.height * bytes_per_pixel;
+	return pixel_bytes <= (size_t)size - sizeof(header);
+}
 
 bool indigo_is_bayered_image(indigo_raw_header *header, size_t data_length) {
 	if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16) {

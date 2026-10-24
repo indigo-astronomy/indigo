@@ -6298,6 +6298,7 @@
 		D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_protocol_security.c; sourceTree = "<group>"; };
 		C1709E72227841389E72BABD /* test_transport_cache_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_transport_cache_security.c; sourceTree = "<group>"; };
 		FBDFAF3D3E554044BBDDB275 /* test_transport_http_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_transport_http_security.c; sourceTree = "<group>"; };
+		AB1026102418335100000001 /* test_agent_alpaca_mapping.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_mapping.c; sourceTree = "<group>"; };
 		CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_cache.c; sourceTree = "<group>"; };
 		48931A9C9D9E4BFAB7A87777 /* test_server_management_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_management_security.c; sourceTree = "<group>"; };
 		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
@@ -7069,6 +7070,7 @@
 		1C01B5B6467DB573009B1209 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		86930612787CBD99B59DC1F7 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		F231AF989A68D78935FF0100 /* 20261024163549-1b30-alto-request-versus-poll.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024163549-1b30-alto-request-versus-poll.json"; sourceTree = "<group>"; };
+		4F945538E804D77B129FE818 /* FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15676,6 +15678,7 @@
 				5BBF05A47A2D1AC25E310D5D /* test_ccd_file_names.c */,
 				FBDFAF3D3E554044BBDDB275 /* test_transport_http_security.c */,
 				CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */,
+				AB1026102418335100000001 /* test_agent_alpaca_mapping.c */,
 				5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */,
 				59910A59305289D700FB1C2F /* abort_queue_test_common.h */,
 				2D7262A5A6EB6D2BF8614DCA /* aux_test_isolation.h */,
@@ -16252,7 +16255,9 @@
 				83BCB823253117A0FE37206C /* FND-20261023101753-bc8d-complete-repository-audit-002.json */,
 				9DAD0C6F6F2098B2DAD79A6F /* FND-20261023101753-bc8d-complete-repository-audit-005.json */,
 				A0654F9546BAB2E568FAD9AB /* FND-20261023101753-bc8d-complete-repository-audit-006.json */,
+				9B2A122C201E152AB2363092 /* FND-20261023101753-bc8d-complete-repository-audit-022.json */,
 				D3C6448BE4580E160762A1ED /* FND-20261023101753-bc8d-complete-repository-audit-026.json */,
+				E9BD68D8323C5643AE095BE6 /* FND-20261023101753-bc8d-complete-repository-audit-027.json */,
 				BDCA48D91467B6D7C849DA8B /* FND-20261023101753-bc8d-complete-repository-audit-031.json */,
 				526B67225D63652BCA111869 /* FND-20261023101753-bc8d-complete-repository-audit-032.json */,
 				8E474CDDDF840E041D14272B /* FND-20261023101753-bc8d-complete-repository-audit-039.json */,
@@ -16298,6 +16303,7 @@
 				A61D5E5FFCEFC1322FADABA7 /* FND-20261024121920-3bd2-repository-audit-013.json */,
 				4D7A1D5B71F18FDCF6778FB2 /* FND-20261024121920-3bd2-repository-audit-014.json */,
 				528367DC8FCEE4A6AE2ADFB2 /* FND-20261024121920-3bd2-repository-audit-021.json */,
+				EEBE2CD99837A0B568168FE1 /* FND-20261024121920-3bd2-repository-audit-031.json */,
 				2B186AA137E10460D4539C98 /* FND-20261024121920-3bd2-repository-audit-033.json */,
 				7507B014F96D723FAFCC419E /* FND-20261024121920-3bd2-repository-audit-035.json */,
 				937663F0CD7DB75BF4586A9C /* FND-20261024121920-3bd2-repository-audit-037.json */,
@@ -18848,11 +18854,9 @@
 				A6B2BB9FAAB90DC8A2848543 /* FND-20261023101753-bc8d-complete-repository-audit-019.json */,
 				E4303F939DB78FE60A27B3F1 /* FND-20261023101753-bc8d-complete-repository-audit-020.json */,
 				F5AC397512BBC082031DFC94 /* FND-20261023101753-bc8d-complete-repository-audit-021.json */,
-				9B2A122C201E152AB2363092 /* FND-20261023101753-bc8d-complete-repository-audit-022.json */,
 				8AF5B582EEE6106CDFAD35BD /* FND-20261023101753-bc8d-complete-repository-audit-023.json */,
 				A9A476256BD73DB31063E549 /* FND-20261023101753-bc8d-complete-repository-audit-024.json */,
 				4899630FBFA985DB228F7DE8 /* FND-20261023101753-bc8d-complete-repository-audit-025.json */,
-				E9BD68D8323C5643AE095BE6 /* FND-20261023101753-bc8d-complete-repository-audit-027.json */,
 				B47478E4B47D464F16F43B86 /* FND-20261023101753-bc8d-complete-repository-audit-028.json */,
 				E6B470D8F23F2B451D94B10B /* FND-20261023101753-bc8d-complete-repository-audit-029.json */,
 				C1F7F73001440B30BF356EB3 /* FND-20261023101753-bc8d-complete-repository-audit-030.json */,
@@ -18885,13 +18889,13 @@
 				B45CF94A9E99A43C2163CE5F /* FND-20261024121920-3bd2-repository-audit-028.json */,
 				A257BDCE52A20F59DF2731D6 /* FND-20261024121920-3bd2-repository-audit-029.json */,
 				89A4BC30E600C38FF5319EB6 /* FND-20261024121920-3bd2-repository-audit-030.json */,
-				EEBE2CD99837A0B568168FE1 /* FND-20261024121920-3bd2-repository-audit-031.json */,
 				FDF587060A598BD0CD463E0B /* FND-20261024121920-3bd2-repository-audit-032.json */,
 				372DAD6B9997C34D657A5700 /* FND-20261024121920-3bd2-repository-audit-034.json */,
 				AEACF9790C825FF02F232719 /* FND-20261024121920-3bd2-repository-audit-036.json */,
 				9E801A02FDBF7E98819E7BCB /* FND-20261024121920-3bd2-repository-audit-040.json */,
 				3A4916545E21E0C262D80B47 /* FND-20261024121920-3bd2-repository-audit-043.json */,
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
+				4F945538E804D77B129FE818 /* FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json */,
 			);
 			path = active;
 			sourceTree = "<group>";

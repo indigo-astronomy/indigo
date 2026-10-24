@@ -67,6 +67,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_cleanup \
 	$(INTEGRATION_BUILD)/test_ccd_file_names \
 	$(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
+	$(INTEGRATION_BUILD)/test_agent_alpaca_mapping \
 	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qsi_sdk \
@@ -3577,3 +3578,10 @@ $(UNIT_BUILD)/test_profile_selection: unit/test_profile_selection.c test_runner.
 $(INTEGRATION_BUILD)/test_agent_imager_cleanup: integration/test_agent_imager_cleanup.py $(INTEGRATION_BUILD)/test_agent_imager_instances | $(INTEGRATION_BUILD)
 	cp $< $@
 	chmod +x $@
+
+$(INTEGRATION_BUILD)/test_agent_alpaca_mapping: integration/test_agent_alpaca_mapping.c ../indigo_drivers/agent_alpaca/indigo_agent_alpaca.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_alpaca.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_alpaca.a $(TEST_LDFLAGS) -lz
+
+.PHONY: test-agent-alpaca-mapping
+test-agent-alpaca-mapping: check-lib $(INTEGRATION_BUILD)/test_agent_alpaca_mapping
+	$(INTEGRATION_BUILD)/test_agent_alpaca_mapping

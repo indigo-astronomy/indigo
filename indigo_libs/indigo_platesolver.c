@@ -38,6 +38,7 @@
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_platesolver.h>
+#include <indigo/indigo_raw_utils.h>
 
 // TODO: Remove obsoleted AGENT_PLATESOLVER_SYNC and AGENT_PLATESOLVER_ABORT properties in future
 
@@ -70,6 +71,11 @@ static void update_preview_image(indigo_device *device, void *image, long size, 
 		indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, "Preview conversion supports RAW images only");
 		return;
 	}
+	if (!indigo_validate_raw_image(image, size)) {
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, "Invalid or incomplete RAW preview image");
+		return;
+	}
 	indigo_raw_header *header = (indigo_raw_header *)image;
 	int bpp = 0;
 	switch (header->signature) {
@@ -89,6 +95,12 @@ static void update_preview_image(indigo_device *device, void *image, long size, 
 			AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, "Unsupported RAW preview format");
 			return;
+	}
+	// The JPEG helper multiplies by three colour channels and bpp before dividing by eight.
+	if ((size_t)header->width * header->height > SIZE_MAX / 3 / bpp) {
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, "RAW preview dimensions exceed JPEG conversion limits");
+		return;
 	}
 	void *jpeg_data = NULL;
 	unsigned long jpeg_size = 0;

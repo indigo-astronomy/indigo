@@ -111,7 +111,7 @@ static void stop(void) {
 static bool settle_after_connect(int port) {
 	char command[32];
 	snprintf(command, sizeof(command), "!step ismoving %d#", port);
-	return lunatico_wait_for_command(command);
+	return lunatico_wait_for_command(command) && lunatico_wait_for_poll_completion();
 }
 
 static bool sync_to(const simulator_driver_case *device, double degrees) {
@@ -552,9 +552,42 @@ cleanup:
 	stop();
 }
 
+static void early_stop_keeps_requested_target(void) {
+	SERIAL_CHECK_TRUE(start_main());
+	SERIAL_CHECK_TRUE(settle_after_connect(0));
+	SERIAL_CHECK_TRUE(sync_to(&main_rotator, 0));
+	SERIAL_CHECK_TRUE(select_goto_mode(&main_rotator));
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 10, .01));
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20);
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop();
+}
+
+static void fractional_target_uses_controller_steps(void) {
+	SERIAL_CHECK_TRUE(start_main());
+	SERIAL_CHECK_TRUE(settle_after_connect(0));
+	SERIAL_CHECK_TRUE(select_goto_mode(&main_rotator));
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20.05, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, .001));
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20.05);
+cleanup:
+	stop();
+}
+
 int main(void) {
+	simulator_test_client.define_property = lunatico_test_define_property;
 	const aux_simulated_case tests[] = {
 		{ "identity_and_inventory", identity_and_inventory, "normal" },
+		{ "early_stop", early_stop_keeps_requested_target, "early-stop" },
+		{ "fractional_target", fractional_target_uses_controller_steps, "normal" },
 		{ "main_goto", main_goto, "normal" },
 		{ "exp_goto", exp_goto, "normal" },
 		{ "third_goto", third_goto, "normal" },

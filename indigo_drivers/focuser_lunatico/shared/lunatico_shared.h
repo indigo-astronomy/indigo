@@ -115,7 +115,9 @@ typedef struct {
 	int focuser_failures, focuser_stalls;
 	// The focuser moves without a request of this driver (already running at connect).
 	bool focuser_external;
-	double rotator_position, rotator_target;
+	double rotator_position;
+	int32_t rotator_expected;
+	bool rotator_commanded;
 	double previous_temperature;
 	int temperature_sensor;
 	bool has_temperature_sensor;

@@ -276,6 +276,14 @@ static void handle_command(const char *command) {
 			// request to be accepted while it is outstanding
 			usleep(300000);
 		}
+		if (!strcmp(fault, "early-stop")) {
+			int delta = parse_suffix(command) / 2;
+			target_position = position + (command[0] == 'O' ? delta : -delta);
+			clamp_position();
+			serial_motion_start(&motion, target_position, 1000);
+			moving = true;
+			return;
+		}
 		if (!strncmp(fault, "external=", 9)) {
 			// the hand controller starts a move the driver did not command; it is modelled
 			// without the completion marker, which is known only for moves sent over the line

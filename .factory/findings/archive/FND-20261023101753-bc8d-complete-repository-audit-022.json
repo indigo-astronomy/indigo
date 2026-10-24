@@ -4,7 +4,7 @@
   "severity": "medium",
   "summary": "Received RAW data is cast and dimensions consumed without minimum header and overflow-safe pixel-span checks. BLOB registry validation does not validate image shape. Next: reuse guider-style header/signature/dimension/pixel-span checks and truncated-frame fixtures. Current audit also confirms platesolver preview at indigo_platesolver.c:63-100 does not validate payload size against RAW dimensions/type. Guider capture now validates shape/payload and is excluded from this current missing-check claim. Next: include platesolver preview in bounded image-consumer repair/retests.",
   "evidence": "indigo_drivers/agent_imager/indigo_agent_imager.c:577-670; indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c:1385-1490; current reconciliation: 20261024121920-3bd2-repository-audit/reconciliation.md",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -17,8 +17,18 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "reconciliation.md",
       "revision": null
+    },
+    {
+      "id": "20261024183351-e8e1-fix-motion-image-alpaca",
+      "report": "findings.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024183351-e8e1-fix-motion-image-alpaca: verification.md (423/423 final recorded driver cases,17/17 RAW sanitizer; targeted shape/capacity/stopped-short checks), independent-review.md, quality-review.md and security.md. No hardware or whole-product certification; separate pre-existing Lunatico ownership race remains open under repair-task001.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-022"
 }

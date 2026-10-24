@@ -395,3 +395,15 @@ Found defect: source-audit-confirmed callback/client/code lifetime mismatch; no 
 Final test summary for this repair: repaired simulated/cache tests run 1, passed 1; shared transport fixture tests run 15, passed 15; physical hardware tests run 0, passed 0. The first transport execution could not bind its isolated fixture socket in the sandbox; the permitted fixture rerun passed. Exact compiler commands are retained by the task coordinator; this does not claim full Alpaca/ConformU or hardware validation.
 
 Final combined candidate recorded run: `python3 tools/run_driver_test.py agent_alpaca` passed 1/1, recording 3.0.0.16 on mac arm64 in README Testing and TEST_SUMMARY. Parent combined HTTP sanitizer fixture passed 15/15. These repeat the same synthetic scope; hardware remains 0/0 and full shutdown-concurrency/ConformU/cross-platform execution remains unverified. Retained task evidence: [.factory verification](../../.factory/tasks/archive/20261024135437-8e0c-fix-property-copy/verification.md).
+
+## Bounded RAW and Bayer mapping repair (2026-10-24)
+
+Task: 20261024183351-e8e1-fix-motion-image-alpaca. The hand-written bridge keeps its property/interface, transport, discovery and lifecycle contracts. FND-20261024121920-3bd2-repository-audit-031 identifies Bayer mapping capacity; FND-20261023101753-bc8d-complete-repository-audit-022 identifies unvalidated RAW image shape. Existing cached-image tests cover successful MONO8 column order. This bounded repair is not a driver migration; no generator or SDK is involved.
+
+Hardware decision: no physical hardware testing. Synthetic bus/device mappings and cached image fixtures exercise the changed memory boundaries. No ConformU or Linux/Windows execution is claimed.
+
+Atomic plan: (1) baseline bridge build and cached-image success fixture; (2) bound Bayer insertion before pointer formation and preserve rediscovery mapping, test full-capacity handling with synthetic INFO properties; (3) validate RAW shape before conversion and add malformed/valid image fixtures; (4) rebuild, run recorded tests and review complete diff. Baseline commands/results and final totals will be recorded below after execution. No property is added or removed.
+
+Plan results: baseline bridge build and cached-image1/1 passed. Capacity repair rejects a new Bayer slot before forming its pointer and binds rediscovered cameras to their existing valid item; final synthetic mapping case covers the last free slot, capacity rejection/null state, preservation and rediscovery. Shared RAW validation now runs before header/pixel use while preserving retained-entry cleanup. The complete bridge build and final recorded run passed4/4 at version0x03000011. Mapping main-source ASan/UBSan passed1/1; instrumented RAW/cache/consumer checks passed as detailed in task raw-repair.md. No properties added or removed.
+
+Final test summary for this repair: recorded simulated tests4 run,4 passed; hardware tests0 run,0 passed. Focused mapping/cache sanitizer executions repeat these scenarios and are not additional unique cases. ConformU, native32-bit, Linux/Windows and physical hardware remain unverified.

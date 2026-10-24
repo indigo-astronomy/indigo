@@ -240,6 +240,10 @@ static void lunatico_step(const char *command, const char *verb, int port, int a
 			sim_stalled[port] = true;
 			lunatico_reply_status(command, true);
 		} else {
+			if (sim_flag("early-stop") && !sim_has_moved) {
+				int current = (int)lround(serial_motion_update(&target->motion));
+				requested = current + (requested - current) / 2;
+			}
 			serial_motion_start(&target->motion, requested, target->speed);
 			sim_has_moved = true;
 			lunatico_reply_status(command, true);

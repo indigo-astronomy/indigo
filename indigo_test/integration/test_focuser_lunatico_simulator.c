@@ -174,11 +174,11 @@ static bool select_goto_mode(const simulator_driver_case *device) {
 // The connect handler arms a one-shot completion poll and publishes CONNECTION
 // OK before that poll fires, so a request issued immediately after connecting
 // races it. Scenarios that are not about that race wait for the poll to have
-// run; !step ismoving# is issued by nothing else at connect.
+// completed its initial poll callback; command receipt alone precedes readback.
 static bool settle_after_connect(int port) {
 	char command[32];
 	snprintf(command, sizeof(command), "!step ismoving %d#", port);
-	return lunatico_wait_for_command(command);
+	return lunatico_wait_for_command(command) && lunatico_wait_for_poll_completion();
 }
 
 // --------------------------------------------------------------------------------- identity
@@ -1094,7 +1094,28 @@ cleanup:
 	stop();
 }
 
+static void rotator_early_stop_keeps_requested_target(void) {
+	SERIAL_CHECK_TRUE(lunatico_start(&exp_rotator, "ROTATOR"));
+	SERIAL_CHECK_TRUE(lunatico_wait_for_command("!step ismoving 1#"));
+	SERIAL_CHECK_TRUE(lunatico_set_switch(&exp_rotator, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lunatico_set_number(&exp_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 0, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lunatico_set_switch(&exp_rotator, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lunatico_set_number(&exp_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 10, .01));
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20);
+	// This interface polls only while moving; an idle wait must not erase the failed request.
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20);
+	SERIAL_CHECK_TRUE(lunatico_set_number(&exp_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop();
+}
+
 int main(void) {
+	simulator_test_client.define_property = lunatico_test_define_property;
 	const aux_simulated_case tests[] = {
 		{ "identity_and_inventory", identity_and_inventory, "normal" },
 		{ "main_absolute_move", main_absolute_move, "normal" },
@@ -1151,6 +1172,7 @@ int main(void) {
 		{ "powerbox_names", powerbox_names_relabel_items, "normal" },
 		{ "powerbox_outlet_failure", powerbox_outlet_failure_is_reported, "outlet-error" },
 		{ "powerbox_sensor_failure", powerbox_sensor_failure_is_reported, "sensor-error" },
+		{ "rotator_early_stop", rotator_early_stop_keeps_requested_target, "early-stop" },
 		{ "rotator_on_exp", rotator_on_the_exp_port, "normal" },
 	};
 	return run_aux_simulated("Lunatico focuser", LUNATICO_SIMULATOR, tests, ARRAY_SIZE(tests));

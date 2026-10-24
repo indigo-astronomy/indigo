@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000041
+#define DRIVER_VERSION 0x03000042
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -651,11 +651,11 @@ static bool capture_frame(indigo_device *device) {
 			}
 		}
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->last_image_mutex);
-		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
-		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
-			indigo_send_message(device, ALERT_PROPERTY, "RAW image not received");
+		if (!indigo_validate_raw_image(DEVICE_PRIVATE_DATA->last_image, DEVICE_PRIVATE_DATA->last_image_size)) {
+			indigo_send_message(device, ALERT_PROPERTY, "Invalid or incomplete RAW image");
 			return false;
 		}
+		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		DEVICE_PRIVATE_DATA->last_width = header->width;
 		DEVICE_PRIVATE_DATA->last_height = header->height;
 		/* This is potentially bayered image, if so we need to equalize the channels */
