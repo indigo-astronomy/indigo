@@ -209,3 +209,20 @@ password takes effect before the next restart, Windows and macOS builds.
 
 - Simulated tests: 32 run, 32 passed: `2026-10-24 23:14 3.0.0.4 linux x64 simulator 32/32 OK`.
 - Hardware tests: the WiFi session above (raw probe and driver through `indigo_prop_tool`); the recorded hardware suite was not rerun.
+
+## Firmware text bound (3.0.0.5, 2026-10-25, task 20261024213010-b356-primaluce-panel-cover-firmware-bound)
+
+The connect handler appended the web firmware version to the application version in `INFO` with two `strcat()` calls,
+copied from `indigo_focuser_primaluce` before that driver bounded it (FND-20261024121920-3bd2-repository-audit-029,
+fixed there in 3.0.0.42). Versions longer than the 511 characters of the item overflowed it.
+
+**Fixed: long firmware versions overflowed the INFO item** (reproduced, the same flaw as audit finding 029).
+- Fix: the web version is appended with `snprintf()` into the space left in the item, so a long version is cut off.
+- Simulator: profile `long-firmware` reports 300 character application and web versions.
+- Regression test: `long_firmware` (the item holds the first 511 characters of "<app> / <web>" and the serial number is
+  intact); it aborted with signal 6 (fortified buffer overflow check) on 3.0.0.4.
+
+## Final test summary (3.0.0.5)
+
+- Simulated tests: 33 run, 33 passed: `2026-10-25 00:33 3.0.0.5 linux x64 simulator 33/33 OK`.
+- Hardware tests: 0 run for this change (real firmware versions are short).

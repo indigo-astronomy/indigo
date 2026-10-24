@@ -58,6 +58,10 @@ static FILE *events = NULL;
 
 static const char *model = "ALTO1";
 static const char *firmware = "1.03.11";
+static const char *web_firmware = "1.01";
+// The long-firmware profile reports 300 character application and web versions, together longer than an INDIGO
+// text item.
+static char long_firmware[2][301];
 static int calibration_max = 239608;
 static serial_motion motion = { .position = 239608, .target = 239608 };
 // A stalled arm keeps reporting motion while the position does not change.
@@ -77,7 +81,7 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --profile <name>        normal, closed, needs-calibration, uncalibrated or unsupported, default is normal\n");
+	printf("  --profile <name>        normal, closed, needs-calibration, uncalibrated, unsupported or long-firmware, default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_ALTO_EVENTS names a file receiving every accepted request.\n");
@@ -138,6 +142,14 @@ static void apply_profile(void) {
 		serial_motion_sync(&motion, 0);
 	} else if (!strcmp(options.profile, "unsupported")) {
 		model = "GIOTTO";
+	} else if (!strcmp(options.profile, "long-firmware")) {
+		for (int i = 0; i < 2; i++) {
+			memset(long_firmware[i], 'x', 300);
+			memcpy(long_firmware[i], i ? "1.01" : "1.03.11", i ? 4 : 7);
+			long_firmware[i][300] = 0;
+		}
+		firmware = long_firmware[0];
+		web_firmware = long_firmware[1];
 	}
 }
 
@@ -389,7 +401,7 @@ static void append_preset(char *buffer, int index) {
 
 static void full_state(char *buffer) {
 	append(buffer, "{\"res\":{\"get\":{\"SWID\":\"003\",\"MODNAME\":\"%s\",\"SN\":\"ALTO100001\",\"HOSTNAME\":\"ALTO100001\",\"MACADDR\":\"8C:1F:64:00:00:02\",", model);
-	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"1.01\"},\"VIN_12V\":\"13.37\",\"VIN_USB\":\"5.46\",\"CALRESTART\":{\"MOT1\":%d},\"LEDBLINKSTATUS\":\"\",", firmware, calibration_restart);
+	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"%s\"},\"VIN_12V\":\"13.37\",\"VIN_USB\":\"5.46\",\"CALRESTART\":{\"MOT1\":%d},\"LEDBLINKSTATUS\":\"\",", firmware, web_firmware, calibration_restart);
 	append_lan_config(buffer);
 	append(buffer, ",");
 	append_access_point(buffer);

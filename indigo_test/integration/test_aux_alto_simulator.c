@@ -418,6 +418,25 @@ cleanup:
 	driver_stop();
 }
 
+// Firmware versions longer than an INDIGO text item are cut off in INFO instead of overflowing it.
+static void long_firmware(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	char app[301], web[301], combined[700], expected[INDIGO_VALUE_SIZE];
+	memset(app, 'x', 300);
+	memcpy(app, "1.03.11", 7);
+	app[300] = 0;
+	memset(web, 'x', 300);
+	memcpy(web, "1.01", 4);
+	web[300] = 0;
+	snprintf(combined, sizeof(combined), "%s / %s", app, web);
+	memcpy(expected, combined, sizeof(expected) - 1);
+	expected[sizeof(expected) - 1] = 0;
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME, expected));
+	SERIAL_CHECK_TRUE(text_is(INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME, "ALTO100001"));
+cleanup:
+	driver_stop();
+}
+
 // A closed cover shows CLOSE.
 static void connect_closed(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -958,6 +977,7 @@ int main(void) {
 		{ "usb_match_pattern", usb_match_pattern, "normal" },
 		{ "property_contract", property_contract, "normal" },
 		{ "connect_closed", connect_closed, "closed" },
+		{ "long_firmware", long_firmware, "long-firmware" },
 		{ "unsupported_device", unsupported_device, "unsupported" },
 		{ "handshake_timeout", handshake_timeout, "normal" },
 		{ "needs_calibration", needs_calibration, "needs-calibration" },
