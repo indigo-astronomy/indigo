@@ -45,6 +45,11 @@
 #define X_FADING_PROPERTY_NAME             "X_FADING"
 #define X_POWER_ON_LIGHT_PROPERTY_NAME     "X_POWER_ON_LIGHT"
 #define X_LEDS_PROPERTY_NAME               "X_LEDS"
+#define X_WIFI_PROPERTY_NAME               "X_WIFI"
+#define X_WIFI_AP_PROPERTY_NAME            "X_WIFI_AP"
+#define X_WIFI_STA_PROPERTY_NAME           "X_WIFI_STA"
+#define X_WIFI_AP_ITEM_NAME                "AP"
+#define X_WIFI_STA_ITEM_NAME               "STA"
 #define ON_ITEM_NAME                       "ON"
 #define OFF_ITEM_NAME                      "OFF"
 #define X_LEDS_DIM_ITEM_NAME               "DIM"
@@ -350,6 +355,13 @@ static void property_contract(void) {
 	assert_property_has_item(X_FADING_PROPERTY_NAME, ON_ITEM_NAME);
 	assert_property_has_item(X_POWER_ON_LIGHT_PROPERTY_NAME, ON_ITEM_NAME);
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME);
+	assert_property_has_item(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME);
+	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME);
+	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME);
+	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, "AP_SSID");
+	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD");
+	assert_property_has_item(X_WIFI_STA_PROPERTY_NAME, "STA_SSID");
+	assert_property_has_item(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD");
 	SERIAL_CHECK_EQ_INT(9, find_cached_property(X_PRESETS_PROPERTY_NAME)->count);
 	SERIAL_CHECK_EQ_INT(9, find_cached_property(X_PRESET_NAMES_PROPERTY_NAME)->count);
 	SERIAL_CHECK_EQ_INT(9, find_cached_property(X_PRESET_RECALL_PROPERTY_NAME)->count);
@@ -362,6 +374,11 @@ static void property_contract(void) {
 	SERIAL_CHECK_TRUE(switch_is(X_FADING_PROPERTY_NAME, ON_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(switch_is(X_POWER_ON_LIGHT_PROPERTY_NAME, OFF_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(switch_is(X_LEDS_PROPERTY_NAME, ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_SSID", "GIOTTO12000001"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "primalucelab"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "MySSID"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD", "MyPassword"));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_TEMPERATURE_ITEM_NAME, 29.74, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.13, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_USB_ITEM_NAME, 5.33, .005));
@@ -729,6 +746,75 @@ cleanup:
 	driver_stop();
 }
 
+// ----------------------------------------------------------------- WiFi
+
+// The credentials are written as given and read back on the next connect; what WiFi cannot use is refused with a reason
+// before anything is sent, because the panel would store it.
+static void wifi_credentials(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Observatory", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"Observatory\", \"PWD\":\"MyPassword\"}}}}", 1));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "skyflats", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"GIOTTO12000001\", \"PWD\":\"skyflats\"}}}}", 1));
+	clear_messages();
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "abc", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("at least 8 characters"));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Home \"net\"", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("cannot contain"));
+	SERIAL_CHECK_EQ_INT(1, requests("\"WIFIAP\""));
+	SERIAL_CHECK_EQ_INT(1, requests("\"WIFISTA\""));
+	disconnect_serial_device(&giotto);
+	SERIAL_CHECK_TRUE(connect_giotto());
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Observatory"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "skyflats"));
+cleanup:
+	driver_stop();
+}
+
+// Off and the access point switch the access point in its mode; station mode and back write LANCFG and restart the
+// panel once, which then keeps being polled.
+static void wifi_modes(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}", 1));
+	SERIAL_CHECK_EQ_INT(0, requests("\"REBOOT\""));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"LANCFG\":\"sta\"}}}", 1));
+	SERIAL_CHECK_EQ_INT(1, requests("\"REBOOT\""));
+	disconnect_serial_device(&giotto);
+	SERIAL_CHECK_TRUE(connect_giotto());
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));
+	// Off from station mode returns to the access point mode first.
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"LANCFG\":\"ap\"}}}", 1));
+	SERIAL_CHECK_EQ_INT(2, requests("\"REBOOT\""));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}", 2));
+	disconnect_serial_device(&giotto);
+	SERIAL_CHECK_TRUE(connect_giotto());
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"on\"}}}", 1));
+	SERIAL_CHECK_EQ_INT(2, requests("\"REBOOT\""));
+	// The restarted panel is still served.
+	SERIAL_CHECK_TRUE(switch_change(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(light_is(true, 0));
+cleanup:
+	driver_stop();
+}
+
+// A refused mode ends ALERT with the panel's reason, keeps the mode the panel has and restarts nothing.
+static void wifi_mode_refused(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	clear_messages();
+	SERIAL_CHECK_TRUE(fault("\"LANCFG\":\"sta\"", "reject"));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Error: invalid command"));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(0, requests("\"REBOOT\""));
+cleanup:
+	driver_stop();
+}
+
 // ----------------------------------------------------------------- transport
 
 // After the port disappears every request ends ALERT, the handshake is not repeated and disconnect completes.
@@ -801,6 +887,9 @@ int main(void) {
 		{ "presets_refused", presets_refused, "normal" },
 		{ "settings", settings, "normal" },
 		{ "settings_refused", settings_refused, "normal" },
+		{ "wifi_credentials", wifi_credentials, "normal" },
+		{ "wifi_modes", wifi_modes, "normal" },
+		{ "wifi_mode_refused", wifi_mode_refused, "normal" },
 		{ "transport_loss", transport_loss, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);

@@ -28,8 +28,9 @@ indigo_server indigo_aux_giotto
 * Recalling a preset sets its brightness and leaves the light as it is.
 * A preset takes a brightness only after it has a name; clearing the name deletes it.
 * The light is switched off when the driver disconnects; the panel keeps its brightness.
+* The WiFi mode (off, access point, station) and both sets of credentials can be set from the driver; a change between station mode and the access point restarts the panel.
 
 ## Testing
 
 - 2026-10-24 14:31 3.0.0.1 linux x64 GIOTTO 8/8 OK
-- 2026-10-24 19:50 3.0.0.3 linux x64 simulator 26/26 OK
+- 2026-10-24 23:12 3.0.0.4 linux x64 simulator 29/29 OK

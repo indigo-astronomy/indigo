@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <time.h>
 
 #define JSMN_STATIC
 #include "../../shared/primalucelib/jsmn.h"
@@ -271,13 +272,87 @@ static void append_preset(char *buffer, int index) {
 	append(buffer, "\"PRESET_%d\":{\"NAME\":\"%s\",\"BRIGHTNESS\":%d}", index + 1, presets[index].name, presets[index].brightness);
 }
 
+// WiFi as the hardware showed it (ALTO1 firmware 1.03.11): every LANCFG and credential is stored as sent and
+// acknowledged, LANCFG takes effect at the next REBOOT, the access point is off in station mode, and a restarting
+// controller answers nothing until it has booted.
+#define BOOT_TIME    1.0
+#define CREDENTIAL   65
+static char lan_config[16] = "ap";
+static bool station = false;
+static bool access_point = true;
+static char ap_ssid[CREDENTIAL] = "GIOTTO12000001", ap_password[CREDENTIAL] = "primalucelab";
+static char sta_ssid[CREDENTIAL] = "MySSID", sta_password[CREDENTIAL] = "MyPassword";
+static double boot_end = 0;
+
+static double monotonic_seconds(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1e9;
+}
+
+static void copy_token(char *target, size_t size, const char *json, const jsmntok_t *token) {
+	int length = token->end - token->start;
+	snprintf(target, size, "%.*s", length < (int)size - 1 ? length : (int)size - 1, json + token->start);
+}
+
+static void append_lan_config(char *buffer) {
+	append(buffer, "\"LANCFG\":\"%s\"", lan_config);
+}
+
+static void append_access_point(char *buffer) {
+	append(buffer, "\"WIFIAP\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"192.168.4.1\",\"NM\":\"255.255.255.0\",\"STATUS\":\"%s\",\"CLIENTS\":0}", ap_ssid, ap_password, access_point && !station ? "on" : "off");
+}
+
+static void append_station(char *buffer) {
+	append(buffer, "\"WIFISTA\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"\"}", sta_ssid, sta_password);
+}
+
+// Each member of WIFIAP or WIFISTA is answered on its own.
+static void set_credentials(char *buffer, const char *json, const jsmntok_t *tokens, int key, const char *refused) {
+	const jsmntok_t *token = tokens + key;
+	const jsmntok_t *value = tokens + key + 1;
+	bool ap = token_is(json, token, "WIFIAP");
+	append(buffer, "\"%.*s\":{", token->end - token->start, json + token->start);
+	int member = key + 2;
+	for (int i = 0; i < value->size; i++) {
+		const jsmntok_t *field = tokens + member;
+		const char *result = NOT_FOUND;
+		if (token_is(json, field, "SSID") || token_is(json, field, "PWD")) {
+			if (refused == NULL) {
+				char *target = token_is(json, field, "SSID") ? (ap ? ap_ssid : sta_ssid) : (ap ? ap_password : sta_password);
+				copy_token(target, CREDENTIAL, json, tokens + member + 1);
+			}
+			result = "done";
+		}
+		append(buffer, "%s\"%.*s\":\"%s\"", i ? "," : "", field->end - field->start, json + field->start, refused ? refused : result);
+		member = skip(tokens, member + 1);
+	}
+	append(buffer, "}");
+}
+
+// REBOOT is acknowledged before the ESP32 boot log; the stored LANCFG then takes effect and the access point starts.
+static void restart(char *buffer) {
+	append(buffer, "{\"res\":{\"cmd\":{\"REBOOT\":\"done\"}}}\nets Jul 29 2019 12:21:46\nrst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)\nentry 0x400806a4\n");
+	station = !strcmp(lan_config, "sta");
+	access_point = true;
+	// The light comes back as LIGHT_ATPWON selects; the brightness is kept.
+	light = light_at_power_on;
+	boot_end = monotonic_seconds() + BOOT_TIME;
+}
+
 static const char *light_status(void) {
 	return !light ? "off" : brightness == 0 ? "on" : "lighting";
 }
 
 static void full_state(char *buffer) {
 	append(buffer, "{\"res\":{\"get\":{\"SWID\":\"002\",\"MODNAME\":\"%s\",\"SN\":\"GIOTTO12000001\",\"HOSTNAME\":\"GIOTTO12000001\",\"MACADDR\":\"8C:1F:64:00:00:01\",", model);
-	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"1.1\"},\"LANCFG\":\"ap\",\"NTC_T\":\"29.74\",\"VIN_12V\":\"13.13\",\"VIN_USB\":\"5.33\",\"MOTOR\":0,", firmware);
+	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"1.1\"},\"NTC_T\":\"29.74\",\"VIN_12V\":\"13.13\",\"VIN_USB\":\"5.33\",\"MOTOR\":0,", firmware);
+	append_lan_config(buffer);
+	append(buffer, ",");
+	append_access_point(buffer);
+	append(buffer, ",");
+	append_station(buffer);
+	append(buffer, ",");
 	append(buffer, "\"LED3_LEDBLINKSTATUS\":\"\",\"LEDBLINKSTATUS\":\"\",\"CALRESTART\":{\"CH1\":%d,\"CH2\":%d},\"NUM_STRIPLIGHTS\":1,", calibration_restart[0], calibration_restart[1]);
 	if (max_brightness > 0) {
 		append(buffer, "\"MAX_BRIGHTNESS\":%d,", max_brightness);
@@ -330,6 +405,12 @@ static void get_member(char *buffer, const char *json, const jsmntok_t *tokens, 
 		append(buffer, "\"VIN_12V\":\"13.12\"");
 	} else if (token_is(json, token, "VIN_USB")) {
 		append(buffer, "\"VIN_USB\":\"5.33\"");
+	} else if (token_is(json, token, "LANCFG")) {
+		append_lan_config(buffer);
+	} else if (token_is(json, token, "WIFIAP")) {
+		append_access_point(buffer);
+	} else if (token_is(json, token, "WIFISTA")) {
+		append_station(buffer);
 	} else {
 		append(buffer, "\"%.*s\":\"" NOT_FOUND "\"", token->end - token->start, json + token->start);
 	}
@@ -371,8 +452,18 @@ static void set_member(char *buffer, const char *json, const jsmntok_t *tokens, 
 		append(buffer, "}");
 		return;
 	}
+	if ((token_is(json, token, "WIFIAP") || token_is(json, token, "WIFISTA")) && value->type == JSMN_OBJECT) {
+		set_credentials(buffer, json, tokens, key, refused);
+		return;
+	}
 	const char *result = NOT_FOUND;
-	if (token_is(json, token, "LIGHT")) {
+	if (token_is(json, token, "LANCFG") && value->type == JSMN_STRING) {
+		// Any text is stored (ALTO1 firmware 1.03.11 took "xyz").
+		if (refused == NULL) {
+			copy_token(lan_config, sizeof(lan_config), json, value);
+		}
+		result = "done";
+	} else if (token_is(json, token, "LIGHT")) {
 		// Any number is acknowledged; only 1 switches the light on.
 		result = ok ? "done" : INVALID;
 		if (ok) {
@@ -402,6 +493,10 @@ static void dispatch_command(const char *json) {
 	if (events != NULL) {
 		fprintf(events, "%s\n", json);
 		fflush(events);
+	}
+	// A booting controller answers nothing.
+	if (monotonic_seconds() < boot_end) {
+		return;
 	}
 	const char *fault = pending_fault(json);
 	if (fault != NULL && !strcmp(fault, "slow")) {
@@ -460,6 +555,19 @@ static void dispatch_command(const char *json) {
 				}
 			}
 			append(buffer, "{\"res\":{\"cmd\":{\"PRESET\":\"%s\"}}}\n", refused ? refused : result);
+			reply(buffer);
+		} else if (token_is(json, key, "AP_SET_STATUS") && value->type == JSMN_STRING) {
+			if (refused == NULL) {
+				access_point = token_is(json, value, "on");
+			}
+			append(buffer, "{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"%s\"}}}\n", refused ? refused : "done");
+			reply(buffer);
+		} else if (token_is(json, key, "REBOOT")) {
+			if (refused == NULL) {
+				restart(buffer);
+			} else {
+				append(buffer, "{\"res\":{\"cmd\":{\"REBOOT\":\"%s\"}}}\n", refused);
+			}
 			reply(buffer);
 		} else {
 			append(buffer, "{\"res\":{\"cmd\":{\"%.*s\":\"" INVALID "\"}}}\n", key->end - key->start, json + key->start);
