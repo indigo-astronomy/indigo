@@ -2,7 +2,7 @@
   "version": 2,
   "repository_review": {
     "review_every_task": true,
-    "full_review_every_completed_tasks": 5,
+    "full_review_every_completed_tasks": 20,
     "full_review_every_calendar_days": 7,
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
@@ -107,6 +107,14 @@
       "task": "20261023203453-a5d2-fix-fnd-000047",
       "scope": "Repair FND-000047 before the due full repository audit",
       "checkpoint": "After this repair, before unrelated work or release",
+      "resets_checkpoint": false
+    },
+    "subagent_policy_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation reply",
+      "date": "2026-10-24",
+      "task": "20261024111058-4a00-prefer-subagents",
+      "scope": "Complete the requested subagent preference policy change before the due repository audit",
+      "checkpoint": "After this task, before unrelated work or release",
       "resets_checkpoint": false
     }
   },

@@ -10,7 +10,7 @@ Version 2 `.factory/maintenance.json` contains policy and custom project setting
   "timezone": "UTC",
   "repository_review": {
     "review_every_task": true,
-    "full_review_every_completed_tasks": 5,
+    "full_review_every_completed_tasks": 20,
     "full_review_every_calendar_days": 7
   }
 }
@@ -32,7 +32,7 @@ A report filename alone does not qualify as a full audit. After completing the r
 
 The read-only result has `kind: "audit"` and `audit: { "reviewed_on": ..., "revision": ..., "covered_tasks": [...] }`. Copy it to the audit task state's `completion` field only after coverage/finding gates pass. For a work task also containing a full audit (such as adoption), use kind work with the same explicit audit metadata. The source commit must be retained; the command lists completion IDs visible at that reviewed commit. Do not expand coverage to tasks merged later without actually reviewing them.
 
-Due status uses the latest audit by reviewed calendar date, completion timestamp and task ID (deterministic tie order). It counts work completions outside that audit's explicit `covered_tasks`; audit-only tasks do not count. An audit within a work task does not cover its own subsequent completion. A task finished concurrently on another branch remains uncovered even if its clock timestamp is earlier. This prevents a new audit checkpoint from silently forgetting unseen concurrent work. Five uncovered work tasks, seven calendar days, or no completed audit means an audit is due. Same-second completions are counted independently. This is derived workflow state, not an automatic scheduler or authenticated approval system.
+Due status uses the latest audit by reviewed calendar date, completion timestamp and task ID (deterministic tie order). It counts work completions outside that audit's explicit `covered_tasks`; audit-only tasks do not count. An audit within a work task does not cover its own subsequent completion. A task finished concurrently on another branch remains uncovered even if its clock timestamp is earlier. This prevents a new audit checkpoint from silently forgetting unseen concurrent work. Twenty uncovered work tasks, seven calendar days, or no completed audit means an audit is due. Same-second completions are counted independently. This is derived workflow state, not an automatic scheduler or authenticated approval system.
 
 ## Upgrade existing projects
 

@@ -1,0 +1,78 @@
+{
+  "version": 2,
+  "task": "20261024111058-4a00-prefer-subagents",
+  "scope": [
+    "AGENTS.md",
+    ".factory/bootstrap.md",
+    ".factory/project.md",
+    ".factory/roles/coordinator.md",
+    ".factory/maintenance.json",
+    ".factory/routines/maintenance.md",
+    ".factory/routines/repository-review.md",
+    ".factory/completions/20261024111058-4a00-prefer-subagents.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/bootstrap.md": [
+      "100644",
+      "blob",
+      "18d1e2d621b401e2fa06006a4b6a7f658da272a1"
+    ],
+    ".factory/completions/20261024111058-4a00-prefer-subagents.json": [
+      "100644",
+      "blob",
+      "ec08e7ff31d2417367595e65edd62fa4f8f4fffd"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "b98374dc1ae23a00e0f4941027d0d24c47c788e5"
+    ],
+    ".factory/roles/coordinator.md": [
+      "100644",
+      "blob",
+      "99125867795aa1d651147453ef5684450112c6e7"
+    ],
+    ".factory/routines/maintenance.md": [
+      "100644",
+      "blob",
+      "3229592c1c79f1d6a6db443398d0345128822530"
+    ],
+    ".factory/routines/repository-review.md": [
+      "100644",
+      "blob",
+      "7f457a397226934beef6ac52ec328f250c5d699f"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "584c0a2627ef3dc85d5cd187e9dcb76759c94cd3"
+    ]
+  }
+}
