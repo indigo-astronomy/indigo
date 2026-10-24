@@ -1,11 +1,11 @@
 # CG-USB-ST4 guider refactoring and validation record
 
-Status: partial simulator coverage recorded on 2026-09-09. Production refactoring is not complete. `DRV-095` remains open pending protocol confirmation.
+Status: numeric-protocol defect `DRV-095` / `FND-000006` fixed in version 3.0.0.10 and verified on CGUSB-ST4 + NYX-101 on 2026-10-24. Broader lifecycle/refactoring gaps below remain separate; no global DEC orientation change was made.
 
 ## Current-state audit
 
 - The guider is tested through the public INDIGO bus and real PTY I/O against a standalone simulator. Each bounded test case owns and cleans up a fresh simulator process and event log.
-- The historical manufacturer page could not be retrieved. [Upstream PHD2 at commit c406cf2b2de51cbb7e3ed76165c9accf33edad2d](https://github.com/OpenPHDGuiding/phd2/blob/c406cf2b2de51cbb7e3ed76165c9accf33edad2d/src/scope_GC_USBST4.cpp) is supplementary evidence: it uses handshake byte `0x06`, reply `A`, numeric directions 0–3 and a four-character millisecond field. INDIGO uses direction letters `n/s/e/w`.
+- The historical manufacturer page could not be retrieved. [Upstream PHD2 at commit c406cf2b2de51cbb7e3ed76165c9accf33edad2d](https://github.com/OpenPHDGuiding/phd2/blob/c406cf2b2de51cbb7e3ed76165c9accf33edad2d/src/scope_GC_USBST4.cpp) is supplementary evidence: it uses handshake byte `0x06`, reply `A`, numeric directions 0–3 and a four-character millisecond field. The historical INDIGO version used direction letters `n/s/e/w`; version 3.0.0.10 uses the numeric mapping.
 - The simulator exposes explicit `phd2`, `indigo`, `wrong-identity` and `silent` profiles. Its automatic same-axis replacement is a model assumption, not independently verified firmware behavior.
 - Current coverage includes all four directions, expiration and public-value reset in the explicit INDIGO dialect, wrong identity, silent identity and reconnect.
 - Remaining gaps are authoritative protocol confirmation, overlapping/replaced pulses, transport loss, additional instances and a full timing benchmark.
@@ -100,7 +100,7 @@ plus the handler queue latency:
 Worst absolute error over all 60 samples: 7.4 ms, standard deviation per cell 0.4 to 2.9 ms. The
 overhead is about a third of the GPUSB's, which needs two HID writes per edge.
 
-### DRV-095 after the hardware run: still open, and the adapter cannot settle it
+### Historical DRV-095 status after the 2026-09-21 run: still open
 
 The adapter was probed directly over the port, outside the driver, with both dialects:
 
@@ -140,3 +140,36 @@ space-padded `%4d` duration field and the numeric dialect itself.
 
 - Simulated tests run: 5; passed: 5 (plus the `--known-defects` reproducer, unchanged).
 - Hardware tests run: 10; passed: 10, against a physical CG-USB-ST4 on macOS arm64.
+
+## FND-000006 numeric-protocol repair (2026-10-24)
+
+Scope: bounded protocol correction, not a lifecycle migration. Owner requests PHD2 N/S/E/W = 0/1/2/3 without N/S swapping. The prior hardware experiment (task 20261024064954-2f11-verify-cgusbst4-protocol) confirmed numeric acceptance and silent letter rejection with NYX-101 firmware 1.32.1. DEC orientation on that setup remains qualified, not a reason for a global swap.
+
+Current source is generator-owned (.driver, .c/.h/_main.c), portable serial I/O, unchanged RA/DEC properties and timed finalizers. No property addition/removal, dependency, OS API or generator change is needed. Version before repair is 9. Public properties and lifecycle remain unchanged.
+
+Baseline: `python3 tools/run_driver_test.py guider_cgusbst4 --no-record` on mac arm64 builds successfully, five PTY cases pass; both fake transport cases fail because the compile-time replacement still intercepts open_serial instead of open_serial2. Exact output: task 20261024070358-5d13-fix-cgusbst4-protocol/baseline.log. The existing opt-in PHD2 direction reproducer is being run before the production edit.
+
+Hardware decision: yes, physical CGUSB-ST4 04d8:ffe5 connected to NYX-101 over ST4 on indigosky. Existing owner authorization covers temporary unpark/tracking, at most two-second pulses and repark. Final external motor-response probe uses 500 ms pulses at temporary R1, restores R6 and parked/tracking-off state. Existing hardware acceptance/timing suite runs with NYX parked and does not establish physical relay precision. No hot-plug or away-from-pole slew planned.
+
+Atomic plan:
+1. Complete: stale fake-open interception repaired; both original letter-wire transport cases pass. Numeric PTY reproducer failed as expected before production edit. Original real-driver hardware suite passed its ten adapter cases but the new independent NYX-response case failed at missing active ST4 status, giving 11/10 Failed; cleanup restored parked/not tracking/R6. The simulator runner needed an explicit capture call before its manual event-file unlink; reference traces are retained with task evidence.
+2. Complete: N/S/E/W = 0/1/2/3, version 10; unchanged generator reproduces .c/.h/_main.c. Mandatory numeric PTY regression retains all four wire mappings; all lifecycle profiles now use the observed numeric dialect. Test parent records the complete plan and captures event logs before deletion. Normalized successful/lifecycle event sequences match the baseline; the wire alphabet is the sole intended protocol difference.
+3. Complete: recorded mac arm64 simulator/transport 7/7 and Linux arm64 CGUSB-ST4 with NYX-101 ST4 11/11. ASan/UBSan transport 2/2 (driver and test instrumented, framework library not instrumented); strict hardware-test syntax check has no warnings with unused helper/parameter warnings suppressed. Windows and native Intel runtime unavailable. Two hardware-test iterations exposed its incorrect lowercase-only status assumption: NYX reports G at R1 and g at R6, both documented active modes. Bounded sampling accepts either and still requires independent motor movement. No additional production behavior changed.
+4. Test records updated through the recorded runner, final hardware runner used TZ=Europe/Bratislava, and summary regenerated. Final diff/process review and archival are owned by the task evidence; no merge or push authorized.
+
+Found defects: FND-000006 is reproduced by numeric-dialect PTY rejection and independent physical mount observation; root cause is letter direction encoding. Planned fix is the four numeric constants, regression is phd2_dialect_directions plus exact transport frames. Stale open_serial interception is a test defect predating this repair, requiring an open_serial2 wrapper; no production I/O change.
+
+### Repaired-driver hardware response and timing
+
+At R1, after an idle baseline of 151.319 RA steps/s and zero DEC steps, 500 ms public guide requests through the real driver yielded DEC -17/+17 steps for NORTH/SOUTH. EAST/WEST produced idle-corrected RA -30.476/+28.522 steps. The test deliberately does not assert a global celestial DEC mapping from a near-pole position. Every run restored parked/not tracking/R6 (`nNPzET160`). The optional physical-response case is enabled only by `CGUSBST4_NYX_PORT=/dev/ttyUSB0`, in addition to the adapter port; it requires initially parked/not tracking/R6 and is excluded from ordinary adapter-only runs. No hot-plug or optical/electrical guiding-accuracy certification.
+
+The hardware suite measured request-to-public-OK software completion on the actual serial driver path, with NYX parked: all four directions at 20/50/100/200/500 ms, one discarded warm-up and three measured samples per direction/duration (60 samples total), idle workload. Cell means exceeded requested time by +0.53 to +1.39 ms, maximum absolute sample error 1.39 ms, reported cell standard deviations 0.00–0.03 ms. Full min/mean/median/p95/p99/max, signed percent errors and standard deviations are retained in the task hardware log. These are host/public-property timing statistics, not relay pulse accuracy. Standalone adapter has no imaging workload; imaging concurrency is not applicable.
+
+The NYX coordinate transform/pier-side inversion from the prior experiment is outside this adapter simulator: it does not simulate the attached mount. Numeric acceptance, silent letter rejection and firmware pulse expiration were already modelled; current regressions use that hardware-confirmed profile. Same-axis replacement, zero cancellation and physical transport loss remain broader coverage limitations; adapter-only timer tests do not prove physical relay semantics.
+
+Evidence and exact commands: [repair verification](../../.factory/tasks/archive/20261024070358-5d13-fix-cgusbst4-protocol/verification.md).
+
+## Final test summary — numeric protocol repair
+
+- Simulated tests: 7 executed, 7 passed; additional sanitizer variant: 2 executed, 2 passed.
+- Hardware tests: 11 executed, 11 passed, Linux arm64 CGUSB-ST4 + NYX-101 ST4; no physical hot-plug test.

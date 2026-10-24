@@ -45,6 +45,15 @@ indigo_uni_handle *output_open(const char *port, int level) {
 	return &handle;
 }
 
+#if TEST_KIND == 1
+indigo_uni_handle *output_open2(const char *port, int level, const char **error_message) {
+	if (error_message != NULL) {
+		*error_message = NULL;
+	}
+	return output_open(port, level);
+}
+#endif
+
 void output_close(indigo_uni_handle **port) {
 	if (*port) {
 		atomic_fetch_add(&closes, 1);
@@ -95,7 +104,7 @@ long output_read(indigo_uni_handle *port, char *buffer, long length, const char 
 	snprintf(echo, sizeof(echo), "*%c19000", command[0] == '>' ? command[1] : 'P');
 	const char *reply = atomic_exchange(&bad_reply, 0) ? "!invalid" : echo;
 #else
-	// The CG-USB-ST4 adapter acknowledges a guide pulse with a single character.
+	// The CG-USB-ST4 adapter answers the identity handshake, not guide pulses.
 	const char *reply = atomic_exchange(&bad_reply, 0) ? "!invalid" : "A";
 #endif
 	long size = strlen(reply);
@@ -160,7 +169,7 @@ static void output_commands_and_failures(void) {
 #if TEST_KIND == 1
 	const char *properties[] = { "GUIDER_GUIDE_RA", "GUIDER_GUIDE_RA", "GUIDER_GUIDE_DEC", "GUIDER_GUIDE_DEC" };
 	const char *items[] = { "EAST", "WEST", "NORTH", "SOUTH" };
-	const char *commands[] = { ":Mge 100#", ":Mgw 100#", ":Mgn 100#", ":Mgs 100#" };
+	const char *commands[] = { ":Mg2 100#", ":Mg3 100#", ":Mg0 100#", ":Mg1 100#" };
 	for (int i = 0; i < 4; i++) {
 		int before = writes;
 		SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, TEST_NAME, properties[i], items[i], 100));

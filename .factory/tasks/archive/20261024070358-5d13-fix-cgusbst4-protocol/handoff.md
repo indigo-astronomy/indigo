@@ -1,0 +1,17 @@
+# Handoff
+
+Single writer: current Codex desktop agent, sequential coordinator/analyst/planner/developer/verifier/reviewer. Actual model settings/cost unavailable, current host retained, balanced tier for narrow code fix; physical interpretation retains strong reasoning recommendation. No budget/additional charges/delegation. Allowed paths: guider_cgusbst4 source/generated files, its REFACTOR and README test records, relevant integration tests and Makefile, MIGRATION_STATUS/TEST_SUMMARY/CHANGELOG, task/finding registries and Xcode finding movement if closure.
+
+Branch based on master 42ff049e199348b083f36a0746a7518214ba2196 plus prior experiment 51ee12368b9eef3ec57632461c1adb928f447b29 as explicit evidence dependency; master not changed. Owner explicitly prioritizes the related FND-000006 repair and same-hardware verification, continuing the scoped audit deferral; checkpoint before next unrelated task/release. Audit still due; no reset. No provider, generator, firmware, push or integration authorization. Prior owner approval covers unpark/tracking/two-second or shorter pulses/repark and confirms clear space.
+
+## Hardware reassessment after two candidate failures
+
+The first candidate missed ST4 g at a single ~100 ms sample; a bounded poll retry still fails. Stop repeating the same suite. Production mapping is verified by exact wire logs, but physical response is not yet established through the driver. Next strong-reasoning investigation compares raw serial commands with the identical state/setup and tests whether space padding or receive/configuration differences explain the discrepancy. No polarity or timing contract change authorized without supporting evidence. Preserve both failed logs and parked cleanup.
+
+Reassessment resolved the mismatch: NYX GU at R1 reports documented pulse-guide G, while R6 reports manual-guide g. Raw cross-check independently shows G and motor movement for all numeric codes, no activity for letters. Hardware test now accepts either documented active state with bounded polling and still requires independent motor response (DEC nonzero; RA idle-corrected sign). No production change beyond numeric mapping/version was needed.
+
+## Final review transition
+
+Developer -> verifier -> documenter -> quality-reviewer -> security-reviewer -> coordinator, sequential same agent. All 7 normal regressions and 2 sanitizer cases pass; final same-hardware recorded run 11/11 passes after correcting documented G/g status handling and ensuring cleanup commands are independently attempted. See verification.md for exact evidence, quality-review.md and security.md for final scope/limits. Finding closure is limited to numeric protocol; no N/S swap or optical/physical timing certification. Next: validate registry, clean temporary test artifacts/worktree, archive and commit. Integration/publication remain pending separate authorization; overdue audit remains next unrelated-work gate.
+
+All task acceptance/reviews passed. FND-000006 archived as fixed; helper moved its existing Xcode navigator reference. Configured checks/security and 188 Factory tests passed. Temporary RPi worktree removed after candidate hash comparison; original remote checkout clean. Local test artifacts cleaned. Ready for one task commit and committed-range verification against evidence dependency 51ee12368; no integration/publication authorized. Keep the two unmerged task branches pending authorized integration; no completed integrated branch remains to delete.

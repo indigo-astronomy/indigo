@@ -1,0 +1,3 @@
+# Test plan
+
+Baseline: existing five simulator scenarios and fake transport cases pass; opt-in numeric protocol scenario must reproduce defect. Final: numeric direction scenario is mandatory, wrong/silent identity and reconnect scenarios remain, exact wire command expectations cover all directions and write failure. Hardware: existing acceptance suite via recorded runner while mount parked, plus repaired driver server with 500 ms pulses at low R1 and independent NYX GX94 before/during/after readback. Prior motion authorization and free-space confirmation persist. No global DEC inversion assertion.

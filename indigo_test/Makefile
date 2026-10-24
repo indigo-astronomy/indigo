@@ -1890,8 +1890,8 @@ $(TEST_BUILD)/hardware/test_ccd_ssag_hw: hardware/test_ccd_ssag_hw.c hardware/ha
 
 OUTPUT_TRANSPORT_REPLACEMENTS = -Dindigo_uni_open_serial=output_open -Dindigo_uni_close=output_close -Dindigo_uni_discard=output_discard -Dindigo_uni_vprintf=output_write -Dindigo_uni_vtprintf=output_write_line -Dindigo_uni_read_section=output_read -Dindigo_uni_set_rts=output_rts
 
-$(INTEGRATION_BUILD)/guider_cgusbst4_transport.o: ../indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.c | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
+$(INTEGRATION_BUILD)/guider_cgusbst4_transport.o: ../indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.c Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Dindigo_uni_open_serial2=output_open2 $(OUTPUT_TRANSPORT_REPLACEMENTS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_guider_cgusbst4_transport: integration/test_serial_outputs.c $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DTEST_KIND=1 -DTEST_ENTRY=indigo_guider_cgusbst4 -DTEST_NAME='"CG-USB-ST4 Adapter"' $< $(INTEGRATION_BUILD)/guider_cgusbst4_transport.o -o $@ $(TEST_LDFLAGS)
@@ -2216,11 +2216,6 @@ $(INTEGRATION_BUILD)/guider_cgusbst4_simulator: ../indigo_drivers/guider_cgusbst
 
 $(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator: integration/test_guider_cgusbst4_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/guider_cgusbst4_simulator $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $< $(BUILD_DRIVERS)/indigo_guider_cgusbst4.a -o $@ $(TEST_LDFLAGS)
-
-# opt-in: reproduces DRV-095 (numeric PHD2 dialect), not part of test-integration
-.PHONY: test-guider-cgusbst4-simulator-known-defects
-test-guider-cgusbst4-simulator-known-defects: $(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator
-	$(INTEGRATION_BUILD)/test_guider_cgusbst4_simulator --known-defects
 
 LUNATICO_SIMULATOR_SOURCES = ../indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/lunatico_simulator_common.h simulator_common/aux_simulator_common.h simulator_common/serial_simulator_common.h simulator_common/serial_motion.h
 

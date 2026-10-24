@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024070358-5d13-fix-cgusbst4-protocol",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive task, commit verified result and run committed-range gate; integration/publication pending separate owner authorization.",
+  "blocker": null
+}

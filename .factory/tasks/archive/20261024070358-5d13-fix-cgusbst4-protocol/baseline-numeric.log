@@ -1,0 +1,7 @@
+build/integration/test_guider_cgusbst4_simulator --known-defects
+Running CG-USB-ST4 PTY
+integration/test_guider_cgusbst4_simulator.c:63: assertion failed: event("ON", i, 100)
+  FAIL phd2_dialect_directions
+CG-USB-ST4 PTY: 1 test(s) failed
+EXPECTED FAIL phd2_dialect_directions (status 256)
+CG-USB-ST4 defect reproducers: done

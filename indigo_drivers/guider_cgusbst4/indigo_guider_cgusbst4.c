@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_guider_cgusbst4"
 #define DRIVER_LABEL         "CG-USB-ST4 Adapter"
 #define GUIDER_DEVICE_NAME   "CG-USB-ST4 Adapter"
@@ -139,10 +139,10 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-	char direction = 'n';
+	char direction = '0';
 	if (duration <= 0) {
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-		direction = 's';
+		direction = '1';
 	}
 	if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
 		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -161,10 +161,10 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-	char direction = 'e';
+	char direction = '2';
 	if (duration <= 0) {
 		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-		direction = 'w';
+		direction = '3';
 	}
 	if (duration > 0 && !cgusbst4_command(device, ":Mg%c%4d#", 0, direction, duration)) {
 		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, NULL);

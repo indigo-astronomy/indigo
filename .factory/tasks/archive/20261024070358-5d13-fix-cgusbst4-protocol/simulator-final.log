@@ -1,0 +1,45 @@
++ make -C /Users/polakovic/Development/indigo/indigo_drivers/guider_cgusbst4 -f ../../Makefile.drv all
+Definition: indigo_guider_cgusbst4.driver
+Sources:    indigo_guider_cgusbst4.c indigo_guider_cgusbst4_main.c
+Archive:    indigo_guider_cgusbst4.a
+SO library: indigo_guider_cgusbst4.dylib
+indigo_guider_cgusbst4.o
+Executable: indigo_guider_cgusbst4
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_guider_cgusbst4.o indigo_guider_cgusbst4.c
+/usr/bin/libtool -static -o /Users/polakovic/Development/indigo/build/drivers/indigo_guider_cgusbst4.a indigo_guider_cgusbst4.o
+/usr/bin/clang -shared -o /Users/polakovic/Development/indigo/build/drivers/indigo_guider_cgusbst4.dylib -Wl,-force_load /Users/polakovic/Development/indigo/build/drivers/indigo_guider_cgusbst4.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_guider_cgusbst4_main.o indigo_guider_cgusbst4_main.c
+/usr/bin/clang -o /Users/polakovic/Development/indigo/build/drivers/indigo_guider_cgusbst4 indigo_guider_cgusbst4_main.o /Users/polakovic/Development/indigo/build/drivers/indigo_guider_cgusbst4.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
++ make check-lib build/integration/test_guider_cgusbst4_simulator build/integration/test_guider_cgusbst4_transport
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/guider_cgusbst4_simulator ../indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include integration/test_guider_cgusbst4_simulator.c /Users/polakovic/Development/indigo/build/drivers/indigo_guider_cgusbst4.a -o build/integration/test_guider_cgusbst4_simulator -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dindigo_uni_open_serial2=output_open2 -Dindigo_uni_open_serial=output_open -Dindigo_uni_close=output_close -Dindigo_uni_discard=output_discard -Dindigo_uni_vprintf=output_write -Dindigo_uni_vtprintf=output_write_line -Dindigo_uni_read_section=output_read -Dindigo_uni_set_rts=output_rts -c ../indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.c -o build/integration/guider_cgusbst4_transport.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DTEST_KIND=1 -DTEST_ENTRY=indigo_guider_cgusbst4 -DTEST_NAME='"CG-USB-ST4 Adapter"' integration/test_serial_outputs.c build/integration/guider_cgusbst4_transport.o -o build/integration/test_guider_cgusbst4_transport -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib -lindigo -lm -lpthread
++ ./build/integration/test_guider_cgusbst4_simulator
+Running CG-USB-ST4 PTY
+  PASS phd2_dialect_directions
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS wrong_identity
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS silent_identity
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS reconnect
+CG-USB-ST4 PTY: all tests passed
+Running CG-USB-ST4 PTY
+  PASS reconnect_during_pulse
+CG-USB-ST4 PTY: all tests passed
+CG-USB-ST4: 0 failing scenarios
++ ./build/integration/test_guider_cgusbst4_transport
+Running CG-USB-ST4 Adapter
+  PASS open rollback, reconnect and shutdown rejection
+  PASS command mapping, completion and transport errors
+CG-USB-ST4 Adapter: all tests passed
+139 driver(s) written to /Users/polakovic/Development/indigo/TEST_SUMMARY.md
+
+guider_cgusbst4: 7/7 OK
+recorded in indigo_drivers/guider_cgusbst4/README.md:
+2026-10-24 09:11 3.0.0.10 mac arm64 simulator 7/7 OK

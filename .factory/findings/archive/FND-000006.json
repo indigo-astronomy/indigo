@@ -1,9 +1,9 @@
 {
   "id": "FND-000006",
-  "title": "DRV-095: Letter direction encoding is ineffective on tested CGUSB-ST4; numeric dialect confirmed, DEC orientation needs qualification.",
+  "title": "DRV-095: CGUSB-ST4 used letter directions instead of numeric PHD2 encoding.",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -16,9 +16,19 @@
       "id": "20261024064954-2f11-verify-cgusbst4-protocol",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261024070358-5d13-fix-cgusbst4-protocol",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "summary": "Hardware confirmed that letter n/s/e/w commands are silently ineffective on the tested CGUSB-ST4, while digits 0\u20133 activate NYX-101 ST4 and move motors. Next: implement numeric encoding; resolve setup-specific DEC inversion before claiming full compass-direction acceptance. No production fix applied.",
+  "summary": "Fixed in CGUSB-ST4 driver 3.0.0.10 using PHD2 N/S/E/W = 0/1/2/3 without a polarity swap. Numeric protocol is mandatory regression coverage and repaired-driver ST4 motor response is verified on NYX-101.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_drivers/REVIEW.md:134; historical locations: `guider_cgusbst4/indigo_guider_cgusbst4.driver:110`; legacy status: Open (protocol confirmation needed); 2026-10-24 hardware experiment: task 20261024064954-2f11-verify-cgusbst4-protocol, verification.md and retained scripts/JSONL; numeric directions and padding accepted, DEC inversion relative to direct NYX controls remains qualified.",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261024070358-5d13-fix-cgusbst4-protocol verification.md: 7/7 normal regressions, 2/2 ASan/UBSan transport cases, 11/11 recorded hardware cases including independent NYX motor response. Existing setup-specific DEC compass qualification is retained; no global N/S swap.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }
