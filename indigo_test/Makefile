@@ -62,7 +62,8 @@ ifeq ($(OS_DETECTED),Darwin)
 UNIT_TESTS += $(UNIT_BUILD)/test_usbserial_enumeration_macos $(UNIT_BUILD)/test_service_discovery
 endif
 
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_numerics \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_cleanup \
+	$(INTEGRATION_BUILD)/test_agent_imager_numerics \
 	$(INTEGRATION_BUILD)/test_ccd_file_names \
 	$(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
@@ -3552,3 +3553,7 @@ $(UNIT_BUILD)/test_mount_alignment_load: unit/test_mount_alignment_load.c test_r
 
 $(UNIT_BUILD)/test_profile_selection: unit/test_profile_selection.c test_runner.h ../indigo_libs/indigo_driver.c | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_agent_imager_cleanup: integration/test_agent_imager_cleanup.py $(INTEGRATION_BUILD)/test_agent_imager_instances | $(INTEGRATION_BUILD)
+	cp $< $@
+	chmod +x $@

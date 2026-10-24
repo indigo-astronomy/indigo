@@ -7004,6 +7004,22 @@
 		C172BE342E10B8D13C77340C /* unit-results.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; path = "unit-results.tsv"; sourceTree = "<group>"; };
 		25101FB26163524E30D0D60D /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
 		7BF01BF6E81735703D1DCF6C /* 20261024155149-8381-fix-core-audit-findings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024155149-8381-fix-core-audit-findings.json"; sourceTree = "<group>"; };
+		F1BCBFAA790FFD8921AF9A1E /* test_agent_imager_cleanup.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_agent_imager_cleanup.py; sourceTree = "<group>"; };
+		7D90F26F82F48531DB13BFE6 /* baseline-results.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; path = "baseline-results.tsv"; sourceTree = "<group>"; };
+		ABF8B441740CD4F086E2B4C0 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "brief.md"; sourceTree = "<group>"; };
+		B94C12D8690825E9019CD5BB /* factory-test.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "factory-test.log"; sourceTree = "<group>"; };
+		F0BB1E0A0A719ABD702B13DA /* findings.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "findings.md"; sourceTree = "<group>"; };
+		C2DA5284E60BEB71F88CA83E /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "handoff.md"; sourceTree = "<group>"; };
+		37C49D1878CFD97E71FF4E00 /* imager-recorded.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "imager-recorded.log"; sourceTree = "<group>"; };
+		F9AAC0999B482123CE3A694B /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "plan.md"; sourceTree = "<group>"; };
+		E4DABF65312C936E80E0AD44 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		ADEABA342631F9E6E9E6B767 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "quality-review.md"; sourceTree = "<group>"; };
+		0843103D51DB2D6BA2D426A4 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "security.md"; sourceTree = "<group>"; };
+		A05BF47A83E6587B2F5F9868 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "specification.md"; sourceTree = "<group>"; };
+		B5C07B6F9240FAD729680D00 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		B2A99F32DCB6342DA58F18B6 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test-plan.md"; sourceTree = "<group>"; };
+		5FC4DFD3F5E0EC70ED88C685 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
+		D3647686ECD5AF81DCB524E3 /* 20261024163448-86d4-fix-imager-test-cleanup.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024163448-86d4-fix-imager-test-cleanup.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15626,6 +15642,7 @@
 				59910AA23054836E00FB1C2F /* test_agent_config.c */,
 				59910A763052B3A100FB1C2F /* test_agent_guider.c */,
 				61D0437E0DBADA8CCC6CCAAF /* test_agent_imager_numerics.py */,
+				F1BCBFAA790FFD8921AF9A1E /* test_agent_imager_cleanup.py */,
 				59910A5A305289D700FB1C2F /* test_agent_imager.c */,
 				C0DE20260924A00100000001 /* test_agent_imager_guider_mount.c */,
 				C0DE20260924A00100000002 /* test_agent_imager_instances.c */,
@@ -16053,6 +16070,7 @@
 		5D81F456588D799E5C20FF68 /* archive */ = {
 			isa = PBXGroup;
 			children = (
+				BDB28A28A0AA333F6AABF3A1 /* 20261024163448-86d4-fix-imager-test-cleanup */,
 				5FF376071F2D45825F97C02F /* 20261024155149-8381-fix-core-audit-findings */,
 				4B4C5572DAD815CC78790AB8 /* 20261024150354-a911-fix-usb-serial-gps-findings */,
 				83E3C8DEC01217EF1AC88613 /* 20261024135437-8e0c-fix-property-copy */,
@@ -16230,6 +16248,7 @@
 				7637E09236524A9D377696AA /* FND-20261024121920-3bd2-repository-audit-039.json */,
 				024C04E409767F3F053809AC /* FND-20261024121920-3bd2-repository-audit-041.json */,
 				A27CA5D4B716CED190391A11 /* FND-20261024121920-3bd2-repository-audit-042.json */,
+				A21AF23EC8B8FB89D75EE7B3 /* FND-20261024155149-8381-fix-core-audit-findings-001.json */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18318,6 +18337,7 @@
 		AFDBB818F553FC60124A5A5B /* completions */ = {
 			isa = PBXGroup;
 			children = (
+				D3647686ECD5AF81DCB524E3 /* 20261024163448-86d4-fix-imager-test-cleanup.json */,
 				7BF01BF6E81735703D1DCF6C /* 20261024155149-8381-fix-core-audit-findings.json */,
 				2CBCE1095BB5CACC74F4B706 /* 20261024150354-a911-fix-usb-serial-gps-findings.json */,
 				9C6C2431C81A9B570FDE57D6 /* 20261024135437-8e0c-fix-property-copy.json */,
@@ -18814,7 +18834,6 @@
 				9E801A02FDBF7E98819E7BCB /* FND-20261024121920-3bd2-repository-audit-040.json */,
 				3A4916545E21E0C262D80B47 /* FND-20261024121920-3bd2-repository-audit-043.json */,
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
-				A21AF23EC8B8FB89D75EE7B3 /* FND-20261024155149-8381-fix-core-audit-findings-001.json */,
 			);
 			path = active;
 			sourceTree = "<group>";
@@ -19665,6 +19684,27 @@
 				25101FB26163524E30D0D60D /* verification.md */,
 			);
 			path = "20261024155149-8381-fix-core-audit-findings";
+			sourceTree = "<group>";
+		};
+		BDB28A28A0AA333F6AABF3A1 /* 20261024163448-86d4-fix-imager-test-cleanup */ = {
+			isa = PBXGroup;
+			children = (
+				7D90F26F82F48531DB13BFE6 /* baseline-results.tsv */,
+				ABF8B441740CD4F086E2B4C0 /* brief.md */,
+				B94C12D8690825E9019CD5BB /* factory-test.log */,
+				F0BB1E0A0A719ABD702B13DA /* findings.md */,
+				C2DA5284E60BEB71F88CA83E /* handoff.md */,
+				37C49D1878CFD97E71FF4E00 /* imager-recorded.log */,
+				F9AAC0999B482123CE3A694B /* plan.md */,
+				E4DABF65312C936E80E0AD44 /* process.json */,
+				ADEABA342631F9E6E9E6B767 /* quality-review.md */,
+				0843103D51DB2D6BA2D426A4 /* security.md */,
+				A05BF47A83E6587B2F5F9868 /* specification.md */,
+				B5C07B6F9240FAD729680D00 /* state.json */,
+				B2A99F32DCB6342DA58F18B6 /* test-plan.md */,
+				5FC4DFD3F5E0EC70ED88C685 /* verification.md */,
+			);
+			path = "20261024163448-86d4-fix-imager-test-cleanup";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

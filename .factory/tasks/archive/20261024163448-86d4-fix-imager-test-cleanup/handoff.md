@@ -1,0 +1,19 @@
+# Handoff
+
+Branch/task: task/20261024163448-86d4-fix-imager-test-cleanup. Base/dependency: 79dcf6d81e633460acfbefcf1701ca214d5089bc. Master: 21efe303fe63575c3574f1579285828d9ba568cc, unchanged and included as ancestor. Dependent-task base exception preserves the preceding authorized but unintegrated repairs; no merge/publication authorization inferred.
+
+Writer: root Codex. Read-only analyst/test consultant: agent_fixes; no shared repository writes. Model selection: balanced/current authorized host for bounded test repair; actual model/effort and cost unavailable, no new charges or provider switch. Shell/read/write/local Git/test available; Git lifecycle requires sandbox escalation. Low product risk, medium asynchronous test complexity. No budget ceiling supplied.
+
+Startup maintenance: full audit not due (3 uncovered work tasks since 2026-10-24 full audit). Provenance pin unchanged; no pending upgrade assigned. Roles: coordinator -> analyst -> planner -> test-designer -> developer, all explicitly loaded in this conversation. Allowed paths: instance test and focused regression, Makefile/Xcode registration, imager REFACTOR/testing record, TEST_SUMMARY, finding and task/completion evidence. Production drivers off limits to this repair; no hardware.
+
+Next: retain baseline, apply scoped harness fix and verify full non-interactive simulator scope. Source root remains sole writer; consultant prepares /tmp suggestions only. Quality/security review and delivery state remain pending.
+
+Implementation -> verification: instance wrapper now owns setup/body/cleanup before test result publication, parent plans selected cases before forking, and child clears the already-resolved environment filter. Cleanup stops work, joins agent workers, disconnects nine logical simulator devices and checks all five teardown returns. Failure injection runs after real release and continues to final bus stop. Four negative regression cases pass, including conflicting filters; one normal filtered case passed. Fresh independent image_math quality review passed after correcting the filter edge case. Initial author consultant agent_fixes review is supplementary and not independent for its original proposal.
+
+Final source is frozen; full recorded command `python3 tools/run_driver_test.py agent_imager` is running with all existing cases plus four cleanup regressions. No production code/properties/version were changed. Source-bound sanitizer tests run the harness with existing noninstrumented driver libraries; do not claim full driver instrumentation. Final documentation/security/closure remain coordinator-owned after result.
+
+Local target synchronization: `git merge --ff-only master` returned already up to date. Master remains 21efe303fe63575c3574f1579285828d9ba568cc; dependency/base remains 79dcf6d81e633460acfbefcf1701ca214d5089bc. No remote fetch or integration was performed. Configured checks/security and all 188 Factory tests passed; full recorded simulator acceptance is still running.
+
+Final transition: verifier -> documenter -> quality-reviewer -> security-reviewer -> coordinator. Recorded full scope passed 61/61 without cleanup/attached-device warnings; configured Factory tests passed 188/188 and strict sanitizer fault checks passed. REFACTOR/testing records reflect actual results, and no production driver code/version/property changed. Final source review passed independently; root reviewed final documentation/retention/index.
+
+Execution complete. Next: archive the verified finding/task, bind reviewed Git content, commit one dependent candidate and run its committed-range gate. Master integration/publication and cleanup of the two unmerged dependent task branches remain pending owner authorization. Preserve both commits/branches; no push or main update is authorized. No quality/security waiver, owner risk acceptance or unresolved task finding remains.

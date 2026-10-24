@@ -43,12 +43,26 @@ Atomic plan:
 1. Capture the existing integration baseline and audit equal minima / invalid contrast paths: complete; baseline passed and source confirms zero-variance rejection.
 2. Repair focus reduction, reject unusable contrast and guard final focus motion: complete; exact zero-variance minima are retained, empty/nonfinite reductions fail and the final motion path checks derived finiteness. Driver version raised from `0x03000040` to `0x03000041`. Numerical regression fixture passes 54 assertions across two named cases under ASan/UBSan.
 3. Add numerical regression coverage, run existing integration and record the final driver run: complete; `python3 tools/run_driver_test.py agent_imager --no-build` recorded 57/57 asserted cases on macOS arm64 with `0x03000041` (2 numerical + 39 imager + 10 cooperation + 6 instance cases). The script updated README Testing and TEST_SUMMARY.md. All prerequisites had been rebuilt.
-4. Review the final diff, preserve properties/ABI and document limitations: complete; independent scoped review and final reinspection passed. No properties or ABI changed; no generator migration occurred. An unchanged instance-test cleanup ignores shutdown/stop return values and emitted one attached-device warning in the final run; separate nonblocking FND-20261024155149-8381-fix-core-audit-findings-001 tracks it. Successful case counts do not certify that teardown.
+4. Review the final diff, preserve properties/ABI and document limitations: complete; independent scoped review and final reinspection passed. No properties or ABI changed; no generator migration occurred. An unchanged instance-test cleanup ignores shutdown/stop return values and emitted one attached-device warning in the final run; separate nonblocking FND-20261024155149-8381-fix-core-audit-findings-001 tracks it. The historical case counts did not certify that teardown; the follow-up is resolved by the repair below.
 
 Found defects: identical finite per-star minima produce zero standard deviation and every minimum is discarded by the strict outlier comparison; no surviving values produce a nonfinite focus command. Fully masked contrast can be nonfinite and previously escaped the zero-only estimator check. The planned fix keeps common minima and rejects invalid derived values before movement; it does not add generic change-property input validation.
 
 ### Final test summary for selected audit repairs
 
-- Simulated tests: 57 run, 57 asserted cases passed through the recorded driver script; cleanup qualification above remains open and is not counted as independently verified cleanup. Intermediate full run: 56/56 with the numerical assertions grouped in one case.
+- Simulated tests: 57 run, 57 asserted cases passed through the recorded driver script; that historical cleanup qualification is resolved by the instance-suite cleanup repair below. Intermediate full run: 56/56 with the numerical assertions grouped in one case.
 - Numerical fixture: 2 named cases / 54 assertions, ASan/UBSan passed. Shared image/math regression and defensive configuration/DNS fixtures also passed sanitizers; these are library tests, not additional simulated hardware cases.
 - Hardware tests: 0 run, 0 passed. Linux/Windows execution and physical timing were not tested.
+
+## Instance-suite cleanup repair
+
+Task `20261024163448-86d4-fix-imager-test-cleanup` addresses FND-20261024155149-8381-fix-core-audit-findings-001 in the test harness only. Source baseline: setup/body success was recorded before cleanup; all shutdown, detach and bus-stop returns were ignored. The prior run retained an attached-simulator bus-stop warning. Production simulator shutdown requires all nine logical devices disconnected; this fixture previously did not enforce that prerequisite. No production driver behavior/version/property changes are planned, and no hardware will be used.
+
+Plan: (1) retain the baseline and inspect actual shutdown contracts; (2) stop agents, disconnect simulator devices and check every cleanup result; (3) record case success after cleanup and add deterministic failure propagation coverage; (4) run the full recorded imager scope and independent review. Test results and final simulated/hardware counts will follow after execution.
+
+Cleanup repair result: all four plan steps complete. The fixture now aborts and settles running agents, joins workers through agent shutdown, disconnects all nine simulator logical devices and checks every shutdown/detach/stop return while continuing later stages. The recorded callback includes setup/body/cleanup, so success cannot precede teardown; selected-case planning and conflicting filters are covered. Four failure/filter regressions require nonzero exit, one fail/no pass and continued real cleanup. Existing six instance scenarios remain intact.
+
+### Final test summary for cleanup repair
+
+- Simulated tests: 61 run, 61 passed through `python3 tools/run_driver_test.py agent_imager` on macOS arm64, driver version `0x03000041`. Includes 4 cleanup regressions + 2 numerical + 39 imager + 10 cooperation + 6 instance cases. No attached-device bus-stop or cleanup-failure warning occurred in the recorded run.
+- Harness ASan/UBSan: normal filtered case and all four failure/filter checks passed, including strict sanitizer exit code 86 to distinguish instrumentation faults from expected case failure 1. Existing driver libraries were not instrumented.
+- Hardware tests: 0 run, 0 passed. No Linux/Windows execution or physical timing claim. Production drivers, versions and public properties remain unchanged.

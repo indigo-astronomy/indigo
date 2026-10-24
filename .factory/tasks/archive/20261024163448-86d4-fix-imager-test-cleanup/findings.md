@@ -1,0 +1,7 @@
+# Finding repair
+
+FND-20261024155149-8381-fix-core-audit-findings-001 is addressed by the changed instance-test lifecycle. The callback passed to test_runner now owns setup, body and cleanup, so pass/fail is written only after teardown. Active agent work is aborted and settled, agent shutdown joins workers, all nine simulator logical devices are disconnected, and shutdown/detach/bus-stop results are checked without skipping later cleanup stages. The parent plans selected cases before fork; the child does not reapply a conflicting environment filter.
+
+Deterministic regression checks run real resource release then inject an observed CCD shutdown, observer detach or bus-stop failure. They require child exit 1, one failed event, no successful event, later bus cleanup and no attached-device warning. A fourth check covers conflicting argument/environment filters. All four passed normally and with ASan/UBSan on the harness. A normal instance case passed as well. The final recorded run passed 61/61 with all six instance teardowns checked and no attached-device or cleanup-failure warning. Canonical disposition: fixed/closed, with original evidence retained and this task linked.
+
+Evidence: verification.md, quality-review.md and security.md. Original discovery task/evidence remains unchanged; only this canonical finding is assigned for closure. No production driver behavior, version, public property or dependency changed. No hardware or risk acceptance is involved.
