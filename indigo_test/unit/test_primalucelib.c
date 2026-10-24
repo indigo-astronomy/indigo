@@ -852,6 +852,31 @@ cleanup:
 	stop_peer();
 }
 
+// A valid reply that uses exactly all PRIMALUCE_MAX_TOKENS tokens leaves no empty token after the last one. A lookup of an
+// absent field must still stop at the end of the parsed tokens when the last member is nested
+// (FND-20261024121920-3bd2-repository-audit-017); the envelope takes 5 tokens, each "xx":0 pair 2 and "Z":[1] 3.
+static void lookups_stay_within_a_full_token_array(void) {
+	static char reply[8192];
+	int pairs = (PRIMALUCE_MAX_TOKENS - 5 - 3) / 2;
+	char *out = reply;
+	out += sprintf(out, "{\"res\":{\"get\":{");
+	for (int i = 0; i < pairs; i++) {
+		out += sprintf(out, "\"%c%c\":0,", 'a' + i / 26, 'a' + i % 26);
+	}
+	out += sprintf(out, "\"Z\":[1]}}}\n");
+	CHECK(5 + 2 * pairs + 3 == PRIMALUCE_MAX_TOKENS);
+	CHECK(start_peer(reply, NULL));
+	char *absent[] = { "res", "get", "MISSING", NULL };
+	char *inside[] = { "res", "get", "Z", "x", NULL };
+	char *present[] = { "res", "get", "ab", NULL };
+	CHECK(primalucelib_request(&test_link, "{\"req\":{\"get\":{\"MISSING\":\"\"}}}"));
+	CHECK(!primalucelib_reply_has(&test_link, absent));
+	CHECK(!primalucelib_reply_has(&test_link, inside));
+	CHECK(primalucelib_reply_has(&test_link, present));
+cleanup:
+	stop_peer();
+}
+
 // ----------------------------------------------------------------- pure helpers
 
 static void models_are_recognized_by_prefix(void) {
@@ -939,6 +964,7 @@ int main(void) {
 		{ "flat panel state, presets and settings", flat_panel_state_presets_and_settings },
 		{ "cover commands", cover_commands },
 		{ "cover motion, presets and refusals", cover_motion_presets_and_refusals },
+		{ "lookups stay within a full token array", lookups_stay_within_a_full_token_array },
 		{ "models are recognized by prefix", models_are_recognized_by_prefix },
 		{ "HTTP URLs are split into host and port", http_urls_are_split_into_host_and_port },
 		{ "HTTP links open without contact", http_links_open_without_contact }
