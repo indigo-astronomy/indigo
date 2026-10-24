@@ -22,7 +22,7 @@ endif
 
 ifeq ($(CCD_RPI), 1)
 	CC=gcc
-	CXXFLAGS+=$(DEBUG_BUILD) -fPIC -O3 -Wall -I$(ROOT)/indigo_libs -I$(ROOT)/indigo_drivers $(shell pkg-config --cflags libcamera) -I$(BUILD_INCLUDE) -std=gnu++17 -pthread -DINDIGO_LINUX
+	CXXFLAGS+=$(DEBUG_BUILD) -fPIC -O3 -Wall -I$(ROOT)/indigo_libs -I$(ROOT)/indigo_drivers $(shell pkg-config --cflags libcamera) -I$(BUILD_INCLUDE) -std=gnu++20 -pthread -DINDIGO_LINUX
 	LDFLAGS=-lm -lstdc++ -ludev -L $(BUILD_LIB) -Wl,-rpath=\$$ORIGIN/../lib,-rpath=\$$ORIGIN/../drivers,-rpath=.
 	SOEXT=so
 	AR=ar

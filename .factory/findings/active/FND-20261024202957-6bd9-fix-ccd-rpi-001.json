@@ -1,0 +1,19 @@
+{
+  "title": "Raspberry Pi autofocus cannot complete with one request per exposure",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024202957-6bd9-fix-ccd-rpi",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "RPI_AF only queues AfModeAuto/AfTriggerStart for the next exposure; each exposure restarts the camera with a single request, so the scan cannot complete, RPI_AF reports OK immediately and the AF lens position is not read back. An abort or frame timeout also drops a pending trigger. Next: design streaming AF with AfState/LensPosition metadata and test on an autofocus camera (e.g. Camera Module 3).",
+  "evidence": "20261024202957-6bd9-fix-ccd-rpi/quality-review.md findings 3 and 4; indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp RPiCamera::af()",
+  "resolution": null,
+  "id": "FND-20261024202957-6bd9-fix-ccd-rpi-001"
+}

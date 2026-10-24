@@ -20,11 +20,15 @@
  \file indigo_ccd_rpi.c
  */
 
-#define DRIVER_VERSION 0x002
+#define DRIVER_VERSION 0x003
 #define DRIVER_NAME "indigo_ccd_rpi"
 
+#include <algorithm>
 #include <assert.h>
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <errno.h>
 #include <ctype.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
@@ -64,16 +68,16 @@
 
 #define X_CCD_ADVANCED_PROPERTY (PRIVATE_DATA->advanced_property)
 
-#define X_CCD_CONTRAST_ITEM (X_CCD_ADVANCED_PROPERTY->items + 0)
-#define X_CCD_SATURATION_ITEM (X_CCD_ADVANCED_PROPERTY->items + 1)
-#define X_CCD_BRIGHTNESS_ITEM (X_CCD_ADVANCED_PROPERTY->items + 2)
-#define X_CCD_GAMMA_ITEM (X_CCD_ADVANCED_PROPERTY->items + 3)
-
 #define RPI_AF_PROPERTY (PRIVATE_DATA->rpi_af_property)
 #define RPI_AF_ITEM (RPI_AF_PROPERTY->items + 0)
 
 #define RPI_AF_ITEM_NAME "AF"
 #define RPI_AF_PROPERTY_NAME "RPi AF"
+
+// Binning modes produced by ISP scaling
+#define MAX_BINNING 4
+// Time allowed for a frame to arrive after the exposure time
+#define FRAME_TIMEOUT_MS 10000
 
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
@@ -154,7 +158,7 @@ static const std::map<libcamera::PixelFormat, unsigned int> bayer_formats = {
 
 static const std::map<std::string, libcamera::PixelFormat> pixelFormatMap = {
 	{string("MON8"), libcamera::formats::R8},
-	{string("MON10"), libcamera::formats::R10_CSI2P},
+	{string("MON10"), libcamera::formats::R10},
 	// TODO: MIPI CSI-2P formats are not supported by INDIGO.
 	// This somewhat limits the driver capabilities, as most of the cameras
 	// use MIPI CSI-2P formats for RAW data.
@@ -184,16 +188,16 @@ using PixelFormats = std::vector<libcamera::PixelFormat>;
 using ImageDimensions = std::vector<libcamera::Size>;
 using FrameInfo = std::map<libcamera::Size, libcamera::Size>;
 
-static char previousSDKLogLevel[64] = {'\0'};
+static std::string previousSDKLogLevel;
 
 void ResetSDKLogLevel() {
-	if (previousSDKLogLevel[0] == '\0') {
+	if (previousSDKLogLevel.empty()) {
 		unsetenv("LIBCAMERA_LOG_LEVELS"); // Reset the log level for the libcamera SDK to default
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unset LIBCAMERA_LOG_LEVELS");
 	} else {
 		// Reset the log level for the libcamera SDK to default
-		setenv("LIBCAMERA_LOG_LEVELS", previousSDKLogLevel, 1);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset LIBCAMERA_LOG_LEVELS to %s", previousSDKLogLevel);
+		setenv("LIBCAMERA_LOG_LEVELS", previousSDKLogLevel.c_str(), 1);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset LIBCAMERA_LOG_LEVELS to %s", previousSDKLogLevel.c_str());
 	}
 }
 
@@ -201,10 +205,10 @@ void SetSDKLogLevel() {
 	char *logLevel = getenv("LIBCAMERA_LOG_LEVELS");
 	if (logLevel != nullptr) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Current LIBCAMERA_LOG_LEVELS: %s", logLevel);
-		strcpy(previousSDKLogLevel, logLevel);
+		previousSDKLogLevel = logLevel;
 	}
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Previous LIBCAMERA_LOG_LEVELS: %s", previousSDKLogLevel);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Previous LIBCAMERA_LOG_LEVELS: %s", previousSDKLogLevel.c_str());
 	// Set the log level for the libcamera SDK
 	indigo_log_levels indigoLogLevel = indigo_get_log_level();
 	if (indigoLogLevel == INDIGO_LOG_DEBUG) {
@@ -247,6 +251,11 @@ template <typename T> struct Limits {
 struct FrameData {
 	std::vector<uint8_t> imageData;
 	uint64_t request;
+	// Stream configuration of the capture, the configuration is replaced by the next exposure
+	libcamera::PixelFormat format;
+	uint32_t width = 0;
+	uint32_t height = 0;
+	uint32_t stride = 0;
 };
 
 // RegisterCamaraManager singleton class to manage camera instances
@@ -321,8 +330,8 @@ RegisterCameraManager *RegisterCameraManager::instance;
 struct RPiCamera {
 	// Callbacks
 	void OnRequestComplete(Request *request);
-	// Camera focuser
-	bool operator()(indigo_device *device, int steps);
+	// Camera focuser: relative move in steps of 0.1 dioptre
+	bool MoveLens(int steps);
 	// Initialization
 	int InitCamera(std::string cameraId);
 
@@ -330,6 +339,8 @@ struct RPiCamera {
 
 	// Accessors
 	bool IsMonochrome() const;
+	// Raw stream captures bypass the ISP, so ScalerCrop and scaling do not apply
+	bool IsRawCapture(const PixelFormat &format) const { return IsMonochrome() || raw_bayer.find(format) != raw_bayer.end(); }
 	const ControlInfoMap GetControls() const;
 	bool GetExposureLimits(Limits<unsigned> &exposureLimits);
 	bool GetGainLimits(Limits<float> &gainLimits);
@@ -345,7 +356,8 @@ struct RPiCamera {
 	int GetMaxBinning();
 	PixelFormats GetPixelFormats();
 	bool HasAutoFocus() const;
-	bool ReadFrame(FrameData *frameData);
+	// Returns 1 when a frame was read, 0 on timeout and -1 when the capture was stopped
+	int ReadFrame(FrameData *frameData, std::chrono::milliseconds timeout);
 	Stream *VideoStream(uint32_t *w, uint32_t *h, uint32_t *stride) const;
 
 	optional<float> GetAnalogueGain() const {
@@ -364,12 +376,6 @@ struct RPiCamera {
 		return m_controls.get(controls::DigitalGain);
 	}
 
-	bool IsRequestCreated() const { return !m_requests.empty(); }
-
-	bool IsAnyRequestComplete() const {
-		return std::any_of(m_requests.begin(), m_requests.end(), [](const Request_p &req) { return req->status() == Request::RequestComplete; });
-	}
-
 	Size GetMaxImageSize() const;
 	FrameInfo GetFrameInfo(const PixelFormat &format);
 
@@ -379,7 +385,7 @@ struct RPiCamera {
 	int ConfigureCamera();
 
 	// Operations
-	int StartExposure(int width, int height, PixelFormat format);
+	int StartExposure(int width, int height, PixelFormat format, const ControlList &controls);
 	int StartCamera();
 	void ReturnFrameBuffer(FrameData frameData);
 
@@ -393,7 +399,8 @@ struct RPiCamera {
 		m_config.reset();
 	}
 
-	void Set(ControlList controls);
+	// Settings applied to every exposure
+	void SetPersistent(ControlList controls);
 	void StopCamera();
 	void CloseCamera();
 	void ProcessRequest(Request *request);
@@ -422,7 +429,15 @@ struct RPiCamera {
 	std::mutex m_cameraMutex;
 	std::condition_variable m_cv;
 	bool m_exposureDone = false;
-	void ConfigureStill(int width, int height, PixelFormat format);
+	// Incremented by Reset() to release a ReadFrame() waiting for a stopped capture
+	unsigned m_generation = 0;
+	// Generation of the running exposure
+	unsigned m_activeGeneration = 0;
+	// Serializes StartExposure(), StopCamera() and ConfigureCamera()
+	std::mutex m_operationMutex;
+	ControlList m_settings;
+	optional<float> m_lensPosition;
+	bool ConfigureStill(int width, int height, PixelFormat format);
 	int StartCapture();
 	int QueueRequest(Request *request);
 	void StreamDimensions(Stream const *stream, uint32_t *w, uint32_t *h, uint32_t *stride) const;
@@ -446,19 +461,21 @@ void RPiCamera::OnRequestComplete(Request *request) {
 	}
 	ProcessRequest(request);
 	m_exposureDone = true; // Mark exposure as done
-	m_cv.notify_one();	   // wake up any ReadFrame waiting on this generation
+	m_cv.notify_all();	   // wake up any ReadFrame waiting on this generation
 }
 
-bool RPiCamera::operator()(indigo_device *device, int steps) {
+bool RPiCamera::MoveLens(int steps) {
+	std::lock_guard<std::mutex> lock(m_operationMutex);
 	if (!m_cameraAcquired) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired");
 		return false;
 	}
-	if (!m_cameraStarted) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not started");
+	const ControlInfoMap &controls = m_camera->controls();
+	auto lensInfo = controls.find(&controls::LensPosition);
+	if (lensInfo == controls.end()) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lens position control not available");
 		return false;
 	}
-	m_controls.set(controls::AfMode, controls::AfModeManual);
 
 	// 0 moves the lens to infinity.
 	// 0.5 moves the lens to focus on objects 2m away.
@@ -469,9 +486,13 @@ bool RPiCamera::operator()(indigo_device *device, int steps) {
 	// position for which objects at infinity are still acceptably sharp). The
 	// minimum will often be zero (meaning infinity), and the maximum value
 	// defines the closest focus position.
-	float pos = steps / 10.0f; // Convert steps to a float position
-	m_controls.set(controls::LensPosition, pos);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "m_controls.set(controls::LensPosition, pos %d)", pos);
+	// The lens position is applied with the next exposure.
+	float min = lensInfo->second.min().get<float>();
+	float max = lensInfo->second.max().get<float>();
+	float pos = m_lensPosition.value_or(lensInfo->second.def().isNone() ? min : lensInfo->second.def().get<float>());
+	pos = std::clamp(pos + steps / 10.0f, min, max);
+	m_lensPosition = pos;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Lens position set to %g", pos);
 	return true;
 }
 
@@ -537,7 +558,7 @@ bool RPiCamera::GetGainLimits(Limits<float> &gainLimits) {
 		gainLimits.min = gainInfo->second.min().get<float>();
 		gainLimits.max = gainInfo->second.max().get<float>();
 	} else {
-		cout << "Gain limits not available" << endl;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Gain limits not available");
 
 		return false;
 	}
@@ -582,7 +603,11 @@ int RPiCamera::GetMaxBinning() {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired");
 		return 0;
 	}
-	return GetFrameInfo(GetPixelFormat()).size();
+	unsigned int maxBinning = 0;
+	for (const auto &frame : GetFrameInfo(GetPixelFormat())) {
+		maxBinning = std::max(maxBinning, frame.first.width);
+	}
+	return maxBinning;
 }
 
 PixelFormats RPiCamera::GetPixelFormats() {
@@ -607,34 +632,40 @@ bool RPiCamera::HasAutoFocus() const {
 	return controls.find(&controls::AfMode) != controls.end();
 }
 
-bool RPiCamera::ReadFrame(FrameData *frameData) {
+int RPiCamera::ReadFrame(FrameData *frameData, std::chrono::milliseconds timeout) {
 	std::unique_lock<std::mutex> lock(m_cameraMutex);
-	m_cv.wait(lock, [this] { return m_exposureDone; }); // Wait until done
-	// int w, h, stride;
-	if (!m_requestQueue.empty()) {
-		Request *request = this->m_requestQueue.front();
-
-		const Request::BufferMap &buffers = request->buffers();
-		for (auto it = buffers.begin(); it != buffers.end(); ++it) {
-			FrameBuffer *buffer = it->second;
-			for (unsigned int i = 0; i < buffer->planes().size(); ++i) {
-				const FrameBuffer::Plane &plane = buffer->planes()[i];
-				const FrameMetadata::Plane &meta = buffer->metadata().planes()[i];
-
-				void *data = m_mappedBuffers[plane.fd.get()].first;
-				int length = std::min(meta.bytesused, plane.length);
-
-				frameData->imageData.assign(static_cast<uint8_t *>(data), static_cast<uint8_t *>(data) + length);
-			}
-		}
-		this->m_requestQueue.pop();
-		frameData->request = (uint64_t)request;
-		return true;
-	} else {
-		Request *request = nullptr;
-		frameData->request = (uint64_t)request;
-		return false;
+	frameData->request = 0;
+	frameData->imageData.clear();
+	// A capture stopped by Reset() never completes, so do not wait for it
+	if (!m_cv.wait_for(lock, timeout, [this] { return m_exposureDone || m_generation != m_activeGeneration; })) {
+		return 0;
 	}
+	if (m_generation != m_activeGeneration || m_requestQueue.empty()) {
+		return -1;
+	}
+	Request *request = this->m_requestQueue.front();
+	const Request::BufferMap &buffers = request->buffers();
+	for (auto it = buffers.begin(); it != buffers.end(); ++it) {
+		FrameBuffer *buffer = it->second;
+		for (unsigned int i = 0; i < buffer->planes().size(); ++i) {
+			const FrameBuffer::Plane &plane = buffer->planes()[i];
+			const FrameMetadata::Plane &meta = buffer->metadata().planes()[i];
+			auto mapped = m_mappedBuffers.find(plane.fd.get());
+			if (mapped == m_mappedBuffers.end() || plane.offset + plane.length > mapped->second.second) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Frame buffer plane is not mapped");
+				return 0;
+			}
+			const uint8_t *data = static_cast<const uint8_t *>(mapped->second.first) + plane.offset;
+			unsigned int length = std::min(meta.bytesused, plane.length);
+			frameData->imageData.insert(frameData->imageData.end(), data, data + length);
+		}
+	}
+	this->m_requestQueue.pop();
+	frameData->request = (uint64_t)request;
+	// Reset() cannot replace m_config while the lock is held and the generation matches
+	frameData->format = m_config->at(0).pixelFormat;
+	StreamDimensions(m_config->at(0).stream(), &frameData->width, &frameData->height, &frameData->stride);
+	return 1;
 }
 
 Stream *RPiCamera::VideoStream(uint32_t *w, uint32_t *h, uint32_t *stride) const {
@@ -659,21 +690,29 @@ Size RPiCamera::GetMaxImageSize() const {
 	PixelFormat pixelFormat = streamConfig.pixelFormat;
 	// Access the format map to find all supported sizes
 	const StreamFormats &formats = config->at(0).formats();
-	// Get all sizes for the pixel format
-	std::vector<Size> sizes = formats.sizes(pixelFormat);
-	// Find the largest one
-	auto maxSize = *std::max_element(sizes.begin(), sizes.end(), [](const Size &a, const Size &b) { return a.width * a.height < b.width * b.height; });
-
-	config.reset(); // Clean up the configuration
-
+	// The ISP output range reaches the full sensor size, the discrete size list does not
+	Size maxSize = formats.range(pixelFormat).max;
+	if (maxSize.isNull()) {
+		std::vector<Size> sizes = formats.sizes(pixelFormat);
+		if (sizes.empty()) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No image size available");
+			return {};
+		}
+		maxSize = *std::max_element(sizes.begin(), sizes.end(), [](const Size &a, const Size &b) { return a.width * a.height < b.width * b.height; });
+	}
 	return maxSize;
 }
 
 bool RPiCamera::af() {
-	if (HasAutoFocus()) {
-		m_controls.set(controls::AfMode, controls::AfModeAuto);
+	if (!HasAutoFocus()) {
+		return false;
 	}
-	return HasAutoFocus();
+	std::lock_guard<std::mutex> lock(m_operationMutex);
+	// A single autofocus scan runs with the next exposure, the manual lens position is dropped
+	m_lensPosition.reset();
+	m_controls.set(controls::AfMode, controls::AfModeAuto);
+	m_controls.set(controls::AfTrigger, controls::AfTriggerStart);
+	return true;
 }
 
 // Returns binning to image size map. Only considers
@@ -683,16 +722,27 @@ FrameInfo RPiCamera::GetFrameInfo(const PixelFormat &format) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired");
 		return {};
 	}
-	const auto &sz = GetMaxImageSize();
-	const StreamFormats &formats = m_config->at(0).formats();
-
-	auto sizes = formats.sizes(format);
-	// sort size by biggest width and height
-	std::sort(sizes.begin(), sizes.end(), [](const Size &a, const Size &b) { return (a.width * a.height) > (b.width * b.height); });
 	FrameInfo frameInfo;
-	for (auto size : sizes) {
-		if (sz.width / size.width == sz.height / size.height) {
-			frameInfo.insert(std::make_pair(Size(sz.width / size.width, sz.height / size.height), size));
+	const Size sz = GetMaxImageSize();
+	if (sz.isNull() || !m_config) {
+		return frameInfo;
+	}
+	const StreamFormats &formats = m_config->at(0).formats();
+	const SizeRange range = formats.range(format);
+	if (range.hStep && range.vStep) {
+		// The ISP scales the full field of view to any size in the range
+		for (unsigned int bin = 1; bin <= MAX_BINNING; bin++) {
+			Size size(sz.width / bin / range.hStep * range.hStep, sz.height / bin / range.vStep * range.vStep);
+			if (size.width >= range.min.width && size.height >= range.min.height) {
+				frameInfo.insert(std::make_pair(Size(bin, bin), size));
+			}
+		}
+	} else {
+		// Sensor modes: only full field of view modes are binning modes
+		for (auto size : formats.sizes(format)) {
+			if (size.width && size.height && sz.width % size.width == 0 && sz.height % size.height == 0 && sz.width / size.width == sz.height / size.height) {
+				frameInfo.insert(std::make_pair(Size(sz.width / size.width, sz.height / size.height), size));
+			}
 		}
 	}
 	return frameInfo;
@@ -711,10 +761,10 @@ void RPiCamera::StreamDimensions(Stream const *stream, uint32_t *w, uint32_t *h,
 	}
 }
 
-void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
+bool RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Configuring still capture...");
 
-	StreamRole role = (IsMonochrome() || raw_bayer.find(format) != raw_bayer.end()) ? StreamRole::Raw : StreamRole::StillCapture;
+	StreamRole role = IsRawCapture(format) ? StreamRole::Raw : StreamRole::StillCapture;
 	m_config = m_camera->generateConfiguration({role});
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Configuring camera for still capture with role: %s", role == StreamRole::Raw ? "Raw" : "StillCapture");
 	if (width && height) {
@@ -729,11 +779,13 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
 	CameraConfiguration::Status validation = m_config->validate();
 	if (validation == CameraConfiguration::Invalid) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to valid stream configurations");
+		return false;
 	} else if (validation == CameraConfiguration::Adjusted) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stream configuration adjusted");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stream configuration adjusted to %s", m_config->at(0).toString().c_str());
 	}
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Still capture setup complete...");
+	return true;
 }
 
 int RPiCamera::StartCamera() {
@@ -784,8 +836,23 @@ int RPiCamera::StartCapture() {
 				return ret;
 			}
 			for (const FrameBuffer::Plane &plane : buffer->planes()) {
-				void *memory = mmap(NULL, plane.length, PROT_READ, MAP_SHARED, plane.fd.get(), 0);
-				m_mappedBuffers[plane.fd.get()] = std::make_pair(memory, plane.length);
+				// Planes of one buffer may share a file descriptor at different offsets
+				int fd = plane.fd.get();
+				unsigned int length = plane.offset + plane.length;
+				auto mapped = m_mappedBuffers.find(fd);
+				if (mapped != m_mappedBuffers.end()) {
+					if (mapped->second.second >= length) {
+						continue;
+					}
+					munmap(mapped->second.first, mapped->second.second);
+					m_mappedBuffers.erase(mapped);
+				}
+				void *memory = mmap(NULL, length, PROT_READ, MAP_SHARED, fd, 0);
+				if (memory == MAP_FAILED) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't map frame buffer: %s", strerror(errno));
+					return -ENOMEM;
+				}
+				m_mappedBuffers[fd] = std::make_pair(memory, length);
 			}
 		}
 
@@ -805,6 +872,7 @@ int RPiCamera::StartCapture() {
 		if (ret < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't queue request");
 			m_camera->stop();
+			m_cameraStarted = false;
 			return ret;
 		}
 	}
@@ -812,9 +880,13 @@ int RPiCamera::StartCapture() {
 	return 0;
 }
 
-void RPiCamera::Set(ControlList controls) { this->m_controls.merge(controls, ControlList::MergePolicy::OverwriteExisting); }
+void RPiCamera::SetPersistent(ControlList controls) {
+	std::lock_guard<std::mutex> lock(m_operationMutex);
+	m_settings.merge(controls, ControlList::MergePolicy::OverwriteExisting);
+}
 
 int RPiCamera::ConfigureCamera() {
+	std::lock_guard<std::mutex> lock(m_operationMutex);
 	Reset();
 	Config_p config = m_camera->generateConfiguration({StreamRole::Raw});
 
@@ -844,6 +916,10 @@ int RPiCamera::ConfigureCamera() {
 		m_config = std::move(config);
 	}
 
+	if (m_pixelFormats.empty()) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No pixel format available");
+		return -1;
+	}
 	m_config->at(0).size = GetMaxImageSize();		 // Default size
 	m_config->at(0).pixelFormat = m_pixelFormats[0]; // Default pixel format
 	m_config->at(0).bufferCount = 1;				 // Default buffer count
@@ -857,26 +933,45 @@ int RPiCamera::ConfigureCamera() {
 	return -1; // Failed to validate configuration
 }
 
-int RPiCamera::StartExposure(int width, int height, PixelFormat format) {
-	std::lock_guard<std::mutex> lock(m_cameraMutex);
-	m_exposureDone = false; // Reset exposure done flag
+int RPiCamera::StartExposure(int width, int height, PixelFormat format, const ControlList &controls) {
+	std::lock_guard<std::mutex> lock(m_operationMutex);
 	Reset();
-	ConfigureStill(width, height, format);
-	return StartCamera();
+	m_controls.merge(controls, ControlList::MergePolicy::OverwriteExisting);
+	m_controls.merge(m_settings, ControlList::MergePolicy::KeepExisting);
+	if (m_lensPosition) {
+		m_controls.set(controls::AfMode, controls::AfModeManual);
+		m_controls.set(controls::LensPosition, *m_lensPosition);
+	}
+	if (!ConfigureStill(width, height, format)) {
+		return -EINVAL;
+	}
+	int ret = StartCamera();
+	if (ret == 0) {
+		std::lock_guard<std::mutex> lock(m_cameraMutex);
+		m_activeGeneration = m_generation;
+	}
+	return ret;
 }
 
 void RPiCamera::Reset() {
+	// Release a ReadFrame() waiting for the capture being stopped. The lock is not held while
+	// the camera stops, because stopping completes the cancelled requests in OnRequestComplete().
+	{
+		std::lock_guard<std::mutex> lock(m_cameraMutex);
+		m_generation++;
+	}
+	m_cv.notify_all();
 	if (m_camera) {
-		{
-			if (m_cameraStarted) {
-				if (m_camera->stop()) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to stop camera");
-				}
-				m_cameraStarted = false;
+		if (m_cameraStarted) {
+			if (m_camera->stop()) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to stop camera");
 			}
+			m_cameraStarted = false;
 		}
 		m_camera->requestCompleted.disconnect(this, &RPiCamera::OnRequestComplete);
 	}
+	std::lock_guard<std::mutex> lock(m_cameraMutex);
+	m_exposureDone = false;
 	while (!m_requestQueue.empty()) {
 		m_requestQueue.pop();
 	}
@@ -894,6 +989,7 @@ void RPiCamera::Reset() {
 }
 
 void RPiCamera::StopCamera() {
+	std::lock_guard<std::mutex> lock(m_operationMutex);
 	Reset();
 	m_controls.clear();
 }
@@ -921,123 +1017,149 @@ int RPiCamera::QueueRequest(Request *request) {
 	if (!m_cameraStarted) {
 		return -1;
 	}
-	{
-		request->controls() = std::move(m_controls);
-	}
+	request->controls().merge(m_controls, ControlList::MergePolicy::OverwriteExisting);
+	m_controls.clear();
 	return m_camera->queueRequest(request);
 }
 
 void RPiCamera::ProcessRequest(Request *request) { m_requestQueue.push(request); }
 
-typedef struct {
+struct rpi_private_data {
 	std::string eid;
-	RPiCamera *pRPiCamera;
-	unsigned char *buffer;
-	indigo_timer *exposure_timer;
-	RPiCamera *focus;
-	indigo_device *focuser;
-	indigo_property *rpi_af_property;
-	indigo_property *advanced_property;
-} rpi_private_data;
+	RPiCamera *pRPiCamera = nullptr;
+	unsigned char *buffer = nullptr;
+	size_t buffer_size = 0;
+	indigo_timer *exposure_timer = nullptr;
+	RPiCamera *focus = nullptr;
+	indigo_device *focuser = nullptr;
+	indigo_property *rpi_af_property = nullptr;
+	indigo_property *advanced_property = nullptr;
+	// Incremented by each CCD_EXPOSURE request, a callback of an earlier exposure must not publish
+	std::atomic<unsigned> exposure_sequence{ 0 };
+};
+
+// Bits per pixel of the image passed to indigo_process_image(), 0 for unsupported formats
+static int image_bits_per_pixel(const PixelFormat &format) {
+	auto bayer = bayer_formats.find(format);
+	if (bayer != bayer_formats.end()) {
+		return bayer->second;
+	}
+	// Unpacked 10, 12 and 16 bit formats are stored in 16 bit words
+	auto mono = monochrome_formats.find(format);
+	if (mono != monochrome_formats.end()) {
+		return mono->second > 8 ? 16 : 8;
+	}
+	auto raw = raw_bayer.find(format);
+	if (raw != raw_bayer.end()) {
+		return raw->second > 8 ? 16 : 8;
+	}
+	return 0;
+}
+
+// Splits a CCD_MODE item name such as "BGR24_2" into "BGR", 24 and 2
+static bool parse_mode_name(const char *name, std::string *family, int *bpp, int *bin) {
+	char letters[8];
+	if (sscanf(name, "%7[A-Z]%d_%d", letters, bpp, bin) != 3) {
+		return false;
+	}
+	*family = letters;
+	return true;
+}
 
 static void handle_af(indigo_device *device) {
-
-	std::lock_guard<std::mutex> lock(device_mutex);
-
-	RPI_AF_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, RPI_AF_PROPERTY, NULL);
-	if (PRIVATE_DATA->pRPiCamera->af()) {
-		RPI_AF_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		RPI_AF_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_lock_master_device(device);
+	if (IS_CONNECTED && PRIVATE_DATA->pRPiCamera) {
+		RPI_AF_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, RPI_AF_PROPERTY, NULL);
+		if (PRIVATE_DATA->pRPiCamera->af()) {
+			RPI_AF_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			RPI_AF_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		RPI_AF_ITEM->sw.value = false;
+		indigo_update_property(device, RPI_AF_PROPERTY, NULL);
 	}
-	RPI_AF_ITEM->sw.value = false;
-	indigo_update_property(device, RPI_AF_PROPERTY, NULL);
+	indigo_unlock_master_device(device);
+}
+
+static void exposure_failed(indigo_device *device, const char *message) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
+	indigo_ccd_failure_cleanup(device);
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	CCD_EXPOSURE_ITEM->number.value = 0;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
 // --------------------------------------------------------------------------------
 // INDIGO CCD device implementation
 static void exposure_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED) {
+	if (!IS_CONNECTED || CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
 		return;
 	}
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		CCD_EXPOSURE_ITEM->number.value = 0;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		int state = 0;
-		bool ready = false;
-
-		RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
-		ready = pRPiCamera->IsRequestCreated() ? pRPiCamera->IsAnyRequestComplete() : -1;
-
-		while (state != -1 && !ready) {
-			indigo_usleep(200);
-			ready = pRPiCamera->IsAnyRequestComplete();
-		}
-
-		FrameData frameData;
-		if (state != -1) {
-			state = pRPiCamera->ReadFrame(&frameData);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->ReadFrame(&frameData) -> %d", state);
-		}
-		if (state != -1) {
-			PixelFormat format = pRPiCamera->GetPixelFormat();
-			auto bppMap = bayer_formats.find(format);
-			if (bppMap == bayer_formats.end()) {
-				bppMap = monochrome_formats.find(format);
-			}
-			if (bppMap == monochrome_formats.end()) {
-				bppMap = raw_bayer.find(format);
-			}
-			if (bppMap == raw_bayer.end()) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported pixel format: %s", format.toString().c_str());
-				indigo_ccd_failure_cleanup(device);
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, nullptr);
-				return;
-			}
-			int bpp = bppMap->second;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pixel format: %s, BPP: %d", format.toString().c_str(), bpp);
-			uint32_t width, height, stride;
-			pRPiCamera->VideoStream(&width, &height, &stride);
-
-			unsigned int rowSize = bpp * width / 8; // Calculate row size in bytes
-
-			if (rowSize < stride) {
-				frameData.imageData = RemovePadding(frameData.imageData.data(), rowSize, height, stride);
-			}
-
-			memcpy((char *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), frameData.imageData.data(), frameData.imageData.size());
-			std::string bayerPattern = format.toString();
-			bayerPattern.erase(std::remove_if(bayerPattern.begin(), bayerPattern.end(), ::isdigit), bayerPattern.end());
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayer pattern: %s", bayerPattern.c_str());
-			indigo_fits_keyword keywords[2];
-			// Make the c++ compiler happy by strongly typing
-			// the nested types
-			keywords[0].type = INDIGO_FITS_STRING;
-			keywords[0].name = "BAYERPAT";
-			keywords[0].string = bayerPattern.c_str();
-			keywords[0].comment = "Bayer color pattern";
-			// end
-			keywords[1].type = (indigo_fits_keyword_type)0;
-			keywords[1].name = " ";
-			keywords[1].string = " ";
-			keywords[1].comment = " ";
-
-			indigo_fits_keyword *fits_keywords = NULL;
-			if (bpp != 24 && bpp != 48 && bayer_formats.find(format) != bayer_formats.end()) {
-				fits_keywords = keywords;
-			}
-			indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, true, true, fits_keywords, false);
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		} else {
-			indigo_ccd_failure_cleanup(device);
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read frame data");
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, nullptr);
-		}
+	CCD_EXPOSURE_ITEM->number.value = 0;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
+	unsigned sequence = PRIVATE_DATA->exposure_sequence;
+	FrameData frameData;
+	// The exposure time has elapsed already, the remaining wait covers sensor mode switch and readout
+	std::chrono::milliseconds timeout((long long)(CCD_EXPOSURE_ITEM->number.target * 1000) + FRAME_TIMEOUT_MS);
+	int state = pRPiCamera->ReadFrame(&frameData, timeout);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->ReadFrame(&frameData) -> %d", state);
+	if (state < 0 || CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE || sequence != PRIVATE_DATA->exposure_sequence) {
+		// The exposure was aborted, replaced or the device disconnected
+		return;
 	}
+	if (state == 0) {
+		pRPiCamera->StopCamera();
+		exposure_failed(device, "Failed to read frame data");
+		return;
+	}
+	PixelFormat format = frameData.format;
+	int bpp = image_bits_per_pixel(format);
+	if (bpp == 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported pixel format: %s", format.toString().c_str());
+		exposure_failed(device, "Exposure failed");
+		return;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pixel format: %s, BPP: %d", format.toString().c_str(), bpp);
+	uint32_t width = frameData.width, height = frameData.height, stride = frameData.stride;
+	size_t rowSize = (size_t)bpp / 8 * width; // Calculate row size in bytes
+	size_t imageSize = rowSize * height;
+	if (rowSize < stride && height > 0 && frameData.imageData.size() >= (size_t)stride * (height - 1) + rowSize) {
+		frameData.imageData = RemovePadding(frameData.imageData.data(), rowSize, height, stride);
+	}
+	if (frameData.imageData.size() < imageSize || FITS_HEADER_SIZE + imageSize > PRIVATE_DATA->buffer_size) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected frame size %zu for %ux%u, stride %u", frameData.imageData.size(), width, height, stride);
+		exposure_failed(device, "Exposure failed");
+		return;
+	}
+	memcpy((char *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), frameData.imageData.data(), imageSize);
+	std::string bayerPattern = format.toString();
+	bayerPattern.erase(std::remove_if(bayerPattern.begin(), bayerPattern.end(), ::isdigit), bayerPattern.end());
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayer pattern: %s", bayerPattern.c_str());
+	indigo_fits_keyword keywords[2];
+	// Make the c++ compiler happy by strongly typing
+	// the nested types
+	keywords[0].type = INDIGO_FITS_STRING;
+	keywords[0].name = "BAYERPAT";
+	keywords[0].string = bayerPattern.c_str();
+	keywords[0].comment = "Bayer color pattern";
+	// end
+	keywords[1].type = (indigo_fits_keyword_type)0;
+	keywords[1].name = " ";
+	keywords[1].string = " ";
+	keywords[1].comment = " ";
+	indigo_fits_keyword *fits_keywords = NULL;
+	if (bpp != 24 && bpp != 48 && bayer_formats.find(format) != bayer_formats.end()) {
+		fits_keywords = keywords;
+	}
+	// libcamera BGR888 is stored as R, G, B bytes and RGB888 as B, G, R bytes
+	if (sequence != PRIVATE_DATA->exposure_sequence) {
+		return;
+	}
+	indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, true, format != formats::RGB888, fits_keywords, false);
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {
@@ -1051,208 +1173,208 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (RPI_AF_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		RPI_AF_PROPERTY->hidden = NULL;
+		RPI_AF_PROPERTY->hidden = true;
 		indigo_init_switch_item(RPI_AF_ITEM, RPI_AF_ITEM_NAME, "Start autofocus", false);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
-		INDIGO_FAILED;
 	}
 	return INDIGO_FAILED;
+}
+
+static void ccd_close(indigo_device *device) {
+	RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
+	indigo_delete_property(device, RPI_AF_PROPERTY, NULL);
+	if (X_CCD_ADVANCED_PROPERTY) {
+		indigo_delete_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+		indigo_release_property(X_CCD_ADVANCED_PROPERTY);
+		X_CCD_ADVANCED_PROPERTY = NULL;
+	}
+	// Stopping the camera also releases an exposure callback waiting for a frame
+	pRPiCamera->StopCamera();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		exposure_failed(device, "Exposure aborted by disconnect");
+	}
+	// If the focuser is attached, detach it
+	if (PRIVATE_DATA->focus) {
+		indigo_detach_device(PRIVATE_DATA->focuser);
+		PRIVATE_DATA->focus = nullptr;
+	}
+	pRPiCamera->CloseCamera();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->CloseCamera()");
+	delete pRPiCamera;
+	PRIVATE_DATA->pRPiCamera = nullptr;
+	if (PRIVATE_DATA->buffer != NULL) {
+		free(PRIVATE_DATA->buffer);
+		PRIVATE_DATA->buffer = NULL;
+		PRIVATE_DATA->buffer_size = 0;
+	}
+}
+
+static bool ccd_open(indigo_device *device) {
+	RPiCamera *pRPiCamera = new RPiCamera();
+	if (pRPiCamera->InitCamera(PRIVATE_DATA->eid)) {
+		delete pRPiCamera;
+		return false;
+	}
+	// Temporarily start the camera to get the metadata
+	int configured = pRPiCamera->ConfigureCamera();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiamera->ConfigureCamera() -> %d", configured);
+	Size maxImageSize = pRPiCamera->GetMaxImageSize();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetMaxImageSize() -> %s ", maxImageSize.toString().c_str());
+	// Collect the capture modes
+	struct capture_mode {
+		std::string name;
+		std::string description;
+		int bpp;
+		int bin;
+	};
+	std::vector<capture_mode> modes;
+	auto add_modes = [&](const PixelFormat &format, const std::string &family, unsigned int bits) {
+		std::string strFormat = family + std::to_string(bits);
+		for (auto frame : pRPiCamera->GetFrameInfo(format)) {
+			modes.push_back({ strFormat + "_" + std::to_string(frame.first.width), strFormat + " " + frame.second.toString(), (int)bits, (int)frame.first.width });
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "mode %s", modes.back().name.c_str());
+		}
+	};
+	if (configured == 0 && !maxImageSize.isNull()) {
+		for (const auto &format : pRPiCamera->GetPixelFormats()) {
+			auto bayer = bayer_formats.find(format);
+			if (bayer != bayer_formats.end()) {
+				std::string strFormat = format.toString();
+				strFormat.erase(std::remove_if(strFormat.begin(), strFormat.end(), ::isdigit), strFormat.end());
+				add_modes(format, strFormat, bayer->second);
+			}
+			auto raw = raw_bayer.find(format);
+			if (raw != raw_bayer.end()) {
+				add_modes(format, "RAW", raw->second);
+			}
+			auto mono = monochrome_formats.find(format);
+			if (mono != monochrome_formats.end() && pRPiCamera->IsMonochrome()) {
+				add_modes(format, "MON", mono->second);
+			}
+		}
+	}
+	if (modes.empty()) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to configure camera %s", PRIVATE_DATA->eid.c_str());
+		pRPiCamera->StopCamera();
+		pRPiCamera->CloseCamera();
+		delete pRPiCamera;
+		return false;
+	}
+	PRIVATE_DATA->pRPiCamera = pRPiCamera;
+	CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max =
+		maxImageSize.width;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_INFO_WIDTH_ITEM->number.value = %f", CCD_INFO_WIDTH_ITEM->number.value);
+	CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max =
+		maxImageSize.height;
+	const auto &pixelSize = pRPiCamera->GetPixelSize();
+	if (pixelSize) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetPixelSize() %s", pixelSize->toString().c_str());
+		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(pixelSize->width / 10.0) / 100.0;
+		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixelSize->height / 10.0) / 100.0;
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get pixel size");
+		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 0.0;
+		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0.0;
+	}
+	int min_bpp = modes[0].bpp, max_bpp = modes[0].bpp, max_bin = 1;
+	for (const auto &mode : modes) {
+		min_bpp = std::min(min_bpp, mode.bpp);
+		max_bpp = std::max(max_bpp, mode.bpp);
+		max_bin = std::max(max_bin, mode.bin);
+	}
+	CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = modes[0].bpp;
+	CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = min_bpp;
+	CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = max_bpp;
+	CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = modes[0].bpp;
+	CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "max binning %d", max_bin);
+	CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+	CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
+	CCD_BIN_VERTICAL_ITEM->number.min = 1;
+	CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
+	CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.target = modes[0].bin;
+	CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = modes[0].bin;
+	Limits<unsigned> exposureLimits;
+	if (pRPiCamera->GetExposureLimits(exposureLimits)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetExposureLimits(exposureLimits %s)", exposureLimits.toString().c_str());
+		CCD_EXPOSURE_ITEM->number.min = exposureLimits.min / 1000000.0;
+		CCD_EXPOSURE_ITEM->number.max = exposureLimits.max / 1000000.0;
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get exposure limits");
+		CCD_EXPOSURE_ITEM->number.min = 0.0;
+		CCD_EXPOSURE_ITEM->number.max = 1.0;
+	}
+	CCD_MODE_PROPERTY = indigo_resize_property(CCD_MODE_PROPERTY, (int)modes.size());
+	for (size_t i = 0; i < modes.size(); i++) {
+		indigo_init_switch_item(CCD_MODE_ITEM + i, modes[i].name.c_str(), modes[i].description.c_str(), i == 0);
+	}
+	CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+	Limits<float> gainLimits;
+	bool bHAsGain = pRPiCamera->GetGainLimits(gainLimits);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCametra->GetGainLimits(gainLimits %s ) -> %d", gainLimits.toString().c_str(), bHAsGain);
+	if (bHAsGain) {
+		CCD_GAIN_PROPERTY->hidden = false;
+		CCD_GAIN_ITEM->number.min = 0.0;
+		CCD_GAIN_ITEM->number.max = gainLimits.max;
+		CCD_GAIN_ITEM->number.step = 1.0;
+		CCD_GAIN_ITEM->number.value = 0.0;
+		if (pRPiCamera->GetAnalogueGain()) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetAnalogueGain() -> %g)", pRPiCamera->GetAnalogueGain().value_or(0.0));
+			CCD_EGAIN_PROPERTY->hidden = false;
+			CCD_EGAIN_ITEM->number.value = static_cast<double>(pRPiCamera->GetAnalogueGain().value_or(0.0));
+		}
+	}
+	// CCD properties
+	X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+	if (X_CCD_ADVANCED_PROPERTY != NULL) {
+		auto controls = pRPiCamera->GetControls();
+		int count = 0;
+		auto add_item = [&](const Control<float> &control, const char *name, const char *label, double step) {
+			auto info = controls.find(&control);
+			if (info == controls.end()) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s control not found", label);
+				return;
+			}
+			float min = info->second.min().get<float>();
+			float max = info->second.max().get<float>();
+			float def = info->second.def().isNone() ? min : info->second.def().get<float>();
+			indigo_init_number_item(X_CCD_ADVANCED_PROPERTY->items + count++, name, label, min, max, step, def);
+		};
+		add_item(controls::Contrast, "CONTRAST", "Contrast", 1);
+		add_item(controls::Saturation, "SATURATION", "Saturation", 1);
+		add_item(controls::Brightness, "BRIGHTNESS", "Brightness", 0.1);
+		X_CCD_ADVANCED_PROPERTY->count = count;
+		if (count == 0) {
+			indigo_release_property(X_CCD_ADVANCED_PROPERTY);
+			X_CCD_ADVANCED_PROPERTY = NULL;
+		} else {
+			indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+		}
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->HasAutoFocus() -> %d", pRPiCamera->HasAutoFocus());
+	RPI_AF_PROPERTY->hidden = !pRPiCamera->HasAutoFocus();
+	indigo_define_property(device, RPI_AF_PROPERTY, NULL);
+	if (pRPiCamera->HasAutoFocus()) {
+		// Assign the focuser function pointer
+		PRIVATE_DATA->focus = pRPiCamera;
+		indigo_attach_device(PRIVATE_DATA->focuser);
+	}
+	// Large enough for 24 bit colour and 16 bit monochrome frames
+	PRIVATE_DATA->buffer_size = 3 * maxImageSize.width * maxImageSize.height + FITS_HEADER_SIZE;
+	PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_alloc_blob_buffer(width %.1f, height %.1f)", CCD_INFO_WIDTH_ITEM->number.value, CCD_INFO_HEIGHT_ITEM->number.value);
+	assert(PRIVATE_DATA->buffer != NULL);
+	return true;
 }
 
 static void ccd_connect_callback(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!device->is_connected) {
-			indigo_define_property(device, RPI_AF_PROPERTY, NULL);
-			// Create new camera instance
-			PRIVATE_DATA->pRPiCamera = new RPiCamera();
-			PRIVATE_DATA->pRPiCamera->InitCamera(PRIVATE_DATA->eid);
-		}
-		RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
-		if (pRPiCamera && pRPiCamera->IsCameraAcquired()) {
-
-			Size maxImageSize = pRPiCamera->GetMaxImageSize();
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetMaxImageSize() -> %s ", maxImageSize.toString().c_str());
-			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max =
-				maxImageSize.width;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_INFO_WIDTH_ITEM->number.value = %f", CCD_INFO_WIDTH_ITEM->number.value);
-			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max =
-				maxImageSize.height;
-
-			const auto &pixelSize = pRPiCamera->GetPixelSize();
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetPixelSize() %s", pixelSize->toString().c_str());
-			if (pixelSize) {
-				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(pixelSize->width / 10.0) / 100.0;
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixelSize->height / 10.0) / 100.0;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get pixel size");
-				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 0.0;
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0.0;
-			}
-			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 24;
-			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-			// Temporarily start the camera to get the metadata
-			int configured = pRPiCamera->ConfigureCamera();
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiamera->ConfigureCamera() -> %d", configured);
-
-			if (pRPiCamera->GetMaxBinning()) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RPiCamera->GetMaxBinning() -> %d)", pRPiCamera->GetMaxBinning());
-				CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-				CCD_BIN_HORIZONTAL_ITEM->number.max = pRPiCamera->GetMaxBinning();
-				CCD_BIN_VERTICAL_ITEM->number.min = 1;
-				CCD_BIN_VERTICAL_ITEM->number.max = pRPiCamera->GetMaxBinning();
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get min/max binning");
-				CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-				CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
-				CCD_BIN_VERTICAL_ITEM->number.min = 1;
-				CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
-			}
-			Limits<unsigned> exposureLimits;
-			if (pRPiCamera->GetExposureLimits(exposureLimits)) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetExposureLimits(exposureLimits %s)", exposureLimits.toString().c_str());
-				CCD_EXPOSURE_ITEM->number.min = exposureLimits.min / 1000000.0;
-				CCD_EXPOSURE_ITEM->number.max = exposureLimits.max / 1000000.0;
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get exposure limits");
-				CCD_EXPOSURE_ITEM->number.min = 0.0;
-				CCD_EXPOSURE_ITEM->number.max = 1.0;
-			}
-			// Get available pixel formats
-			PixelFormats pixelFormats = pRPiCamera->GetPixelFormats();
-			CCD_MODE_PROPERTY->count = 0;
-			for (const auto &format : pixelFormats) {
-
-				if (bayer_formats.find(format) != bayer_formats.end()) {
-
-					FrameInfo frameInfo = pRPiCamera->GetFrameInfo(format);
-					char name[32];
-
-					for (auto frame : frameInfo) {
-						int frame_width = frame.second.width;
-						int frame_height = frame.second.height;
-						char description[64];
-						std::string strFormat = bayer_formats.find(format)->first.toString();
-						strFormat.erase(std::remove_if(strFormat.begin(), strFormat.end(), ::isdigit), strFormat.end());
-						strFormat += std::to_string(bayer_formats.find(format)->second);
-						sprintf(description, "%s %dx%d", strFormat.c_str(), frame_width, frame_height);
-						sprintf(name, "%s_%d", strFormat.c_str(), frame.first.width);
-						indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, CCD_MODE_PROPERTY->count == 0);
-						CCD_MODE_PROPERTY->count++;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_PROPERTY->count++; %d", CCD_MODE_PROPERTY->count);
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "name %s ", name);
-					}
-				}
-
-				if (raw_bayer.find(format) != raw_bayer.end()) {
-
-					char name[32];
-					FrameInfo frameInfo = pRPiCamera->GetFrameInfo(format);
-					for (auto frame : frameInfo) {
-						int frame_width = frame.second.width;
-						int frame_height = frame.second.height;
-						char description[64];
-						std::string strFormat = "RAW";
-						strFormat += std::to_string(raw_bayer.find(format)->second);
-						sprintf(description, "%s %dx%d", strFormat.c_str(), frame_width, frame_height);
-						sprintf(name, "%s_%d", strFormat.c_str(), frame.first.width);
-						indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, CCD_MODE_PROPERTY->count == 0);
-						CCD_MODE_PROPERTY->count++;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_PROPERTY->count++; %d", CCD_MODE_PROPERTY->count);
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "name %s ", name);
-					}
-				}
-				if (monochrome_formats.find(format) != monochrome_formats.end() && pRPiCamera->IsMonochrome()) {
-
-					FrameInfo frameInfo = pRPiCamera->GetFrameInfo(format);
-					char name[32];
-					for (auto frame : frameInfo) {
-						int frame_width = frame.second.width;
-						int frame_height = frame.second.height;
-						char description[64];
-						std::string strFormat = "MON";
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Format to name : %s", format.toString().c_str());
-						strFormat += std::to_string(monochrome_formats.find(format)->second);
-						sprintf(description, "%s %dx%d", strFormat.c_str(), frame_width, frame_height);
-						sprintf(name, "%s_%d", strFormat.c_str(), frame.first.width);
-						indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, CCD_MODE_PROPERTY->count == 0);
-						CCD_MODE_PROPERTY->count++;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_PROPERTY->count++; %d", CCD_MODE_PROPERTY->count);
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "name %s ", name);
-					}
-				}
-			}
-
-			Limits<float> gainLimits;
-			bool bHAsGain = pRPiCamera->GetGainLimits(gainLimits);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCametra->GetGainLimits(gainLimits %s ) -> %d", gainLimits.toString().c_str(), bHAsGain);
-
-			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-
-			if (bHAsGain) {
-				CCD_GAIN_PROPERTY->hidden = false;
-				CCD_GAIN_ITEM->number.min = 0.0;
-				CCD_GAIN_ITEM->number.max = gainLimits.max;
-				CCD_GAIN_ITEM->number.step = 1.0;
-				CCD_GAIN_ITEM->number.value = 0.0;
-
-				if (pRPiCamera->GetAnalogueGain()) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetAnalogueGain() -> %g)", pRPiCamera->GetAnalogueGain().value_or(0.0));
-					CCD_EGAIN_PROPERTY->hidden = false;
-					CCD_EGAIN_ITEM->number.value = static_cast<double>(pRPiCamera->GetAnalogueGain().value_or(0.0));
-				}
-			}
-
-			if (X_CCD_ADVANCED_PROPERTY) {
-				indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
-			}
-			// CCD properties
-			X_CCD_ADVANCED_PROPERTY =
-				indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-			if (X_CCD_ADVANCED_PROPERTY != NULL) {
-				auto controls = pRPiCamera->GetControls();
-
-				if (controls.find(&controls::Contrast) != controls.end()) {
-					float contrast_def = controls.find(&controls::Contrast)->second.def().get<float>();
-					float contrast_max = controls.find(&controls::Contrast)->second.max().get<float>();
-					float contrast_min = controls.find(&controls::Contrast)->second.min().get<float>();
-					indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", contrast_min, contrast_max, 1, contrast_def);
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Contrast control not found");
-				}
-
-				if (controls.find(&controls::Saturation) != controls.end()) {
-					float saturation_def = controls.find(&controls::Saturation)->second.def().get<float>();
-					float saturation_max = controls.find(&controls::Saturation)->second.max().get<float>();
-					float saturation_min = controls.find(&controls::Saturation)->second.min().get<float>();
-					indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", saturation_min, saturation_max, 1, saturation_def);
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Saturation control not found");
-				}
-
-				if (controls.find(&controls::Brightness) != controls.end()) {
-					float brightness_def = controls.find(&controls::Brightness)->second.def().get<float>();
-					float brightness_max = controls.find(&controls::Brightness)->second.max().get<float>();
-					float brightness_min = controls.find(&controls::Brightness)->second.min().get<float>();
-					indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", brightness_min, brightness_max, 0.1, brightness_def);
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Brightness control not found");
-				}
-			}
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->HasAutoFocus() -> %d", pRPiCamera->HasAutoFocus());
-			if (pRPiCamera->HasAutoFocus()) {
-				// Assign the focuser function pointer
-				PRIVATE_DATA->focus = pRPiCamera;
-				indigo_attach_device(PRIVATE_DATA->focuser);
-			}
-
-			PRIVATE_DATA->buffer =
-				(unsigned char *)indigo_alloc_blob_buffer(3 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_alloc_blob_buffer(width %.1f, height %.1f)", CCD_INFO_WIDTH_ITEM->number.value,
-								CCD_INFO_HEIGHT_ITEM->number.value);
-			assert(PRIVATE_DATA->buffer != NULL);
+		if (device->is_connected || ccd_open(device)) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			device->is_connected = true; // Set the device as connected
 		} else {
@@ -1260,30 +1382,8 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-
-		indigo_delete_property(device, RPI_AF_PROPERTY, NULL);
-		if (X_CCD_ADVANCED_PROPERTY)
-			indigo_delete_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			PRIVATE_DATA->pRPiCamera->StopCamera();
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
-		}
-		if (PRIVATE_DATA->buffer != NULL) {
-			free(PRIVATE_DATA->buffer);
-			PRIVATE_DATA->buffer = NULL;
-		}
 		if (device->is_connected) {
-			PRIVATE_DATA->pRPiCamera->StopCamera();
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
-			PRIVATE_DATA->pRPiCamera->CloseCamera();
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->CloseCamera()");
-			// If the focuser is attached, detach it
-			if (PRIVATE_DATA->focuser) {
-				indigo_detach_device(PRIVATE_DATA->focuser);
-			}
-			delete PRIVATE_DATA->pRPiCamera;
-			PRIVATE_DATA->pRPiCamera = nullptr;
+			ccd_close(device);
 			device->is_connected = false;
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1295,7 +1395,8 @@ static void ccd_connect_callback(indigo_device *device) {
 static void handle_focus(indigo_device *device) {
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-	if ((*PRIVATE_DATA->focus)(device->master_device, (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * FOCUSER_STEPS_ITEM->number.value)) {
+	// No master device lock: disconnect holds it while detaching the focuser, which waits for this timer before the camera is deleted
+	if (PRIVATE_DATA->focus && PRIVATE_DATA->focus->MoveLens((FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * FOCUSER_STEPS_ITEM->number.value)) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1316,10 +1417,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// FOCUSER_ABORT_MOTION
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-			(*PRIVATE_DATA->focus)(device->master_device, 0);
-		}
+		// Lens moves complete immediately, there is no motion to stop
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
@@ -1356,40 +1456,25 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 static void ccd_start_exposure(indigo_device *device) {
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+	// Serialized with disconnect, which deletes the camera
+	indigo_lock_master_device(device);
+	if (!IS_CONNECTED || CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
+		// Aborted before the exposure started
+		indigo_unlock_master_device(device);
+		return;
 	}
-	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-	}
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-
 	RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
-
 	int state = -1;
-
 	if (pRPiCamera->IsCameraAcquired()) {
 		ControlList m_controls;
 		int64_t frame_time = CCD_EXPOSURE_ITEM->number.target * 1000000;
 		// Set frame rate
-		m_controls.set(controls::FrameDurationLimits, libcamera::Span<const int64_t, 2>({frame_time, frame_time}));
+		m_controls.set(controls::FrameDurationLimits, { frame_time, frame_time });
 		m_controls.set(controls::ExposureTimeMode, controls::ExposureTimeModeManual);
 		m_controls.set(controls::ExposureTime,
 					   CCD_EXPOSURE_ITEM->number.target * 1000000); // Convert seconds to microseconds
 		m_controls.set(controls::AeEnable, false);
 		m_controls.set(controls::AwbEnable, true);
-
-		int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		int left = (int)CCD_FRAME_LEFT_ITEM->number.value / bin_x;
-		int top = (int)CCD_FRAME_TOP_ITEM->number.value / bin_y;
-
-		int width = CCD_INFO_WIDTH_ITEM->number.value / bin_x;
-		int height = CCD_INFO_HEIGHT_ITEM->number.value / bin_y;
-
 		std::string pixelFormatName = CCD_MODE_ITEM[0].name;
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			if (CCD_MODE_ITEM[i].sw.value) {
@@ -1400,26 +1485,31 @@ static void ccd_start_exposure(indigo_device *device) {
 		}
 		size_t pos = pixelFormatName.find_last_of("_");
 		pixelFormatName = pixelFormatName.substr(0, pos);
-		PixelFormat format = pRPiCamera->GetPixelFormat();
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetPixelFormat() -> %s", format.toString().c_str());
-
+		PixelFormat pixelFormatTarget =
+			pixelFormatMap.find(pixelFormatName) != pixelFormatMap.end() ? pixelFormatMap.find(pixelFormatName)->second : formats::RGB888;
+		int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		// CCD_FRAME is in unbinned sensor pixels
+		int left = (int)CCD_FRAME_LEFT_ITEM->number.value;
+		int top = (int)CCD_FRAME_TOP_ITEM->number.value;
+		int frame_width = (int)CCD_FRAME_WIDTH_ITEM->number.value;
+		int frame_height = (int)CCD_FRAME_HEIGHT_ITEM->number.value;
 		//   ROI calculation
-		if (!m_controls.get(controls::ScalerCrop) && !m_controls.get(controls::rpi::ScalerCrops)) {
-			const Rectangle sensor_area = pRPiCamera->GetControls().at(&controls::ScalerCrop).max().get<Rectangle>();
-			const Rectangle default_crop = pRPiCamera->GetControls().at(&controls::ScalerCrop).def().get<Rectangle>();
-			Rectangle crop;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Sensor area: %s", sensor_area.toString().c_str());
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Default crop: %s", default_crop.toString().c_str());
-
-			unsigned int w = CCD_FRAME_WIDTH_ITEM->number.value;
-			unsigned int h = CCD_FRAME_HEIGHT_ITEM->number.value;
-			if ((left + w < CCD_INFO_WIDTH_ITEM->number.value) || (top + h < CCD_INFO_HEIGHT_ITEM->number.value)) {
-				libcamera::Rectangle roi(left, top, left + w, top + h);
+		if (left > 0 || top > 0 || frame_width < CCD_INFO_WIDTH_ITEM->number.value || frame_height < CCD_INFO_HEIGHT_ITEM->number.value) {
+			if (!pRPiCamera->IsRawCapture(pixelFormatTarget) && pRPiCamera->GetControls().find(&controls::ScalerCrop) != pRPiCamera->GetControls().end()) {
+				// The ISP crops the sensor area and scales it to the output size
+				libcamera::Rectangle roi(left, top, frame_width, frame_height);
 				m_controls.set(controls::ScalerCrop, roi);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ROI set to: %s", roi.toString().c_str());
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Subframe is not supported, using full frame");
+				frame_width = CCD_INFO_WIDTH_ITEM->number.value;
+				frame_height = CCD_INFO_HEIGHT_ITEM->number.value;
 			}
 		}
-		if (!m_controls.get(controls::AnalogueGain) && CCD_GAIN_ITEM->number.value) {
+		int width = frame_width / bin_x;
+		int height = frame_height / bin_y;
+		if (CCD_GAIN_ITEM->number.value) {
 			m_controls.set(controls::AnalogueGainMode, controls::AnalogueGainModeManual);
 			// Set manual analogue gain
 			m_controls.set(controls::AnalogueGain, CCD_GAIN_ITEM->number.value);
@@ -1427,41 +1517,52 @@ static void ccd_start_exposure(indigo_device *device) {
 			// Enable auto gain
 			m_controls.set(controls::AnalogueGainMode, controls::AnalogueGainModeAuto);
 		}
-
-		pRPiCamera->Set(m_controls);
-		PixelFormat pixelFormatTarget =
-			pixelFormatMap.find(pixelFormatName) != pixelFormatMap.end() ? pixelFormatMap.find(pixelFormatName)->second : formats::RGB888;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StartExposure(width %d, height %d, format %s)", width, height, pixelFormatName.c_str());
-		state = pRPiCamera->StartExposure(width, height, pixelFormatTarget);
+		state = pRPiCamera->StartExposure(width, height, pixelFormatTarget, m_controls);
 	}
-	if (state != -1) {
-		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+	if (state == 0) {
+		// The callback of the previous exposure may still be returning, its reference blocks a new timer. StartExposure() has released its frame wait.
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+		if (!indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer)) {
+			pRPiCamera->StopCamera();
+			exposure_failed(device, "Failed to schedule exposure completion");
+		}
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed...pRPiCamera->StartExposure() returned -1");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "pRPiCamera->StartExposure() returned %d", state);
+		exposure_failed(device, "Exposure failed");
 	}
+	indigo_unlock_master_device(device);
 }
 
 static void ccd_abort_exposure(indigo_device *device) {
-	RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
-	pRPiCamera->StopCamera();
+	indigo_lock_master_device(device);
+	if (IS_CONNECTED && PRIVATE_DATA->pRPiCamera) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
+		PRIVATE_DATA->pRPiCamera->StopCamera();
+	}
+	indigo_unlock_master_device(device);
 }
 
 static void ccd_handle_advanced_property(indigo_device *device) {
-	X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-	if (X_CCD_ADVANCED_PROPERTY->count != 1) {
-		RPiCamera *pRPicamera = PRIVATE_DATA->pRPiCamera;
+	indigo_lock_master_device(device);
+	if (IS_CONNECTED && X_CCD_ADVANCED_PROPERTY) {
 		ControlList m_controls;
-		auto controlsInfo = pRPicamera->GetControls();
-
-		m_controls.set(controls::Contrast, X_CCD_CONTRAST_ITEM->number.value);
-		m_controls.set(controls::Saturation, X_CCD_SATURATION_ITEM->number.value);
-		m_controls.set(controls::Brightness, X_CCD_BRIGHTNESS_ITEM->number.value);
-
-		pRPicamera->Set(m_controls);
-
+		for (int i = 0; i < X_CCD_ADVANCED_PROPERTY->count; i++) {
+			indigo_item *item = X_CCD_ADVANCED_PROPERTY->items + i;
+			if (!strcmp(item->name, "CONTRAST")) {
+				m_controls.set(controls::Contrast, item->number.value);
+			} else if (!strcmp(item->name, "SATURATION")) {
+				m_controls.set(controls::Saturation, item->number.value);
+			} else if (!strcmp(item->name, "BRIGHTNESS")) {
+				m_controls.set(controls::Brightness, item->number.value);
+			}
+		}
+		// Applied with every following exposure
+		PRIVATE_DATA->pRPiCamera->SetPersistent(m_controls);
+		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 	}
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1487,7 +1588,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
-		indigo_set_timer(device, 0, ccd_start_exposure, NULL);	
+		PRIVATE_DATA->exposure_sequence++;
+		// BUSY before indigo_ccd_exposure_setup() so that it starts the countdown
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, ccd_start_exposure, NULL);
 	} else if (indigo_property_match_changeable(RPI_AF_PROPERTY, property)) {
 		// --------------------------------------------------------------------------------
 		// DSLR_AF
@@ -1571,29 +1676,36 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		// --------------------------------------------------------------------------------
 		// CCD_FRAME
+		int prev_bpp = (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		char name[INDIGO_NAME_SIZE];
-
-		for (int j = 0; j < CCD_MODE_PROPERTY->count; j++) {
-			indigo_item *item = &CCD_MODE_PROPERTY->items[j];
-			if (item->sw.value) {
-				strcpy(name, item->name);
-				sprintf(name + 3, "%02d", (int)(CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value));
-				name[5] = '_';
-				for (int k = 0; k < CCD_MODE_PROPERTY->count; k++) {
-					item = &CCD_MODE_PROPERTY->items[k];
-					if (!strcmp(name, item->name)) {
-						indigo_set_switch(CCD_MODE_PROPERTY, item, true);
-						CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-						return indigo_ccd_change_property(device, client, property);
+		int bpp = (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
+		if (bpp != prev_bpp) {
+			// Switch to the mode with the same family and binning and the requested bits per pixel
+			std::string selected_family, family;
+			int selected_bpp, selected_bin, mode_bpp, mode_bin;
+			indigo_item *mode = NULL;
+			for (int j = 0; j < CCD_MODE_PROPERTY->count; j++) {
+				if (CCD_MODE_ITEM[j].sw.value && parse_mode_name(CCD_MODE_ITEM[j].name, &selected_family, &selected_bpp, &selected_bin)) {
+					for (int k = 0; k < CCD_MODE_PROPERTY->count; k++) {
+						if (parse_mode_name(CCD_MODE_ITEM[k].name, &family, &mode_bpp, &mode_bin) && mode_bpp == bpp && mode_bin == selected_bin && (family == selected_family || (family != "MON" && selected_family != "MON"))) {
+							mode = CCD_MODE_ITEM + k;
+							break;
+						}
 					}
+					break;
 				}
 			}
+			if (mode == NULL) {
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = prev_bpp;
+				CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+				return INDIGO_OK;
+			}
+			indigo_set_switch(CCD_MODE_PROPERTY, mode, true);
+			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		}
-		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-		return INDIGO_OK;
+		return indigo_ccd_change_property(device, client, property);
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
 		// --------------------------------------------------------------------------------
 		// CCD_GAIN
@@ -1603,12 +1715,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
-	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match_defined(X_CCD_ADVANCED_PROPERTY, property)) {
+	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match_changeable(X_CCD_ADVANCED_PROPERTY, property)) {
 		// --------------------------------------------------------------------------------
 		// X_CCD_ADVANCED
 		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
 		indigo_set_timer(device, 0, ccd_handle_advanced_property, NULL);
-		
 		return INDIGO_OK;
 	}
 	return indigo_ccd_change_property(device, client, property);
@@ -1619,10 +1730,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		ccd_connect_callback(device);
-
-		if (X_CCD_ADVANCED_PROPERTY) {
-			indigo_release_property(X_CCD_ADVANCED_PROPERTY);
-		}
 	}
 	indigo_release_property(RPI_AF_PROPERTY);
 
@@ -1683,36 +1790,36 @@ static void attach_rpi_ccd() {
 
 		string cameraName = GetCameraName(id);
 		if (IsNew(id)) {
-			char name[128] = "RPI Camera ";
-			strcat(name, cameraName.c_str());
-
-			char *end = name + strlen(name) - 1;
-			while (end > name && isspace((unsigned char)*end))
-				end--;
-			end[1] = '\0';
-			rpi_private_data *private_data = (rpi_private_data *)indigo_safe_malloc(sizeof(rpi_private_data));
+			int slot = 0;
+			while (slot < MAX_DEVICES && devices[slot] != NULL) {
+				slot++;
+			}
+			if (slot == MAX_DEVICES) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Too many cameras, %s ignored", id.c_str());
+				break;
+			}
+			std::string name = "RPI Camera " + cameraName;
+			while (!name.empty() && isspace((unsigned char)name.back())) {
+				name.pop_back();
+			}
+			rpi_private_data *private_data = new rpi_private_data();
 			private_data->eid = id;
 
 			indigo_device *device = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
 			device->master_device = master_device;
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s", name);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s", name.c_str());
 			indigo_make_name_unique(device->name, "%s", cameraName.c_str());
 			device->private_data = private_data;
 
 			indigo_device *focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->master_device = device;
-			snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser)", name);
-			indigo_make_name_unique(device->name, "%s", cameraName.c_str());
+			snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser)", name.c_str());
+			indigo_make_name_unique(focuser->name, "%s", cameraName.c_str());
 			focuser->private_data = private_data;
 			private_data->focuser = focuser;
 
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] == NULL) {
-					indigo_attach_device(devices[j] = device);
-					break;
-				}
-			}
+			indigo_attach_device(devices[slot] = device);
 		}
 	}
 }
@@ -1763,7 +1870,7 @@ indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *in
 						delete private_data->pRPiCamera;
 						private_data->pRPiCamera = nullptr;
 					}
-					free(private_data);
+					delete private_data;
 				}
 				free(device);
 				devices[i] = NULL;

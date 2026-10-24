@@ -3,7 +3,7 @@
   "title": "OPTDRV-009: The focuser device name is initialized, but the uniqueness call is accidentally applied to `device->name` again instead of `focuser->name`",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -11,9 +11,19 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024202957-6bd9-fix-ccd-rpi",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "OPTDRV-009: The focuser device name is initialized, but the uniqueness call is accidentally applied to `device->name` again instead of `focuser->name`. Multiple RPi autofocus devices can therefore expose duplicate focuser names. Call `indigo_make_name_unique(focuser->name, ...)` for the focuser. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_optional_drivers/REVIEW.md:38; historical locations: `ccd_rpi/indigo_ccd_rpi.cpp:1708`, `ccd_rpi/indigo_ccd_rpi.cpp:1710`, `ccd_rpi/indigo_ccd_rpi.cpp:1711`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024202957-6bd9-fix-ccd-rpi/verification.md: indigo_make_name_unique() applied to focuser->name; review-verified (no second camera available)",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }
