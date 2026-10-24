@@ -94,7 +94,7 @@ class GPSComplianceScriptTests(unittest.TestCase):
 		with tempfile.TemporaryDirectory(prefix="indigo-gps-script-") as temporary:
 			directory = Path(temporary)
 			for name in ("gps_compliance.sh", "indigo_test_framework.sh"):
-				shutil.copyfile(ROOT / "indigo_tests" / name, directory / name)
+				shutil.copyfile(ROOT / "indigo_test" / "shell_compliance" / name, directory / name)
 			tool = directory / "fake-prop-tool"
 			tool.write_text(FAKE_TOOL)
 			tool.chmod(0o700)

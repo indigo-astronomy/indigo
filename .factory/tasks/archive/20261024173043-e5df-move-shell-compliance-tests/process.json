@@ -1,0 +1,154 @@
+{
+  "version": 2,
+  "task": "20261024173043-e5df-move-shell-compliance-tests",
+  "scope": [
+    "indigo_tests/*",
+    "indigo_test/shell_compliance/*",
+    "AGENTS.md",
+    "indigo_test/AGENTS.md",
+    ".factory/project.md",
+    ".factory/scripts/archive_task.py",
+    "indigo_test/factory/test_task_archive.py",
+    "indigo_test/unit/test_gps_compliance_script.py",
+    "indigo_test/DRIVER_TESTING_RULES.md",
+    "indigo_docs/DRIVER_TESTING_BASICS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/completions/20261024173043-e5df-move-shell-compliance-tests.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_gps_compliance_script.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024173043-e5df-move-shell-compliance-tests.json": [
+      "100644",
+      "blob",
+      "63e71b92e894fe39e41bcb0c6fb19264d9a30175"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "6d5a4a7ed29a9a703b200bda3969899525319b53"
+    ],
+    ".factory/scripts/archive_task.py": [
+      "100755",
+      "blob",
+      "e235969cf055d1bade12a150d63505c1078001b7"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "fa96650ceae376f4ddccc8e68afe90f57f735485"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "15bc71980aacb526a60ca6d2669392a038b77db5"
+    ],
+    "indigo_docs/DRIVER_TESTING_BASICS.md": [
+      "100644",
+      "blob",
+      "979f80cbd3b66d5708df9a9b4d93bf87cc6b8417"
+    ],
+    "indigo_test/AGENTS.md": [
+      "100644",
+      "blob",
+      "be521c556de9f19d87e46e43a11dc5183fbda37d"
+    ],
+    "indigo_test/DRIVER_TESTING_RULES.md": [
+      "100644",
+      "blob",
+      "13ea86d20ab02009a83afb00b0fed094d9ea53a4"
+    ],
+    "indigo_test/factory/test_task_archive.py": [
+      "100644",
+      "blob",
+      "1029da5110ba63bd67d69370ad781c2a254861ea"
+    ],
+    "indigo_test/shell_compliance/INDIGO_TEST_FRAMEWORK.md": [
+      "100644",
+      "blob",
+      "decb4ac83499a21c9d5f4c85dae142442173ac46"
+    ],
+    "indigo_test/shell_compliance/ao_compliance.sh": [
+      "100755",
+      "blob",
+      "b4633d52c96b27ca27a861f5e04b4fb98a01fae4"
+    ],
+    "indigo_test/shell_compliance/filter_wheel_compliance.sh": [
+      "100755",
+      "blob",
+      "be0d6792a9f9cdab6ffdc74091485f525ebcb272"
+    ],
+    "indigo_test/shell_compliance/focuser_compliance.sh": [
+      "100755",
+      "blob",
+      "c934d9155fbbe6a4819451a88347d4a737955f3b"
+    ],
+    "indigo_test/shell_compliance/gps_compliance.sh": [
+      "100755",
+      "blob",
+      "624bd810a5edf60db36027f83e84a9b70f233164"
+    ],
+    "indigo_test/shell_compliance/guider_compliance.sh": [
+      "100755",
+      "blob",
+      "c3c218e4c48cfd331b568cb226c77ed0072072da"
+    ],
+    "indigo_test/shell_compliance/indigo_test_framework.sh": [
+      "100755",
+      "blob",
+      "1e8a112e883c1a385c038b6d35ae2e27fce11bea"
+    ],
+    "indigo_test/shell_compliance/rotator_compliance.sh": [
+      "100755",
+      "blob",
+      "4b72830c1d2e12eb6af8b64f24209be1fc0cfbad"
+    ],
+    "indigo_test/unit/test_gps_compliance_script.py": [
+      "100644",
+      "blob",
+      "13405efa1b6adf01e93c9b5a9d0b96ef0fc76214"
+    ],
+    "indigo_tests/INDIGO_TEST_FRAMEWORK.md": null,
+    "indigo_tests/ao_compliance.sh": null,
+    "indigo_tests/filter_wheel_compliance.sh": null,
+    "indigo_tests/focuser_compliance.sh": null,
+    "indigo_tests/gps_compliance.sh": null,
+    "indigo_tests/guider_compliance.sh": null,
+    "indigo_tests/indigo_test_framework.sh": null,
+    "indigo_tests/rotator_compliance.sh": null
+  }
+}

@@ -254,7 +254,7 @@ class TaskArchiveTests(unittest.TestCase):
         self.assertEqual(self.run_script('new_task.py', '002-dangling').returncode, 2)
 
     def test_indigo_owner_exclusions_are_not_read_or_rewritten(self):
-        excluded = ['indigo_drivers/ccd_apogee/README.md', 'indigo_drivers/ccd_sbig/README.md', 'indigo_drivers/mount_asi/README.md', 'indigo_drivers/mount_mxhd/README.md', 'indigo_drivers/system_ascol/README.md', 'indigo_tests/notes.md', 'obsoleted_drivers/notes.md', 'indigo_libs/externals/example/notes.md', 'indigo_drivers/example/bin_externals/notes.md']
+        excluded = ['indigo_drivers/ccd_apogee/README.md', 'indigo_drivers/ccd_sbig/README.md', 'indigo_drivers/mount_asi/README.md', 'indigo_drivers/mount_mxhd/README.md', 'indigo_drivers/system_ascol/README.md', 'indigo_tests/notes.md', 'indigo_test/shell_compliance/notes.md', 'obsoleted_drivers/notes.md', 'indigo_libs/externals/example/notes.md', 'indigo_drivers/example/bin_externals/notes.md']
         payload = b'\xff[link](.factory/tasks/001-demo/brief.md)'
         for path in excluded:
             self.put(path, payload)

@@ -14,7 +14,7 @@
 
 ## Scope
 
-This directory contains the automated, hardware-free INDIGO test suite. Keep this guide focused on tests only. General repository coding rules, driver conventions, and build-system guidance live in the repository root `AGENTS.md`.
+This directory contains the automated, hardware-free INDIGO test suite and the separate opt-in shell compliance tools. Keep this guide focused on tests only. General repository coding rules, driver conventions, and build-system guidance live in the repository root `AGENTS.md`.
 
 For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow the shared scope and class standards in [Driver Testing Rules](DRIVER_TESTING_RULES.md).
 
@@ -50,6 +50,7 @@ All source files and headers under `indigo_test/`, including new files, must use
 - `test_runner.h` provides the local dependency-free C test runner and assertion macros.
 - `unit/` contains fast deterministic tests for library helpers, property helpers, protocol adapters/parsers, tokens, RAW helpers, math helpers, and similar code.
 - `integration/` contains in-process bus and simulator-driver tests.
+- `shell_compliance/` contains Bash tools for a selected running server; these are outside routine automated targets and may require hardware.
 - `benchmark/` contains measurement tools that report timing rather than passing or failing.
 - `integration/simulator_test_common.h` contains shared simulator lifecycle helpers, the in-process client, property cache, wait helpers, and compliance-style assertions.
 - `fixtures/protocol/` contains fixed XML and JSON protocol parser fixtures.

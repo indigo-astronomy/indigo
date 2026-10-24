@@ -108,7 +108,7 @@ Follow [.factory/routines/template-updates.md](.factory/routines/template-update
 
 # INDIGO repository rules
 
-The following project requirements supplement the Factory workflow. Explicit owner instructions take precedence. Legacy incremental REVIEW.md tracking has been retired; use the central findings routine. Exclude `indigo_tests/` from routine development and validation; actual tests live in `indigo_test/`.
+The following project requirements supplement the Factory workflow. Explicit owner instructions take precedence. Legacy incremental REVIEW.md tracking has been retired; use the central findings routine. Exclude `indigo_test/shell_compliance/` from routine development and validation unless explicitly requested; the automated suite lives in the other `indigo_test/` subdirectories.
 
 # Repository Guidelines
 

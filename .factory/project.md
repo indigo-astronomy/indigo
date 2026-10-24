@@ -15,13 +15,13 @@ INDIGO is an astronomy device framework and software bus, with native/legacy pro
 | Automated tests | indigo_test/unit/, integration/, fixtures/, simulator_common/, mountsim/, benchmark/ | indigo_test/Makefile; test_runner.h | indigo_test/AGENTS.md; DRIVER_TESTING_RULES.md |
 | Factory helpers | .factory/scripts/ | indigo_test/factory/ | .factory/checks.json; disposable local fixture tests |
 | Documentation and project configuration | indigo_docs/, root Markdown, indigo.xcodeproj/, .travis.yml | static checks and review | root AGENTS.md; indigo_docs/MAKEFILES.md |
-| Vendor/generated/build/legacy exclusions | externals/ and bin_externals/ at any depth, build/, generated driver outputs, obsoleted_drivers/, indigo_tests/ | no automatic execution | owner exclusions; generated output inspected only with its source when assigned |
+| Vendor/generated/build/legacy exclusions | externals/ and bin_externals/ at any depth, build/, generated driver outputs, obsoleted_drivers/, indigo_test/shell_compliance/ | no automatic execution | owner exclusions; generated output inspected only with its source when assigned |
 
 ## Commands
 All commands start at the Git root unless an explicit -C changes directory. Python helpers require Python 3.9+ and local Git with offline object flags.
 - Workflow validation: `./.factory/scripts/check`, `./.factory/scripts/test`, `./.factory/scripts/security`; configured coverage is Factory integration, not application or hardware certification.
 - Native build: `make all`; Windows: `msbuild indigo_windows.sln /t:Build /p:Configuration=Release`. Review scope first: broad native builds can include off-limits drivers and vendor SDKs.
-- Native unit suite: `make -C indigo_test test-unit`, requiring a built INDIGO library. Full native suite: `make -C indigo_test test`; do not substitute indigo_tests/.
+- Native unit suite: `make -C indigo_test test-unit`, requiring a built INDIGO library. Full native suite: `make -C indigo_test test`; the opt-in Bash tools in indigo_test/shell_compliance/ are separate from this suite.
 - Driver runs require an explicit interactive/non-interactive and simulator/hardware mode, then the final recorded run through `python3 tools/run_driver_test.py <driver>`; preserve per-driver commit units.
 - Dependencies remain managed by existing makefiles, vendored SDKs and platform projects. No new package manager, dependency installation or hosted CI is introduced. Existing .travis.yml is retained.
 
