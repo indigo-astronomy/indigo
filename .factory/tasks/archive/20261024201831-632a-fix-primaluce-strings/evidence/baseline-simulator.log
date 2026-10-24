@@ -1,0 +1,229 @@
+Running PrimaluceLab
+  PASS metadata
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS usb_match_pattern
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS property_contract
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS esatto_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS esatto_home_reset
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS esatto_needs_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_uncalibrated
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+Calibrated to 1948, stopped at 1948
+  PASS sestosenso3_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_calibration_restart
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_calibration_lost_position
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:22:05.343056 Application: indigo_focuser_primaluce[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid parameter
+22:22:05.845101 Application: indigo_focuser_primaluce[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid parameter
+  PASS sestosenso3_field_errors
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_abort_during_restart
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS no_abs_pos_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS no_speed_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:22:34.148027 Application: indigo_focuser_primaluce[primaluce_open:470]: Unsupported device
+22:22:39.193744 Application: indigo_focuser_primaluce[primaluce_open:470]: Unsupported device
+  PASS unsupported_device
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS handshake_timeout
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS old_firmware
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS needs_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS repeated_init_shutdown
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS shutdown_rejected_while_connected
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS reconnect
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS absolute_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS relative_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS relative_move_clamped
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS calibrated_travel
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS motor_without_power
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+Aborted at 18100 of 90000
+  PASS abort_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS abort_while_idle
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS overlap_rejected
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:24:32.319564 Application: indigo_focuser_primaluce[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+22:24:32.550087 Application: indigo_focuser_primaluce[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+  PASS move_command_failures
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS external_motion_observed
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS disconnect_during_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS controller_settings
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS led_middle
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS stored_positions
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:25:22.898599 Application: indigo_focuser_primaluce[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+  PASS wifi_station_mode
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS run_preset
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS settings_reported_failures
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS focuser_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS calibration_end_without_run
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS move_not_started
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS status_polling
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:27:11.228691 Application: 0 <- // Failed to write (Input/output error)
+  PASS transport_loss
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS no_probe
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS position_poll_failure
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS hand_keypad_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS stalled_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS move_readback_failures
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:28:25.647570 Application: indigo_focuser_primaluce[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+22:28:25.651565 Application: indigo_focuser_primaluce[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+  PASS abort_refused
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS abort_overtakes_queued_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS request_versus_poll
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS refusal_keeps_queued_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS refusal_while_move_queued
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS settings_during_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:29:20.592874 Application: 0 <- // Failed to write (Input/output error)
+  PASS transport_loss_during_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS controller_restart_refused_with_sibling
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_metadata
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_lifecycle
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS shared_connection
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_relative_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_rotator_relative_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_rotator_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:30:26.497647 Application: indigo_focuser_primaluce[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+  PASS sestosenso3_rotator_sync
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_rotator_needs_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_arco_stays_calibrated
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_abort
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+22:31:16.901006 Application: indigo_focuser_primaluce[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+  PASS rotator_sync
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_move_failure
+PrimaluceLab: all tests passed
+PrimaluceLab: 0 failing scenarios
