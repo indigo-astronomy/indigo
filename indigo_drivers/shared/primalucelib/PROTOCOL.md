@@ -115,15 +115,27 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
 | Environment | `{"req":{"get":{"EXT_T":"", "VIN_12V": "", "MOT1":{"NTC_T":""}}}}` | numeric strings; `EXT_T` `-127.00` means no external probe | HW |
 | USB voltage | `VIN_USB` in the full state | ESATTO only; a SESTO SENSO 2 refuses it | HW |
 | LEDs | `{"req":{"cmd":{"DIMLEDS":"off"}}}` | `off`, `low`, `middle`, `on`; read back as `DIMLEDS` | HW |
-| WiFi mode | `{"req":{"set":{"LANCFG":"sta"}}}` then `{"req":{"cmd":{"REBOOT":""}}}` | `ap` or `sta`; applied only after the restart | HW |
-| Access point | `{"req":{"cmd":{"AP_SET_STATUS":"on"}}}` | `on` / `off`; read back as `WIFIAP.STATUS` (HW) | SIM |
-| AP credentials | `{"req":{"set":{"WIFIAP":{"SSID":"..", "PWD":".."}}}}` | read back as `WIFIAP.{SSID,PWD}` (HW) | SIM |
-| Station credentials | `{"req":{"set":{"WIFISTA":{"SSID":"..", "PWD":".."}}}}` | read back as `WIFISTA.{SSID,PWD}` (HW) | SIM |
+| WiFi mode | `{"req":{"set":{"LANCFG":"sta"}}}` then `{"req":{"cmd":{"REBOOT":""}}}` | `ap` or `sta`, acknowledged under `LANCFG`; applied only after the restart | HW, HW (GIOTTO), HW (ALTO1) |
+| Access point | `{"req":{"cmd":{"AP_SET_STATUS":"on"}}}` | `on` / `off`, acknowledged under `AP_SET_STATUS`; read back as `WIFIAP.STATUS` | HW (GIOTTO), HW (ALTO1) |
+| AP credentials | `{"req":{"set":{"WIFIAP":{"SSID":"..", "PWD":".."}}}}` | each field acknowledged on its own; read back as `WIFIAP.{SSID,PWD}` | HW (ALTO1) |
+| Station credentials | `{"req":{"set":{"WIFISTA":{"SSID":"..", "PWD":".."}}}}` | each field acknowledged on its own; read back as `WIFISTA.{SSID,PWD}` | HW (GIOTTO), HW (ALTO1) |
 | Sub-model | `{"req":{"srv":{"GET_MODEL_SUBMODEL":""}}}` | `"Model = SESTOSENSO3, SubModel = SESTOSENSO3SC, ARCO = Not enabled"` | INDI |
 | Recovery delay | `{"req":{"set":{"RECOVER_DELAY":30}}}` | SESTO SENSO 3, -1 to 120 s | INDI |
 
-- **WiFi credentials:** the credentials are inserted into the JSON without escaping, like the
-  driver always did. An SSID or password that contains `"` or `\` produces an invalid request.
+- **WiFi values (HW (ALTO1)):** the controller stores whatever it is sent and acknowledges it: `LANCFG`
+  `xyz`, a 3 character access point password and empty station credentials were all `"done"` and read back.
+  `primalucelib_set_access_point_credentials()` and `primalucelib_set_station_credentials()` therefore
+  refuse an SSID longer than 32 characters (or an empty access point SSID), an access point password
+  outside 8 to 63 characters (WPA2), a station password longer than 63 and `"` or `\`, which the request
+  would carry unescaped, before anything is sent. `primalucelib_set_lan_config()` sends only `ap` or `sta`.
+- **WiFi modes:** `primalucelib_select_wifi()` serves the drivers' `X_WIFI` (OFF, AP, STA). OFF and AP are
+  the `ap` mode with the access point switched off or on; a change between `sta` and `ap` restarts the
+  controller. In station mode `WIFIAP.STATUS` reads `off` (HW (ALTO1)). Over HTTP the restart takes the
+  controller off the network the link uses, so OFF cannot follow a restart and fails with a reason.
+- **WiFi restart (HW (ALTO1)):** `REBOOT` is acknowledged, followed by the ESP32 boot log; the
+  controller answers `MODNAME` again about 2 s later. The calibration and the cover position are kept.
+  The access point reports `off` for about 4 s more and `on` from about 6 s after `REBOOT`, so a
+  reconnect within that time shows OFF.
 - **Before restarting:** a driver must not restart the controller while another logical device
   still shares the link. `indigo_focuser_primaluce` refuses the WiFi mode change while the
   rotator is connected.
@@ -135,7 +147,8 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
 
 Full-state keys used by the focuser driver (**HW**):
 - Identity and firmware: `MODNAME`, `SN`, `SWVERS.{SWAPP,SWWEB}`.
-- Network and LEDs: `LANCFG`, `WIFIAP.{SSID,PWD,STATUS}`, `WIFISTA.{SSID,PWD}`, `DIMLEDS`.
+- Network and LEDs: `LANCFG`, `WIFIAP.{SSID,PWD,STATUS}`, `WIFISTA.{SSID,PWD}`, `DIMLEDS`; the GIOTTO and
+  ALTO1 report the same network keys (HW (GIOTTO), HW (ALTO1)).
 - Environment: `EXT_T`, `VIN_12V`, `VIN_USB`.
 - Calibration flags: `CALRESTART.{MOT1,MOT2}`.
 - Focuser motor: `MOT1.{ABS_POS_STEP, ABS_POS, BKLASH, SPEED, STATUS.MST, NTC_T, ERROR, CAL_MINPOS, CAL_MAXPOS, FnRUN_*, HOLDCURR_STATUS}`.

@@ -7080,6 +7080,17 @@
 		E4CC06C39B76808F1E04A79B /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		8A86EACA36327F9958088950 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		ED71B1653FCDEF8BC4056523 /* 20261024164718-0e69-primalucelib-token-bounds.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024164718-0e69-primalucelib-token-bounds.json"; sourceTree = "<group>"; };
+		EED776CB9D3A972D9EFCFE9F /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		418068934F840C6B4DC2FB33 /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		DC9F8DD980377B793DE7067D /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		E4D7970BE0923AAC879B88FF /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		6AD57DD053F7B8C22CA16617 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		BA0D9EBC0711EFAA0E4665B5 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		4FFEA328D22A2EEF2DF57AAF /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		20DFF22287E3F990E03BAEA9 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		71F98E015A5111FA253CD026 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		54AAC1FA39536F7AE29712D9 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		41824F6FB160E8E9B51C3FE0 /* 20261024194838-6cb6-primaluce-panel-cover-wifi.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024194838-6cb6-primaluce-panel-cover-wifi.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16182,6 +16193,7 @@
 				5DC96D018A773C735777EEF2 /* 20261024161128-3861-giotto-request-versus-poll */,
 				76F606C28596F7B228663CDC /* 20261024163549-1b30-alto-request-versus-poll */,
 				5A45F89A98B9050496ED97D5 /* 20261024164718-0e69-primalucelib-token-bounds */,
+				799BB7DADDBDD0D4EB9A195D /* 20261024194838-6cb6-primaluce-panel-cover-wifi */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18458,6 +18470,7 @@
 				45B5D2DC2EB159498C4847BD /* 20261024161128-3861-giotto-request-versus-poll.json */,
 				F231AF989A68D78935FF0100 /* 20261024163549-1b30-alto-request-versus-poll.json */,
 				ED71B1653FCDEF8BC4056523 /* 20261024164718-0e69-primalucelib-token-bounds.json */,
+				41824F6FB160E8E9B51C3FE0 /* 20261024194838-6cb6-primaluce-panel-cover-wifi.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -19870,6 +19883,23 @@
 				8A86EACA36327F9958088950 /* verification.md */,
 			);
 			path = "20261024164718-0e69-primalucelib-token-bounds";
+			sourceTree = "<group>";
+		};
+		799BB7DADDBDD0D4EB9A195D /* 20261024194838-6cb6-primaluce-panel-cover-wifi */ = {
+			isa = PBXGroup;
+			children = (
+				EED776CB9D3A972D9EFCFE9F /* brief.md */,
+				418068934F840C6B4DC2FB33 /* handoff.md */,
+				DC9F8DD980377B793DE7067D /* plan.md */,
+				E4D7970BE0923AAC879B88FF /* process.json */,
+				6AD57DD053F7B8C22CA16617 /* quality-review.md */,
+				BA0D9EBC0711EFAA0E4665B5 /* security.md */,
+				4FFEA328D22A2EEF2DF57AAF /* specification.md */,
+				20DFF22287E3F990E03BAEA9 /* state.json */,
+				71F98E015A5111FA253CD026 /* test-plan.md */,
+				54AAC1FA39536F7AE29712D9 /* verification.md */,
+			);
+			path = "20261024194838-6cb6-primaluce-panel-cover-wifi";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

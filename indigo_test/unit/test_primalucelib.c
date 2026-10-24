@@ -685,6 +685,77 @@ cleanup:
 	stop_peer();
 }
 
+// The mode is written, and the controller restarted, only when it changes; over the serial line the call returns once the
+// controller answers again.
+static void lan_config_restarts_only_on_a_change(void) {
+	bool restarted = true;
+	CHECK(start_peer("{\"res\":{\"get\":{\"LANCFG\":\"ap\"}}}\n", "{\"res\":{\"get\":{\"LANCFG\":\"ap\"}}}\n", "{\"res\":{\"set\":{\"LANCFG\":\"done\"}}}\n", "{\"res\":{\"cmd\":{\"REBOOT\":\"done\"}}}\nets Jul 29 2019 12:21:46\nrst:0xc (SW_CPU_RESET)\n", "{\"res\":{\"get\":{\"MODNAME\":\"ALTO1\"}}}\n", "{\"res\":{\"get\":{\"ERROR\":\"busy\"}}}\n", NULL));
+	CHECK(primalucelib_select_lan_config(&test_link, PRIMALUCE_LAN_ACCESS_POINT, &restarted));
+	CHECK(!restarted);
+	CHECK(request_count() == 1);
+	CHECK(primalucelib_select_lan_config(&test_link, PRIMALUCE_LAN_STATION, &restarted));
+	CHECK(restarted);
+	CHECK(request_count() == 5);
+	CHECK(request_matches(1, "{\"req\":{\"get\":{\"LANCFG\":\"\"}}}"));
+	CHECK(request_matches(2, "{\"req\":{\"set\":{\"LANCFG\":\"sta\"}}}"));
+	CHECK(request_matches(3, "{\"req\":{\"cmd\":{\"REBOOT\":\"\"}}}"));
+	CHECK(request_matches(4, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}"));
+	// A mode that cannot be read is not written.
+	CHECK(!primalucelib_select_lan_config(&test_link, PRIMALUCE_LAN_STATION, &restarted));
+	CHECK(!restarted);
+	CHECK(request_count() == 6);
+cleanup:
+	stop_peer();
+}
+
+// Off and the access point are the access point mode with the access point switched off or on; leaving station mode
+// restarts the controller first.
+static void wifi_modes_select_the_lan_mode_first(void) {
+	bool restarted = true;
+	CHECK(start_peer("{\"res\":{\"get\":{\"LANCFG\":\"ap\"}}}\n", "{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"done\"}}}\n", "{\"res\":{\"get\":{\"LANCFG\":\"sta\"}}}\n", "{\"res\":{\"set\":{\"LANCFG\":\"done\"}}}\n", "{\"res\":{\"cmd\":{\"REBOOT\":\"done\"}}}\n", "{\"res\":{\"get\":{\"MODNAME\":\"GIOTTO\"}}}\n", "{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"done\"}}}\n", "{\"res\":{\"get\":{\"LANCFG\":\"ap\"}}}\n", "{\"res\":{\"set\":{\"LANCFG\":\"Error: invalid command\"}}}\n", NULL));
+	CHECK(primalucelib_select_wifi(&test_link, PRIMALUCE_WIFI_ACCESS_POINT, &restarted));
+	CHECK(!restarted);
+	CHECK(request_matches(1, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"on\"}}}"));
+	CHECK(primalucelib_select_wifi(&test_link, PRIMALUCE_WIFI_OFF, &restarted));
+	CHECK(restarted);
+	CHECK(request_count() == 7);
+	CHECK(request_matches(3, "{\"req\":{\"set\":{\"LANCFG\":\"ap\"}}}"));
+	CHECK(request_matches(4, "{\"req\":{\"cmd\":{\"REBOOT\":\"\"}}}"));
+	CHECK(request_matches(6, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}"));
+	// A refused mode fails with the controller's reason and restarts nothing.
+	CHECK(!primalucelib_select_wifi(&test_link, PRIMALUCE_WIFI_STATION, &restarted));
+	CHECK(!restarted);
+	CHECK(request_count() == 9);
+	CHECK(strstr(primalucelib_last_error(&test_link), "invalid command") != NULL);
+cleanup:
+	stop_peer();
+}
+
+// The controller stores any text as a credential, so what WiFi cannot use is refused with a reason and never sent.
+static void wifi_credentials_are_checked_before_sending(void) {
+	CHECK(start_peer("{\"res\":{\"set\":{\"WIFIAP\":{\"SSID\":\"done\",\"PWD\":\"done\"}}}}\n", "{\"res\":{\"set\":{\"WIFISTA\":{\"SSID\":\"done\",\"PWD\":\"done\"}}}}\n", NULL));
+	CHECK(!primalucelib_set_access_point_credentials(&test_link, "ALTO100490", "abc"));
+	CHECK(strstr(primalucelib_last_error(&test_link), "at least 8") != NULL);
+	CHECK(!primalucelib_set_access_point_credentials(&test_link, "", "primalucelab"));
+	CHECK(strstr(primalucelib_last_error(&test_link), "needs an SSID") != NULL);
+	CHECK(!primalucelib_set_access_point_credentials(&test_link, "ALTO100490", "1234567890123456789012345678901234567890123456789012345678901234"));
+	CHECK(strstr(primalucelib_last_error(&test_link), "more than 63") != NULL);
+	CHECK(!primalucelib_set_station_credentials(&test_link, "123456789012345678901234567890123", ""));
+	CHECK(strstr(primalucelib_last_error(&test_link), "more than 32") != NULL);
+	CHECK(!primalucelib_set_station_credentials(&test_link, "home\"net", "password"));
+	CHECK(strstr(primalucelib_last_error(&test_link), "cannot contain") != NULL);
+	CHECK(!primalucelib_set_station_credentials(&test_link, "home", "pass\\word"));
+	CHECK(request_count() == 0);
+	// The limits themselves are accepted: an 8 character access point password, an open network to join.
+	CHECK(primalucelib_set_access_point_credentials(&test_link, "12345678901234567890123456789012", "12345678"));
+	CHECK(primalucelib_set_station_credentials(&test_link, "Observatory", ""));
+	CHECK(request_count() == 2);
+	CHECK(request_matches(0, "{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"12345678901234567890123456789012\", \"PWD\":\"12345678\"}}}}"));
+	CHECK(request_matches(1, "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"Observatory\", \"PWD\":\"\"}}}}"));
+cleanup:
+	stop_peer();
+}
+
 // ----------------------------------------------------------------- commands known from INDI
 
 static void sestosenso3_extras(void) {
@@ -965,6 +1036,9 @@ int main(void) {
 		{ "cover commands", cover_commands },
 		{ "cover motion, presets and refusals", cover_motion_presets_and_refusals },
 		{ "lookups stay within a full token array", lookups_stay_within_a_full_token_array },
+		{ "LAN mode restarts only on a change", lan_config_restarts_only_on_a_change },
+		{ "WiFi modes select the LAN mode first", wifi_modes_select_the_lan_mode_first },
+		{ "WiFi credentials are checked before sending", wifi_credentials_are_checked_before_sending },
 		{ "models are recognized by prefix", models_are_recognized_by_prefix },
 		{ "HTTP URLs are split into host and port", http_urls_are_split_into_host_and_port },
 		{ "HTTP links open without contact", http_links_open_without_contact }

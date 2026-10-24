@@ -51,6 +51,7 @@ char *PRIMALUCE_REPLY_SUPPLY_VOLTAGE[] = { "res", "get", "VIN_12V", NULL };
 char *PRIMALUCE_REPLY_USB_VOLTAGE[] = { "res", "get", "VIN_USB", NULL };
 char *PRIMALUCE_REPLY_LEDS[] = { "res", "get", "DIMLEDS", NULL };
 char *PRIMALUCE_REPLY_LAN_CONFIG[] = { "res", "get", "LANCFG", NULL };
+char *PRIMALUCE_REPLY_LAN_CONFIG_ACK[] = { "res", "set", "LANCFG", NULL };
 char *PRIMALUCE_REPLY_ACCESS_POINT_STATUS[] = { "res", "get", "WIFIAP", "STATUS", NULL };
 char *PRIMALUCE_REPLY_ACCESS_POINT_SSID[] = { "res", "get", "WIFIAP", "SSID", NULL };
 char *PRIMALUCE_REPLY_ACCESS_POINT_PASSWORD[] = { "res", "get", "WIFIAP", "PWD", NULL };
@@ -553,7 +554,7 @@ char *primalucelib_get_lan_config(primalucelib_link *link) {
 }
 
 bool primalucelib_set_lan_config(primalucelib_link *link, const char *mode) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_LAN_CONFIG, mode);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_LAN_CONFIG, mode) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_LAN_CONFIG_ACK);
 }
 
 bool primalucelib_reboot(primalucelib_link *link) {
@@ -603,16 +604,71 @@ void primalucelib_end_restart(primalucelib_link *link) {
 	link->restarting = false;
 }
 
+bool primalucelib_select_lan_config(primalucelib_link *link, const char *mode, bool *restarted) {
+	char *current;
+	*restarted = false;
+	if ((current = primalucelib_get_lan_config(link)) == NULL) {
+		return false;
+	}
+	if (!strcmp(current, mode)) {
+		return true;
+	}
+	if (!primalucelib_set_lan_config(link, mode) || !primalucelib_reboot(link)) {
+		return false;
+	}
+	*restarted = true;
+	return primalucelib_is_http(link) || primalucelib_wait_for_restart(link);
+}
+
+bool primalucelib_select_wifi(primalucelib_link *link, primalucelib_wifi_mode mode, bool *restarted) {
+	if (!primalucelib_select_lan_config(link, mode == PRIMALUCE_WIFI_STATION ? PRIMALUCE_LAN_STATION : PRIMALUCE_LAN_ACCESS_POINT, restarted)) {
+		return false;
+	}
+	if (mode == PRIMALUCE_WIFI_STATION) {
+		return true;
+	}
+	if (*restarted && primalucelib_is_http(link)) {
+		if (mode == PRIMALUCE_WIFI_OFF) {
+			INDIGO_COPY_VALUE(link->last_error, "The controller restarts with its access point on, switch it off when connected again");
+			return false;
+		}
+		return true;
+	}
+	return primalucelib_set_access_point(link, mode == PRIMALUCE_WIFI_ACCESS_POINT);
+}
+
 bool primalucelib_set_access_point(primalucelib_link *link, bool on) {
 	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_ACCESS_POINT, on ? PRIMALUCE_ACCESS_POINT_ON : PRIMALUCE_ACCESS_POINT_OFF);
 }
 
+static bool primalucelib_check_credentials(primalucelib_link *link, const char *ssid, const char *password, bool access_point) {
+	const char *error = NULL;
+	size_t password_length = strlen(password);
+	if (strpbrk(ssid, "\"\\") != NULL || strpbrk(password, "\"\\") != NULL) {
+		error = "The SSID and the password cannot contain '\"' or '\\'";
+	} else if (strlen(ssid) > PRIMALUCE_WIFI_SSID_MAX_LENGTH) {
+		error = "The SSID has more than 32 characters";
+	} else if (access_point && *ssid == 0) {
+		error = "The access point needs an SSID";
+	} else if (password_length > PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH) {
+		error = "The password has more than 63 characters";
+	} else if (access_point && password_length < PRIMALUCE_WIFI_PASSWORD_MIN_LENGTH) {
+		error = "The access point password needs at least 8 characters";
+	}
+	if (error != NULL) {
+		INDIGO_DRIVER_ERROR(link->driver_name, "%s", error);
+		INDIGO_COPY_VALUE(link->last_error, error);
+		return false;
+	}
+	return true;
+}
+
 bool primalucelib_set_access_point_credentials(primalucelib_link *link, const char *ssid, const char *password) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_ACCESS_POINT_CREDENTIALS, ssid, password);
+	return primalucelib_check_credentials(link, ssid, password, true) && primalucelib_request(link, PRIMALUCE_REQUEST_SET_ACCESS_POINT_CREDENTIALS, ssid, password);
 }
 
 bool primalucelib_set_station_credentials(primalucelib_link *link, const char *ssid, const char *password) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_STATION_CREDENTIALS, ssid, password);
+	return primalucelib_check_credentials(link, ssid, password, false) && primalucelib_request(link, PRIMALUCE_REQUEST_SET_STATION_CREDENTIALS, ssid, password);
 }
 
 bool primalucelib_get_submodel(primalucelib_link *link, char *submodel, size_t size) {

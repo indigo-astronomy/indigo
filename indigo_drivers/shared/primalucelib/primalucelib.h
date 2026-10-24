@@ -79,6 +79,10 @@ extern "C" {
 // After REBOOT the controller prints a boot log on the serial line; it is polled this often, this far apart.
 #define PRIMALUCE_RESTART_POLLS                   20
 #define PRIMALUCE_RESTART_POLL_INTERVAL           0.5
+// WiFi credential limits of IEEE 802.11 and WPA2-Personal, see primalucelib_set_access_point_credentials().
+#define PRIMALUCE_WIFI_SSID_MAX_LENGTH            32
+#define PRIMALUCE_WIFI_PASSWORD_MIN_LENGTH        8
+#define PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH        63
 // A restarting controller is asked whether it is back with this read timeout (seconds).
 #define PRIMALUCE_RESTART_PROBE_TIMEOUT           0.3
 // Replies that answer an earlier request are dropped, this many at most, before a request fails.
@@ -389,6 +393,7 @@ extern char *PRIMALUCE_REPLY_SUPPLY_VOLTAGE[];
 extern char *PRIMALUCE_REPLY_USB_VOLTAGE[];
 extern char *PRIMALUCE_REPLY_LEDS[];
 extern char *PRIMALUCE_REPLY_LAN_CONFIG[];
+extern char *PRIMALUCE_REPLY_LAN_CONFIG_ACK[];
 extern char *PRIMALUCE_REPLY_ACCESS_POINT_STATUS[];
 extern char *PRIMALUCE_REPLY_ACCESS_POINT_SSID[];
 extern char *PRIMALUCE_REPLY_ACCESS_POINT_PASSWORD[];
@@ -573,7 +578,8 @@ extern double primalucelib_reply_usb_voltage(primalucelib_link *link);
 extern double primalucelib_reply_motor_temperature(primalucelib_link *link);
 extern bool primalucelib_set_leds(primalucelib_link *link, const char *mode);
 extern char *primalucelib_get_lan_config(primalucelib_link *link);
-// The new mode takes effect after primalucelib_reboot().
+// The new mode takes effect after primalucelib_reboot(). The controller acknowledges it with "done" (SESTO SENSO 2,
+// ALTO1), but stores any text without checking it.
 extern bool primalucelib_set_lan_config(primalucelib_link *link, const char *mode);
 extern bool primalucelib_reboot(primalucelib_link *link);
 // Waits for a restarted controller to answer MODNAME again over the serial line, dropping its boot log.
@@ -586,7 +592,28 @@ extern bool primalucelib_is_restarting(primalucelib_link *link);
 // the controller answers.
 extern bool primalucelib_probe_restart(primalucelib_link *link);
 extern void primalucelib_end_restart(primalucelib_link *link);
+// Selects PRIMALUCE_LAN_ACCESS_POINT or PRIMALUCE_LAN_STATION. A changed mode is written and the controller restarted,
+// because the firmware applies LANCFG only then; *restarted tells whether it was. Over the serial line the call waits
+// until the controller answers again; over HTTP it cannot, the controller leaves its current network.
+// The caller must not restart the controller while another logical device still shares the link.
+extern bool primalucelib_select_lan_config(primalucelib_link *link, const char *mode, bool *restarted);
+typedef enum {
+	// The access point mode with the access point switched off.
+	PRIMALUCE_WIFI_OFF,
+	PRIMALUCE_WIFI_ACCESS_POINT,
+	PRIMALUCE_WIFI_STATION
+} primalucelib_wifi_mode;
+// Selects the LAN mode with primalucelib_select_lan_config() and then switches the access point on or off. Over HTTP a
+// restart leaves no link to switch it with: the controller starts with its access point on, so OFF then fails with a
+// reason in primalucelib_last_error().
+extern bool primalucelib_select_wifi(primalucelib_link *link, primalucelib_wifi_mode mode, bool *restarted);
 extern bool primalucelib_set_access_point(primalucelib_link *link, bool on);
+// The controller stores any text as a credential (ALTO1 firmware 1.03.11 took a 3 character access point password),
+// so these refuse, with the reason in primalucelib_last_error() and before anything is sent:
+// - an SSID longer than PRIMALUCE_WIFI_SSID_MAX_LENGTH, or an empty access point SSID;
+// - an access point password outside PRIMALUCE_WIFI_PASSWORD_MIN_LENGTH to PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH (WPA2);
+// - a station password longer than PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH (an empty one joins an open network);
+// - '"' and '\', which the request would carry unescaped.
 extern bool primalucelib_set_access_point_credentials(primalucelib_link *link, const char *ssid, const char *password);
 extern bool primalucelib_set_station_credentials(primalucelib_link *link, const char *ssid, const char *password);
 // SESTO SENSO 3: "SESTOSENSO3SC", "SESTOSENSO3LS", ... from "Model = .., SubModel = .., ARCO = ..".
