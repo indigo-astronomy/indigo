@@ -26,7 +26,7 @@ driver usbv3 {
 	label = "USB_Focus v3 Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2017-2026 CloudMakers, s. r. o.";
-	version = 15;
+	version = 16;
 	serial {
 		pattern {
 			product = "SERIAL DEMO";
@@ -39,7 +39,7 @@ driver usbv3 {
 		char configuration[INDIGO_VALUE_SIZE];
 		bool moving;
 		bool abort;
-		int motion_polls;
+		int motion_polls, expected_position;
 		int position_digits;
 		// the settings the controller last confirmed, shown again when a write fails
 		int speed, max_position, compensation, threshold, stepmode;
@@ -252,7 +252,7 @@ driver usbv3 {
 				} else {
 					FOCUSER_POSITION_ITEM->number.value = position;
 					if (!PRIVATE_DATA->moving) {
-						FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->abort ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+						FOCUSER_POSITION_PROPERTY->state = PRIVATE_DATA->abort || position != PRIVATE_DATA->expected_position ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 					} else if (--PRIVATE_DATA->motion_polls <= 0) {
 						usbv3_quit(device);
 						PRIVATE_DATA->moving = false;
@@ -278,6 +278,9 @@ driver usbv3 {
 				PRIVATE_DATA->moving = false;
 				PRIVATE_DATA->poll_failed = PRIVATE_DATA->settling = false;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				// Reversed absolute motion changes the raw destination; compare with the issued travel.
+				PRIVATE_DATA->expected_position = (int)FOCUSER_POSITION_ITEM->number.value + steps;
+				PRIVATE_DATA->expected_position = (int)fmax(0, fmin(PRIVATE_DATA->max_position, PRIVATE_DATA->expected_position));
 				if (steps != 0) {
 					if (usbv3_command(device, "%c%05u", false, steps > 0 ? 'O' : 'I', abs(steps))) {
 						PRIVATE_DATA->moving = true;

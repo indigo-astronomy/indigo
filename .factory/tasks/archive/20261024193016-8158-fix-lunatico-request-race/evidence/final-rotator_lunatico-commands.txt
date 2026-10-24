@@ -1,0 +1,447 @@
+## unnamed-0.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+
+## unnamed-1.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step goto 0 2000 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step goto 0 2100 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+
+## unnamed-10.events
+!step stop 0#
+!step getpos 0#
+
+## unnamed-11.events
+!step setpos 0 3600#
+
+## unnamed-12.events
+!step goto 0 1350 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+
+## unnamed-13.events
+!step delswlimits 0#
+!step setpos 0 1800#
+
+## unnamed-14.events
+!step setswlimits 0 0 2700#
+!step setpos 0 900#
+
+## unnamed-15.events
+!step wiremode 0 2#
+
+## unnamed-16.events
+!step goto 0 2000 40#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+
+## unnamed-17.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step goto 0 2000 0#
+
+## unnamed-18.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step setpos 0 2700#
+!step getpos 0#
+
+## unnamed-19.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step stop 0#
+!step getpos 0#
+
+## unnamed-2.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step goto 0 2000 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+
+## unnamed-20.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step goto 0 2000 0#
+!step ismoving 0#
+
+## unnamed-21.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step setswlimits 0 0 2700#
+!step setpos 0 900#
+
+## unnamed-22.events
+!seletek version#
+!seletek version#
+
+## unnamed-23.events
+!seletek version#
+
+## unnamed-24.events
+!seletek version#
+
+## unnamed-25.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+
+## unnamed-26.events
+!step goto 1 1200 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+
+## unnamed-27.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step goto 1 1900 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+
+## unnamed-28.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step setpos 1 0#
+!step getpos 1#
+
+## unnamed-29.events
+!seletek version#
+!seletek version#
+!step delswlimits 1#
+!step movepow 1 1023#
+!step stoppow 1 0#
+!step model 1 0#
+!step halfstep 1 0#
+!step getpos 1#
+!step speedrangeus 1 10000 10000#
+!step wiremode 1 0#
+!step delswlimits 1#
+!read temps 0#
+!read temps 0#
+!step ismoving 1#
+!step getpos 1#
+!step getpos 1#
+!step goto 1 900 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+
+## unnamed-3.events
+!step goto 0 2000 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+
+## unnamed-30.events
+!write dig 2 4 0#
+!write dig 2 3 1#
+!write dig 2 2 0#
+!write dig 2 1 0#
+
+## unnamed-31.events
+!seletek version#
+!seletek version#
+!step delswlimits 0#
+!step movepow 0 1023#
+!step stoppow 0 0#
+!step model 0 0#
+!step halfstep 0 0#
+!step getpos 0#
+!step setpos 0 2024#
+!step speedrangeus 0 10000 10000#
+!step wiremode 0 0#
+!step delswlimits 0#
+!step ismoving 0#
+!step getpos 0#
+!step goto 0 2074 0#
+
+## unnamed-4.events
+!step goto 1 2000 0#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+!step ismoving 1#
+!step getpos 1#
+
+## unnamed-5.events
+!step goto 2 2000 0#
+!step ismoving 2#
+!step getpos 2#
+!step ismoving 2#
+!step getpos 2#
+!step ismoving 2#
+!step getpos 2#
+!step ismoving 2#
+!step getpos 2#
+
+## unnamed-6.events
+!step goto 0 900 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+!step ismoving 0#
+!step getpos 0#
+
+## unnamed-8.events
+!step setpos 0 2700#
+!step getpos 0#
+
+## unnamed-9.events
+!step stop 0#
+!step getpos 0#
+!step setpos 0 1800#
+!step getpos 0#
+!step goto 0 1900 0#

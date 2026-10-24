@@ -4,7 +4,7 @@
   "severity": "medium",
   "summary": "Several authored finalizers treat idle as arrival despite having measured position and retaining a different requested target: `focuser_mypro2/indigo_focuser_mypro2.driver:333-338`, `focuser_dsd:215-217`, `focuser_dmfc:277-278`, `focuser_fc3:223-224`, `focuser_asi:207-208`, `focuser_usbv3:254-255`, and shared Lunatico rotator `focuser_lunatico/shared/lunatico_shared.c:889`. For example, mypro2 target1000, measured500 and moving0 enters the unconditional OK branch; the caller cannot distinguish target arrival from premature device stop. Shared Lunatico affects the rotator interface exposed by both focuser_lunatico and rotator_lunatico. Alpaca absolute focuser is excluded from this finding: its canonical class contract in `system_alpaca/indigo_system_alpaca_private.h` explicitly defines completion by IsMoving rather than comparing positions. Its deliberate settling window and idle completion are consistent with that accepted contract. A proposed target-equality finding there is rejected; changing the contract requires a separate explicit product decision. Remediation: distinguish commanded vs external/aborted motion, compare measured position with commanded expected position using protocol-appropriate tolerance/backlash semantics, publish ALERT on stopped-short and retain requested target. Add one early-stop regression per affected driver rather than assuming all protocols are identical. Existing exact-target handling in Astroasis, FLI, EFA, FocusDreamPro, Askar and SteelDrive2 shows a local behavior-preserving pattern.",
   "evidence": "driver-b-review.md section B-05; exact current source paths and contract evidence in that section.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -12,8 +12,18 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-b-review.md",
       "revision": null
+    },
+    {
+      "id": "20261024183351-e8e1-fix-motion-image-alpaca",
+      "report": "findings.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024183351-e8e1-fix-motion-image-alpaca: verification.md (423/423 final recorded driver cases,17/17 RAW sanitizer; targeted shape/capacity/stopped-short checks), independent-review.md, quality-review.md and security.md. No hardware or whole-product certification; separate pre-existing Lunatico ownership race remains open under repair-task001.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-027"
 }

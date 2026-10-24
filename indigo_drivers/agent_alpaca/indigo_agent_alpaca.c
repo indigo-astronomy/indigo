@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x03000010
+#define DRIVER_VERSION 0x03000011
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -1211,7 +1211,10 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 								break;
 							}
 						}
-						if (cam_number == AGENT_CAMERA_BAYERPAT_PROPERTY->count) {
+						if (cam_number >= ALPACA_MAX_ITEMS) {
+							alpaca_device->ccd.bayer_matrix = NULL;
+							indigo_send_message(indigo_agent_alpaca_device, ALERT_PROPERTY, "Too many Alpaca cameras configured");
+						} else if (cam_number == AGENT_CAMERA_BAYERPAT_PROPERTY->count) {
 							indigo_debug("+++ Mapping camera %s to #%d", property->device, cam_number);
 							indigo_item *item = AGENT_CAMERA_BAYERPAT_PROPERTY->items + cam_number;
 							strcpy(item->label, property->device);
@@ -1221,6 +1224,8 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 							AGENT_CAMERA_BAYERPAT_PROPERTY->count ++;
 							indigo_define_property(indigo_agent_alpaca_device, AGENT_CAMERA_BAYERPAT_PROPERTY, NULL);
 							indigo_load_properties(indigo_agent_alpaca_device, false);
+						} else {
+							alpaca_device->ccd.bayer_matrix = AGENT_CAMERA_BAYERPAT_PROPERTY->items + cam_number;
 						}
 					}
 				}

@@ -95,6 +95,7 @@ static bool sim_glitched, sim_stop_refused, sim_goto_refused;
 // stall: a goto is acknowledged but the motor does not advance while it reports moving.
 static bool sim_stalled[LUNATICO_PORTS];
 static const char *sim_ready_file;
+static bool sim_poll_held;
 
 // A profile is a '+' separated set of flags, so one scenario can combine
 // independent device conditions, for example "armadillo+goto-error".
@@ -214,6 +215,27 @@ static bool lunatico_read_fault(void) {
 	return sim_has_moved && sim_flag("read-error");
 }
 
+// Hold one initial poll reply for deterministic bus/worker overlap tests. The
+// fixture handshake is local and bounded below the driver's reply timeout.
+static void lunatico_hold_poll(void) {
+	if (!sim_flag("hold-initial-poll") || sim_poll_held || sim_ready_file == NULL) {
+		return;
+	}
+	sim_poll_held = true;
+	char held[PATH_MAX], release[PATH_MAX];
+	snprintf(held, sizeof(held), "%s.held", sim_ready_file);
+	snprintf(release, sizeof(release), "%s.release", sim_ready_file);
+	FILE *file = fopen(held, "w");
+	if (file != NULL) {
+		fclose(file);
+	}
+	for (int i = 0; i < 200 && access(release, F_OK); i++) {
+		usleep(10000);
+	}
+	unlink(held);
+	unlink(release);
+}
+
 static void lunatico_step(const char *command, const char *verb, int port, int a, int b, int arguments) {
 	lunatico_port *target = sim_port + port;
 	if (!strcmp(verb, "getpos")) {
@@ -223,6 +245,12 @@ static void lunatico_step(const char *command, const char *verb, int port, int a
 			lunatico_reply_int(command, (int)lround(serial_motion_update(&target->motion)));
 		}
 	} else if (!strcmp(verb, "ismoving")) {
+		bool initial_poll = !sim_poll_held;
+		lunatico_hold_poll();
+		if (initial_poll && sim_flag("poll-position-shift")) {
+			// External movement during the held initial readback, without a driver command.
+			serial_motion_sync(&target->motion, serial_motion_update(&target->motion) + 100);
+		}
 		if (lunatico_read_fault()) {
 			lunatico_reply(command, "invalid");
 		} else {
@@ -240,6 +268,10 @@ static void lunatico_step(const char *command, const char *verb, int port, int a
 			sim_stalled[port] = true;
 			lunatico_reply_status(command, true);
 		} else {
+			if (sim_flag("early-stop") && !sim_has_moved) {
+				int current = (int)lround(serial_motion_update(&target->motion));
+				requested = current + (requested - current) / 2;
+			}
 			serial_motion_start(&target->motion, requested, target->speed);
 			sim_has_moved = true;
 			lunatico_reply_status(command, true);

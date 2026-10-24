@@ -1,0 +1,693 @@
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step goto 0 1900 0#
+<- !step goto 0 1900 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1851#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1900#
+-> !step goto 0 1500 0#
+<- !step goto 0 1500 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1849#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1799#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1749#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1698#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1648#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1598#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1547#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1500#
+  PASS held_poll_goto
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step setpos 0 0#
+<- !step setpos 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:0#
+-> !step goto 0 1500 0#
+<- !step goto 0 1500 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:51#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:101#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:152#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:202#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:252#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:302#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:353#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:403#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:453#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:504#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:554#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:605#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:655#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:705#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:755#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:806#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:856#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:907#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:957#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1007#
+integration/test_focuser_lunatico_simulator.c:908: assertion failed: wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE)
+-> !step stop 0#
+<- !step stop 0:0#
+  FAIL held_poll_sync
+Lunatico focuser: 1 test(s) failed
+FAIL: held_poll_sync (exit=1, signal=0)
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step goto 0 1700 0#
+<- !step goto 0 1700 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1749#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1700#
+-> !step goto 0 1500 0#
+<- !step goto 0 1500 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1649#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1599#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1548#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1500#
+  PASS held_poll_steps
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step goto 1 1900 0#
+<- !step goto 1 1900 0:0#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1051#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1101#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1152#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1202#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1252#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1303#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1353#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1403#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1453#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1504#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1554#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1604#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1654#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1705#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1755#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1805#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1856#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1900#
+-> !step goto 1 1500 0#
+<- !step goto 1 1500 0:0#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1849#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1799#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1749#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1698#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1648#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1597#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1547#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1500#
+  PASS held_poll_exp
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 2#
+<- !step delswlimits 2:0#
+-> !step movepow 2 1023#
+<- !step movepow 2 1023:0#
+-> !step stoppow 2 0#
+<- !step stoppow 2 0:0#
+-> !step model 2 0#
+<- !step model 2 0:0#
+-> !step halfstep 2 0#
+<- !step halfstep 2 0:0#
+-> !step getpos 2#
+<- !step getpos 2:1000#
+-> !step speedrangeus 2 10000 10000#
+<- !step speedrangeus 2 10000 10000:0#
+-> !step wiremode 2 0#
+<- !step wiremode 2 0:0#
+-> !step delswlimits 2#
+<- !step delswlimits 2:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 2#
+<- !step ismoving 2:0#
+-> !step getpos 2#
+<- !step getpos 2:1000#
+-> !step goto 2 1900 0#
+<- !step goto 2 1900 0:0#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1050#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1101#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1151#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1202#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1252#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1303#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1353#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1403#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1454#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1505#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1555#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1605#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1656#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1706#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1757#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1807#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1857#
+-> !step ismoving 2#
+<- !step ismoving 2:0#
+-> !step getpos 2#
+<- !step getpos 2:1900#
+-> !step goto 2 1500 0#
+<- !step goto 2 1500 0:0#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1849#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1799#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1748#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1698#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1647#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1597#
+-> !step ismoving 2#
+<- !step ismoving 2:1#
+-> !step getpos 2#
+<- !step getpos 2:1547#
+-> !step ismoving 2#
+<- !step ismoving 2:0#
+-> !step getpos 2#
+<- !step getpos 2:1500#
+  PASS held_poll_third
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step stop 0#
+<- !step stop 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step goto 0 2000 0#
+<- !step goto 0 2000 0:0#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1851#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1901#
+-> !step ismoving 0#
+<- !step ismoving 0:1#
+-> !step getpos 0#
+<- !step getpos 0:1952#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:2000#
+  PASS held_poll_abort
+Lunatico focuser: all tests passed
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step goto 0 1900 0#
+<- !step goto 0 1900 0:0#
+-> !step stop 0#
+<- !step stop 0:0#
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step goto 0 1900 0#' was sent 1 time(s) and should not have been
+integration/test_focuser_lunatico_simulator.c:951: assertion failed: lunatico_not_sent("!step goto 0 1900 0#")
+  FAIL held_poll_disconnect
+Lunatico focuser: 1 test(s) failed
+FAIL: held_poll_disconnect (exit=1, signal=0)
+Lunatico focuser: 2 failing scenarios

@@ -1,0 +1,63 @@
+request 0: expected '{"req":{"set":{"WIFIAP":{"SSID":"a\"\\\u0008\u000c\u000a\u000d\u0009\u0001\u001fé", "PWD":"a\"\\\u0008\u000c\u000a\u000d\u0009\u0001\u001fé"}}}}', got '{"req":{"set":{"WIFIAP":{"SSID":"a"\
+	é", "PWD":"a"\
+	é"}}}}'
+unit/test_primalucelib.c:213: assertion failed: request_matches(0, expected)
+request 0: expected '{"req":{"set":{"WIFIAP":{"SSID":"\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001", "PWD":"\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001\u0001"}}}}', got '{"req":{"set":{"WIFIAP":{"SSID":"", "PWD":""}}}}'
+unit/test_primalucelib.c:236: assertion failed: request_matches(0, expected)
+22:20:52.033752 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+22:20:52.034258 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: bad value
+22:20:52.034483 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: unknown key
+22:20:52.034688 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: again
+22:21:02.651124 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:21:02.861638 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:21:02.863340 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:21:02.864524 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:21:02.865053 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:21:03.780088 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid parameter
+22:21:03.781423 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid parameter
+22:21:03.886004 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: busy
+22:21:03.989470 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+22:21:04.306019 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: no ARCO
+22:21:05.225149 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: no panel
+22:21:05.327939 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:21:05.329467 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:21:05.331431 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: empty preset
+22:21:05.539304 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:21:05.540440 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:21:05.541429 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: empty preset
+22:21:05.542352 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:21:05.748537 Application: test_primalucelib[primalucelib_open:145]: Malformed URL 'http://'
+Running PrimaLuce Lab protocol library
+  FAIL WiFi credentials are escaped
+  FAIL WiFi credentials fit or send nothing
+  PASS golden requests match the original driver
+  PASS reply values are found by path
+  PASS reply keys require full names
+  PASS diagnostic lines are skipped
+  PASS refusals fail with their reason
+  PASS garbage is an answer but not a reply
+  PASS silence marks the link failed
+  PASS a duplicate reply is discarded
+  PASS a late reply is skipped
+  PASS SESTO SENSO 3 log line before LOGLEVEL
+  PASS only stale replies fail the request
+  PASS a restarting link refuses requests until probed
+  PASS debug text before a reply is skipped
+  PASS field errors refuse calibration requests
+  PASS moves return their acknowledgement
+  PASS focuser stop falls back to a decelerated stop
+  PASS settings need done
+  PASS stored positions guard their values
+  PASS positions and angles need their field
+  PASS environment needs the external probe field
+  PASS restart waits for the controller
+  PASS SESTO SENSO 3 extras
+  PASS flat panel commands
+  PASS flat panel state, presets and settings
+  PASS cover commands
+  PASS cover motion, presets and refusals
+  PASS lookups stay within a full token array
+  PASS models are recognized by prefix
+  PASS HTTP URLs are split into host and port
+  PASS HTTP links open without contact
+PrimaLuce Lab protocol library: 2 test(s) failed

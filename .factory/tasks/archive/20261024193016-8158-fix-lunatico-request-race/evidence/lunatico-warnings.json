@@ -1,0 +1,22 @@
+{
+  "baseline-focuser": {
+    "exit": 0,
+    "warnings": 0,
+    "errors": 0
+  },
+  "baseline-rotator": {
+    "exit": 0,
+    "warnings": 0,
+    "errors": 0
+  },
+  "candidate-focuser": {
+    "exit": 0,
+    "warnings": 0,
+    "errors": 0
+  },
+  "candidate-rotator": {
+    "exit": 0,
+    "warnings": 0,
+    "errors": 0
+  }
+}

@@ -485,8 +485,11 @@ static void compensation_recovers_without_losing_baseline(void) {
 	atomic_store(&fail_move, false);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_EQ_INT(moves + 2, atomic_load(&move_calls));
+	int target = atomic_load(&requested_position);
+	atomic_store(&position, target);
 	atomic_store(&motor, false);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, 0));
 	set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
 }
@@ -667,6 +670,25 @@ static void start_move(int target) {
 	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target);
 	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+}
+
+// An idle motor short of its commanded target fails and preserves the request.
+static void early_stop_keeps_requested_target(void) {
+	connect_device();
+	atomic_store(&position, 1000);
+	start_move(5000);
+	atomic_store(&position, 3000);
+	atomic_store(&motor, false);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(target_is(5000));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3000, 0));
+	ASSERT_TRUE(wait_polls(2));
+	ASSERT_TRUE(target_is(5000));
+	ASSERT_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	start_move(3300);
+	ASSERT_TRUE(finish_motion_at(3300));
+	disconnect_device();
 }
 
 // An abort while idle and a request with the item OFF are answered without a stop; a GOTO to the current position sends no move.
@@ -985,6 +1007,7 @@ int main(void) {
 		{ "abort overtakes a queued move", abort_overtakes_queued_move },
 		{ "poll in flight versus a request", poll_versus_request },
 		{ "hand controller motion", hand_controller_motion },
+		{ "early stop", early_stop_keeps_requested_target },
 		{ "stalled move", stalled_move },
 		{ "temperature readings", temperature_readings },
 		{ "settings during motion and refusals", settings_during_motion_and_refusals },

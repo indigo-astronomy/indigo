@@ -520,6 +520,7 @@ static void reverse_motion(void) {
 	// An absolute move is reversed the same way.
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(command_sent("O00300"));
+	SERIAL_CHECK_TRUE(position_is(900));
 cleanup:
 	driver_stop();
 }
@@ -1160,6 +1161,24 @@ cleanup:
 
 typedef struct { const char *name; void (*run)(void); const char *profile; } simulated_case;
 
+// The normal completion marker must not turn a stopped-short move into arrival.
+static void early_stop_keeps_requested_target(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(position_is(1000));
+	SERIAL_CHECK_TRUE(fault("O", "early-stop"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 5000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(cached_number_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME) == 3000 && position_target() == 5000);
+	int polls = commands("FPOSRO");
+	SERIAL_CHECK_TRUE(wait_for_commands("FPOSRO", polls + 2));
+	SERIAL_CHECK_TRUE(state_is(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE) && position_target() == 5000);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 3300, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(position_is(3300));
+cleanup:
+	driver_stop();
+}
+
 int main(void) {
 	const simulated_case cases[] = {
 		{ "metadata", metadata, "normal" },
@@ -1178,6 +1197,7 @@ int main(void) {
 		{ "abort_motion", abort_motion, "normal" },
 		{ "abort_while_idle", abort_while_idle, "normal" },
 		{ "overlap_rejected", overlap_rejected, "normal" },
+		{ "early_stop", early_stop_keeps_requested_target, "normal" },
 		{ "motion_readback_failure", motion_readback_failure, "normal" },
 		{ "truncated_reply_rejected", truncated_reply_rejected, "normal" },
 		{ "external_motion_observed", external_motion_observed, "external-motion" },

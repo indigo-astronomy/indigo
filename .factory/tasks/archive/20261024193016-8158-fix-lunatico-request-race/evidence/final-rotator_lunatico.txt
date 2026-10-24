@@ -1,0 +1,232 @@
++ make check-lib build/integration/test_rotator_lunatico_simulator build/integration/test_rotator_lunatico_udp_simulator
+make: `build/integration/test_rotator_lunatico_simulator' is up to date.
+make: `build/integration/test_rotator_lunatico_udp_simulator' is up to date.
++ ./build/integration/test_rotator_lunatico_simulator
+Running Lunatico rotator
+  PASS identity_and_inventory
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS early_stop
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS fractional_target
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS main_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS exp_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS third_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS goto_wraps
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS no_op_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS sync_without_moving
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS abort_motion
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS abort_while_idle
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS steps_per_revolution
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS limits
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS full_range_limits
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS limits_change_keeps_angle
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS direction
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS backlash
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:30.642130 Application: indigo_rotator_lunatico[lunatico_rotator_position:1030]: lunatico_goto_position(2000) failed
+  PASS goto_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:33.293279 Application: indigo_rotator_lunatico[lunatico_rotator_resync:972]: lunatico_sync_position() failed
+21:55:33.951579 Application: indigo_rotator_lunatico[lunatico_rotator_position:1042]: lunatico_sync_position(2700) failed
+  PASS sync_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:35.706223 Application: indigo_rotator_lunatico[lunatico_rotator_abort:1064]: lunatico_stop() failed
+  PASS stop_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:37.965066 Application: indigo_rotator_lunatico[lunatico_parse_value:93]: '!step ismoving 0#' -> '!step ismoving 0:invalid#' is not a valid reply
+21:55:37.967130 Application: indigo_rotator_lunatico[rotator_motion_finalizer:983]: lunatico_is_moving() failed
+  PASS read_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:39.118022 Application: indigo_rotator_lunatico[lunatico_configure_port:400]: lunatico_delete_limits() failed
+21:55:39.119104 Application: indigo_rotator_lunatico[lunatico_rotator_connect:1136]: lunatico_set_limits() failed
+21:55:39.728616 Application: indigo_rotator_lunatico[lunatico_rotator_limits:1098]: lunatico_set_limits() failed
+  PASS limits_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:40.673773 Application: indigo_rotator_lunatico[lunatico_claim_port:225]: No response or the Main port does not exist on this hardware
+  PASS wrong_model
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:49.665796 Application: indigo_rotator_lunatico[lunatico_vcommand:79]: '!seletek version#' -> no reply
+21:55:49.667241 Application: indigo_rotator_lunatico[lunatico_open:202]: '/dev/ttys003' does not answer as a Lunatico controller
+  PASS silent
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:55:55.485897 Application: indigo_rotator_lunatico[lunatico_parse_value:93]: '!seletek version#' -> 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is not a valid reply
+21:55:55.487259 Application: indigo_rotator_lunatico[lunatico_open:202]: '/dev/ttys003' does not answer as a Lunatico controller
+  PASS oversized
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS reconnect
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS exp_focuser
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_sync
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_steps
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS third_powerbox
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS disconnect_during_motion
+Lunatico rotator: all tests passed
+Lunatico rotator: 0 failing scenarios
++ ./build/integration/test_rotator_lunatico_udp_simulator
+Running Lunatico rotator
+  PASS identity_and_inventory
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS early_stop
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS fractional_target
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS main_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS exp_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS third_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS goto_wraps
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS no_op_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS sync_without_moving
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS abort_motion
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS abort_while_idle
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS steps_per_revolution
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS limits
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS full_range_limits
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS limits_change_keeps_angle
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS direction
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS backlash
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:09.910811 Application: indigo_rotator_lunatico[lunatico_rotator_position:1030]: lunatico_goto_position(2000) failed
+  PASS goto_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:12.651198 Application: indigo_rotator_lunatico[lunatico_rotator_resync:972]: lunatico_sync_position() failed
+21:58:13.366210 Application: indigo_rotator_lunatico[lunatico_rotator_position:1042]: lunatico_sync_position(2700) failed
+  PASS sync_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:15.319696 Application: indigo_rotator_lunatico[lunatico_rotator_abort:1064]: lunatico_stop() failed
+  PASS stop_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:17.781702 Application: indigo_rotator_lunatico[lunatico_parse_value:93]: '!step ismoving 0#' -> '!step ismoving 0:invalid#' is not a valid reply
+21:58:17.781898 Application: indigo_rotator_lunatico[rotator_motion_finalizer:983]: lunatico_is_moving() failed
+  PASS read_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:18.930725 Application: indigo_rotator_lunatico[lunatico_configure_port:400]: lunatico_delete_limits() failed
+21:58:19.038396 Application: indigo_rotator_lunatico[lunatico_rotator_connect:1136]: lunatico_set_limits() failed
+21:58:19.719645 Application: indigo_rotator_lunatico[lunatico_rotator_limits:1098]: lunatico_set_limits() failed
+  PASS limits_failure
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:20.670102 Application: indigo_rotator_lunatico[lunatico_claim_port:225]: No response or the Main port does not exist on this hardware
+  PASS wrong_model
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:29.644275 Application: indigo_rotator_lunatico[lunatico_vcommand:79]: '!seletek version#' -> no reply
+21:58:29.644572 Application: indigo_rotator_lunatico[lunatico_open:202]: 'lunatico://127.0.0.1:59315' does not answer as a Lunatico controller
+  PASS silent
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+21:58:35.449185 Application: indigo_rotator_lunatico[lunatico_parse_value:93]: '!seletek version#' -> 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' is not a valid reply
+21:58:35.449708 Application: indigo_rotator_lunatico[lunatico_open:202]: 'lunatico://127.0.0.1:55706' does not answer as a Lunatico controller
+  PASS oversized
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS reconnect
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS exp_focuser
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_sync
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS held_poll_focuser_steps
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS third_powerbox
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+  PASS disconnect_during_motion
+Lunatico rotator: all tests passed
+Lunatico rotator: 0 failing scenarios
+141 driver(s) written to /Users/polakovic/Development/indigo/TEST_SUMMARY.md
+
+rotator_lunatico: 64/64 OK
+recorded in indigo_drivers/rotator_lunatico/README.md:
+2026-10-24 21:54 3.0.0.20 mac arm64 simulator 64/64 OK

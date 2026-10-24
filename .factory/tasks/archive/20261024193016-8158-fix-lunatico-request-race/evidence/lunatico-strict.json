@@ -1,0 +1,48 @@
+{
+  "focuser": {
+    "command": [
+      "/usr/bin/clang",
+      "-fsyntax-only",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-arch",
+      "arm64",
+      "-arch",
+      "x86_64",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-Duint=unsigned",
+      "-D_GNU_SOURCE",
+      "-I/Users/polakovic/Development/indigo/indigo_libs",
+      "-I/Users/polakovic/Development/indigo/indigo_drivers",
+      "-I/Users/polakovic/Development/indigo/build/include",
+      "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.c"
+    ],
+    "exit": 0,
+    "output": ""
+  },
+  "rotator": {
+    "command": [
+      "/usr/bin/clang",
+      "-fsyntax-only",
+      "-Wall",
+      "-Wextra",
+      "-Werror",
+      "-arch",
+      "arm64",
+      "-arch",
+      "x86_64",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-Duint=unsigned",
+      "-D_GNU_SOURCE",
+      "-I/Users/polakovic/Development/indigo/indigo_libs",
+      "-I/Users/polakovic/Development/indigo/indigo_drivers",
+      "-I/Users/polakovic/Development/indigo/build/include",
+      "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.c"
+    ],
+    "exit": 0,
+    "output": ""
+  }
+}

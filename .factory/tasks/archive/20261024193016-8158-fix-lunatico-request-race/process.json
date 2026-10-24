@@ -1,0 +1,142 @@
+{
+  "version": 2,
+  "task": "20261024193016-8158-fix-lunatico-request-race",
+  "scope": [
+    "indigo_drivers/focuser_lunatico/*",
+    "indigo_drivers/rotator_lunatico/*",
+    "indigo_test/integration/lunatico_test_common.h",
+    "indigo_test/integration/test_focuser_lunatico_simulator.c",
+    "indigo_test/integration/test_rotator_lunatico_simulator.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/findings/active/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json",
+    ".factory/findings/archive/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json",
+    ".factory/completions/20261024193016-8158-fix-lunatico-request-race.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024193016-8158-fix-lunatico-request-race.json": [
+      "100644",
+      "blob",
+      "39e657df56c40bf78fa64359e70e3b81d9d30ae8"
+    ],
+    ".factory/findings/active/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json": null,
+    ".factory/findings/archive/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json": [
+      "100644",
+      "blob",
+      "7f99045e00f9cf747fb87dbdc91238acd308819f"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "18ddb18848460e883c0727c4c962dc5ba77fda43"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "346eae1887e978ec074ff13784fd11c8b45c702d"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "5fd128d7dcc1755c3ed7be1d9b28ce67a052fc61"
+    ],
+    "indigo_drivers/focuser_lunatico/README.md": [
+      "100644",
+      "blob",
+      "f9e0f6420afe044312a5cf3b8e312be1e06b033f"
+    ],
+    "indigo_drivers/focuser_lunatico/REFACTOR.md": [
+      "100644",
+      "blob",
+      "4e6ac7f6ee00cf79c7bd4b921c0ab6ce6b5ffda2"
+    ],
+    "indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/lunatico_simulator_common.h": [
+      "100644",
+      "blob",
+      "a4cae0beafc10b3eefe700879dd987c343d63654"
+    ],
+    "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.c": [
+      "100644",
+      "blob",
+      "2a7ced27c8492be1efe1fd16a0f05e7bb8acfec5"
+    ],
+    "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver": [
+      "100644",
+      "blob",
+      "2770ddc91c36dac4925d4190cd5bfd3b442f9e1c"
+    ],
+    "indigo_drivers/focuser_lunatico/shared/lunatico_shared.c": [
+      "100644",
+      "blob",
+      "31661c26fd0a2c79dab7639b0f4c85fb82625588"
+    ],
+    "indigo_drivers/focuser_lunatico/shared/lunatico_shared.h": [
+      "100644",
+      "blob",
+      "3633cdbf535bca6781add6c5967cad39b3993732"
+    ],
+    "indigo_drivers/rotator_lunatico/README.md": [
+      "100644",
+      "blob",
+      "0d662788fcba451231bf665d035b098c5ad118a2"
+    ],
+    "indigo_drivers/rotator_lunatico/REFACTOR.md": [
+      "100644",
+      "blob",
+      "72028fd7a192129e5914921fb04c655339b1dbe1"
+    ],
+    "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.c": [
+      "100644",
+      "blob",
+      "fa8a16568184f72d8c326ca09f186420a95d38ec"
+    ],
+    "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver": [
+      "100644",
+      "blob",
+      "b5099df15618041398e2726cacf88b08e0b95054"
+    ],
+    "indigo_test/integration/lunatico_test_common.h": [
+      "100644",
+      "blob",
+      "0c6f19e1462ea9d840e0096f8a6d3f46b921b31f"
+    ],
+    "indigo_test/integration/test_focuser_lunatico_simulator.c": [
+      "100644",
+      "blob",
+      "cea3b5e20def3cdfe32af66f6a10f3aea5729705"
+    ],
+    "indigo_test/integration/test_rotator_lunatico_simulator.c": [
+      "100644",
+      "blob",
+      "69ad1d71d781f4f5b641a2b568836b020957462b"
+    ]
+  }
+}

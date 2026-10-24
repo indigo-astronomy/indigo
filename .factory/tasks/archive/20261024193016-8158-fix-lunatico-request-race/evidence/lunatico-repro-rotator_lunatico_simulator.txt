@@ -1,0 +1,134 @@
+Running Lunatico rotator
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step goto 1 1900 0#' did not arrive
+integration/test_rotator_lunatico_simulator.c:549: assertion failed: lunatico_wait_for_command(command)
+  FAIL held_poll_focuser_goto
+Lunatico rotator: 1 test(s) failed
+FAIL: held_poll_focuser_goto (exit=1, signal=0)
+Running Lunatico rotator
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step setpos 1 1000#
+<- !step setpos 1 1000:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step setpos 1 0#' did not arrive
+integration/test_rotator_lunatico_simulator.c:549: assertion failed: lunatico_wait_for_command(command)
+  FAIL held_poll_focuser_sync
+Lunatico rotator: 1 test(s) failed
+FAIL: held_poll_focuser_sync (exit=1, signal=0)
+Running Lunatico rotator
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step goto 1 900 0#
+<- !step goto 1 900 0:0#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:949#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:900#
+  PASS held_poll_focuser_steps
+Lunatico rotator: all tests passed
+Lunatico rotator: 2 failing scenarios

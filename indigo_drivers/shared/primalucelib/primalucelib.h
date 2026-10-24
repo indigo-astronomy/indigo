@@ -612,8 +612,8 @@ extern bool primalucelib_set_access_point(primalucelib_link *link, bool on);
 // so these refuse, with the reason in primalucelib_last_error() and before anything is sent:
 // - an SSID longer than PRIMALUCE_WIFI_SSID_MAX_LENGTH, or an empty access point SSID;
 // - an access point password outside PRIMALUCE_WIFI_PASSWORD_MIN_LENGTH to PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH (WPA2);
-// - a station password longer than PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH (an empty one joins an open network);
-// - '"' and '\', which the request would carry unescaped.
+// - a station password longer than PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH (an empty one joins an open network).
+// Accepted credentials are sent JSON-escaped; the controller decodes '"' and '\' (GIOTTO firmware 1.03.09).
 extern bool primalucelib_set_access_point_credentials(primalucelib_link *link, const char *ssid, const char *password);
 extern bool primalucelib_set_station_credentials(primalucelib_link *link, const char *ssid, const char *password);
 // SESTO SENSO 3: "SESTOSENSO3SC", "SESTOSENSO3LS", ... from "Model = .., SubModel = .., ARCO = ..".

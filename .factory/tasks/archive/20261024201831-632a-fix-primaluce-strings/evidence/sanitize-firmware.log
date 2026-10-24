@@ -1,0 +1,10 @@
+Running PrimaluceLab
+  PASS long_application_firmware
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS long_web_firmware
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS long_combined_firmware
+PrimaluceLab: all tests passed
+PrimaluceLab: 0 failing scenarios

@@ -1,0 +1,29 @@
+{
+  "title": "Firmware version concatenation can overwrite the focuser INFO item",
+  "category": "security",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261024201831-632a-fix-primaluce-strings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Fixed by bounded firmware INFO formatting and JSON credential encoding, as applicable; version 42. Library 32/32 and recorded driver 76/76 pass, with sanitizer regressions passing. See repair task verification and independent scoped reviews.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-029; driver-fm-report.md alias FM-1; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024201831-632a-fix-primaluce-strings/verification.md; quality-review.md; security.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024121920-3bd2-repository-audit-029"
+}

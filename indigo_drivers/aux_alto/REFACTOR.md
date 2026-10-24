@@ -177,8 +177,9 @@ the WiFi configuration out. The cover reports the same network keys as the Prima
 - The mode change is refused while the cover moves or a calibration runs, because the restart would stop either;
   switching the access point alone is served during a move.
 - `X_WIFI_AP` and `X_WIFI_STA` write the credentials; the library refuses an SSID over 32 characters (or an empty access
-  point SSID), an access point password outside 8 to 63 characters, a station password over 63 and `"` or `\`, with the
-  reason as the message.
+  point SSID), an access point password outside 8 to 63 characters, and a station password over 63, with the reason as
+  the message. `"` and `\` are sent escaped (merged from `indigo_focuser_primaluce` 3.0.0.42); the GIOTTO firmware
+  decodes them.
 
 Hardware (requester's ALTO1, application firmware 1.03.11, over USB, 2026-10-24; raw probe and driver session):
 - `WIFISTA` and `WIFIAP` writes are acknowledged per field (`{"SSID":"done","PWD":"done"}`) and read back; `AP_SET_STATUS`

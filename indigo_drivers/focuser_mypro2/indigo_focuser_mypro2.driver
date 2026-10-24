@@ -27,7 +27,7 @@ driver mypro2 {
 	label = "myFocuserPro2 Focuser";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (C) 2020-2026 Rumen G. Bogdanovski";
-	version = 17;
+	version = 18;
 	serial {
 		configurable_speed = true;
 	}
@@ -335,7 +335,7 @@ driver mypro2 {
 					// a move the driver did not command ends where the controller stopped
 					FOCUSER_POSITION_ITEM->number.target = position;
 				}
-				mypro2_motion_state(device, INDIGO_OK_STATE);
+				mypro2_motion_state(device, PRIVATE_DATA->external_motion || position == PRIVATE_DATA->target_position ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
 			} else {
 				// progress keeps the BUSY state of the running move
 				FOCUSER_POSITION_ITEM->number.value = position;

@@ -109,6 +109,11 @@ typedef struct {
 INDIGO_EXTERN double indigo_stddev(double set[], const int count);
 INDIGO_EXTERN double indigo_rmse(double set[], const int count);
 
+/* Validate the complete header and pixel span for RAW image consumers using signed
+ * int offsets/metadata lengths. Accept MONO8/16 and RGB24/48 plus trailing metadata;
+ * reject nonpositive dimensions and frames or pixel spans exceeding INT_MAX. */
+INDIGO_EXTERN bool indigo_validate_raw_image(const void *image, long size);
+
 INDIGO_EXTERN bool indigo_is_bayered_image(indigo_raw_header *header, size_t data_length);
 INDIGO_EXTERN indigo_result indigo_equalize_bayer_channels(indigo_raw_type raw_type, void *data, const int width, const int height);
 

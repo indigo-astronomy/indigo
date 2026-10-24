@@ -1,0 +1,29 @@
+{
+  "id": "FND-000052",
+  "title": "focuser_primaluce sends WiFi SSIDs and passwords into the JSON request without escaping",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261022212521-61cf-primalucelib",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261024201831-632a-fix-primaluce-strings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Fixed by bounded firmware INFO formatting and JSON credential encoding, as applicable; version 42. Library 32/32 and recorded driver 76/76 pass, with sanitizer regressions passing. See repair task verification and independent scoped reviews.",
+  "evidence": "indigo_drivers/shared/primalucelib/primalucelib.c primalucelib_set_access_point_credentials, primalucelib_set_station_credentials; PROTOCOL.md 'WiFi credentials'",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024201831-632a-fix-primaluce-strings/verification.md; quality-review.md; security.md",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

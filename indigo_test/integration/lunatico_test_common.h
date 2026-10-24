@@ -28,6 +28,58 @@
 #ifndef LUNATICO_TEST_COMMON_H
 #define LUNATICO_TEST_COMMON_H
 
+static _Atomic(indigo_device *) lunatico_test_device;
+static atomic_bool lunatico_poll_complete;
+
+static indigo_result lunatico_test_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_result result = simulator_client_define_property(client, device, property, message);
+	if (context.driver_case != NULL && !strcmp(property->device, context.driver_case->device_name)) {
+		atomic_store(&lunatico_test_device, device);
+	}
+	return result;
+}
+
+static void lunatico_poll_barrier(indigo_device *device) {
+	atomic_store(&lunatico_poll_complete, true);
+}
+
+// Queue after observing the poll command: unchanged readbacks may be deduplicated by the bus.
+static bool lunatico_wait_for_poll_completion(void) {
+	indigo_device *device = atomic_load(&lunatico_test_device);
+	if (device == NULL || context.driver_case == NULL || strcmp(device->name, context.driver_case->device_name)) {
+		return false;
+	}
+	atomic_store(&lunatico_poll_complete, false);
+	indigo_execute_handler(device, lunatico_poll_barrier);
+	for (int i = 0; i < 100; i++) {
+		if (atomic_load(&lunatico_poll_complete)) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// Observe/release the simulator's bounded reply hold without using its serial link.
+static bool lunatico_wait_for_held_poll(void) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.held", aux_simulator.ready_file);
+	for (int i = 0; i < 200; i++) {
+		if (!access(path, F_OK)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static bool lunatico_release_poll(void) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s.release", aux_simulator.ready_file);
+	FILE *file = fopen(path, "w");
+	return file != NULL && fclose(file) == 0;
+}
+
 // Driver-specific property names. The pre-migration driver published one set of
 // LA_* names on both device classes; the migration renames them to the mandatory
 // X_ prefix and qualifies them by class, because the generator needs a distinct

@@ -1,0 +1,604 @@
+{
+  "version": 2,
+  "task": "20261024183351-e8e1-fix-motion-image-alpaca",
+  "scope": [
+    ".factory/completions/20261024183351-e8e1-fix-motion-image-alpaca.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-022.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-027.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-031.json",
+    ".factory/findings/active/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-022.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-027.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-031.json",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/agent_alpaca/README.md",
+    "indigo_drivers/agent_alpaca/REFACTOR.md",
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c",
+    "indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c",
+    "indigo_drivers/agent_imager/README.md",
+    "indigo_drivers/agent_imager/REFACTOR.md",
+    "indigo_drivers/agent_imager/indigo_agent_imager.c",
+    "indigo_drivers/focuser_asi/README.md",
+    "indigo_drivers/focuser_asi/REFACTOR.md",
+    "indigo_drivers/focuser_asi/indigo_focuser_asi.c",
+    "indigo_drivers/focuser_asi/indigo_focuser_asi.driver",
+    "indigo_drivers/focuser_dmfc/README.md",
+    "indigo_drivers/focuser_dmfc/REFACTOR.md",
+    "indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.c",
+    "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.c",
+    "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver",
+    "indigo_drivers/focuser_dsd/README.md",
+    "indigo_drivers/focuser_dsd/REFACTOR.md",
+    "indigo_drivers/focuser_dsd/indigo_focuser_dsd.c",
+    "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver",
+    "indigo_drivers/focuser_fc3/README.md",
+    "indigo_drivers/focuser_fc3/REFACTOR.md",
+    "indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c",
+    "indigo_drivers/focuser_fc3/indigo_focuser_fc3.c",
+    "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver",
+    "indigo_drivers/focuser_lunatico/README.md",
+    "indigo_drivers/focuser_lunatico/REFACTOR.md",
+    "indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/lunatico_simulator_common.h",
+    "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.c",
+    "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver",
+    "indigo_drivers/focuser_lunatico/shared/lunatico_shared.c",
+    "indigo_drivers/focuser_lunatico/shared/lunatico_shared.h",
+    "indigo_drivers/focuser_mypro2/README.md",
+    "indigo_drivers/focuser_mypro2/REFACTOR.md",
+    "indigo_drivers/focuser_mypro2/focuser_mypro2_simulator/focuser_mypro2_simulator.c",
+    "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.c",
+    "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver",
+    "indigo_drivers/focuser_usbv3/README.md",
+    "indigo_drivers/focuser_usbv3/REFACTOR.md",
+    "indigo_drivers/focuser_usbv3/focuser_usbv3_simulator/focuser_usbv3_simulator.c",
+    "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.c",
+    "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver",
+    "indigo_drivers/rotator_lunatico/README.md",
+    "indigo_drivers/rotator_lunatico/REFACTOR.md",
+    "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.c",
+    "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver",
+    "indigo_libs/indigo/indigo_raw_utils.h",
+    "indigo_libs/indigo_platesolver.c",
+    "indigo_libs/indigo_raw_utils.c",
+    "indigo_test/Makefile",
+    "indigo_test/integration/lunatico_test_common.h",
+    "indigo_test/integration/test_agent_alpaca_cache.c",
+    "indigo_test/integration/test_agent_alpaca_mapping.c",
+    "indigo_test/integration/test_agent_imager_numerics.py",
+    "indigo_test/integration/test_focuser_asi_sdk.c",
+    "indigo_test/integration/test_focuser_dmfc_simulator.c",
+    "indigo_test/integration/test_focuser_dsd_simulator.c",
+    "indigo_test/integration/test_focuser_fc3_simulator.c",
+    "indigo_test/integration/test_focuser_lunatico_simulator.c",
+    "indigo_test/integration/test_focuser_mypro2_simulator.c",
+    "indigo_test/integration/test_focuser_usbv3_simulator.c",
+    "indigo_test/integration/test_rotator_lunatico_simulator.c",
+    "indigo_test/unit/test_raw_image.c"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-raw-image-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "agent_alpaca"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "agent_imager"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "focuser_asi"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "focuser_dmfc"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "focuser_dsd"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "focuser_fc3"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "focuser_mypro2"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "focuser_usbv3"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "focuser_lunatico"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "/private/tmp/run_indigo_driver_locked.py",
+        "rotator_lunatico"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_alpaca",
+        "--no-record"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024183351-e8e1-fix-motion-image-alpaca.json": [
+      "100644",
+      "blob",
+      "0f38cb64dd90857150ac22f0d5619588e0364cbc"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-022.json": null,
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-027.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-031.json": null,
+    ".factory/findings/active/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json": [
+      "100644",
+      "blob",
+      "24ceb57c33edd7390777960238ca555f6b0a5d89"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-022.json": [
+      "100644",
+      "blob",
+      "a0b07d89e2a0819dbf9665beee274a10b333e1e5"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-027.json": [
+      "100644",
+      "blob",
+      "67da2689b3911e0ec7be419bfa36f50330143cb5"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-031.json": [
+      "100644",
+      "blob",
+      "561a86b91156283cfa49bed84a23120381b591e0"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "6cb5a0da965d9e9ef9def4a512de1c97dd5b51be"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "264fbd4ee14e39925dcbe22deda02060907583ce"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "2bf6fae5223a774b9f7bf75772dea27d4d54b7c8"
+    ],
+    "indigo_drivers/agent_alpaca/README.md": [
+      "100644",
+      "blob",
+      "64a9d464826321b45c5b74a3e96edac0f9069e13"
+    ],
+    "indigo_drivers/agent_alpaca/REFACTOR.md": [
+      "100644",
+      "blob",
+      "e68b0b36ba18477e13af978f524bff8d8d654e40"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": [
+      "100644",
+      "blob",
+      "dbb8873360afa7ce8b33675dec6ebb5071caf817"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_alpaca_ccd.c": [
+      "100644",
+      "blob",
+      "32c7e4806d1d6c2bdf1378b98961aa0ccd2b5ce9"
+    ],
+    "indigo_drivers/agent_imager/README.md": [
+      "100644",
+      "blob",
+      "c0b3e7fa77ce658bef4a6747085c92a23498ab54"
+    ],
+    "indigo_drivers/agent_imager/REFACTOR.md": [
+      "100644",
+      "blob",
+      "97b8a0fb39fbc964b477aef4e3effbbe4c604ef6"
+    ],
+    "indigo_drivers/agent_imager/indigo_agent_imager.c": [
+      "100644",
+      "blob",
+      "b1e3b18ff2835f26e5b31a0f5e3a76cf4fa3ec97"
+    ],
+    "indigo_drivers/focuser_asi/README.md": [
+      "100644",
+      "blob",
+      "5dcae26970606f776b629a68f38a944424500055"
+    ],
+    "indigo_drivers/focuser_asi/REFACTOR.md": [
+      "100644",
+      "blob",
+      "acf32bf6b04e10659808a35c7cafcc4816dd56f3"
+    ],
+    "indigo_drivers/focuser_asi/indigo_focuser_asi.c": [
+      "100644",
+      "blob",
+      "9e65494fae049624eb5d7ada2d484fcd8857e36f"
+    ],
+    "indigo_drivers/focuser_asi/indigo_focuser_asi.driver": [
+      "100644",
+      "blob",
+      "a92c82f44106764e004a331bd2d88195639544c1"
+    ],
+    "indigo_drivers/focuser_dmfc/README.md": [
+      "100644",
+      "blob",
+      "9af038239ad4078eef72b61ba8293ab865c17e00"
+    ],
+    "indigo_drivers/focuser_dmfc/REFACTOR.md": [
+      "100644",
+      "blob",
+      "e2c02265c97c2626a4cf9f7b8768ea53e2d48a24"
+    ],
+    "indigo_drivers/focuser_dmfc/focuser_dmfc_simulator/focuser_dmfc_simulator.c": [
+      "100644",
+      "blob",
+      "e72d6677d3ac52570634e5772d6213c18335183e"
+    ],
+    "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.c": [
+      "100644",
+      "blob",
+      "d4e16ce8b9543866562d0aa07257433fb6fba165"
+    ],
+    "indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.driver": [
+      "100644",
+      "blob",
+      "b485cb5394c8a4cee0182d3d350144f8be0c0582"
+    ],
+    "indigo_drivers/focuser_dsd/README.md": [
+      "100644",
+      "blob",
+      "9340c846025483e6c408ec42acadda23fed2e7f5"
+    ],
+    "indigo_drivers/focuser_dsd/REFACTOR.md": [
+      "100644",
+      "blob",
+      "7fb9b13076d77d0e334639f75e325ec14614aa0d"
+    ],
+    "indigo_drivers/focuser_dsd/indigo_focuser_dsd.c": [
+      "100644",
+      "blob",
+      "17cc46f5cb60da7327bd3cf36c0fff461e5c4b10"
+    ],
+    "indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver": [
+      "100644",
+      "blob",
+      "e2ba39fb4fbfb63205f402e1e985c5dc421f41ba"
+    ],
+    "indigo_drivers/focuser_fc3/README.md": [
+      "100644",
+      "blob",
+      "3d182d19dcaa2d77ec0e1e9174892d836ffb8bcf"
+    ],
+    "indigo_drivers/focuser_fc3/REFACTOR.md": [
+      "100644",
+      "blob",
+      "ffb2f8d75136a7a89fc9dae4ea4e562d43a25356"
+    ],
+    "indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c": [
+      "100644",
+      "blob",
+      "b3e075e2d0be3130c41657df0943820b53fa7161"
+    ],
+    "indigo_drivers/focuser_fc3/indigo_focuser_fc3.c": [
+      "100644",
+      "blob",
+      "21c96779be74f30251c5e0a15b3bd8d3923ebed1"
+    ],
+    "indigo_drivers/focuser_fc3/indigo_focuser_fc3.driver": [
+      "100644",
+      "blob",
+      "1ca31d0ebacefb11ddf4710f0e543e2f8c7f8a38"
+    ],
+    "indigo_drivers/focuser_lunatico/README.md": [
+      "100644",
+      "blob",
+      "c18f2949b982a6487f530a9a5f5ca7386c7e21d5"
+    ],
+    "indigo_drivers/focuser_lunatico/REFACTOR.md": [
+      "100644",
+      "blob",
+      "23e317fd6c32332655ab418ff367cb1969814920"
+    ],
+    "indigo_drivers/focuser_lunatico/focuser_lunatico_simulator/lunatico_simulator_common.h": [
+      "100644",
+      "blob",
+      "bde60b6dfe4f125eb97dfb5288748672d3c0722a"
+    ],
+    "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.c": [
+      "100644",
+      "blob",
+      "8f2f5a67e87ef9e861f6305e2fcf05579f631295"
+    ],
+    "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver": [
+      "100644",
+      "blob",
+      "50c05fd526a2c0876f93ad21d79365004dc14bc8"
+    ],
+    "indigo_drivers/focuser_lunatico/shared/lunatico_shared.c": [
+      "100644",
+      "blob",
+      "fcd43ecf3712e7a3e8b641379dcde587a1f843e3"
+    ],
+    "indigo_drivers/focuser_lunatico/shared/lunatico_shared.h": [
+      "100644",
+      "blob",
+      "501e3717ce96b343f29f7d15159a43b48efd84cd"
+    ],
+    "indigo_drivers/focuser_mypro2/README.md": [
+      "100644",
+      "blob",
+      "8c8705b71db0a4c1b65dcd95f071f7566c1457a1"
+    ],
+    "indigo_drivers/focuser_mypro2/REFACTOR.md": [
+      "100644",
+      "blob",
+      "f274b1f81437c16aeb35088284d3b9c159c0f041"
+    ],
+    "indigo_drivers/focuser_mypro2/focuser_mypro2_simulator/focuser_mypro2_simulator.c": [
+      "100644",
+      "blob",
+      "a0943312fe2ffc1683bd3d16f2d029a05a47c984"
+    ],
+    "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.c": [
+      "100644",
+      "blob",
+      "8367d450f573ff4adc501879929169e9836c6115"
+    ],
+    "indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver": [
+      "100644",
+      "blob",
+      "cea1d030553c43c98a0ece31f337db0690917cd6"
+    ],
+    "indigo_drivers/focuser_usbv3/README.md": [
+      "100644",
+      "blob",
+      "b8a4c536d4d8fdd5d45003f544a6277714cd865e"
+    ],
+    "indigo_drivers/focuser_usbv3/REFACTOR.md": [
+      "100644",
+      "blob",
+      "d480c153f58e392dd28d7b03d403b95809d344a9"
+    ],
+    "indigo_drivers/focuser_usbv3/focuser_usbv3_simulator/focuser_usbv3_simulator.c": [
+      "100644",
+      "blob",
+      "dee50e1e867f5dacd873198fbdf98a88408f314a"
+    ],
+    "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.c": [
+      "100644",
+      "blob",
+      "835706e64dc6c59542eddd7009674f96b841e84a"
+    ],
+    "indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.driver": [
+      "100644",
+      "blob",
+      "2bb0d50c1ffa7a19dd12a0d397a9fced25c71376"
+    ],
+    "indigo_drivers/rotator_lunatico/README.md": [
+      "100644",
+      "blob",
+      "80663a021cf3b0ae43014a514e070253bb243205"
+    ],
+    "indigo_drivers/rotator_lunatico/REFACTOR.md": [
+      "100644",
+      "blob",
+      "1fe12f0ac2777346fd1350bbb9706077a099a617"
+    ],
+    "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.c": [
+      "100644",
+      "blob",
+      "3ffa6d22f22c06e6fc037ca7db05cd70c84025a2"
+    ],
+    "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver": [
+      "100644",
+      "blob",
+      "fecce29fc52e39c61b37b3c0482530eea84cc414"
+    ],
+    "indigo_libs/indigo/indigo_raw_utils.h": [
+      "100644",
+      "blob",
+      "b382cc97fda4560d843a42d07776d4dc51f3d5c6"
+    ],
+    "indigo_libs/indigo_platesolver.c": [
+      "100644",
+      "blob",
+      "c032604b510e98ed206f63b159df8b592f326186"
+    ],
+    "indigo_libs/indigo_raw_utils.c": [
+      "100644",
+      "blob",
+      "f9f21e269f88bc0a4e1e6d4ce5cdaf50a1e58697"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "af19620761036ab1bf0ee21707870fbecd6dd2d3"
+    ],
+    "indigo_test/integration/lunatico_test_common.h": [
+      "100644",
+      "blob",
+      "58ababa50d4afbcf466e3c89439c9fcdee5f4175"
+    ],
+    "indigo_test/integration/test_agent_alpaca_cache.c": [
+      "100644",
+      "blob",
+      "d02ca746ff19066c168af88d3fa3d0fd7843c8b9"
+    ],
+    "indigo_test/integration/test_agent_alpaca_mapping.c": [
+      "100644",
+      "blob",
+      "b4677ec5ca19b0af7b4360da5b80a8bc02ad325c"
+    ],
+    "indigo_test/integration/test_agent_imager_numerics.py": [
+      "100644",
+      "blob",
+      "27d0261ec464ac629e035a773dc79ad06951cc24"
+    ],
+    "indigo_test/integration/test_focuser_asi_sdk.c": [
+      "100644",
+      "blob",
+      "8d38da8b7fb6d259d9325935cee6ff9c3a506ab2"
+    ],
+    "indigo_test/integration/test_focuser_dmfc_simulator.c": [
+      "100644",
+      "blob",
+      "daca6d2afc35330760131eef6bb761d70f882ef8"
+    ],
+    "indigo_test/integration/test_focuser_dsd_simulator.c": [
+      "100644",
+      "blob",
+      "b326f9a7e27ea02b90a70240535a630f54119615"
+    ],
+    "indigo_test/integration/test_focuser_fc3_simulator.c": [
+      "100644",
+      "blob",
+      "6652569bc756cd318531e030c1e0de8c5dec1a8b"
+    ],
+    "indigo_test/integration/test_focuser_lunatico_simulator.c": [
+      "100644",
+      "blob",
+      "82739f2cce2f240e3d8b61af9a93ed3bcbb8eda4"
+    ],
+    "indigo_test/integration/test_focuser_mypro2_simulator.c": [
+      "100644",
+      "blob",
+      "c97c190e9e4a37d9d3020416401843cf9e8adf44"
+    ],
+    "indigo_test/integration/test_focuser_usbv3_simulator.c": [
+      "100644",
+      "blob",
+      "afe1cc88a3f85c76295ec28a3983e0e6ecdc3f5e"
+    ],
+    "indigo_test/integration/test_rotator_lunatico_simulator.c": [
+      "100644",
+      "blob",
+      "b51820f3c893afce568503f24412ccd9d1d176e7"
+    ],
+    "indigo_test/unit/test_raw_image.c": [
+      "100644",
+      "blob",
+      "ede62f9dac6f14dfd415c5279620556d949c9b94"
+    ]
+  }
+}

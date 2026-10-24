@@ -1,0 +1,15 @@
+serial no_op_goto 0
+serial goto_failure 0
+serial fractional_target 0
+serial abort_motion 0
+udp no_op_goto 0
+serial early_stop 0
+udp goto_failure 0
+udp abort_motion 0
+udp fractional_target 0
+serial exp_focuser 0
+udp early_stop 0
+focuser single_read_failure 0
+focuser settings_during_motion 0
+focuser disconnect_during_motion 0
+udp exp_focuser 0

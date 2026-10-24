@@ -1,0 +1,192 @@
+Running Lunatico rotator
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step goto 1 1900 0#
+<- !step goto 1 1900 0:0#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1053#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1106#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1158#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1211#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1265#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1318#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1370#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1423#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1476#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1529#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1582#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1635#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1688#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1741#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1794#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1847#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:1900#
+  PASS held_poll_focuser_goto
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step setpos 1 0#
+<- !step setpos 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:0#
+  PASS held_poll_focuser_sync
+Lunatico rotator: all tests passed
+Running Lunatico rotator
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !step movepow 1 1023#
+<- !step movepow 1 1023:0#
+-> !step stoppow 1 0#
+<- !step stoppow 1 0:0#
+-> !step model 1 0#
+<- !step model 1 0:0#
+-> !step halfstep 1 0#
+<- !step halfstep 1 0:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step speedrangeus 1 10000 10000#
+<- !step speedrangeus 1 10000 10000:0#
+-> !step wiremode 1 0#
+<- !step wiremode 1 0:0#
+-> !step delswlimits 1#
+<- !step delswlimits 1:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step getpos 1#
+<- !step getpos 1:1000#
+-> !step goto 1 900 0#
+<- !step goto 1 900 0:0#
+-> !step ismoving 1#
+<- !step ismoving 1:1#
+-> !step getpos 1#
+<- !step getpos 1:947#
+-> !step ismoving 1#
+<- !step ismoving 1:0#
+-> !step getpos 1#
+<- !step getpos 1:900#
+  PASS held_poll_focuser_steps
+Lunatico rotator: all tests passed
+Lunatico rotator: 0 failing scenarios

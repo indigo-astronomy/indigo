@@ -2,7 +2,7 @@
   "title": "Alpaca camera mapping writes past its fixed property capacity",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024183351-e8e1-fix-motion-image-alpaca",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "Category security; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_drivers/agent_alpaca/indigo_agent_alpaca.c:1210-1217. Camera Bayer property is allocated for ALPACA_MAX_ITEMS128 at:1000. When all slots are occupied, cam_number equals count128 and the code still forms items+128, writes label/name and increments count. The earlier main device mapping check at:1186 rejects more than128 devices but does not leave the enclosing CCD branch, so it does not guard this independent array. Distinct camera names can also accumulate through discovery/session churn. This causes out-of-bounds heap writes and subsequent over-count property publication. Unlike existing FND-...-035 (core native registry >= bug), this is a separate Alpaca property mapping contract. Reject/omit a new Bayer entry at capacity before forming the item pointer; preserve existing camera mappings and ensure an unmapped camera has no invalid Bayer pointer. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-3). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-031; driver-fm-report.md alias FM-3; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024183351-e8e1-fix-motion-image-alpaca: verification.md (423/423 final recorded driver cases,17/17 RAW sanitizer; targeted shape/capacity/stopped-short checks), independent-review.md, quality-review.md and security.md. No hardware or whole-product certification; separate pre-existing Lunatico ownership race remains open under repair-task001.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-031"
 }

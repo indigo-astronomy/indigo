@@ -33,6 +33,7 @@
 #endif
 
 #include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_raw_utils.h>
 
 #include "indigo_alpaca_common.h"
 
@@ -1389,6 +1390,12 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		return;
 	}
 	pthread_mutex_lock(&entry->mutext);
+	if (!indigo_validate_raw_image(entry->content, entry->size)) {
+		pthread_mutex_unlock(&entry->mutext);
+		indigo_release_blob(entry);
+		write_imagearray_error(handle, client_transaction_id, server_transaction_id, indigo_alpaca_error_InvalidOperation);
+		return;
+	}
 	indigo_raw_header *header = (indigo_raw_header *)(entry->content);
 	int width = header->width;
 	int height = header->height;
@@ -1449,7 +1456,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		}
 		pthread_mutex_unlock(&entry->mutext);
 		indigo_release_blob(entry);
-		indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %ld\r\n\r\n", (long)sizeof(metadata) + count * element_size);
+		indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %lu\r\n\r\n", (unsigned long)sizeof(metadata) + (unsigned long)count * element_size);
 		handle->log_level = -abs(handle->log_level);
 		indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 		indigo_uni_write(handle, (const char *)buffer, count * element_size);

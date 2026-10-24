@@ -44,7 +44,7 @@
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 #define PEER_MAX_EXCHANGES 64
-#define PEER_REQUEST_SIZE  2048
+#define PEER_REQUEST_SIZE  8192
 // The peer does not answer this request at all.
 #define PEER_SILENT        NULL
 // Expanded by the peer to {"res":{"<verb of the request>":{}}}: an accepted request without acknowledgements.
@@ -201,6 +201,59 @@ static bool request_matches(int index, const char *format, ...) {
 }
 
 #define CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
+
+// Credentials are JSON string data, including bytes that could otherwise break request framing.
+static void wifi_credentials_are_escaped(void) {
+	CHECK(start_peer(NULL));
+	const char *value = "a\"\\\b\f\n\r\t\001\037é";
+	const char *encoded = "a\\\"\\\\\\u0008\\u000c\\u000a\\u000d\\u0009\\u0001\\u001fé";
+	char expected[8192];
+	CHECK(primalucelib_set_access_point_credentials(&test_link, value, value));
+	snprintf(expected, sizeof(expected), "{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", encoded, encoded);
+	CHECK(request_matches(0, expected));
+	CHECK(primalucelib_set_station_credentials(&test_link, value, value));
+	snprintf(expected, sizeof(expected), "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", encoded, encoded);
+	CHECK(request_matches(1, expected));
+	CHECK(primalucelib_set_station_credentials(&test_link, "", ""));
+	CHECK(request_matches(2, "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"\", \"PWD\":\"\"}}}}"));
+cleanup:
+	stop_peer();
+}
+
+// The longest credentials WiFi allows (an SSID of 32 and a password of 63 bytes) are sent whole even when every byte
+// needs the longest escape; longer ones are refused before anything is sent.
+static void wifi_credentials_fit_or_send_nothing(void) {
+	CHECK(start_peer(NULL));
+	char ssid[PRIMALUCE_WIFI_SSID_MAX_LENGTH + 1], password[PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH + 1];
+	char encoded_ssid[6 * sizeof(ssid)], encoded_password[6 * sizeof(password)];
+	char expected[8192];
+	memset(ssid, 1, sizeof(ssid) - 1);
+	ssid[sizeof(ssid) - 1] = 0;
+	memset(password, 1, sizeof(password) - 1);
+	password[sizeof(password) - 1] = 0;
+	for (size_t i = 0; i < sizeof(password) - 1; i++) {
+		memcpy(encoded_password + 6 * i, "\\u0001", 6);
+	}
+	encoded_password[6 * (sizeof(password) - 1)] = 0;
+	memcpy(encoded_ssid, encoded_password, 6 * (sizeof(ssid) - 1));
+	encoded_ssid[6 * (sizeof(ssid) - 1)] = 0;
+	CHECK(primalucelib_set_access_point_credentials(&test_link, ssid, password));
+	snprintf(expected, sizeof(expected), "{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", encoded_ssid, encoded_password);
+	CHECK(request_matches(0, expected));
+	CHECK(primalucelib_set_station_credentials(&test_link, ssid, password));
+	snprintf(expected, sizeof(expected), "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", encoded_ssid, encoded_password);
+	CHECK(request_matches(1, expected));
+	char oversized[8192];
+	memset(oversized, 1, sizeof(oversized) - 1);
+	oversized[sizeof(oversized) - 1] = 0;
+	CHECK(!primalucelib_set_access_point_credentials(&test_link, oversized, "ok"));
+	CHECK(!primalucelib_set_station_credentials(&test_link, "ok", oversized));
+	CHECK(primalucelib_set_station_credentials(&test_link, "after", "ok"));
+	CHECK(request_matches(2, "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"after\", \"PWD\":\"ok\"}}}}"));
+	CHECK(request_count() == 3);
+cleanup:
+	stop_peer();
+}
 
 // ----------------------------------------------------------------- golden requests
 
@@ -742,9 +795,6 @@ static void wifi_credentials_are_checked_before_sending(void) {
 	CHECK(strstr(primalucelib_last_error(&test_link), "more than 63") != NULL);
 	CHECK(!primalucelib_set_station_credentials(&test_link, "123456789012345678901234567890123", ""));
 	CHECK(strstr(primalucelib_last_error(&test_link), "more than 32") != NULL);
-	CHECK(!primalucelib_set_station_credentials(&test_link, "home\"net", "password"));
-	CHECK(strstr(primalucelib_last_error(&test_link), "cannot contain") != NULL);
-	CHECK(!primalucelib_set_station_credentials(&test_link, "home", "pass\\word"));
 	CHECK(request_count() == 0);
 	// The limits themselves are accepted: an 8 character access point password, an open network to join.
 	CHECK(primalucelib_set_access_point_credentials(&test_link, "12345678901234567890123456789012", "12345678"));
@@ -1009,6 +1059,8 @@ static void http_links_open_without_contact(void) {
 int main(void) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	const indigo_test_case tests[] = {
+		{ "WiFi credentials are escaped", wifi_credentials_are_escaped },
+		{ "WiFi credentials fit or send nothing", wifi_credentials_fit_or_send_nothing },
 		{ "golden requests match the original driver", golden_requests_match_the_original_driver },
 		{ "reply values are found by path", reply_values_are_found_by_path },
 		{ "reply keys require full names", reply_keys_require_full_names },

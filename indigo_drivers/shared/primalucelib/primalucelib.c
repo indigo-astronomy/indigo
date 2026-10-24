@@ -644,9 +644,7 @@ bool primalucelib_set_access_point(primalucelib_link *link, bool on) {
 static bool primalucelib_check_credentials(primalucelib_link *link, const char *ssid, const char *password, bool access_point) {
 	const char *error = NULL;
 	size_t password_length = strlen(password);
-	if (strpbrk(ssid, "\"\\") != NULL || strpbrk(password, "\"\\") != NULL) {
-		error = "The SSID and the password cannot contain '\"' or '\\'";
-	} else if (strlen(ssid) > PRIMALUCE_WIFI_SSID_MAX_LENGTH) {
+	if (strlen(ssid) > PRIMALUCE_WIFI_SSID_MAX_LENGTH) {
 		error = "The SSID has more than 32 characters";
 	} else if (access_point && *ssid == 0) {
 		error = "The access point needs an SSID";
@@ -663,12 +661,53 @@ static bool primalucelib_check_credentials(primalucelib_link *link, const char *
 	return true;
 }
 
+// Escape JSON string contents, leaving the surrounding quotes to the request template.
+static bool primalucelib_escape_string(const char *value, char *escaped, size_t size) {
+	static const char hex[] = "0123456789abcdef";
+	size_t used = 0;
+	if (value == NULL) {
+		return false;
+	}
+	for (const unsigned char *next = (const unsigned char *)value; *next; next++) {
+		size_t count = *next < 0x20 ? 6 : (*next == '"' || *next == '\\' ? 2 : 1);
+		if (count >= size - used) {
+			return false;
+		}
+		if (*next < 0x20) {
+			escaped[used++] = '\\';
+			escaped[used++] = 'u';
+			escaped[used++] = '0';
+			escaped[used++] = '0';
+			escaped[used++] = hex[*next >> 4];
+			escaped[used++] = hex[*next & 15];
+		} else {
+			if (count == 2) {
+				escaped[used++] = '\\';
+			}
+			escaped[used++] = *next;
+		}
+	}
+	escaped[used] = 0;
+	return true;
+}
+
+static bool primalucelib_set_credentials(primalucelib_link *link, const char *format, const char *ssid, const char *password) {
+	// Reserve room for both JSON strings and the fixed request envelope before transmission.
+	char escaped_ssid[6 * INDIGO_VALUE_SIZE];
+	char escaped_password[6 * INDIGO_VALUE_SIZE];
+	if (!primalucelib_escape_string(ssid, escaped_ssid, sizeof(escaped_ssid)) || !primalucelib_escape_string(password, escaped_password, sizeof(escaped_password)) || strlen(escaped_ssid) + strlen(escaped_password) + strlen(format) - 4 >= PRIMALUCE_MAX_RESPONSE_SIZE) {
+		INDIGO_COPY_VALUE(link->last_error, "WiFi credentials exceed the JSON request capacity");
+		return false;
+	}
+	return primalucelib_request(link, format, escaped_ssid, escaped_password);
+}
+
 bool primalucelib_set_access_point_credentials(primalucelib_link *link, const char *ssid, const char *password) {
-	return primalucelib_check_credentials(link, ssid, password, true) && primalucelib_request(link, PRIMALUCE_REQUEST_SET_ACCESS_POINT_CREDENTIALS, ssid, password);
+	return primalucelib_check_credentials(link, ssid, password, true) && primalucelib_set_credentials(link, PRIMALUCE_REQUEST_SET_ACCESS_POINT_CREDENTIALS, ssid, password);
 }
 
 bool primalucelib_set_station_credentials(primalucelib_link *link, const char *ssid, const char *password) {
-	return primalucelib_check_credentials(link, ssid, password, false) && primalucelib_request(link, PRIMALUCE_REQUEST_SET_STATION_CREDENTIALS, ssid, password);
+	return primalucelib_check_credentials(link, ssid, password, false) && primalucelib_set_credentials(link, PRIMALUCE_REQUEST_SET_STATION_CREDENTIALS, ssid, password);
 }
 
 bool primalucelib_get_submodel(primalucelib_link *link, char *submodel, size_t size) {

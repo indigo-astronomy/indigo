@@ -1,0 +1,43 @@
+Running Lunatico focuser
+-> !seletek version#
+<- !seletek version:3529#
+-> !seletek version#
+<- !seletek version:3529#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !step movepow 0 1023#
+<- !step movepow 0 1023:0#
+-> !step stoppow 0 0#
+<- !step stoppow 0 0:0#
+-> !step model 0 0#
+<- !step model 0 0:0#
+-> !step halfstep 0 0#
+<- !step halfstep 0 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1800#
+-> !step speedrangeus 0 10000 10000#
+<- !step speedrangeus 0 10000 10000:0#
+-> !step wiremode 0 0#
+<- !step wiremode 0 0:0#
+-> !step delswlimits 0#
+<- !step delswlimits 0:0#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !step ismoving 0#
+<- !step ismoving 0:0#
+-> !step getpos 0#
+<- !step getpos 0:1900#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+-> !read temps 0#
+<- !read temps 0:511#
+command '!step goto 0 1800 0#' did not arrive
+integration/test_focuser_lunatico_simulator.c:942: assertion failed: lunatico_wait_for_command("!step goto 0 1800 0#")
+  FAIL held_poll_return
+Lunatico focuser: 1 test(s) failed
+FAIL: held_poll_return (exit=1, signal=0)
+Lunatico focuser: 1 failing scenarios

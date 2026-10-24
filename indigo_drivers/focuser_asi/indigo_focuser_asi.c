@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000028
+#define DRIVER_VERSION       0x03000029
 #define DRIVER_NAME          "indigo_focuser_asi"
 #define DRIVER_LABEL         "ZWO ASI Focuser"
 #define FOCUSER_DEVICE_NAME  "%s"
@@ -227,7 +227,7 @@ static void focuser_move_finalizer(indigo_device *device) {
 	PRIVATE_DATA->current_position = PRIVATE_DATA->last_polled = position;
 	FOCUSER_POSITION_ITEM->number.value = position;
 	if (!moving && !moving_hc) {
-		focuser_finish_motion(device, PRIVATE_DATA->aborted ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
+		focuser_finish_motion(device, PRIVATE_DATA->aborted || (!PRIVATE_DATA->external && position != PRIVATE_DATA->target_position) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, NULL);
 		return;
 	}
 	if (PRIVATE_DATA->stalled_polls >= ASI_STALL_POLLS) {

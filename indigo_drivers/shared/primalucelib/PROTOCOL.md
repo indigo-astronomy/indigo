@@ -122,12 +122,19 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
 | Sub-model | `{"req":{"srv":{"GET_MODEL_SUBMODEL":""}}}` | `"Model = SESTOSENSO3, SubModel = SESTOSENSO3SC, ARCO = Not enabled"` | INDI |
 | Recovery delay | `{"req":{"set":{"RECOVER_DELAY":30}}}` | SESTO SENSO 3, -1 to 120 s | INDI |
 
+- **WiFi credentials:** SSID and password values are JSON escaped before insertion: quotes and
+  backslashes are escaped, control bytes use `\u00XX`, and other bytes (including UTF-8) are preserved.
+  Both setters support full INDIGO text items even at maximum escaping expansion; larger library
+  inputs that exceed the encoding buffers or complete request capacity fail without sending a partial request.
+  The controller decodes the escapes: `Home \"net\"` and `back\\slash` were stored and read back as sent,
+  still escaped in the reply (HW (GIOTTO)); the library does not decode escapes in replies, so such a value
+  reads back with its backslashes.
 - **WiFi values (HW (ALTO1)):** the controller stores whatever it is sent and acknowledges it: `LANCFG`
   `xyz`, a 3 character access point password and empty station credentials were all `"done"` and read back.
   `primalucelib_set_access_point_credentials()` and `primalucelib_set_station_credentials()` therefore
   refuse an SSID longer than 32 characters (or an empty access point SSID), an access point password
-  outside 8 to 63 characters (WPA2), a station password longer than 63 and `"` or `\`, which the request
-  would carry unescaped, before anything is sent. `primalucelib_set_lan_config()` sends only `ap` or `sta`.
+  outside 8 to 63 characters (WPA2) and a station password longer than 63 before anything is sent.
+  `primalucelib_set_lan_config()` sends only `ap` or `sta`.
 - **WiFi modes:** `primalucelib_select_wifi()` serves the drivers' `X_WIFI` (OFF, AP, STA). OFF and AP are
   the `ap` mode with the access point switched off or on; a change between `sta` and `ap` restarts the
   controller. In station mode `WIFIAP.STATUS` reads `off` (HW (ALTO1)). Over HTTP the restart takes the

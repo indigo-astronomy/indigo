@@ -1,0 +1,19 @@
+# Current delivery assignment
+
+Owner now authorizes master integration and origin push of c5193c103. Fresh origin/master1a0252d5e required synchronization, with one metadata conflict resolved preserving both sides; independent integration review and combined checks pass. Additional merge commit is justified by target advancement and preserves original task commit. Next: commit refreshed content evidence, verify merged candidate, fetch target, fast-forward master, push origin and delete only this completed task branch after confirmed publication. See integration.md. No new task/completion record.
+
+# Final handoff
+
+Task20261024183351-e8e1-fix-motion-image-alpaca. Current assignment: coordinator, complete retained-result commit and committed-candidate checks. Implementation, acceptance and independent source/test/documentation/security reviews pass. Requested findings are archived fixed; task001 remains open. Integration/publication/branch cleanup remain pending owner authorization; no merge/push performed. Branch task/20261024183351-e8e1-fix-motion-image-alpaca, local master/origin-master base463eb538daf440fa0f459b53a5f02fa949e244ed unchanged.
+
+Scope: three requested finding repairs,10 affected exported driver versions, shared RAW/preview consumers, scoped test fixtures/simulators, registrations and maintained status/test docs. Parent is sole shared-state writer. Isolated motion and RAW writers released patches from detached temporary checkouts; parent imported/reinspected them. Independent same-host reviewer inspected actual source/tests/docs. No generator implementation/public property/dependency change. Off-limits drivers and shell_compliance excluded.
+
+Roles: coordinator→analyst/planner/test-designer→developer (three separated scopes)→verifier→documenter→independent quality/security review→coordinator. Exact acceptance/retest evidence is verification.md; source observations/reinspection are independent-review.md and quality-review.md; security boundaries are security.md. No hardware, Linux/Windows, native32-bit, ConformU or full repository certification is claimed.
+
+Assessment: high complexity due asynchronous command ownership, protocol-specific endpoints and image arithmetic; medium consequence risk, strong tier recommended. Retained existing Codex desktop/GPT-6-family host/provider; exact model/effort and cost unavailable, no owner budget ceiling supplied, no provider switch/extra charges. Shell/files/local Git and same-host delegation available; Git metadata and loopback test sockets required sandbox escalations. One writer per checkout; no external data upload.
+
+Retries/reassessment: ASI full test revealed obsolete fake arrival; helper correction then exposed deleted automatic-mode STEPS. After two unsuccessful attempts, separate writer/reviewer rechecked the contract and approved explicit measured endpoint plus original POSITION assertions; dependent prefix and full suite pass. Lunatico full tests exposed added rotator target overwrite (removed) and existing focuser initialization race (task001). A proposed publication barrier failed because unchanged readbacks are deduplicated; queue-contract reinspection replaced it with a test-only marker.15 focused checks and complete final suites pass. No assertions weakened or gates waived.
+
+Requested027/022/031 are verified and archived fixed; pre-existing functional task001 remains open/nonblocking with a concrete next assignment in findings.md. Maintenance was9 uncovered tasks at startup and is10 at closure, still not due; full-audit checkpoint is unchanged. Provenance remains pinned with no upgrade assignment.
+
+Completed execution/evidence is archived. Next: capture reviewed content identities and make one outcome commit. Run committed-candidate structural/process checks and report SHA externally. Main delivery/cleanup require separate authorization; preserve unmerged task branch and unrelated existing owner branches.

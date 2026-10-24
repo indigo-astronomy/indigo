@@ -211,8 +211,9 @@ the same names:
   answers again. Over HTTP the driver says that the panel leaves its network. Read from the full state at connect.
 - After a restart the light comes back as `LIGHT_ATPWON` selects; the poll publishes it.
 - `X_WIFI_AP` and `X_WIFI_STA` write the credentials; the library refuses an SSID over 32 characters (or an empty access
-  point SSID), an access point password outside 8 to 63 characters, a station password over 63 and `"` or `\`, with the
-  reason as the message.
+  point SSID), an access point password outside 8 to 63 characters, and a station password over 63, with the reason as
+  the message. `"` and `\` are sent escaped (merged from `indigo_focuser_primaluce` 3.0.0.42); the GIOTTO firmware
+  decodes them.
 
 Hardware (requester's GIOTTO, application firmware 1.03.09, over USB, 2026-10-24; driver session through
 `indigo_prop_tool`): the connect values matched the panel (`ap`, access point on, `GIOTTO12000415`); a 3 character

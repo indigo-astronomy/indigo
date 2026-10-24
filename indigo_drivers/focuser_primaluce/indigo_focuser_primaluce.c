@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002A
+#define DRIVER_VERSION       0x0300002B
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -981,8 +981,8 @@ static void focuser_connection_handler(indigo_device *device) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
 					if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_WEB_FIRMWARE))) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWWEB: %s", text);
-						strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
-						strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+						size_t used = strlen(INFO_DEVICE_FW_REVISION_ITEM->text.value);
+						snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value + used, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value) - used, " / %s", text);
 					}
 				}
 				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_SERIAL_NUMBER))) {

@@ -73,4 +73,4 @@ Once the process is complete, the focuser will automatically return to its initi
 ## Testing
 
 - 2026-09-24 12:56 3.0.0.61 linux x64 simulator 53/53 OK
-- 2026-10-24 18:45 3.0.0.65 mac arm64 simulator 61/61 OK
+- 2026-10-24 20:43 3.0.0.66 mac arm64 simulator 63/63 OK

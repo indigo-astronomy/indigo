@@ -1,0 +1,57 @@
+22:34:24.843304 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+22:34:24.845469 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: bad value
+22:34:24.846140 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: unknown key
+22:34:24.846872 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: again
+22:34:35.467857 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:34:35.675219 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:34:35.676235 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:34:35.676937 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:34:35.677607 Application: test_primalucelib[primalucelib_vrequest:323]: Dropped a reply that answers another request
+22:34:36.595524 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid parameter
+22:34:36.596950 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid parameter
+22:34:36.702430 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: busy
+22:34:36.806511 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: SYS: Invalid command
+22:34:37.118850 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: no ARCO
+22:34:38.042661 Application: test_primalucelib[primalucelib_vrequest:341]: Request rejected: no panel
+22:34:38.146862 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:34:38.148453 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:34:38.150190 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: empty preset
+22:34:38.363582 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:34:38.365062 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:34:38.366852 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: empty preset
+22:34:38.367939 Application: test_primalucelib[primalucelib_reply_is_acknowledged:451]: Request refused: Error: invalid command
+22:34:38.576787 Application: test_primalucelib[primalucelib_open:145]: Malformed URL 'http://'
+Running PrimaLuce Lab protocol library
+  PASS WiFi credentials are escaped
+  PASS WiFi credentials fit or send nothing
+  PASS golden requests match the original driver
+  PASS reply values are found by path
+  PASS reply keys require full names
+  PASS diagnostic lines are skipped
+  PASS refusals fail with their reason
+  PASS garbage is an answer but not a reply
+  PASS silence marks the link failed
+  PASS a duplicate reply is discarded
+  PASS a late reply is skipped
+  PASS SESTO SENSO 3 log line before LOGLEVEL
+  PASS only stale replies fail the request
+  PASS a restarting link refuses requests until probed
+  PASS debug text before a reply is skipped
+  PASS field errors refuse calibration requests
+  PASS moves return their acknowledgement
+  PASS focuser stop falls back to a decelerated stop
+  PASS settings need done
+  PASS stored positions guard their values
+  PASS positions and angles need their field
+  PASS environment needs the external probe field
+  PASS restart waits for the controller
+  PASS SESTO SENSO 3 extras
+  PASS flat panel commands
+  PASS flat panel state, presets and settings
+  PASS cover commands
+  PASS cover motion, presets and refusals
+  PASS lookups stay within a full token array
+  PASS models are recognized by prefix
+  PASS HTTP URLs are split into host and port
+  PASS HTTP links open without contact
+PrimaLuce Lab protocol library: all tests passed

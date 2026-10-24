@@ -269,6 +269,11 @@ static void dispatch_command(int handle, const char *command) {
 			// a hand controller starts a move the driver did not command
 			serial_motion_start(&motion, parse_value(argument), steps_per_second());
 		}
+		if (!strcmp(fault, "early-stop")) {
+			int current = (int)serial_motion_update(&motion);
+			serial_motion_start(&motion, current + (parse_value(command + 2) - current) / 2, steps_per_second());
+			return;
+		}
 		if (!strcmp(fault, "stall")) {
 			// the move is accepted, but the motor never turns
 			stalled = true;

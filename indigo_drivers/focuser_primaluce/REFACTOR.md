@@ -1145,7 +1145,29 @@ changed. The recorded simulator run of this version is in README.md. A first ful
 the repeated full run, and calibration replies are far below the token limit, so it is an unexplained timing flake of that
 case, not an effect of this change. If it shows up again, log the driver's failure message to tell which END step refused.
 
-## Shared WiFi selection (3.0.0.42, 2026-10-24, task 20261024194838-6cb6-primaluce-panel-cover-wifi)
+## Firmware metadata and WiFi strings (task 20261024201831-632a-fix-primaluce-strings)
+
+Scope: repair FND-20261024121920-3bd2-repository-audit-029 and FND-000052 without migrating the driver or changing lifecycle/property declarations. The existing generated .driver remains authoritative; the shared library serializes JSON requests over portable serial/HTTP I/O. Only the focuser calls the two credential setters. Existing simulator coverage includes connection/reconnect, both logical devices, motion, abort, calibration and settings; unit golden frames preserve ordinary wire behavior. macOS universal builds are available; Linux/Windows execution and physical controllers are not assigned. No hardware testing will be performed.
+
+Baseline: driver and unit/simulator targets build successfully on macOS arm64 (universal x86_64/arm64 compilation), with an existing duplicate-library linker warning. Original library suite passes 30/30. Original full simulator run with request traces passed 71/71 before production edits; the original motion suite passed 1/1. Retained evidence is recorded in the task verification report. New oversized firmware profiles reproduce three child crashes (signal 5) against the original driver. Credential tests exercise both setters and independently specify exact escaped frames, empty/UTF-8 data, worst-case property-length controls and refusal before transmission.
+
+Atomic plan:
+1. Test design: add synthetic firmware profiles and credential regressions; retain original request traces. Complete; original tests pass, both new WiFi tests fail as expected and all three firmware regressions crash the original driver.
+2. Implementation: bounded INFO append and bounded JSON encoding shared by AP/STA; version 41 to 42; regenerate unchanged generator outputs. Complete; version 42 builds and regenerates reproducibly.
+3. Verification/documentation: library, full recorded simulator/motion run, sanitizer regression, trace inspection, protocol documentation and updated counts. Complete; library 32/32, recorded simulator/motion 76/76, ASan/UBSan library 32/32 and firmware 3/3 passed.
+
+Found defects: the firmware formatter appends unchecked strings after a truncating copy, overflowing the INFO value; bounded remaining-capacity formatting must preserve ordinary output. Credential setters interpolate client strings directly, so JSON quoting/control bytes can change framing; encode the string data and refuse encodings that cannot fit before any request. Exact regression results follow in the final task evidence.
+
+
+Final evidence: .factory/tasks/archive/20261024201831-632a-fix-primaluce-strings/verification.md. Existing command sequences for metadata, controller settings and WiFi station mode were compared and unchanged; full trace comparison and committed-range process validation were not run after the owner explicitly requested stopping further verification and committing. Independent scoped quality/security review passed before that instruction. No new dependency, property declaration or generator implementation changed.
+
+## Final test summary (3.0.0.42)
+
+- Simulated integration tests: 76 run, 76 passed (75 protocol/property scenarios and 1 motion scenario).
+- Shared protocol unit tests: 32 run, 32 passed; ASan/UBSan rerun 32/32 and firmware scenarios 3/3 passed.
+- Hardware tests: 0 run, 0 passed. Linux/Windows runtime and physical controller compatibility were not tested in this task.
+
+## Shared WiFi selection (3.0.0.43, 2026-10-24, task 20261024194838-6cb6-primaluce-panel-cover-wifi)
 
 The GIOTTO and ALTO drivers gained the same WiFi properties, so the mode selection moved into
 `primalucelib_select_wifi()` and the three drivers share it.
@@ -1162,8 +1184,9 @@ The GIOTTO and ALTO drivers gained the same WiFi properties, so the mode selecti
 **Fixed: credentials WiFi cannot use were sent** (found on the ALTO1, fixed in the library).
 - Impact: the firmware stores any text; a short access point password would leave an access point no client can join.
 - Fix: the library refuses an SSID over 32 characters (or an empty access point SSID), an access point password outside
-  8 to 63, a station password over 63 and `"` or `\` before sending; the driver shows the reason. `LANCFG` now needs
-  its `"done"` (the SESTO SENSO 2 acknowledges it, see D8).
+  8 to 63 and a station password over 63 before sending; the driver shows the reason. `"` and `\` are sent escaped
+  (3.0.0.42 above), which the GIOTTO firmware decodes. `LANCFG` now needs its `"done"` (the SESTO SENSO 2
+  acknowledges it, see D8).
 - Regression test: `controller_settings` (a 3 character password ends ALERT with the reason and is not sent); it fails
   on 3.0.0.41.
 
@@ -1171,7 +1194,8 @@ Over HTTP a mode change that restarts the controller cannot be followed by `AP_S
 left the network the link uses: AP then succeeds (the controller starts with its access point on) and OFF fails with a
 reason. Not verified on hardware for the focuser in this task (no focuser attached).
 
-## Final test summary (3.0.0.42)
+## Final test summary (3.0.0.43)
 
-- Simulated tests: 72 run, 72 passed: `2026-10-24 23:17 3.0.0.42 linux x64 simulator 72/72 OK`.
+- Simulated tests: 76 run, 76 passed: `2026-10-25 00:17 3.0.0.43 linux x64 simulator 76/76 OK` (after the merge with
+  3.0.0.42; its `wifi_escaped_credentials` uses an 8 character access point password, as WPA2 requires).
 - Hardware tests: 0 run for this change.

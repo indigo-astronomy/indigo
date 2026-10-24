@@ -1,0 +1,20 @@
+Definition: indigo_focuser_primaluce.driver
+Sources:    indigo_focuser_primaluce.c indigo_focuser_primaluce_main.c
+Archive:    indigo_focuser_primaluce.a
+SO library: indigo_focuser_primaluce.dylib
+indigo_focuser_primaluce.o 
+Executable: indigo_focuser_primaluce
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../shared/primalucelib all
+/Users/polakovic/Development/indigo/build/bin/indigo_generator indigo_focuser_primaluce.driver
+Reading indigo_focuser_primaluce.driver ...
+Writing ./indigo_focuser_primaluce.h ...
+Writing ./indigo_focuser_primaluce_main.c ...
+Writing ./indigo_focuser_primaluce.c ...
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_focuser_primaluce.o indigo_focuser_primaluce.c
+/usr/bin/libtool -static -o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_primaluce.a indigo_focuser_primaluce.o
+/usr/bin/clang -shared -o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_primaluce.dylib -Wl,-force_load /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_primaluce.a  /Users/polakovic/Development/indigo/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_focuser_primaluce_main.o indigo_focuser_primaluce_main.c
+/usr/bin/clang -o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_primaluce indigo_focuser_primaluce_main.o /Users/polakovic/Development/indigo/build/drivers/indigo_focuser_primaluce.a /Users/polakovic/Development/indigo/build/lib/libprimalucelib.a /Users/polakovic/Development/indigo/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+ld: warning: ignoring duplicate libraries: '/Users/polakovic/Development/indigo/build/lib/libprimalucelib.a'
+ld: warning: ignoring duplicate libraries: '/Users/polakovic/Development/indigo/build/lib/libprimalucelib.a'

@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_focuser_fc3"
 #define DRIVER_LABEL         "PegasusAstro FocusCube v3 Focuser"
 #define FOCUSER_DEVICE_NAME  "Pegasus FocusCube3"
@@ -238,7 +238,7 @@ static void fc3_poll_motion(indigo_device *device, fc3_status_data *status) {
 	if (PRIVATE_DATA->motion_active) {
 		FOCUSER_POSITION_ITEM->number.value = status->position;
 		if (!status->running) {
-			fc3_end_motion(device, INDIGO_OK_STATE, NULL);
+			fc3_end_motion(device, PRIVATE_DATA->external_motion || status->position == (int)FOCUSER_POSITION_ITEM->number.target ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, NULL);
 		} else if (!changed && ++PRIVATE_DATA->stall_polls >= FC3_STALL_POLLS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser stalled at %d, stopping it", status->position);
 			fc3_command(device, "FH");

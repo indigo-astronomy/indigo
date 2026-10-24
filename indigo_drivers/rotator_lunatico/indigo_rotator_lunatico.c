@@ -45,7 +45,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000014
 #define DRIVER_NAME          "indigo_rotator_lunatico"
 #define DRIVER_LABEL         "Lunatico Astronomia Rotator"
 #define ROTATOR_MAIN_DEVICE_NAME "Rotator Lunatico (Main)"
@@ -813,9 +813,12 @@ static void focuser_exp_focuser_abort_motion_handler(indigo_device *device) {
 	// An urgent abort can overtake a queued move, so the start
 	// handlers of this device are cancelled together with the
 	// completion poll they would have scheduled.
+	pthread_mutex_lock(&lunatico_request_mutex);
 	indigo_cancel_pending_handler(device, focuser_exp_focuser_position_handler);
 	indigo_cancel_pending_handler(device, focuser_exp_focuser_steps_handler);
 	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+	PORT_STATE.focuser_pending = 0;
+	pthread_mutex_unlock(&lunatico_request_mutex);
 	lunatico_focuser_abort(device);
 	//- focuser_exp.FOCUSER_ABORT_MOTION.on_change
 }
@@ -876,6 +879,7 @@ static indigo_result focuser_exp_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ focuser_exp.on_attach
 		device->gp_bits = 1;
+		lunatico_focuser_bind_requests(device);
 		INFO_PROPERTY->count = 6;
 		//- focuser_exp.on_attach
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
@@ -1698,9 +1702,12 @@ static void focuser_third_focuser_abort_motion_handler(indigo_device *device) {
 	// An urgent abort can overtake a queued move, so the start
 	// handlers of this device are cancelled together with the
 	// completion poll they would have scheduled.
+	pthread_mutex_lock(&lunatico_request_mutex);
 	indigo_cancel_pending_handler(device, focuser_third_focuser_position_handler);
 	indigo_cancel_pending_handler(device, focuser_third_focuser_steps_handler);
 	indigo_cancel_pending_handler(device, focuser_motion_finalizer);
+	PORT_STATE.focuser_pending = 0;
+	pthread_mutex_unlock(&lunatico_request_mutex);
 	lunatico_focuser_abort(device);
 	//- focuser_third.FOCUSER_ABORT_MOTION.on_change
 }
@@ -1761,6 +1768,7 @@ static indigo_result focuser_third_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ focuser_third.on_attach
 		device->gp_bits = 2;
+		lunatico_focuser_bind_requests(device);
 		INFO_PROPERTY->count = 6;
 		//- focuser_third.on_attach
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;

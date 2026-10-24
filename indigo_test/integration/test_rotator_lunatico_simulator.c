@@ -111,7 +111,7 @@ static void stop(void) {
 static bool settle_after_connect(int port) {
 	char command[32];
 	snprintf(command, sizeof(command), "!step ismoving %d#", port);
-	return lunatico_wait_for_command(command);
+	return lunatico_wait_for_command(command) && lunatico_wait_for_poll_completion();
 }
 
 static bool sync_to(const simulator_driver_case *device, double degrees) {
@@ -537,6 +537,37 @@ cleanup:
 	stop();
 }
 
+static void held_poll_focuser_request(bool sync, bool relative) {
+	SERIAL_CHECK_TRUE(lunatico_start(&exp_focuser, "FOCUSER"));
+	SERIAL_CHECK_TRUE(lunatico_set_switch(&exp_focuser, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, sync ? FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME : FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lunatico_wait_for_held_poll());
+	int target = sync ? 0 : relative ? 900 : 1900;
+	SERIAL_CHECK_TRUE(lunatico_set_number(&exp_focuser, relative ? FOCUSER_STEPS_PROPERTY_NAME : FOCUSER_POSITION_PROPERTY_NAME, relative ? FOCUSER_STEPS_ITEM_NAME : FOCUSER_POSITION_ITEM_NAME, relative ? 100 : target, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lunatico_release_poll());
+	char command[100];
+	snprintf(command, sizeof(command), sync ? "!step setpos 1 %d#" : "!step goto 1 %d 0#", target);
+	SERIAL_CHECK_TRUE(lunatico_wait_for_command(command));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, .1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_item *position = find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(position != NULL && position->number.target == target);
+cleanup:
+	lunatico_release_poll();
+	stop();
+}
+
+static void held_poll_focuser_goto(void) {
+	held_poll_focuser_request(false, false);
+}
+
+static void held_poll_focuser_sync(void) {
+	held_poll_focuser_request(true, false);
+}
+
+static void held_poll_focuser_steps(void) {
+	held_poll_focuser_request(false, true);
+}
+
 // And it can be a powerbox, on the Third port here.
 static void powerbox_on_the_third_port(void) {
 	SERIAL_CHECK_TRUE(lunatico_start(&third_aux, "AUX_POWERBOX"));
@@ -552,9 +583,42 @@ cleanup:
 	stop();
 }
 
+static void early_stop_keeps_requested_target(void) {
+	SERIAL_CHECK_TRUE(start_main());
+	SERIAL_CHECK_TRUE(settle_after_connect(0));
+	SERIAL_CHECK_TRUE(sync_to(&main_rotator, 0));
+	SERIAL_CHECK_TRUE(select_goto_mode(&main_rotator));
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 10, .01));
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20);
+	indigo_usleep(1500000);
+	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20);
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 30, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	stop();
+}
+
+static void fractional_target_uses_controller_steps(void) {
+	SERIAL_CHECK_TRUE(start_main());
+	SERIAL_CHECK_TRUE(settle_after_connect(0));
+	SERIAL_CHECK_TRUE(select_goto_mode(&main_rotator));
+	SERIAL_CHECK_TRUE(lunatico_set_number(&main_rotator, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20.05, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 20, .001));
+	SERIAL_CHECK_TRUE(find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target == 20.05);
+cleanup:
+	stop();
+}
+
 int main(void) {
+	simulator_test_client.define_property = lunatico_test_define_property;
 	const aux_simulated_case tests[] = {
 		{ "identity_and_inventory", identity_and_inventory, "normal" },
+		{ "early_stop", early_stop_keeps_requested_target, "early-stop" },
+		{ "fractional_target", fractional_target_uses_controller_steps, "normal" },
 		{ "main_goto", main_goto, "normal" },
 		{ "exp_goto", exp_goto, "normal" },
 		{ "third_goto", third_goto, "normal" },
@@ -579,6 +643,9 @@ int main(void) {
 		{ "oversized", connection_is_refused, "oversized" },
 		{ "reconnect", reconnect_after_disconnect, "normal" },
 		{ "exp_focuser", focuser_on_the_exp_port, "normal" },
+		{ "held_poll_focuser_goto", held_poll_focuser_goto, "hold-initial-poll" },
+		{ "held_poll_focuser_sync", held_poll_focuser_sync, "hold-initial-poll" },
+		{ "held_poll_focuser_steps", held_poll_focuser_steps, "hold-initial-poll" },
 		{ "third_powerbox", powerbox_on_the_third_port, "normal" },
 		{ "disconnect_during_motion", disconnect_during_motion, "normal" },
 	};

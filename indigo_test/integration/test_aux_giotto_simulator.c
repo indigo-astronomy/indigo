@@ -759,10 +759,10 @@ static void wifi_credentials(void) {
 	clear_messages();
 	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "abc", INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(message_seen("at least 8 characters"));
-	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Home \"net\"", INDIGO_ALERT_STATE));
-	SERIAL_CHECK_TRUE(message_seen("cannot contain"));
 	SERIAL_CHECK_EQ_INT(1, requests("\"WIFIAP\""));
-	SERIAL_CHECK_EQ_INT(1, requests("\"WIFISTA\""));
+	// '"' and '\' are sent escaped; the panel decodes them (GIOTTO firmware 1.03.09).
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD", "pass\"word", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"PWD\":\"pass\\\"word\"", 1));
 	disconnect_serial_device(&giotto);
 	SERIAL_CHECK_TRUE(connect_giotto());
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Observatory"));
