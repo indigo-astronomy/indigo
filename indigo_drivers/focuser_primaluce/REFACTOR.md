@@ -1133,3 +1133,14 @@ pattern; a CP2102N name behind `0403:6001` and a CP2104 behind `10c4:ea60` do no
   "indigo_select_matching_usbserial_device(): Selected new port for 'PrimaluceLab Focuser': auto:///dev/ttyUSB0",
   and connecting through that port identified the SESTOSENSO3. The ESATTO2 identity is the same (earlier logs).
   This was not a `--hw` run.
+
+## Token lookup bound in primalucelib (3.0.0.41, 2026-10-24, task 20261024164718-0e69-primalucelib-token-bounds)
+
+FND-20261024121920-3bd2-repository-audit-017: a lookup in a reply that used all 1024 JSON tokens could read past the
+token array of the shared `primalucelib` (reproduced with AddressSanitizer at `primalucelib.c:399`). The library now
+bounds every lookup by the number of tokens the parser filled; the regression test is the library unit case "lookups
+stay within a full token array". This driver links the library, so its version is raised; nothing else in the driver
+changed. The recorded simulator run of this version is in README.md. A first full run failed `focuser_calibration` once
+(END published ALERT instead of OK); the failure did not recur in 14 isolated runs, 6 of them with every core loaded, nor in
+the repeated full run, and calibration replies are far below the token limit, so it is an unexplained timing flake of that
+case, not an effect of this change. If it shows up again, log the driver's failure message to tell which END step refused.
