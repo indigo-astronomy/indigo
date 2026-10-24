@@ -33,4 +33,4 @@ indigo_server indigo_aux_alto
 ## Testing
 
 - 2026-10-24 16:49 3.0.0.1 linux x64 ALTO1 9/9 OK
-- 2026-10-24 19:36 3.0.0.2 linux x64 simulator 29/29 OK
+- 2026-10-24 19:51 3.0.0.3 linux x64 simulator 29/29 OK

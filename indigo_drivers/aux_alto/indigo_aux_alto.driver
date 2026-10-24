@@ -25,7 +25,7 @@ driver alto {
 	label = "PrimaluceLab ALTO Cover";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
-	version = 2;
+	version = 3;
 	serial {
 		pattern {
 			// The cover uses the Silicon Labs CP2102N bridge with its default VID/PID and product string, as the other
