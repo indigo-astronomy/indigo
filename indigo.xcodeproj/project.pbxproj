@@ -6946,6 +6946,25 @@
 		94A497702F7CE49224270994 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test-plan.md"; sourceTree = "<group>"; };
 		9228C23ADEFB6E0EFFEDA3B2 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
 		1CA08E7270CBD32A2C4EFB28 /* 20261024121920-3bd2-repository-audit.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024121920-3bd2-repository-audit.json"; sourceTree = "<group>"; };
+		58D21354F48205219CDA34FB /* test_core_text_bounds.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_core_text_bounds.c"; sourceTree = "<group>"; };
+		908C6C80EAAC4D34DD01BF7E /* test_mount_manual_motion.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "test_mount_manual_motion.js"; sourceTree = "<group>"; };
+		5BBF05A47A2D1AC25E310D5D /* test_ccd_file_names.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_ccd_file_names.c"; sourceTree = "<group>"; };
+		FF426466564E95B427654CC0 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "brief.md"; sourceTree = "<group>"; };
+		215B99C90AF3DC51A05421D9 /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "handoff.md"; sourceTree = "<group>"; };
+		162C2047E52B6E83025CA87A /* http-tests.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "http-tests.log"; sourceTree = "<group>"; };
+		6B3498B9AF76BA4BD1A8D3BC /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "plan.md"; sourceTree = "<group>"; };
+		B1E628087A367106AC6A2062 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		C1E43161C8E38B328D9FEA72 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "quality-review.md"; sourceTree = "<group>"; };
+		0F5737C499815D11D11F617A /* sanitizer-commands.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "sanitizer-commands.log"; sourceTree = "<group>"; };
+		ED8F3047A41529F416D1DC5C /* security.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "security.md"; sourceTree = "<group>"; };
+		7F738A627B2634C7C9C6E186 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "specification.md"; sourceTree = "<group>"; };
+		EC18D26DE86F776A1FBF574B /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		A9DBB5CE8715A75280110A47 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test-plan.md"; sourceTree = "<group>"; };
+		B379B4561109163D0977B5E7 /* test_bus_property.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test_bus_property.log"; sourceTree = "<group>"; };
+		5DEC5F8B67B08DC0882A3D48 /* test_ccd_file_names.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test_ccd_file_names.log"; sourceTree = "<group>"; };
+		B262886CFC4B1A5DD899FC5F /* test_core_text_bounds.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test_core_text_bounds.log"; sourceTree = "<group>"; };
+		B02E4E45EA4FF86D91DAEF4E /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
+		9C6C2431C81A9B570FDE57D6 /* 20261024135437-8e0c-fix-property-copy.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024135437-8e0c-fix-property-copy.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15508,6 +15527,8 @@
 		59FA7BE9301D35FD00A35CFB /* unit */ = {
 			isa = PBXGroup;
 			children = (
+				908C6C80EAAC4D34DD01BF7E /* test_mount_manual_motion.js */,
+				58D21354F48205219CDA34FB /* test_core_text_bounds.c */,
 				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
 				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,
 				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
@@ -15539,6 +15560,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5BBF05A47A2D1AC25E310D5D /* test_ccd_file_names.c */,
 				FBDFAF3D3E554044BBDDB275 /* test_transport_http_security.c */,
 				CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */,
 				5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */,
@@ -15983,6 +16005,7 @@
 		5D81F456588D799E5C20FF68 /* archive */ = {
 			isa = PBXGroup;
 			children = (
+				83E3C8DEC01217EF1AC88613 /* 20261024135437-8e0c-fix-property-copy */,
 				24798396402E9D2A010B7023 /* 20261024121920-3bd2-repository-audit */,
 				CE5D12B50F97E039BC050198 /* 20261024115039-61cc-fix-server-security-remaining */,
 				65D03F94812B78532C43FC3C /* 20261023180923-1f46-fix-synscan-autohome */,
@@ -16133,6 +16156,12 @@
 				4CF80F5E58EF814E36864291 /* FND-20261023193406-58c7-primaluce-arco-keep-enabled-001.json */,
 				39C2D7120F2C4C798108E829 /* FND-20261023195506-cdf8-fix-findings-xcode-001.json */,
 				991E6524B502845D91FAB7AD /* FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json */,
+				4422ACDCACFDA8C50AB4CECA /* FND-20261024121920-3bd2-repository-audit-001.json */,
+				1B398F9A327BB8A287DB4157 /* FND-20261024121920-3bd2-repository-audit-002.json */,
+				51331185072728211AF07531 /* FND-20261024121920-3bd2-repository-audit-003.json */,
+				6AFFA9D31B3C6994C7E4ED2E /* FND-20261024121920-3bd2-repository-audit-010.json */,
+				5F63A9C62D6155E1C44CD8C8 /* FND-20261024121920-3bd2-repository-audit-011.json */,
+				A27CA5D4B716CED190391A11 /* FND-20261024121920-3bd2-repository-audit-042.json */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18221,6 +18250,7 @@
 		AFDBB818F553FC60124A5A5B /* completions */ = {
 			isa = PBXGroup;
 			children = (
+				9C6C2431C81A9B570FDE57D6 /* 20261024135437-8e0c-fix-property-copy.json */,
 				1CA08E7270CBD32A2C4EFB28 /* 20261024121920-3bd2-repository-audit.json */,
 				8AC6314866CBC8B5438D71FE /* 20261024115039-61cc-fix-server-security-remaining.json */,
 				C9A52F05B574213F98D7E04F /* 20261023180923-1f46-fix-synscan-autohome.json */,
@@ -18694,17 +18724,12 @@
 				23C61E8AD6539B65BB441791 /* FND-20261023101753-bc8d-complete-repository-audit-046.json */,
 				637F5E82EB65F67511F5FC5E /* FND-20261023101753-bc8d-complete-repository-audit-047.json */,
 				E92FD4DBDD2BD678ACC20218 /* FND-20261023112118-8e5e-server-security-audit-010.json */,
-				4422ACDCACFDA8C50AB4CECA /* FND-20261024121920-3bd2-repository-audit-001.json */,
-				1B398F9A327BB8A287DB4157 /* FND-20261024121920-3bd2-repository-audit-002.json */,
-				51331185072728211AF07531 /* FND-20261024121920-3bd2-repository-audit-003.json */,
 				CBDFB7EA04C9C69A4EC06DBF /* FND-20261024121920-3bd2-repository-audit-004.json */,
 				90FCE10D9BBA603014FBA298 /* FND-20261024121920-3bd2-repository-audit-005.json */,
 				F3CC1D253088D56E7F1E3C81 /* FND-20261024121920-3bd2-repository-audit-006.json */,
 				3371B16C8B68B65F190B4D97 /* FND-20261024121920-3bd2-repository-audit-007.json */,
 				7180EF6C3D4C409445304561 /* FND-20261024121920-3bd2-repository-audit-008.json */,
 				14CE306EA22EC167607AC59E /* FND-20261024121920-3bd2-repository-audit-009.json */,
-				6AFFA9D31B3C6994C7E4ED2E /* FND-20261024121920-3bd2-repository-audit-010.json */,
-				5F63A9C62D6155E1C44CD8C8 /* FND-20261024121920-3bd2-repository-audit-011.json */,
 				5D1CBF9220A58092C4117751 /* FND-20261024121920-3bd2-repository-audit-012.json */,
 				A61D5E5FFCEFC1322FADABA7 /* FND-20261024121920-3bd2-repository-audit-013.json */,
 				4D7A1D5B71F18FDCF6778FB2 /* FND-20261024121920-3bd2-repository-audit-014.json */,
@@ -18735,7 +18760,6 @@
 				7637E09236524A9D377696AA /* FND-20261024121920-3bd2-repository-audit-039.json */,
 				9E801A02FDBF7E98819E7BCB /* FND-20261024121920-3bd2-repository-audit-040.json */,
 				024C04E409767F3F053809AC /* FND-20261024121920-3bd2-repository-audit-041.json */,
-				A27CA5D4B716CED190391A11 /* FND-20261024121920-3bd2-repository-audit-042.json */,
 				3A4916545E21E0C262D80B47 /* FND-20261024121920-3bd2-repository-audit-043.json */,
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
 			);
@@ -19525,6 +19549,28 @@
 				9228C23ADEFB6E0EFFEDA3B2 /* verification.md */,
 			);
 			path = "20261024121920-3bd2-repository-audit";
+			sourceTree = "<group>";
+		};
+		83E3C8DEC01217EF1AC88613 /* 20261024135437-8e0c-fix-property-copy */ = {
+			isa = PBXGroup;
+			children = (
+				B02E4E45EA4FF86D91DAEF4E /* verification.md */,
+				B262886CFC4B1A5DD899FC5F /* test_core_text_bounds.log */,
+				5DEC5F8B67B08DC0882A3D48 /* test_ccd_file_names.log */,
+				B379B4561109163D0977B5E7 /* test_bus_property.log */,
+				A9DBB5CE8715A75280110A47 /* test-plan.md */,
+				EC18D26DE86F776A1FBF574B /* state.json */,
+				7F738A627B2634C7C9C6E186 /* specification.md */,
+				ED8F3047A41529F416D1DC5C /* security.md */,
+				0F5737C499815D11D11F617A /* sanitizer-commands.log */,
+				C1E43161C8E38B328D9FEA72 /* quality-review.md */,
+				B1E628087A367106AC6A2062 /* process.json */,
+				6B3498B9AF76BA4BD1A8D3BC /* plan.md */,
+				162C2047E52B6E83025CA87A /* http-tests.log */,
+				215B99C90AF3DC51A05421D9 /* handoff.md */,
+				FF426466564E95B427654CC0 /* brief.md */,
+			);
+			path = "20261024135437-8e0c-fix-property-copy";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

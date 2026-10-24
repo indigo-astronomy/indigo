@@ -75,6 +75,9 @@ bool indigo_use_blob_buffering = true;
 bool indigo_use_blob_compression = false;
 
 static pthread_mutex_t resource_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+// Serialize retirement so overlapping removals also wait for already withdrawn entries.
+static pthread_mutex_t resource_retirement_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t resource_list_condition = PTHREAD_COND_INITIALIZER;
 
 static struct resource {
 	const char *path;
@@ -83,8 +86,45 @@ static struct resource {
 	const char *file_name;
 	char *content_type;
 	bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params);
+	unsigned users;
 	struct resource *next;
 } *resources = NULL;
+
+// The registry owns metadata; workers retain entries until their response completes.
+static struct resource *acquire_resource(const char *path) {
+	pthread_mutex_lock(&resource_list_mutex);
+	struct resource *resource = resources;
+	while (resource) {
+		if (!strncmp(resource->path, path, strlen(resource->path))) {
+			resource->users++;
+			break;
+		}
+		resource = resource->next;
+	}
+	pthread_mutex_unlock(&resource_list_mutex);
+	return resource;
+}
+
+static void release_resource(struct resource *resource) {
+	if (resource) {
+		pthread_mutex_lock(&resource_list_mutex);
+		if (--resource->users == 0) {
+			pthread_cond_broadcast(&resource_list_condition);
+		}
+		pthread_mutex_unlock(&resource_list_mutex);
+	}
+}
+
+// Called with the registry mutex held; condition waits let workers release their references.
+static void retire_resource(struct resource *resource) {
+	while (resource->users) {
+		pthread_cond_wait(&resource_list_condition, &resource_list_mutex);
+	}
+	free((void *)resource->path);
+	free((void *)resource->file_name);
+	free(resource->content_type);
+	free(resource);
+}
 
 #define BUFFER_SIZE	1024
 
@@ -247,6 +287,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 	void *free_on_exit = NULL;
 	indigo_uni_handle *file_handle = NULL;
 	indigo_blob_entry *release_at_exit = NULL;
+	struct resource *resource_at_exit = NULL;
 	if (indigo_uni_wait_for_data(handle, INDIGO_SERVER_INITIAL_TIMEOUT) > 0 && indigo_uni_peek_available(handle, &c, 1) == 1) {
 		if (c == '<') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", handle->index));
@@ -405,14 +446,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							goto failure;
 						}
 					} else {
-						pthread_mutex_lock(&resource_list_mutex);
-						struct resource *resource = resources;
-						while (resource) {
-							if (!strncmp(resource->path, path, strlen(resource->path)))
-								break;
-							resource = resource->next;
-						}
-						pthread_mutex_unlock(&resource_list_mutex);
+						struct resource *resource = resource_at_exit = acquire_resource(path);
 						if (resource == NULL) {
 							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
 							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
@@ -499,14 +533,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						}
 						keep_alive = false;
 					} else {
-						pthread_mutex_lock(&resource_list_mutex);
-						struct resource *resource = resources;
-						while (resource) {
-							if (!strncmp(resource->path, path, strlen(resource->path)))
-								break;
-							resource = resource->next;
-						}
-						pthread_mutex_unlock(&resource_list_mutex);
+						struct resource *resource = resource_at_exit = acquire_resource(path);
 						if (resource == NULL) {
 							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
 							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
@@ -519,6 +546,8 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						}
 					}
 				}
+				release_resource(resource_at_exit);
+				resource_at_exit = NULL;
 				if (!keep_alive) {
 					break;
 				}
@@ -529,6 +558,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 	}
 failure:
 	indigo_uni_close(&file_handle);
+	release_resource(resource_at_exit);
 	INDIGO_TRACE(indigo_trace("%d <- // Worker thread finished", handle->index));
 	indigo_uni_close(&handle);
 	client_count_change(-1);
@@ -544,10 +574,10 @@ failure:
 void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
 	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
-	resource->path = path;
+	resource->path = indigo_safe_malloc_copy(strlen(path) + 1, (void *)path);
 	resource->data = data;
 	resource->length = length;
-	resource->content_type = (char *)content_type;
+	resource->content_type = indigo_safe_malloc_copy(strlen(content_type) + 1, (void *)content_type);
 	resource->handler = NULL;
 	resource->next = resources;
 	resources = resource;
@@ -558,9 +588,9 @@ void indigo_server_add_resource(const char *path, unsigned char *data, unsigned 
 void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type) {
 	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
-	resource->path = path;
-	resource->file_name = file_name;
-	resource->content_type = (char *)content_type;
+	resource->path = indigo_safe_malloc_copy(strlen(path) + 1, (void *)path);
+	resource->file_name = indigo_safe_malloc_copy(strlen(file_name) + 1, (void *)file_name);
+	resource->content_type = indigo_safe_malloc_copy(strlen(content_type) + 1, (void *)content_type);
 	resource->handler = NULL;
 	resource->next = resources;
 	resources = resource;
@@ -571,7 +601,7 @@ void indigo_server_add_file_resource(const char *path, const char *file_name, co
 void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params)) {
 	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
-	resource->path = path;
+	resource->path = indigo_safe_malloc_copy(strlen(path) + 1, (void *)path);
 	resource->file_name = NULL;
 	resource->content_type = NULL;
 	resource->handler = handler;
@@ -582,6 +612,7 @@ void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_hand
 }
 
 void indigo_server_remove_resource(const char *path) {
+	pthread_mutex_lock(&resource_retirement_mutex);
 	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = resources;
 	struct resource *prev = NULL;
@@ -592,8 +623,9 @@ void indigo_server_remove_resource(const char *path) {
 			} else {
 				prev->next = resource->next;
 			}
-			free(resource);
+			retire_resource(resource);
 			pthread_mutex_unlock(&resource_list_mutex);
+			pthread_mutex_unlock(&resource_retirement_mutex);
 			INDIGO_TRACE(indigo_trace("Resource %s removed", path));
 			return;
 		}
@@ -601,19 +633,22 @@ void indigo_server_remove_resource(const char *path) {
 		resource = resource->next;
 	}
 	pthread_mutex_unlock(&resource_list_mutex);
+	pthread_mutex_unlock(&resource_retirement_mutex);
 }
 
 void indigo_server_remove_resources(void) {
+	pthread_mutex_lock(&resource_retirement_mutex);
 	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = resources;
-	while (resource) {
-		struct resource *tmp = resource;
-		resource = resource->next;
-		INDIGO_TRACE(indigo_trace("Resource %s removed", tmp->path));
-		free(tmp);
-	}
 	resources = NULL;
+	while (resource) {
+		struct resource *next = resource->next;
+		INDIGO_TRACE(indigo_trace("Resource %s removed", resource->path));
+		retire_resource(resource);
+		resource = next;
+	}
 	pthread_mutex_unlock(&resource_list_mutex);
+	pthread_mutex_unlock(&resource_retirement_mutex);
 }
 
 void indigo_default_server_callback(int count) {

@@ -1,0 +1,19 @@
+16:19:35.877086 Application: Can't create worker thread for connection (Undefined error: 0)
+16:19:35.884287 Application: Can't create worker thread for connection (Undefined error: 0)
+Running transport HTTP security
+  PASS idle initial connections expire
+  PASS established XML idle session
+  PASS admission limit and spawn failure
+  PASS file download cleanup
+  PASS malformed framing preserves cache
+  PASS short EOF preserves cache
+  PASS valid empty and whitespace length
+  PASS private receive and responsive publication
+  PASS stalled body deadline
+  PASS absolute deadline despite progress
+  PASS retirement during receive
+  PASS resource metadata ownership
+  PASS GET handler retirement
+  PASS PUT handler retirement
+  PASS remove all preserves new registrations
+transport HTTP security: all tests passed

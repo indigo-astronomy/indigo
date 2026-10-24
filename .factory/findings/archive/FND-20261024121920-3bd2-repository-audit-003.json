@@ -1,0 +1,34 @@
+{
+  "title": "Fixed name and text suffixes do not reserve destination capacity",
+  "category": "security",
+  "severity": "high",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261024135437-8e0c-fix-property-copy",
+      "report": "security.md",
+      "revision": null
+    },
+    {
+      "id": "20261024135437-8e0c-fix-property-copy",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Repaired and reverified in task 20261024135437-8e0c-fix-property-copy. Original audit evidence retained. Independent source reviews and combined native/sanitizer/browser checks cover the scoped fix; see security.md and verification.md for exact coverage and platform/hardware limits.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-003; core-report.md alias CORE-3; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261024135437-8e0c-fix-property-copy: security.md, quality-review.md and verification.md; independently reviewed source and passing combined regressions; no risk acceptance or whole-system certification.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024121920-3bd2-repository-audit-003"
+}

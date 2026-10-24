@@ -1731,6 +1731,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
 		if (*DEVICE_BAUDRATE_ITEM->text.value && strchr(DEVICE_BAUDRATE_ITEM->text.value, '-') == NULL) {
+			if (strlen(DEVICE_BAUDRATE_ITEM->text.value) + sizeof("-8N1") > sizeof(DEVICE_BAUDRATE_ITEM->text.value)) {
+				DEVICE_BAUDRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, "Baud rate is too long");
+				return INDIGO_OK;
+			}
 			strcat(DEVICE_BAUDRATE_ITEM->text.value, "-8N1");
 		}
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;

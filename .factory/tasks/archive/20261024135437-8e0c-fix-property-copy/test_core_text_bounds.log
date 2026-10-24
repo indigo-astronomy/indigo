@@ -1,0 +1,7 @@
+16:18:44.059245 Application: Proxy property name is too long: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
+Running Core text bounds
+  PASS service_and_adapter_names_reserve_capacity
+  PASS formatted_text_and_snoop_values_are_literal
+  PASS unique_names_reject_unrepresentable_suffixes
+  PASS filter_proxy_identifiers_are_bounded
+Core text bounds: all tests passed

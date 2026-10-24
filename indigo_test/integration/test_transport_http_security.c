@@ -462,6 +462,145 @@ static void file_download_cleanup(void) {
 }
 #endif
 
+static atomic_bool retirement_entered;
+static atomic_bool retirement_release;
+static atomic_int retirement_calls;
+static atomic_bool retirement_timed_out;
+
+struct retirement_request {
+	bool all;
+	atomic_bool started;
+	atomic_bool done;
+};
+
+static bool retirement_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
+	if (atomic_fetch_add(&retirement_calls, 1) == 0) {
+		atomic_store(&retirement_entered, true);
+		if (!WAIT_UNTIL(atomic_load(&retirement_release), 5)) {
+			atomic_store(&retirement_timed_out, true);
+		}
+	}
+	indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\nretired");
+	return false;
+}
+
+static void *retire_fixture(void *data) {
+	struct retirement_request *request = data;
+	atomic_store(&request->started, true);
+	if (request->all) {
+		indigo_server_remove_resources();
+	} else {
+		indigo_server_remove_resource("/retirement");
+	}
+	atomic_store(&request->done, true);
+	return NULL;
+}
+
+static bool fixture_response(const char *path, char *response, size_t size) {
+	int fd = connect_loopback(indigo_server_tcp_port);
+	if (fd < 0) {
+		return false;
+	}
+	char request[256];
+	int length = snprintf(request, sizeof(request), "GET %s HTTP/1.1\r\nConnection: close\r\n\r\n", path);
+	bool success = write(fd, request, length) == length && read_reply(fd, response, size);
+	close(fd);
+	return success;
+}
+
+static void resource_metadata_is_owned(void) {
+	static unsigned char payload[] = "owned";
+	char path[] = "/owned-resource";
+	char content_type[] = "text/plain";
+	indigo_server_add_resource(path, payload, sizeof(payload) - 1, content_type);
+	memset(path + 1, 'x', sizeof(path) - 2);
+	memset(content_type, 'x', sizeof(content_type) - 1);
+	char response[4096];
+	bool success = fixture_response("/owned-resource", response, sizeof(response));
+	indigo_server_remove_resource("/owned-resource");
+	ASSERT_TRUE(success);
+	ASSERT_TRUE(strstr(response, "Content-Type: text/plain\r\n") != NULL);
+	ASSERT_TRUE(strstr(response, "\r\n\r\nowned") != NULL);
+	char file_name[] = "/tmp/indigo-resource-owned-XXXXXX";
+	int file = mkstemp(file_name);
+	ASSERT_TRUE(file >= 0);
+	ASSERT_EQ_INT(5, write(file, payload, 5));
+	close(file);
+	char saved_name[sizeof(file_name)];
+	memcpy(saved_name, file_name, sizeof(file_name));
+	indigo_server_add_file_resource("/owned-file", file_name, "text/plain");
+	memset(file_name + 1, 'x', sizeof(file_name) - 2);
+	success = fixture_response("/owned-file", response, sizeof(response));
+	indigo_server_remove_resource("/owned-file");
+	unlink(saved_name);
+	ASSERT_TRUE(success);
+	ASSERT_TRUE(strstr(response, "HTTP/1.1 200 OK") != NULL);
+	ASSERT_TRUE(strstr(response, "\r\n\r\nowned") != NULL);
+}
+
+static void resource_retirement_case(const char *method, bool all) {
+	atomic_store(&retirement_entered, false);
+	atomic_store(&retirement_release, false);
+	atomic_store(&retirement_calls, 0);
+	atomic_store(&retirement_timed_out, false);
+	indigo_server_add_handler("/retirement", retirement_handler);
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	char request[256];
+	int length = snprintf(request, sizeof(request), "%s /retirement HTTP/1.1\r\nConnection: close\r\nContent-Length: 0\r\n\r\n", method);
+	ASSERT_EQ_INT(length, write(fd, request, length));
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&retirement_entered), 2));
+	struct retirement_request first = { .all = all };
+	struct retirement_request second = { 0 };
+	pthread_t remover;
+	pthread_t overlapping_remover;
+	ASSERT_EQ_INT(0, pthread_create(&remover, NULL, retire_fixture, &first));
+	// Observe withdrawal while the first callback is still held, without scheduling assumptions.
+	char response[4096];
+	bool withdrawn = false;
+	double deadline = indigo_monotonic_time() + 2;
+	while (!withdrawn && indigo_monotonic_time() < deadline) {
+		withdrawn = fixture_response("/retirement", response, sizeof(response)) && strstr(response, "HTTP/1.1 404 ") != NULL;
+	}
+	bool waited = !atomic_load(&first.done);
+	int second_created = pthread_create(&overlapping_remover, NULL, retire_fixture, &second);
+	bool overlap_started = second_created == 0 && WAIT_UNTIL(atomic_load(&second.started), 1);
+	bool overlap_waited = overlap_started && !WAIT_UNTIL(atomic_load(&second.done), 0.05);
+	static unsigned char payload[] = "new";
+	indigo_server_add_resource("/retirement-new", payload, sizeof(payload) - 1, "text/plain");
+	bool registry_available = fixture_response("/retirement-new", response, sizeof(response)) && strstr(response, "\r\n\r\nnew") != NULL;
+	atomic_store(&retirement_release, true);
+	bool completed_response = read_reply(fd, response, sizeof(response));
+	close(fd);
+	pthread_join(remover, NULL);
+	if (second_created == 0) {
+		pthread_join(overlapping_remover, NULL);
+	}
+	bool new_registration_survived = fixture_response("/retirement-new", response, sizeof(response)) && strstr(response, "\r\n\r\nnew") != NULL;
+	indigo_server_remove_resource("/retirement-new");
+	ASSERT_TRUE(withdrawn);
+	ASSERT_TRUE(waited);
+	ASSERT_TRUE(registry_available);
+	ASSERT_TRUE(completed_response);
+	ASSERT_TRUE(atomic_load(&first.done));
+	ASSERT_TRUE(overlap_waited);
+	ASSERT_TRUE(atomic_load(&second.done));
+	ASSERT_TRUE(!atomic_load(&retirement_timed_out));
+	ASSERT_TRUE(new_registration_survived);
+}
+
+static void get_handler_retirement_waits(void) {
+	resource_retirement_case("GET", false);
+}
+
+static void put_handler_retirement_waits(void) {
+	resource_retirement_case("PUT", false);
+}
+
+static void remove_all_preserves_new_registrations(void) {
+	resource_retirement_case("GET", true);
+}
+
 int main(int argc, char **argv) {
 	indigo_test_use_private_home();
 	signal(SIGPIPE, SIG_IGN);
@@ -497,10 +636,15 @@ int main(int argc, char **argv) {
 #ifdef INDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT
 		{ "absolute deadline despite progress", absolute_deadline_bounds_progressing_body },
 #endif
-		{ "retirement during receive", retirement_during_receive_rejects_publication }
+		{ "retirement during receive", retirement_during_receive_rejects_publication },
+		{ "resource metadata ownership", resource_metadata_is_owned },
+		{ "GET handler retirement", get_handler_retirement_waits },
+		{ "PUT handler retirement", put_handler_retirement_waits },
+		{ "remove all preserves new registrations", remove_all_preserves_new_registrations }
 	};
 	int result = indigo_run_tests("transport HTTP security", tests, sizeof(tests) / sizeof(tests[0]));
 	stop_test_server();
+	indigo_server_remove_resources();
 	unlink(file_path);
 	indigo_release_property(upload_property);
 	indigo_stop();

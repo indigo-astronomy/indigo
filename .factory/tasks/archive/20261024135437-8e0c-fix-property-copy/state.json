@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024135437-8e0c-fix-property-copy",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive execution evidence, commit and verify final candidate; preserve task branch pending authorized integration/publication.",
+  "blocker": null
+}

@@ -41,7 +41,7 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_un
 		NULL
 	);
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &device_template);
-	sprintf(device->name, "@ %s", name);
+	snprintf(device->name, sizeof(device->name), "@ %s", name);
 	device->is_remote = input->type == INDIGO_TCP_HANDLE;
 	indigo_adapter_context *device_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
 	device_context->input = input;

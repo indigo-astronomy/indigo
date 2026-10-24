@@ -32,6 +32,7 @@ BENCHMARKS = \
 	$(BENCHMARK_BUILD)/bench_mount_simulator_timing \
 	$(BENCHMARK_BUILD)/bench_mount_nexstar_guider_timing
 UNIT_TESTS = \
+	$(UNIT_BUILD)/test_core_text_bounds \
 	$(UNIT_BUILD)/test_align_math \
 	$(UNIT_BUILD)/test_aux_math \
 	$(UNIT_BUILD)/test_base64 \
@@ -53,7 +54,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image \
 	$(UNIT_BUILD)/test_raw_to_fits
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_aux_simulator \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_file_names \
+	$(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
 	$(INTEGRATION_BUILD)/test_ccd_qhy_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_qhy2_sdk \
@@ -302,9 +304,13 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-unit test-integration test-buildsystem test-imager-download test-tool-input-safety
+test: test-unit test-integration test-buildsystem test-imager-download test-tool-input-safety test-mount-manual-motion
 
 # Browser script regression; requires Node.js with the built-in test runner.
+.PHONY: test-mount-manual-motion
+test-mount-manual-motion:
+	node --test unit/test_mount_manual_motion.js
+
 .PHONY: test-imager-download
 test-imager-download:
 	node --test unit/test_imager_download.js
@@ -3493,3 +3499,9 @@ $(SECURITY_BUILD)/test_transport_cache_alloc_failure: unit/test_transport_cache_
 # Compile both URL implementations with a synthetic resolver; no DNS or socket I/O.
 $(UNIT_BUILD)/test_network_url: unit/test_network_url.c test_runner.h ../indigo_libs/indigo_io.c ../indigo_libs/indigo_uni_io.c | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -DINDIGO_CLIENT -Dgetaddrinfo=indigo_test_getaddrinfo -o $@ $< ../indigo_libs/indigo_io.c ../indigo_libs/indigo_uni_io.c $(TEST_LDFLAGS) -lz
+
+$(UNIT_BUILD)/test_core_text_bounds: unit/test_core_text_bounds.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_ccd_file_names: integration/test_ccd_file_names.c test_runner.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
