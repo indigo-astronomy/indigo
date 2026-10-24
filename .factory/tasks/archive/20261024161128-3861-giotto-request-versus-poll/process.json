@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "task": "20261024161128-3861-giotto-request-versus-poll",
+  "scope": [
+    "indigo_drivers/aux_giotto/*",
+    "indigo_test/integration/test_aux_giotto_simulator.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_giotto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024161128-3861-giotto-request-versus-poll.json": [
+      "100644",
+      "blob",
+      "269cc8fe0784166450cc64f128b11d326b49a181"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-021.json": null,
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-021.json": [
+      "100644",
+      "blob",
+      "5da7e11ab84a7779d15599144b6f63cc22980dda"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "94272663787bc1d0fb766c71d665c0309e9e5412"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "6a15b41ea8af475428799e05e26d15b010bd64ab"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "e648d3fc6ba5b0a62cd74b496ee4d1ae93f97435"
+    ],
+    "indigo_drivers/aux_giotto/README.md": [
+      "100644",
+      "blob",
+      "d0b602f22320af70dc468352756add95fa34a13f"
+    ],
+    "indigo_drivers/aux_giotto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "689a4cbbfa58165be16719c479fc9b73933fe1d1"
+    ],
+    "indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c": [
+      "100644",
+      "blob",
+      "6c3e25b1f69e14d3cecbd36d42f9bddabf461cde"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c": [
+      "100644",
+      "blob",
+      "041d383c10751ebd9586c8aa758b656c4c691853"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.driver": [
+      "100644",
+      "blob",
+      "7e8e543ec34637d74a3ab14e7506455461402f8e"
+    ],
+    "indigo_test/integration/test_aux_giotto_simulator.c": [
+      "100644",
+      "blob",
+      "4544d8c6dc69dc3d0bb9d54c4fafa6342a432cfe"
+    ]
+  }
+}

@@ -983,7 +983,8 @@ bool primalucelib_panel_set_preset_brightness(primalucelib_link *link, int index
 	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_SET_PRESET_BRIGHTNESS, index, brightness) && primalucelib_reply_is_acknowledged(link, path);
 }
 
-bool primalucelib_panel_set_preset_name(primalucelib_link *link, int index, const char *name) {
+// PRESET_n NAME of a GIOTTO or an ALTO; a refusal keeps the controller's reason.
+static bool primalucelib_set_preset_name(primalucelib_link *link, int index, const char *name) {
 	// The name is sent inside a JSON string without escaping.
 	if (strchr(name, '"') != NULL || strchr(name, '\\') != NULL) {
 		return false;
@@ -994,6 +995,14 @@ bool primalucelib_panel_set_preset_name(primalucelib_link *link, int index, cons
 	return primalucelib_request(link, PRIMALUCE_REQUEST_FOCUSER_SET_STORED_NAME, index, name) && primalucelib_reply_is_acknowledged(link, path);
 }
 
+static bool primalucelib_recall_preset(primalucelib_link *link, int index) {
+	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_RECALL_PRESET, index) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_PANEL_RECALL_PRESET_ACK);
+}
+
+bool primalucelib_panel_set_preset_name(primalucelib_link *link, int index, const char *name) {
+	return primalucelib_set_preset_name(link, index, name);
+}
+
 double primalucelib_reply_panel_preset_brightness(primalucelib_link *link, int index) {
 	char key[16];
 	snprintf(key, sizeof(key), PRIMALUCE_KEY_STORED_POSITION_PREFIX "%d", index);
@@ -1001,7 +1010,7 @@ double primalucelib_reply_panel_preset_brightness(primalucelib_link *link, int i
 }
 
 bool primalucelib_panel_recall_preset(primalucelib_link *link, int index) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_PANEL_RECALL_PRESET, index) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_PANEL_RECALL_PRESET_ACK);
+	return primalucelib_recall_preset(link, index);
 }
 
 bool primalucelib_panel_set_fading(primalucelib_link *link, bool enabled) {
@@ -1023,17 +1032,50 @@ bool primalucelib_cover_get_position(primalucelib_link *link, int *position) {
 }
 
 bool primalucelib_cover_set_position(primalucelib_link *link, int position) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_SET_POSITION, position) && primalucelib_reply_is_done(link, PRIMALUCE_REPLY_COVER_POSITION_ACK);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_SET_POSITION, position) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_COVER_POSITION_ACK);
 }
 
 char *primalucelib_cover_get_motor_state(primalucelib_link *link) {
 	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_GET_MOTOR_STATE) ? primalucelib_reply_string(link, PRIMALUCE_REPLY_COVER_MOTOR_STATE) : NULL;
 }
 
+bool primalucelib_cover_get_motion(primalucelib_link *link, int *position, char **state) {
+	if (!primalucelib_request(link, PRIMALUCE_REQUEST_COVER_GET_MOTION) || !primalucelib_reply_has(link, PRIMALUCE_REPLY_COVER_POSITION) || (*state = primalucelib_reply_string(link, PRIMALUCE_REPLY_COVER_MOTOR_STATE)) == NULL) {
+		return false;
+	}
+	*position = (int)primalucelib_reply_number(link, PRIMALUCE_REPLY_COVER_POSITION);
+	return true;
+}
+
+bool primalucelib_cover_get_environment(primalucelib_link *link, double *temperature, double *supply, double *usb) {
+	if (!primalucelib_request(link, PRIMALUCE_REQUEST_COVER_GET_ENVIRONMENT) || !primalucelib_reply_has(link, PRIMALUCE_REPLY_FOCUSER_MOTOR_TEMPERATURE)) {
+		return false;
+	}
+	*temperature = primalucelib_reply_number(link, PRIMALUCE_REPLY_FOCUSER_MOTOR_TEMPERATURE);
+	*supply = primalucelib_reply_number(link, PRIMALUCE_REPLY_SUPPLY_VOLTAGE);
+	*usb = primalucelib_reply_number(link, PRIMALUCE_REPLY_USB_VOLTAGE);
+	return true;
+}
+
 bool primalucelib_cover_stop(primalucelib_link *link) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_STOP) && primalucelib_reply_is_done(link, PRIMALUCE_REPLY_COVER_STOP_ACK);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_STOP) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_COVER_STOP_ACK);
 }
 
 bool primalucelib_cover_calibration_step(primalucelib_link *link, const char *step) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_CALIBRATION_STEP, step) && primalucelib_reply_is_done(link, PRIMALUCE_REPLY_COVER_CALIBRATION_ACK);
+	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_CALIBRATION_STEP, step) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_COVER_CALIBRATION_ACK);
+}
+
+bool primalucelib_cover_set_preset_position(primalucelib_link *link, int index, int steps) {
+	char key[16];
+	snprintf(key, sizeof(key), PRIMALUCE_KEY_STORED_POSITION_PREFIX "%d", index);
+	char *path[] = { PRIMALUCE_KEY_RESPONSE, PRIMALUCE_VERB_SET, key, PRIMALUCE_KEY_STORED_POSITION_STEPS, NULL };
+	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_SET_PRESET_POSITION, index, steps) && primalucelib_reply_is_acknowledged(link, path);
+}
+
+bool primalucelib_cover_set_preset_name(primalucelib_link *link, int index, const char *name) {
+	return primalucelib_set_preset_name(link, index, name);
+}
+
+bool primalucelib_cover_recall_preset(primalucelib_link *link, int index) {
+	return primalucelib_recall_preset(link, index);
 }

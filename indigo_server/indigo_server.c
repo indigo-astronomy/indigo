@@ -172,6 +172,7 @@
 #include "aux_astromechanics/indigo_aux_astromechanics.h"
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #include "aux_giotto/indigo_aux_giotto.h"
+#include "aux_alto/indigo_aux_alto.h"
 #include "ccd_svb/indigo_ccd_svb.h"
 #include "ccd_svb2/indigo_ccd_svb2.h"
 #include "rotator_optec/indigo_rotator_optec.h"
@@ -247,6 +248,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_flipflat,
 	indigo_aux_geoptikflat,
 	indigo_aux_giotto,
+	indigo_aux_alto,
 	indigo_aux_joystick,
 	indigo_aux_mgbox,
 	indigo_aux_ppb,

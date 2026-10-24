@@ -1,0 +1,225 @@
+{
+  "version": 2,
+  "task": "20261024120152-52cb-primaluce-alto-driver",
+  "scope": [
+    "indigo_drivers/aux_alto/*",
+    "indigo_drivers/shared/primalucelib/*",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "indigo_test/hardware/test_aux_alto_hw.c",
+    "indigo_test/unit/test_primalucelib.c",
+    "indigo_test/Makefile",
+    "indigo_server/indigo_server.c",
+    "Makefile",
+    "indigo_windows.sln",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/PROPERTIES.md",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto",
+        "--hw",
+        "--port",
+        "/dev/ttyUSB0"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/integration/test_aux_giotto_simulator"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_primaluce",
+        "--no-record"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "input-parsing": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024120152-52cb-primaluce-alto-driver.json": [
+      "100644",
+      "blob",
+      "e8186e7e5154400b563ca885bfbe7c69fe09ac77"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "a405dd0e6145c2ad9efa05f5b42a22c8e0e1edcc"
+    ],
+    "Makefile": [
+      "100644",
+      "blob",
+      "b6f33ef4b08d0b323adf07260de4f444d66b5d26"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "e817f01f9697929519cec1f00f940c2f7bd8f75a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "848424aebb984a2af8960f220f42d05bcf5a4f29"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "1c087501d0235eac100a10af705f65b586c62bf9"
+    ],
+    "indigo_drivers/aux_alto/Makefile.inc": [
+      "100644",
+      "blob",
+      "c3b11f5cbb6e2aaff983db1c023e83a949edf620"
+    ],
+    "indigo_drivers/aux_alto/README.md": [
+      "100644",
+      "blob",
+      "74747133f747dff677f7340cb1ed9df5273f0fde"
+    ],
+    "indigo_drivers/aux_alto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "f8561c76ebefa7979054c36c5ff44add44ae3c8b"
+    ],
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c": [
+      "100644",
+      "blob",
+      "43854add5d39ff5df5b3b3e06d618622290f85ab"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": [
+      "100644",
+      "blob",
+      "9508eaef08674b2d82f397a2789af2705756020f"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver": [
+      "100644",
+      "blob",
+      "0e322fac871367ab4b4656478991f87cf78d8513"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.h": [
+      "100644",
+      "blob",
+      "fe18d70f847316dca0385d0fbb117283395ccb3f"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.vcxproj": [
+      "100644",
+      "blob",
+      "45ab9b9097479693ae9803c4c7caa45658e9643e"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.vcxproj.filters": [
+      "100644",
+      "blob",
+      "ca053e8c8605968f696d81a46d371c6d862b163c"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.vcxproj.user": [
+      "100644",
+      "blob",
+      "88a550947edbc3c5003a41726f0749201fdb6822"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto_main.c": [
+      "100644",
+      "blob",
+      "d26fa3bb5c7bbf45e01abfc1e362a96b7fcbecaf"
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "b92cd653b62e6a97c65ae34e7343e2020d1d15eb"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "4539d02d2702f35f1d9325750ad77c54df71f7e3"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.h": [
+      "100644",
+      "blob",
+      "080d0f928d700a378c05b146d4a1b91c6656921f"
+    ],
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "ba8c3ed656f89b5a80b2f432f723f91963428324"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "0bf2314e3fc50b8332683fabb8e1f827f7bf28e3"
+    ],
+    "indigo_test/hardware/test_aux_alto_hw.c": [
+      "100644",
+      "blob",
+      "8fc62be1030e65e06ff215b57f94eb8a6c8ce9a3"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "abc3478e461f6b5da748482fd505a10f84b545bc"
+    ],
+    "indigo_test/unit/test_primalucelib.c": [
+      "100644",
+      "blob",
+      "e60d8dc19edb616aa5f7b5f125c07ae59a49ebc6"
+    ],
+    "indigo_windows.sln": [
+      "100644",
+      "blob",
+      "563dee6ca9b578a1d5c512c780d07382f690d863"
+    ]
+  }
+}

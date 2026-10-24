@@ -809,6 +809,49 @@ cleanup:
 	stop_peer();
 }
 
+// Replies as an ALTO1 (application firmware 1.03.11) gave them.
+static void cover_motion_presets_and_refusals(void) {
+	int position = -1;
+	char *state = NULL;
+	double temperature = 0, supply = 0, usb = 0;
+	CHECK(start_peer(
+		"{\"res\":{\"get\":{\"MOT1\":{\"POSITION\":63,\"STATUS\":{\"HIZ\":0,\"UVLO\":0,\"TH_SD\":0,\"TH_WRN\":0,\"OCD\":0,\"WCMD\":0,\"NOPCMD\":0,\"BUSY\":1,\"DIR\":\"Out\",\"MST\":\"dec\"}}}}}\n",
+		"{\"res\":{\"get\":{\"MOT1\":{\"POSITION\":63}}}}\n",
+		"{\"res\":{\"get\":{\"VIN_12V\":\"13.39\",\"VIN_USB\":\"5.47\",\"MOT1\":{\"NTC_T\":46.88000}}}}\n",
+		"{\"res\":{\"set\":{\"MOT1\":{\"POSITION\":\"done\"}}}}\n",
+		"{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"Error: invalid command\"}}}}\n",
+		"{\"res\":{\"set\":{\"PRESET_1\":{\"M1POS\":\"Error: invalid command\"}}}}\n",
+		"{\"res\":{\"set\":{\"PRESET_1\":{\"NAME\":\"done\"}}}}\n",
+		"{\"res\":{\"set\":{\"PRESET_1\":{\"M1POS\":\"done\"}}}}\n",
+		"{\"res\":{\"cmd\":{\"PRESET\":\"done\"}}}\n",
+		"{\"res\":{\"cmd\":{\"PRESET\":\"Error: empty preset\"}}}\n",
+		"{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"Error: invalid command\"}}}}\n",
+		NULL));
+	CHECK(primalucelib_cover_get_motion(&test_link, &position, &state));
+	CHECK(position == 63 && !strcmp(state, "dec"));
+	// The motor state is required.
+	CHECK(!primalucelib_cover_get_motion(&test_link, &position, &state));
+	CHECK(primalucelib_cover_get_environment(&test_link, &temperature, &supply, &usb));
+	CHECK(temperature > 46.87 && temperature < 46.89 && supply > 13.38 && supply < 13.40 && usb > 5.46 && usb < 5.48);
+	CHECK(primalucelib_cover_set_position(&test_link, PRIMALUCE_COVER_OPEN));
+	CHECK(!primalucelib_cover_stop(&test_link));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: invalid command"));
+	CHECK(!primalucelib_cover_set_preset_position(&test_link, 1, 215647));
+	CHECK(primalucelib_cover_set_preset_name(&test_link, 1, "Flats"));
+	CHECK(primalucelib_cover_set_preset_position(&test_link, 1, 215647));
+	CHECK(primalucelib_cover_recall_preset(&test_link, 1));
+	CHECK(!primalucelib_cover_recall_preset(&test_link, 2));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: empty preset"));
+	CHECK(!primalucelib_cover_calibration_step(&test_link, PRIMALUCE_COVER_CALIBRATION_INIT));
+	CHECK(request_matches(0, "{\"req\":{\"get\":{\"MOT1\":{\"POSITION\":\"\",\"STATUS\":\"\"}}}}"));
+	CHECK(request_matches(2, "{\"req\":{\"get\":{\"VIN_12V\":\"\",\"VIN_USB\":\"\",\"MOT1\":{\"NTC_T\":\"\"}}}}"));
+	CHECK(request_matches(3, "{\"req\":{\"set\":{\"MOT1\":{\"POSITION\":100}}}}"));
+	CHECK(request_matches(5, "{\"req\":{\"set\":{\"PRESET_1\":{\"M1POS\":215647}}}}"));
+	CHECK(request_matches(8, "{\"req\":{\"cmd\":{\"PRESET\":1}}}"));
+cleanup:
+	stop_peer();
+}
+
 // ----------------------------------------------------------------- pure helpers
 
 static void models_are_recognized_by_prefix(void) {
@@ -895,6 +938,7 @@ int main(void) {
 		{ "flat panel commands", flat_panel_commands },
 		{ "flat panel state, presets and settings", flat_panel_state_presets_and_settings },
 		{ "cover commands", cover_commands },
+		{ "cover motion, presets and refusals", cover_motion_presets_and_refusals },
 		{ "models are recognized by prefix", models_are_recognized_by_prefix },
 		{ "HTTP URLs are split into host and port", http_urls_are_split_into_host_and_port },
 		{ "HTTP links open without contact", http_links_open_without_contact }

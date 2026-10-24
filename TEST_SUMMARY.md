@@ -39,6 +39,8 @@
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 |  | 2026-09-27 21:22 | 3.0.0.15 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-30 18:14 | 3.0.0.15 | linux arm64 | StarlightXpress AO | 16 / 16 | ✅ OK |
+| aux_alto | 2026-10-24 16:49 | 3.0.0.1 | linux x64 | ALTO1 | 9 / 9 | ✅ OK |
+|  | 2026-10-24 19:36 | 3.0.0.2 | linux x64 | simulator | 29 / 29 | ✅ OK |
 | aux_arteskyflat | 2026-09-27 20:47 | 3.0.0.9 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 |  | 2026-10-09 13:18 | 3.0.0.9 | linux arm64 | Artesky Flat Box Arduino simulator (ESP32-S3) | 6 / 6 | ✅ OK |
 | aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | fake SDK | 16 / 16 | ✅ OK |
@@ -60,8 +62,8 @@
 | aux_flipflat | 2026-10-09 14:14 | 3.0.0.11 | mac arm64 | simulator | 13 / 13 | ✅ OK |
 |  | 2026-10-09 14:16 | 3.0.0.11 | linux arm64 | Alnitak Flip-Flat Arduino simulator (ESP32-S3) | 7 / 7 | ✅ OK |
 | aux_geoptikflat | 2026-09-27 20:50 | 3.0.0.9 | mac arm64 | simulator | 12 / 12 | ✅ OK |
-| aux_giotto | 2026-10-24 14:29 | 3.0.0.1 | linux x64 | simulator | 25 / 25 | ✅ OK |
-|  | 2026-10-24 14:31 | 3.0.0.1 | linux x64 | GIOTTO | 8 / 8 | ✅ OK |
+| aux_giotto | 2026-10-24 14:31 | 3.0.0.1 | linux x64 | GIOTTO | 8 / 8 | ✅ OK |
+|  | 2026-10-24 19:17 | 3.0.0.2 | linux x64 | simulator | 26 / 26 | ✅ OK |
 | aux_joystick | 2026-10-19 09:53 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_mgbox | 2026-09-27 07:47 | 3.0.0.13 | linux x64 | simulator | 35 / 35 | ✅ OK |
 |  | 2026-09-27 20:51 | 3.0.0.13 | mac arm64 | simulator | 35 / 35 | ✅ OK |

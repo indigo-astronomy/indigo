@@ -2,7 +2,7 @@
   "title": "GIOTTO poll replaces a queued light/brightness request",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024161128-3861-giotto-request-versus-poll",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "- Location: indigo_drivers/aux_giotto/indigo_aux_giotto.driver:89-91,133-145,239-240,272. Generated call-site check: indigo_aux_giotto.c:740-743 and441-477. - Severity: medium; confidence: high; category: functional/concurrency. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: after panel_get_state I/O, a changed state or recovery from poll_alert calls giotto_publish_light, overwriting the light switch and brightness value AND target, then sets both properties OK. No per-property BUSY/pending guard exists. A concurrent bus-thread change sets BUSY and stores the request before its queued handler runs; that handler later reads the same overwritten switch or number.target. - Impact: an external panel-state change or poll-alert recovery concurrent with a client request can replace that request with old readback, resulting in a successful handler sending a different value. No race reproduction performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-6). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-021; driver-ac-report.md alias AC-6; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261024161128-3861-giotto-request-versus-poll verification.md: request_versus_poll failed on indigo_aux_giotto 3.0.0.1 (sent BRIGHTNESS 77 instead of the requested 40) and passes on 3.0.0.2, where the poll leaves a BUSY light property untouched; full simulator suite 26/26.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-021"
 }
