@@ -1,0 +1,45 @@
+{
+  "revision": "9d45bc8ccadaf0c3aab6c454c38429fec21d1699",
+  "method": "independent complementary source-contract closure; root handles remaining spans",
+  "files": [
+    {
+      "path": "indigo_libs/indigo_raw_utils.c",
+      "sha256": "d37f9309408b80bb1fcc3f48a4926efafcae68500a28335035c0a19e0b123250",
+      "reviewed_spans": [
+        "290-422",
+        "1093-1480",
+        "2584-3003",
+        "3062-3300"
+      ]
+    },
+    {
+      "path": "indigo_libs/indigo_gp_guider.c",
+      "sha256": "03214ebb312bf16563d03a4b7da0ef9bd67a9d6aded88b96723080b9329b3f5b",
+      "reviewed_spans": [
+        "339-446",
+        "677-729",
+        "890-995",
+        "1047-1208",
+        "1209-1720"
+      ]
+    },
+    {
+      "path": "indigo_libs/indigo_align.c",
+      "sha256": "42e3696fc704433959d14b289fe42df9166c3eb2809cfe3f42b24891871c785d",
+      "reviewed_spans": [
+        "535-809"
+      ]
+    },
+    {
+      "path": "indigo_libs/indigo_platesolver.c",
+      "sha256": "1407818f3dade3a3e248fdcf3fe391144abb4fc255d87462e15f1fcf4e2aadd2",
+      "reviewed_spans": [
+        "184-331",
+        "434-762",
+        "999-1402"
+      ]
+    }
+  ],
+  "mandatory_scope_gaps": [],
+  "runtime_tests": "none by this reviewer"
+}

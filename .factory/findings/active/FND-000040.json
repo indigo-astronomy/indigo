@@ -1,6 +1,6 @@
 {
   "id": "FND-000040",
-  "title": "TOOLS-005: Metadata tools copy paths into fixed buffers or pass paths through a shell command unsafely",
+  "title": "TOOLS-005: Metadata extractor passes paths through a shell and trusts a failed pipe",
   "category": "security",
   "severity": "medium",
   "status": "open",
@@ -11,9 +11,14 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "reconciliation.md",
+      "revision": null
     }
   ],
-  "summary": "TOOLS-005: Metadata tools copy paths into fixed buffers or pass paths through a shell command unsafely. `indigo_driver_metadata` uses `strcpy()` from arbitrary CLI arguments into `name[128]`; `indigo_metadata_extractor` builds `clang -E %s` for `popen()` without quoting and then dereferences `pipe` without checking for failure. Long paths can overflow, and specially named driver paths can change shell behavior. Use `snprintf()`/length checks and fork/exec-style invocation or strict shell quoting plus `popen()` failure checks. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
-  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:40; historical locations: `indigo_driver_metadata.c:15`, `indigo_driver_metadata.c:19`, `indigo_metadata_extractor.c:83`, `indigo_metadata_extractor.c:84`, `indigo_metadata_extractor.c:85`; legacy status: Open",
+  "summary": "Current reconciliation: indigo_driver_metadata.c now uses PATH_MAX and checked snprintf; its old fixed128/strcpy subclaim is obsolete. indigo_metadata_extractor still interpolates a path into a shell command and does not check popen failure before use. Next: avoid shell interpretation and handle process/pipe failure; preserve bounded metadata path handling. No repair, closure or risk acceptance is claimed.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tools/REVIEW.md:40; historical locations: `indigo_driver_metadata.c:15`, `indigo_driver_metadata.c:19`, `indigo_metadata_extractor.c:83`, `indigo_metadata_extractor.c:84`, `indigo_metadata_extractor.c:85`; legacy status: Open; current reconciliation: 20261024121920-3bd2-repository-audit/reconciliation.md",
   "resolution": null
 }

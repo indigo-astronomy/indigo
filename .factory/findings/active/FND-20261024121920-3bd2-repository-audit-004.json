@@ -1,0 +1,19 @@
+{
+  "title": "Numeric formatter reports failure for ordinary successful output",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_client.c:572-599 (596): snprintf result compared to1, so ordinary valid multi-character numeric output reports FAILED. Header contract client.h165. Accept nonnegative in-capacity output, test regular numeric formats as well as sexagesimal. Root independently confirmed and owns ordinary functional check. Short-format suffix pointer arithmetic also lacks length guard; do not reproduce memory fault. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-4). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-004; core-report.md alias CORE-4; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-004"
+}

@@ -1,0 +1,19 @@
+{
+  "title": "MJKZZ Bluetooth replies skip the protocol checksum used by the serial driver",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Category functional; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:208-217. The notification callback checks only that at least one complete message exists and address is0x81, then immediately applies decoded position/speed/stop data; it never checks ucSUM or the response command high bit. The authored portable driver for this same message protocol explicitly validates address, response command and checksum (indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver:82-98; protocol rationale at89-90). A complete malformed/stale notification can change measured position or publish successful motion completion even when the protocol rejects its integrity. Validate the complete response frame with the shared message helpers before applying it, preserving only documented protocol flexibility; characterize invalid checksum/address/command and healthy notification cases. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-8). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-036; driver-fm-report.md alias FM-8; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-036"
+}

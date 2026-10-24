@@ -1,0 +1,19 @@
+{
+  "title": "Factory role and archive guidance mismatches the adopted layout and version",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "The test-designer role points to nonexistent tests/AGENTS.md instead of indigo_test/AGENTS.md; documenter points to nonexistent docs/AGENTS.md instead of indigo_docs/AGENTS.md. The task-archive routine unconditionally promises idle/coordinator reset although archive_task.py:121-124 applies it only to legacy v1; modern task state remains completed. These mismatches can skip scoped instructions or misdiagnose correct completion state. Correct paths and qualify legacy behavior without changing helper semantics. Source-confirmed, no lifecycle mutation for this diagnostic. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (ROOT-FACTORY). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-043; root-documentation-closure.md alias ROOT-FACTORY; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-043"
+}

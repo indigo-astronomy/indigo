@@ -1,0 +1,47 @@
+{
+  "names": 1366,
+  "sky": [
+    {
+      "path": "indigo_server/resource/data/constellations.bounds.json",
+      "features": 89,
+      "positions": 1659,
+      "schema_bad": [],
+      "position_range_bad": 0
+    },
+    {
+      "path": "indigo_server/resource/data/constellations.json",
+      "features": 88,
+      "positions": 88,
+      "schema_bad": [],
+      "position_range_bad": 0
+    },
+    {
+      "path": "indigo_server/resource/data/mw.json",
+      "features": 5,
+      "positions": 30676,
+      "schema_bad": [],
+      "position_range_bad": 0
+    },
+    {
+      "path": "indigo_server/resource/data/planets.json",
+      "body_keys": [
+        "cer",
+        "eri",
+        "hau",
+        "jup",
+        "mak",
+        "mar",
+        "mer",
+        "nep",
+        "plu",
+        "sat",
+        "ter",
+        "ura",
+        "ven",
+        "ves"
+      ],
+      "treatment": "orbital-element dictionary; nested numeric finite scan",
+      "finite": true
+    }
+  ]
+}

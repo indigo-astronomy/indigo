@@ -1,0 +1,19 @@
+{
+  "title": "Identical U-curve minima are all discarded and produce NaN focus",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Category functional; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_drivers/agent_imager/indigo_agent_imager.c:1944-1958; caller:2203-2218. With at least four equal valid per-star minima, standard deviation is zero and strict focus_diff < 3 best_focus_stddev excludes every value, leaving used_values0. best_focus /= used_values returns NaN; caller computes steps from it and sends the resulting focus movement without checking finiteness. This is a derived-data defect, not generic numeric change_property input validation. Distinct from existing masked-contrast FND-...-032. Handle zero variance as a valid common minimum and reject/fallback when no values survive; validate final computed focus before motion. Add numerical unit cases for equal values, ordinary outliers and no usable minima. No movement was commanded. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-5). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-033; driver-fm-report.md alias FM-5; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-033"
+}

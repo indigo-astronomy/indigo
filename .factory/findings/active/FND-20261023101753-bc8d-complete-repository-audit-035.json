@@ -2,8 +2,8 @@
   "title": "Native registries fail to reject their exact capacity boundary",
   "category": "functional",
   "severity": "medium",
-  "summary": "`indigo_libs/indigo_client.c:209`, `:400` and `:530` test `empty_slot > INDIGO_MAX_DRIVERS/SERVERS`. Arrays are declared with exactly those capacities (`:75`, `:313`, `:441`; public header defines256 drivers and10 servers). With no reusable slot, empty_slot equals the used count, so the257th distinct driver or11th live remote server/subprocess bypasses the intended TOO_MANY_ELEMENTS return and indexes the element after the registry. This is an ordinary full-capacity contract mismatch; no capacity stress or malicious-input run was performed. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; a Full evidence: C-01. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; add bounded unit fixtures at capacity-1, capacity and after removal. Treat three registries together but do not rewrite unrelated connection behavior.",
-  "evidence": "core-functional-review.md section C-01; exact source and ordinary functional proof retained there.",
+  "summary": "`indigo_libs/indigo_client.c:209`, `:400` and `:530` test `empty_slot > INDIGO_MAX_DRIVERS/SERVERS`. Arrays are declared with exactly those capacities (`:75`, `:313`, `:441`; public header defines256 drivers and10 servers). With no reusable slot, empty_slot equals the used count, so the257th distinct driver or11th live remote server/subprocess bypasses the intended TOO_MANY_ELEMENTS return and indexes the element after the registry. This is an ordinary full-capacity contract mismatch; no capacity stress or malicious-input run was performed. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; a Full evidence: C-01. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; add bounded unit fixtures at capacity-1, capacity and after removal. Treat three registries together but do not rewrite unrelated connection behavior. Additional current boundary: indigo_bus.c:2470-2483 writes slaves[count] before count++ >= max, so zero/full capacity can index outside the caller-provided extent. Next: reject before writes and verify zero/full boundaries alongside registry limits.",
+  "evidence": "core-functional-review.md section C-01; exact source and ordinary functional proof retained there.; current reconciliation: 20261024121920-3bd2-repository-audit/reconciliation.md",
   "status": "open",
   "owner": "coordinator",
   "blocking": false,
@@ -11,6 +11,11 @@
     {
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "core-functional-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "reconciliation.md",
       "revision": null
     }
   ],

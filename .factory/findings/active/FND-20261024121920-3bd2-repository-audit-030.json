@@ -1,0 +1,19 @@
+{
+  "title": "Raspberry Pi private data never constructs its std::string",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Category functional; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp:1693-1694 and:1766; type:932-941 contains std::string eid. indigo_safe_malloc provides zeroed raw storage, not C++ construction, but attach immediately assigns to eid. This invokes a member of a non-live std::string, with implementation-dependent startup crash/invalid storage behavior. free at shutdown also skips the string destructor and can leak its heap allocation. Existing FND-000019\u2013000027 cover different optional-driver failures, not this C++ lifetime mismatch. Use value-initializing new rpi_private_data{} and matching delete, or a deliberate placement-construction/destruction contract. Verify attach/detach with short and non-SSO camera IDs under a fake libcamera backend; Raspberry Pi/real libcamera unavailable in this read-only review. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-2). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-030; driver-fm-report.md alias FM-2; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-030"
+}

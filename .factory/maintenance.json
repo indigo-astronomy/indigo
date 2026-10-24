@@ -122,6 +122,14 @@
         "checkpoint": "After this same policy rollout, before unrelated work or release",
         "resets_checkpoint": false
       }
+    },
+    "server_remaining_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit reply in this chat",
+      "date": "2026-10-24",
+      "task": "20261024115039-61cc-fix-server-security-remaining",
+      "scope": "Repair server audit 003/006/007/018 and XML cached-RO-BLOB leak before due full repository audit",
+      "checkpoint": "After these five repairs, before next unrelated task or release",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

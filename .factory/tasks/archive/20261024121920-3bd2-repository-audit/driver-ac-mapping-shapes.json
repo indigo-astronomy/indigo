@@ -1,0 +1,336 @@
+[
+  {
+    "path": "indigo_drivers/ccd_dsi/libdsi.c",
+    "maps": []
+  },
+  {
+    "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c",
+    "maps": []
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.c",
+    "maps": []
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp.c",
+    "maps": [
+      {
+        "name": "*ptp_type_code_label",
+        "start": 44,
+        "end": 60,
+        "string_literals": 23,
+        "max_literal_characters": 9,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_operation_code_label",
+        "start": 62,
+        "end": 110,
+        "string_literals": 45,
+        "max_literal_characters": 28,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_response_code_label",
+        "start": 112,
+        "end": 159,
+        "string_literals": 44,
+        "max_literal_characters": 37,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_event_code_label",
+        "start": 161,
+        "end": 182,
+        "string_literals": 18,
+        "max_literal_characters": 28,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_code_name",
+        "start": 184,
+        "end": 188,
+        "string_literals": 1,
+        "max_literal_characters": 4,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_code_label",
+        "start": 190,
+        "end": 251,
+        "string_literals": 56,
+        "max_literal_characters": 28,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_value_code_label",
+        "start": 253,
+        "end": 336,
+        "string_literals": 34,
+        "max_literal_characters": 23,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_vendor_label",
+        "start": 339,
+        "end": 362,
+        "string_literals": 20,
+        "max_literal_characters": 24,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.c",
+    "maps": [
+      {
+        "name": "*ptp_operation_canon_code_label",
+        "start": 42,
+        "end": 131,
+        "string_literals": 86,
+        "max_literal_characters": 36,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_response_canon_code_label",
+        "start": 133,
+        "end": 142,
+        "string_literals": 5,
+        "max_literal_characters": 22,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_event_canon_code_label",
+        "start": 144,
+        "end": 177,
+        "string_literals": 29,
+        "max_literal_characters": 32,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_canon_code_name",
+        "start": 179,
+        "end": 217,
+        "string_literals": 18,
+        "max_literal_characters": 32,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_canon_code_label",
+        "start": 219,
+        "end": 400,
+        "string_literals": 177,
+        "max_literal_characters": 34,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_canon_value_code_label",
+        "start": 402,
+        "end": 805,
+        "string_literals": 423,
+        "max_literal_characters": 28,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c",
+    "maps": [
+      {
+        "name": "*ptp_operation_fuji_code_label",
+        "start": 47,
+        "end": 49,
+        "string_literals": 0,
+        "max_literal_characters": -2,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_event_fuji_code_label",
+        "start": 51,
+        "end": 53,
+        "string_literals": 0,
+        "max_literal_characters": -2,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_fuji_code_name",
+        "start": 55,
+        "end": 78,
+        "string_literals": 10,
+        "max_literal_characters": 20,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_fuji_code_label",
+        "start": 80,
+        "end": 95,
+        "string_literals": 11,
+        "max_literal_characters": 16,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_fuji_value_code_label",
+        "start": 97,
+        "end": 309,
+        "string_literals": 146,
+        "max_literal_characters": 20,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.c",
+    "maps": [
+      {
+        "name": "*ptp_operation_nikon_code_label",
+        "start": 110,
+        "end": 150,
+        "string_literals": 36,
+        "max_literal_characters": 31,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_response_nikon_code_label",
+        "start": 152,
+        "end": 170,
+        "string_literals": 14,
+        "max_literal_characters": 32,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_event_nikon_code_label",
+        "start": 172,
+        "end": 180,
+        "string_literals": 4,
+        "max_literal_characters": 31,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_nikon_code_name",
+        "start": 182,
+        "end": 229,
+        "string_literals": 23,
+        "max_literal_characters": 30,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_nikon_code_label",
+        "start": 231,
+        "end": 505,
+        "string_literals": 270,
+        "max_literal_characters": 35,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_nikon_value_code_label",
+        "start": 507,
+        "end": 718,
+        "string_literals": 290,
+        "max_literal_characters": 29,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.c",
+    "maps": [
+      {
+        "name": "*ptp_operation_olympus_code_label",
+        "start": 41,
+        "end": 52,
+        "string_literals": 7,
+        "max_literal_characters": 39,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_event_olympus_code_label",
+        "start": 54,
+        "end": 64,
+        "string_literals": 6,
+        "max_literal_characters": 41,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_olympus_code_name",
+        "start": 66,
+        "end": 110,
+        "string_literals": 9,
+        "max_literal_characters": 30,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_olympus_code_label",
+        "start": 112,
+        "end": 135,
+        "string_literals": 19,
+        "max_literal_characters": 30,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_olympus_value_code_label",
+        "start": 137,
+        "end": 285,
+        "string_literals": 69,
+        "max_literal_characters": 26,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.c",
+    "maps": [
+      {
+        "name": "*ptp_operation_sony_code_label",
+        "start": 50,
+        "end": 62,
+        "string_literals": 8,
+        "max_literal_characters": 28,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_event_sony_code_label",
+        "start": 64,
+        "end": 71,
+        "string_literals": 3,
+        "max_literal_characters": 20,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_sony_code_name",
+        "start": 73,
+        "end": 173,
+        "string_literals": 75,
+        "max_literal_characters": 25,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_sony_code_label",
+        "start": 175,
+        "end": 225,
+        "string_literals": 46,
+        "max_literal_characters": 32,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      },
+      {
+        "name": "*ptp_property_sony_value_code_label",
+        "start": 227,
+        "end": 894,
+        "string_literals": 454,
+        "max_literal_characters": 30,
+        "treatment": "Static case/label strings structurally enumerated; nondeclarative control, formatting and arithmetic reviewed separately; device coefficient accuracy not certified."
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_touptek/indigo_ccd_touptek.c",
+    "maps": []
+  },
+  {
+    "path": "indigo_drivers/aux_joystick/indigo_aux_joystick.c",
+    "maps": []
+  },
+  {
+    "path": "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "maps": []
+  }
+]

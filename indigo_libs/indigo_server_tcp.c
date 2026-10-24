@@ -65,6 +65,7 @@ static indigo_uni_handle *server_handle = NULL;
 static bool startup_initiated = true;
 static bool shutdown_initiated = false;
 static int client_count = 0;
+static pthread_mutex_t client_count_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void (*server_callback)(int);
 
 int indigo_server_tcp_port = 7624;
@@ -89,6 +90,16 @@ static struct resource {
 
 // RFC 6455 GUID appended to Sec-WebSocket-Key before hashing
 #define WEBSOCKET_GUID	"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+#ifndef INDIGO_SERVER_INITIAL_TIMEOUT
+#define INDIGO_SERVER_INITIAL_TIMEOUT 5000000L
+#endif
+
+static void client_count_change(int delta) {
+	pthread_mutex_lock(&client_count_mutex);
+	server_callback(client_count += delta);
+	pthread_mutex_unlock(&client_count_mutex);
+}
 
 #ifndef INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT
 #define INDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT 5.0
@@ -157,6 +168,9 @@ static bool parse_upload_length(const char *text, size_t *size) {
 }
 
 static int receive_blob_upload(indigo_uni_handle *handle, indigo_blob_entry *entry) {
+	if (!indigo_blob_upload_allowed(entry)) {
+		return 403;
+	}
 	char header[BUFFER_SIZE];
 	size_t size = 0;
 	bool have_length = false;
@@ -227,12 +241,13 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 	indigo_rename_thread("Server worker");
 	indigo_uni_handle *handle = data->handle;
 	INDIGO_TRACE(indigo_trace("%d <- // Worker thread started", handle->index));
-	server_callback(++client_count);
+	client_count_change(1);
 	long res = 0;
 	char c;
 	void *free_on_exit = NULL;
+	indigo_uni_handle *file_handle = NULL;
 	indigo_blob_entry *release_at_exit = NULL;
-	if (indigo_uni_peek_available(handle, &c, 1) == 1) {
+	if (indigo_uni_wait_for_data(handle, INDIGO_SERVER_INITIAL_TIMEOUT) > 0 && indigo_uni_peek_available(handle, &c, 1) == 1) {
 		if (c == '<') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", handle->index));
 			indigo_client *protocol_adapter = indigo_xml_device_adapter(data->handle, data->handle);
@@ -428,7 +443,6 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							} else {
 								snprintf(file_name, sizeof(file_name), "%s%c%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, resource->file_name);
 							}
-							indigo_uni_handle *file_handle = NULL;
 							struct stat file_stat;
 							if (stat(file_name, &file_stat) < 0 || (file_handle = indigo_uni_open_file(file_name, INDIGO_LOG_DEBUG)) == NULL) {
 								INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
@@ -444,17 +458,17 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 								INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								INDIGO_PRINTF(handle, "Content-Type: %s\r\n", resource->content_type);
 								INDIGO_PRINTF(handle, "Content-Disposition: attachment; filename=%s\r\n", base_name);
-								INDIGO_PRINTF(handle, "Content-Length: %d\r\n", file_stat.st_size);
+								INDIGO_PRINTF(handle, "Content-Length: %lld\r\n", (long long)file_stat.st_size);
 								INDIGO_PRINTF(handle, "\r\n");
 								long remaining = file_stat.st_size;
 								char buffer[128 * 1024];
 								while (remaining > 0) {
 									long count = indigo_uni_read_available(file_handle, buffer, remaining < sizeof(buffer) ? remaining : sizeof(buffer));
-									if (count < 0) {
-										break;
+									if (count <= 0) {
+										goto failure;
 									}
 									handle->log_level = -abs(handle->log_level);
-									if (indigo_uni_write(handle, buffer, count) < 0) {
+									if (indigo_uni_write(handle, buffer, count) != count) {
 										handle->log_level = abs(handle->log_level);
 										goto failure;
 									}
@@ -478,7 +492,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							int status = receive_blob_upload(handle, entry);
 							indigo_release_blob(entry);
 							release_at_exit = NULL;
-							const char *reason = status == 200 ? "OK" : status == 408 ? "Request Timeout" : status == 404 ? "Not Found" : status == 503 ? "Service Unavailable" : "Bad Request";
+							const char *reason = status == 200 ? "OK" : status == 408 ? "Request Timeout" : status == 404 ? "Not Found" : status == 403 ? "Forbidden" : status == 503 ? "Service Unavailable" : "Bad Request";
 							INDIGO_PRINTF(handle, "HTTP/1.1 %d %s\r\nContent-Length: 0\r\nConnection: close\r\n\r\n", status, reason);
 						} else {
 							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
@@ -514,9 +528,10 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 		}
 	}
 failure:
+	indigo_uni_close(&file_handle);
 	INDIGO_TRACE(indigo_trace("%d <- // Worker thread finished", handle->index));
 	indigo_uni_close(&handle);
-	server_callback(--client_count);
+	client_count_change(-1);
 	indigo_safe_free(data);
 	if (free_on_exit) {
 		indigo_safe_free(free_on_exit);

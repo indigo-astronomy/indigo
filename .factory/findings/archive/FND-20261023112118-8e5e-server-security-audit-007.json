@@ -2,7 +2,7 @@
   "title": "Pre-protocol connections retain unbounded workers without a deadline",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261023112118-8e5e-server-security-audit",
       "report": "transport-security.md",
       "revision": null
+    },
+    {
+      "id": "20261024115039-61cc-fix-server-security-remaining",
+      "report": "security.md",
+      "revision": null
     }
   ],
   "summary": "Ability to establish TCP connections and leave them idle. Source-contract confirmed; runtime unverified. Next: Bound admission and initial protocol deadline; clean up failed worker creation",
   "evidence": "indigo_libs/indigo_server_tcp.c:95-100; indigo_libs/indigo_uni_io.c:1657-1697; indigo_libs/indigo_uni_io.c:1888-1907; transport-security.md section T07",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024115039-61cc-fix-server-security-remaining/verification.md and security.md: scoped implementation, independent reinspection, final sanitizer/native/leak checks passed.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-007"
 }

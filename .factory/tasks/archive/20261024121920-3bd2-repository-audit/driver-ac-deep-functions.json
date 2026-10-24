@@ -1,0 +1,2697 @@
+[
+  {
+    "path": "indigo_drivers/ccd_dsi/libdsi.c",
+    "functions": [
+      {
+        "name": "dsi_get_sysclock_ms",
+        "start": 91,
+        "end": 94
+      },
+      {
+        "name": "dsi_get_byte_result",
+        "start": 104,
+        "end": 105
+      },
+      {
+        "name": "dsi_get_short_result",
+        "start": 115,
+        "end": 116
+      },
+      {
+        "name": "dsi_get_int_result",
+        "start": 126,
+        "end": 132
+      },
+      {
+        "name": "dsicmd_command_1",
+        "start": 144,
+        "end": 180
+      },
+      {
+        "name": "dsicmd_command_2",
+        "start": 193,
+        "end": 220
+      },
+      {
+        "name": "dsicmd_command_3",
+        "start": 234,
+        "end": 289
+      },
+      {
+        "name": "dsicmd_command_4",
+        "start": 303,
+        "end": 328
+      },
+      {
+        "name": "dsicmd_usb_command",
+        "start": 347,
+        "end": 409
+      },
+      {
+        "name": "dsicmd_reset_camera",
+        "start": 416,
+        "end": 417
+      },
+      {
+        "name": "dsicmd_set_exposure_time",
+        "start": 420,
+        "end": 425
+      },
+      {
+        "name": "dsicmd_get_exposure_time",
+        "start": 428,
+        "end": 429
+      },
+      {
+        "name": "dsicmd_get_exposure_time_left",
+        "start": 432,
+        "end": 433
+      },
+      {
+        "name": "dsicmd_start_exposure",
+        "start": 436,
+        "end": 438
+      },
+      {
+        "name": "dsicmd_abort_exposure",
+        "start": 441,
+        "end": 443
+      },
+      {
+        "name": "dsicmd_set_gain",
+        "start": 446,
+        "end": 450
+      },
+      {
+        "name": "dsicmd_set_offset",
+        "start": 457,
+        "end": 459
+      },
+      {
+        "name": "dsicmd_set_vdd_mode",
+        "start": 466,
+        "end": 468
+      },
+      {
+        "name": "dsicmd_set_flush_mode",
+        "start": 475,
+        "end": 477
+      },
+      {
+        "name": "dsicmd_set_readout_mode",
+        "start": 484,
+        "end": 486
+      },
+      {
+        "name": "dsicmd_get_readout_mode",
+        "start": 489,
+        "end": 490
+      },
+      {
+        "name": "dsicmd_set_readout_delay",
+        "start": 493,
+        "end": 495
+      },
+      {
+        "name": "dsicmd_set_readout_speed",
+        "start": 502,
+        "end": 504
+      },
+      {
+        "name": "dsicmd_get_temperature",
+        "start": 511,
+        "end": 515
+      },
+      {
+        "name": "dsicmd_get_eeprom_byte",
+        "start": 534,
+        "end": 540
+      },
+      {
+        "name": "dsicmd_set_eeprom_byte",
+        "start": 543,
+        "end": 549
+      },
+      {
+        "name": "dsicmd_get_eeprom_data",
+        "start": 552,
+        "end": 557
+      },
+      {
+        "name": "dsicmd_set_eeprom_data",
+        "start": 560,
+        "end": 565
+      },
+      {
+        "name": "dsicmd_get_eeprom_string",
+        "start": 568,
+        "end": 582
+      },
+      {
+        "name": "dsicmd_set_eeprom_string",
+        "start": 597,
+        "end": 614
+      },
+      {
+        "name": "dsicmd_get_version",
+        "start": 617,
+        "end": 628
+      },
+      {
+        "name": "dsicmd_load_status",
+        "start": 631,
+        "end": 642
+      },
+      {
+        "name": "dsicmd_get_firmware_debug",
+        "start": 650,
+        "end": 652
+      },
+      {
+        "name": "*dsicmd_init_dsi",
+        "start": 678,
+        "end": 836
+      },
+      {
+        "name": "dsicmd_init_usb_device",
+        "start": 860,
+        "end": 918
+      },
+      {
+        "name": "*dsicmd_decode_image",
+        "start": 924,
+        "end": 1012
+      },
+      {
+        "name": "dsi_set_image_little_endian",
+        "start": 1017,
+        "end": 1022
+      },
+      {
+        "name": "dsi_set_amp_gain",
+        "start": 1025,
+        "end": 1032
+      },
+      {
+        "name": "dsi_get_amp_gain",
+        "start": 1035,
+        "end": 1036
+      },
+      {
+        "name": "dsi_set_amp_offset",
+        "start": 1039,
+        "end": 1046
+      },
+      {
+        "name": "dsi_get_amp_offset",
+        "start": 1049,
+        "end": 1050
+      },
+      {
+        "name": "dsi_get_frame_width",
+        "start": 1053,
+        "end": 1054
+      },
+      {
+        "name": "dsi_get_frame_height",
+        "start": 1057,
+        "end": 1058
+      },
+      {
+        "name": "dsi_get_image_width",
+        "start": 1061,
+        "end": 1062
+      },
+      {
+        "name": "dsi_get_image_height",
+        "start": 1065,
+        "end": 1066
+      },
+      {
+        "name": "dsi_get_pixel_width",
+        "start": 1069,
+        "end": 1070
+      },
+      {
+        "name": "dsi_get_pixel_height",
+        "start": 1073,
+        "end": 1074
+      },
+      {
+        "name": "dsi_get_temperature",
+        "start": 1077,
+        "end": 1082
+      },
+      {
+        "name": "*dsi_get_chip_name",
+        "start": 1085,
+        "end": 1090
+      },
+      {
+        "name": "*dsi_get_model_name",
+        "start": 1093,
+        "end": 1114
+      },
+      {
+        "name": "*dsi_get_bayer_pattern",
+        "start": 1117,
+        "end": 1118
+      },
+      {
+        "name": "*dsi_get_camera_name",
+        "start": 1121,
+        "end": 1126
+      },
+      {
+        "name": "dsi_get_bytespp",
+        "start": 1129,
+        "end": 1130
+      },
+      {
+        "name": "*dsi_set_camera_name",
+        "start": 1141,
+        "end": 1147
+      },
+      {
+        "name": "*dsi_get_serial_number",
+        "start": 1150,
+        "end": 1159
+      },
+      {
+        "name": "dsicmd_set_binning",
+        "start": 1162,
+        "end": 1170
+      },
+      {
+        "name": "dsi_get_max_binning",
+        "start": 1173,
+        "end": 1178
+      },
+      {
+        "name": "dsi_set_binning",
+        "start": 1181,
+        "end": 1187
+      },
+      {
+        "name": "dsi_get_binning",
+        "start": 1190,
+        "end": 1191
+      },
+      {
+        "name": "dsi_get_identifier",
+        "start": 1194,
+        "end": 1211
+      },
+      {
+        "name": "dsicmd_write_firmware",
+        "start": 1214,
+        "end": 1231
+      },
+      {
+        "name": "dsi_load_firmware",
+        "start": 1234,
+        "end": 1262
+      },
+      {
+        "name": "dsi_scan_usb",
+        "start": 1265,
+        "end": 1286
+      },
+      {
+        "name": "*dsi_open_camera",
+        "start": 1298,
+        "end": 1337
+      },
+      {
+        "name": "dsi_close_camera",
+        "start": 1340,
+        "end": 1359
+      },
+      {
+        "name": "libdsi_set_verbose_init",
+        "start": 1370,
+        "end": 1371
+      },
+      {
+        "name": "libdsi_get_verbose_init",
+        "start": 1379,
+        "end": 1380
+      },
+      {
+        "name": "dsi_set_verbose",
+        "start": 1389,
+        "end": 1390
+      },
+      {
+        "name": "dsi_get_verbose",
+        "start": 1400,
+        "end": 1401
+      },
+      {
+        "name": "dsi_start_exposure",
+        "start": 1404,
+        "end": 1473
+      },
+      {
+        "name": "dsi_get_exposure_time_left",
+        "start": 1476,
+        "end": 1477
+      },
+      {
+        "name": "dsi_abort_exposure",
+        "start": 1480,
+        "end": 1483
+      },
+      {
+        "name": "dsi_reset_camera",
+        "start": 1486,
+        "end": 1487
+      },
+      {
+        "name": "dsi_read_image",
+        "start": 1505,
+        "end": 1573
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c",
+    "functions": [
+      {
+        "name": "*set_uint32_le",
+        "start": 315,
+        "end": 324
+      },
+      {
+        "name": "*set_uint32_be",
+        "start": 326,
+        "end": 335
+      },
+      {
+        "name": "*set_uint32",
+        "start": 337,
+        "end": 343
+      },
+      {
+        "name": "get_uint32_le",
+        "start": 345,
+        "end": 347
+      },
+      {
+        "name": "get_uint32_be",
+        "start": 349,
+        "end": 351
+      },
+      {
+        "name": "get_uint32",
+        "start": 353,
+        "end": 359
+      },
+      {
+        "name": "*uint32_to_hex",
+        "start": 361,
+        "end": 365
+      },
+      {
+        "name": "hex_to_uint32",
+        "start": 367,
+        "end": 373
+      },
+      {
+        "name": "*to_hex",
+        "start": 387,
+        "end": 397
+      },
+      {
+        "name": "scsi_command",
+        "start": 399,
+        "end": 447
+      },
+      {
+        "name": "pentax_command",
+        "start": 449,
+        "end": 454
+      },
+      {
+        "name": "pentax_status",
+        "start": 456,
+        "end": 500
+      },
+      {
+        "name": "pentax_read",
+        "start": 502,
+        "end": 511
+      },
+      {
+        "name": "pentax_parameter",
+        "start": 513,
+        "end": 522
+      },
+      {
+        "name": "pentax_legacy_connect",
+        "start": 524,
+        "end": 533
+      },
+      {
+        "name": "pentax_connect",
+        "start": 535,
+        "end": 549
+      },
+      {
+        "name": "pentax_get_identity",
+        "start": 551,
+        "end": 580
+      },
+      {
+        "name": "pentax_get_firmware",
+        "start": 582,
+        "end": 603
+      },
+      {
+        "name": "pentax_get_state",
+        "start": 605,
+        "end": 619
+      },
+      {
+        "name": "pentax_get_full_state",
+        "start": 621,
+        "end": 725
+      },
+      {
+        "name": "pentax_set_mode",
+        "start": 727,
+        "end": 741
+      },
+      {
+        "name": "pentax_set_wu",
+        "start": 743,
+        "end": 757
+      },
+      {
+        "name": "pentax_set_aperture",
+        "start": 759,
+        "end": 777
+      },
+      {
+        "name": "pentax_set_shutter",
+        "start": 779,
+        "end": 797
+      },
+      {
+        "name": "pentax_set_iso",
+        "start": 799,
+        "end": 821
+      },
+      {
+        "name": "pentax_open",
+        "start": 823,
+        "end": 866
+      },
+      {
+        "name": "pentax_close",
+        "start": 868,
+        "end": 872
+      },
+      {
+        "name": "state_timer_callback",
+        "start": 876,
+        "end": 881
+      },
+      {
+        "name": "ccd_connect_callback",
+        "start": 883,
+        "end": 942
+      },
+      {
+        "name": "iso_handler",
+        "start": 944,
+        "end": 968
+      },
+      {
+        "name": "ccd_attach",
+        "start": 972,
+        "end": 1005
+      },
+      {
+        "name": "ccd_enumerate_properties",
+        "start": 1007,
+        "end": 1015
+      },
+      {
+        "name": "ccd_change_property",
+        "start": 1017,
+        "end": 1035
+      },
+      {
+        "name": "ccd_detach",
+        "start": 1037,
+        "end": 1050
+      },
+      {
+        "name": "process_plug_event",
+        "start": 1062,
+        "end": 1136
+      },
+      {
+        "name": "process_unplug_event",
+        "start": 1138,
+        "end": 1154
+      },
+      {
+        "name": "hotplug_callback",
+        "start": 1156,
+        "end": 1166
+      },
+      {
+        "name": "indigo_ccd_pentax",
+        "start": 1170,
+        "end": 1210
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.c",
+    "functions": [
+      {
+        "name": "ccd_attach",
+        "start": 66,
+        "end": 143
+      },
+      {
+        "name": "ccd_enumerate_properties",
+        "start": 145,
+        "end": 162
+      },
+      {
+        "name": "release_camera_properties",
+        "start": 164,
+        "end": 191
+      },
+      {
+        "name": "handle_connection",
+        "start": 193,
+        "end": 272
+      },
+      {
+        "name": "handle_lock",
+        "start": 274,
+        "end": 281
+      },
+      {
+        "name": "af_finalizer",
+        "start": 283,
+        "end": 294
+      },
+      {
+        "name": "handle_af",
+        "start": 296,
+        "end": 300
+      },
+      {
+        "name": "handle_set_host_time",
+        "start": 302,
+        "end": 310
+      },
+      {
+        "name": "handle_zoom",
+        "start": 312,
+        "end": 319
+      },
+      {
+        "name": "handle_set_property",
+        "start": 321,
+        "end": 341
+      },
+      {
+        "name": "streaming_finish",
+        "start": 343,
+        "end": 357
+      },
+      {
+        "name": "streaming_complete",
+        "start": 359,
+        "end": 375
+      },
+      {
+        "name": "streaming_stop_finalizer",
+        "start": 377,
+        "end": 379
+      },
+      {
+        "name": "streaming_finalizer",
+        "start": 381,
+        "end": 393
+      },
+      {
+        "name": "handle_streaming",
+        "start": 395,
+        "end": 408
+      },
+      {
+        "name": "exposure_complete",
+        "start": 410,
+        "end": 423
+      },
+      {
+        "name": "exposure_finalizer",
+        "start": 425,
+        "end": 441
+      },
+      {
+        "name": "handle_exposure",
+        "start": 443,
+        "end": 460
+      },
+      {
+        "name": "handle_abort_capture",
+        "start": 462,
+        "end": 480
+      },
+      {
+        "name": "ccd_change_property",
+        "start": 482,
+        "end": 561
+      },
+      {
+        "name": "ccd_detach",
+        "start": 563,
+        "end": 583
+      },
+      {
+        "name": "focuser_attach",
+        "start": 585,
+        "end": 597
+      },
+      {
+        "name": "focus_finish",
+        "start": 599,
+        "end": 605
+      },
+      {
+        "name": "focus_complete",
+        "start": 607,
+        "end": 622
+      },
+      {
+        "name": "focus_finalizer",
+        "start": 624,
+        "end": 651
+      },
+      {
+        "name": "handle_focus",
+        "start": 653,
+        "end": 665
+      },
+      {
+        "name": "handle_focus_abort",
+        "start": 667,
+        "end": 675
+      },
+      {
+        "name": "handle_focus_connection",
+        "start": 677,
+        "end": 684
+      },
+      {
+        "name": "focuser_change_property",
+        "start": 686,
+        "end": 709
+      },
+      {
+        "name": "focuser_detach",
+        "start": 711,
+        "end": 723
+      },
+      {
+        "name": "*attach_device",
+        "start": 729,
+        "end": 904
+      },
+      {
+        "name": "remove_device",
+        "start": 906,
+        "end": 921
+      },
+      {
+        "name": "register_device",
+        "start": 923,
+        "end": 929
+      },
+      {
+        "name": "process_ica_plug",
+        "start": 933,
+        "end": 951
+      },
+      {
+        "name": "process_ica_unplug",
+        "start": 953,
+        "end": 963
+      },
+      {
+        "name": "process_plug_event",
+        "start": 1009,
+        "end": 1032
+      },
+      {
+        "name": "process_unplug_event",
+        "start": 1034,
+        "end": 1045
+      },
+      {
+        "name": "hotplug_callback",
+        "start": 1047,
+        "end": 1056
+      },
+      {
+        "name": "indigo_ccd_ptp",
+        "start": 1062,
+        "end": 1123
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp.c",
+    "functions": [
+      {
+        "name": "*ptp_type_code_label",
+        "start": 44,
+        "end": 60
+      },
+      {
+        "name": "*ptp_operation_code_label",
+        "start": 62,
+        "end": 110
+      },
+      {
+        "name": "*ptp_response_code_label",
+        "start": 112,
+        "end": 159
+      },
+      {
+        "name": "*ptp_event_code_label",
+        "start": 161,
+        "end": 182
+      },
+      {
+        "name": "*ptp_property_code_name",
+        "start": 184,
+        "end": 188
+      },
+      {
+        "name": "*ptp_property_code_label",
+        "start": 190,
+        "end": 251
+      },
+      {
+        "name": "*ptp_property_value_code_label",
+        "start": 253,
+        "end": 336
+      },
+      {
+        "name": "*ptp_vendor_label",
+        "start": 339,
+        "end": 362
+      },
+      {
+        "name": "ptp_dump_container",
+        "start": 364,
+        "end": 403
+      },
+      {
+        "name": "ptp_dump_device_info",
+        "start": 405,
+        "end": 421
+      },
+      {
+        "name": "*ptp_encode_string",
+        "start": 423,
+        "end": 431
+      },
+      {
+        "name": "*ptp_encode_uint8",
+        "start": 433,
+        "end": 436
+      },
+      {
+        "name": "*ptp_encode_uint16",
+        "start": 438,
+        "end": 441
+      },
+      {
+        "name": "*ptp_encode_uint32",
+        "start": 443,
+        "end": 446
+      },
+      {
+        "name": "*ptp_encode_uint64",
+        "start": 448,
+        "end": 451
+      },
+      {
+        "name": "*ptp_decode_string",
+        "start": 453,
+        "end": 460
+      },
+      {
+        "name": "*ptp_decode_uint8",
+        "start": 462,
+        "end": 465
+      },
+      {
+        "name": "*ptp_decode_uint16",
+        "start": 467,
+        "end": 470
+      },
+      {
+        "name": "*ptp_decode_uint32",
+        "start": 472,
+        "end": 475
+      },
+      {
+        "name": "*ptp_decode_uint64",
+        "start": 477,
+        "end": 480
+      },
+      {
+        "name": "*ptp_decode_uint128",
+        "start": 482,
+        "end": 490
+      },
+      {
+        "name": "*ptp_decode_uint16_array",
+        "start": 492,
+        "end": 504
+      },
+      {
+        "name": "*ptp_decode_uint32_array",
+        "start": 506,
+        "end": 518
+      },
+      {
+        "name": "ptp_append_uint16_16_array",
+        "start": 520,
+        "end": 529
+      },
+      {
+        "name": "ptp_append_uint16_32_array",
+        "start": 531,
+        "end": 540
+      },
+      {
+        "name": "*ptp_decode_device_info",
+        "start": 542,
+        "end": 577
+      },
+      {
+        "name": "*ptp_decode_property",
+        "start": 581,
+        "end": 833
+      },
+      {
+        "name": "*ptp_decode_property_value",
+        "start": 835,
+        "end": 895
+      },
+      {
+        "name": "*ptp_property_supported",
+        "start": 897,
+        "end": 903
+      },
+      {
+        "name": "ptp_operation_supported",
+        "start": 905,
+        "end": 911
+      },
+      {
+        "name": "ptp_type_size",
+        "start": 913,
+        "end": 944
+      },
+      {
+        "name": "ptp_open",
+        "start": 1045,
+        "end": 1071
+      },
+      {
+        "name": "ptp_transaction",
+        "start": 1073,
+        "end": 1164
+      },
+      {
+        "name": "ptp_get_event",
+        "start": 1166,
+        "end": 1197
+      },
+      {
+        "name": "ptp_close",
+        "start": 1199,
+        "end": 1212
+      },
+      {
+        "name": "ptp_open",
+        "start": 1216,
+        "end": 1323
+      },
+      {
+        "name": "ptp_usb_read",
+        "start": 1325,
+        "end": 1337
+      },
+      {
+        "name": "ptp_transaction",
+        "start": 1339,
+        "end": 1433
+      },
+      {
+        "name": "ptp_get_event",
+        "start": 1435,
+        "end": 1443
+      },
+      {
+        "name": "ptp_close",
+        "start": 1445,
+        "end": 1451
+      },
+      {
+        "name": "ptp_update_property",
+        "start": 1455,
+        "end": 1632
+      },
+      {
+        "name": "ptp_refresh_property",
+        "start": 1634,
+        "end": 1648
+      },
+      {
+        "name": "ptp_check_event",
+        "start": 1650,
+        "end": 1655
+      },
+      {
+        "name": "ptp_initialise",
+        "start": 1657,
+        "end": 1712
+      },
+      {
+        "name": "ptp_handle_event",
+        "start": 1714,
+        "end": 1778
+      },
+      {
+        "name": "ptp_set_property",
+        "start": 1780,
+        "end": 1829
+      },
+      {
+        "name": "ptp_exposure",
+        "start": 1831,
+        "end": 1834
+      },
+      {
+        "name": "ptp_set_host_time",
+        "start": 1836,
+        "end": 1847
+      },
+      {
+        "name": "ptp_check_jpeg_ext",
+        "start": 1849,
+        "end": 1851
+      },
+      {
+        "name": "ptp_capture_start",
+        "start": 1854,
+        "end": 1866
+      },
+      {
+        "name": "ptp_capture_wait",
+        "start": 1868,
+        "end": 1871
+      },
+      {
+        "name": "ptp_stream_frame",
+        "start": 1873,
+        "end": 1890
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.c",
+    "functions": [
+      {
+        "name": "*ptp_operation_canon_code_label",
+        "start": 42,
+        "end": 131
+      },
+      {
+        "name": "*ptp_response_canon_code_label",
+        "start": 133,
+        "end": 142
+      },
+      {
+        "name": "*ptp_event_canon_code_label",
+        "start": 144,
+        "end": 177
+      },
+      {
+        "name": "*ptp_property_canon_code_name",
+        "start": 179,
+        "end": 217
+      },
+      {
+        "name": "*ptp_property_canon_code_label",
+        "start": 219,
+        "end": 400
+      },
+      {
+        "name": "*ptp_property_canon_value_code_label",
+        "start": 402,
+        "end": 805
+      },
+      {
+        "name": "*ptp_copy_image_format",
+        "start": 807,
+        "end": 824
+      },
+      {
+        "name": "ptp_canon_get_event",
+        "start": 826,
+        "end": 1413
+      },
+      {
+        "name": "ptp_canon_check_event",
+        "start": 1415,
+        "end": 1420
+      },
+      {
+        "name": "ptp_canon_initialise",
+        "start": 1424,
+        "end": 1468
+      },
+      {
+        "name": "set_number_property",
+        "start": 1470,
+        "end": 1532
+      },
+      {
+        "name": "set_string_property",
+        "start": 1534,
+        "end": 1541
+      },
+      {
+        "name": "ptp_canon_set_property",
+        "start": 1543,
+        "end": 1562
+      },
+      {
+        "name": "ptp_canon_setup_capture_destination",
+        "start": 1564,
+        "end": 1650
+      },
+      {
+        "name": "canon_shutter_stop",
+        "start": 1652,
+        "end": 1663
+      },
+      {
+        "name": "canon_capture_stop",
+        "start": 1665,
+        "end": 1672
+      },
+      {
+        "name": "ptp_canon_exposure",
+        "start": 1674,
+        "end": 1733
+      },
+      {
+        "name": "canon_liveview_stop",
+        "start": 1735,
+        "end": 1742
+      },
+      {
+        "name": "ptp_canon_liveview",
+        "start": 1744,
+        "end": 1783
+      },
+      {
+        "name": "ptp_canon_lock",
+        "start": 1785,
+        "end": 1793
+      },
+      {
+        "name": "ptp_canon_af",
+        "start": 1795,
+        "end": 1805
+      },
+      {
+        "name": "ptp_canon_zoom",
+        "start": 1807,
+        "end": 1819
+      },
+      {
+        "name": "canon_focus_stop",
+        "start": 1821,
+        "end": 1828
+      },
+      {
+        "name": "ptp_canon_focus",
+        "start": 1830,
+        "end": 1846
+      },
+      {
+        "name": "ptp_canon_set_host_time",
+        "start": 1848,
+        "end": 1855
+      },
+      {
+        "name": "ptp_canon_check_dual_compression",
+        "start": 1857,
+        "end": 1859
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c",
+    "functions": [
+      {
+        "name": "*ptp_operation_fuji_code_label",
+        "start": 47,
+        "end": 49
+      },
+      {
+        "name": "*ptp_event_fuji_code_label",
+        "start": 51,
+        "end": 53
+      },
+      {
+        "name": "*ptp_property_fuji_code_name",
+        "start": 55,
+        "end": 78
+      },
+      {
+        "name": "*ptp_property_fuji_code_label",
+        "start": 80,
+        "end": 95
+      },
+      {
+        "name": "*ptp_property_fuji_value_code_label",
+        "start": 97,
+        "end": 309
+      },
+      {
+        "name": "ptp_fuji_get_event",
+        "start": 329,
+        "end": 415
+      },
+      {
+        "name": "ptp_fuji_check_event",
+        "start": 417,
+        "end": 422
+      },
+      {
+        "name": "ptp_fuji_initialise",
+        "start": 424,
+        "end": 496
+      },
+      {
+        "name": "ptp_fuji_fix_property",
+        "start": 498,
+        "end": 562
+      },
+      {
+        "name": "ptp_set_switch_property",
+        "start": 564,
+        "end": 575
+      },
+      {
+        "name": "ptp_fuji_set_control_priority",
+        "start": 577,
+        "end": 584
+      },
+      {
+        "name": "ptp_fuji_set_property",
+        "start": 586,
+        "end": 598
+      },
+      {
+        "name": "fuji_capture_stop",
+        "start": 600,
+        "end": 612
+      },
+      {
+        "name": "ptp_fuji_exposure",
+        "start": 614,
+        "end": 695
+      },
+      {
+        "name": "fuji_liveview_stop",
+        "start": 697,
+        "end": 704
+      },
+      {
+        "name": "ptp_fuji_liveview",
+        "start": 706,
+        "end": 751
+      },
+      {
+        "name": "ptp_fuji_af",
+        "start": 753,
+        "end": 755
+      },
+      {
+        "name": "ptp_fuji_check_dual_compression",
+        "start": 757,
+        "end": 759
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.c",
+    "functions": [
+      {
+        "name": "*ptp_operation_nikon_code_label",
+        "start": 110,
+        "end": 150
+      },
+      {
+        "name": "*ptp_response_nikon_code_label",
+        "start": 152,
+        "end": 170
+      },
+      {
+        "name": "*ptp_event_nikon_code_label",
+        "start": 172,
+        "end": 180
+      },
+      {
+        "name": "*ptp_property_nikon_code_name",
+        "start": 182,
+        "end": 229
+      },
+      {
+        "name": "*ptp_property_nikon_code_label",
+        "start": 231,
+        "end": 505
+      },
+      {
+        "name": "*ptp_property_nikon_value_code_label",
+        "start": 507,
+        "end": 718
+      },
+      {
+        "name": "ptp_check_event",
+        "start": 720,
+        "end": 753
+      },
+      {
+        "name": "ptp_nikon_initialise",
+        "start": 755,
+        "end": 825
+      },
+      {
+        "name": "ptp_nikon_handle_event",
+        "start": 827,
+        "end": 829
+      },
+      {
+        "name": "ptp_nikon_inject_property",
+        "start": 831,
+        "end": 843
+      },
+      {
+        "name": "ptp_nikon_fix_property",
+        "start": 845,
+        "end": 1136
+      },
+      {
+        "name": "ptp_nikon_set_property",
+        "start": 1138,
+        "end": 1148
+      },
+      {
+        "name": "nikon_capture_stop",
+        "start": 1150,
+        "end": 1157
+      },
+      {
+        "name": "ptp_nikon_exposure",
+        "start": 1159,
+        "end": 1208
+      },
+      {
+        "name": "nikon_liveview_stop",
+        "start": 1210,
+        "end": 1217
+      },
+      {
+        "name": "ptp_nikon_liveview",
+        "start": 1219,
+        "end": 1247
+      },
+      {
+        "name": "ptp_nikon_lock",
+        "start": 1249,
+        "end": 1257
+      },
+      {
+        "name": "ptp_nikon_zoom",
+        "start": 1259,
+        "end": 1270
+      },
+      {
+        "name": "nikon_focus_stop",
+        "start": 1272,
+        "end": 1279
+      },
+      {
+        "name": "ptp_nikon_focus",
+        "start": 1281,
+        "end": 1296
+      },
+      {
+        "name": "ptp_nikon_check_dual_compression",
+        "start": 1298,
+        "end": 1300
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.c",
+    "functions": [
+      {
+        "name": "*ptp_operation_olympus_code_label",
+        "start": 41,
+        "end": 52
+      },
+      {
+        "name": "*ptp_event_olympus_code_label",
+        "start": 54,
+        "end": 64
+      },
+      {
+        "name": "*ptp_property_olympus_code_name",
+        "start": 66,
+        "end": 110
+      },
+      {
+        "name": "*ptp_property_olympus_code_label",
+        "start": 112,
+        "end": 135
+      },
+      {
+        "name": "*ptp_property_olympus_value_code_label",
+        "start": 137,
+        "end": 285
+      },
+      {
+        "name": "ptp_olympus_fix_property",
+        "start": 287,
+        "end": 301
+      },
+      {
+        "name": "ptp_olympus_handle_event",
+        "start": 303,
+        "end": 361
+      },
+      {
+        "name": "ptp_olympus_camera_control_mode_event",
+        "start": 364,
+        "end": 370
+      },
+      {
+        "name": "ptp_olympus_device_reset",
+        "start": 372,
+        "end": 382
+      },
+      {
+        "name": "ptp_olympus_recover",
+        "start": 384,
+        "end": 426
+      },
+      {
+        "name": "ptp_olympus_check_event",
+        "start": 429,
+        "end": 549
+      },
+      {
+        "name": "ptp_olympus_initialise",
+        "start": 551,
+        "end": 764
+      },
+      {
+        "name": "olympus_capture_stop",
+        "start": 766,
+        "end": 773
+      },
+      {
+        "name": "ptp_olympus_exposure",
+        "start": 775,
+        "end": 800
+      },
+      {
+        "name": "olympus_liveview_stop",
+        "start": 802,
+        "end": 810
+      },
+      {
+        "name": "ptp_olympus_liveview",
+        "start": 812,
+        "end": 832
+      },
+      {
+        "name": "ptp_olympus_focus",
+        "start": 834,
+        "end": 843
+      },
+      {
+        "name": "ptp_olympus_set_property",
+        "start": 845,
+        "end": 856
+      },
+      {
+        "name": "ptp_olympus_check_dual_compression",
+        "start": 858,
+        "end": 860
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.c",
+    "functions": [
+      {
+        "name": "*ptp_operation_sony_code_label",
+        "start": 50,
+        "end": 62
+      },
+      {
+        "name": "*ptp_event_sony_code_label",
+        "start": 64,
+        "end": 71
+      },
+      {
+        "name": "*ptp_property_sony_code_name",
+        "start": 73,
+        "end": 173
+      },
+      {
+        "name": "*ptp_property_sony_code_label",
+        "start": 175,
+        "end": 225
+      },
+      {
+        "name": "*ptp_property_sony_value_code_label",
+        "start": 227,
+        "end": 894
+      },
+      {
+        "name": "*ptp_sony_decode_property",
+        "start": 896,
+        "end": 1293
+      },
+      {
+        "name": "ptp_check_event",
+        "start": 1295,
+        "end": 1300
+      },
+      {
+        "name": "ptp_sony_initialise",
+        "start": 1302,
+        "end": 1386
+      },
+      {
+        "name": "ptp_sony_handle_event",
+        "start": 1388,
+        "end": 1448
+      },
+      {
+        "name": "ptp_sony_set_property",
+        "start": 1450,
+        "end": 1505
+      },
+      {
+        "name": "sony_capture_stop",
+        "start": 1507,
+        "end": 1515
+      },
+      {
+        "name": "ptp_sony_exposure",
+        "start": 1517,
+        "end": 1587
+      },
+      {
+        "name": "ptp_sony_liveview",
+        "start": 1589,
+        "end": 1615
+      },
+      {
+        "name": "ptp_sony_af_stop",
+        "start": 1617,
+        "end": 1626
+      },
+      {
+        "name": "ptp_sony_af",
+        "start": 1628,
+        "end": 1647
+      },
+      {
+        "name": "ptp_sony_focus",
+        "start": 1649,
+        "end": 1655
+      },
+      {
+        "name": "ptp_sony_check_dual_compression",
+        "start": 1657,
+        "end": 1659
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/ccd_touptek/indigo_ccd_touptek.c",
+    "functions": [
+      {
+        "name": "OEMCamEnum",
+        "start": 238,
+        "end": 262
+      },
+      {
+        "name": "get_blacklevel",
+        "start": 268,
+        "end": 303
+      },
+      {
+        "name": "get_bayer_pattern",
+        "start": 305,
+        "end": 325
+      },
+      {
+        "name": "finish_exposure",
+        "start": 327,
+        "end": 330
+      },
+      {
+        "name": "stop_video_mode",
+        "start": 332,
+        "end": 347
+      },
+      {
+        "name": "cleanup_aborted_exposure",
+        "start": 349,
+        "end": 353
+      },
+      {
+        "name": "get_diagnostic_option",
+        "start": 355,
+        "end": 361
+      },
+      {
+        "name": "*hardware_event_state",
+        "start": 363,
+        "end": 365
+      },
+      {
+        "name": "exposure_watchdog_timeout",
+        "start": 373,
+        "end": 382
+      },
+      {
+        "name": "ccd_exposure_watchdog_handler",
+        "start": 384,
+        "end": 414
+      },
+      {
+        "name": "ccd_event_handler",
+        "start": 416,
+        "end": 525
+      },
+      {
+        "name": "pull_callback",
+        "start": 527,
+        "end": 531
+      },
+      {
+        "name": "ccd_temperature_monitor_handler",
+        "start": 533,
+        "end": 579
+      },
+      {
+        "name": "exposure_setup_pending",
+        "start": 581,
+        "end": 583
+      },
+      {
+        "name": "setup_exposure_frame",
+        "start": 585,
+        "end": 622
+      },
+      {
+        "name": "ccd_setup_pull_handler",
+        "start": 624,
+        "end": 644
+      },
+      {
+        "name": "ccd_setup_binning_handler",
+        "start": 646,
+        "end": 654
+      },
+      {
+        "name": "setup_exposure",
+        "start": 656,
+        "end": 708
+      },
+      {
+        "name": "ccd_start_exposure_handler",
+        "start": 710,
+        "end": 744
+      },
+      {
+        "name": "guider_guide_ra_finalizer",
+        "start": 746,
+        "end": 751
+      },
+      {
+        "name": "guider_guide_dec_finalizer",
+        "start": 753,
+        "end": 758
+      },
+      {
+        "name": "set_wheel_positions",
+        "start": 760,
+        "end": 777
+      },
+      {
+        "name": "wheel_move_finalizer",
+        "start": 779,
+        "end": 796
+      },
+      {
+        "name": "wheel_calibrate_finalizer",
+        "start": 798,
+        "end": 818
+      },
+      {
+        "name": "wheel_calibrate_handler",
+        "start": 820,
+        "end": 835
+      },
+      {
+        "name": "wheel_connection_finalizer",
+        "start": 837,
+        "end": 853
+      },
+      {
+        "name": "focuser_move_finalizer",
+        "start": 855,
+        "end": 886
+      },
+      {
+        "name": "compensate_focus",
+        "start": 888,
+        "end": 934
+      },
+      {
+        "name": "focuser_temperature_handler",
+        "start": 936,
+        "end": 979
+      },
+      {
+        "name": "ccd_connection_handler",
+        "start": 983,
+        "end": 1235
+      },
+      {
+        "name": "ccd_mode_handler",
+        "start": 1237,
+        "end": 1257
+      },
+      {
+        "name": "ccd_bin_handler",
+        "start": 1259,
+        "end": 1299
+      },
+      {
+        "name": "ccd_frame_handler",
+        "start": 1301,
+        "end": 1324
+      },
+      {
+        "name": "ccd_exposure_handler",
+        "start": 1326,
+        "end": 1339
+      },
+      {
+        "name": "ccd_streaming_handler",
+        "start": 1341,
+        "end": 1354
+      },
+      {
+        "name": "ccd_abort_exposure_handler",
+        "start": 1356,
+        "end": 1376
+      },
+      {
+        "name": "ccd_cooler_handler",
+        "start": 1378,
+        "end": 1395
+      },
+      {
+        "name": "ccd_temperature_handler",
+        "start": 1397,
+        "end": 1425
+      },
+      {
+        "name": "ccd_gain_handler",
+        "start": 1427,
+        "end": 1443
+      },
+      {
+        "name": "ccd_offset_handler",
+        "start": 1445,
+        "end": 1475
+      },
+      {
+        "name": "ccd_x_advanced_handler",
+        "start": 1477,
+        "end": 1535
+      },
+      {
+        "name": "ccd_x_fan_handler",
+        "start": 1537,
+        "end": 1549
+      },
+      {
+        "name": "ccd_x_heater_handler",
+        "start": 1551,
+        "end": 1563
+      },
+      {
+        "name": "ccd_x_conversion_gain_handler",
+        "start": 1565,
+        "end": 1585
+      },
+      {
+        "name": "ccd_x_led_handler",
+        "start": 1587,
+        "end": 1599
+      },
+      {
+        "name": "ccd_x_bin_mode_handler",
+        "start": 1601,
+        "end": 1612
+      },
+      {
+        "name": "save_if_published",
+        "start": 1617,
+        "end": 1621
+      },
+      {
+        "name": "ccd_attach",
+        "start": 1628,
+        "end": 1836
+      },
+      {
+        "name": "ccd_enumerate_properties",
+        "start": 1838,
+        "end": 1860
+      },
+      {
+        "name": "ccd_change_property",
+        "start": 1862,
+        "end": 1941
+      },
+      {
+        "name": "ccd_detach",
+        "start": 1943,
+        "end": 1970
+      },
+      {
+        "name": "guider_connection_handler",
+        "start": 1974,
+        "end": 2021
+      },
+      {
+        "name": "guider_guide_dec_handler",
+        "start": 2023,
+        "end": 2040
+      },
+      {
+        "name": "guider_guide_ra_handler",
+        "start": 2042,
+        "end": 2059
+      },
+      {
+        "name": "guider_attach",
+        "start": 2063,
+        "end": 2073
+      },
+      {
+        "name": "guider_change_property",
+        "start": 2075,
+        "end": 2096
+      },
+      {
+        "name": "guider_detach",
+        "start": 2098,
+        "end": 2108
+      },
+      {
+        "name": "wheel_connection_handler",
+        "start": 2112,
+        "end": 2169
+      },
+      {
+        "name": "wheel_slot_handler",
+        "start": 2171,
+        "end": 2194
+      },
+      {
+        "name": "wheel_x_calibrate_handler",
+        "start": 2196,
+        "end": 2207
+      },
+      {
+        "name": "wheel_x_wheel_model_handler",
+        "start": 2209,
+        "end": 2222
+      },
+      {
+        "name": "wheel_attach",
+        "start": 2228,
+        "end": 2252
+      },
+      {
+        "name": "wheel_enumerate_properties",
+        "start": 2254,
+        "end": 2261
+      },
+      {
+        "name": "wheel_change_property",
+        "start": 2263,
+        "end": 2294
+      },
+      {
+        "name": "wheel_detach",
+        "start": 2296,
+        "end": 2307
+      },
+      {
+        "name": "focuser_connection_handler",
+        "start": 2311,
+        "end": 2407
+      },
+      {
+        "name": "focuser_reverse_motion_handler",
+        "start": 2409,
+        "end": 2422
+      },
+      {
+        "name": "focuser_position_handler",
+        "start": 2424,
+        "end": 2476
+      },
+      {
+        "name": "focuser_limits_handler",
+        "start": 2478,
+        "end": 2493
+      },
+      {
+        "name": "focuser_backlash_handler",
+        "start": 2495,
+        "end": 2510
+      },
+      {
+        "name": "focuser_steps_handler",
+        "start": 2512,
+        "end": 2553
+      },
+      {
+        "name": "focuser_abort_motion_handler",
+        "start": 2555,
+        "end": 2580
+      },
+      {
+        "name": "focuser_compensation_handler",
+        "start": 2582,
+        "end": 2585
+      },
+      {
+        "name": "focuser_x_beep_handler",
+        "start": 2587,
+        "end": 2598
+      },
+      {
+        "name": "focuser_mode_handler",
+        "start": 2600,
+        "end": 2626
+      },
+      {
+        "name": "focuser_attach",
+        "start": 2632,
+        "end": 2678
+      },
+      {
+        "name": "focuser_enumerate_properties",
+        "start": 2680,
+        "end": 2685
+      },
+      {
+        "name": "focuser_change_property",
+        "start": 2687,
+        "end": 2733
+      },
+      {
+        "name": "focuser_detach",
+        "start": 2735,
+        "end": 2745
+      },
+      {
+        "name": "process_plug_event_handler",
+        "start": 2760,
+        "end": 2862
+      },
+      {
+        "name": "process_unplug_event_handler",
+        "start": 2864,
+        "end": 2906
+      },
+      {
+        "name": "hotplug_callback",
+        "start": 2908,
+        "end": 2920
+      },
+      {
+        "name": "verify_devices_disconnected",
+        "start": 2926,
+        "end": 2940
+      },
+      {
+        "name": "ENTRY_POINT",
+        "start": 2942,
+        "end": 3010
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/aux_joystick/indigo_aux_joystick.c",
+    "functions": [
+      {
+        "name": "aux_attach",
+        "start": 184,
+        "end": 291
+      },
+      {
+        "name": "aux_enumerate_properties",
+        "start": 293,
+        "end": 309
+      },
+      {
+        "name": "aux_connection_handler",
+        "start": 311,
+        "end": 366
+      },
+      {
+        "name": "aux_change_property",
+        "start": 368,
+        "end": 413
+      },
+      {
+        "name": "aux_detach",
+        "start": 415,
+        "end": 434
+      },
+      {
+        "name": "*allocate_device",
+        "start": 438,
+        "end": 468
+      },
+      {
+        "name": "event_axis",
+        "start": 470,
+        "end": 559
+      },
+      {
+        "name": "event_pov",
+        "start": 561,
+        "end": 605
+      },
+      {
+        "name": "event_button",
+        "start": 607,
+        "end": 658
+      },
+      {
+        "name": "joystick_event_handler",
+        "start": 660,
+        "end": 687
+      },
+      {
+        "name": "queue_joystick_event",
+        "start": 689,
+        "end": 707
+      },
+      {
+        "name": "release_device",
+        "start": 709,
+        "end": 714
+      },
+      {
+        "name": "open_joystick",
+        "start": 896,
+        "end": 899
+      },
+      {
+        "name": "close_joystick",
+        "start": 901,
+        "end": 903
+      },
+      {
+        "name": "verify_joysticks_disconnected",
+        "start": 905,
+        "end": 907
+      },
+      {
+        "name": "*poll",
+        "start": 917,
+        "end": 949
+      },
+      {
+        "name": "rescan",
+        "start": 951,
+        "end": 989
+      },
+      {
+        "name": "shutdown_joystick",
+        "start": 991,
+        "end": 998
+      },
+      {
+        "name": "open_joystick",
+        "start": 1000,
+        "end": 1025
+      },
+      {
+        "name": "close_joystick",
+        "start": 1027,
+        "end": 1037
+      },
+      {
+        "name": "verify_joysticks_disconnected",
+        "start": 1039,
+        "end": 1044
+      },
+      {
+        "name": "rescan_handler",
+        "start": 1048,
+        "end": 1059
+      },
+      {
+        "name": "hotplug_callback",
+        "start": 1061,
+        "end": 1066
+      },
+      {
+        "name": "indigo_aux_joystick",
+        "start": 1070,
+        "end": 1143
+      }
+    ]
+  },
+  {
+    "path": "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "functions": [
+      {
+        "name": "primalucelib_parse_http_url",
+        "start": 122,
+        "end": 136
+      },
+      {
+        "name": "primalucelib_open",
+        "start": 138,
+        "end": 153
+      },
+      {
+        "name": "primalucelib_is_open",
+        "start": 155,
+        "end": 157
+      },
+      {
+        "name": "primalucelib_is_http",
+        "start": 159,
+        "end": 161
+      },
+      {
+        "name": "primalucelib_close",
+        "start": 163,
+        "end": 168
+      },
+      {
+        "name": "primalucelib_http_exchange",
+        "start": 171,
+        "end": 224
+      },
+      {
+        "name": "primalucelib_request_verb",
+        "start": 227,
+        "end": 240
+      },
+      {
+        "name": "primalucelib_parse_reply",
+        "start": 244,
+        "end": 268
+      },
+      {
+        "name": "primalucelib_reply_answers",
+        "start": 272,
+        "end": 275
+      },
+      {
+        "name": "primalucelib_vrequest",
+        "start": 277,
+        "end": 346
+      },
+      {
+        "name": "primalucelib_request",
+        "start": 348,
+        "end": 354
+      },
+      {
+        "name": "primalucelib_discard_input",
+        "start": 356,
+        "end": 358
+      },
+      {
+        "name": "primalucelib_link_failed",
+        "start": 360,
+        "end": 362
+      },
+      {
+        "name": "*primalucelib_last_error",
+        "start": 364,
+        "end": 366
+      },
+      {
+        "name": "primalucelib_clear_last_error",
+        "start": 368,
+        "end": 370
+      },
+      {
+        "name": "primalucelib_find_token",
+        "start": 374,
+        "end": 406
+      },
+      {
+        "name": "primalucelib_reply_token",
+        "start": 408,
+        "end": 410
+      },
+      {
+        "name": "primalucelib_reply_has",
+        "start": 412,
+        "end": 414
+      },
+      {
+        "name": "*primalucelib_reply_string",
+        "start": 416,
+        "end": 422
+      },
+      {
+        "name": "primalucelib_reply_number",
+        "start": 424,
+        "end": 433
+      },
+      {
+        "name": "primalucelib_reply_is_done",
+        "start": 435,
+        "end": 437
+      },
+      {
+        "name": "primalucelib_reply_is_acknowledged",
+        "start": 439,
+        "end": 451
+      },
+      {
+        "name": "primalucelib_is_done",
+        "start": 455,
+        "end": 457
+      },
+      {
+        "name": "primalucelib_is_power_supply_error",
+        "start": 459,
+        "end": 461
+      },
+      {
+        "name": "primalucelib_is_motor_stopped",
+        "start": 463,
+        "end": 465
+      },
+      {
+        "name": "primalucelib_is_rotator_calibration_finished",
+        "start": 467,
+        "end": 469
+      },
+      {
+        "name": "primalucelib_is_no_probe_temperature",
+        "start": 471,
+        "end": 473
+      },
+      {
+        "name": "primalucelib_model_from_name",
+        "start": 475,
+        "end": 495
+      },
+      {
+        "name": "primalucelib_model_is_focuser",
+        "start": 497,
+        "end": 499
+      },
+      {
+        "name": "primalucelib_model_is_sestosenso",
+        "start": 501,
+        "end": 503
+      },
+      {
+        "name": "primalucelib_get_state",
+        "start": 507,
+        "end": 509
+      },
+      {
+        "name": "*primalucelib_get_model_name",
+        "start": 511,
+        "end": 513
+      },
+      {
+        "name": "*primalucelib_get_firmware_version",
+        "start": 515,
+        "end": 517
+      },
+      {
+        "name": "primalucelib_disable_log_output",
+        "start": 519,
+        "end": 521
+      },
+      {
+        "name": "primalucelib_get_environment",
+        "start": 523,
+        "end": 525
+      },
+      {
+        "name": "primalucelib_reply_external_temperature",
+        "start": 527,
+        "end": 529
+      },
+      {
+        "name": "primalucelib_reply_supply_voltage",
+        "start": 531,
+        "end": 533
+      },
+      {
+        "name": "primalucelib_reply_usb_voltage",
+        "start": 535,
+        "end": 537
+      },
+      {
+        "name": "primalucelib_reply_motor_temperature",
+        "start": 539,
+        "end": 541
+      },
+      {
+        "name": "primalucelib_set_leds",
+        "start": 543,
+        "end": 545
+      },
+      {
+        "name": "*primalucelib_get_lan_config",
+        "start": 547,
+        "end": 549
+      },
+      {
+        "name": "primalucelib_set_lan_config",
+        "start": 551,
+        "end": 553
+      },
+      {
+        "name": "primalucelib_reboot",
+        "start": 555,
+        "end": 557
+      },
+      {
+        "name": "primalucelib_wait_for_restart",
+        "start": 559,
+        "end": 570
+      },
+      {
+        "name": "primalucelib_begin_restart",
+        "start": 572,
+        "end": 574
+      },
+      {
+        "name": "primalucelib_is_restarting",
+        "start": 576,
+        "end": 578
+      },
+      {
+        "name": "primalucelib_probe_restart",
+        "start": 580,
+        "end": 596
+      },
+      {
+        "name": "primalucelib_end_restart",
+        "start": 598,
+        "end": 600
+      },
+      {
+        "name": "primalucelib_set_access_point",
+        "start": 602,
+        "end": 604
+      },
+      {
+        "name": "primalucelib_set_access_point_credentials",
+        "start": 606,
+        "end": 608
+      },
+      {
+        "name": "primalucelib_set_station_credentials",
+        "start": 610,
+        "end": 612
+      },
+      {
+        "name": "primalucelib_get_submodel",
+        "start": 614,
+        "end": 632
+      },
+      {
+        "name": "primalucelib_get_recovery_delay",
+        "start": 634,
+        "end": 640
+      },
+      {
+        "name": "primalucelib_set_recovery_delay",
+        "start": 642,
+        "end": 645
+      },
+      {
+        "name": "primalucelib_focuser_request_position",
+        "start": 649,
+        "end": 651
+      },
+      {
+        "name": "primalucelib_reply_has_focuser_position",
+        "start": 653,
+        "end": 655
+      },
+      {
+        "name": "primalucelib_reply_focuser_position",
+        "start": 657,
+        "end": 659
+      },
+      {
+        "name": "primalucelib_focuser_get_position",
+        "start": 661,
+        "end": 667
+      },
+      {
+        "name": "primalucelib_focuser_request_motor_state",
+        "start": 669,
+        "end": 671
+      },
+      {
+        "name": "*primalucelib_reply_focuser_motor_state",
+        "start": 673,
+        "end": 675
+      },
+      {
+        "name": "primalucelib_focuser_move_to",
+        "start": 677,
+        "end": 684
+      },
+      {
+        "name": "primalucelib_focuser_stop",
+        "start": 686,
+        "end": 701
+      },
+      {
+        "name": "primalucelib_focuser_fast_move",
+        "start": 703,
+        "end": 705
+      },
+      {
+        "name": "primalucelib_focuser_set_backlash",
+        "start": 707,
+        "end": 709
+      },
+      {
+        "name": "primalucelib_focuser_set_speed",
+        "start": 711,
+        "end": 713
+      },
+      {
+        "name": "primalucelib_focuser_set_hold_current",
+        "start": 715,
+        "end": 717
+      },
+      {
+        "name": "primalucelib_focuser_settings_done",
+        "start": 719,
+        "end": 727
+      },
+      {
+        "name": "primalucelib_focuser_set_motor_rates",
+        "start": 729,
+        "end": 732
+      },
+      {
+        "name": "primalucelib_focuser_set_motor_currents",
+        "start": 734,
+        "end": 737
+      },
+      {
+        "name": "primalucelib_focuser_get_motor_config",
+        "start": 739,
+        "end": 741
+      },
+      {
+        "name": "primalucelib_reply_member",
+        "start": 743,
+        "end": 746
+      },
+      {
+        "name": "primalucelib_reply_motor_config",
+        "start": 748,
+        "end": 756
+      },
+      {
+        "name": "primalucelib_reply_run_preset",
+        "start": 758,
+        "end": 766
+      },
+      {
+        "name": "primalucelib_focuser_apply_run_preset",
+        "start": 768,
+        "end": 770
+      },
+      {
+        "name": "primalucelib_focuser_apply_user_run_preset",
+        "start": 772,
+        "end": 774
+      },
+      {
+        "name": "primalucelib_focuser_set_user_run_preset",
+        "start": 776,
+        "end": 778
+      },
+      {
+        "name": "primalucelib_focuser_set_stored_position",
+        "start": 780,
+        "end": 789
+      },
+      {
+        "name": "primalucelib_focuser_set_stored_position_name",
+        "start": 791,
+        "end": 800
+      },
+      {
+        "name": "primalucelib_reply_stored_position",
+        "start": 802,
+        "end": 806
+      },
+      {
+        "name": "*primalucelib_reply_stored_position_name",
+        "start": 808,
+        "end": 813
+      },
+      {
+        "name": "primalucelib_focuser_calibration_step",
+        "start": 815,
+        "end": 817
+      },
+      {
+        "name": "primalucelib_focuser_get_calibration",
+        "start": 819,
+        "end": 826
+      },
+      {
+        "name": "*primalucelib_focuser_get_calibration_direction",
+        "start": 828,
+        "end": 830
+      },
+      {
+        "name": "primalucelib_focuser_set_calibration_direction",
+        "start": 832,
+        "end": 834
+      },
+      {
+        "name": "primalucelib_focuser_calibration_jog",
+        "start": 836,
+        "end": 840
+      },
+      {
+        "name": "primalucelib_rotator_enable",
+        "start": 844,
+        "end": 846
+      },
+      {
+        "name": "*primalucelib_rotator_get_serial_number",
+        "start": 848,
+        "end": 850
+      },
+      {
+        "name": "primalucelib_rotator_angle_source",
+        "start": 852,
+        "end": 854
+      },
+      {
+        "name": "primalucelib_reply_rotator_angle",
+        "start": 856,
+        "end": 865
+      },
+      {
+        "name": "primalucelib_rotator_get_angle",
+        "start": 867,
+        "end": 884
+      },
+      {
+        "name": "*primalucelib_reply_rotator_motor_state",
+        "start": 886,
+        "end": 888
+      },
+      {
+        "name": "primalucelib_rotator_move_to",
+        "start": 890,
+        "end": 900
+      },
+      {
+        "name": "primalucelib_rotator_sync",
+        "start": 902,
+        "end": 908
+      },
+      {
+        "name": "primalucelib_rotator_stop",
+        "start": 910,
+        "end": 912
+      },
+      {
+        "name": "primalucelib_rotator_start_calibration",
+        "start": 914,
+        "end": 916
+      },
+      {
+        "name": "primalucelib_rotator_stop_calibration",
+        "start": 918,
+        "end": 920
+      },
+      {
+        "name": "*primalucelib_rotator_get_calibration_status",
+        "start": 922,
+        "end": 924
+      },
+      {
+        "name": "primalucelib_panel_get_max_brightness",
+        "start": 928,
+        "end": 934
+      },
+      {
+        "name": "primalucelib_panel_get_brightness",
+        "start": 936,
+        "end": 942
+      },
+      {
+        "name": "primalucelib_panel_set_brightness",
+        "start": 944,
+        "end": 946
+      },
+      {
+        "name": "primalucelib_panel_get_light",
+        "start": 948,
+        "end": 954
+      },
+      {
+        "name": "primalucelib_panel_set_light",
+        "start": 956,
+        "end": 958
+      },
+      {
+        "name": "primalucelib_panel_get_state",
+        "start": 960,
+        "end": 967
+      },
+      {
+        "name": "primalucelib_panel_get_environment",
+        "start": 969,
+        "end": 977
+      },
+      {
+        "name": "primalucelib_panel_set_preset_brightness",
+        "start": 979,
+        "end": 984
+      },
+      {
+        "name": "primalucelib_panel_set_preset_name",
+        "start": 986,
+        "end": 995
+      },
+      {
+        "name": "primalucelib_reply_panel_preset_brightness",
+        "start": 997,
+        "end": 1001
+      },
+      {
+        "name": "primalucelib_panel_recall_preset",
+        "start": 1003,
+        "end": 1005
+      },
+      {
+        "name": "primalucelib_panel_set_fading",
+        "start": 1007,
+        "end": 1009
+      },
+      {
+        "name": "primalucelib_panel_set_light_at_power_on",
+        "start": 1011,
+        "end": 1013
+      },
+      {
+        "name": "primalucelib_cover_get_position",
+        "start": 1017,
+        "end": 1023
+      },
+      {
+        "name": "primalucelib_cover_set_position",
+        "start": 1025,
+        "end": 1027
+      },
+      {
+        "name": "*primalucelib_cover_get_motor_state",
+        "start": 1029,
+        "end": 1031
+      },
+      {
+        "name": "primalucelib_cover_stop",
+        "start": 1033,
+        "end": 1035
+      },
+      {
+        "name": "primalucelib_cover_calibration_step",
+        "start": 1037,
+        "end": 1039
+      }
+    ]
+  }
+]

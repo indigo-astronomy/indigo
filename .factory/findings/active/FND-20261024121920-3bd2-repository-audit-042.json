@@ -1,0 +1,19 @@
+{
+  "title": "Browser manual mount motion can miss release outside its button",
+  "category": "functional",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_server/resource/mount.html:96,101,106,111 bind only element-local mousedown/up; moveWest562-566 sendsWESTtrue andstopWest568-571 sendsfalse, analogous East573-582/North584-593/South595-604. No mouseleave, windowmouseup, pointercapture, pointercancel, lostpointercapture, blur orvisibilitychange stop lifecycle exists in mount.html/components.js/indigo.js (targeted grep confirmed onlyfour local mouseupbindings). An ordinary press thenrelease outside button leaves movement asserted whileWebSocket stays connected. Framework client-detach abort consequently doesnot cover this trigger; no actual mount operation was run. Add pointer capture and unified release/cancel/blur/lostcapture stop, with synthetic UI event regression forrelease outside andcancel; preserve explicit Stop button andnetwork detach behavior. Distinct from prior network-client-detach finding; Canonical disposition: distinct from disconnect handling; no active duplicate found. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-BROWSER). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-042; core-report.md alias CORE-BROWSER; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-042"
+}

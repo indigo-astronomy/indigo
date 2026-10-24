@@ -1629,6 +1629,56 @@ indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo
 
 #if !defined(INDIGO_CLIENT)
 
+#ifndef INDIGO_TCP_WORKER_LIMIT
+#define INDIGO_TCP_WORKER_LIMIT 128
+#endif
+
+// Shared by listeners using this helper; reserve before spawning, release after worker return.
+static pthread_mutex_t tcp_worker_mutex = PTHREAD_MUTEX_INITIALIZER;
+static unsigned tcp_worker_count;
+
+typedef struct {
+	void (*worker)(indigo_uni_worker_data *);
+	indigo_uni_worker_data *data;
+} tcp_worker_job;
+
+static void *run_tcp_worker(void *argument) {
+	tcp_worker_job *job = argument;
+	void (*worker)(indigo_uni_worker_data *) = job->worker;
+	indigo_uni_worker_data *data = job->data;
+	free(job);
+	worker(data);
+	pthread_mutex_lock(&tcp_worker_mutex);
+	tcp_worker_count--;
+	pthread_mutex_unlock(&tcp_worker_mutex);
+	return NULL;
+}
+
+static bool start_tcp_worker(void (*worker)(indigo_uni_worker_data *), indigo_uni_worker_data *data) {
+	pthread_mutex_lock(&tcp_worker_mutex);
+	if (tcp_worker_count >= INDIGO_TCP_WORKER_LIMIT) {
+		pthread_mutex_unlock(&tcp_worker_mutex);
+		indigo_uni_close(&data->handle);
+		free(data);
+		return false;
+	}
+	tcp_worker_count++;
+	pthread_mutex_unlock(&tcp_worker_mutex);
+	tcp_worker_job *job = indigo_safe_malloc(sizeof(*job));
+	job->worker = worker;
+	job->data = data;
+	if (indigo_async(run_tcp_worker, job)) {
+		return true;
+	}
+	free(job);
+	indigo_uni_close(&data->handle);
+	free(data);
+	pthread_mutex_lock(&tcp_worker_mutex);
+	tcp_worker_count--;
+	pthread_mutex_unlock(&tcp_worker_mutex);
+	return false;
+}
+
 void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int, void *), void *callback_data, int log_level) {
 	indigo_rename_thread("TCP server");
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -1721,7 +1771,7 @@ void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handl
 		worker_data->handle->fd = client_socket;
 		worker_data->handle->log_level = log_level;
 		worker_data->data = data;
-		if (!indigo_async((void *(*)(void *))worker, worker_data)) {
+		if (!start_tcp_worker(worker, worker_data)) {
 			indigo_error("Can't create worker thread for connection (%s)", strerror(errno));
 		}
 	}
@@ -1805,7 +1855,7 @@ void indigo_uni_open_tcp_server_socket_with_callback(int *port, indigo_uni_handl
 		worker_data->handle->sock = client_socket;
 		worker_data->handle->log_level = log_level;
 		worker_data->data = data;
-		if (!indigo_async((void* (*)(void*))worker, worker_data)) {
+		if (!start_tcp_worker(worker, worker_data)) {
 			indigo_error("Can't create worker thread for connection (%d)",  indigo_last_wsa_error());
 		}
 	}

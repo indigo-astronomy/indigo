@@ -6868,6 +6868,111 @@
 		FF99D6C8E1633A330C617F97 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		0443CFB218DC43DECE5DA4E7 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		381907C3542B8383E47DD6A6 /* 20261024120152-52cb-primaluce-alto-driver.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024120152-52cb-primaluce-alto-driver.json"; sourceTree = "<group>"; };
+		9E3A63AA51FCAC7CECE00B77 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "brief.md"; sourceTree = "<group>"; };
+		5761AEA24306ECD6685185CC /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "handoff.md"; sourceTree = "<group>"; };
+		0DB9451EF036D6134052D256 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "plan.md"; sourceTree = "<group>"; };
+		25D418913E387FAC618DA2E1 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		3947FC139E994DEF18AB438B /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "quality-review.md"; sourceTree = "<group>"; };
+		6D5387A485463E2908C9124B /* security.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "security.md"; sourceTree = "<group>"; };
+		015BD9F197DEB6E225141B72 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "specification.md"; sourceTree = "<group>"; };
+		232504020633D5D61FD4EAFE /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		227E6CF7A8BBA39B718F6C8F /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test-plan.md"; sourceTree = "<group>"; };
+		69D76C2A487CB64CA4A34B54 /* test-results.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test-results.log"; sourceTree = "<group>"; };
+		B14713DB959084D92733F3EC /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
+		8AC6314866CBC8B5438D71FE /* 20261024115039-61cc-fix-server-security-remaining.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024115039-61cc-fix-server-security-remaining.json"; sourceTree = "<group>"; };
+		4422ACDCACFDA8C50AB4CECA /* FND-20261024121920-3bd2-repository-audit-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-001.json"; sourceTree = "<group>"; };
+		1B398F9A327BB8A287DB4157 /* FND-20261024121920-3bd2-repository-audit-002.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-002.json"; sourceTree = "<group>"; };
+		51331185072728211AF07531 /* FND-20261024121920-3bd2-repository-audit-003.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-003.json"; sourceTree = "<group>"; };
+		CBDFB7EA04C9C69A4EC06DBF /* FND-20261024121920-3bd2-repository-audit-004.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-004.json"; sourceTree = "<group>"; };
+		90FCE10D9BBA603014FBA298 /* FND-20261024121920-3bd2-repository-audit-005.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-005.json"; sourceTree = "<group>"; };
+		F3CC1D253088D56E7F1E3C81 /* FND-20261024121920-3bd2-repository-audit-006.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-006.json"; sourceTree = "<group>"; };
+		3371B16C8B68B65F190B4D97 /* FND-20261024121920-3bd2-repository-audit-007.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-007.json"; sourceTree = "<group>"; };
+		7180EF6C3D4C409445304561 /* FND-20261024121920-3bd2-repository-audit-008.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-008.json"; sourceTree = "<group>"; };
+		14CE306EA22EC167607AC59E /* FND-20261024121920-3bd2-repository-audit-009.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-009.json"; sourceTree = "<group>"; };
+		6AFFA9D31B3C6994C7E4ED2E /* FND-20261024121920-3bd2-repository-audit-010.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-010.json"; sourceTree = "<group>"; };
+		5F63A9C62D6155E1C44CD8C8 /* FND-20261024121920-3bd2-repository-audit-011.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-011.json"; sourceTree = "<group>"; };
+		5D1CBF9220A58092C4117751 /* FND-20261024121920-3bd2-repository-audit-012.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-012.json"; sourceTree = "<group>"; };
+		A61D5E5FFCEFC1322FADABA7 /* FND-20261024121920-3bd2-repository-audit-013.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-013.json"; sourceTree = "<group>"; };
+		4D7A1D5B71F18FDCF6778FB2 /* FND-20261024121920-3bd2-repository-audit-014.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-014.json"; sourceTree = "<group>"; };
+		E70437D393C76FE4DBDF47F7 /* FND-20261024121920-3bd2-repository-audit-015.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-015.json"; sourceTree = "<group>"; };
+		EA0C1F93117A17C4F7D1496D /* FND-20261024121920-3bd2-repository-audit-016.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-016.json"; sourceTree = "<group>"; };
+		88D0B476DE86023D68DAE3F0 /* FND-20261024121920-3bd2-repository-audit-017.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-017.json"; sourceTree = "<group>"; };
+		BADD7155B0F29960896ACB11 /* FND-20261024121920-3bd2-repository-audit-018.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-018.json"; sourceTree = "<group>"; };
+		D7BE44C64D4D61EF6B9BDFFD /* FND-20261024121920-3bd2-repository-audit-019.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-019.json"; sourceTree = "<group>"; };
+		0FE5F1202C7A2CAB424061FF /* FND-20261024121920-3bd2-repository-audit-020.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-020.json"; sourceTree = "<group>"; };
+		528367DC8FCEE4A6AE2ADFB2 /* FND-20261024121920-3bd2-repository-audit-021.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-021.json"; sourceTree = "<group>"; };
+		C29117205B0045DDFD46848D /* FND-20261024121920-3bd2-repository-audit-022.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-022.json"; sourceTree = "<group>"; };
+		28F0E6AD16644EB1D632DBF5 /* FND-20261024121920-3bd2-repository-audit-023.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-023.json"; sourceTree = "<group>"; };
+		19DEC98F39B2673DED3D0E5D /* FND-20261024121920-3bd2-repository-audit-024.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-024.json"; sourceTree = "<group>"; };
+		7E5FA2FF60EF0757A5341BA5 /* FND-20261024121920-3bd2-repository-audit-025.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-025.json"; sourceTree = "<group>"; };
+		AF5FEFE66A41248B51B41825 /* FND-20261024121920-3bd2-repository-audit-026.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-026.json"; sourceTree = "<group>"; };
+		3690C39E0D05CFAA50DB4FDE /* FND-20261024121920-3bd2-repository-audit-027.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-027.json"; sourceTree = "<group>"; };
+		B45CF94A9E99A43C2163CE5F /* FND-20261024121920-3bd2-repository-audit-028.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-028.json"; sourceTree = "<group>"; };
+		A257BDCE52A20F59DF2731D6 /* FND-20261024121920-3bd2-repository-audit-029.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-029.json"; sourceTree = "<group>"; };
+		89A4BC30E600C38FF5319EB6 /* FND-20261024121920-3bd2-repository-audit-030.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-030.json"; sourceTree = "<group>"; };
+		EEBE2CD99837A0B568168FE1 /* FND-20261024121920-3bd2-repository-audit-031.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-031.json"; sourceTree = "<group>"; };
+		FDF587060A598BD0CD463E0B /* FND-20261024121920-3bd2-repository-audit-032.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-032.json"; sourceTree = "<group>"; };
+		2B186AA137E10460D4539C98 /* FND-20261024121920-3bd2-repository-audit-033.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-033.json"; sourceTree = "<group>"; };
+		372DAD6B9997C34D657A5700 /* FND-20261024121920-3bd2-repository-audit-034.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-034.json"; sourceTree = "<group>"; };
+		7507B014F96D723FAFCC419E /* FND-20261024121920-3bd2-repository-audit-035.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-035.json"; sourceTree = "<group>"; };
+		AEACF9790C825FF02F232719 /* FND-20261024121920-3bd2-repository-audit-036.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-036.json"; sourceTree = "<group>"; };
+		937663F0CD7DB75BF4586A9C /* FND-20261024121920-3bd2-repository-audit-037.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-037.json"; sourceTree = "<group>"; };
+		A0368D4433802B05FB137338 /* FND-20261024121920-3bd2-repository-audit-038.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-038.json"; sourceTree = "<group>"; };
+		7637E09236524A9D377696AA /* FND-20261024121920-3bd2-repository-audit-039.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-039.json"; sourceTree = "<group>"; };
+		9E801A02FDBF7E98819E7BCB /* FND-20261024121920-3bd2-repository-audit-040.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-040.json"; sourceTree = "<group>"; };
+		024C04E409767F3F053809AC /* FND-20261024121920-3bd2-repository-audit-041.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-041.json"; sourceTree = "<group>"; };
+		A27CA5D4B716CED190391A11 /* FND-20261024121920-3bd2-repository-audit-042.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-042.json"; sourceTree = "<group>"; };
+		3A4916545E21E0C262D80B47 /* FND-20261024121920-3bd2-repository-audit-043.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-043.json"; sourceTree = "<group>"; };
+		62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261024121920-3bd2-repository-audit-044.json"; sourceTree = "<group>"; };
+		56A815B5F743C1BCCDD6CF76 /* asset-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "asset-contracts.json"; sourceTree = "<group>"; };
+		B7833D465CCD4BE5D62FBBD6 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "brief.md"; sourceTree = "<group>"; };
+		BB7E410D36A8DD883481075D /* browser-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "browser-contracts.json"; sourceTree = "<group>"; };
+		BFA94B75641548680C4EBCCB /* check-editor.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "check-editor.log"; sourceTree = "<group>"; };
+		88AC19F43083CF8F21E40ED3 /* check-examples.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "check-examples.log"; sourceTree = "<group>"; };
+		5A9134B1A27E147681170CC3 /* check-security.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "check-security.log"; sourceTree = "<group>"; };
+		BDFE12895E40A1F4B33DE1A0 /* check-unit.log */ = {isa = PBXFileReference; lastKnownFileType = text; path = "check-unit.log"; sourceTree = "<group>"; };
+		2BE94BC386110037B78DD8FE /* combined-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "combined-coverage.json"; sourceTree = "<group>"; };
+		BF74963B99A58AB45B0D7B3B /* core-catalog-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "core-catalog-contracts.json"; sourceTree = "<group>"; };
+		E13F239FA40930E550F224AC /* core-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "core-coverage.json"; sourceTree = "<group>"; };
+		EFD63250AB7ED82E4A3F7769 /* core-report.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "core-report.md"; sourceTree = "<group>"; };
+		5F969E05A469B9FE6B87352A /* driver-ac-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "driver-ac-coverage.json"; sourceTree = "<group>"; };
+		B2EFB557035819A02A2A1F2A /* driver-ac-deep-functions.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "driver-ac-deep-functions.json"; sourceTree = "<group>"; };
+		64B87614FAE7CDFE8B6C517F /* driver-ac-firmware-shapes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "driver-ac-firmware-shapes.json"; sourceTree = "<group>"; };
+		E742B724132577477985494D /* driver-ac-mapping-shapes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "driver-ac-mapping-shapes.json"; sourceTree = "<group>"; };
+		0122CF5E07B6CD7F9C97EBFF /* driver-ac-report.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "driver-ac-report.md"; sourceTree = "<group>"; };
+		04C785A53E7696EE02D59C0B /* driver-ac-table-shapes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "driver-ac-table-shapes.json"; sourceTree = "<group>"; };
+		6B19E719268991F108720A99 /* driver-fm-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "driver-fm-coverage.json"; sourceTree = "<group>"; };
+		3DCEA0A2564FD8707EC08735 /* driver-fm-report.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "driver-fm-report.md"; sourceTree = "<group>"; };
+		EB4A05088A7EFF434627B054 /* findings.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "findings.md"; sourceTree = "<group>"; };
+		00FDAE243D35D5AB3B5DACAE /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "handoff.md"; sourceTree = "<group>"; };
+		9057BD45FB0F0C4213D50ABA /* header-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "header-contracts.json"; sourceTree = "<group>"; };
+		8F955D94D9628854EF97C5FB /* header-field-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "header-field-contracts.json"; sourceTree = "<group>"; };
+		00CFD484050EE8D45A65FF44 /* header-inventory.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "header-inventory.json"; sourceTree = "<group>"; };
+		35C7E89549F6BC76BEA83599 /* inventory.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "inventory.json"; sourceTree = "<group>"; };
+		C15ED97D2E6B24D384BA8AA6 /* math-closure-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "math-closure-coverage.json"; sourceTree = "<group>"; };
+		CFF7A1768CB65D9DA4CC5200 /* math-closure-report.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "math-closure-report.md"; sourceTree = "<group>"; };
+		F2C3408B308CEAA0232F3AB2 /* moon-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "moon-contracts.json"; sourceTree = "<group>"; };
+		C96BC77D44FFF7660EB79FB1 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "plan.md"; sourceTree = "<group>"; };
+		3A712CA00497F967435F278E /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		A485AF54E2912CDF497D9389 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "quality-review.md"; sourceTree = "<group>"; };
+		931F5D68BF48411C230B2470 /* reconciliation.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "reconciliation.md"; sourceTree = "<group>"; };
+		01A6BF12F3077DA26E01868F /* repository-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "repository-review.md"; sourceTree = "<group>"; };
+		EBDE0A06FB17EDF7627690C0 /* root-closure-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "root-closure-coverage.json"; sourceTree = "<group>"; };
+		132523C1A2A71A637293E3B8 /* root-closure-report.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "root-closure-report.md"; sourceTree = "<group>"; };
+		896A6CBA444F17769D97E462 /* root-coverage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "root-coverage.json"; sourceTree = "<group>"; };
+		7D1C3BEEE8C9396A5F82CA70 /* root-documentation-closure.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "root-documentation-closure.json"; sourceTree = "<group>"; };
+		CA40B8EC2550B97895456544 /* root-documentation-closure.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "root-documentation-closure.md"; sourceTree = "<group>"; };
+		BBD9906E7F42062C679A16C8 /* root-semantic-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "root-semantic-review.md"; sourceTree = "<group>"; };
+		F635E11462CD5F786206C20B /* security-review.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "security-review.md"; sourceTree = "<group>"; };
+		9080673BB8DA59BCB4966D79 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "security.md"; sourceTree = "<group>"; };
+		AEEDC5369CE9511F194E50D8 /* server-metadata-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "server-metadata-contracts.json"; sourceTree = "<group>"; };
+		50A43A943A2F7901A11407D3 /* shell-checks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "shell-checks.json"; sourceTree = "<group>"; };
+		76B89B032EBB41CFEE9AC803 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "specification.md"; sourceTree = "<group>"; };
+		0EBAF890F04AFAAF4CA451F6 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		27FBC23A8ED5FF9775883249 /* template-contracts.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "template-contracts.json"; sourceTree = "<group>"; };
+		94A497702F7CE49224270994 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "test-plan.md"; sourceTree = "<group>"; };
+		9228C23ADEFB6E0EFFEDA3B2 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = text; path = "verification.md"; sourceTree = "<group>"; };
+		1CA08E7270CBD32A2C4EFB28 /* 20261024121920-3bd2-repository-audit.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261024121920-3bd2-repository-audit.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -15907,6 +16012,8 @@
 		5D81F456588D799E5C20FF68 /* archive */ = {
 			isa = PBXGroup;
 			children = (
+				24798396402E9D2A010B7023 /* 20261024121920-3bd2-repository-audit */,
+				CE5D12B50F97E039BC050198 /* 20261024115039-61cc-fix-server-security-remaining */,
 				65D03F94812B78532C43FC3C /* 20261023180923-1f46-fix-synscan-autohome */,
 				A671866D9379F67151B3EFA7 /* 20261023180252-b61d-fix-imager-download */,
 				DC326EC1082C69905B94CDF1 /* 20261023181210-45bf-fix-raw-selection */,
@@ -16034,8 +16141,11 @@
 				638DD674A31D05FAD20BF1DA /* FND-20261023111747-3b69-primaluce-rotator-progress-002.json */,
 				4C82A8C1C97FFA2D51E8793F /* FND-20261023112118-8e5e-server-security-audit-001.json */,
 				47774CDE7909DB737A6081EF /* FND-20261023112118-8e5e-server-security-audit-002.json */,
+				816692E9F57EDFAE0D82ED38 /* FND-20261023112118-8e5e-server-security-audit-003.json */,
 				38732F76B9776E9B245C0934 /* FND-20261023112118-8e5e-server-security-audit-004.json */,
 				A55C9D9AECA363901530F9F6 /* FND-20261023112118-8e5e-server-security-audit-005.json */,
+				0C606CABD008FA1F3ABA4016 /* FND-20261023112118-8e5e-server-security-audit-006.json */,
+				EA069A99453F29E25C9B9661 /* FND-20261023112118-8e5e-server-security-audit-007.json */,
 				907C6CD700F8DDFCA3CEDBC7 /* FND-20261023112118-8e5e-server-security-audit-008.json */,
 				17DF1BAF76E1E5330C45AEC7 /* FND-20261023112118-8e5e-server-security-audit-009.json */,
 				808C546C0F671BBBBFA10BC9 /* FND-20261023112118-8e5e-server-security-audit-011.json */,
@@ -16045,7 +16155,9 @@
 				268F0DDF6C4F1DA95DAFCB49 /* FND-20261023112118-8e5e-server-security-audit-015.json */,
 				04177213C21C00AAB88F36DB /* FND-20261023112118-8e5e-server-security-audit-016.json */,
 				76D0F1B7524098D77E83A4C2 /* FND-20261023112118-8e5e-server-security-audit-017.json */,
+				AAA43A8123B85E90CE1A31D4 /* FND-20261023112118-8e5e-server-security-audit-018.json */,
 				84E7D3427DD7A42FC938EDDF /* FND-20261023121227-a609-fix-server-security-high-001.json */,
+				305F3DD0D243773138B4E4AB /* FND-20261023121227-a609-fix-server-security-high-002.json */,
 				07938BDD8B0FBD6364D6D7FC /* FND-20261023132326-3447-primaluce-field-errors-001.json */,
 				E3A4D504F64B7EFBD8E9395D /* FND-20261023180923-1f46-fix-synscan-autohome-001.json */,
 				4CF80F5E58EF814E36864291 /* FND-20261023193406-58c7-primaluce-arco-keep-enabled-001.json */,
@@ -18140,6 +18252,8 @@
 		AFDBB818F553FC60124A5A5B /* completions */ = {
 			isa = PBXGroup;
 			children = (
+				1CA08E7270CBD32A2C4EFB28 /* 20261024121920-3bd2-repository-audit.json */,
+				8AC6314866CBC8B5438D71FE /* 20261024115039-61cc-fix-server-security-remaining.json */,
 				C9A52F05B574213F98D7E04F /* 20261023180923-1f46-fix-synscan-autohome.json */,
 				01465DBD43F9BA6178E5A4DF /* 20261023180252-b61d-fix-imager-download.json */,
 				2DFAFADCCCAD85A79E1398D9 /* 20261023181210-45bf-fix-raw-selection.json */,
@@ -18611,12 +18725,51 @@
 				A2AE9AE6F42FC5DE774CDC1D /* FND-20261023101753-bc8d-complete-repository-audit-045.json */,
 				23C61E8AD6539B65BB441791 /* FND-20261023101753-bc8d-complete-repository-audit-046.json */,
 				637F5E82EB65F67511F5FC5E /* FND-20261023101753-bc8d-complete-repository-audit-047.json */,
-				816692E9F57EDFAE0D82ED38 /* FND-20261023112118-8e5e-server-security-audit-003.json */,
-				0C606CABD008FA1F3ABA4016 /* FND-20261023112118-8e5e-server-security-audit-006.json */,
-				EA069A99453F29E25C9B9661 /* FND-20261023112118-8e5e-server-security-audit-007.json */,
 				E92FD4DBDD2BD678ACC20218 /* FND-20261023112118-8e5e-server-security-audit-010.json */,
-				AAA43A8123B85E90CE1A31D4 /* FND-20261023112118-8e5e-server-security-audit-018.json */,
-				305F3DD0D243773138B4E4AB /* FND-20261023121227-a609-fix-server-security-high-002.json */,
+				4422ACDCACFDA8C50AB4CECA /* FND-20261024121920-3bd2-repository-audit-001.json */,
+				1B398F9A327BB8A287DB4157 /* FND-20261024121920-3bd2-repository-audit-002.json */,
+				51331185072728211AF07531 /* FND-20261024121920-3bd2-repository-audit-003.json */,
+				CBDFB7EA04C9C69A4EC06DBF /* FND-20261024121920-3bd2-repository-audit-004.json */,
+				90FCE10D9BBA603014FBA298 /* FND-20261024121920-3bd2-repository-audit-005.json */,
+				F3CC1D253088D56E7F1E3C81 /* FND-20261024121920-3bd2-repository-audit-006.json */,
+				3371B16C8B68B65F190B4D97 /* FND-20261024121920-3bd2-repository-audit-007.json */,
+				7180EF6C3D4C409445304561 /* FND-20261024121920-3bd2-repository-audit-008.json */,
+				14CE306EA22EC167607AC59E /* FND-20261024121920-3bd2-repository-audit-009.json */,
+				6AFFA9D31B3C6994C7E4ED2E /* FND-20261024121920-3bd2-repository-audit-010.json */,
+				5F63A9C62D6155E1C44CD8C8 /* FND-20261024121920-3bd2-repository-audit-011.json */,
+				5D1CBF9220A58092C4117751 /* FND-20261024121920-3bd2-repository-audit-012.json */,
+				A61D5E5FFCEFC1322FADABA7 /* FND-20261024121920-3bd2-repository-audit-013.json */,
+				4D7A1D5B71F18FDCF6778FB2 /* FND-20261024121920-3bd2-repository-audit-014.json */,
+				E70437D393C76FE4DBDF47F7 /* FND-20261024121920-3bd2-repository-audit-015.json */,
+				EA0C1F93117A17C4F7D1496D /* FND-20261024121920-3bd2-repository-audit-016.json */,
+				88D0B476DE86023D68DAE3F0 /* FND-20261024121920-3bd2-repository-audit-017.json */,
+				BADD7155B0F29960896ACB11 /* FND-20261024121920-3bd2-repository-audit-018.json */,
+				D7BE44C64D4D61EF6B9BDFFD /* FND-20261024121920-3bd2-repository-audit-019.json */,
+				0FE5F1202C7A2CAB424061FF /* FND-20261024121920-3bd2-repository-audit-020.json */,
+				528367DC8FCEE4A6AE2ADFB2 /* FND-20261024121920-3bd2-repository-audit-021.json */,
+				C29117205B0045DDFD46848D /* FND-20261024121920-3bd2-repository-audit-022.json */,
+				28F0E6AD16644EB1D632DBF5 /* FND-20261024121920-3bd2-repository-audit-023.json */,
+				19DEC98F39B2673DED3D0E5D /* FND-20261024121920-3bd2-repository-audit-024.json */,
+				7E5FA2FF60EF0757A5341BA5 /* FND-20261024121920-3bd2-repository-audit-025.json */,
+				AF5FEFE66A41248B51B41825 /* FND-20261024121920-3bd2-repository-audit-026.json */,
+				3690C39E0D05CFAA50DB4FDE /* FND-20261024121920-3bd2-repository-audit-027.json */,
+				B45CF94A9E99A43C2163CE5F /* FND-20261024121920-3bd2-repository-audit-028.json */,
+				A257BDCE52A20F59DF2731D6 /* FND-20261024121920-3bd2-repository-audit-029.json */,
+				89A4BC30E600C38FF5319EB6 /* FND-20261024121920-3bd2-repository-audit-030.json */,
+				EEBE2CD99837A0B568168FE1 /* FND-20261024121920-3bd2-repository-audit-031.json */,
+				FDF587060A598BD0CD463E0B /* FND-20261024121920-3bd2-repository-audit-032.json */,
+				2B186AA137E10460D4539C98 /* FND-20261024121920-3bd2-repository-audit-033.json */,
+				372DAD6B9997C34D657A5700 /* FND-20261024121920-3bd2-repository-audit-034.json */,
+				7507B014F96D723FAFCC419E /* FND-20261024121920-3bd2-repository-audit-035.json */,
+				AEACF9790C825FF02F232719 /* FND-20261024121920-3bd2-repository-audit-036.json */,
+				937663F0CD7DB75BF4586A9C /* FND-20261024121920-3bd2-repository-audit-037.json */,
+				A0368D4433802B05FB137338 /* FND-20261024121920-3bd2-repository-audit-038.json */,
+				7637E09236524A9D377696AA /* FND-20261024121920-3bd2-repository-audit-039.json */,
+				9E801A02FDBF7E98819E7BCB /* FND-20261024121920-3bd2-repository-audit-040.json */,
+				024C04E409767F3F053809AC /* FND-20261024121920-3bd2-repository-audit-041.json */,
+				A27CA5D4B716CED190391A11 /* FND-20261024121920-3bd2-repository-audit-042.json */,
+				3A4916545E21E0C262D80B47 /* FND-20261024121920-3bd2-repository-audit-043.json */,
+				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
 			);
 			path = active;
 			sourceTree = "<group>";
@@ -19290,6 +19443,24 @@
 			path = "20261024002000-64d7-primaluce-usb-pattern-hw";
 			sourceTree = "<group>";
 		};
+		CE5D12B50F97E039BC050198 /* 20261024115039-61cc-fix-server-security-remaining */ = {
+			isa = PBXGroup;
+			children = (
+				9E3A63AA51FCAC7CECE00B77 /* brief.md */,
+				5761AEA24306ECD6685185CC /* handoff.md */,
+				0DB9451EF036D6134052D256 /* plan.md */,
+				25D418913E387FAC618DA2E1 /* process.json */,
+				3947FC139E994DEF18AB438B /* quality-review.md */,
+				6D5387A485463E2908C9124B /* security.md */,
+				015BD9F197DEB6E225141B72 /* specification.md */,
+				232504020633D5D61FD4EAFE /* state.json */,
+				227E6CF7A8BBA39B718F6C8F /* test-plan.md */,
+				69D76C2A487CB64CA4A34B54 /* test-results.log */,
+				B14713DB959084D92733F3EC /* verification.md */,
+			);
+			path = "20261024115039-61cc-fix-server-security-remaining";
+			sourceTree = "<group>";
+		};
 		11940251409806666BAE1B24 /* aux_giotto */ = {
 			isa = PBXGroup;
 			children = (
@@ -19374,6 +19545,61 @@
 				0443CFB218DC43DECE5DA4E7 /* verification.md */,
 			);
 			path = "20261024120152-52cb-primaluce-alto-driver";
+			sourceTree = "<group>";
+		};
+		24798396402E9D2A010B7023 /* 20261024121920-3bd2-repository-audit */ = {
+			isa = PBXGroup;
+			children = (
+				56A815B5F743C1BCCDD6CF76 /* asset-contracts.json */,
+				B7833D465CCD4BE5D62FBBD6 /* brief.md */,
+				BB7E410D36A8DD883481075D /* browser-contracts.json */,
+				BFA94B75641548680C4EBCCB /* check-editor.log */,
+				88AC19F43083CF8F21E40ED3 /* check-examples.log */,
+				5A9134B1A27E147681170CC3 /* check-security.log */,
+				BDFE12895E40A1F4B33DE1A0 /* check-unit.log */,
+				2BE94BC386110037B78DD8FE /* combined-coverage.json */,
+				BF74963B99A58AB45B0D7B3B /* core-catalog-contracts.json */,
+				E13F239FA40930E550F224AC /* core-coverage.json */,
+				EFD63250AB7ED82E4A3F7769 /* core-report.md */,
+				5F969E05A469B9FE6B87352A /* driver-ac-coverage.json */,
+				B2EFB557035819A02A2A1F2A /* driver-ac-deep-functions.json */,
+				64B87614FAE7CDFE8B6C517F /* driver-ac-firmware-shapes.json */,
+				E742B724132577477985494D /* driver-ac-mapping-shapes.json */,
+				0122CF5E07B6CD7F9C97EBFF /* driver-ac-report.md */,
+				04C785A53E7696EE02D59C0B /* driver-ac-table-shapes.json */,
+				6B19E719268991F108720A99 /* driver-fm-coverage.json */,
+				3DCEA0A2564FD8707EC08735 /* driver-fm-report.md */,
+				EB4A05088A7EFF434627B054 /* findings.md */,
+				00FDAE243D35D5AB3B5DACAE /* handoff.md */,
+				9057BD45FB0F0C4213D50ABA /* header-contracts.json */,
+				8F955D94D9628854EF97C5FB /* header-field-contracts.json */,
+				00CFD484050EE8D45A65FF44 /* header-inventory.json */,
+				35C7E89549F6BC76BEA83599 /* inventory.json */,
+				C15ED97D2E6B24D384BA8AA6 /* math-closure-coverage.json */,
+				CFF7A1768CB65D9DA4CC5200 /* math-closure-report.md */,
+				F2C3408B308CEAA0232F3AB2 /* moon-contracts.json */,
+				C96BC77D44FFF7660EB79FB1 /* plan.md */,
+				3A712CA00497F967435F278E /* process.json */,
+				A485AF54E2912CDF497D9389 /* quality-review.md */,
+				931F5D68BF48411C230B2470 /* reconciliation.md */,
+				01A6BF12F3077DA26E01868F /* repository-review.md */,
+				EBDE0A06FB17EDF7627690C0 /* root-closure-coverage.json */,
+				132523C1A2A71A637293E3B8 /* root-closure-report.md */,
+				896A6CBA444F17769D97E462 /* root-coverage.json */,
+				7D1C3BEEE8C9396A5F82CA70 /* root-documentation-closure.json */,
+				CA40B8EC2550B97895456544 /* root-documentation-closure.md */,
+				BBD9906E7F42062C679A16C8 /* root-semantic-review.md */,
+				F635E11462CD5F786206C20B /* security-review.md */,
+				9080673BB8DA59BCB4966D79 /* security.md */,
+				AEEDC5369CE9511F194E50D8 /* server-metadata-contracts.json */,
+				50A43A943A2F7901A11407D3 /* shell-checks.json */,
+				76B89B032EBB41CFEE9AC803 /* specification.md */,
+				0EBAF890F04AFAAF4CA451F6 /* state.json */,
+				27FBC23A8ED5FF9775883249 /* template-contracts.json */,
+				94A497702F7CE49224270994 /* test-plan.md */,
+				9228C23ADEFB6E0EFFEDA3B2 /* verification.md */,
+			);
+			path = "20261024121920-3bd2-repository-audit";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

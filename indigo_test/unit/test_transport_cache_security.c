@@ -153,6 +153,86 @@ static void budgets_include_published_and_retired_buffers(void) {
 	}
 }
 
+static void readonly_upload_preserves_snapshot(void) {
+	indigo_property *property = make_property(INDIGO_RO_PERM);
+	property->items[0].blob.value = "read-only";
+	property->items[0].blob.size = 9;
+	indigo_device fixture = { .name = "Transport fixture" };
+	indigo_update_property(&fixture, property, NULL);
+	indigo_blob_entry *entry = indigo_acquire_blob(property->items);
+	ASSERT_TRUE(entry != NULL);
+	ASSERT_FALSE(indigo_blob_upload_allowed(entry));
+	void *buffer = indigo_allocate_blob_upload(4);
+	ASSERT_TRUE(buffer != NULL);
+	memcpy(buffer, "bad!", 4);
+	ASSERT_FALSE(indigo_publish_blob_upload(entry, buffer, 4));
+	indigo_free_blob_upload(buffer, 4);
+	indigo_item copy = { 0 };
+	ASSERT_FALSE(indigo_consume_blob_upload(entry, &copy, INDIGO_BLOB_UPLOAD_BUDGET));
+	ASSERT_TRUE(indigo_snapshot_blob(entry, &copy));
+	ASSERT_EQ_INT(9, copy.blob.size);
+	ASSERT_TRUE(!memcmp(copy.blob.value, "read-only", 9));
+	free(copy.blob.value);
+	indigo_release_blob(entry);
+	indigo_release_property(property);
+}
+
+static void permission_publication_revokes_staging(void) {
+	indigo_device fixture = { .name = "Transport fixture" };
+	indigo_client observer = { .name = "Permission observer" };
+	for (int transition = 0; transition < 5; transition++) {
+		indigo_property *property = make_property(INDIGO_WO_PERM);
+		indigo_blob_entry *entry = indigo_acquire_blob(property->items);
+		void *buffer = indigo_allocate_blob_upload(4);
+		ASSERT_TRUE(buffer != NULL);
+		memcpy(buffer, "once", 4);
+		ASSERT_TRUE(indigo_publish_blob_upload(entry, buffer, 4));
+		property->perm = INDIGO_RO_PERM;
+		if (transition == 0) {
+			indigo_define_property(&fixture, property, NULL);
+		} else if (transition == 1) {
+			indigo_define_property_to_client(&fixture, &observer, property, NULL);
+		} else {
+			property->state = transition == 2 ? INDIGO_BUSY_STATE : transition == 3 ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
+			indigo_update_property(&fixture, property, NULL);
+		}
+		ASSERT_FALSE(indigo_blob_upload_allowed(entry));
+		indigo_item copy = { 0 };
+		ASSERT_FALSE(indigo_consume_blob_upload(entry, &copy, INDIGO_BLOB_UPLOAD_BUDGET));
+		buffer = indigo_allocate_blob_upload(4);
+		ASSERT_TRUE(buffer != NULL);
+		ASSERT_FALSE(indigo_publish_blob_upload(entry, buffer, 4));
+		indigo_free_blob_upload(buffer, 4);
+		property->perm = INDIGO_WO_PERM;
+		indigo_define_property(&fixture, property, NULL);
+		ASSERT_TRUE(indigo_blob_upload_allowed(entry));
+		ASSERT_FALSE(indigo_consume_blob_upload(entry, &copy, INDIGO_BLOB_UPLOAD_BUDGET));
+		indigo_release_blob(entry);
+		indigo_release_property(property);
+	}
+}
+
+static void uploaded_staging_consumed_once(void) {
+	indigo_property *property = make_property(INDIGO_WO_PERM);
+	indigo_blob_entry *entry = indigo_acquire_blob(property->items);
+	for (int size = 0; size <= 4; size += 4) {
+		void *buffer = indigo_allocate_blob_upload(size);
+		ASSERT_TRUE(buffer != NULL);
+		memcpy(buffer, "once", size);
+		ASSERT_TRUE(indigo_publish_blob_upload(entry, buffer, size));
+		indigo_item copy = { 0 };
+		ASSERT_TRUE(indigo_consume_blob_upload(entry, &copy, INDIGO_BLOB_UPLOAD_BUDGET));
+		ASSERT_EQ_INT(size, copy.blob.size);
+		ASSERT_TRUE(copy.blob.value != NULL && !memcmp(copy.blob.value, "once", size));
+		free(copy.blob.value);
+		memset(&copy, 0, sizeof(copy));
+		ASSERT_FALSE(indigo_consume_blob_upload(entry, &copy, INDIGO_BLOB_UPLOAD_BUDGET));
+		ASSERT_TRUE(copy.blob.value == NULL);
+	}
+	indigo_release_blob(entry);
+	indigo_release_property(property);
+}
+
 static void empty_upload_and_replacement(void) {
 	indigo_property *property = make_property(INDIGO_WO_PERM);
 	indigo_blob_entry *entry = indigo_acquire_blob(property->items);
@@ -256,6 +336,9 @@ int main(int argc, char **argv) {
 		{ "all permission classes retire", retirement_covers_changed_permissions },
 		{ "resize and shrink cache lifetime", resize_preserves_live_entries_and_retires_removed_items },
 		{ "pending published retired budget", budgets_include_published_and_retired_buffers },
+		{ "RO upload preserves snapshot", readonly_upload_preserves_snapshot },
+		{ "permission publication revokes staging", permission_publication_revokes_staging },
+		{ "uploaded staging consumed once", uploaded_staging_consumed_once },
 		{ "empty upload and replacement", empty_upload_and_replacement },
 		{ "concurrent retirement and lookup", concurrent_retirement_and_lookup },
 #ifdef INDIGO_TRANSPORT_ALLOC_FAILURE

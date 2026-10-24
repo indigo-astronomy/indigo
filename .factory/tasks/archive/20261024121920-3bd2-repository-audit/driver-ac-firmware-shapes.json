@@ -1,0 +1,29 @@
+{
+  "indigo_drivers/ccd_dsi/libdsi_firmware.h": {
+    "hex_bytes": 9731,
+    "records": 512,
+    "terminal_offset": 9728,
+    "terminated": true,
+    "record_extents_valid": true
+  },
+  "indigo_drivers/ccd_ssag/indigo_ccd_ssag_firmware.h": {
+    "SSAG_EEPROM": {
+      "bytes": 10,
+      "purpose": "USB EEPROM id bytes; no length-prefixed walker"
+    },
+    "SSAG_BOOTLOADER": {
+      "bytes": 970,
+      "records": 59,
+      "terminal_offset": 969,
+      "terminated": true,
+      "record_extents_valid": true
+    },
+    "SSAG_FIRMWARE": {
+      "bytes": 6896,
+      "records": 390,
+      "terminal_offset": 6895,
+      "terminated": true,
+      "record_extents_valid": true
+    }
+  }
+}

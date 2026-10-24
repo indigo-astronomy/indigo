@@ -1,0 +1,19 @@
+{
+  "title": "Fixed name and text suffixes do not reserve destination capacity",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "XML adapter indigo_client_xml.c:44 prepends @ with sprintf into same-size name; actual server names are fixed-size too (indigo_client.c:473). Related service port suffix443-450, filter proxy property/group prefix956-966, baudrate -8N1 suffix indigo_driver.c:1734, CCD directory separator820-824, bus make_name_unique strcat nearEOF. Generic bounded property copying does not reserve suffix room. Use capacity-aware construction/rejection. Canonical disposition: one explicitly enumerated core prefix/suffix capacity family, separate from Raspberry Pi FND-000023. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-3). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-003; core-report.md alias CORE-3; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-003"
+}
