@@ -65,11 +65,12 @@ INDIGO_EXTERN bool indigo_use_blob_buffering;
  */
 INDIGO_EXTERN bool indigo_use_blob_compression;
 
-/** Add static document.
+/** Add static document. Metadata is copied. The caller retains data ownership and
+ * must keep data valid and unchanged until document removal returns.
  */
 INDIGO_EXTERN void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type);
 
-/** Add file document.
+/** Add file document. Path, file name and content type are copied.
  */
 INDIGO_EXTERN void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type);
 
@@ -77,11 +78,14 @@ INDIGO_EXTERN void indigo_server_add_file_resource(const char *path, const char 
  */
 INDIGO_EXTERN void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params));
 
-/** Remove document.
+/** Remove document and wait for its active responses and handlers to finish.
+ * Call outside resource handlers, without holding locks required by handlers.
+ * Handler code and associated state may be released only after removal returns.
  */
 INDIGO_EXTERN void indigo_server_remove_resource(const char *path);
 	
-/** Remove all documents.
+/** Remove all current documents and wait for their active responses to finish.
+ * Call outside resource handlers, without holding locks required by handlers.
  */
 INDIGO_EXTERN void indigo_server_remove_resources(void);
 	

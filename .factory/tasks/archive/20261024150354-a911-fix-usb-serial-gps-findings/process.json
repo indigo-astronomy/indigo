@@ -1,0 +1,179 @@
+{
+  "version": 2,
+  "task": "20261024150354-a911-fix-usb-serial-gps-findings",
+  "scope": [
+    ".factory/completions/20261024150354-a911-fix-usb-serial-gps-findings.json",
+    ".factory/findings/active/FND-000030.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-001.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-041.json",
+    ".factory/findings/archive/FND-000030.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-001.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-041.json",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_libs/indigo_usbserial_utils.c",
+    "indigo_test/Makefile",
+    "indigo_test/unit/test_gps_compliance_script.py",
+    "indigo_test/unit/test_omnisim_startup.py",
+    "indigo_test/unit/test_usbserial_enumeration_macos.c",
+    "indigo_tests/gps_compliance.sh",
+    "tools/alpaca_omnisim_conformu.py"
+  ],
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/findings.py",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/decision_index.py",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_*.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py",
+        "--security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-gps-compliance-script"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_omnisim_startup.py",
+        "-v"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024150354-a911-fix-usb-serial-gps-findings.json": [
+      "100644",
+      "blob",
+      "f1056ab44d72859a997aa552e07fca4d48635b4f"
+    ],
+    ".factory/findings/active/FND-000030.json": null,
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-001.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-041.json": null,
+    ".factory/findings/archive/FND-000030.json": [
+      "100644",
+      "blob",
+      "278e1fc54cfe6ac6fc029750ee8155044db266a2"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "f58c99b8d9b682d9bac01b7c74d42e2b941d38bd"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-041.json": [
+      "100644",
+      "blob",
+      "cbfd335d0bc03ba85a5b7ce18a5ca07c4c72ee20"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "6ae35cf1859d714e4c8dbce8050746f027febce3"
+    ],
+    "indigo_libs/indigo_usbserial_utils.c": [
+      "100644",
+      "blob",
+      "7a58cc99fe02e26f75d95895e4035736154afa64"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "975f481c470d3af95639af8b4edd1367cad3ef37"
+    ],
+    "indigo_test/unit/test_gps_compliance_script.py": [
+      "100644",
+      "blob",
+      "dc3e10711787183153bee6d7129d6c1ef4ea1713"
+    ],
+    "indigo_test/unit/test_omnisim_startup.py": [
+      "100644",
+      "blob",
+      "217a39f16ee2f68016d38556d54b6e1930ade550"
+    ],
+    "indigo_test/unit/test_usbserial_enumeration_macos.c": [
+      "100644",
+      "blob",
+      "bc3e1d36481168b12ec0d2b59fa7bd263603c581"
+    ],
+    "indigo_tests/gps_compliance.sh": [
+      "100755",
+      "blob",
+      "624bd810a5edf60db36027f83e84a9b70f233164"
+    ],
+    "tools/alpaca_omnisim_conformu.py": [
+      "100644",
+      "blob",
+      "016cd07b523c2da8572734861594f152d276995f"
+    ]
+  }
+}

@@ -286,6 +286,123 @@ static void copied_properties_are_independent_for_all_vector_types(void) {
 	}
 }
 
+static void reused_copy_preserves_destination_capacity(void) {
+	for (int i = 0; i < (int)(sizeof(all_property_types) / sizeof(all_property_types[0])); i++) {
+		indigo_property *source = init_test_property(all_property_types[i], 8);
+		init_test_items(source);
+		source = indigo_resize_property(source, 2);
+		indigo_property *copy = init_test_property(all_property_types[i], 1);
+		copy = indigo_copy_property(copy, source);
+		ASSERT_EQ_INT(2, copy->count);
+		ASSERT_EQ_INT(2, copy->allocated_count);
+		assert_initialized_item(copy);
+		copy = indigo_resize_property(copy, 4);
+		ASSERT_EQ_INT(4, copy->allocated_count);
+		copy = indigo_copy_property(copy, source);
+		ASSERT_EQ_INT(2, copy->count);
+		ASSERT_EQ_INT(4, copy->allocated_count);
+		assert_initialized_item(copy);
+		indigo_release_property(copy);
+		indigo_release_property(source);
+	}
+}
+
+static void reused_copy_keeps_larger_destination_reserve(void) {
+	indigo_property *source = init_test_property(TEST_NUMBER_PROPERTY, 1);
+	init_test_items(source);
+	indigo_property *copy = init_test_property(TEST_NUMBER_PROPERTY, 8);
+	copy = indigo_copy_property(copy, source);
+	ASSERT_EQ_INT(1, copy->count);
+	ASSERT_EQ_INT(8, copy->allocated_count);
+	assert_initialized_item(copy);
+	source = indigo_resize_property(source, 0);
+	copy = indigo_copy_property(copy, source);
+	ASSERT_EQ_INT(0, copy->count);
+	ASSERT_EQ_INT(8, copy->allocated_count);
+	copy = indigo_resize_property(copy, 8);
+	for (int i = 0; i < copy->count; i++) {
+		ASSERT_STREQ("", copy->items[i].name);
+	}
+	indigo_release_property(copy);
+	indigo_release_property(source);
+}
+
+static void reused_text_copy_replaces_owned_values(void) {
+	char long_text[INDIGO_VALUE_SIZE + 128];
+	memset(long_text, 'a', sizeof(long_text) - 1);
+	long_text[sizeof(long_text) - 1] = 0;
+	indigo_property *source = init_test_property(TEST_TEXT_PROPERTY, 1);
+	indigo_init_text_item_raw(source->items, "TEXT", "Text", long_text);
+	indigo_property *copy = init_test_property(TEST_TEXT_PROPERTY, 3);
+	for (int i = 0; i < copy->count; i++) {
+		indigo_init_text_item_raw(copy->items + i, "OLD", "Old", long_text);
+	}
+	copy = indigo_resize_property(copy, 1);
+	for (int i = 0; i < 32; i++) {
+		copy = indigo_copy_property(copy, source);
+		ASSERT_STREQ(long_text, indigo_get_text_item_value(copy->items));
+		ASSERT_TRUE(copy->items[0].text.long_value != source->items[0].text.long_value);
+		ASSERT_EQ_INT(3, copy->allocated_count);
+		ASSERT_TRUE(copy->items[1].text.long_value == NULL);
+		ASSERT_TRUE(copy->items[2].text.long_value == NULL);
+	}
+	indigo_set_text_item_value(source->items, "short");
+	ASSERT_STREQ(long_text, indigo_get_text_item_value(copy->items));
+	copy = indigo_copy_property(copy, source);
+	ASSERT_STREQ("short", indigo_get_text_item_value(copy->items));
+	ASSERT_TRUE(copy->items[0].text.long_value == NULL);
+	indigo_release_property(source);
+	indigo_release_property(copy);
+}
+
+static void property_copy_into_itself_preserves_text(void) {
+	char long_text[INDIGO_VALUE_SIZE + 128];
+	memset(long_text, 's', sizeof(long_text) - 1);
+	long_text[sizeof(long_text) - 1] = 0;
+	indigo_property *property = init_test_property(TEST_TEXT_PROPERTY, 1);
+	indigo_init_text_item_raw(property->items, "SELF", "Self", long_text);
+	char *owned_text = property->items[0].text.long_value;
+	ASSERT_TRUE(indigo_copy_property(property, property) == property);
+	ASSERT_TRUE(property->items[0].text.long_value == owned_text);
+	ASSERT_STREQ(long_text, indigo_get_text_item_value(property->items));
+	indigo_release_property(property);
+}
+
+static void property_copy_replaces_text_with_other_vector_types(void) {
+	char long_text[INDIGO_VALUE_SIZE + 128];
+	memset(long_text, 't', sizeof(long_text) - 1);
+	long_text[sizeof(long_text) - 1] = 0;
+	for (int i = 1; i < (int)(sizeof(all_property_types) / sizeof(all_property_types[0])); i++) {
+		indigo_property *source = init_test_property(all_property_types[i], 1);
+		init_test_items(source);
+		indigo_property *copy = init_test_property(TEST_TEXT_PROPERTY, 2);
+		indigo_init_text_item_raw(copy->items, "OLD", "Old", long_text);
+		indigo_init_text_item_raw(copy->items + 1, "OLD", "Old", long_text);
+		copy = indigo_copy_property(copy, source);
+		ASSERT_EQ_INT(source->type, copy->type);
+		ASSERT_EQ_INT(2, copy->allocated_count);
+		assert_initialized_item(copy);
+		indigo_release_property(copy);
+		indigo_release_property(source);
+	}
+}
+
+static void reused_blob_copy_keeps_borrowed_payload(void) {
+	indigo_property *source = indigo_init_blob_property_p(NULL, "Unit Device", "UPLOAD", "Unit", "Upload", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
+	indigo_init_blob_item(source->items, "DATA", "Data");
+	source->items[0].blob.value = indigo_safe_malloc(16);
+	memset(source->items[0].blob.value, 42, 16);
+	source->items[0].blob.size = 16;
+	indigo_property *copy = indigo_copy_property(NULL, source);
+	copy = indigo_copy_property(copy, source);
+	ASSERT_TRUE(copy->items[0].blob.value == source->items[0].blob.value);
+	ASSERT_EQ_INT(42, ((unsigned char *)source->items[0].blob.value)[0]);
+	// BLOB copies borrow the payload; only the source releases it.
+	copy->items[0].blob.value = NULL;
+	indigo_release_property(copy);
+	indigo_release_property(source);
+}
+
 static void resized_properties_preserve_items_for_all_vector_types(void) {
 	for (int i = 0; i < (int)(sizeof(all_property_types) / sizeof(all_property_types[0])); i++) {
 		test_property_type type = all_property_types[i];
@@ -437,6 +554,12 @@ int main(void) {
 		{ "properties_are_initialized_for_all_vector_types", properties_are_initialized_for_all_vector_types },
 		{ "property_matching_works_for_all_vector_types", property_matching_works_for_all_vector_types },
 		{ "copied_properties_are_independent_for_all_vector_types", copied_properties_are_independent_for_all_vector_types },
+		{ "reused_copy_preserves_destination_capacity", reused_copy_preserves_destination_capacity },
+		{ "reused_copy_keeps_larger_destination_reserve", reused_copy_keeps_larger_destination_reserve },
+		{ "reused_text_copy_replaces_owned_values", reused_text_copy_replaces_owned_values },
+		{ "property_copy_into_itself_preserves_text", property_copy_into_itself_preserves_text },
+		{ "property_copy_replaces_text_with_other_vector_types", property_copy_replaces_text_with_other_vector_types },
+		{ "reused_blob_copy_keeps_borrowed_payload", reused_blob_copy_keeps_borrowed_payload },
 		{ "resized_properties_preserve_items_for_all_vector_types", resized_properties_preserve_items_for_all_vector_types },
 		{ "numeric_copy_ignores_nonfinite_inputs", numeric_copy_ignores_nonfinite_inputs },
 		{ "numeric_copy_still_clamps_finite_inputs", numeric_copy_still_clamps_finite_inputs },

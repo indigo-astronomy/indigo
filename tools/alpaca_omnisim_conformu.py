@@ -108,9 +108,21 @@ def start_omnisim(executable, port, outdir):
 	env.pop('XDG_CONFIG_HOME', None)
 	env.pop('XDG_DATA_HOME', None)
 	env.update(HOME=home, CFFIXED_USER_HOME=home, ASCOM_LOGPATH=os.path.join(home, 'logs'))
-	output = open(os.path.join(outdir, 'omnisim.out'), 'w')
-	process = subprocess.Popen([executable, '--urls=http://127.0.0.1:%d' % port], cwd=home, env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
-	wait_for(lambda: get_json('http://127.0.0.1:%d/management/apiversions' % port), 60, 'OmniSim')
+	process = None
+	try:
+		with open(os.path.join(outdir, 'omnisim.out'), 'w') as output:
+			process = subprocess.Popen([executable, '--urls=http://127.0.0.1:%d' % port], cwd=home, env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+		wait_for(lambda: get_json('http://127.0.0.1:%d/management/apiversions' % port), 60, 'OmniSim')
+		if process.poll() is not None:
+			raise RuntimeError('OmniSim exited before startup completed')
+	except BaseException:
+		if process is not None:
+			try:
+				stop(process)
+			except BaseException:
+				# Preserve the startup failure even if cleanup fails or is interrupted.
+				pass
+		raise
 	return process
 
 

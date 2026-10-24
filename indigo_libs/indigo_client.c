@@ -447,7 +447,13 @@ void indigo_service_name(const char *host, int port, char *name) {
 		*dot = 0;
 	}
 	if (port != 7624) {
-		sprintf(name + strlen(name), ":%d", port);
+		char suffix[32];
+		snprintf(suffix, sizeof(suffix), ":%d", port);
+		size_t length = strlen(name), available = INDIGO_NAME_SIZE - strlen(suffix) - 1;
+		if (length > available) {
+			length = available;
+		}
+		strcpy(name + length, suffix);
 	}
 }
 

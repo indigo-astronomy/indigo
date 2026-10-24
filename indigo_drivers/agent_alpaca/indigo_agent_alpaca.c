@@ -24,7 +24,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0300000F
+#define DRIVER_VERSION 0x03000010
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -1086,14 +1086,18 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	return indigo_device_change_property(device, client, property);
 }
 
-static indigo_result agent_device_detach(indigo_device *device) {
-	assert(device != NULL);
-	shutdown_discovery_server(device);
+static void remove_http_handlers(void) {
 	indigo_server_remove_resource("/setup");
 	indigo_server_remove_resource("/management/apiversions");
 	indigo_server_remove_resource("/management/v1/description");
 	indigo_server_remove_resource("/management/v1/configureddevices");
 	indigo_server_remove_resource("/api/v1");
+}
+
+static indigo_result agent_device_detach(indigo_device *device) {
+	assert(device != NULL);
+	shutdown_discovery_server(device);
+	remove_http_handlers();
 	indigo_release_property(AGENT_DISCOVERY_PROPERTY);
 	indigo_release_property(AGENT_DEVICES_PROPERTY);
 	indigo_release_property(AGENT_CAMERA_BAYERPAT_PROPERTY);
@@ -1333,6 +1337,8 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
+			// Drain HTTP callbacks before releasing their client, device or executable code.
+			remove_http_handlers();
 			if (indigo_agent_alpaca_client != NULL) {
 				indigo_detach_client(indigo_agent_alpaca_client);
 				free(indigo_agent_alpaca_client);

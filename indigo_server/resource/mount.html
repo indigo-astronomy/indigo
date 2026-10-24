@@ -93,22 +93,22 @@
 										</div>
 										<div v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null || findProperty('Mount Agent', 'AGENT_LX200_SERVER') != null" class="d-flex p-1 w-100 indigo-command-row">
 										<template v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null">
-										<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveWest($event)" @mouseup.stop="window.stopWest($event)" data-bs-toggle="tooltip" title="Move west">
+										<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" style="touch-action: none" @pointerdown.stop="window.moveWest($event)" @pointerup.stop="window.stopManualMotion($event)" @pointercancel.stop="window.stopManualMotion($event)" @lostpointercapture.stop="window.stopManualMotion($event)" data-bs-toggle="tooltip" title="Move west">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M27,14v4a1,1,0,0,1-1,1H16v3.47937a1,1,0,0,1-1.57349.81921L5.17035,16.81921a.99994.99994,0,0,1,0-1.63842l9.25616-6.47937A1,1,0,0,1,16,9.52063V13H26A1,1,0,0,1,27,14Z"/>
 										</svg>
 									</button>
-									<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveEast($event)" @mouseup.stop="window.stopEast($event)" data-bs-toggle="tooltip" title="Move east">
+									<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" style="touch-action: none" @pointerdown.stop="window.moveEast($event)" @pointerup.stop="window.stopManualMotion($event)" @pointercancel.stop="window.stopManualMotion($event)" @lostpointercapture.stop="window.stopManualMotion($event)" data-bs-toggle="tooltip" title="Move east">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M26.82965,16.81921l-9.25622,6.47937A1,1,0,0,1,16,22.47937V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H16V9.52063a1,1,0,0,1,1.57343-.81921l9.25622,6.47937A.99994.99994,0,0,1,26.82965,16.81921Z"/>
 										</svg>
 									</button>
-									<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveNorth($event)" @mouseup.stop="window.stopNorth($event)" data-bs-toggle="tooltip" title="Move north">
+									<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" style="touch-action: none" @pointerdown.stop="window.moveNorth($event)" @pointerup.stop="window.stopManualMotion($event)" @pointercancel.stop="window.stopManualMotion($event)" @lostpointercapture.stop="window.stopManualMotion($event)" data-bs-toggle="tooltip" title="Move north">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M22.47937,16H19V26a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V16H9.52063a1,1,0,0,1-.81921-1.57349l6.47937-9.25616a.99994.99994,0,0,1,1.63842,0l6.47937,9.25616A1,1,0,0,1,22.47937,16Z"/>
 										</svg>
 									</button>
-										<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveSouth($event)" @mouseup.stop="window.stopSouth($event)" data-bs-toggle="tooltip" title="Move south">
+										<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" style="touch-action: none" @pointerdown.stop="window.moveSouth($event)" @pointerup.stop="window.stopManualMotion($event)" @pointercancel.stop="window.stopManualMotion($event)" @lostpointercapture.stop="window.stopManualMotion($event)" data-bs-toggle="tooltip" title="Move south">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M23.29858,17.57349l-6.47937,9.25616a.99994.99994,0,0,1-1.63842,0L8.70142,17.57349A1,1,0,0,1,9.52063,16H13V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1V16h3.47937A1,1,0,0,1,23.29858,17.57349Z"/>
 											</svg>
@@ -523,6 +523,7 @@
 			}
 
 			function stop() {
+				stopManualMotion();
 				if (INDIGO.findProperty("Mount Agent", "AGENT_ABORT_PROCESS") != null) {
 					changeProperty("Mount Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
 				} else {
@@ -546,61 +547,67 @@
 			changeProperty("Mount Agent", "AGENT_LX200_SERVER", { "STOPPED": true });
 		}
 
-			function moveEvent(event) {
-				if (mountStartProcessBusy())
-					return false;
-				var target = event.currentTarget;
-				target.classList.replace("idle-state", "busy-state");
-				return true;
-			}
+		var manualMotion = null;
 
-		function stopEvent(event) {
+		function startManualMotion(event, property, item) {
+			if (mountStartProcessBusy() || manualMotion != null || event.button != 0 || event.isPrimary === false) {
+				return;
+			}
 			var target = event.currentTarget;
-			target.classList.replace("busy-state", "idle-state");
+			try {
+				target.setPointerCapture(event.pointerId);
+			} catch (error) {
+				return;
+			}
+			event.preventDefault();
+			manualMotion = { pointerId: event.pointerId, target: target, property: property, item: item };
+			target.classList.replace("idle-state", "busy-state");
+			var values = {};
+			values[item] = true;
+			changeProperty("Mount Agent", property, values);
 		}
 
-			function moveWest(event) {
-				if (!moveEvent(event))
-					return;
-				changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "WEST": true });
+		function stopManualMotion(event) {
+			if (manualMotion == null || (event != null && event.pointerId != manualMotion.pointerId)) {
+				return;
 			}
-
-		function stopWest(event) {
-			stopEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "WEST": false });
+			var motion = manualMotion;
+			manualMotion = null;
+			motion.target.classList.replace("busy-state", "idle-state");
+			try {
+				motion.target.releasePointerCapture(motion.pointerId);
+			} catch (error) {
+				// Capture may already be lost; the stop command must still be sent.
+			}
+			var values = {};
+			values[motion.item] = false;
+			changeProperty("Mount Agent", motion.property, values);
 		}
 
-			function moveEast(event) {
-				if (!moveEvent(event))
-					return;
-				changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "EAST": true });
+		window.addEventListener("pointerup", stopManualMotion);
+		window.addEventListener("pointercancel", stopManualMotion);
+		window.addEventListener("blur", function() { stopManualMotion(); });
+		window.addEventListener("pagehide", function() { stopManualMotion(); });
+		document.addEventListener("visibilitychange", function() {
+			if (document.hidden) {
+				stopManualMotion();
 			}
+		});
 
-		function stopEast(event) {
-			stopEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "EAST": false });
+		function moveWest(event) {
+			startManualMotion(event, "MOUNT_MOTION_RA", "WEST");
 		}
 
-			function moveNorth(event) {
-				if (!moveEvent(event))
-					return;
-				changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "NORTH": true });
-			}
-
-		function stopNorth(event) {
-			stopEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "NORTH": false });
+		function moveEast(event) {
+			startManualMotion(event, "MOUNT_MOTION_RA", "EAST");
 		}
 
-			function moveSouth(event) {
-				if (!moveEvent(event))
-					return;
-				changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "SOUTH": true });
-			}
+		function moveNorth(event) {
+			startManualMotion(event, "MOUNT_MOTION_DEC", "NORTH");
+		}
 
-		function stopSouth(event) {
-			stopEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "SOUTH": false });
+		function moveSouth(event) {
+			startManualMotion(event, "MOUNT_MOTION_DEC", "SOUTH");
 		}
 
 			function trackingToggle(event) {

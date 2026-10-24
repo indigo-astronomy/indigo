@@ -949,6 +949,12 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 				int free_index;
 				for (free_index = 0; free_index < INDIGO_FILTER_MAX_CACHED_PROPERTIES; free_index++) {
 					if (device_cache[free_index] == NULL) {
+						const char *prefix = !strcmp(property->name, INFO_PROPERTY_NAME) ? "DEVICE_" : name_prefix;
+						bool translate_name = strncmp(name_prefix, property->name, name_prefix_length) && (strcmp(name_prefix, "CCD_") || strncmp(property->name, "DSLR_", 5));
+						if (translate_name && strlen(prefix) + strlen(property->name) >= sizeof(property->name)) {
+							indigo_error("Proxy property name is too long: %s", property->name);
+							break;
+						}
 						device_cache[free_index] = indigo_copy_property(NULL, property);
 						indigo_property *agent_property = indigo_copy_property(NULL, property);
 						strcpy(agent_property->device, device->name);
@@ -963,8 +969,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 							strcat(agent_property->name, property->name);
 						}
 						if (strncmp(property_name_label[i], property->group, strlen(property->group))) {
-							strcpy(agent_property->group, property_name_label[i]);
-							strcat(agent_property->group, property->group);
+							snprintf(agent_property->group, sizeof(agent_property->group), "%s%s", property_name_label[i], property->group);
 						}
 						agent_cache[free_index] = agent_property;
 						agent_property->defined = false;

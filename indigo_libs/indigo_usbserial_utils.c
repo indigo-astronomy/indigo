@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 Rumen G. Bogdanovski
+// Copyright (c) 2024-2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -43,6 +43,9 @@
 
 int indigo_enumerate_usbserial_devices(indigo_serial_info* serial_info, int num_serial_info) {
 #if defined(INDIGO_MACOS)
+	if (num_serial_info <= 0) {
+		return 0;
+	}
 	CFMutableDictionaryRef matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
 	if (matchingDict == NULL) {
 		return -1;
@@ -58,7 +61,7 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info* serial_info, int num_
 	}
 	int count = 0;
 	io_service_t device;
-	while ((device = IOIteratorNext(iter)) != 0 && count < num_serial_info) {
+	while (count < num_serial_info && (device = IOIteratorNext(iter)) != 0) {
 		CFNumberRef vendorIdAsCFNumber = IORegistryEntryCreateCFProperty(device, CFSTR(kUSBVendorID), kCFAllocatorDefault, 0);
 		CFNumberRef productIdAsCFNumber = IORegistryEntryCreateCFProperty(device, CFSTR(kUSBProductID), kCFAllocatorDefault, 0);
 		CFNumberRef deviceClassAsCFNumber = IORegistryEntryCreateCFProperty(device, CFSTR(kUSBDeviceClass), kCFAllocatorDefault, 0);
@@ -97,7 +100,7 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info* serial_info, int num_
 				goto cleanup;
 			}
 			io_service_t serialService;
-			while ((serialService = IOIteratorNext(serialIter)) != 0) {
+			while (count < num_serial_info && (serialService = IOIteratorNext(serialIter)) != 0) {
 				CFTypeRef bsdPathAsCFString = IORegistryEntryCreateCFProperty(serialService, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault, 0);
 				if (bsdPathAsCFString) {
 					char path[256];

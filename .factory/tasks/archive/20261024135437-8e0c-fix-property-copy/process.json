@@ -1,0 +1,293 @@
+{
+  "version": 2,
+  "task": "20261024135437-8e0c-fix-property-copy",
+  "scope": [
+    ".factory/completions/20261024135437-8e0c-fix-property-copy.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-001.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-002.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-003.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-010.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-011.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-042.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-001.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-002.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-003.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-010.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-011.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-042.json",
+    ".factory/project.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/agent_alpaca/README.md",
+    "indigo_drivers/agent_alpaca/REFACTOR.md",
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c",
+    "indigo_libs/indigo/indigo_server_tcp.h",
+    "indigo_libs/indigo_agent.c",
+    "indigo_libs/indigo_bus.c",
+    "indigo_libs/indigo_ccd_driver.c",
+    "indigo_libs/indigo_client.c",
+    "indigo_libs/indigo_client_xml.c",
+    "indigo_libs/indigo_driver.c",
+    "indigo_libs/indigo_filter.c",
+    "indigo_libs/indigo_server_tcp.c",
+    "indigo_server/indigo_server.c",
+    "indigo_server/resource/mount.html",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_ccd_file_names.c",
+    "indigo_test/integration/test_transport_http_security.c",
+    "indigo_test/unit/test_bus_property.c",
+    "indigo_test/unit/test_core_text_bounds.c",
+    "indigo_test/unit/test_mount_manual_motion.js"
+  ],
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/findings.py",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/decision_index.py",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_*.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py",
+        "--security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-mount-manual-motion",
+        "test-imager-download"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_alpaca"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024135437-8e0c-fix-property-copy.json": [
+      "100644",
+      "blob",
+      "bada21f8ebf9e6695978b0c5d64e42d530041155"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-001.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-002.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-003.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-010.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-011.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-042.json": null,
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "1c7c3b81c3e12e76b6afe739e23445dd849716ca"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "f5b229083c9fe08fa57f79288cf10ca5fb101b74"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-003.json": [
+      "100644",
+      "blob",
+      "056e963c83f56a348953ac718ad80161d8b182e0"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-010.json": [
+      "100644",
+      "blob",
+      "65143f64f4874d48aff598e5a31f01705b03e70a"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "6c40ebb1ae6369140ce3c1e7f6463d74a0a6ff58"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-042.json": [
+      "100644",
+      "blob",
+      "89dc8d99958419d9e6802d1a3f46daff226c9030"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "5bc577b84347492b6d312123a9fd475651ff355a"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "46a0c82486774626ff46e69064535728c7d946dc"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "e43c51af0b97e2b567cc89790371e1219440a74e"
+    ],
+    "indigo_drivers/agent_alpaca/README.md": [
+      "100644",
+      "blob",
+      "e200cf55a2ed146db453bab089b96351b393a748"
+    ],
+    "indigo_drivers/agent_alpaca/REFACTOR.md": [
+      "100644",
+      "blob",
+      "7db99be6f785f2d455aa4902876f579b606599da"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": [
+      "100644",
+      "blob",
+      "807db9ea66429001d423db901dc2300e226d3396"
+    ],
+    "indigo_libs/indigo/indigo_server_tcp.h": [
+      "100644",
+      "blob",
+      "6bb7957b4993bd0c845d1e20aebfd7dc3245c717"
+    ],
+    "indigo_libs/indigo_agent.c": [
+      "100644",
+      "blob",
+      "4593a2f16de21b9ffc61cbc49a0e9c876435a5cd"
+    ],
+    "indigo_libs/indigo_bus.c": [
+      "100644",
+      "blob",
+      "a7fd0a6e463fab54cd45bae9d3d124cff46072c3"
+    ],
+    "indigo_libs/indigo_ccd_driver.c": [
+      "100644",
+      "blob",
+      "59a7bc5bf6c4a66230b0b5965f61db38c2351661"
+    ],
+    "indigo_libs/indigo_client.c": [
+      "100644",
+      "blob",
+      "4417906c0bbc74bcd99c3830c46bfbdf0c24c8b5"
+    ],
+    "indigo_libs/indigo_client_xml.c": [
+      "100644",
+      "blob",
+      "bcbc392023c189d97dd21df604c5d24f3aa4d47f"
+    ],
+    "indigo_libs/indigo_driver.c": [
+      "100644",
+      "blob",
+      "ca7692cd17aa48568c1d201c555ee592eca6a845"
+    ],
+    "indigo_libs/indigo_filter.c": [
+      "100644",
+      "blob",
+      "afeece4f41cbe657073303166c3179ed29212aa7"
+    ],
+    "indigo_libs/indigo_server_tcp.c": [
+      "100644",
+      "blob",
+      "eca55bd6906837d25e2e1aefb5a5f8359f5d0088"
+    ],
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "a4a30ac17cf10fc33fbf1b2d5ce1227d802bbe4e"
+    ],
+    "indigo_server/resource/mount.html": [
+      "100644",
+      "blob",
+      "406da19ad398f8c98ecbeff06ab5aad2c45b2c6c"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "90f8579326053844fba63a8ab3af17e8e8785e82"
+    ],
+    "indigo_test/integration/test_ccd_file_names.c": [
+      "100644",
+      "blob",
+      "9a826fa671a3c7648b41e82358656afde8795f32"
+    ],
+    "indigo_test/integration/test_transport_http_security.c": [
+      "100644",
+      "blob",
+      "f03a2af6d2e41508a6d84fc7c33502a6329d0719"
+    ],
+    "indigo_test/unit/test_bus_property.c": [
+      "100644",
+      "blob",
+      "21a845fd79e6a9d1e5e826f7dcc5b3ed00bb4340"
+    ],
+    "indigo_test/unit/test_core_text_bounds.c": [
+      "100644",
+      "blob",
+      "34ee883263b2d0d60c726ac2f4ded550440aac27"
+    ],
+    "indigo_test/unit/test_mount_manual_motion.js": [
+      "100644",
+      "blob",
+      "4e94832ef9e5d2dedfb3a5a78a193f7e7059c5b3"
+    ]
+  }
+}

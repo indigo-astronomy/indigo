@@ -1,0 +1,25 @@
+# Handoff
+
+Task: 20261024135437-8e0c-fix-property-copy. Single writer: root Codex desktop agent. Base/local integration target: ce3a97281 on master; remote synchronization not requested, local master is the configured task base. Integration/publication require separate owner authorization.
+
+Risk: high memory safety; bounded complexity with public lifecycle helpers and known regression gaps. Balanced development recommendation gpt-6.1-sol/medium; substantive security review strong recommendation gpt-6-astra/high. Current host/model retained per owner policy, exact runtime model/effort unavailable; no switch, provider upload or additional charges. No budget supplied. Shell, local Git (sandbox escalation required for .git writes), edits, compiler/tests and same-provider subagents available.
+
+Coordinator → analyst → planner/test-designer → developer: scope and acceptance recorded in brief/specification/plan/test-plan; scoped rules explicitly read. Test role writes confined to indigo_test; implementation role writes indigo_libs/indigo_bus.c; coordinator writes task/finding/Xcode evidence. No audit overdue (maintenance status: zero uncovered tasks, full review 2026-10-24). Pinned template provenance present; no upgrade assigned. Next: baseline, regressions, implementation, then independent review.
+
+## Scope extension / isolated workers
+
+Owner expanded scope to remaining five audit high findings 002/003/010/011/042. Coordinator preserves this task and branch for unified shared-core repair. Three explicitly assigned detached source-only worker worktrees, parent root sole task evidence/integration writer. No same-file concurrent writes. Complexity reassessed high (resource concurrency/unload and filename parser), risk high memory safety. Current owner-selected host retained; exact model/effort unobservable, no provider changes/charges. Source independent reviewer found and corrected a draft 001 regression: unconditional clear would free a borrowed WO BLOB payload; final draft clears text only, zeroes reserve, and has a positive WO-copy regression. Updated independent source verdict pass; the subsequently completed combined review is recorded below.
+
+Developer → verifier: original property baseline 11/11; corrected draft 17/17; original new regression run failed capacity assertions and terminated before completion on the old implementation; it is not passing baseline evidence. Initial broad native run sandbox-blocked local sockets/device test; unrestricted rerun passed all suites. Factory 188 tests pass. Prior sanitizer/leaks pass belonged to the preceding 16-test draft; the subsequent corrected combined-candidate reruns passed as recorded below. Exact results will be consolidated in verification.md.
+
+## Combined verification and documentation
+
+Developer → verifier: all six repairs integrated from disjoint worker outputs; final native unit target, CCD/bus fixtures, core/HTTP sanitizer cases, browser tests, recorded Alpaca run and Factory 188 tests passed. No off-limits driver edits, new public properties, dependencies or generator changes. See verification.md for exact outcomes and limits.
+
+Verifier → documenter → quality/security review: public resource-removal lifetime/reentrancy contract updated in header; Alpaca REFACTOR describes early retirement, version and hardware limits, with recorded README Testing/TEST_SUMMARY update permitted by root policy. Three new test files and final task records will be registered in Xcode. Independent source reviews pass with corrected draft defects, reviewed scopes/identities and independence in quality-review.md. Root now owns final documentation/registry/Xcode consistency, archive and one final commit. Main is still ce3a972818fb2875a7a901678c5c68e406f4c703; no merge/push authority. No budget/model/provider changes.
+
+## Final assignment and delivery state
+
+Documentation consistency review by analyze_core_high passed after correcting the initial scope and marking superseded draft checkpoints resolved. Quality/security source reviews pass for every assigned finding; no unresolved target finding or accepted risk. All six canonical findings closed as fixed with original and repair evidence preserved. Full audit remains current; this work is a task-diff review and does not reset the repository audit checkpoint.
+
+Coordinator: mark execution complete and archive evidence; add final Xcode source/task/completion navigator entries, validate retained links/registry/project syntax, capture staged Git identities, create one outcome-named commit, then run committed-candidate checks/process-check and clean test artifacts. The task branch must be retained because local master integration/publication are not authorized and remain pending. Master and origin were not changed. No unfinished implementation or product decision remains; delivery gates are reported externally with final commit SHA. Temporary worker changes are preserved until their reviewed content is committed, then clean worker worktrees may be removed after identity comparison.

@@ -76,10 +76,10 @@ indigo_result indigo_add_snoop_rule(indigo_property *target, const char *source_
 	if (property == NULL) {
 		return INDIGO_FAILED;
 	}
-	indigo_init_text_item(property->items + 0, SNOOP_ADD_RULE_SOURCE_DEVICE_ITEM_NAME, NULL, source_device);
-	indigo_init_text_item(property->items + 1, SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM_NAME, NULL, source_property);
-	indigo_init_text_item(property->items + 2, SNOOP_ADD_RULE_TARGET_DEVICE_ITEM_NAME, NULL, target->device);
-	indigo_init_text_item(property->items + 3, SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM_NAME, NULL, target->name);
+	indigo_init_text_item_raw(property->items + 0, SNOOP_ADD_RULE_SOURCE_DEVICE_ITEM_NAME, NULL, source_device);
+	indigo_init_text_item_raw(property->items + 1, SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM_NAME, NULL, source_property);
+	indigo_init_text_item_raw(property->items + 2, SNOOP_ADD_RULE_TARGET_DEVICE_ITEM_NAME, NULL, target->device);
+	indigo_init_text_item_raw(property->items + 3, SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM_NAME, NULL, target->name);
 	property->access_token = indigo_get_device_or_master_token(property->device);
 	indigo_result result = indigo_change_property(NULL, property);
 	indigo_release_property(property);
@@ -94,10 +94,10 @@ indigo_result indigo_remove_snoop_rule(indigo_property *target, const char *sour
 	if (property == NULL) {
 		return INDIGO_FAILED;
 	}
-	indigo_init_text_item(property->items + 0, SNOOP_REMOVE_RULE_SOURCE_DEVICE_ITEM_NAME, NULL, source_device);
-	indigo_init_text_item(property->items + 1, SNOOP_REMOVE_RULE_SOURCE_PROPERTY_ITEM_NAME, NULL, source_property);
-	indigo_init_text_item(property->items + 2, SNOOP_REMOVE_RULE_TARGET_DEVICE_ITEM_NAME, NULL, target->device);
-	indigo_init_text_item(property->items + 3, SNOOP_REMOVE_RULE_TARGET_PROPERTY_ITEM_NAME, NULL, target->name);
+	indigo_init_text_item_raw(property->items + 0, SNOOP_REMOVE_RULE_SOURCE_DEVICE_ITEM_NAME, NULL, source_device);
+	indigo_init_text_item_raw(property->items + 1, SNOOP_REMOVE_RULE_SOURCE_PROPERTY_ITEM_NAME, NULL, source_property);
+	indigo_init_text_item_raw(property->items + 2, SNOOP_REMOVE_RULE_TARGET_DEVICE_ITEM_NAME, NULL, target->device);
+	indigo_init_text_item_raw(property->items + 3, SNOOP_REMOVE_RULE_TARGET_PROPERTY_ITEM_NAME, NULL, target->name);
 	property->access_token = indigo_get_device_or_master_token(property->device);
 	indigo_result result = indigo_change_property(NULL, property);
 	indigo_release_property(property);

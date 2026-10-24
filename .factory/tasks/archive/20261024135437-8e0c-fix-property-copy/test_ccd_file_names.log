@@ -1,0 +1,3 @@
+Running CCD filename contracts
+  PASS file_name_expansion_is_bounded_and_literal
+CCD filename contracts: all tests passed

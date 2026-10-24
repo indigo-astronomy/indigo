@@ -1616,12 +1616,22 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 }
 
 indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *property) {
+	if (copy == property) {
+		return copy;
+	}
+	int allocated_count = property->allocated_count;
 	if (copy == NULL) {
-		copy = indigo_safe_malloc(sizeof(indigo_property) + property->allocated_count * sizeof(indigo_item));
+		copy = indigo_safe_malloc(sizeof(indigo_property) + allocated_count * sizeof(indigo_item));
 	} else {
+		if (copy->type == INDIGO_TEXT_VECTOR) {
+			indigo_clear_property(copy);
+		}
 		copy = indigo_resize_property(copy, property->count);
+		allocated_count = copy->allocated_count;
 	}
 	memcpy(copy, property, sizeof(indigo_property) + property->count * sizeof(indigo_item));
+	copy->allocated_count = allocated_count;
+	memset(copy->items + copy->count, 0, (allocated_count - copy->count) * sizeof(indigo_item));
 	if (copy->type == INDIGO_TEXT_VECTOR) {
 		for (int k = 0; k < copy->count; k++) {
 			indigo_item *item = copy->items + k;
@@ -2325,7 +2335,7 @@ indigo_result indigo_change_text_property_1_with_token(indigo_client *client, co
 	va_start(args, format);
 	vsnprintf(tmp, INDIGO_VALUE_SIZE, format, args);
 	va_end(args);
-	indigo_init_text_item(property->items, item, NULL, tmp);
+	indigo_init_text_item_raw(property->items, item, NULL, tmp);
 	indigo_result result = indigo_change_property(client, property);
 	indigo_release_property(property);
 	return result;
@@ -2346,7 +2356,7 @@ indigo_result indigo_change_text_property_1(indigo_client *client, const char *d
 	va_start(args, format);
 	vsnprintf(tmp, INDIGO_VALUE_SIZE, format, args);
 	va_end(args);
-	return indigo_change_text_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, tmp);
+	return indigo_change_text_property_1_with_token_raw(client, device, indigo_get_device_or_master_token(device), name, item, tmp);
 }
 
 indigo_result indigo_change_text_property_1_raw(indigo_client *client, const char *device, const char *name, const char *item, const char *value) {
@@ -2856,6 +2866,9 @@ bool indigo_make_name_unique(char *name, const char *format, ...) {
 		for (int i = 1; i < MAX_DEVICES; i++) {
 			if (!used_suffix[i - 1]) {
 				snprintf(tmp, sizeof(tmp), " #%d", i);
+				if (strlen(name) + strlen(tmp) >= INDIGO_NAME_SIZE) {
+					return false;
+				}
 				strcat(name, tmp);
 				return true;
 			}
@@ -2865,8 +2878,11 @@ bool indigo_make_name_unique(char *name, const char *format, ...) {
 	}
 	va_list args;
 	va_start(args, format);
-	vsnprintf(tmp, sizeof(tmp), format, args);
+	int length = vsnprintf(tmp, sizeof(tmp), format, args);
 	va_end(args);
+	if (length < 0 || length >= sizeof(tmp) || strlen(name) + length + 2 >= INDIGO_NAME_SIZE) {
+		return false;
+	}
 	strcat(name, " #");
 	strcat(name, tmp);
 	return true;
