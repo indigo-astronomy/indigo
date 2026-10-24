@@ -693,6 +693,12 @@ Driver-specific use of existing properties: `AO_GUIDE_DEC`, `AO_GUIDE_RA`, `AO_R
 
 Source: `indigo_drivers/ao_sx/indigo_ao_sx.c`.
 
+### aux_alto
+
+Custom properties: `AUX_COVER` (OPEN moves to 100 %, CLOSE to 0 %; neither item is on between the ends), `X_COVER_POSITION` (0–100 %, BUSY with the progress), `X_COVER_ABORT` (decelerated stop), `X_STATE` (read-only motor temperature, 12 V and USB supply), `X_PRESETS` (positions of presets 1–3 in %), `X_PRESET_NAMES` (an empty name deletes the preset), `X_PRESET_RECALL` (moves the cover to the preset), `X_CALIBRATION` (START, STORE, CANCEL; not verified on hardware), `X_CALIBRATION_MOTION` (CLOSE_FAST, CLOSE_SLOW, OPEN_FAST, OPEN_SLOW, STOP; during a calibration only), `X_LEDS`.
+
+Source: `indigo_drivers/aux_alto/indigo_aux_alto.c`.
+
 ### aux_arteskyflat
 
 Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SWITCH`.

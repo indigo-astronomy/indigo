@@ -14,6 +14,8 @@ Each command below says how it is known:
   03.06.01) over USB, tasks 011 to 013. Evidence: `indigo_drivers/focuser_primaluce/REFACTOR.md`.
 - **HW (GIOTTO)**: verified on a GIOTTO (application firmware 1.03.09, web 1.1) over USB. Evidence:
   `indigo_drivers/aux_giotto/REFACTOR.md`.
+- **HW (ALTO1)**: verified on an ALTO1 (application firmware 1.03.11, web 1.01) over USB. Evidence:
+  `indigo_drivers/aux_alto/REFACTOR.md`.
 - **DOC**: described in the PrimaLuce Lab "Communication Protocol" v4.0 (05 Dec 2022, ESATTO,
   SESTOSENSO2 and ARCO models) and not used by `indigo_focuser_primaluce`.
 - **SIM**: used by `indigo_focuser_primaluce` and covered by its simulator, but not observed on
@@ -250,15 +252,25 @@ firmware 1.03.09, web 1.1, probed on 2026-10-24 (**HW (GIOTTO)**; transcript sum
 - **Malformed input** (garbage, a request split across writes) gets no reply.
 - **`LIGHT_FADING_TIME`** (10 on the unit) is accepted but undocumented; its unit is unknown.
 
-## ALTO cover (INDI)
+## ALTO cover
 
-| Purpose | Request | Reply |
-| --- | --- | --- |
-| Position | `{"req":{"get":{"MOT1":{"POSITION":""}}}}` / `{"req":{"set":{"MOT1":{"POSITION":0}}}}` | 0 (closed, parked) to 100 (open) |
-| Motion | `{"req":{"get":{"MOT1":{"STATUS":""}}}}` | `STATUS.MST` `stop` when finished |
-| Stop | `{"req":{"cmd":{"MOT1":{"MOT_STOP":""}}}}` | `"done"` |
-| Calibration | `{"req":{"cmd":{"MOT1":{"CAL_ALTO":"Init"}}}}` | |
+Sources: no PrimaLuce document; the INDI `alto.cpp` and an ALTO1 with application firmware 1.03.11, web 1.01, probed
+on 2026-10-24 (**HW (ALTO1)**; summary in `indigo_drivers/aux_alto/REFACTOR.md`). Used by `indigo_aux_alto`.
 
-Calibration steps: `Init`, `Close_Fast` / `Close_Slow`, `MOT_STOP`, `StoreAsClosedPos`,
-`Open_Fast` / `Open_Slow`, `MOT_STOP`, `StoreAsMaxOpenPos`. INDI fixed two inversions in its
-first version: park/unpark (0 is closed) and the open/close steps were swapped.
+| Purpose | Request | Reply | Known |
+| --- | --- | --- | --- |
+| Motion | `{"req":{"get":{"MOT1":{"POSITION":"","STATUS":""}}}}` | `POSITION` 0 (closed) to 100 (open), `STATUS.MST` stop/acc/CstSpeed/dec, `STATUS.BUSY` | HW (ALTO1) |
+| Environment | `{"req":{"get":{"VIN_12V":"","VIN_USB":"","MOT1":{"NTC_T":""}}}}` | supplies as strings, `NTC_T` as a number | HW (ALTO1) |
+| Move | `{"req":{"set":{"MOT1":{"POSITION":50}}}}` | `"done"`; about 7400 steps/s, a full stroke takes about 34 s; a new target during a move decelerates to it | HW (ALTO1) |
+| Stop | `{"req":{"cmd":{"MOT1":{"MOT_STOP":""}}}}` | `"done"`, decelerated stop within about 1 s; `MOT_ABORT` stops at once | HW (ALTO1) |
+| Preset | `{"req":{"set":{"PRESET_1":{"NAME":"Flats","M1POS":119804}}}}` | `"done"` per member, `M1POS` in steps, refused without a name; 3 presets | HW (ALTO1) |
+| Recall preset | `{"req":{"cmd":{"PRESET":1}}}` | `"done"` and the cover moves; `"Error: empty preset"` | HW (ALTO1) |
+| Calibration | `{"req":{"cmd":{"MOT1":{"CAL_ALTO":"Init"}}}}` | `Init`, `Close_Fast`/`Close_Slow`, `MOT_STOP`, `StoreAsClosedPos`, `Open_Fast`/`Open_Slow`, `MOT_STOP`, `StoreAsMaxOpenPos` | INDI |
+
+- **`POSITION` is not validated:** 101, -1, 50.5 and `"x"` are all acknowledged `"done"` and can start a move; send only
+  integers 0 to 100.
+- **Readback lag:** `ABS_POS_STEP` changes only about every 0.5 s; the first stopped readback can carry the previous
+  step count while `POSITION` is already final.
+- **`SPEED`** is the current motor speed: a `set` is acknowledged and ignored.
+- **Unknown keys:** top level `"ERROR: Obj's name not found or invalid command"`, inside `MOT1` `"Error: parameter not found"`.
+- INDI fixed two inversions in its first version: park/unpark (0 is closed) and swapped open/close calibration steps.

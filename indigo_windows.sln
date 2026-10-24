@@ -218,6 +218,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_primaluce", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_giotto", "indigo_drivers\aux_giotto\indigo_aux_giotto.vcxproj", "{8FEAAD2C-3205-4A39-B81D-2789CE709ECE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_alto", "indigo_drivers\aux_alto\indigo_aux_alto.vcxproj", "{00BD498D-1413-490E-97BF-364E72A58785}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "primalucelib", "indigo_drivers\shared\primalucelib\primalucelib.vcxproj", "{F3A6C2B1-5D4E-4C8A-9B7F-2E1D0C9A8B71}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_qhy", "indigo_drivers\focuser_qhy\indigo_focuser_qhy.vcxproj", "{83FFBE9A-59C9-422A-BCC8-9390B4300424}"
@@ -1116,6 +1118,14 @@ Global
 		{8FEAAD2C-3205-4A39-B81D-2789CE709ECE}.Release|ARM64.Build.0 = Release|ARM64
 		{8FEAAD2C-3205-4A39-B81D-2789CE709ECE}.Release|x64.ActiveCfg = Release|x64
 		{8FEAAD2C-3205-4A39-B81D-2789CE709ECE}.Release|x64.Build.0 = Release|x64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Debug|ARM64.Build.0 = Debug|ARM64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Debug|x64.ActiveCfg = Debug|x64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Debug|x64.Build.0 = Debug|x64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Release|ARM64.ActiveCfg = Release|ARM64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Release|ARM64.Build.0 = Release|ARM64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Release|x64.ActiveCfg = Release|x64
+		{00BD498D-1413-490E-97BF-364E72A58785}.Release|x64.Build.0 = Release|x64
 		{F3A6C2B1-5D4E-4C8A-9B7F-2E1D0C9A8B71}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{F3A6C2B1-5D4E-4C8A-9B7F-2E1D0C9A8B71}.Debug|ARM64.Build.0 = Debug|ARM64
 		{F3A6C2B1-5D4E-4C8A-9B7F-2E1D0C9A8B71}.Debug|x64.ActiveCfg = Debug|x64

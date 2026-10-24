@@ -1,0 +1,824 @@
+// Copyright (c) 2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PrimaLuce Lab ALTO cover driver definition
+
+// version history
+// 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+
+driver alto {
+	label = "PrimaluceLab ALTO Cover";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
+	version = 1;
+	serial {
+		pattern {
+			// The cover uses the Silicon Labs CP2102N bridge with its default VID/PID and product string, as the other
+			// PrimaLuce devices do; the model check at connect tells them apart. The Windows port list carries no
+			// VID/PID, so the pattern does not match there.
+			product = "CP2102N";
+			vid = 0x10c4;
+			pid = 0xea60;
+		}
+	}
+	include {
+		#include <math.h>
+		#include "../shared/primalucelib/primalucelib.h"
+	}
+	define {
+		// The controller connection, see indigo_drivers/shared/primalucelib (linked as a static library).
+		#define LINK			(&PRIVATE_DATA->link)
+		// Idle poll period (seconds); the temperature and the supplies are read every ENVIRONMENT_TICKS polls.
+		#define POLL_PERIOD		2
+		#define ENVIRONMENT_TICKS	5
+		// A move is polled this often (seconds).
+		#define MOTION_POLL		0.5
+		// A cover that reports motion without progress for this many polls has stalled.
+		#define STALL_POLLS		10
+		// Consecutive failed readbacks tolerated during a move.
+		#define MAX_POLL_FAILURES	3
+		// A full stroke takes about 34 s on an ALTO1; a move still running after this long is stopped (seconds).
+		#define MOTION_TIMEOUT		60
+		// Polls after the start during which a stopped motor that is not at the target is still starting.
+		#define START_POLLS		2
+	}
+	data {
+		primalucelib_link link;
+		// The travel in steps (CAL_MAXPOS); 0 when the cover is not calibrated.
+		int travel;
+		int target, last_position;
+		int stalled_polls, poll_failures, motion_polls;
+		double motion_started;
+		bool moving, external_motion, abort_requested, poll_alert;
+		// 0 outside a calibration, 1 while the closed position is searched, 2 while the open position is searched.
+		int calibration_phase;
+		int preset_steps[PRIMALUCE_COVER_PRESET_COUNT];
+		char preset_names[PRIMALUCE_COVER_PRESET_COUNT][INDIGO_VALUE_SIZE];
+		indigo_item *leds_item;
+		int environment_ticks;
+	}
+	code {
+		static void cover_motion_finalizer(indigo_device *device);
+
+		static indigo_item *selected_item(indigo_property *property) {
+			for (int i = 0; i < property->count; i++) {
+				if (property->items[i].sw.value) {
+					return property->items + i;
+				}
+			}
+			return NULL;
+		}
+
+		// Publishes property with the reason the controller gave for the last refusal, if it gave one.
+		static void update_with_refusal(indigo_device *device, indigo_property *property) {
+			const char *reason = primalucelib_last_error(LINK);
+			if (*reason) {
+				indigo_update_property(device, property, "%s", reason);
+			} else {
+				indigo_update_property(device, property, NULL);
+			}
+		}
+
+		static int steps_to_percent(indigo_device *device, int steps) {
+			return PRIVATE_DATA->travel > 0 ? (int)lround(100.0 * steps / PRIVATE_DATA->travel) : 0;
+		}
+
+		static int percent_to_steps(indigo_device *device, int percent) {
+			return (int)lround(percent * (double)PRIVATE_DATA->travel / 100.0);
+		}
+
+		// AUX_COVER shows OPEN at 100 % and CLOSE at 0 %; between them neither item is on.
+		static void cover_show_ends(indigo_device *device, int position) {
+			AUX_COVER_OPEN_ITEM->sw.value = position == PRIMALUCE_COVER_OPEN;
+			AUX_COVER_CLOSE_ITEM->sw.value = position == PRIMALUCE_COVER_CLOSED;
+		}
+
+		// Ends a move: the value shows the position reached, the target keeps the request.
+		static void cover_end_motion(indigo_device *device, indigo_property_state state, const char *message) {
+			PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->abort_requested = false;
+			cover_show_ends(device, PRIVATE_DATA->last_position);
+			X_COVER_POSITION_ITEM->number.value = PRIVATE_DATA->last_position;
+			AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = state;
+			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+			if (message != NULL) {
+				indigo_update_property(device, X_COVER_POSITION_PROPERTY, "%s", message);
+			} else {
+				indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
+			}
+		}
+
+		// Refuses a move request: the target goes back to the position, the reason is published.
+		static void cover_refuse(indigo_device *device, indigo_property *property, const char *message) {
+			X_COVER_POSITION_ITEM->number.target = X_COVER_POSITION_ITEM->number.value = PRIVATE_DATA->last_position;
+			cover_show_ends(device, PRIVATE_DATA->last_position);
+			property->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, property, "%s", message);
+		}
+
+		// Publishes a move the controller accepted, to target %; the caller schedules cover_motion_finalizer.
+		static void cover_follow_motion(indigo_device *device, int target) {
+			PRIVATE_DATA->target = target;
+			PRIVATE_DATA->moving = true;
+			PRIVATE_DATA->abort_requested = false;
+			PRIVATE_DATA->stalled_polls = PRIVATE_DATA->poll_failures = PRIVATE_DATA->motion_polls = 0;
+			PRIVATE_DATA->motion_started = indigo_monotonic_time();
+			X_COVER_POSITION_ITEM->number.target = target;
+			AUX_COVER_OPEN_ITEM->sw.value = target == PRIMALUCE_COVER_OPEN;
+			AUX_COVER_CLOSE_ITEM->sw.value = target == PRIMALUCE_COVER_CLOSED;
+			AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+			indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
+		}
+
+		// Why a move cannot start now, or NULL.
+		static const char *cover_busy_reason(indigo_device *device) {
+			if (PRIVATE_DATA->calibration_phase) {
+				return "A calibration is running";
+			}
+			if (PRIVATE_DATA->travel <= 0) {
+				return "The cover needs calibration";
+			}
+			if (PRIVATE_DATA->moving || PRIVATE_DATA->external_motion) {
+				return "The cover is moving";
+			}
+			return NULL;
+		}
+
+		// Starts a move to target % (0 to 100; the controller acknowledges any value, so nothing else is sent) and
+		// publishes BUSY, or publishes the refusal. Returns whether the cover moves.
+		static bool cover_move(indigo_device *device, indigo_property *property, int target) {
+			const char *reason = cover_busy_reason(device);
+			if (reason != NULL) {
+				cover_refuse(device, property, reason);
+				return false;
+			}
+			if (!primalucelib_cover_set_position(LINK, target)) {
+				const char *refusal = primalucelib_last_error(LINK);
+				cover_refuse(device, property, *refusal ? refusal : "The cover did not accept the move");
+				return false;
+			}
+			cover_follow_motion(device, target);
+			return true;
+		}
+
+		static void cover_motion_finalizer(indigo_device *device) {
+			int position;
+			char *state;
+			PRIVATE_DATA->motion_polls++;
+			if (!primalucelib_cover_get_motion(LINK, &position, &state)) {
+				if (++PRIVATE_DATA->poll_failures < MAX_POLL_FAILURES) {
+					// A single lost readback is retried.
+					indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
+					return;
+				}
+				// The cover must not run on unobserved.
+				primalucelib_cover_stop(LINK);
+				cover_end_motion(device, INDIGO_ALERT_STATE, "The cover position could not be read");
+				return;
+			}
+			PRIVATE_DATA->poll_failures = 0;
+			bool stopped = primalucelib_is_motor_stopped(state);
+			if (stopped && position != PRIVATE_DATA->target && PRIVATE_DATA->motion_polls <= START_POLLS && !PRIVATE_DATA->abort_requested && !PRIVATE_DATA->external_motion) {
+				// The motor may not have started yet.
+				indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
+				return;
+			}
+			if (!stopped) {
+				if (position != PRIVATE_DATA->last_position) {
+					PRIVATE_DATA->last_position = position;
+					PRIVATE_DATA->stalled_polls = 0;
+					X_COVER_POSITION_ITEM->number.value = position;
+					indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
+				} else if (++PRIVATE_DATA->stalled_polls >= STALL_POLLS) {
+					primalucelib_cover_stop(LINK);
+					cover_end_motion(device, INDIGO_ALERT_STATE, "The cover stalled");
+					return;
+				}
+				if (indigo_monotonic_time() - PRIVATE_DATA->motion_started > MOTION_TIMEOUT) {
+					primalucelib_cover_stop(LINK);
+					cover_end_motion(device, INDIGO_ALERT_STATE, "The cover did not reach its target in time");
+					return;
+				}
+				indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
+				return;
+			}
+			PRIVATE_DATA->last_position = position;
+			if (PRIVATE_DATA->external_motion) {
+				// Motion started elsewhere ends where the cover stopped.
+				X_COVER_POSITION_ITEM->number.target = position;
+				cover_end_motion(device, INDIGO_OK_STATE, NULL);
+			} else if (PRIVATE_DATA->abort_requested) {
+				cover_end_motion(device, INDIGO_ALERT_STATE, NULL);
+			} else if (position == PRIVATE_DATA->target) {
+				cover_end_motion(device, INDIGO_OK_STATE, NULL);
+			} else {
+				char message[INDIGO_VALUE_SIZE];
+				snprintf(message, sizeof(message), "The cover stopped at %d %% before reaching the target", position);
+				cover_end_motion(device, INDIGO_ALERT_STATE, message);
+			}
+		}
+
+		static bool alto_open(indigo_device *device, const char **error_message) {
+			if (primalucelib_open(LINK, DRIVER_NAME, DEVICE_PORT_ITEM->text.value, error_message)) {
+				char *text = primalucelib_get_model_name(LINK);
+				if (text != NULL && primalucelib_model_from_name(text) == PRIMALUCELIB_MODEL_ALTO) {
+					// Diagnostic output would interleave with the replies on the serial line.
+					primalucelib_disable_log_output(LINK);
+					// The full state stays in the link for on_connect.
+					if (primalucelib_get_state(LINK) && primalucelib_reply_has(LINK, PRIMALUCE_REPLY_COVER_POSITION)) {
+						return true;
+					}
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No cover position in the controller state");
+					*error_message = "The controller reports no cover position";
+				} else if (text != NULL) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "'%s' is not an ALTO", text);
+					*error_message = "The device is not an ALTO";
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply to the model request");
+				}
+				primalucelib_close(LINK);
+			}
+			return false;
+		}
+
+		static void alto_close(indigo_device *device) {
+			if (primalucelib_is_open(LINK)) {
+				primalucelib_close(LINK);
+			}
+		}
+	}
+	aux {
+		name = "PrimaluceLab ALTO";
+		interface = INDIGO_INTERFACE_AUX_DUSTCAP;
+		on_timer {
+			int position;
+			char *state;
+			if (!PRIVATE_DATA->moving && !PRIVATE_DATA->external_motion) {
+				if (primalucelib_cover_get_motion(LINK, &position, &state)) {
+					if (PRIVATE_DATA->poll_alert || position != PRIVATE_DATA->last_position) {
+						PRIVATE_DATA->poll_alert = false;
+						PRIVATE_DATA->last_position = position;
+						X_COVER_POSITION_ITEM->number.value = X_COVER_POSITION_ITEM->number.target = position;
+						cover_show_ends(device, position);
+						AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+						indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
+					}
+					if (!primalucelib_is_motor_stopped(state) && !PRIVATE_DATA->calibration_phase) {
+						// Motion started elsewhere (the web page, a preset recalled by another client) is followed.
+						PRIVATE_DATA->external_motion = true;
+						PRIVATE_DATA->target = position;
+						PRIVATE_DATA->stalled_polls = PRIVATE_DATA->poll_failures = 0;
+						PRIVATE_DATA->motion_polls = START_POLLS;
+						PRIVATE_DATA->motion_started = indigo_monotonic_time();
+						AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+						indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
+						indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
+					}
+				} else if (!PRIVATE_DATA->poll_alert) {
+					// A failed poll keeps the last values; the next good poll restores OK.
+					PRIVATE_DATA->poll_alert = true;
+					AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+					indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
+				}
+			}
+			if (++PRIVATE_DATA->environment_ticks % ENVIRONMENT_TICKS == 0) {
+				double temperature, supply, usb;
+				if (primalucelib_cover_get_environment(LINK, &temperature, &supply, &usb)) {
+					X_STATE_TEMPERATURE_ITEM->number.value = temperature;
+					X_STATE_VIN_12V_ITEM->number.value = supply;
+					X_STATE_VIN_USB_ITEM->number.value = usb;
+					X_STATE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					X_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, X_STATE_PROPERTY, NULL);
+			}
+			indigo_execute_handler_in(device, POLL_PERIOD, aux_timer_callback);
+		}
+		on_connect {
+			// alto_open() left the full state in the link.
+			char *text;
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_MODEL_NAME))) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, text);
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_APPLICATION_FIRMWARE))) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+				if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_WEB_FIRMWARE))) {
+					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
+					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+				}
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_SERIAL_NUMBER))) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
+			}
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_FOCUSER_ERROR)) && *text) {
+				indigo_send_message(device, ALERT_PROPERTY, "%s", text);
+			}
+			PRIVATE_DATA->travel = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX);
+			if (PRIVATE_DATA->travel <= 0 || primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_RESTART)) {
+				indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
+			}
+			PRIVATE_DATA->last_position = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_COVER_POSITION);
+			X_COVER_POSITION_ITEM->number.value = X_COVER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position;
+			cover_show_ends(device, PRIVATE_DATA->last_position);
+			AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			for (int i = 0; i < PRIMALUCE_COVER_PRESET_COUNT; i++) {
+				PRIVATE_DATA->preset_steps[i] = (int)primalucelib_reply_stored_position(LINK, i + 1);
+				X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = steps_to_percent(device, PRIVATE_DATA->preset_steps[i]);
+				INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], (text = primalucelib_reply_stored_position_name(LINK, i + 1)) ? text : "");
+				INDIGO_COPY_VALUE(X_PRESET_NAMES_PROPERTY->items[i].text.value, PRIVATE_DATA->preset_names[i]);
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_LEDS))) {
+				if (!strcmp(text, PRIMALUCE_LEDS_ON)) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_ON_ITEM, true);
+				} else if (!strcmp(text, PRIMALUCE_LEDS_LOW)) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_DIM_ITEM, true);
+				} else if (!strcmp(text, PRIMALUCE_LEDS_MIDDLE)) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_MIDDLE_ITEM, true);
+				} else {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_OFF_ITEM, true);
+				}
+			}
+			PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
+			X_STATE_TEMPERATURE_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_MOTOR_TEMPERATURE);
+			X_STATE_VIN_12V_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_SUPPLY_VOLTAGE);
+			X_STATE_VIN_USB_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_USB_VOLTAGE);
+			PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->abort_requested = PRIVATE_DATA->poll_alert = false;
+			PRIVATE_DATA->calibration_phase = 0;
+			PRIVATE_DATA->environment_ticks = 0;
+			indigo_set_switch(X_CALIBRATION_PROPERTY, X_CALIBRATION_START_ITEM, false);
+			X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		on_disconnect {
+			// A move still running is stopped before the connection closes.
+			if (PRIVATE_DATA->moving || PRIVATE_DATA->external_motion || PRIVATE_DATA->calibration_phase) {
+				if (!primalucelib_cover_stop(LINK)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to stop the cover");
+				}
+			}
+			PRIVATE_DATA->moving = PRIVATE_DATA->external_motion = PRIVATE_DATA->abort_requested = false;
+			PRIVATE_DATA->calibration_phase = 0;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+		}
+		on_attach {
+			INFO_PROPERTY->count = 8;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "Unknown");
+		}
+		switch AUX_COVER {
+			name = AUX_COVER_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Cover (open/close)";
+			on_change {
+				if (cover_move(device, AUX_COVER_PROPERTY, AUX_COVER_OPEN_ITEM->sw.value ? PRIMALUCE_COVER_OPEN : PRIMALUCE_COVER_CLOSED)) {
+					indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
+				}
+			}
+			item AUX_COVER_OPEN {
+				name = AUX_COVER_OPEN_ITEM_NAME;
+				label = "Open";
+				value = false;
+			}
+			item AUX_COVER_CLOSE {
+				name = AUX_COVER_CLOSE_ITEM_NAME;
+				label = "Close";
+				value = false;
+			}
+		}
+		number X_COVER_POSITION {
+			name = "X_COVER_POSITION";
+			group = AUX_MAIN_GROUP;
+			label = "Cover position";
+			preserve_values = true;
+			on_change {
+				if (cover_move(device, X_COVER_POSITION_PROPERTY, (int)X_COVER_POSITION_ITEM->number.target)) {
+					indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
+				}
+			}
+			item X_COVER_POSITION {
+				name = "POSITION";
+				label = "Position (%, 0 = closed)";
+				value = 0;
+				max = 100;
+				step = 1;
+				format = "%g";
+			}
+		}
+		switch X_COVER_ABORT {
+			name = "X_COVER_ABORT";
+			group = AUX_MAIN_GROUP;
+			label = "Abort cover motion";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change {
+				X_COVER_ABORT_ITEM->sw.value = false;
+				if (PRIVATE_DATA->moving || PRIVATE_DATA->external_motion) {
+					// The finalizer ends the move ALERT once the cover has stopped; the stop decelerates, so the
+					// swinging arm is not jerked.
+					if (primalucelib_cover_stop(LINK)) {
+						PRIVATE_DATA->abort_requested = true;
+						PRIVATE_DATA->external_motion = false;
+					} else {
+						X_COVER_ABORT_PROPERTY->state = INDIGO_ALERT_STATE;
+						update_with_refusal(device, X_COVER_ABORT_PROPERTY);
+						return;
+					}
+				}
+			}
+			item X_COVER_ABORT {
+				name = "ABORT";
+				label = "Abort";
+				value = false;
+			}
+		}
+		number X_STATE {
+			name = "X_STATE";
+			group = AUX_ADVANCED_GROUP;
+			label = "State";
+			perm = INDIGO_RO_PERM;
+			item X_STATE_TEMPERATURE {
+				name = "TEMPERATURE";
+				label = "Motor temperature (°C)";
+				value = 0;
+				min = -50;
+				max = 100;
+				step = 0;
+			}
+			item X_STATE_VIN_12V {
+				name = "VIN_12V";
+				label = "12V power (V)";
+				value = 0;
+				min = 0;
+				max = 50;
+				step = 0;
+			}
+			item X_STATE_VIN_USB {
+				name = "VIN_USB";
+				label = "USB power (V)";
+				value = 0;
+				min = 0;
+				max = 10;
+				step = 0;
+			}
+		}
+		number X_PRESETS {
+			name = "X_PRESETS";
+			group = AUX_ADVANCED_GROUP;
+			label = "Preset positions";
+			on_change {
+				// Only changed presets are written, converted to steps; a preset without a name refuses a position.
+				char reason_text[INDIGO_VALUE_SIZE];
+				const char *reason = NULL;
+				for (int i = 0; i < PRIMALUCE_COVER_PRESET_COUNT; i++) {
+					int percent = (int)X_PRESETS_PROPERTY->items[i].number.target;
+					if (percent == steps_to_percent(device, PRIVATE_DATA->preset_steps[i])) {
+						continue;
+					}
+					int steps = percent_to_steps(device, percent);
+					if (PRIVATE_DATA->travel <= 0) {
+						X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+						reason = "The cover needs calibration";
+					} else if (primalucelib_cover_set_preset_position(LINK, i + 1, steps)) {
+						PRIVATE_DATA->preset_steps[i] = steps;
+					} else {
+						X_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+						if (reason == NULL && *primalucelib_last_error(LINK) && PRIVATE_DATA->preset_names[i][0] == 0) {
+							snprintf(reason_text, sizeof(reason_text), "Preset #%d needs a name before its position can be set", i + 1);
+							reason = reason_text;
+						} else if (reason == NULL && *primalucelib_last_error(LINK)) {
+							INDIGO_COPY_VALUE(reason_text, primalucelib_last_error(LINK));
+							reason = reason_text;
+						}
+					}
+					X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = steps_to_percent(device, PRIVATE_DATA->preset_steps[i]);
+				}
+				if (reason != NULL) {
+					indigo_update_property(device, X_PRESETS_PROPERTY, "%s", reason);
+					return;
+				}
+			}
+			item X_PRESETS_1 {
+				name = "PRESET_1";
+				label = "Preset #1 (%)";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_2 {
+				name = "PRESET_2";
+				label = "Preset #2 (%)";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+			item X_PRESETS_3 {
+				name = "PRESET_3";
+				label = "Preset #3 (%)";
+				value = 0;
+				max = 100;
+				step = 1;
+			}
+		}
+		text X_PRESET_NAMES {
+			name = "X_PRESET_NAMES";
+			group = AUX_ADVANCED_GROUP;
+			label = "Preset names";
+			on_change {
+				// An empty name deletes the preset. The first refusal is reported.
+				char reason_text[INDIGO_VALUE_SIZE];
+				const char *reason = NULL;
+				for (int i = 0; i < PRIMALUCE_COVER_PRESET_COUNT; i++) {
+					char *name = X_PRESET_NAMES_PROPERTY->items[i].text.value;
+					if (!strcmp(name, PRIVATE_DATA->preset_names[i])) {
+						continue;
+					}
+					primalucelib_clear_last_error(LINK);
+					if (primalucelib_cover_set_preset_name(LINK, i + 1, name)) {
+						INDIGO_COPY_VALUE(PRIVATE_DATA->preset_names[i], name);
+					} else {
+						X_PRESET_NAMES_PROPERTY->state = INDIGO_ALERT_STATE;
+						if (reason == NULL && *primalucelib_last_error(LINK)) {
+							INDIGO_COPY_VALUE(reason_text, primalucelib_last_error(LINK));
+							reason = reason_text;
+						} else if (reason == NULL && (strchr(name, '"') != NULL || strchr(name, '\\') != NULL)) {
+							// The protocol has no escaping, so such a name is not sent.
+							reason = "A preset name cannot contain \" or \\";
+						}
+						INDIGO_COPY_VALUE(name, PRIVATE_DATA->preset_names[i]);
+					}
+				}
+				if (reason != NULL) {
+					indigo_update_property(device, X_PRESET_NAMES_PROPERTY, "%s", reason);
+					return;
+				}
+			}
+			item X_PRESET_NAMES_1 {
+				name = "PRESET_1";
+				label = "Preset #1";
+				value = "";
+			}
+			item X_PRESET_NAMES_2 {
+				name = "PRESET_2";
+				label = "Preset #2";
+				value = "";
+			}
+			item X_PRESET_NAMES_3 {
+				name = "PRESET_3";
+				label = "Preset #3";
+				value = "";
+			}
+		}
+		switch X_PRESET_RECALL {
+			name = "X_PRESET_RECALL";
+			group = AUX_ADVANCED_GROUP;
+			label = "Go to preset";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change {
+				int index = -1;
+				for (int i = 0; i < PRIMALUCE_COVER_PRESET_COUNT; i++) {
+					if (X_PRESET_RECALL_PROPERTY->items[i].sw.value) {
+						index = i;
+					}
+					X_PRESET_RECALL_PROPERTY->items[i].sw.value = false;
+				}
+				if (index >= 0) {
+					const char *reason = cover_busy_reason(device);
+					if (reason != NULL) {
+						X_PRESET_RECALL_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, X_PRESET_RECALL_PROPERTY, "%s", reason);
+						return;
+					}
+					// The cover moves to the preset; the move is followed like any other.
+					if (!primalucelib_cover_recall_preset(LINK, index + 1)) {
+						X_PRESET_RECALL_PROPERTY->state = INDIGO_ALERT_STATE;
+						update_with_refusal(device, X_PRESET_RECALL_PROPERTY);
+						return;
+					}
+					cover_follow_motion(device, steps_to_percent(device, PRIVATE_DATA->preset_steps[index]));
+					indigo_execute_handler_in(device, MOTION_POLL, cover_motion_finalizer);
+				}
+				X_PRESET_RECALL_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_PRESET_RECALL_PROPERTY, NULL);
+			}
+			item X_PRESET_RECALL_1 {
+				name = "PRESET_1";
+				label = "Preset #1";
+				value = false;
+			}
+			item X_PRESET_RECALL_2 {
+				name = "PRESET_2";
+				label = "Preset #2";
+				value = false;
+			}
+			item X_PRESET_RECALL_3 {
+				name = "PRESET_3";
+				label = "Preset #3";
+				value = false;
+			}
+		}
+		switch X_CALIBRATION {
+			name = "X_CALIBRATION";
+			group = AUX_ADVANCED_GROUP;
+			label = "Calibration";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change {
+				// The INDI sequence (not verified on hardware): Init, drive the cover to closed and store, drive it to
+				// fully open and store, which ends the calibration. Between the steps the property is OK, so that the
+				// next STORE or CANCEL is accepted; the message says what comes next.
+				bool start = X_CALIBRATION_START_ITEM->sw.value, store = X_CALIBRATION_STORE_ITEM->sw.value, cancel = X_CALIBRATION_CANCEL_ITEM->sw.value;
+				X_CALIBRATION_START_ITEM->sw.value = X_CALIBRATION_STORE_ITEM->sw.value = X_CALIBRATION_CANCEL_ITEM->sw.value = false;
+				if (start) {
+					if (PRIVATE_DATA->moving || PRIVATE_DATA->external_motion) {
+						X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, X_CALIBRATION_PROPERTY, "The cover is moving");
+					} else if (primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_INIT)) {
+						PRIVATE_DATA->calibration_phase = 1;
+						X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, X_CALIBRATION_PROPERTY, "Close the cover fully with X_CALIBRATION_MOTION, stop it and press STORE");
+					} else {
+						X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+						update_with_refusal(device, X_CALIBRATION_PROPERTY);
+					}
+				} else if (store && PRIVATE_DATA->calibration_phase == 1) {
+					if (primalucelib_cover_stop(LINK) && primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_STORE_CLOSED)) {
+						PRIVATE_DATA->calibration_phase = 2;
+						X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, X_CALIBRATION_PROPERTY, "Closed position stored; open the cover fully, stop it and press STORE");
+					} else {
+						X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+						update_with_refusal(device, X_CALIBRATION_PROPERTY);
+					}
+				} else if (store && PRIVATE_DATA->calibration_phase == 2) {
+					if (primalucelib_cover_stop(LINK) && primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_STORE_OPEN)) {
+						PRIVATE_DATA->calibration_phase = 0;
+						if (primalucelib_get_state(LINK)) {
+							PRIVATE_DATA->travel = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX);
+							PRIVATE_DATA->last_position = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_COVER_POSITION);
+						}
+						X_COVER_POSITION_ITEM->number.value = X_COVER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position;
+						cover_show_ends(device, PRIVATE_DATA->last_position);
+						indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+						indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
+						X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, X_CALIBRATION_PROPERTY, "Calibration complete, travel %d steps", PRIVATE_DATA->travel);
+					} else {
+						X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+						update_with_refusal(device, X_CALIBRATION_PROPERTY);
+					}
+				} else if (store) {
+					X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_CALIBRATION_PROPERTY, "Start a calibration first");
+				} else if (cancel && PRIVATE_DATA->calibration_phase) {
+					primalucelib_cover_stop(LINK);
+					PRIVATE_DATA->calibration_phase = 0;
+					X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_CALIBRATION_PROPERTY, "Calibration cancelled");
+				} else {
+					X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
+				}
+				return;
+			}
+			item X_CALIBRATION_START {
+				name = "START";
+				label = "Start";
+				value = false;
+			}
+			item X_CALIBRATION_STORE {
+				name = "STORE";
+				label = "Store position";
+				value = false;
+			}
+			item X_CALIBRATION_CANCEL {
+				name = "CANCEL";
+				label = "Cancel";
+				value = false;
+			}
+		}
+		switch X_CALIBRATION_MOTION {
+			name = "X_CALIBRATION_MOTION";
+			group = AUX_ADVANCED_GROUP;
+			label = "Calibration motion";
+			rule = INDIGO_AT_MOST_ONE_RULE;
+			on_change {
+				const char *step = NULL;
+				bool stop = X_CALIBRATION_MOTION_STOP_ITEM->sw.value;
+				if (X_CALIBRATION_MOTION_CLOSE_FAST_ITEM->sw.value) {
+					step = PRIMALUCE_COVER_CALIBRATION_CLOSE_FAST;
+				} else if (X_CALIBRATION_MOTION_CLOSE_SLOW_ITEM->sw.value) {
+					step = PRIMALUCE_COVER_CALIBRATION_CLOSE_SLOW;
+				} else if (X_CALIBRATION_MOTION_OPEN_FAST_ITEM->sw.value) {
+					step = PRIMALUCE_COVER_CALIBRATION_OPEN_FAST;
+				} else if (X_CALIBRATION_MOTION_OPEN_SLOW_ITEM->sw.value) {
+					step = PRIMALUCE_COVER_CALIBRATION_OPEN_SLOW;
+				}
+				for (int i = 0; i < X_CALIBRATION_MOTION_PROPERTY->count; i++) {
+					X_CALIBRATION_MOTION_PROPERTY->items[i].sw.value = false;
+				}
+				if (!PRIVATE_DATA->calibration_phase) {
+					// Outside a calibration these steps are not defined; the cover moves with AUX_COVER.
+					X_CALIBRATION_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_CALIBRATION_MOTION_PROPERTY, "Start a calibration first");
+					return;
+				}
+				if ((stop && !primalucelib_cover_stop(LINK)) || (step != NULL && !primalucelib_cover_calibration_step(LINK, step))) {
+					X_CALIBRATION_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					update_with_refusal(device, X_CALIBRATION_MOTION_PROPERTY);
+					return;
+				}
+			}
+			item X_CALIBRATION_MOTION_CLOSE_FAST {
+				name = "CLOSE_FAST";
+				label = "Close fast";
+				value = false;
+			}
+			item X_CALIBRATION_MOTION_CLOSE_SLOW {
+				name = "CLOSE_SLOW";
+				label = "Close slow";
+				value = false;
+			}
+			item X_CALIBRATION_MOTION_OPEN_FAST {
+				name = "OPEN_FAST";
+				label = "Open fast";
+				value = false;
+			}
+			item X_CALIBRATION_MOTION_OPEN_SLOW {
+				name = "OPEN_SLOW";
+				label = "Open slow";
+				value = false;
+			}
+			item X_CALIBRATION_MOTION_STOP {
+				name = "STOP";
+				label = "Stop";
+				value = false;
+			}
+		}
+		switch X_LEDS {
+			name = "X_LEDS";
+			group = AUX_ADVANCED_GROUP;
+			label = "LEDs";
+			on_change {
+				bool result = false;
+				if (X_LEDS_OFF_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_OFF);
+				} else if (X_LEDS_DIM_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_LOW);
+				} else if (X_LEDS_MIDDLE_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_MIDDLE);
+				} else if (X_LEDS_ON_ITEM->sw.value) {
+					result = primalucelib_set_leds(LINK, PRIMALUCE_LEDS_ON);
+				}
+				if (result) {
+					PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
+				} else {
+					if (PRIVATE_DATA->leds_item != NULL) {
+						indigo_set_switch(X_LEDS_PROPERTY, PRIVATE_DATA->leds_item, true);
+					}
+					X_LEDS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item X_LEDS_OFF {
+				name = "OFF";
+				label = "Off";
+				value = false;
+			}
+			item X_LEDS_DIM {
+				name = "DIM";
+				label = "Dim";
+				value = false;
+			}
+			item X_LEDS_MIDDLE {
+				name = "MIDDLE";
+				label = "Middle";
+				value = false;
+			}
+			item X_LEDS_ON {
+				name = "ON";
+				label = "On";
+				value = true;
+			}
+		}
+	}
+}

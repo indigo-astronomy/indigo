@@ -256,6 +256,8 @@ extern "C" {
 #define PRIMALUCE_STORED_POSITION_COUNT           9
 // GIOTTO brightness presets PRESET_1 to PRESET_9.
 #define PRIMALUCE_PANEL_PRESET_COUNT              9
+// ALTO cover positions PRESET_1 to PRESET_3.
+#define PRIMALUCE_COVER_PRESET_COUNT              3
 // User run presets RUNPRESET_1 to RUNPRESET_3.
 #define PRIMALUCE_USER_RUN_PRESET_COUNT           3
 // SESTO SENSO 3 RECOVER_DELAY range in seconds.
@@ -363,6 +365,10 @@ extern "C" {
 // PRIMALUCE_COVER_CLOSED to PRIMALUCE_COVER_OPEN
 #define PRIMALUCE_REQUEST_COVER_SET_POSITION              "{\"req\":{\"set\":{\"MOT1\":{\"POSITION\":%d}}}}"
 #define PRIMALUCE_REQUEST_COVER_GET_MOTOR_STATE           "{\"req\":{\"get\":{\"MOT1\":{\"STATUS\":\"\"}}}}"
+#define PRIMALUCE_REQUEST_COVER_GET_MOTION                "{\"req\":{\"get\":{\"MOT1\":{\"POSITION\":\"\",\"STATUS\":\"\"}}}}"
+#define PRIMALUCE_REQUEST_COVER_GET_ENVIRONMENT           "{\"req\":{\"get\":{\"VIN_12V\":\"\",\"VIN_USB\":\"\",\"MOT1\":{\"NTC_T\":\"\"}}}}"
+// index 1 to PRIMALUCE_COVER_PRESET_COUNT, steps
+#define PRIMALUCE_REQUEST_COVER_SET_PRESET_POSITION       "{\"req\":{\"set\":{\"PRESET_%d\":{\"M1POS\":%d}}}}"
 #define PRIMALUCE_REQUEST_COVER_STOP                      "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}"
 // PRIMALUCE_COVER_CALIBRATION_*
 #define PRIMALUCE_REQUEST_COVER_CALIBRATION_STEP          "{\"req\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"%s\"}}}}"
@@ -668,13 +674,25 @@ extern bool primalucelib_panel_recall_preset(primalucelib_link *link, int index)
 extern bool primalucelib_panel_set_fading(primalucelib_link *link, bool enabled);
 extern bool primalucelib_panel_set_light_at_power_on(primalucelib_link *link, bool enabled);
 
-#pragma mark - Cover (ALTO, from the INDI driver, not verified on hardware)
+#pragma mark - Cover (ALTO, verified on an ALTO1 with application firmware 1.03.11; calibration from the INDI driver)
 
+// A refused set or cmd fails with the controller's reason in primalucelib_last_error(). The controller acknowledges any
+// POSITION, so only PRIMALUCE_COVER_CLOSED to PRIMALUCE_COVER_OPEN may be passed.
 extern bool primalucelib_cover_get_position(primalucelib_link *link, int *position);
 extern bool primalucelib_cover_set_position(primalucelib_link *link, int position);
 extern char *primalucelib_cover_get_motor_state(primalucelib_link *link);
+// Position (0 to 100) and motor state (MST) in one request; both are required. The state stays valid until the next request.
+extern bool primalucelib_cover_get_motion(primalucelib_link *link, int *position, char **state);
+// Motor temperature (MOT1.NTC_T), 12 V and USB supply in one request; the temperature field is required.
+extern bool primalucelib_cover_get_environment(primalucelib_link *link, double *temperature, double *supply, double *usb);
+// Decelerated stop.
 extern bool primalucelib_cover_stop(primalucelib_link *link);
 extern bool primalucelib_cover_calibration_step(primalucelib_link *link, const char *step);
+// Presets are numbered 1 to PRIMALUCE_COVER_PRESET_COUNT, positions in steps; a preset without a name refuses a position.
+extern bool primalucelib_cover_set_preset_position(primalucelib_link *link, int index, int steps);
+extern bool primalucelib_cover_set_preset_name(primalucelib_link *link, int index, const char *name);
+// Moves the cover to the preset.
+extern bool primalucelib_cover_recall_preset(primalucelib_link *link, int index);
 
 #ifdef __cplusplus
 }
