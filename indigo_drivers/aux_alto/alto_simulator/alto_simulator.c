@@ -304,6 +304,75 @@ static void append(char *buffer, const char *format, ...) {
 	va_end(args);
 }
 
+// WiFi as the hardware showed it (ALTO1 firmware 1.03.11): every LANCFG and credential is stored as sent and
+// acknowledged, LANCFG takes effect at the next REBOOT, the access point is off in station mode, and a restarting
+// controller answers nothing until it has booted.
+#define BOOT_TIME    1.0
+#define CREDENTIAL   65
+static char lan_config[16] = "ap";
+static bool station = false;
+static bool access_point = true;
+static char ap_ssid[CREDENTIAL] = "ALTO100001", ap_password[CREDENTIAL] = "primalucelab";
+static char sta_ssid[CREDENTIAL] = "MySSID", sta_password[CREDENTIAL] = "MyPassword";
+static double boot_end = 0;
+
+static double monotonic_seconds(void) {
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return now.tv_sec + now.tv_nsec / 1e9;
+}
+
+static void copy_token(char *target, size_t size, const char *json, const jsmntok_t *token) {
+	int length = token->end - token->start;
+	snprintf(target, size, "%.*s", length < (int)size - 1 ? length : (int)size - 1, json + token->start);
+}
+
+static void append_lan_config(char *buffer) {
+	append(buffer, "\"LANCFG\":\"%s\"", lan_config);
+}
+
+static void append_access_point(char *buffer) {
+	append(buffer, "\"WIFIAP\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"192.168.4.1\",\"NM\":\"255.255.255.0\",\"STATUS\":\"%s\",\"CLIENTS\":0}", ap_ssid, ap_password, access_point && !station ? "on" : "off");
+}
+
+static void append_station(char *buffer) {
+	append(buffer, "\"WIFISTA\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"\"}", sta_ssid, sta_password);
+}
+
+// Each member of WIFIAP or WIFISTA is answered on its own.
+static void set_credentials(char *buffer, const char *json, const jsmntok_t *tokens, int key, const char *refused) {
+	const jsmntok_t *token = tokens + key;
+	const jsmntok_t *value = tokens + key + 1;
+	bool ap = token_is(json, token, "WIFIAP");
+	append(buffer, "\"%.*s\":{", token->end - token->start, json + token->start);
+	int member = key + 2;
+	for (int i = 0; i < value->size; i++) {
+		const jsmntok_t *field = tokens + member;
+		const char *result = NOT_FOUND;
+		if (token_is(json, field, "SSID") || token_is(json, field, "PWD")) {
+			if (refused == NULL) {
+				char *target = token_is(json, field, "SSID") ? (ap ? ap_ssid : sta_ssid) : (ap ? ap_password : sta_password);
+				copy_token(target, CREDENTIAL, json, tokens + member + 1);
+			}
+			result = "done";
+		}
+		append(buffer, "%s\"%.*s\":\"%s\"", i ? "," : "", field->end - field->start, json + field->start, refused ? refused : result);
+		member = skip(tokens, member + 1);
+	}
+	append(buffer, "}");
+}
+
+// REBOOT is acknowledged before the ESP32 boot log; the stored LANCFG then takes effect and the access point starts.
+static void restart(char *buffer) {
+	append(buffer, "{\"res\":{\"cmd\":{\"REBOOT\":\"done\"}}}\nets Jul 29 2019 12:21:46\nrst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)\nentry 0x400806a4\n");
+	station = !strcmp(lan_config, "sta");
+	access_point = true;
+	// The cover stops where it is; the position is kept.
+	stalled = false;
+	serial_motion_stop(&motion);
+	boot_end = monotonic_seconds() + BOOT_TIME;
+}
+
 static void append_status(char *buffer) {
 	append(buffer, "\"STATUS\":{\"HIZ\":0,\"UVLO\":0,\"TH_SD\":0,\"TH_WRN\":0,\"OCD\":0,\"WCMD\":0,\"NOPCMD\":0,\"BUSY\":%d,\"DIR\":\"%s\",\"MST\":\"%s\"}", moving() ? 1 : 0, motion.target < motion.origin ? "In" : "Out", motor_state());
 }
@@ -320,7 +389,13 @@ static void append_preset(char *buffer, int index) {
 
 static void full_state(char *buffer) {
 	append(buffer, "{\"res\":{\"get\":{\"SWID\":\"003\",\"MODNAME\":\"%s\",\"SN\":\"ALTO100001\",\"HOSTNAME\":\"ALTO100001\",\"MACADDR\":\"8C:1F:64:00:00:02\",", model);
-	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"1.01\"},\"LANCFG\":\"ap\",\"VIN_12V\":\"13.37\",\"VIN_USB\":\"5.46\",\"CALRESTART\":{\"MOT1\":%d},\"LEDBLINKSTATUS\":\"\",", firmware, calibration_restart);
+	append(buffer, "\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"1.01\"},\"VIN_12V\":\"13.37\",\"VIN_USB\":\"5.46\",\"CALRESTART\":{\"MOT1\":%d},\"LEDBLINKSTATUS\":\"\",", firmware, calibration_restart);
+	append_lan_config(buffer);
+	append(buffer, ",");
+	append_access_point(buffer);
+	append(buffer, ",");
+	append_station(buffer);
+	append(buffer, ",");
 	for (int i = 0; i < PRESET_COUNT; i++) {
 		append_preset(buffer, i);
 		append(buffer, ",");
@@ -386,6 +461,12 @@ static void get_member(char *buffer, const char *json, const jsmntok_t *tokens, 
 		append(buffer, "\"DIMLEDS\":\"%s\"", leds);
 	} else if (token_is(json, token, "CALRESTART")) {
 		append(buffer, "\"CALRESTART\":{\"MOT1\":%d}", calibration_restart);
+	} else if (token_is(json, token, "LANCFG")) {
+		append_lan_config(buffer);
+	} else if (token_is(json, token, "WIFIAP")) {
+		append_access_point(buffer);
+	} else if (token_is(json, token, "WIFISTA")) {
+		append_station(buffer);
 	} else {
 		append(buffer, "\"%.*s\":\"" NOT_FOUND "\"", token->end - token->start, json + token->start);
 	}
@@ -422,6 +503,14 @@ static void set_member(char *buffer, const char *json, const jsmntok_t *tokens, 
 	int index = preset_index(json, token);
 	if (index >= 0 && value->type == JSMN_OBJECT) {
 		set_preset(buffer, json, tokens, key, index, refused);
+	} else if ((token_is(json, token, "WIFIAP") || token_is(json, token, "WIFISTA")) && value->type == JSMN_OBJECT) {
+		set_credentials(buffer, json, tokens, key, refused);
+	} else if (token_is(json, token, "LANCFG") && value->type == JSMN_STRING) {
+		// Any text is stored (ALTO1 firmware 1.03.11 took "xyz").
+		if (refused == NULL) {
+			copy_token(lan_config, sizeof(lan_config), json, value);
+		}
+		append(buffer, "\"LANCFG\":\"%s\"", refused ? refused : "done");
 	} else if (token_is(json, token, "MOT1") && value->type == JSMN_OBJECT) {
 		append(buffer, "\"MOT1\":{");
 		int member = key + 2;
@@ -530,6 +619,17 @@ static void command(char *buffer, const char *json, const jsmntok_t *tokens, con
 			result = refused ? refused : calibration_step(json, tokens + 8);
 		}
 		append(buffer, "{\"res\":{\"cmd\":{\"MOT1\":{\"%.*s\":\"%s\"}}}}\n", verb->end - verb->start, json + verb->start, refused ? refused : result);
+	} else if (token_is(json, key, "AP_SET_STATUS") && value->type == JSMN_STRING) {
+		if (refused == NULL) {
+			access_point = token_is(json, value, "on");
+		}
+		append(buffer, "{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"%s\"}}}\n", refused ? refused : "done");
+	} else if (token_is(json, key, "REBOOT")) {
+		if (refused == NULL) {
+			restart(buffer);
+		} else {
+			append(buffer, "{\"res\":{\"cmd\":{\"REBOOT\":\"%s\"}}}\n", refused);
+		}
 	} else {
 		append(buffer, "{\"res\":{\"cmd\":{\"%.*s\":\"" INVALID "\"}}}\n", key->end - key->start, json + key->start);
 	}
@@ -547,6 +647,10 @@ static void dispatch_command(const char *json) {
 	if (events != NULL) {
 		fprintf(events, "%s\n", json);
 		fflush(events);
+	}
+	// A booting controller answers nothing.
+	if (monotonic_seconds() < boot_end) {
+		return;
 	}
 	const char *fault = pending_fault(json);
 	if (fault != NULL && !strcmp(fault, "slow")) {

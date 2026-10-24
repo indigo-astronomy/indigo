@@ -164,3 +164,47 @@ token array of the shared `primalucelib` (reproduced with AddressSanitizer at `p
 bounds every lookup by the number of tokens the parser filled; the regression test is the library unit case "lookups
 stay within a full token array". This driver links the library, so its version is raised; nothing else in the driver
 changed. The recorded simulator run of this version is in README.md.
+
+## WiFi configuration (3.0.0.4, 2026-10-24, task 20261024194838-6cb6-primaluce-panel-cover-wifi)
+
+The driver could use the cover's WiFi (an `http://host` port) but not configure it: the specification of 3.0.0.1 left
+the WiFi configuration out. The cover reports the same network keys as the PrimaLuce focusers (`LANCFG`, `WIFIAP`,
+`WIFISTA`), so it gets the focuser's properties under the same names:
+
+- `X_WIFI` (OFF, AP, STA) through `primalucelib_select_wifi()`: OFF and AP switch the access point in the `ap` mode; a
+  change between station mode and the access point writes `LANCFG` and restarts the cover, waiting over USB until it
+  answers again. Over HTTP the driver says that the cover leaves its network. Read from the full state at connect.
+- The mode change is refused while the cover moves or a calibration runs, because the restart would stop either;
+  switching the access point alone is served during a move.
+- `X_WIFI_AP` and `X_WIFI_STA` write the credentials; the library refuses an SSID over 32 characters (or an empty access
+  point SSID), an access point password outside 8 to 63 characters, a station password over 63 and `"` or `\`, with the
+  reason as the message.
+
+Hardware (requester's ALTO1, application firmware 1.03.11, over USB, 2026-10-24; raw probe and driver session):
+- `WIFISTA` and `WIFIAP` writes are acknowledged per field (`{"SSID":"done","PWD":"done"}`) and read back; `AP_SET_STATUS`
+  `off`/`on` is acknowledged and read back as `WIFIAP.STATUS`.
+- The firmware checks nothing: a 3 character access point password and the mode `xyz` were stored and acknowledged
+  (both restored at once, before any restart). The library now refuses what WiFi cannot use before sending it.
+- `LANCFG` `sta` plus `REBOOT`: acknowledged, ESP32 boot log, `MODNAME` answered again after about 2 s, `LANCFG` `sta`
+  with `WIFIAP.STATUS` `off`; back to `ap` the same way. The calibration (`CALRESTART` 0) and the position were kept.
+- The access point reports `off` for about 4 s after the controller answers and `on` from about 6 s after `REBOOT`; a
+  reconnect within that time shows OFF.
+
+Simulator: stores `LANCFG` and the credentials as sent, applies `LANCFG` at `REBOOT` (boot log, 1 s without answers,
+motion stopped), reports `WIFIAP.STATUS` `off` in station mode, and answers `AP_SET_STATUS`.
+
+| Scenario | Test |
+| --- | --- |
+| WiFi properties and connect values | `property_contract` |
+| Credentials written, read back on reconnect, refused before sending | `wifi_credentials` |
+| STA and back with one restart each, OFF/AP without restart, cover served after a restart, refused mode | `wifi_modes` |
+| Mode change refused while moving and during a calibration, access point switch served during a move | `wifi_restart_waits_for_the_cover` |
+| Library: mode selection, restart only on change, credential limits | `test_primalucelib` |
+
+Not verified: the HTTP path of a mode change (no network access to the cover here), whether a changed access point
+password takes effect before the next restart, Windows and macOS builds.
+
+## Final test summary (3.0.0.4)
+
+- Simulated tests: 32 run, 32 passed: `2026-10-24 23:14 3.0.0.4 linux x64 simulator 32/32 OK`.
+- Hardware tests: the WiFi session above (raw probe and driver through `indigo_prop_tool`); the recorded hardware suite was not rerun.

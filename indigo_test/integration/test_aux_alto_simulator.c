@@ -48,6 +48,11 @@
 #define X_CALIBRATION_PROPERTY_NAME        "X_CALIBRATION"
 #define X_CALIBRATION_MOTION_PROPERTY_NAME "X_CALIBRATION_MOTION"
 #define X_LEDS_PROPERTY_NAME               "X_LEDS"
+#define X_WIFI_PROPERTY_NAME               "X_WIFI"
+#define X_WIFI_AP_PROPERTY_NAME            "X_WIFI_AP"
+#define X_WIFI_STA_PROPERTY_NAME           "X_WIFI_STA"
+#define X_WIFI_AP_ITEM_NAME                "AP"
+#define X_WIFI_STA_ITEM_NAME               "STA"
 #define ON_ITEM_NAME                       "ON"
 #define OFF_ITEM_NAME                      "OFF"
 #define X_LEDS_DIM_ITEM_NAME               "DIM"
@@ -381,6 +386,13 @@ static void property_contract(void) {
 	assert_property_has_item(X_CALIBRATION_PROPERTY_NAME, "START");
 	assert_property_has_item(X_CALIBRATION_MOTION_PROPERTY_NAME, "CLOSE_SLOW");
 	assert_property_has_item(X_LEDS_PROPERTY_NAME, X_LEDS_DIM_ITEM_NAME);
+	assert_property_has_item(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME);
+	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME);
+	assert_property_has_item(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME);
+	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, "AP_SSID");
+	assert_property_has_item(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD");
+	assert_property_has_item(X_WIFI_STA_PROPERTY_NAME, "STA_SSID");
+	assert_property_has_item(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD");
 	SERIAL_CHECK_EQ_INT(3, find_cached_property(X_PRESETS_PROPERTY_NAME)->count);
 	SERIAL_CHECK_EQ_INT(3, find_cached_property(X_PRESET_NAMES_PROPERTY_NAME)->count);
 	SERIAL_CHECK_EQ_INT(3, find_cached_property(X_PRESET_RECALL_PROPERTY_NAME)->count);
@@ -389,6 +401,11 @@ static void property_contract(void) {
 	// The connect values come from the full state: open, OPEN on.
 	SERIAL_CHECK_TRUE(cover_is(100));
 	SERIAL_CHECK_TRUE(switch_is(X_LEDS_PROPERTY_NAME, ON_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_SSID", "ALTO100001"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "primalucelab"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "MySSID"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD", "MyPassword"));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_TEMPERATURE_ITEM_NAME, 30.8, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.37, .005));
 	disconnect_serial_device(&alto);
@@ -811,6 +828,87 @@ cleanup:
 	driver_stop();
 }
 
+// ----------------------------------------------------------------- WiFi
+
+// The credentials are written as given and read back on the next connect; what WiFi cannot use is refused with a reason
+// before anything is sent, because the cover would store it (ALTO1 firmware 1.03.11 took a 3 character password).
+static void wifi_credentials(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Observatory", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"Observatory\", \"PWD\":\"MyPassword\"}}}}", 1));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "darkskies", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"ALTO100001\", \"PWD\":\"darkskies\"}}}}", 1));
+	clear_messages();
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "abc", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("at least 8 characters"));
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_SSID", "", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("needs an SSID"));
+	SERIAL_CHECK_EQ_INT(1, requests("\"WIFIAP\""));
+	disconnect_serial_device(&alto);
+	SERIAL_CHECK_TRUE(connect_alto());
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Observatory"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_SSID", "ALTO100001"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "darkskies"));
+cleanup:
+	driver_stop();
+}
+
+// Station mode and back write LANCFG and restart the cover once each, as the hardware does; Off and the access point
+// only switch the access point. The restarted cover keeps being served.
+static void wifi_modes(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"LANCFG\":\"sta\"}}}", 1));
+	SERIAL_CHECK_EQ_INT(1, requests("\"REBOOT\""));
+	disconnect_serial_device(&alto);
+	SERIAL_CHECK_TRUE(connect_alto());
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"LANCFG\":\"ap\"}}}", 1));
+	SERIAL_CHECK_EQ_INT(2, requests("\"REBOOT\""));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"on\"}}}", 1));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}", 1));
+	SERIAL_CHECK_EQ_INT(2, requests("\"REBOOT\""));
+	SERIAL_CHECK_TRUE(number_change(X_COVER_POSITION_PROPERTY_NAME, X_COVER_POSITION_ITEM_NAME, 60, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(cover_is(60));
+	disconnect_serial_device(&alto);
+	SERIAL_CHECK_TRUE(connect_alto());
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, true));
+	// A refused mode ends ALERT with the cover's reason, keeps the mode and restarts nothing.
+	clear_messages();
+	SERIAL_CHECK_TRUE(fault("\"LANCFG\":\"sta\"", "reject"));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Error: invalid command"));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, true));
+	SERIAL_CHECK_EQ_INT(2, requests("\"REBOOT\""));
+cleanup:
+	driver_stop();
+}
+
+// A restart would stop a moving cover or a calibration, so the mode change waits for them; switching the access point
+// alone restarts nothing and is served during a move.
+static void wifi_restart_waits_for_the_cover(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(number_change(X_COVER_POSITION_PROPERTY_NAME, X_COVER_POSITION_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(cover_in_motion(100, 10));
+	clear_messages();
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("wait until it stops"));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(cover_is(10));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "START", INDIGO_OK_STATE));
+	clear_messages();
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("finish the calibration first"));
+	SERIAL_CHECK_EQ_INT(0, requests("\"LANCFG\":\"sta\""));
+	SERIAL_CHECK_EQ_INT(0, requests("\"REBOOT\""));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "CANCEL", INDIGO_ALERT_STATE));
+cleanup:
+	driver_stop();
+}
+
 // After the port disappears every request ends ALERT, the handshake is not repeated and disconnect completes.
 static void transport_loss(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -884,6 +982,9 @@ int main(void) {
 		{ "presets", presets, "normal" },
 		{ "leds", leds, "normal" },
 		{ "calibration", calibration, "normal" },
+		{ "wifi_credentials", wifi_credentials, "normal" },
+		{ "wifi_modes", wifi_modes, "normal" },
+		{ "wifi_restart_waits_for_the_cover", wifi_restart_waits_for_the_cover, "normal" },
 		{ "transport_loss", transport_loss, "normal" }
 	};
 	setvbuf(stdout, NULL, _IOLBF, 0);

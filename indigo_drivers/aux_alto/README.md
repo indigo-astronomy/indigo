@@ -29,8 +29,9 @@ indigo_server indigo_aux_alto
 * A disconnect stops a moving cover.
 * A preset takes a position only after it has a name; recalling a preset moves the cover there.
 * The calibration follows the sequence of the PrimaLuce INDI driver and has not been verified on hardware yet: start it, drive the cover fully closed with the calibration motion controls, stop and store, then drive it fully open, stop and store.
+* The WiFi mode (off, access point, station) and both sets of credentials can be set from the driver; a change between station mode and the access point restarts the cover.
 
 ## Testing
 
 - 2026-10-24 16:49 3.0.0.1 linux x64 ALTO1 9/9 OK
-- 2026-10-24 19:51 3.0.0.3 linux x64 simulator 29/29 OK
+- 2026-10-24 23:14 3.0.0.4 linux x64 simulator 32/32 OK

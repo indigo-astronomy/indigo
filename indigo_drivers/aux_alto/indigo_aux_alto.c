@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_aux_alto"
 #define DRIVER_LABEL         "PrimaluceLab ALTO Cover"
 #define AUX_DEVICE_NAME      "PrimaluceLab ALTO"
@@ -148,6 +148,32 @@
 #define X_CALIBRATION_MOTION_OPEN_SLOW_ITEM_NAME  "OPEN_SLOW"
 #define X_CALIBRATION_MOTION_STOP_ITEM_NAME       "STOP"
 
+#define X_WIFI_PROPERTY                (PRIVATE_DATA->x_wifi_property)
+#define X_WIFI_OFF_ITEM                (X_WIFI_PROPERTY->items + 0)
+#define X_WIFI_AP_ITEM                 (X_WIFI_PROPERTY->items + 1)
+#define X_WIFI_STA_ITEM                (X_WIFI_PROPERTY->items + 2)
+
+#define X_WIFI_PROPERTY_NAME           "X_WIFI"
+#define X_WIFI_OFF_ITEM_NAME           "OFF"
+#define X_WIFI_AP_ITEM_NAME            "AP"
+#define X_WIFI_STA_ITEM_NAME           "STA"
+
+#define X_WIFI_AP_PROPERTY             (PRIVATE_DATA->x_wifi_ap_property)
+#define X_WIFI_AP_SSID_ITEM            (X_WIFI_AP_PROPERTY->items + 0)
+#define X_WIFI_AP_PASSWORD_ITEM        (X_WIFI_AP_PROPERTY->items + 1)
+
+#define X_WIFI_AP_PROPERTY_NAME        "X_WIFI_AP"
+#define X_WIFI_AP_SSID_ITEM_NAME       "AP_SSID"
+#define X_WIFI_AP_PASSWORD_ITEM_NAME   "AP_PASSWORD"
+
+#define X_WIFI_STA_PROPERTY            (PRIVATE_DATA->x_wifi_sta_property)
+#define X_WIFI_STA_SSID_ITEM           (X_WIFI_STA_PROPERTY->items + 0)
+#define X_WIFI_STA_PASSWORD_ITEM       (X_WIFI_STA_PROPERTY->items + 1)
+
+#define X_WIFI_STA_PROPERTY_NAME       "X_WIFI_STA"
+#define X_WIFI_STA_SSID_ITEM_NAME      "STA_SSID"
+#define X_WIFI_STA_PASSWORD_ITEM_NAME  "STA_PASSWORD"
+
 #define X_LEDS_PROPERTY                (PRIVATE_DATA->x_leds_property)
 #define X_LEDS_OFF_ITEM                (X_LEDS_PROPERTY->items + 0)
 #define X_LEDS_DIM_ITEM                (X_LEDS_PROPERTY->items + 1)
@@ -173,6 +199,9 @@ typedef struct {
 	indigo_property *x_preset_recall_property;
 	indigo_property *x_calibration_property;
 	indigo_property *x_calibration_motion_property;
+	indigo_property *x_wifi_property;
+	indigo_property *x_wifi_ap_property;
+	indigo_property *x_wifi_sta_property;
 	indigo_property *x_leds_property;
 	//+ data
 	primalucelib_link link;
@@ -186,7 +215,7 @@ typedef struct {
 	int calibration_phase;
 	int preset_steps[PRIMALUCE_COVER_PRESET_COUNT];
 	char preset_names[PRIMALUCE_COVER_PRESET_COUNT][INDIGO_VALUE_SIZE];
-	indigo_item *leds_item;
+	indigo_item *leds_item, *wifi_item;
 	int environment_ticks;
 	//- data
 } alto_private_data;
@@ -499,6 +528,25 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
+			// LANCFG selects between the access point and a connection to an existing network.
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_LAN_CONFIG)) && !strcmp(text, PRIMALUCE_LAN_STATION)) {
+				indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_STA_ITEM, true);
+			} else if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ACCESS_POINT_STATUS))) {
+				indigo_set_switch(X_WIFI_PROPERTY, strcmp(text, PRIMALUCE_ACCESS_POINT_ON) ? X_WIFI_OFF_ITEM : X_WIFI_AP_ITEM, true);
+			}
+			PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ACCESS_POINT_SSID))) {
+				INDIGO_COPY_VALUE(X_WIFI_AP_SSID_ITEM->text.value, text);
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ACCESS_POINT_PASSWORD))) {
+				INDIGO_COPY_VALUE(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_STATION_SSID))) {
+				INDIGO_COPY_VALUE(X_WIFI_STA_SSID_ITEM->text.value, text);
+			}
+			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_STATION_PASSWORD))) {
+				INDIGO_COPY_VALUE(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
+			}
 			X_STATE_TEMPERATURE_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_MOTOR_TEMPERATURE);
 			X_STATE_VIN_12V_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_SUPPLY_VOLTAGE);
 			X_STATE_VIN_USB_ITEM->number.value = primalucelib_reply_number(LINK, PRIMALUCE_REPLY_USB_VOLTAGE);
@@ -519,6 +567,9 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_PRESET_RECALL_PROPERTY, NULL);
 			indigo_define_property(device, X_CALIBRATION_PROPERTY, NULL);
 			indigo_define_property(device, X_CALIBRATION_MOTION_PROPERTY, NULL);
+			indigo_define_property(device, X_WIFI_PROPERTY, NULL);
+			indigo_define_property(device, X_WIFI_AP_PROPERTY, NULL);
+			indigo_define_property(device, X_WIFI_STA_PROPERTY, NULL);
 			indigo_define_property(device, X_LEDS_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
@@ -558,6 +609,9 @@ static void aux_connection_handler(indigo_device *device) {
 			X_PRESET_RECALL_PROPERTY,
 			X_CALIBRATION_PROPERTY,
 			X_CALIBRATION_MOTION_PROPERTY,
+			X_WIFI_PROPERTY,
+			X_WIFI_AP_PROPERTY,
+			X_WIFI_STA_PROPERTY,
 			X_LEDS_PROPERTY,
 		};
 		for (unsigned i = 0; i < sizeof(cancelled_properties) / sizeof(cancelled_properties[0]); i++) {
@@ -574,6 +628,9 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, X_PRESET_RECALL_PROPERTY, NULL);
 		indigo_delete_property(device, X_CALIBRATION_PROPERTY, NULL);
 		indigo_delete_property(device, X_CALIBRATION_MOTION_PROPERTY, NULL);
+		indigo_delete_property(device, X_WIFI_PROPERTY, NULL);
+		indigo_delete_property(device, X_WIFI_AP_PROPERTY, NULL);
+		indigo_delete_property(device, X_WIFI_STA_PROPERTY, NULL);
 		indigo_delete_property(device, X_LEDS_PROPERTY, NULL);
 		alto_close(device);
 		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
@@ -817,6 +874,64 @@ static void aux_x_calibration_motion_handler(indigo_device *device) {
 	indigo_update_property(device, X_CALIBRATION_MOTION_PROPERTY, NULL);
 }
 
+static void aux_x_wifi_handler(indigo_device *device) {
+	X_WIFI_PROPERTY->state = INDIGO_OK_STATE;
+	//+ aux.X_WIFI.on_change
+	// Off is the access point mode with the access point switched off. Switching between station mode and the
+	// access point restarts the cover; over USB the handler waits until it answers again (about 2 s).
+	bool restart = X_WIFI_STA_ITEM->sw.value != (PRIVATE_DATA->wifi_item == X_WIFI_STA_ITEM);
+	if (restart && (PRIVATE_DATA->moving || PRIVATE_DATA->external_motion || PRIVATE_DATA->calibration_phase)) {
+		if (PRIVATE_DATA->wifi_item != NULL) {
+			indigo_set_switch(X_WIFI_PROPERTY, PRIVATE_DATA->wifi_item, true);
+		}
+		X_WIFI_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_WIFI_PROPERTY, PRIVATE_DATA->calibration_phase ? "Changing the WiFi mode restarts the cover, finish the calibration first" : "Changing the WiFi mode restarts the cover, wait until it stops");
+		return;
+	}
+	bool restarted = false;
+	if (primalucelib_select_wifi(LINK, X_WIFI_STA_ITEM->sw.value ? PRIMALUCE_WIFI_STATION : X_WIFI_AP_ITEM->sw.value ? PRIMALUCE_WIFI_ACCESS_POINT : PRIMALUCE_WIFI_OFF, &restarted)) {
+		PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+		if (restarted && primalucelib_is_http(LINK)) {
+			indigo_send_message(device, X_WIFI_PROPERTY, "The cover restarts to apply the WiFi mode and leaves its current network");
+		}
+	} else {
+		if (PRIVATE_DATA->wifi_item != NULL) {
+			indigo_set_switch(X_WIFI_PROPERTY, PRIVATE_DATA->wifi_item, true);
+		}
+		X_WIFI_PROPERTY->state = INDIGO_ALERT_STATE;
+		update_with_refusal(device, X_WIFI_PROPERTY);
+		return;
+	}
+	//- aux.X_WIFI.on_change
+	indigo_update_property(device, X_WIFI_PROPERTY, NULL);
+}
+
+static void aux_x_wifi_ap_handler(indigo_device *device) {
+	X_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
+	//+ aux.X_WIFI_AP.on_change
+	// The library refuses what WiFi cannot use (an SSID of 1 to 32 characters and a WPA2 password of 8 to 63);
+	// the cover would store it.
+	if (!primalucelib_set_access_point_credentials(LINK, X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value)) {
+		X_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
+		update_with_refusal(device, X_WIFI_AP_PROPERTY);
+		return;
+	}
+	//- aux.X_WIFI_AP.on_change
+	indigo_update_property(device, X_WIFI_AP_PROPERTY, NULL);
+}
+
+static void aux_x_wifi_sta_handler(indigo_device *device) {
+	X_WIFI_STA_PROPERTY->state = INDIGO_OK_STATE;
+	//+ aux.X_WIFI_STA.on_change
+	if (!primalucelib_set_station_credentials(LINK, X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
+		X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;
+		update_with_refusal(device, X_WIFI_STA_PROPERTY);
+		return;
+	}
+	//- aux.X_WIFI_STA.on_change
+	indigo_update_property(device, X_WIFI_STA_PROPERTY, NULL);
+}
+
 static void aux_x_leds_handler(indigo_device *device) {
 	X_LEDS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_LEDS.on_change
@@ -918,6 +1033,25 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(X_CALIBRATION_MOTION_OPEN_FAST_ITEM, X_CALIBRATION_MOTION_OPEN_FAST_ITEM_NAME, "Open fast", false);
 		indigo_init_switch_item(X_CALIBRATION_MOTION_OPEN_SLOW_ITEM, X_CALIBRATION_MOTION_OPEN_SLOW_ITEM_NAME, "Open slow", false);
 		indigo_init_switch_item(X_CALIBRATION_MOTION_STOP_ITEM, X_CALIBRATION_MOTION_STOP_ITEM_NAME, "Stop", false);
+		X_WIFI_PROPERTY = indigo_init_switch_property(NULL, device->name, X_WIFI_PROPERTY_NAME, AUX_ADVANCED_GROUP, "WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_WIFI_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_WIFI_OFF_ITEM, X_WIFI_OFF_ITEM_NAME, "Off", true);
+		indigo_init_switch_item(X_WIFI_AP_ITEM, X_WIFI_AP_ITEM_NAME, "Access Point mode", false);
+		indigo_init_switch_item(X_WIFI_STA_ITEM, X_WIFI_STA_ITEM_NAME, "Station mode", false);
+		X_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, X_WIFI_AP_PROPERTY_NAME, AUX_ADVANCED_GROUP, "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (X_WIFI_AP_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(X_WIFI_AP_SSID_ITEM, X_WIFI_AP_SSID_ITEM_NAME, "SSID", "");
+		indigo_init_text_item(X_WIFI_AP_PASSWORD_ITEM, X_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
+		X_WIFI_STA_PROPERTY = indigo_init_text_property(NULL, device->name, X_WIFI_STA_PROPERTY_NAME, AUX_ADVANCED_GROUP, "STA WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (X_WIFI_STA_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(X_WIFI_STA_SSID_ITEM, X_WIFI_STA_SSID_ITEM_NAME, "SSID", "");
+		indigo_init_text_item(X_WIFI_STA_PASSWORD_ITEM, X_WIFI_STA_PASSWORD_ITEM_NAME, "Password", "");
 		X_LEDS_PROPERTY = indigo_init_switch_property(NULL, device->name, X_LEDS_PROPERTY_NAME, AUX_ADVANCED_GROUP, "LEDs", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (X_LEDS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -943,6 +1077,9 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_PRESET_RECALL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_CALIBRATION_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_CALIBRATION_MOTION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_AP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_STA_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_LEDS_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, client, property);
@@ -976,6 +1113,15 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(X_CALIBRATION_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CALIBRATION_MOTION_PROPERTY, aux_x_calibration_motion_handler);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_WIFI_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_WIFI_PROPERTY, aux_x_wifi_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_WIFI_AP_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_WIFI_AP_PROPERTY, aux_x_wifi_ap_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_WIFI_STA_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_WIFI_STA_PROPERTY, aux_x_wifi_sta_handler);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_LEDS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_LEDS_PROPERTY, aux_x_leds_handler);
 		return INDIGO_OK;
@@ -997,6 +1143,9 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(X_PRESET_RECALL_PROPERTY);
 	indigo_release_property(X_CALIBRATION_PROPERTY);
 	indigo_release_property(X_CALIBRATION_MOTION_PROPERTY);
+	indigo_release_property(X_WIFI_PROPERTY);
+	indigo_release_property(X_WIFI_AP_PROPERTY);
+	indigo_release_property(X_WIFI_STA_PROPERTY);
 	indigo_release_property(X_LEDS_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
