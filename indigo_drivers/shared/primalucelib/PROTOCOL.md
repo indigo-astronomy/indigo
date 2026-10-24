@@ -63,7 +63,7 @@ if (primalucelib_open(&PRIVATE_DATA->link, DRIVER_NAME, DEVICE_PORT_ITEM->text.v
 
 | | USB serial | WiFi (HTTP) |
 | --- | --- | --- |
-| Port | CP2102N bridge, 115200 baud 8N1 | `http://host[:port]` or `tcp://host[:port]`, port 80 by default |
+| Port | Silicon Labs CP2102N bridge with its default USB identity (`10c4:ea60`, product "CP2102N USB to UART Bridge Controller", seen on a SESTO SENSO 3 and an ESATTO2), 115200 baud 8N1 | `http://host[:port]` or `tcp://host[:port]`, port 80 by default |
 | Request | The JSON text, no terminator | `GET /ajax.php?jreq=<URL-encoded JSON> HTTP/1.1`, one connection per request |
 | Reply | One line ended by `\n` (a `\r` before it is ignored) | The HTTP body; the controller does not close the connection, so `Content-Length` ends the reply |
 | Noise | Lines starting with `[` are diagnostic output and are skipped. `LOGLEVEL "no output"` turns them off. After `REBOOT` an ESP32 boot log follows the acknowledgement. | none |

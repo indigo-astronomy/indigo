@@ -1105,3 +1105,26 @@ This was not a `--hw` run, so there is no hardware record.
 
 - Simulated tests: 71 run, 71 passed: `2026-10-24 02:22 3.0.0.39 linux x64 simulator 71/71 OK`.
 - Hardware: the requester's ESATTO2 with ARCO, see the checks above.
+
+## USB match pattern with VID/PID (3.0.0.40, 2026-10-24, task 20261023235957-e03c-primaluce-usb-pattern)
+
+The requester asked for the USB VID/PID in the serial port preference, as in the ZWO mount drivers
+(`mount_asi`, `mount_lx200`), which register `0x03C3:0x4001`.
+
+- The requester's SESTO SENSO 3 and ESATTO2 both appear as `10c4:ea60`, "CP2102N USB to UART Bridge
+  Controller": the Silicon Labs default identity, not a PrimaLuce one. A VID/PID pattern alone would also
+  pick any other CP210x bridge (CP2102, CP2104, ...), so the VID/PID is added to the existing "CP2102N"
+  product pattern. All fields of a pattern must match (`indigo_usbserial_match_index()`), so the preference
+  is now narrower than before: a CP2102N name behind another VID/PID no longer matches.
+- Windows: the port list fills only the friendly name and no VID/PID (`indigo_usbserial_utils.c`), so the
+  pattern does not match there, as before for the product string unless the friendly name contains it. The
+  port is chosen by hand on Windows. This is a framework limitation and is not changed here.
+
+Regression test `usb_match_pattern`, confirmed to fail without the change: the attached focuser registers one
+pattern; a CP2102N name behind `0403:6001` and a CP2104 behind `10c4:ea60` do not match, and a CP2102N behind
+`10c4:ea60` does.
+
+## Final test summary (3.0.0.40)
+
+- Simulated tests: 72 run, 72 passed: `2026-10-24 03:01 3.0.0.40 linux x64 simulator 72/72 OK`.
+- Hardware: none; the controller was unplugged. The port preselection on a real CP2102N port is not verified.

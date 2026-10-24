@@ -21,6 +21,7 @@
 #include <indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h>
 
 #include "serial_simulator_test_common.h"
+#include <indigo/indigo_usbserial_utils.h>
 #include <errno.h>
 #include <sys/wait.h>
 #include <pthread.h>
@@ -240,6 +241,16 @@ static const char *device_name(void) {
 // client does not set, so the messages of this driver are recorded here.
 static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char messages[4096];
+
+// The focuser device as the driver attached it, for the USB match pattern it registers.
+static indigo_device *attached_focuser;
+
+static indigo_result observe_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, primaluce_focuser.device_name)) {
+		attached_focuser = device;
+	}
+	return simulator_client_define_property(client, device, property, message);
+}
 
 static indigo_result record_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	// the shared harness counts BUSY refusal messages
@@ -482,6 +493,28 @@ static void driver_stop(void) {
 }
 
 // ----------------------------------------------------------------- identity and lifecycle
+
+// The focuser prefers a port of a CP2102N bridge with the Silicon Labs VID/PID (10c4:ea60), as the SESTO SENSO 3 and
+// the ESATTO2 report; a CP2102N name behind another VID/PID, or another bridge with the same VID/PID, does not match.
+static void usb_match_pattern(void) {
+	SERIAL_CHECK_TRUE(driver_up());
+	SERIAL_CHECK_TRUE(attached_focuser != NULL);
+	SERIAL_CHECK_EQ_INT(1, attached_focuser->match_patterns_count);
+	indigo_serial_info ports[3] = { { 0 } };
+	ports[0].vendor_id = 0x0403;
+	ports[0].product_id = 0x6001;
+	strcpy(ports[0].product_string, "CP2102N USB to UART Bridge Controller");
+	ports[1].vendor_id = 0x10c4;
+	ports[1].product_id = 0xea60;
+	strcpy(ports[1].product_string, "CP2104 USB to UART Bridge Controller");
+	ports[2].vendor_id = 0x10c4;
+	ports[2].product_id = 0xea60;
+	strcpy(ports[2].product_string, "CP2102N USB to UART Bridge Controller");
+	SERIAL_CHECK_TRUE(indigo_usbserial_match(ports, 2, attached_focuser->match_patterns, attached_focuser->match_patterns_count) == NULL);
+	SERIAL_CHECK_TRUE(indigo_usbserial_match(ports, 3, attached_focuser->match_patterns, attached_focuser->match_patterns_count) == &ports[2]);
+cleanup:
+	driver_stop();
+}
 
 static void metadata(void) {
 	assert_simulator_driver_info(&primaluce_focuser);
@@ -1899,6 +1932,7 @@ static void copy_case_trace(const char *name) {
 int main(void) {
 	const simulated_case cases[] = {
 		{ "metadata", metadata, "normal" },
+		{ "usb_match_pattern", usb_match_pattern, "normal" },
 		{ "property_contract", property_contract, "normal" },
 		{ "esatto_profile", esatto_profile, "esatto" },
 		{ "esatto_home_reset", esatto_home_reset, "esatto" },
@@ -1974,6 +2008,7 @@ int main(void) {
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	simulator_test_client.send_message = record_message;
 	simulator_test_client.update_property = observe_update;
+	simulator_test_client.define_property = observe_define;
 	if (mkdtemp(fixture_directory) == NULL) {
 		fprintf(stderr, "Cannot create fixture directory\n");
 		return 1;

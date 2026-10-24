@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000027
+#define DRIVER_VERSION       0x03000028
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -2261,6 +2261,8 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "CP2102N");
+			patterns[0].vendor_id = 0x10c4;
+			patterns[0].product_id = 0xea60;
 			INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
 			private_data = (primaluce_private_data *)indigo_safe_malloc(sizeof(primaluce_private_data));
 			focuser = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);

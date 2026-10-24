@@ -22,10 +22,15 @@ driver primaluce {
 	label = "PrimaluceLab Focuser/Rotator";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 39;
+	version = 40;
 	serial {
 		pattern {
+			// The controllers use the Silicon Labs CP2102N bridge with its default VID/PID and product string
+			// (SESTO SENSO 3, ESATTO2). The Windows port list carries no VID/PID, so the pattern does not
+			// match there.
 			product = "CP2102N";
+			vid = 0x10c4;
+			pid = 0xea60;
 		}
 	}
 	include {
