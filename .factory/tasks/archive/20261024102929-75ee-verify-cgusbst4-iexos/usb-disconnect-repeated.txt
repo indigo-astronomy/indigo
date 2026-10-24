@@ -1,0 +1,25 @@
+total 0
+lrwxrwxrwx 1 root root 13 Oct 24 10:33 usb-Astrogene1000_stuff_USB_to_ST4_Astrogene_1000_000000043B-if00 -> ../../ttyACM0
+lrwxrwxrwx 1 root root 13 Oct 24 10:42 usb-FTDI_FT232R_USB_UART_AK06KTVZ-if00-port0 -> ../../ttyUSB0
+Oct 24 10:41:17 indigosky kernel: usb 1-2: new full-speed USB device number 7 using xhci-hcd
+Oct 24 10:41:17 indigosky kernel: usb 1-2: New USB device found, idVendor=0403, idProduct=6001, bcdDevice= 6.00
+Oct 24 10:41:17 indigosky kernel: usb 1-2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Oct 24 10:41:17 indigosky kernel: usb 1-2: Product: FT232R USB UART
+Oct 24 10:41:17 indigosky kernel: usb 1-2: Manufacturer: FTDI
+Oct 24 10:41:17 indigosky kernel: usb 1-2: SerialNumber: AK06KTVZ
+Oct 24 10:41:17 indigosky kernel: ftdi_sio 1-2:1.0: FTDI USB Serial Device converter detected
+Oct 24 10:41:17 indigosky kernel: usb 1-2: Detected FT232R
+Oct 24 10:41:17 indigosky kernel: usb 1-2: FTDI USB Serial Device converter now attached to ttyUSB1
+Oct 24 10:42:18 indigosky kernel: usb 1-2: USB disconnect, device number 7
+Oct 24 10:42:18 indigosky kernel: ftdi_sio ttyUSB1: error from flowcontrol urb
+Oct 24 10:42:18 indigosky kernel: ftdi_sio ttyUSB1: FTDI USB Serial Device converter now disconnected from ttyUSB1
+Oct 24 10:42:18 indigosky kernel: ftdi_sio 1-2:1.0: device disconnected
+Oct 24 10:42:29 indigosky kernel: usb 1-2: new full-speed USB device number 8 using xhci-hcd
+Oct 24 10:42:29 indigosky kernel: usb 1-2: New USB device found, idVendor=0403, idProduct=6001, bcdDevice= 6.00
+Oct 24 10:42:29 indigosky kernel: usb 1-2: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+Oct 24 10:42:29 indigosky kernel: usb 1-2: Product: FT232R USB UART
+Oct 24 10:42:29 indigosky kernel: usb 1-2: Manufacturer: FTDI
+Oct 24 10:42:29 indigosky kernel: usb 1-2: SerialNumber: AK06KTVZ
+Oct 24 10:42:29 indigosky kernel: ftdi_sio 1-2:1.0: FTDI USB Serial Device converter detected
+Oct 24 10:42:29 indigosky kernel: usb 1-2: Detected FT232R
+Oct 24 10:42:29 indigosky kernel: usb 1-2: FTDI USB Serial Device converter now attached to ttyUSB0

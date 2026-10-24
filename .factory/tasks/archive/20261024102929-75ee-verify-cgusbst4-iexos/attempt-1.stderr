@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "<stdin>", line 83, in <module>
+  File "<stdin>", line 54, in set_command
+AssertionError: ('ESPt1038400!', 'ESGt1038400!')
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<stdin>", line 137, in <module>
+RuntimeError: ["('ESPt300000!', 'ESGt3!')"]

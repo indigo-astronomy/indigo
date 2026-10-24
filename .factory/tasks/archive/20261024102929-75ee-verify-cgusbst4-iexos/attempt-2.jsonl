@@ -1,0 +1,49 @@
+{"event": "command", "monotonic": 14158.450394425, "fd": 3, "command": "ESGv!", "reply": "ESGvES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4!"}
+{"event": "command", "monotonic": 14158.498366744, "fd": 3, "command": "ESGi!", "reply": "ESGi1152000001040040000900060000001!"}
+{"event": "command", "monotonic": 14158.514367437, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14158.530367667, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14158.546360397, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14158.56236596, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14158.578357338, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14158.594360791, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "initial", "monotonic": 14158.594394328, "firmware": "ESGvES20A01.1 Release 2021.08.08: ES1A01CB20A01, ESP8266, DST4!", "config": "ESGi1152000001040040000900060000001!", "positions": [0, 0], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 324000.0}
+{"event": "command", "monotonic": 14158.595956675, "fd": 4, "command": "\u0006", "reply": "A"}
+{"event": "command", "monotonic": 14158.610354261, "fd": 3, "command": "ESSd01!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14158.626353917, "fd": 3, "command": "ESTr0000!", "reply": "ESGx0000!"}
+{"event": "command", "monotonic": 14158.64234998, "fd": 3, "command": "ESSr10000!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14158.658349359, "fd": 3, "command": "ESPt1000000!", "reply": "ESGt1000000!"}
+{"event": "command", "monotonic": 14158.674344644, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14158.690345355, "fd": 3, "command": "ESGp1!", "reply": "ESGp1FFFFFF!"}
+{"event": "command", "monotonic": 14158.706337585, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14158.72233876, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14158.738331212, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14158.754332108, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "command", "monotonic": 14160.866002126, "fd": 3, "command": "ESPt300000!", "reply": "ESGt3!"}
+{"event": "command", "monotonic": 14160.881997801, "fd": 3, "command": "ESTr0000!", "reply": "ESGx0000!"}
+{"event": "command", "monotonic": 14160.897995123, "fd": 3, "command": "ESSr10000!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14160.913989927, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14160.929989509, "fd": 3, "command": "ESGp1!", "reply": "ESGp1FFFFFF!"}
+{"event": "command", "monotonic": 14160.945983665, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14160.961982617, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14160.977975921, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14160.993970169, "fd": 3, "command": "ESGd1!", "reply": "ESGd10!"}
+{"event": "cleanup_before_return", "monotonic": 14160.993991466, "positions": [0, -1], "rates": [0, 0], "directions": [1, 0], "dec_arcsec": 323999.6875}
+{"event": "command", "monotonic": 14161.009974862, "fd": 3, "command": "ESPt0000000!", "reply": "ESGt0000000!"}
+{"event": "command", "monotonic": 14161.025969166, "fd": 3, "command": "ESPt1000000!", "reply": "ESGt1000000!"}
+{"event": "command", "monotonic": 14161.041969822, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14161.057963385, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14161.073962226, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14161.089957493, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14161.105955631, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14161.121948435, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "position_progress", "monotonic": 14161.122152325, "target": [0, 0], "restoring": true, "positions": [0, 0], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 324000.0}
+{"event": "command", "monotonic": 14161.137954776, "fd": 3, "command": "ESSd01!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14161.153945154, "fd": 3, "command": "ESSd11!", "reply": "ESGd11!"}
+{"event": "command", "monotonic": 14161.169949847, "fd": 3, "command": "ESGp0!", "reply": "ESGp0000000!"}
+{"event": "command", "monotonic": 14161.185943614, "fd": 3, "command": "ESGp1!", "reply": "ESGp1000000!"}
+{"event": "command", "monotonic": 14161.201943103, "fd": 3, "command": "ESGr0!", "reply": "ESGr00000!"}
+{"event": "command", "monotonic": 14161.217935814, "fd": 3, "command": "ESGr1!", "reply": "ESGr10000!"}
+{"event": "command", "monotonic": 14161.233929637, "fd": 3, "command": "ESGd0!", "reply": "ESGd01!"}
+{"event": "command", "monotonic": 14161.249931256, "fd": 3, "command": "ESGd1!", "reply": "ESGd11!"}
+{"event": "restored", "monotonic": 14161.249952459, "positions": [0, 0], "rates": [0, 0], "directions": [1, 1], "dec_arcsec": 324000.0}
+{"event": "cleanup", "monotonic": 14161.249971737, "errors": [], "restored_ok": true}

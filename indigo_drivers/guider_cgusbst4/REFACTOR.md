@@ -179,6 +179,12 @@ The experiment restored exact parked motor positions, tracking off/R6 and the or
 
 A controller-predicted ordinary goto reached actual side W at DEC +70 without changing meridian limits. Repeated 2 s adapter codes 0/1 changed DEC by -14.539/-14.539 and +14.543/+14.542 arcsec respectively; direct NYX n/s had the expected positive/negative signs, and every observation stayed W. Thus the observed reversal persists on both E and W of this same ST4 stack; root-cause isolation across adapter, cable and NYX remains open. The driver mapping is unchanged. Original park/motor positions, side E, tracking off/R6 and target were restored. Detailed clearance, commands and readbacks: [W-side verification](../../.factory/tasks/archive/20261024101137-d0d9-verify-cgusbst4-dec-west/verification.md). The existing orientation finding tracks both sides; this raw experiment does not change driver acceptance case counts.
 
+## iEXOS-100 and another ST4 cable comparison (2026-10-24)
+
+The same CGUSB adapter, connected with another ST4 cable to iEXOS-100 firmware ES20A01.1, produces the expected northern DEC response at +70 degrees: two 2 s code-0 trials each increase DEC by 12.8125 arcsec, and two code-1 trials each decrease it by 12.8125 arcsec. Independent PMC8 finite north/south target controls yield +15/-15 arcsec; idle DEC drift is zero. This is the positive raw-DEC branch (northern W-side convention), not an opposite-side test. Thus the earlier NYX/cable reversal does not justify a global driver N/S swap; the NYX integration finding remains open because mount and ST4 cable changed together.
+
+An unstable USB link was replaced by the owner; the final read-only stability check passed 480 replies over 55.257 seconds. Successful motion run restored home to within one RA microstep (0.3125 arcsec), tracking off, zero rates and original directions before closing DTR. Earlier failed experiment-script attempts and owner-assisted recovery are retained in [iEXOS verification](../../.factory/tasks/archive/20261024102929-75ee-verify-cgusbst4-iexos/verification.md). This raw hardware comparison does not change driver acceptance-suite counts or measure electrical pulse precision. Mapping remains 0/1/2/3 = N/S/E/W.
+
 ## Final test summary — numeric protocol repair
 
 - Simulated tests: 7 executed, 7 passed; additional sanitizer variant: 2 executed, 2 passed.

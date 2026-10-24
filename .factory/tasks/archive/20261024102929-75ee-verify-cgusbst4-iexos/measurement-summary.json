@@ -1,0 +1,95 @@
+{
+  "stability_replies": 480,
+  "stability_span_seconds": 55.25708479000059,
+  "trials": [
+    {
+      "name": "idle",
+      "delta_dec_arcsec": 0.0,
+      "delta_counts": [
+        130,
+        0
+      ]
+    },
+    {
+      "name": "direct_n_0",
+      "delta_dec_arcsec": 15.0,
+      "delta_counts": [
+        168,
+        -48
+      ]
+    },
+    {
+      "name": "adapter_0_0",
+      "delta_dec_arcsec": 12.8125,
+      "delta_counts": [
+        130,
+        -41
+      ]
+    },
+    {
+      "name": "adapter_1_0",
+      "delta_dec_arcsec": -12.8125,
+      "delta_counts": [
+        130,
+        41
+      ]
+    },
+    {
+      "name": "direct_s_0",
+      "delta_dec_arcsec": -15.0,
+      "delta_counts": [
+        168,
+        48
+      ]
+    },
+    {
+      "name": "direct_n_1",
+      "delta_dec_arcsec": 15.0,
+      "delta_counts": [
+        168,
+        -48
+      ]
+    },
+    {
+      "name": "adapter_0_1",
+      "delta_dec_arcsec": 12.8125,
+      "delta_counts": [
+        130,
+        -41
+      ]
+    },
+    {
+      "name": "adapter_1_1",
+      "delta_dec_arcsec": -12.8125,
+      "delta_counts": [
+        130,
+        41
+      ]
+    },
+    {
+      "name": "direct_s_1",
+      "delta_dec_arcsec": -15.0,
+      "delta_counts": [
+        168,
+        48
+      ]
+    }
+  ],
+  "restored": {
+    "event": "restored",
+    "monotonic": 14503.412878009,
+    "positions": [
+      1,
+      0
+    ],
+    "rates": [
+      0,
+      0
+    ],
+    "directions": [
+      1,
+      1
+    ],
+    "dec_arcsec": 324000.0
+  }
+}
