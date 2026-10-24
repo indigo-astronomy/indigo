@@ -1,0 +1,34 @@
+indigo_examples/client.c:49:30: error: use of undeclared identifier 'CONNECTION_PROPERTY_NAME'
+   49 |         if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+      |                                     ^~~~~~~~~~~~~~~~~~~~~~~~
+indigo_examples/client.c:59:30: error: use of undeclared identifier 'CONNECTION_PROPERTY_NAME'
+   59 |         if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+      |                                     ^~~~~~~~~~~~~~~~~~~~~~~~
+indigo_examples/client.c:60:35: error: use of undeclared identifier 'CONNECTION_CONNECTED_ITEM_NAME'
+   60 |                 if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
+      |                                                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_examples/client.c:64:37: error: use of undeclared identifier 'CCD_EXPOSURE_ITEM_NAME'
+   64 |                                 static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+      |                                                                 ^~~~~~~~~~~~~~~~~~~~~~
+indigo_examples/client.c:66:61: error: use of undeclared identifier 'CCD_EXPOSURE_PROPERTY_NAME'
+   66 |                                 indigo_change_number_property(client, property->device, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+      |                                                                                         ^~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_examples/client.c:77:30: error: use of undeclared identifier 'CCD_EXPOSURE_PROPERTY_NAME'
+   77 |         if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+      |                                     ^~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_examples/client.c:85:30: error: use of undeclared identifier 'CCD_IMAGE_PROPERTY_NAME'
+   85 |         if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+      |                                     ^~~~~~~~~~~~~~~~~~~~~~~
+indigo_examples/client.c:130:91: error: incompatible integer to pointer conversion passing 'int' to parameter of type 'indigo_uni_handle *' [-Wint-conversion]
+  130 |                 indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", input[0], output[1]);
+      |                                                                                                         ^~~~~~~~
+indigo_libs/indigo/indigo_client_xml.h:48:105: note: passing argument to parameter 'input' here
+   48 | INDIGO_EXTERN indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_uni_handle *input, indigo_uni_handle *output);
+      |                                                                                                         ^
+indigo_examples/client.c:130:101: error: incompatible integer to pointer conversion passing 'int' to parameter of type 'indigo_uni_handle *' [-Wint-conversion]
+  130 |                 indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", input[0], output[1]);
+      |                                                                                                                   ^~~~~~~~~
+indigo_libs/indigo/indigo_client_xml.h:48:131: note: passing argument to parameter 'output' here
+   48 | INDIGO_EXTERN indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_uni_handle *input, indigo_uni_handle *output);
+      |                                                                                                                                   ^
+9 errors generated.

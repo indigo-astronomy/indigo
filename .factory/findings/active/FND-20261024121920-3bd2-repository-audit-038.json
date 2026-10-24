@@ -1,0 +1,19 @@
+{
+  "title": "Three-point polar alignment divides by a zero intermediate for solvable geometry",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Category functional; severity medium; confidence high; owner coordinator; open, nonblocking follow-up. indigo_libs/indigo_align.c:702-710 solves the two equations using v=(d3k1-d2k3)/(k4k1-k2k3) then u=(d2-vk2)/k1. When the first two hour angles are symmetric around the meridian (e.g -15\u00b0, +15\u00b0, followed by +45\u00b0), k1=cos(a2)-cos(a1)=0 although the determinant can be nonzero and the system remains solvable. The final division yields nonfinite u while returning true; near-symmetry is also poorly conditioned. This is a legitimate three-distinct-point polar alignment geometry. The actual platesolver reference3 path685 ignores the boolean and694-698 publishes the resulting state OK, passing error values into target coordinate generation692-693. Solve both outputs directly using the determinant (or choose a stable pivot), reject genuinely singular/nonfinite results, and require the caller to honor failure before publishing a target/OK. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (MATH-2). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-038; math-closure-report.md alias MATH-2; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-038"
+}

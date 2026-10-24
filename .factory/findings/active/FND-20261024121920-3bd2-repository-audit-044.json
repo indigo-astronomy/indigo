@@ -1,0 +1,19 @@
+{
+  "title": "Multicamera guide overstates the follower inter-frame delay bypass",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_docs/INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md:126,160 claims controlled followers skip inter-frame delay/post-delay. indigo_agent_imager.c:1370-1394 gates only dithering; PRE_DELAY, delay and POST_DELAY1395-1425 remain unconditional. Users can configure timing/breakpoints expecting an absent bypass. Document current dithering-only bypass and actual delay behavior; specify any desired behavior change separately. Source-only comparison; no camera or driver run. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (ROOT-FOLLOWER). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-044; root-documentation-closure.md alias ROOT-FOLLOWER; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-044"
+}

@@ -1,0 +1,1166 @@
+[
+  {
+    "path": "indigo_libs/indigocat/indigocat_neptune.c",
+    "series_counts": [
+      {
+        "array": "neptune_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 539,
+        "actual_entries": 539,
+        "match": true
+      },
+      {
+        "array": "neptune_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 224,
+        "actual_entries": 224,
+        "match": true
+      },
+      {
+        "array": "neptune_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 59,
+        "actual_entries": 59,
+        "match": true
+      },
+      {
+        "array": "neptune_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 18,
+        "actual_entries": 18,
+        "match": true
+      },
+      {
+        "array": "neptune_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 172,
+        "actual_entries": 172,
+        "match": true
+      },
+      {
+        "array": "neptune_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 49,
+        "actual_entries": 49,
+        "match": true
+      },
+      {
+        "array": "neptune_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 13,
+        "actual_entries": 13,
+        "match": true
+      },
+      {
+        "array": "neptune_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 2,
+        "actual_entries": 2,
+        "match": true
+      },
+      {
+        "array": "neptune_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 596,
+        "actual_entries": 596,
+        "match": true
+      },
+      {
+        "array": "neptune_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 251,
+        "actual_entries": 251,
+        "match": true
+      },
+      {
+        "array": "neptune_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 71,
+        "actual_entries": 71,
+        "match": true
+      },
+      {
+        "array": "neptune_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 23,
+        "actual_entries": 23,
+        "match": true
+      },
+      {
+        "array": "neptune_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 7,
+        "actual_entries": 7,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_moon.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_sun.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_dso.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_mars.c",
+    "series_counts": [
+      {
+        "array": "mars_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 1409,
+        "actual_entries": 1409,
+        "match": true
+      },
+      {
+        "array": "mars_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 891,
+        "actual_entries": 891,
+        "match": true
+      },
+      {
+        "array": "mars_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 442,
+        "actual_entries": 442,
+        "match": true
+      },
+      {
+        "array": "mars_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 194,
+        "actual_entries": 194,
+        "match": true
+      },
+      {
+        "array": "mars_longitude_l4",
+        "declared": "LONG_L4",
+        "macro": "LONG_L4",
+        "expected": 75,
+        "actual_entries": 75,
+        "match": true
+      },
+      {
+        "array": "mars_longitude_l5",
+        "declared": "LONG_L5",
+        "macro": "LONG_L5",
+        "expected": 24,
+        "actual_entries": 24,
+        "match": true
+      },
+      {
+        "array": "mars_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 441,
+        "actual_entries": 441,
+        "match": true
+      },
+      {
+        "array": "mars_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 291,
+        "actual_entries": 291,
+        "match": true
+      },
+      {
+        "array": "mars_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 161,
+        "actual_entries": 161,
+        "match": true
+      },
+      {
+        "array": "mars_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 64,
+        "actual_entries": 64,
+        "match": true
+      },
+      {
+        "array": "mars_latitude_b4",
+        "declared": "LAT_B4",
+        "macro": "LAT_B4",
+        "expected": 18,
+        "actual_entries": 18,
+        "match": true
+      },
+      {
+        "array": "mars_latitude_b5",
+        "declared": "LAT_B5",
+        "macro": "LAT_B5",
+        "expected": 9,
+        "actual_entries": 9,
+        "match": true
+      },
+      {
+        "array": "mars_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 1107,
+        "actual_entries": 1107,
+        "match": true
+      },
+      {
+        "array": "mars_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 672,
+        "actual_entries": 672,
+        "match": true
+      },
+      {
+        "array": "mars_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 368,
+        "actual_entries": 368,
+        "match": true
+      },
+      {
+        "array": "mars_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 160,
+        "actual_entries": 160,
+        "match": true
+      },
+      {
+        "array": "mars_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 57,
+        "actual_entries": 57,
+        "match": true
+      },
+      {
+        "array": "mars_radius_r5",
+        "declared": "RADIUS_R5",
+        "macro": "RADIUS_R5",
+        "expected": 17,
+        "actual_entries": 17,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_earth.c",
+    "series_counts": [
+      {
+        "array": "earth_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 623,
+        "actual_entries": 623,
+        "match": true
+      },
+      {
+        "array": "earth_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 379,
+        "actual_entries": 379,
+        "match": true
+      },
+      {
+        "array": "earth_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 144,
+        "actual_entries": 144,
+        "match": true
+      },
+      {
+        "array": "earth_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 23,
+        "actual_entries": 23,
+        "match": true
+      },
+      {
+        "array": "earth_longitude_l4",
+        "declared": "LONG_L4",
+        "macro": "LONG_L4",
+        "expected": 11,
+        "actual_entries": 11,
+        "match": true
+      },
+      {
+        "array": "earth_longitude_l5",
+        "declared": "LONG_L5",
+        "macro": "LONG_L5",
+        "expected": 4,
+        "actual_entries": 4,
+        "match": true
+      },
+      {
+        "array": "earth_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 184,
+        "actual_entries": 184,
+        "match": true
+      },
+      {
+        "array": "earth_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 134,
+        "actual_entries": 134,
+        "match": true
+      },
+      {
+        "array": "earth_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 62,
+        "actual_entries": 62,
+        "match": true
+      },
+      {
+        "array": "earth_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 14,
+        "actual_entries": 14,
+        "match": true
+      },
+      {
+        "array": "earth_latitude_b4",
+        "declared": "LAT_B4",
+        "macro": "LAT_B4",
+        "expected": 6,
+        "actual_entries": 6,
+        "match": true
+      },
+      {
+        "array": "earth_latitude_b5",
+        "declared": "LAT_B5",
+        "macro": "LAT_B5",
+        "expected": 2,
+        "actual_entries": 2,
+        "match": true
+      },
+      {
+        "array": "earth_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 523,
+        "actual_entries": 523,
+        "match": true
+      },
+      {
+        "array": "earth_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 290,
+        "actual_entries": 290,
+        "match": true
+      },
+      {
+        "array": "earth_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 134,
+        "actual_entries": 134,
+        "match": true
+      },
+      {
+        "array": "earth_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 20,
+        "actual_entries": 20,
+        "match": true
+      },
+      {
+        "array": "earth_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 9,
+        "actual_entries": 9,
+        "match": true
+      },
+      {
+        "array": "earth_radius_r5",
+        "declared": "RADIUS_R5",
+        "macro": "RADIUS_R5",
+        "expected": 2,
+        "actual_entries": 2,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_vsop87.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_saturn.c",
+    "series_counts": [
+      {
+        "array": "saturn_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 1437,
+        "actual_entries": 1437,
+        "match": true
+      },
+      {
+        "array": "saturn_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 817,
+        "actual_entries": 817,
+        "match": true
+      },
+      {
+        "array": "saturn_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 438,
+        "actual_entries": 438,
+        "match": true
+      },
+      {
+        "array": "saturn_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 192,
+        "actual_entries": 192,
+        "match": true
+      },
+      {
+        "array": "saturn_longitude_l4",
+        "declared": "LONG_L4",
+        "macro": "LONG_L4",
+        "expected": 85,
+        "actual_entries": 85,
+        "match": true
+      },
+      {
+        "array": "saturn_longitude_l5",
+        "declared": "LONG_L5",
+        "macro": "LONG_L5",
+        "expected": 30,
+        "actual_entries": 30,
+        "match": true
+      },
+      {
+        "array": "saturn_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 500,
+        "actual_entries": 500,
+        "match": true
+      },
+      {
+        "array": "saturn_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 247,
+        "actual_entries": 247,
+        "match": true
+      },
+      {
+        "array": "saturn_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 111,
+        "actual_entries": 111,
+        "match": true
+      },
+      {
+        "array": "saturn_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 54,
+        "actual_entries": 54,
+        "match": true
+      },
+      {
+        "array": "saturn_latitude_b4",
+        "declared": "LAT_B4",
+        "macro": "LAT_B4",
+        "expected": 24,
+        "actual_entries": 24,
+        "match": true
+      },
+      {
+        "array": "saturn_latitude_b5",
+        "declared": "LAT_B5",
+        "macro": "LAT_B5",
+        "expected": 11,
+        "actual_entries": 11,
+        "match": true
+      },
+      {
+        "array": "saturn_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 1208,
+        "actual_entries": 1208,
+        "match": true
+      },
+      {
+        "array": "saturn_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 627,
+        "actual_entries": 627,
+        "match": true
+      },
+      {
+        "array": "saturn_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 338,
+        "actual_entries": 338,
+        "match": true
+      },
+      {
+        "array": "saturn_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 154,
+        "actual_entries": 154,
+        "match": true
+      },
+      {
+        "array": "saturn_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 65,
+        "actual_entries": 65,
+        "match": true
+      },
+      {
+        "array": "saturn_radius_r5",
+        "declared": "RADIUS_R5",
+        "macro": "RADIUS_R5",
+        "expected": 27,
+        "actual_entries": 27,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_venus.c",
+    "series_counts": [
+      {
+        "array": "venus_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 416,
+        "actual_entries": 416,
+        "match": true
+      },
+      {
+        "array": "venus_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 235,
+        "actual_entries": 235,
+        "match": true
+      },
+      {
+        "array": "venus_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 72,
+        "actual_entries": 72,
+        "match": true
+      },
+      {
+        "array": "venus_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 7,
+        "actual_entries": 7,
+        "match": true
+      },
+      {
+        "array": "venus_longitude_l4",
+        "declared": "LONG_L4",
+        "macro": "LONG_L4",
+        "expected": 4,
+        "actual_entries": 4,
+        "match": true
+      },
+      {
+        "array": "venus_longitude_l5",
+        "declared": "LONG_L5",
+        "macro": "LONG_L5",
+        "expected": 2,
+        "actual_entries": 2,
+        "match": true
+      },
+      {
+        "array": "venus_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 210,
+        "actual_entries": 210,
+        "match": true
+      },
+      {
+        "array": "venus_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 121,
+        "actual_entries": 121,
+        "match": true
+      },
+      {
+        "array": "venus_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 51,
+        "actual_entries": 51,
+        "match": true
+      },
+      {
+        "array": "venus_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 12,
+        "actual_entries": 12,
+        "match": true
+      },
+      {
+        "array": "venus_latitude_b4",
+        "declared": "LAT_B4",
+        "macro": "LAT_B4",
+        "expected": 4,
+        "actual_entries": 4,
+        "match": true
+      },
+      {
+        "array": "venus_latitude_b5",
+        "declared": "LAT_B5",
+        "macro": "LAT_B5",
+        "expected": 4,
+        "actual_entries": 4,
+        "match": true
+      },
+      {
+        "array": "venus_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 323,
+        "actual_entries": 323,
+        "match": true
+      },
+      {
+        "array": "venus_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 174,
+        "actual_entries": 174,
+        "match": true
+      },
+      {
+        "array": "venus_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 62,
+        "actual_entries": 62,
+        "match": true
+      },
+      {
+        "array": "venus_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 8,
+        "actual_entries": 8,
+        "match": true
+      },
+      {
+        "array": "venus_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 3,
+        "actual_entries": 3,
+        "match": true
+      },
+      {
+        "array": "venus_radius_r5",
+        "declared": "RADIUS_R5",
+        "macro": "RADIUS_R5",
+        "expected": 2,
+        "actual_entries": 2,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_precession.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_mercury.c",
+    "series_counts": [
+      {
+        "array": "mercury_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 1583,
+        "actual_entries": 1583,
+        "match": true
+      },
+      {
+        "array": "mercury_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 931,
+        "actual_entries": 931,
+        "match": true
+      },
+      {
+        "array": "mercury_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 438,
+        "actual_entries": 438,
+        "match": true
+      },
+      {
+        "array": "mercury_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 162,
+        "actual_entries": 162,
+        "match": true
+      },
+      {
+        "array": "mercury_longitude_l4",
+        "declared": "LONG_L4",
+        "macro": "LONG_L4",
+        "expected": 23,
+        "actual_entries": 23,
+        "match": true
+      },
+      {
+        "array": "mercury_longitude_l5",
+        "declared": "LONG_L5",
+        "macro": "LONG_L5",
+        "expected": 12,
+        "actual_entries": 12,
+        "match": true
+      },
+      {
+        "array": "mercury_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 818,
+        "actual_entries": 818,
+        "match": true
+      },
+      {
+        "array": "mercury_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 492,
+        "actual_entries": 492,
+        "match": true
+      },
+      {
+        "array": "mercury_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 231,
+        "actual_entries": 231,
+        "match": true
+      },
+      {
+        "array": "mercury_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 39,
+        "actual_entries": 39,
+        "match": true
+      },
+      {
+        "array": "mercury_latitude_b4",
+        "declared": "LAT_B4",
+        "macro": "LAT_B4",
+        "expected": 13,
+        "actual_entries": 13,
+        "match": true
+      },
+      {
+        "array": "mercury_latitude_b5",
+        "declared": "LAT_B5",
+        "macro": "LAT_B5",
+        "expected": 10,
+        "actual_entries": 10,
+        "match": true
+      },
+      {
+        "array": "mercury_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 1209,
+        "actual_entries": 1209,
+        "match": true
+      },
+      {
+        "array": "mercury_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 706,
+        "actual_entries": 706,
+        "match": true
+      },
+      {
+        "array": "mercury_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 318,
+        "actual_entries": 318,
+        "match": true
+      },
+      {
+        "array": "mercury_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 111,
+        "actual_entries": 111,
+        "match": true
+      },
+      {
+        "array": "mercury_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 17,
+        "actual_entries": 17,
+        "match": true
+      },
+      {
+        "array": "mercury_radius_r5",
+        "declared": "RADIUS_R5",
+        "macro": "RADIUS_R5",
+        "expected": 10,
+        "actual_entries": 10,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_jupiter.c",
+    "series_counts": [
+      {
+        "array": "jupiter_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 860,
+        "actual_entries": 860,
+        "match": true
+      },
+      {
+        "array": "jupiter_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 426,
+        "actual_entries": 426,
+        "match": true
+      },
+      {
+        "array": "jupiter_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 225,
+        "actual_entries": 225,
+        "match": true
+      },
+      {
+        "array": "jupiter_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 120,
+        "actual_entries": 120,
+        "match": true
+      },
+      {
+        "array": "jupiter_longitude_l4",
+        "declared": "LONG_L4",
+        "macro": "LONG_L4",
+        "expected": 48,
+        "actual_entries": 48,
+        "match": true
+      },
+      {
+        "array": "jupiter_longitude_l5",
+        "declared": "LONG_L5",
+        "macro": "LONG_L5",
+        "expected": 11,
+        "actual_entries": 11,
+        "match": true
+      },
+      {
+        "array": "jupiter_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 249,
+        "actual_entries": 249,
+        "match": true
+      },
+      {
+        "array": "jupiter_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 120,
+        "actual_entries": 120,
+        "match": true
+      },
+      {
+        "array": "jupiter_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 82,
+        "actual_entries": 82,
+        "match": true
+      },
+      {
+        "array": "jupiter_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 33,
+        "actual_entries": 33,
+        "match": true
+      },
+      {
+        "array": "jupiter_latitude_b4",
+        "declared": "LAT_B4",
+        "macro": "LAT_B4",
+        "expected": 13,
+        "actual_entries": 13,
+        "match": true
+      },
+      {
+        "array": "jupiter_latitude_b5",
+        "declared": "LAT_B5",
+        "macro": "LAT_B5",
+        "expected": 3,
+        "actual_entries": 3,
+        "match": true
+      },
+      {
+        "array": "jupiter_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 727,
+        "actual_entries": 727,
+        "match": true
+      },
+      {
+        "array": "jupiter_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 371,
+        "actual_entries": 371,
+        "match": true
+      },
+      {
+        "array": "jupiter_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 186,
+        "actual_entries": 186,
+        "match": true
+      },
+      {
+        "array": "jupiter_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 97,
+        "actual_entries": 97,
+        "match": true
+      },
+      {
+        "array": "jupiter_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 45,
+        "actual_entries": 45,
+        "match": true
+      },
+      {
+        "array": "jupiter_radius_r5",
+        "declared": "RADIUS_R5",
+        "macro": "RADIUS_R5",
+        "expected": 9,
+        "actual_entries": 9,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_dynamical_time.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_ss.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_pluto.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_uranus.c",
+    "series_counts": [
+      {
+        "array": "uranus_longitude_l0",
+        "declared": "LONG_L0",
+        "macro": "LONG_L0",
+        "expected": 1441,
+        "actual_entries": 1441,
+        "match": true
+      },
+      {
+        "array": "uranus_longitude_l1",
+        "declared": "LONG_L1",
+        "macro": "LONG_L1",
+        "expected": 655,
+        "actual_entries": 655,
+        "match": true
+      },
+      {
+        "array": "uranus_longitude_l2",
+        "declared": "LONG_L2",
+        "macro": "LONG_L2",
+        "expected": 259,
+        "actual_entries": 259,
+        "match": true
+      },
+      {
+        "array": "uranus_longitude_l3",
+        "declared": "LONG_L3",
+        "macro": "LONG_L3",
+        "expected": 69,
+        "actual_entries": 69,
+        "match": true
+      },
+      {
+        "array": "uranus_longitude_l4",
+        "declared": "LONG_L4",
+        "macro": "LONG_L4",
+        "expected": 8,
+        "actual_entries": 8,
+        "match": true
+      },
+      {
+        "array": "uranus_latitude_b0",
+        "declared": "LAT_B0",
+        "macro": "LAT_B0",
+        "expected": 311,
+        "actual_entries": 311,
+        "match": true
+      },
+      {
+        "array": "uranus_latitude_b1",
+        "declared": "LAT_B1",
+        "macro": "LAT_B1",
+        "expected": 130,
+        "actual_entries": 130,
+        "match": true
+      },
+      {
+        "array": "uranus_latitude_b2",
+        "declared": "LAT_B2",
+        "macro": "LAT_B2",
+        "expected": 39,
+        "actual_entries": 39,
+        "match": true
+      },
+      {
+        "array": "uranus_latitude_b3",
+        "declared": "LAT_B3",
+        "macro": "LAT_B3",
+        "expected": 15,
+        "actual_entries": 15,
+        "match": true
+      },
+      {
+        "array": "uranus_radius_r0",
+        "declared": "RADIUS_R0",
+        "macro": "RADIUS_R0",
+        "expected": 1387,
+        "actual_entries": 1387,
+        "match": true
+      },
+      {
+        "array": "uranus_radius_r1",
+        "declared": "RADIUS_R1",
+        "macro": "RADIUS_R1",
+        "expected": 625,
+        "actual_entries": 625,
+        "match": true
+      },
+      {
+        "array": "uranus_radius_r2",
+        "declared": "RADIUS_R2",
+        "macro": "RADIUS_R2",
+        "expected": 249,
+        "actual_entries": 249,
+        "match": true
+      },
+      {
+        "array": "uranus_radius_r3",
+        "declared": "RADIUS_R3",
+        "macro": "RADIUS_R3",
+        "expected": 69,
+        "actual_entries": 69,
+        "match": true
+      },
+      {
+        "array": "uranus_radius_r4",
+        "declared": "RADIUS_R4",
+        "macro": "RADIUS_R4",
+        "expected": 12,
+        "actual_entries": 12,
+        "match": true
+      }
+    ]
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_star.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_nutation.c",
+    "series_counts": []
+  },
+  {
+    "path": "indigo_libs/indigocat/indigocat_transform.c",
+    "series_counts": []
+  }
+]

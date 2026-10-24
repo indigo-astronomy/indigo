@@ -1,0 +1,19 @@
+{
+  "title": "AO simulator sends the untruncated formatted length",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "- Location: indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c:87-94,230-235. - Severity: low; confidence: high; category: functional/simulator memory boundary. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: --firmware accepts arbitrary-length text; firmware reply is snprintf'd into buffer[8], then sim_send uses the returned would-have-written length without a capacity check. - Impact: an overly long local firmware option makes the simulator read past the reply buffer, emitting unrelated stack bytes or failing. This requires local simulator configuration, not remote product input. No reproduction performed. - Minimal remediation: validate the firmware reply length or clamp/reject snprintf truncation before sending; add boundary-option tests. Distinct from active AO simulator axis-limit audit-045. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-7). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-022; driver-ac-report.md alias AC-7; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-022"
+}

@@ -1,0 +1,1079 @@
+{
+  "task": "20261024121920-3bd2-repository-audit",
+  "reviewed_revision": "9d45bc8ccadaf0c3aab6c454c38429fec21d1699",
+  "reviewer": "parser_review",
+  "report": "/tmp/audit-root-documentation-closure.md",
+  "mandatory_unassigned_classes": [],
+  "files": [
+    {
+      "path": ".cursor/rules/ai-factory.mdc",
+      "sha256": "0d34a2d4d05acb6eaa441fe14a2853e6f0392970f6d5058d63c69e20c5b64a46",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".editorconfig",
+      "sha256": "2de433e7c60499c6423ec1b6a14c5d4d2d3b7dda7671b5096ff5303a9e0b8db2",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/antropic-model-policy.json",
+      "sha256": "4ed010f65716ced4d752996ecb70ce84b8275b19e97042b2172c8f5618e2dc5d",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/bootstrap.md",
+      "sha256": "39dfc61e8c61c5c8490ba3c68fcd0c3b566f3a397ba1d6ce168e359f03d0eafd",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/checks.json",
+      "sha256": "310a67b2f51f202e0144376fe478f19015e99e9f8966534f7e66dd39d4959b00",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/completions/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261021193138-70b4-adopt-ai-factory.json",
+      "sha256": "cf47052fd4df74ff0b64eb5408adf9f35553b3d305df6f977085eba7ae730dac",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261021195453-0ff1-fix-ftdi-build.json",
+      "sha256": "068c88fb3579dd9a8821f77488acacc48f44de0402786551cec61041ecefc43d",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261021203703-ee3d-fix-websocket-key-overflow.json",
+      "sha256": "ffc0fd2ab037cbec5e318629e26bd5e9605165b40b749da1261a05f7a38e118c",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261021204508-b596-initial-repository-audit.json",
+      "sha256": "dc1b3e9bafe0ceca603babfe1d62608500f4bfffa1e5deeb3d814d078ce598db",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261021211058-e043-remove-switch-target-review.json",
+      "sha256": "2556a573adb3e4e4e85ad8466f065750b97a375177a6c197929bbd238da3545a",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261021211410-d947-repoint-switch-target-citations.json",
+      "sha256": "decc55cde9df0954227a216adfb061e2eed06a084a3b5c114527f0e074ac8240",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261021214435-6288-never-rewrite-commits.json",
+      "sha256": "55ca68a91f024517a01c5f2700ea56d7e828e87a2c04c358b3c66fb950c95a27",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261022162652-644c-ccd-current-temperature-filename.json",
+      "sha256": "6dd543f9af53b8269ebc1c8b17155908465e535fe3abe7ceb94bcf9edeedac0b",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261022182234-7b8b-commit-permission-rule.json",
+      "sha256": "809651530be8dca9298e19d6be16aeb6244d0e3cefaa68df93d2263e9d33c35c",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261022212521-61cf-primalucelib.json",
+      "sha256": "e06591b274e430f3ff589b8b7454469340b41e14ee2a9a0dcc912b825e35b5f1",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261022235021-bcb6-primaluce-sestosenso3.json",
+      "sha256": "a605d28ff01fc626539c77aef2907d7c01efb080300abbd027a488634204e457",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023011844-cc6a-primaluce-calibration-finalizers.json",
+      "sha256": "cfa9a89e7b3c985d3f365a4d4a27366fab8aae88706fdccd9d1fe84d5a5d9f37",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023053418-4c0a-upgrade-factory.json",
+      "sha256": "d637197fe6fd2448930137fac010a35890619f31ae4910021f8c993ca292f0eb",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023064302-ef56-fix-doc-findings-001-005.json",
+      "sha256": "bca029285ec0f2135da6a6d5e294ebcc3365f83660517d4962b8c4bbbb20048d",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023065605-60d4-repository-audit.json",
+      "sha256": "be33ce64ec2abcc1747edba54a19b4f81fa57bedbfaaab19affa9de4e54a387b",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023080442-7930-primaluce-arco-sestosenso3.json",
+      "sha256": "d73f2e748aca562a86695bc0dabca417e72af61ef75f74f18e3c35c49b9cc56f",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023091538-dfa4-primaluce-calibration-position-check.json",
+      "sha256": "92cafc397dea1c7f62da514cb1420fa690f2311f261405f76b36c8c345de3b46",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023101445-b9b5-primaluce-needs-calibration-message.json",
+      "sha256": "c2e35882de30af30d01cdbd0a8ed55d8f14ab76ec1a2af14473ab0e7f1335c50",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023101753-bc8d-complete-repository-audit.json",
+      "sha256": "cc6d403ed3066153a82c4f1a66298fbb5ecb9a414806b210f5c737c81ccc6cdb",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023111747-3b69-primaluce-rotator-progress.json",
+      "sha256": "9be0df17ba21c613008c4907a75199e10a0ac033b3413b2136273e648d4214fc",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023112118-8e5e-server-security-audit.json",
+      "sha256": "f417dac9820a5a48f22b0eef13d7522ac7b2a0621e204a2f77fd1242bd25dc44",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023121227-a609-fix-server-security-high.json",
+      "sha256": "c44d620946f3eac73e1b3d334a51f78e6287d703ebbe411f9005598929d3a269",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023132326-3447-primaluce-field-errors.json",
+      "sha256": "69171c063a9776d4e8d841c930aa5d678029781e397f7c5871ca969723f0930b",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023180252-b61d-fix-imager-download.json",
+      "sha256": "07e7618117eb39eb66acbf65997071cc5d23e93c58253f34b6494d1ab8db847e",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023180923-1f46-fix-synscan-autohome.json",
+      "sha256": "6cff032b31aa43d8921194a2264345611a41e305c1e9fb0817cea8ed4371f88c",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023181210-45bf-fix-raw-selection.json",
+      "sha256": "98b4932d6c0095aa1680f5f88d25be273347bba92d6c5ca17eacf8e8034bd5c6",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023181250-5c67-fix-raw-fits-bounds.json",
+      "sha256": "a1604b87a2f7706d5a5e7313dd243c0f52fe4e40d64b46a53c57fe877301653a",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023181340-736e-fix-audit-002.json",
+      "sha256": "a10fa2ac2122683a325af27c0c4f086539a4895affc37128e91799f1109b6f70",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023193406-58c7-primaluce-arco-keep-enabled.json",
+      "sha256": "d38c459c6dce3e09cf4f4f57b0785e39a411044db347e45924a09ba90ec82456",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023195506-cdf8-fix-findings-xcode.json",
+      "sha256": "bbe256a14551e1391622b5d183d7311d993ef04424672bd28504c90a99955834",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023201207-8e26-update-factory-lock.json",
+      "sha256": "a163dd50adc45a3adc6446401832d275be951a6aba8122c142a7fd744ea49d07",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023202204-7851-primaluce-calibration-hint.json",
+      "sha256": "999958ee5afcfc9decd30cc74b6bb26a3e5813f9f3ab4be1f417efdbaee874b1",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023203453-a5d2-fix-fnd-000047.json",
+      "sha256": "56041f3aad6641d7caa00ca0c6192a118495632e047beea00c7431fb59a4f43f",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023205001-3f61-primaluce-calibration-complete-message.json",
+      "sha256": "7843851634681e70686535862f7f41038d38b9d4ec89bad4213131bb3bc658d2",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023211312-b017-primaluce-rotator-relative-move.json",
+      "sha256": "479e47f539ac83da22245d0a558a624bdadf03efe3274558dd852ddcb18bdb47",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023231027-08cd-esatto-calibration-home.json",
+      "sha256": "1449c970d7f05a98ce5e298fdd9a0375f9c7eb5e03b6c848058ba4707c34ea4c",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023234416-7c1d-xcode-navigator-sync.json",
+      "sha256": "4f8ae53360366a9a9037329cf4bd0e8f421fa19857b09527f108a9df21c9cd54",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261023235957-e03c-primaluce-usb-pattern.json",
+      "sha256": "bca321132f8d8328b3b1abd0195e9b0cb4c470d8e415adabbebff5a2483c79c6",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024002000-64d7-primaluce-usb-pattern-hw.json",
+      "sha256": "d80a5db8098910627bbc7b577e8ac0add3d466df678cc1811ce8d1dbc7d2dd6f",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024064954-2f11-verify-cgusbst4-protocol.json",
+      "sha256": "596a74fa22099cb176f34dee11f8b3be4a6108525f2e57dbe0dedf23db582263",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024070358-5d13-fix-cgusbst4-protocol.json",
+      "sha256": "7ff31eb815e53c6e7cdc2b55d9c79369a3d06514581472e5da7a48bfbd708932",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024092953-7ee4-primaluce-giotto-alto-drivers.json",
+      "sha256": "8898726f7c9927477e892ba364ee335b200a1c5f746c7703eabb0650c5ba7263",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024095945-ac63-verify-cgusbst4-dec-orientation.json",
+      "sha256": "ef923536cff5dc226f2766085a6d316c44d91d3272b90c9f3e0a6ceeac4b5ce3",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024101137-d0d9-verify-cgusbst4-dec-west.json",
+      "sha256": "f8df78d613e764cb3fce4df4be9101572b3c619db70e8ccd6dce73ca2da3b1f8",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024102929-75ee-verify-cgusbst4-iexos.json",
+      "sha256": "0033e194162c09ee7e3f26d255d007995a26d6f63df581486f5b6c897cbb01d8",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024105327-f79c-verify-nyx-same-st4-cable.json",
+      "sha256": "8e94b9777802a6c1dc3afa02f0b4b31aa22cc27f8ab5fd60695bd4e6a31b6309",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024110344-6f51-close-cgusbst4-investigation.json",
+      "sha256": "4191a84ded42942fdfb65d4ed2d34485d54bab36379d49511499c87e5d9b8106",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024111058-4a00-prefer-subagents.json",
+      "sha256": "28b817ea11c68877620c5c86d7993ff776ca350819345ee733e2e14258c2b906",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024111835-d602-sync-factory-policy.json",
+      "sha256": "8ba49c57a76d8501f1ab58d6a8d05657523e40c3c3efc9d7892ccf19d484c451",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024113017-1e1c-fix-fnd-000036-000037.json",
+      "sha256": "1d697fde43ed6a52ca9588fc235452e1ba6b2a4d8e99451f4461aad486fb8f66",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/completions/20261024115039-61cc-fix-server-security-remaining.json",
+      "sha256": "aa2107f522e77abf4974365d2491e74973a7f0b9eff5e38e26a6a2eafe9519f2",
+      "treatment": "Registry/interface validation; completion evidence not replayed; root lifecycle/schema evidence applies"
+    },
+    {
+      "path": ".factory/maintenance.json",
+      "sha256": "04b471c25d92c8981877339434c6eb403884a0a93a707b0c5665f33273fd0cde",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/migration.md",
+      "sha256": "15f8cde7d551810896ea606677751eb9ffaeb37e5816e8eb41204b48f548e6ed",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/openai-model-policy.json",
+      "sha256": "e4bde5c7d9c619c5c9cb486625eb144469e41cbdc9f24abca9e97f43bbbce506",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/portability.md",
+      "sha256": "7c7bb0cb02593bbfa57fe86acad328a7f2bdaa01abc6a9928c730ef5e32122fc",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/project.md",
+      "sha256": "ddb9bbf20d3aaf1f9102ad6fb6271cf9bd9367a7bbe19f756cc2145e63cbfba7",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/review-policy.json",
+      "sha256": "dfe73b02a2c5bf9885a0ce9b3d62b6290e4f2ea4a5e45af0de2207a05f4ffbbb",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/analyst.md",
+      "sha256": "62a4a5184651b81b2341489522fb6ca4823dfb45157299977f072090c1a9275d",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/coordinator.md",
+      "sha256": "ee1e4686171326b6213aa916f6be53cfef4dbdf56b73fa4f8fd438bba9a7a7de",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/developer.md",
+      "sha256": "3569e5b0638780fecd123a868354e12593955084a20148e6602e14dca85c971f",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/documenter.md",
+      "sha256": "11d88bf2606c1a21748c7780c871b17969672a9fa402ccf9e3d0efa8429033c8",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/planner.md",
+      "sha256": "6d90a65f5a1f16d66ad42bedc28fda2dea0d988c39b7f62928562662ca9ee606",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/quality-reviewer.md",
+      "sha256": "849095883acd2cadf943b39138b42ee1f97080e3218f55c364444861050b3324",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/repository-reviewer.md",
+      "sha256": "dced8985c326b801a0c5972a4472038fb6aad4299f764cfde7e06de711d9aac7",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/security-reviewer.md",
+      "sha256": "6ad99fd1e0753372932b57b26ae03c7a5a577b9e4d3c8944c8b16672e8ad03c3",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/test-designer.md",
+      "sha256": "180fb327666b32a3dbe4fe3a9ec67997a605ec67c7a7ab494d4570ccc6e2c83c",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/roles/verifier.md",
+      "sha256": "32258ec71e5dc0a8be11b9cfee8615fc2678e965bfce93ad6148fd78e49d6397",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/concurrent-tasks.md",
+      "sha256": "6da9cb8642f1399c5763838d8f167d57c0f0bb3807bf6422cc125154237d6c6f",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/cross-review.md",
+      "sha256": "d6738ff77a0b2e40e3e36396894fb0afe1e2586f755c13270ab80acc347179d0",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/findings.md",
+      "sha256": "961f86a88c947721616ed53c35150ce66864736437029f4bac135d1718e00ebd",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/git.md",
+      "sha256": "451ca154faace4267908ba721a45cb7c79a632964cc919267f8a3b64f88015f2",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/maintenance.md",
+      "sha256": "cc0127703219b52231b06b3ad1444a2e4098fee1220446723bdf11ba0bf9e04d",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/model-selection.md",
+      "sha256": "7e8ab9d29938b74ecbaf3ccec7eed8dc0b6c862c3ceae79024c35c8b2ef98bc7",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/process-checks.md",
+      "sha256": "ccffeb1f17a55247bf60d09b651104b44c6fffa4d6baf88ac6a5e2769ef4c0a0",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/quality-review.md",
+      "sha256": "2ecc6514c3a6e89901c60796b546efa4d98498da80fcc4fe90ea935b6f8ff199",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/repository-review.md",
+      "sha256": "c596b1f5c796c891a687969db0fb9e24da0e4db55c5f7b8c5bda72a4000cfb24",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/task-archive.md",
+      "sha256": "9c9bdd8aefff4f420cba89e1578020d37e4785ccf7573ea4d118e9b1bb7f9ea9",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/template-maintenance.md",
+      "sha256": "71778082569a1063a32ee02158eabdfc2376bb0ae370576ad4b30b8bba0b3f94",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/routines/template-updates.md",
+      "sha256": "d2b25873c95f5d8c51c738872d3da97a9391df8ba0e00aeaf02b87ea73e8c9bd",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/state.json",
+      "sha256": "229ae9a654662e9a63072ac8503c89452b9e6a7528213d3e96697bd56f63bf6b",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/template-lock.json",
+      "sha256": "c92fb66afa81edb76de37dadebb92a8857815869adb80b016324c7755945288e",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/adopters.json",
+      "sha256": "ed1e7bd4c842805384a73940d52e69419fcf8cabf68782b30aec2abf3cd19b9c",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/checks.json",
+      "sha256": "b86726ab35dab02b76ac368f8d5277f96ee2fc86fdff4f28f8a379f8eef0a622",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/finding.json",
+      "sha256": "90c071d253a50fe69aed1720c17fc2b4d2c684af3402735a0b70c57a315c7719",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/migration-report.md",
+      "sha256": "8a12b07b5f5f9c53105484b12d0706548e6c5743045a04d12ba3e8ef5f52282b",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/repository-review.md",
+      "sha256": "205feabb6ba536be4f63febede55d75385484e857eb66d50778e4d8ffb9baf4f",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/review-policy.json",
+      "sha256": "ed05ec14e72be1529cf7f3360b043b96587dbf3db1aea2044a77616e9404e1e9",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/brief.md",
+      "sha256": "96bc3209932525bccd874b05ee7d47282a664a0df63b626f5413595fe541b4f1",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/handoff.md",
+      "sha256": "7eabe3fa9ca30a4d607f6686cccc656d77627afd5596e69f2ce0e7bad6ccd1d9",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/plan.md",
+      "sha256": "3b79c8dff2f98cde68b23723a6dbc9a0c820f77d9afa42d1712cee2e9fc2dead",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/process.json",
+      "sha256": "acf31d01a636aff73fdde80c1ced53bbeaef2490b4df7e06a07d5db5d0b3fa49",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/quality-review.md",
+      "sha256": "a84574198c83f640d6400319c8c2a72a5a5dbb48274b44f98b48664e0c938a6e",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/security.md",
+      "sha256": "cd2de487b42b64253d26b519ebb939ea3b3795cb67a525740f9f0274bf391e7d",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/specification.md",
+      "sha256": "2f47019197c782444596b5b49c1bff2dcfa03b230c84d5d1be6a79a1cfbbc4c1",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/test-plan.md",
+      "sha256": "48d58778e8a819ccc0dc0dc661584a9b08757c51027047626aa0717e894af4ee",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/task/verification.md",
+      "sha256": "07c6ed6b04a953e971a1b07d3ef64185f3b7a53d96ebb4c4b31f286942c009f5",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/templates/template-map.json",
+      "sha256": "c11d20808c12ba910f0be60f698221cb1267b253d1ff9a044b51d212ab944e53",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".factory/workflow.md",
+      "sha256": "221e0f15c1185e29fd08061c7e880ec9766c306fe1816a5c9d45c4594fb55919",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".github/copilot-instructions.md",
+      "sha256": "24d79d474e30f1e14ae6988f7cac81b4e36578a221f1368260f1b92cf9ecf4dc",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "672e30876be1623e3d048d033b09740437f6360f5a8ff919562994fefb63dbca",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".travis.yml",
+      "sha256": "eccd7f0a9fd4c5a4183f5e3ecf90e2127c2303cfe0f57442a758de1d8e91a017",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": ".vscode/launch.json",
+      "sha256": "46661ec54caf8889899cc01f32d21a9b701c7b5c3c6df4523fae7921025f169c",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "9d4fb80e25d2aac2456886361aceb15230a89b1ffa39f9ac0bf97c095c01b0c8",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "AUTHORS.md",
+      "sha256": "ec18a96b2bb9f0ffef65f5b21ec5e9d61a0738e117227f9eafc552d7ce956d41",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "4b419569df63ce4df6035b5d1f29345d936763af37656d51f39d378647c71744",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "CLAUDE.md",
+      "sha256": "862fe7c9dde0914be9b2e4ff70a15084018019267f6bfb36c2e29407397f7a29",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "Directory.Build.props",
+      "sha256": "31e5e865782c4d73d154116c149d02d2fac70d634d13b764afdeab84b3d88cc3",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "Doxyfile",
+      "sha256": "848f6c711b9e50c3eaec5528d42152ea9edb6944941f7f0bf3aca0fbda8e8250",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "GEMINI.md",
+      "sha256": "e7bc322058d98e8fc18493d29f4229d16e44fb27a9c3515b7fc8a247d0aa8bb9",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "HOME.md",
+      "sha256": "5d022b90721627dce30cbea522811c2afdaebd8571931597afc889b280581179",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "LICENSE.md",
+      "sha256": "42bd26e5f9f3984cdb6ae3fbd6ef11816f88d2bb643f3920ea52afd0d0ce13bf",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "MIGRATION_STATUS.md",
+      "sha256": "d6fd7ad9baf3e95661fdb770933b1a13e744676249229095f6e46e5f04f75e2d",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "Makefile",
+      "sha256": "9cbcbf0ae3afa446417229480709e248abf648f616f051e7d18e29ab915dc2a4",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "Makefile.drv",
+      "sha256": "4f3aa1e7c5d5f364b9813cc94be3d3ad3c708afc691f283c0388e0f0674b5f2c",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "Makefile.drvs",
+      "sha256": "52698c068be7d48fe5ce29733f0dab7252dcdec054bc560a555585c533feae2d",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "README.md",
+      "sha256": "6da69a4e25d9fb3e74d2757f79a754117d66b5b89af5086450a2f0d366e38ab3",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "TEST_SUMMARY.md",
+      "sha256": "2b0f9d97b2b816ce32a0ddb465e145701fda035bfa3b4a4ec984ad66d732605b",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "TODO.md",
+      "sha256": "4ed77ba437b2215214e1e58469618362eb037a94fdaf152f496af48d4bc28b42",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "docs/decisions/ADR-001-adopt-factory.md",
+      "sha256": "c6d020c115a151681c0b24b3769ec2ed032326c996009ad713ad0893cebdfda7",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "docs/decisions/ADR-002-factory-record-upgrade.md",
+      "sha256": "1393ae93918d3dedfab398f10e73cbc6812c8c295da701e349a4ab0bb4b95ea7",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "docs/decisions/README.md",
+      "sha256": "e700b267aa51934610b83ce4f88e9d9a1186c62b08093aec708e74980ed6b90a",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "docs/decisions/template.md",
+      "sha256": "4998209fae5f96bb480fbf29a830bb30ee3c724755ab7770d572155490c32bc0",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo.pc",
+      "sha256": "c2fc1b8fadd8f9849698ff199fbe5fbec70191fc9ab365690a1e244aa0ef67cf",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/AGENTS.md",
+      "sha256": "cf1b9921755960fbf525f5d84f153604a91a811f8e47f5389bf9ec5671b19e29",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/CCD_DRIVER_SAVED_IMAGES.md",
+      "sha256": "2c17e89e990fd732ffc5a73fa9b51961c6b083227d96ce5e03bf0732ebc3f40f",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/CLIENT_DEVELOPMENT_BASICS.md",
+      "sha256": "d3b97b927e1219135847d5414d0b50868eb862e72e0ffcf977ff4bfeed1fa087",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/DEVELOPMENT.md",
+      "sha256": "58fc9ae09d9ad3221f4e027e9a52bb2ecb8577fc42ad7357875710c78097be0e",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_DEVELOPMENT_BASICS.md",
+      "sha256": "021027c82b8ccbfa8db1ec11c0b25f513c9c26e1ddbc2212a11d77a149a02268",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_GENERATOR_BASICS.md",
+      "sha256": "516d30f88279d0ac72771d720e19c1b2887db98a05f6581b07780a13aa2d23e3",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_GENERATOR_MIGRATION.md",
+      "sha256": "ea408162793d43d502afb67fdfae635d6445e230d02d9b57f5cbcae9d6c821b7",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_TESTING_BASICS.md",
+      "sha256": "a19acd1d65fd5d04e8b7da09202ff7f375bad7617235961aa5ec4b904ede66e8",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/GUIDING_CORRECTION_RESPONSE_TUNING.md",
+      "sha256": "2eee4a94a86b6df0c4bbb75ccb2ad121f368b3aecf968129837cf34b0e6b19b8",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/GUIDING_MISCONCEPTIONS.md",
+      "sha256": "4c694c91393dadcf244a545d883b9d990ca8162457968904db5ab571627655cd",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/GUIDING_MISCONCEPTIONS/0.7RMSE_1.5s_guiding.png",
+      "sha256": "e71b23d0c7b16983b1cfe64357a34d2043ff133c51b633487566b94b62a1d070",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_MISCONCEPTIONS/1.2RMSE_0.2s_guiding.png",
+      "sha256": "b7f44a4075a273113203601c7fafa7c6e64d1321a67620716d0da31858ec07dd",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_MISCONCEPTIONS/RA-errors.jpg",
+      "sha256": "3db1dd339c6d24afd746686a109d8f8f3f4596e034adac289a4ac1af831a2699",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_MISCONCEPTIONS/sin2periods.png",
+      "sha256": "868f6f846a89e9da4c30e23914d8f6431b97a73a3a950bc1aef03aa11826832e",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_MISCONCEPTIONS/wormvsharmonic.png",
+      "sha256": "0ec6892a73e9da8c6487d4f8a5b6081992a84da06879aef1828b9543bac1a482",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_MISCONCEPTIONS/wormvsharmonic_hf.png",
+      "sha256": "e5cfe6cec20e8023b11d7b89756a769acb465e83b5fae5feca587a1b9c58233d",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_PI_CONTROLLER_TUNING.md",
+      "sha256": "f63009d3c9487ef44c30937235919b3c2eebe70b35045e2900cfbefb2a612a64",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/GUIDING_PI_CONTROLLER_TUNING/1.ICP_dither.png",
+      "sha256": "71f8c346f30fcc03051714986fe2fe72c42f1772274efbb4c8a4aabe45a78948",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_PI_CONTROLLER_TUNING/2.undershoot.png",
+      "sha256": "85b6c3a58b6078d0f65056b8c53fcac62d17d5bf9e5ce1f828ae9afc9fbe2345",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_PI_CONTROLLER_TUNING/3.overshoot.png",
+      "sha256": "c1fce956af29ae147086d27fc2be9dc79f0799d7462c48c5689a08d7d35acea6",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_PI_CONTROLLER_TUNING/4.ok_response.png",
+      "sha256": "4d2ba9f1a2721cded7c5f8b7c793066467c567f456186e234c2306a34c1d903c",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_PI_CONTROLLER_TUNING/6.P_only.png",
+      "sha256": "6bb89e53ae86ea9b85a8e18087742264f41617eb893f331d680f3d7ef4583a7c",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/GUIDING_PI_CONTROLLER_TUNING/7.tunned.png",
+      "sha256": "4fd61c12b9fb0c4e4df059ae6a4d44b1ecebeb6a0a1b9fda22003a34caadc1ae",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/HOME.md",
+      "sha256": "1e5404c9ed9fcc7612b5ce23c92a5fde675c69158d6b303360038009eff48ca2",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/IMAGING_AF_TUNING.md",
+      "sha256": "3e5ae7c1d466314f4cd053f24ce5063755a210e75d6b5362c272bafba6bceccf",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/IMAGING_AF_TUNING/backlash1.png",
+      "sha256": "fc122dcb54c92a3be66182330e5ac8e0d396c9c58a45fc3824ece7b580fb15ba",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/IMAGING_AF_TUNING/u-curve.png",
+      "sha256": "72ea4b8954ecdd05f686ec7a62dfb8d4f6340de2775522896c84ecff2cfd051e",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/INDI-COMPARISON.md",
+      "sha256": "a61b219db6a91d94b948a7e2d9df1a57da47d826b7e85075e83ad6308837cd9e",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_AGENTS.md",
+      "sha256": "855a99aeeae40699c1e0ff220ec9db1e0782fef2dd3888538b9d125b10ad8833",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md",
+      "sha256": "b3af52215999cce1d817ac9d317580f2de68356fff435e61423d4a28343e7be4",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_GUIDER_CORRECTION_MODES.md",
+      "sha256": "ae02be2c1e649fe7f1cd03936dbfd06d72f38cd6142ae3f8a6c8c23566a7d3a8",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_GUIDER_DETECTION_MODES.md",
+      "sha256": "b6bd5a04a549ad1f024d34f71a528b4ac8410fa939723e91151cc38d40e8f6d0",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_GUIDER_DITHERING.md",
+      "sha256": "74c88eb0f84d4bcdf5aa4387bc9b19e358bebb790df21f99edc5e6f048bad2f5",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md",
+      "sha256": "2e5d4851148e1d8876bcfa8c50eb0f0decade8cbf5d5085ec714f6d551360b96",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_RAW_IMAGE_FORMAT.md",
+      "sha256": "d15a0559b47b4d9d4790838db9cdddcfd7dbc5f3d1f1972a6f944440ca9cac45",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_SCRIPT_GUIDE.md",
+      "sha256": "f915230194159d604f06a06f689be61e120874e5cf43e81512755d53bc1315d7",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/INDIGO_SERVER_AND_DRIVERS_GUIDE.md",
+      "sha256": "9a00971ace4f898ee55432d1f0d706214b6099114e703cde58b77858a0e41c10",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/Introduction to INDIGO.pdf",
+      "sha256": "3feb5d7da197ace29ee3af6707be7418bb372fa9e67457325904232ae4330562",
+      "treatment": "Four-page PDFKit text extraction and historical architecture/interop contract review"
+    },
+    {
+      "path": "indigo_docs/MAKEFILES.md",
+      "sha256": "0756af3091e17efcfa735aac9465e5c2c937053d6c21798076344ec4438e8ca9",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/MULTI-INSTANCE_SUPPORT.md",
+      "sha256": "d951ed6551947c7228598566b6ea5352bfaba5129578ef7f1b1cdc2434a5d655",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/PLATE_SOLVING.md",
+      "sha256": "c242f0157ce2801e2be4e195d0087fc2506be5f6b7ac94bd40941870fd51298a",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/PLATE_SOLVING/A1_screenshot.png",
+      "sha256": "481692e5f3648ed329db4a339687d52fadd7f334793db7d4bde6b68f175cbaf5",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/PLATE_SOLVING/M101_solved.png",
+      "sha256": "000560051117d9b63656d5474d646b3826054088b4273430eea5d0dec4773022",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/PLATE_SOLVING/Tycho-2.png",
+      "sha256": "c5d649ef6869d62914fe4063c37b9bde68714631cb86ce0df8e5f98bb132291c",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/PLATE_SOLVING/Use_index.png",
+      "sha256": "303c6a22673b1510061e7b038e2ab8c164e2add812d3903d6192f931502a76fe",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/PLATE_SOLVING/set_telescope_fl.png",
+      "sha256": "d239a900fa2992975df0a36bc6c83c6070c63efd547adae30bea5536b685c267",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/POLAR_ALIGNMENT.md",
+      "sha256": "e59469b51be68b255910e48794d6ad90d1caf857d550c00394ff2fb12d74dd18",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/POLAR_ALIGNMENT/pa_config.png",
+      "sha256": "1da40457beae2c63e508cad5b776b1e9badcb3f70aaa5ded5bea725f584d3523",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/POLAR_ALIGNMENT/pa_config_cm.png",
+      "sha256": "fe69b61bf752fbd20a6208260513733aca91092f642c74f2cd1f6af69fc22693",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/POLAR_ALIGNMENT/pa_start.png",
+      "sha256": "753df05add5c5e1078b7a1eec2649d2c238dc77af7e995002d9aea5063857537",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/POLAR_ALIGNMENT/pa_start_cm.png",
+      "sha256": "b57a4edfec69cf9082a85ced4f5f3ad3035466706dea4539d235f20485091707",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/PROPERTIES.md",
+      "sha256": "18316761a2d69a384e0ab9084b414191379296efa29b8d6758bb7d58914b8841",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/PROPERTY_MANIPULATION.md",
+      "sha256": "4227aa6be863072f43e6ca936b004368687ec24d6aabecebd82ca8ea6fbb2bfc",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/PROTOCOLS.md",
+      "sha256": "f18010ee0654776ce30a8ec459611d618a2fe8987853349d813ab62994efb46d",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/README.md",
+      "sha256": "14d82bd8c577c554626764f73784da576e96bebc1933e255eed0ac5e7da166a4",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/SCRIPTING_BASICS.md",
+      "sha256": "f76b67a2e4df361657db0dd976ed9def2de060c9fb0385061c38d12fea454747",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/SCRIPTING_BASICS/scripteditor.jpg",
+      "sha256": "001e2e66edf72972bbb6a4c98743f8b26895d195c0fee89a81141b419cf0813e",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_docs/SERIAL_DEVICE_SIMULATORS.md",
+      "sha256": "f1bfdc31607a02e6b62f9a1785830722b5e54d3518ce732e4aff14b785ef2cb0",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_docs/TIMERS_AND_QUEUES.md",
+      "sha256": "05be5569becb47370744defc04746c5763345fd141b021cc4558120ab4da8ab1",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows.sln",
+      "sha256": "38f18638bc5579458c95f87862c42432ad91505c916461d91b058b8c32648916",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/README.md",
+      "sha256": "b57c9ba203b704ab4805324b4b8ea5dea5f893400a33eb80d250b677f8f80806",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/dllmain.cpp",
+      "sha256": "79ba37053c315db1a1c2fa30d0a8d616c52b44999feec1c5269ec5f91e830b7b",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/gcc/Makefile",
+      "sha256": "5acf7260bb1c7c87f060b685743a8acffad7d4b85efd08bca12b7e7900d583fc",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/gcc/README.md",
+      "sha256": "de70ac2750f7bf6ad3c5cdd66f23473b351eb67347c410e6979cf94533585187",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/gcc/build_windows_sdk.sh",
+      "sha256": "de43b2994d379973d1d4d9b7ee7b386abe89980524f34d1b044b0a963e77f4d8",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/indigo_client/README.md",
+      "sha256": "0fd99f3aab735ad9c35a27bc288df4d8985113465434fb4ec6c3e206a0e72ec8",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/indigo_client/dllmain.cpp",
+      "sha256": "71999caa73507cc7d55103ec171cdc075bc80f09c0398a9bd602ed69f67cb79c",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.def",
+      "sha256": "c2ae6740a70f4f150344d2d2bafba488443db2b727c39e7619eac1bbaa2f5274",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj",
+      "sha256": "50777bc8b63757f1d56460ba7a7d8f61d17ee97f2a9ff521145f7aebd5fbc238",
+      "treatment": "Build registration/path/XML contract with root structural coverage; platform execution unavailable"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+      "sha256": "222c77bd9a6fa87be80881394d98728ea438cabc6cb6c893f6fd690ef9a4e6f4",
+      "treatment": "Build registration/path/XML contract with root structural coverage; platform execution unavailable"
+    },
+    {
+      "path": "indigo_windows/indigo_client/indigo_client.vcxproj.user",
+      "sha256": "3bb23697ed5e58601b89e051544a8d33a53de5bce855f45461ed26a9c7cdc00b",
+      "treatment": "Build registration/path/XML contract with root structural coverage; platform execution unavailable"
+    },
+    {
+      "path": "indigo_windows/indigo_client/stdafx.h",
+      "sha256": "ac38d3cb42d5e7f804a103d502530888b10be823ebb7ab333ac72ac4093a05f6",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/indigo_client/targetver.h",
+      "sha256": "4a1a6ecba0164ad65d730ecea8a653daa39442ae34e33ca24c30ec3b00a07284",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/installer/appicon.bmp",
+      "sha256": "96790c105016f29626f55a8a0e198e3fac6bdf707996fb6f92370e85f1cc52e1",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_windows/installer/indigo.ico",
+      "sha256": "debd0325e63a174214f0934af84eceb564201658de700b85c50a1a7011e04550",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_windows/installer/indigo.iss",
+      "sha256": "e05f54e2caa46b16c292ba3539b038b1a62cf09ed896c1757b068ffa3db83993",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/installer/logo.bmp",
+      "sha256": "ff55004287d7ea322e0172b3edda3b1d4a04e3906eca9a2d6ef8828c3c0721e7",
+      "treatment": "Illustration/packaging asset path, type and provenance; no visual/UI parity certification"
+    },
+    {
+      "path": "indigo_windows/make_indigo_drivers/make_indigo_drivers.cpp",
+      "sha256": "7b5deb4f18efb736fb0a54a1e70808f6f52586bf3b6ebf4b016fd03a05139d7b",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "indigo_windows/make_indigo_drivers/make_indigo_drivers.vcxproj",
+      "sha256": "c5c9aeb26516ffe025ae6fee46b4e101fa2dae39cedb73f67169f32c67186c11",
+      "treatment": "Build registration/path/XML contract with root structural coverage; platform execution unavailable"
+    },
+    {
+      "path": "indigo_windows/make_indigo_drivers/make_indigo_drivers.vcxproj.filters",
+      "sha256": "ca3f9de5ce163bc7457d50b5d799f7d133db2c524459c404c55ba0b12cefabd4",
+      "treatment": "Build registration/path/XML contract with root structural coverage; platform execution unavailable"
+    },
+    {
+      "path": "indigo_windows/make_indigo_drivers/make_indigo_drivers.vcxproj.user",
+      "sha256": "c06a75b13f855a94d46616796e024c52b499f8f92cf00ccb571ddbc6ff574676",
+      "treatment": "Build registration/path/XML contract with root structural coverage; platform execution unavailable"
+    },
+    {
+      "path": "systemd/indigo-environment",
+      "sha256": "bb439bb0ccdcc4cf53d1705aae9b2950770b65288a3758e81fc572df3af0ab09",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "systemd/indigo-environment.service",
+      "sha256": "0f06e7bf97ffebfac0e9249e3a0166498f4f02621c2558744ba8cbef28777947",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "systemd/indigo-server.service",
+      "sha256": "b3a26884e53f4eb326b48801db9d3c4402db3a33844d3bb2be1f29e86bf18240",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    },
+    {
+      "path": "uncrustify.cfg",
+      "sha256": "af2c87515763ba5ca967eed9a908edf2f5644a7e6f0782083e6ad476adb9469b",
+      "treatment": "Family semantic contract review; exact depth, source comparisons and limitations in audit-root-documentation-closure.md"
+    }
+  ]
+}

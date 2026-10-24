@@ -1,0 +1,37 @@
+[
+  {
+    "path": "indigo_server/resource/mng.html",
+    "component_tags": 6,
+    "unregistered": []
+  },
+  {
+    "path": "indigo_server/resource/ctrl.html",
+    "component_tags": 3,
+    "unregistered": []
+  },
+  {
+    "path": "indigo_server/resource/guider.html",
+    "component_tags": 9,
+    "unregistered": []
+  },
+  {
+    "path": "indigo_server/resource/astrometry.html",
+    "component_tags": 8,
+    "unregistered": []
+  },
+  {
+    "path": "indigo_server/resource/mount.html",
+    "component_tags": 9,
+    "unregistered": []
+  },
+  {
+    "path": "indigo_server/resource/imager.html",
+    "component_tags": 12,
+    "unregistered": []
+  },
+  {
+    "path": "indigo_server/resource/script.html",
+    "component_tags": 3,
+    "unregistered": []
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "title": "Player One snapshots are processed as streaming frames",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "- Location: indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver:413; finish behavior at 335-355. Cross-component contract: indigo_libs/indigo_ccd_driver.c:1806-1815,2316-2328. - Severity: medium; confidence: high; category: functional/image delivery. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: the shared snapshot/stream acquisition finalizer passes literal true for indigo_process_image's final streaming argument, even when PRIVATE_DATA->streaming is false. The base framework applies streaming update throttling and selects AVI/SER file output only when this argument is true. acquisition_finish finalizes video only when PRIVATE_DATA->streaming is actually true. - Impact: single exposures can be throttled like streams and JPEG_AVI/RAW_SER single exposures can create video files without the ordinary single-image/finalization behavior. SDK continuous-acquisition workarounds do not make a public single exposure a streaming operation. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-4). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-019; driver-ac-report.md alias AC-4; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-019"
+}

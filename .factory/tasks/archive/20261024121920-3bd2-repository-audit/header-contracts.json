@@ -1,0 +1,2242 @@
+[
+  {
+    "header": "indigo_libs/indigo/indigo_ao_driver.h",
+    "macro": "AO_GUIDE_NORTH_ITEM",
+    "property": "AO_GUIDE_DEC_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ao_driver.h",
+    "macro": "AO_GUIDE_SOUTH_ITEM",
+    "property": "AO_GUIDE_DEC_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ao_driver.h",
+    "macro": "AO_GUIDE_EAST_ITEM",
+    "property": "AO_GUIDE_RA_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ao_driver.h",
+    "macro": "AO_GUIDE_WEST_ITEM",
+    "property": "AO_GUIDE_RA_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ao_driver.h",
+    "macro": "AO_CENTER_ITEM",
+    "property": "AO_RESET_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ao_driver.h",
+    "macro": "AO_UNJAM_ITEM",
+    "property": "AO_RESET_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_WIDTH_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 0,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_HEIGHT_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 1,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_MAX_HORIZONAL_BIN_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 2,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_MAX_VERTICAL_BIN_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 3,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_PIXEL_SIZE_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 4,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_PIXEL_WIDTH_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 5,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_PIXEL_HEIGHT_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 6,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_INFO_BITS_PER_PIXEL_ITEM",
+    "property": "CCD_INFO_PROPERTY",
+    "index": 7,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_LENS_APERTURE_ITEM",
+    "property": "CCD_LENS_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_LENS_FOCAL_LENGTH_ITEM",
+    "property": "CCD_LENS_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_LENS_PHYSICAL_LENGTH_ITEM",
+    "property": "CCD_LENS_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_UPLOAD_MODE_CLIENT_ITEM",
+    "property": "CCD_UPLOAD_MODE_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_UPLOAD_MODE_LOCAL_ITEM",
+    "property": "CCD_UPLOAD_MODE_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_UPLOAD_MODE_BOTH_ITEM",
+    "property": "CCD_UPLOAD_MODE_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_UPLOAD_MODE_NONE_ITEM",
+    "property": "CCD_UPLOAD_MODE_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_PREVIEW_DISABLED_ITEM",
+    "property": "CCD_PREVIEW_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_PREVIEW_ENABLED_ITEM",
+    "property": "CCD_PREVIEW_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM",
+    "property": "CCD_PREVIEW_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_LOCAL_MODE_DIR_ITEM",
+    "property": "CCD_LOCAL_MODE_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_LOCAL_MODE_PREFIX_ITEM",
+    "property": "CCD_LOCAL_MODE_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_LOCAL_MODE_OBJECT_ITEM",
+    "property": "CCD_LOCAL_MODE_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_EXPOSURE_ITEM",
+    "property": "CCD_EXPOSURE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_STREAMING_EXPOSURE_ITEM",
+    "property": "CCD_STREAMING_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_STREAMING_COUNT_ITEM",
+    "property": "CCD_STREAMING_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM",
+    "property": "CCD_STREAMING_SETTINGS_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FPS_ITEM",
+    "property": "CCD_FPS_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_ABORT_EXPOSURE_ITEM",
+    "property": "CCD_ABORT_EXPOSURE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_LEFT_ITEM",
+    "property": "CCD_FRAME_PROPERTY",
+    "index": 0,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_TOP_ITEM",
+    "property": "CCD_FRAME_PROPERTY",
+    "index": 1,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_WIDTH_ITEM",
+    "property": "CCD_FRAME_PROPERTY",
+    "index": 2,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_HEIGHT_ITEM",
+    "property": "CCD_FRAME_PROPERTY",
+    "index": 3,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_BITS_PER_PIXEL_ITEM",
+    "property": "CCD_FRAME_PROPERTY",
+    "index": 4,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_BIN_HORIZONTAL_ITEM",
+    "property": "CCD_BIN_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_BIN_VERTICAL_ITEM",
+    "property": "CCD_BIN_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_MODE_ITEM",
+    "property": "CCD_MODE_PROPERTY",
+    "index": 0,
+    "base_capacity": 256,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_READ_MODE_HIGH_SPEED_ITEM",
+    "property": "CCD_READ_MODE_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_READ_MODE_LOW_NOISE_ITEM",
+    "property": "CCD_READ_MODE_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_GAIN_ITEM",
+    "property": "CCD_GAIN_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_EGAIN_ITEM",
+    "property": "CCD_EGAIN_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_OFFSET_ITEM",
+    "property": "CCD_OFFSET_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_GAMMA_ITEM",
+    "property": "CCD_GAMMA_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_TYPE_LIGHT_ITEM",
+    "property": "CCD_FRAME_TYPE_PROPERTY",
+    "index": 0,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_TYPE_BIAS_ITEM",
+    "property": "CCD_FRAME_TYPE_PROPERTY",
+    "index": 1,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_TYPE_DARK_ITEM",
+    "property": "CCD_FRAME_TYPE_PROPERTY",
+    "index": 2,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_TYPE_FLAT_ITEM",
+    "property": "CCD_FRAME_TYPE_PROPERTY",
+    "index": 3,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_FRAME_TYPE_DARKFLAT_ITEM",
+    "property": "CCD_FRAME_TYPE_PROPERTY",
+    "index": 4,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_FITS_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 0,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_XISF_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 1,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_RAW_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 2,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_JPEG_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 3,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_TIFF_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 4,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_JPEG_AVI_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 5,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_RAW_SER_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 6,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_NATIVE_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 3,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM",
+    "property": "CCD_IMAGE_FORMAT_PROPERTY",
+    "index": 4,
+    "base_capacity": 7,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_FILE_ITEM",
+    "property": "CCD_IMAGE_FILE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_IMAGE_ITEM",
+    "property": "CCD_IMAGE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_PREVIEW_IMAGE_ITEM",
+    "property": "CCD_PREVIEW_IMAGE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_PREVIEW_HISTOGRAM_ITEM",
+    "property": "CCD_PREVIEW_HISTOGRAM_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_TEMPERATURE_ITEM",
+    "property": "CCD_TEMPERATURE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_COOLER_ON_ITEM",
+    "property": "CCD_COOLER_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_COOLER_OFF_ITEM",
+    "property": "CCD_COOLER_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_COOLER_POWER_ITEM",
+    "property": "CCD_COOLER_POWER_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_SET_FITS_HEADER_NAME_ITEM",
+    "property": "CCD_SET_FITS_HEADER_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_SET_FITS_HEADER_VALUE_ITEM",
+    "property": "CCD_SET_FITS_HEADER_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_REMOVE_FITS_HEADER_NAME_ITEM",
+    "property": "CCD_REMOVE_FITS_HEADER_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_SETTINGS_QUALITY_ITEM",
+    "property": "CCD_JPEG_SETTINGS_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM",
+    "property": "CCD_JPEG_SETTINGS_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM",
+    "property": "CCD_JPEG_SETTINGS_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM",
+    "property": "CCD_JPEG_SETTINGS_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM",
+    "property": "CCD_JPEG_STRETCH_PRESETS_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM",
+    "property": "CCD_JPEG_STRETCH_PRESETS_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM",
+    "property": "CCD_JPEG_STRETCH_PRESETS_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_JPEG_STRETCH_PRESETS_HARD_ITEM",
+    "property": "CCD_JPEG_STRETCH_PRESETS_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_RBI_FLUSH_EXPOSURE_ITEM",
+    "property": "CCD_RBI_FLUSH_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_RBI_FLUSH_COUNT_ITEM",
+    "property": "CCD_RBI_FLUSH_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_RBI_FLUSH_ENABLED_ITEM",
+    "property": "CCD_RBI_FLUSH_ENABLE_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "macro": "CCD_RBI_FLUSH_DISABLED_ITEM",
+    "property": "CCD_RBI_FLUSH_ENABLE_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_SPEED_ITEM",
+    "property": "DOME_SPEED_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_DIRECTION_MOVE_CLOCKWISE_ITEM",
+    "property": "DOME_DIRECTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM",
+    "property": "DOME_DIRECTION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_ON_COORDINATES_SET_GOTO_ITEM",
+    "property": "DOME_ON_COORDINATES_SET_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_ON_COORDINATES_SET_SYNC_ITEM",
+    "property": "DOME_ON_COORDINATES_SET_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_STEPS_ITEM",
+    "property": "DOME_STEPS_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_HORIZONTAL_COORDINATES_AZ_ITEM",
+    "property": "DOME_HORIZONTAL_COORDINATES_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_HORIZONTAL_COORDINATES_ALT_ITEM",
+    "property": "DOME_HORIZONTAL_COORDINATES_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_SLAVING_THRESHOLD_ITEM",
+    "property": "DOME_SLAVING_PARAMETERS_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_ABORT_MOTION_ITEM",
+    "property": "DOME_ABORT_MOTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_SHUTTER_CLOSED_ITEM",
+    "property": "DOME_SHUTTER_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_SHUTTER_OPENED_ITEM",
+    "property": "DOME_SHUTTER_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_FLAP_CLOSED_ITEM",
+    "property": "DOME_FLAP_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_FLAP_OPENED_ITEM",
+    "property": "DOME_FLAP_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_PARK_PARKED_ITEM",
+    "property": "DOME_PARK_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_PARK_UNPARKED_ITEM",
+    "property": "DOME_PARK_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_PARK_POSITION_AZ_ITEM",
+    "property": "DOME_PARK_POSITION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_PARK_POSITION_ALT_ITEM",
+    "property": "DOME_PARK_POSITION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_HOME_ITEM",
+    "property": "DOME_HOME_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_RADIUS_ITEM",
+    "property": "DOME_DIMENSION_PROPERTY",
+    "index": 0,
+    "base_capacity": 6,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_SHUTTER_WIDTH_ITEM",
+    "property": "DOME_DIMENSION_PROPERTY",
+    "index": 1,
+    "base_capacity": 6,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_MOUNT_PIVOT_OFFSET_NS_ITEM",
+    "property": "DOME_DIMENSION_PROPERTY",
+    "index": 2,
+    "base_capacity": 6,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_MOUNT_PIVOT_OFFSET_EW_ITEM",
+    "property": "DOME_DIMENSION_PROPERTY",
+    "index": 3,
+    "base_capacity": 6,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM",
+    "property": "DOME_DIMENSION_PROPERTY",
+    "index": 4,
+    "base_capacity": 6,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM",
+    "property": "DOME_DIMENSION_PROPERTY",
+    "index": 5,
+    "base_capacity": 6,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM",
+    "property": "DOME_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM",
+    "property": "DOME_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM",
+    "property": "DOME_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_UTC_ITEM",
+    "property": "DOME_UTC_TIME_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_UTC_OFFSET_ITEM",
+    "property": "DOME_UTC_TIME_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_SET_HOST_TIME_ITEM",
+    "property": "DOME_SET_HOST_TIME_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_STATE_SLEW_ITEM",
+    "property": "DOME_STATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_STATE_PARK_ITEM",
+    "property": "DOME_STATE_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_dome_driver.h",
+    "macro": "DOME_STATE_OPEN_ITEM",
+    "property": "DOME_STATE_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "CONNECTION_CONNECTED_ITEM",
+    "property": "CONNECTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "CONNECTION_DISCONNECTED_ITEM",
+    "property": "CONNECTION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_NAME_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 0,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_DRIVER_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 1,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_VERSION_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 2,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_INTERFACE_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 3,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_MODEL_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 4,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_FW_REVISION_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 5,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_HW_REVISION_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 6,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_DEVICE_SERIAL_NUM_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 7,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_FRAMEWORK_NAME_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 3,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "INFO_FRAMEWORK_VERSION_ITEM",
+    "property": "INFO_PROPERTY",
+    "index": 4,
+    "base_capacity": 8,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "SIMULATION_ENABLED_ITEM",
+    "property": "SIMULATION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "SIMULATION_DISABLED_ITEM",
+    "property": "SIMULATION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "CONFIG_SAVE_ITEM",
+    "property": "CONFIG_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "CONFIG_LOAD_ITEM",
+    "property": "CONFIG_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "CONFIG_REMOVE_ITEM",
+    "property": "CONFIG_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "PROFILE_NAME_ITEM",
+    "property": "PROFILE_NAME_PROPERTY",
+    "index": 0,
+    "base_capacity": null,
+    "within_base": null
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "PROFILE_ITEM",
+    "property": "PROFILE_PROPERTY",
+    "index": 0,
+    "base_capacity": null,
+    "within_base": null
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "DEVICE_PORT_ITEM",
+    "property": "DEVICE_PORT_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "DEVICE_BAUDRATE_ITEM",
+    "property": "DEVICE_BAUDRATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "AUTHENTICATION_PASSWORD_ITEM",
+    "property": "AUTHENTICATION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "AUTHENTICATION_USER_ITEM",
+    "property": "AUTHENTICATION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_driver.h",
+    "macro": "ADDITIONAL_INSTANCES_COUNT_ITEM",
+    "property": "ADDITIONAL_INSTANCES_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_SPEED_ITEM",
+    "property": "FOCUSER_SPEED_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_REVERSE_MOTION_DISABLED_ITEM",
+    "property": "FOCUSER_REVERSE_MOTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_REVERSE_MOTION_ENABLED_ITEM",
+    "property": "FOCUSER_REVERSE_MOTION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_DIRECTION_MOVE_INWARD_ITEM",
+    "property": "FOCUSER_DIRECTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM",
+    "property": "FOCUSER_DIRECTION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_STEPS_ITEM",
+    "property": "FOCUSER_STEPS_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_ON_POSITION_SET_GOTO_ITEM",
+    "property": "FOCUSER_ON_POSITION_SET_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_ON_POSITION_SET_SYNC_ITEM",
+    "property": "FOCUSER_ON_POSITION_SET_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_POSITION_ITEM",
+    "property": "FOCUSER_POSITION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_ABORT_MOTION_ITEM",
+    "property": "FOCUSER_ABORT_MOTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_BACKLASH_ITEM",
+    "property": "FOCUSER_BACKLASH_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_TEMPERATURE_ITEM",
+    "property": "FOCUSER_TEMPERATURE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_COMPENSATION_ITEM",
+    "property": "FOCUSER_COMPENSATION_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_COMPENSATION_THRESHOLD_ITEM",
+    "property": "FOCUSER_COMPENSATION_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_COMPENSATION_PERIOD_ITEM",
+    "property": "FOCUSER_COMPENSATION_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_MODE_MANUAL_ITEM",
+    "property": "FOCUSER_MODE_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_MODE_AUTOMATIC_ITEM",
+    "property": "FOCUSER_MODE_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_LIMITS_MIN_POSITION_ITEM",
+    "property": "FOCUSER_LIMITS_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "macro": "FOCUSER_LIMITS_MAX_POSITION_ITEM",
+    "property": "FOCUSER_LIMITS_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM",
+    "property": "GPS_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM",
+    "property": "GPS_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM",
+    "property": "GPS_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM",
+    "property": "GPS_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_UTC_ITEM",
+    "property": "GPS_UTC_TIME_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_UTC_OFFEST_ITEM",
+    "property": "GPS_UTC_TIME_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_STATUS_NO_FIX_ITEM",
+    "property": "GPS_STATUS_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_STATUS_2D_FIX_ITEM",
+    "property": "GPS_STATUS_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_STATUS_3D_FIX_ITEM",
+    "property": "GPS_STATUS_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_ADVANCED_ENABLED_ITEM",
+    "property": "GPS_ADVANCED_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_ADVANCED_DISABLED_ITEM",
+    "property": "GPS_ADVANCED_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM",
+    "property": "GPS_ADVANCED_STATUS_PROPERTY",
+    "index": 0,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM",
+    "property": "GPS_ADVANCED_STATUS_PROPERTY",
+    "index": 1,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_ADVANCED_STATUS_PDOP_ITEM",
+    "property": "GPS_ADVANCED_STATUS_PROPERTY",
+    "index": 2,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_ADVANCED_STATUS_HDOP_ITEM",
+    "property": "GPS_ADVANCED_STATUS_PROPERTY",
+    "index": 3,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_gps_driver.h",
+    "macro": "GPS_ADVANCED_STATUS_VDOP_ITEM",
+    "property": "GPS_ADVANCED_STATUS_PROPERTY",
+    "index": 4,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_guider_driver.h",
+    "macro": "GUIDER_GUIDE_NORTH_ITEM",
+    "property": "GUIDER_GUIDE_DEC_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_guider_driver.h",
+    "macro": "GUIDER_GUIDE_SOUTH_ITEM",
+    "property": "GUIDER_GUIDE_DEC_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_guider_driver.h",
+    "macro": "GUIDER_GUIDE_EAST_ITEM",
+    "property": "GUIDER_GUIDE_RA_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_guider_driver.h",
+    "macro": "GUIDER_GUIDE_WEST_ITEM",
+    "property": "GUIDER_GUIDE_RA_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_guider_driver.h",
+    "macro": "GUIDER_RATE_ITEM",
+    "property": "GUIDER_RATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_guider_driver.h",
+    "macro": "GUIDER_DEC_RATE_ITEM",
+    "property": "GUIDER_RATE_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM",
+    "property": "MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM",
+    "property": "MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM",
+    "property": "MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_LST_TIME_ITEM",
+    "property": "MOUNT_LST_TIME_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_INFO_VENDOR_ITEM",
+    "property": "MOUNT_INFO_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_INFO_MODEL_ITEM",
+    "property": "MOUNT_INFO_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_INFO_FIRMWARE_ITEM",
+    "property": "MOUNT_INFO_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_UTC_ITEM",
+    "property": "MOUNT_UTC_TIME_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_UTC_OFFSET_ITEM",
+    "property": "MOUNT_UTC_TIME_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_SET_HOST_TIME_ITEM",
+    "property": "MOUNT_SET_HOST_TIME_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PARK_SET_CURRENT_ITEM",
+    "property": "MOUNT_PARK_SET_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PARK_SET_DEFAULT_ITEM",
+    "property": "MOUNT_PARK_SET_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PARK_POSITION_HA_ITEM",
+    "property": "MOUNT_PARK_POSITION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PARK_POSITION_DEC_ITEM",
+    "property": "MOUNT_PARK_POSITION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PARK_PARKED_ITEM",
+    "property": "MOUNT_PARK_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PARK_UNPARKED_ITEM",
+    "property": "MOUNT_PARK_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HOME_SET_CURRENT_ITEM",
+    "property": "MOUNT_HOME_SET_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HOME_SET_DEFAULT_ITEM",
+    "property": "MOUNT_HOME_SET_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HOME_POSITION_HA_ITEM",
+    "property": "MOUNT_HOME_POSITION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HOME_POSITION_DEC_ITEM",
+    "property": "MOUNT_HOME_POSITION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HOME_ITEM",
+    "property": "MOUNT_HOME_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_AWAY_ITEM",
+    "property": "MOUNT_HOME_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HOME_SEARCH_ITEM",
+    "property": "MOUNT_HOME_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ON_COORDINATES_SET_TRACK_ITEM",
+    "property": "MOUNT_ON_COORDINATES_SET_PROPERTY",
+    "index": 0,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ON_COORDINATES_SET_SYNC_ITEM",
+    "property": "MOUNT_ON_COORDINATES_SET_PROPERTY",
+    "index": 1,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ON_COORDINATES_SET_SLEW_ITEM",
+    "property": "MOUNT_ON_COORDINATES_SET_PROPERTY",
+    "index": 2,
+    "base_capacity": 3,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_SLEW_RATE_GUIDE_ITEM",
+    "property": "MOUNT_SLEW_RATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_SLEW_RATE_CENTERING_ITEM",
+    "property": "MOUNT_SLEW_RATE_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_SLEW_RATE_FIND_ITEM",
+    "property": "MOUNT_SLEW_RATE_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_SLEW_RATE_MAX_ITEM",
+    "property": "MOUNT_SLEW_RATE_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_MOTION_NORTH_ITEM",
+    "property": "MOUNT_MOTION_DEC_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_MOTION_SOUTH_ITEM",
+    "property": "MOUNT_MOTION_DEC_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_MOTION_WEST_ITEM",
+    "property": "MOUNT_MOTION_RA_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_MOTION_EAST_ITEM",
+    "property": "MOUNT_MOTION_RA_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_TRACK_RATE_SIDEREAL_ITEM",
+    "property": "MOUNT_TRACK_RATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_TRACK_RATE_SOLAR_ITEM",
+    "property": "MOUNT_TRACK_RATE_PROPERTY",
+    "index": 1,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_TRACK_RATE_LUNAR_ITEM",
+    "property": "MOUNT_TRACK_RATE_PROPERTY",
+    "index": 2,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_TRACK_RATE_KING_ITEM",
+    "property": "MOUNT_TRACK_RATE_PROPERTY",
+    "index": 3,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_TRACK_RATE_CUSTOM_ITEM",
+    "property": "MOUNT_TRACK_RATE_PROPERTY",
+    "index": 4,
+    "base_capacity": 5,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_TRACKING_ON_ITEM",
+    "property": "MOUNT_TRACKING_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_TRACKING_OFF_ITEM",
+    "property": "MOUNT_TRACKING_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_CUSTOM_TRACKING_RATE_ITEM",
+    "property": "MOUNT_CUSTOM_TRACKING_RATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_GUIDE_RATE_RA_ITEM",
+    "property": "MOUNT_GUIDE_RATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_GUIDE_RATE_DEC_ITEM",
+    "property": "MOUNT_GUIDE_RATE_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_EQUATORIAL_COORDINATES_RA_ITEM",
+    "property": "MOUNT_EQUATORIAL_COORDINATES_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM",
+    "property": "MOUNT_EQUATORIAL_COORDINATES_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM",
+    "property": "MOUNT_HORIZONTAL_COORDINATES_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM",
+    "property": "MOUNT_HORIZONTAL_COORDINATES_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ABORT_MOTION_ITEM",
+    "property": "MOUNT_ABORT_MOTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ALIGNMENT_MODE_SINGLE_POINT_ITEM",
+    "property": "MOUNT_ALIGNMENT_MODE_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM",
+    "property": "MOUNT_ALIGNMENT_MODE_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM",
+    "property": "MOUNT_ALIGNMENT_MODE_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM",
+    "property": "MOUNT_ALIGNMENT_MODE_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_RAW_COORDINATES_RA_ITEM",
+    "property": "MOUNT_RAW_COORDINATES_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_RAW_COORDINATES_DEC_ITEM",
+    "property": "MOUNT_RAW_COORDINATES_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_EPOCH_ITEM",
+    "property": "MOUNT_EPOCH_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_SIDE_OF_PIER_EAST_ITEM",
+    "property": "MOUNT_SIDE_OF_PIER_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_SIDE_OF_PIER_WEST_ITEM",
+    "property": "MOUNT_SIDE_OF_PIER_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PEC_ENABLED_ITEM",
+    "property": "MOUNT_PEC_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PEC_DISABLED_ITEM",
+    "property": "MOUNT_PEC_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PEC_TRAINIG_STARTED_ITEM",
+    "property": "MOUNT_PEC_TRAINING_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_PEC_TRAINIG_STOPPED_ITEM",
+    "property": "MOUNT_PEC_TRAINING_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_STATE_SLEW_ITEM",
+    "property": "MOUNT_STATE_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_STATE_PARK_ITEM",
+    "property": "MOUNT_STATE_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_STATE_HOME_ITEM",
+    "property": "MOUNT_STATE_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_mount_driver.h",
+    "macro": "MOUNT_STATE_TRACKING_ITEM",
+    "property": "MOUNT_STATE_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_OFFSET_ALT_ITEM",
+    "property": "POLARALIGN_OFFSET_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_OFFSET_AZ_ITEM",
+    "property": "POLARALIGN_OFFSET_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_ABORT_MOTION_ITEM",
+    "property": "POLARALIGN_ABORT_MOTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM",
+    "property": "POLARALIGN_STEPS_PER_DEGREE_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM",
+    "property": "POLARALIGN_STEPS_PER_DEGREE_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_DIRECTION_ALT_NORMAL_ITEM",
+    "property": "POLARALIGN_DIRECTION_ALT_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_DIRECTION_ALT_REVERSED_ITEM",
+    "property": "POLARALIGN_DIRECTION_ALT_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_DIRECTION_AZ_NORMAL_ITEM",
+    "property": "POLARALIGN_DIRECTION_AZ_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_DIRECTION_AZ_REVERSED_ITEM",
+    "property": "POLARALIGN_DIRECTION_AZ_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_RESET_POSITION_ALT_ITEM",
+    "property": "POLARALIGN_RESET_POSITION_ALT_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_RESET_POSITION_AZ_ITEM",
+    "property": "POLARALIGN_RESET_POSITION_AZ_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM",
+    "property": "POLARALIGN_LIMITS_PROPERTY",
+    "index": 0,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM",
+    "property": "POLARALIGN_LIMITS_PROPERTY",
+    "index": 1,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM",
+    "property": "POLARALIGN_LIMITS_PROPERTY",
+    "index": 2,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "macro": "POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM",
+    "property": "POLARALIGN_LIMITS_PROPERTY",
+    "index": 3,
+    "base_capacity": 4,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_STEPS_PER_REVOLUTION_ITEM",
+    "property": "ROTATOR_STEPS_PER_REVOLUTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_DIRECTION_NORMAL_ITEM",
+    "property": "ROTATOR_DIRECTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_DIRECTION_REVERSED_ITEM",
+    "property": "ROTATOR_DIRECTION_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_ON_POSITION_SET_GOTO_ITEM",
+    "property": "ROTATOR_ON_POSITION_SET_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_ON_POSITION_SET_SYNC_ITEM",
+    "property": "ROTATOR_ON_POSITION_SET_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_POSITION_ITEM",
+    "property": "ROTATOR_POSITION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_RELATIVE_MOVE_ITEM",
+    "property": "ROTATOR_RELATIVE_MOVE_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_ABORT_MOTION_ITEM",
+    "property": "ROTATOR_ABORT_MOTION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_BACKLASH_ITEM",
+    "property": "ROTATOR_BACKLASH_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_LIMITS_MIN_POSITION_ITEM",
+    "property": "ROTATOR_LIMITS_PROPERTY",
+    "index": 0,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_LIMITS_MAX_POSITION_ITEM",
+    "property": "ROTATOR_LIMITS_PROPERTY",
+    "index": 1,
+    "base_capacity": 2,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_RAW_POSITION_ITEM",
+    "property": "ROTATOR_RAW_POSITION_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "macro": "ROTATOR_POSITION_OFFSET_ITEM",
+    "property": "ROTATOR_POSITION_OFFSET_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_wheel_driver.h",
+    "macro": "WHEEL_SLOT_ITEM",
+    "property": "WHEEL_SLOT_PROPERTY",
+    "index": 0,
+    "base_capacity": 1,
+    "within_base": true
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_wheel_driver.h",
+    "macro": "WHEEL_SLOT_NAME_1_ITEM",
+    "property": "WHEEL_SLOT_NAME_PROPERTY",
+    "index": 0,
+    "base_capacity": null,
+    "within_base": null
+  },
+  {
+    "header": "indigo_libs/indigo/indigo_wheel_driver.h",
+    "macro": "WHEEL_SLOT_OFFSET_1_ITEM",
+    "property": "WHEEL_SLOT_OFFSET_PROPERTY",
+    "index": 0,
+    "base_capacity": null,
+    "within_base": null
+  }
+]

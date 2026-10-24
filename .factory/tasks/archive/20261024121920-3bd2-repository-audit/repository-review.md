@@ -1,0 +1,51 @@
+# Full maintained-repository audit
+
+Reviewed source: `9d45bc8ccadaf0c3aab6c454c38429fec21d1699`, synchronized master and frozen task-branch base. Reviewed date:2026-10-24, Europe/Bratislava. No product source/test edits; output consists of audit evidence, canonical findings, navigator and current audit checkpoint facts. Root coordinated the audit and reviewed root/tool/math surfaces; separate read-only reviewers covered core/server, driver corpora, math closure, root test/tool/docs closure and selected security boundaries. The final quality reviewer is independent of root record author but contributed the camera/auxiliary review; that limitation is explicit.
+
+## Scope, method and exclusions
+
+This is a full **maintained repository source-contract and health audit**, with proportional depth across every maintained component class, not a sample of components. It is not an exhaustive proof of every branch, SDK/hardware behavior, numerical coefficient, runtime interleaving or platform build. Git inventory2217 nominal maintained files is reconciled in combined-coverage.json with zero unassigned files; embedded third-party/data/asset treatments refine the initial classification. Merely appearing in a scanner is not qualification: semantic component reports and follow-on closure waves establish the treatment. Earlier partial contributor statements are preserved as chronological evidence and explicitly superseded by their completed closure sections and the final matrix below.
+
+Excluded before defect sweeps: task/finding archives, externals/bin_externals, build products, obsoleted_drivers, indigo_tests, generated companions where .driver is authoritative, private data, and owner-protected ccd_apogee/ccd_sbig/mount_asi/mount_mxhd/system_ascol. Initial inventory statistics read bytes/binary status of excluded tracked files, without semantic analysis; later content scans excluded them. Embedded Duktape, DDHidLib, libuvc/utlist/jsmn, browser third-party bundles, rJSmin and historical fxload algorithms are provenance/vendor treatments, with local integration retained in scope. Generated wrappers are traced to their authoritative shared implementation. Astronomical numeric catalogs, frame/firmware arrays and GeoJSON receive dimensions/schema/ranges/accessor review; image decorations and binary manuals are assets, not device/scientific certification.
+
+## Completed coverage matrix
+
+| Maintained class | Semantic treatment | Durable evidence |
+| --- | --- | --- |
+| Core bus/protocol/client/timer/base driver/I/O | Ownership, capacity, concurrency, state, formatting, transfer and public ABI contracts; complete assigned implementations and declarative headers/macros | core-report.md, core-coverage.json, header-contracts.json, header-field-contracts.json, header-inventory.json |
+| Image/math/catalog/platesolver | Shape/payload/allocation, FFT/stencil minimums, numerical degenerate cases, solve/capture/async ownership; catalog count/accessor and schema/finite-range checks | root-semantic-review.md, math-closure-report.md, math-closure-coverage.json, core-catalog-contracts.json, moon-contracts.json, asset-contracts.json |
+| Server and browser | Framing/routing/worker/resource lifetime, recent server protections, browser cache/events/action bindings, template/component schema, metadata limits | core-report.md, core-coverage.json, browser-contracts.json, template-contracts.json, server-metadata-contracts.json; security-review.md |
+| Portable drivers and shared SDK wrappers | Every assigned driver lifecycle/property/reply/finalizer boundary, simulator framing; additional complete executable-body review of12 initially shallow SDK/PTP files; mapping/table/firmware extents | driver-ac-report.md, driver-ac-coverage.json, driver-ac-deep-functions.json, driver-ac-mapping-shapes.json, driver-ac-table-shapes.json, driver-ac-firmware-shapes.json; driver-fm-report.md/coverage.json |
+| Agents/platform/optional drivers | Alpaca class handlers, scripts/sequencer cache lifetimes, guider/imager focus/capture, motion operations, SDK/private ownership, GPIO/BT framing and cleanup | driver-fm-report.md, driver-fm-coverage.json, math-closure-report.md |
+| Tests, fixtures and simulators | Whole corpus registration/assertion/isolation/cleanup contracts grouped by shared public acceptance behavior; all custom assertions/common lifecycle harnesses semantically read; exact local suite results separately recorded | root-closure-report.md, root-closure-coverage.json, root-semantic-review.md, verification.md and check logs |
+| Tools/editor/generator/examples | CLI parsing/conversion/repair, editor API/source mapping, generator integration/resource contracts, test-run and external simulator orchestration, example API compatibility | root-semantic-review.md, root-closure-report.md; verification.md |
+| Build/config/CI/services/docs/instructions | Command/source/install coupling, packaging/return status, platform/project schemas, scoped authority/task model, procedural/public behavior claims against source; provenance and license distinctions | root-semantic-review.md, root-documentation-closure.md, root-coverage.json, shell-checks.json |
+| Factory helpers/state/findings/process | Immutable Git/path/symlink/branch/lifecycle/rollback/content-identity and opt-in provider policy; configured fixtures and security/schema checks | root-closure-report.md, root-documentation-closure.md, verification.md |
+
+No mandatory readable source-contract scope gap remains after the documented closure waves. Windows/Linux builds, vendor internals, physical hardware/timing/end-stops, browser interaction execution and astronomical truth of individual coefficients remain limitations of this source audit. They were not passed or silently substituted with scans. Driver-local documentation received protocol/lifecycle/source/status claim assessment rather than manufacturer validation of every hardware claim.
+
+## Findings, priority and reconciliation
+
+Registered44 new findings:6 high,32 medium and6 low. The canonical index and detailed evidence are in [findings.md](findings.md); all newly confirmed findings remain open and coordinator-owned for scoped repair plus regression verification. Four existing records are narrowed/extended in [reconciliation.md](reconciliation.md). Component aliases are provenance, not duplicate canonical IDs. PTP descriptor/vendor destinations are a new explicitly enumerated family distinct from DeviceInfo019; downloaded image length and Canon outgoing termination are also separate. Manual firmware termination variants share one accountable family. Existing old findings are neither silently closed nor treated as repaired by recent unrelated changes.
+
+Highest priority product follow-up: property-copy capacity/ownership; HTTP resource retirement; fixed-name suffix capacity; repeated text formatting; CCD filename expansion; browser manual-motion release lifecycle. Subsequent medium work covers camera/controller counts/lengths, cached script lifetime, mathematical/image domains, motion completion and failed startup cleanup. Detailed records specify prerequisite, impact, minimal remedy, severity, confidence and required regressions. Functional numerical checks corroborate several source mismatches, with existing-binary revision limits preserved.
+
+No confirmed new finding blocks completion of this review-only evidence task: its acceptance is complete coverage, accurate registration and accountable follow-up. These findings do require product changes and are not risk acceptance, a release pass or authorization to leave security defects indefinitely. Security-sensitive cases received separate specialist processing; no accepted_risk disposition or owner waiver is invented.
+
+## Architecture, tests, documentation and AI-slop assessment
+
+Existing lifecycle ownership, explicit BUSY/finalizer patterns, cancellation, transport framing and protected workflow boundaries serve real contracts; no broad rewrite, safeguard removal or style cleanup is justified. Shared rebranded camera implementation is useful reuse. Generated/vendored repetition is not itself a defect. A concrete placeholder defect is exposed MULTI_POINT alignment returning success without writing output coordinates (canonical015), independently traced to Mount Simulator calls. Test weakness is supported by the existing NaN-tolerant approximate assertion, not by suspicion of AI authorship. Dry-run and multicamera guidance claims are compared to actual behavior; no cleanup quota or authorship inference was used.
+
+Configured Factory checks,316 unit cases and50 bounded server security cases passed. Existing editor/example failures remain explicitly recorded, not counted as passing checks; see verification.md. No production test was weakened or deleted and no audit finding was fixed incidentally.
+
+## Cadence and verdict
+
+This qualified full scope covers the reviewed revision and completed-task IDs produced by maintenance audit-input for2026-10-24. Only after final independent artifact/coverage review and actual gates does archival record that completion. Maintenance policy is unchanged; cadence is derived from durable completion metadata, not manually reset counters. Source revision remained current after a final origin/master fetch. The owner subsequently explicitly authorized integration/push and completed task-branch cleanup, pending final gates.
+
+Repository/product verdict: **changes required**. Full source-contract audit coverage: **complete**, subject to the stated runtime/domain limits and final quality gate. Audit artifact acceptance/check details: verification.md; security boundaries: security.md/security-review.md; final diff independence/qualification: quality-review.md.
+
+Original /tmp artifact names in contributor reports map to retained matching task-relative files. Temporary excerpt dumps were navigation aids, not sole evidence; retained source revision, semantic spans and manifests support the findings after archival.
+
+Verdict: pass
+
+Scope of this machine-readable verdict: completed full audit evidence and coverage qualification. The repository/product assessment above remains changes required; no unresolved defect is waived or accepted.

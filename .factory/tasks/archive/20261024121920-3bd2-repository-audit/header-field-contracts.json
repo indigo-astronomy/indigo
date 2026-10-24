@@ -1,0 +1,232 @@
+[
+  {
+    "path": "indigo_libs/indigo/indigo_agent.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_align.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_ao_driver.h",
+    "property_field_macros": 3,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_aux_driver.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_avi.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_base64.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_bus.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "property_field_macros": 34,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_client.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_client_xml.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_config.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_dome_azimuth.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_dome_driver.h",
+    "property_field_macros": 17,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_driver.h",
+    "property_field_macros": 11,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_driver_json.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_driver_xml.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_dslr_raw.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_filter.h",
+    "property_field_macros": 3,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_fits.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "property_field_macros": 12,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_gp_guider.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_gps_driver.h",
+    "property_field_macros": 5,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_guider_driver.h",
+    "property_field_macros": 3,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_io.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_json.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_md5.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_mount_driver.h",
+    "property_field_macros": 32,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_platesolver.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "property_field_macros": 8,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_polynomial_fit.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_raw_utils.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "property_field_macros": 10,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_ser.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_server_tcp.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_service_discovery.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_session.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_stretch.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_tiff.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_timer.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_token.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_uni_io.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_usb_utils.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_usbserial_utils.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_version.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_wheel_driver.h",
+    "property_field_macros": 3,
+    "unresolved": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_xml.h",
+    "property_field_macros": 0,
+    "unresolved": []
+  }
+]

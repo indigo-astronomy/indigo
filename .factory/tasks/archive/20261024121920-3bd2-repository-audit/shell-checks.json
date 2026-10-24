@@ -1,0 +1,132 @@
+[
+  {
+    "path": "indigo_libs/indigocat/example/run_example.sh",
+    "command": [
+      "bash",
+      "-n",
+      "indigo_libs/indigocat/example/run_example.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "indigo_windows/gcc/build_windows_sdk.sh",
+    "command": [
+      "bash",
+      "-n",
+      "indigo_windows/gcc/build_windows_sdk.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/build_debs.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/build_debs.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/build_ftdi_macos.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/build_ftdi_macos.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/build_windows_installer.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/build_windows_installer.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/cltools.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/cltools.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/make_indigo_build.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/make_indigo_build.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/make_source_tarball.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/make_source_tarball.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/rpi_ctrl.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/rpi_ctrl.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/rpi_ctrl_fake.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/rpi_ctrl_fake.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/rpi_ctrl_fix.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/rpi_ctrl_fix.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/rpi_ctrl_v2.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/rpi_ctrl_v2.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  },
+  {
+    "path": "tools/update_DELTA_UT1_UTC.sh",
+    "command": [
+      "bash",
+      "-n",
+      "tools/update_DELTA_UT1_UTC.sh"
+    ],
+    "exit": 0,
+    "diagnostic": ""
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "title": "Identity image stretch divides by a singular midpoint",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_stretch.cpp:233-234,273-275: parameter computation may emit midtones0.5, while stretch divides by2midtones-1. Ordinary identity setting transforms [0,64,128,255] into allzero in existing library. Fix algebra/explicit midpoint branch; test identity and zero dynamic range. Related AWB616-656 chooses B when R=G>B because strict comparisons; allzero totals cause0/0. Bayer-corner defect remains old audit010 duplicate. AWB reference/totals behavior is a distinct canonical finding014. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-5). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-005; core-report.md alias CORE-5; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-005"
+}

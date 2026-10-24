@@ -1,0 +1,208 @@
+mkdir -p build/security
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -c ../indigo_libs/indigo_bus.c -o build/security/indigo_bus.o
+../indigo_libs/indigo_bus.c:2746:2: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2746 |         sprintf(str, "%.10g", value);
+      |         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+1 warning generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -c ../indigo_libs/indigo_xml.c -o build/security/indigo_xml.o
+../indigo_libs/indigo_xml.c:1980:3: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1980 |                 sprintf(token, " token='%llx'", property->access_token);
+      |                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+1 warning generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -c ../indigo_libs/indigo_json.c -o build/security/indigo_json.o
+../indigo_libs/indigo_json.c:983:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  983 |                 size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", indigo_json_escape(property->device));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:985:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  985 |                 size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", indigo_json_escape_b(0, property->device), indigo_json_escape_b(1, property->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:989:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  989 |                 size = sprintf(pnt, ", \"message\": \"%s\" } }", indigo_json_escape(message));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:991:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  991 |                 size = sprintf(pnt, " } }");
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1019:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1019 |                 size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, property->device), indigo_json_escape_b(2, property->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1021:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1021 |                 size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, device->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1023:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1023 |                 size = sprintf(pnt, "{ \"message\": \"%s\" }", indigo_json_escape(message));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+7 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -c ../indigo_libs/indigo_server_tcp.c -o build/security/indigo_server_tcp.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -c ../indigo_libs/indigo_uni_io.c -o build/security/indigo_uni_io.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -o build/security/test_protocol_security unit/test_protocol_security.c build/security/indigo_bus.o build/security/indigo_xml.o build/security/indigo_json.o build/security/indigo_server_tcp.o build/security/indigo_uni_io.o -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/Users/polakovic/Development/indigo/build/lib -arch arm64 -fsanitize=address,undefined /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -o build/security/test_transport_cache_security unit/test_transport_cache_security.c build/security/indigo_bus.o build/security/indigo_xml.o build/security/indigo_json.o build/security/indigo_server_tcp.o build/security/indigo_uni_io.o -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/Users/polakovic/Development/indigo/build/lib -arch arm64 -fsanitize=address,undefined /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -c ../indigo_libs/indigo_server_tcp.c -o build/security/indigo_server_tcp_http.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -Dindigo_async=http_test_async -c ../indigo_libs/indigo_uni_io.c -o build/security/indigo_uni_io_http.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_FAULT_INJECTION -o build/security/test_transport_http_security integration/test_transport_http_security.c build/security/indigo_bus.o build/security/indigo_xml.o build/security/indigo_json.o build/security/indigo_server_tcp_http.o build/security/indigo_uni_io_http.o -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/Users/polakovic/Development/indigo/build/lib -arch arm64 -fsanitize=address,undefined /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -Dmalloc=transport_test_malloc -c ../indigo_libs/indigo_bus.c -o build/security/indigo_bus_alloc_failure.o
+../indigo_libs/indigo_bus.c:2746:2: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2746 |         sprintf(str, "%.10g", value);
+      |         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+1 warning generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer  -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_TRANSPORT_ALLOC_FAILURE -o build/security/test_transport_cache_alloc_failure unit/test_transport_cache_security.c build/security/indigo_bus_alloc_failure.o -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/Users/polakovic/Development/indigo/build/lib -arch arm64 -fsanitize=address,undefined /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib
+build/security/test_protocol_security
+14:23:43.361570 Application: XML Parser: syntax error
+14:23:47.147766 Application: XML Parser: syntax error
+14:23:50.706416 Application: JSON Parser: syntax error
+14:24:04.739017 Application: JSON Parser: syntax error
+14:24:04.785339 Application: XML Parser: syntax error
+14:24:04.789039 Application: XML Parser: syntax error
+14:24:04.789355 Application: XML Parser: syntax error
+14:24:04.789660 Application: XML Parser: syntax error
+14:24:04.789958 Application: XML Parser: syntax error
+14:24:04.790250 Application: XML Parser: syntax error
+14:24:04.790547 Application: XML Parser: syntax error
+14:24:04.790827 Application: XML Parser: syntax error
+14:24:04.791282 Application: XML Parser: syntax error
+14:24:04.791701 Application: XML Parser: syntax error
+14:24:04.793098 Application: XML Parser: syntax error
+14:24:04.793409 Application: XML Parser: syntax error
+14:24:04.793707 Application: XML Parser: syntax error
+14:24:04.794022 Application: XML Parser: syntax error
+14:24:04.794412 Application: XML Parser: syntax error
+14:24:04.794710 Application: XML Parser: syntax error
+14:24:04.795031 Application: XML Parser: syntax error
+14:24:04.795352 Application: XML Parser: syntax error
+14:24:04.795672 Application: XML Parser: syntax error
+14:24:04.795999 Application: XML Parser: syntax error
+14:24:04.805069 Application: XML Parser: syntax error
+14:24:04.806328 Application: XML Parser: syntax error
+14:24:04.806723 Application: XML Parser: syntax error
+14:24:04.807197 Application: XML Parser: syntax error
+14:24:04.808189 Application: XML Parser: syntax error
+14:24:04.808511 Application: XML Parser: syntax error
+14:24:05.169083 Application: JSON Parser: syntax error
+14:24:05.170441 Application: JSON Parser: syntax error
+14:24:05.170890 Application: JSON Parser: syntax error
+14:24:05.519513 Application: JSON Parser: syntax error
+14:24:05.635143 Application: JSON Parser: syntax error
+14:24:05.749992 Application: JSON Parser: syntax error
+14:24:05.864483 Application: JSON Parser: syntax error
+Running Protocol security
+  PASS XML upload staging one shot
+  PASS request item limits
+  PASS request text budgets and reset
+  PASS JSON repeated items rejected
+  PASS cached RO BLOB retirement
+  PASS xml_attribute_boundaries
+  PASS xml_name_boundaries
+  PASS xml_entity_boundaries
+  PASS xml_wrong_direction
+  PASS xml_blob_owned_items_and_padding
+  PASS xml_blob_empty_after_nonempty
+  PASS xml_blob_rejects_mismatch_and_malformed
+  PASS xml_blob_crosses_input_buffers
+  PASS xml_messages_are_literal
+  PASS json_token_boundaries
+  PASS json_number_and_logical_boundaries
+  PASS websocket_frames
+  PASS websocket_controls
+Protocol security: all tests passed
+build/security/test_transport_cache_security
+Running transport cache security
+  PASS retired upload is unregistered
+  PASS retained bytes survive release
+  PASS all permission classes retire
+  PASS resize and shrink cache lifetime
+  PASS pending published retired budget
+  PASS RO upload preserves snapshot
+  PASS permission publication revokes staging
+  PASS uploaded staging consumed once
+  PASS empty upload and replacement
+  PASS concurrent retirement and lookup
+transport cache security: all tests passed
+build/security/test_transport_http_security
+14:24:07.611132 Application: Can't create worker thread for connection (Undefined error: 0)
+14:24:07.618384 Application: Can't create worker thread for connection (Undefined error: 0)
+Running transport HTTP security
+  PASS idle initial connections expire
+  PASS established XML idle session
+  PASS admission limit and spawn failure
+  PASS file download cleanup
+  PASS malformed framing preserves cache
+  PASS short EOF preserves cache
+  PASS valid empty and whitespace length
+  PASS private receive and responsive publication
+  PASS stalled body deadline
+  PASS absolute deadline despite progress
+  PASS retirement during receive
+transport HTTP security: all tests passed
+build/security/test_transport_cache_alloc_failure
+Running transport cache security
+  PASS retired upload is unregistered
+  PASS retained bytes survive release
+  PASS all permission classes retire
+  PASS resize and shrink cache lifetime
+  PASS pending published retired budget
+  PASS RO upload preserves snapshot
+  PASS permission publication revokes staging
+  PASS uploaded staging consumed once
+  PASS empty upload and replacement
+  PASS concurrent retirement and lookup
+  PASS allocation failure releases budget
+transport cache security: all tests passed

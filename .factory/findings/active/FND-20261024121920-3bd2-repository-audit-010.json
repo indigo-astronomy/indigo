@@ -1,0 +1,19 @@
+{
+  "title": "Text helper and FITS paths interpret already formatted data again",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "public wrappers indigo_bus.c:2328,2349 format into tmp then hand tmp to another formatted function; new FITS-header path indigo_ccd_driver.c:862 hands writable header value directly as init_text_item format. Header length<=58 check does not alter format semantics. Public snoop text helpers indigo_agent.c:79-82,97-100 and server service text initialization also use data as format. Use raw setters after initial formatting; tests ordinary percent-bearing data. Active registry dedup found no existing text-reformat record; legacyprintf016 concerns returned length and is distinct. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-10). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-010; core-report.md alias CORE-10; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-010"
+}

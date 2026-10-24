@@ -1,0 +1,218 @@
+[
+  {
+    "array": "main_elp1",
+    "macro": "ELP1_SIZE",
+    "declared": 1023,
+    "entries": 1023
+  },
+  {
+    "array": "main_elp2",
+    "macro": "ELP2_SIZE",
+    "declared": 918,
+    "entries": 918
+  },
+  {
+    "array": "main_elp3",
+    "macro": "ELP3_SIZE",
+    "declared": 704,
+    "entries": 704
+  },
+  {
+    "array": "earth_pert_elp4",
+    "macro": "ELP4_SIZE",
+    "declared": 347,
+    "entries": 347
+  },
+  {
+    "array": "earth_pert_elp5",
+    "macro": "ELP5_SIZE",
+    "declared": 316,
+    "entries": 316
+  },
+  {
+    "array": "earth_pert_elp6",
+    "macro": "ELP6_SIZE",
+    "declared": 237,
+    "entries": 237
+  },
+  {
+    "array": "earth_pert_elp7",
+    "macro": "ELP7_SIZE",
+    "declared": 14,
+    "entries": 14
+  },
+  {
+    "array": "earth_pert_elp8",
+    "macro": "ELP8_SIZE",
+    "declared": 11,
+    "entries": 11
+  },
+  {
+    "array": "earth_pert_elp9",
+    "macro": "ELP9_SIZE",
+    "declared": 8,
+    "entries": 8
+  },
+  {
+    "array": "plan_pert_elp10",
+    "macro": "ELP10_SIZE",
+    "declared": 14328,
+    "entries": 14328
+  },
+  {
+    "array": "plan_pert_elp11",
+    "macro": "ELP11_SIZE",
+    "declared": 5233,
+    "entries": 5233
+  },
+  {
+    "array": "plan_pert_elp12",
+    "macro": "ELP12_SIZE",
+    "declared": 6631,
+    "entries": 6631
+  },
+  {
+    "array": "plan_pert_elp13",
+    "macro": "ELP13_SIZE",
+    "declared": 4384,
+    "entries": 4384
+  },
+  {
+    "array": "plan_pert_elp14",
+    "macro": "ELP14_SIZE",
+    "declared": 833,
+    "entries": 833
+  },
+  {
+    "array": "plan_pert_elp15",
+    "macro": "ELP15_SIZE",
+    "declared": 1715,
+    "entries": 1715
+  },
+  {
+    "array": "plan_pert_elp16",
+    "macro": "ELP16_SIZE",
+    "declared": 170,
+    "entries": 170
+  },
+  {
+    "array": "plan_pert_elp17",
+    "macro": "ELP17_SIZE",
+    "declared": 150,
+    "entries": 150
+  },
+  {
+    "array": "plan_pert_elp18",
+    "macro": "ELP18_SIZE",
+    "declared": 114,
+    "entries": 114
+  },
+  {
+    "array": "plan_pert_elp19",
+    "macro": "ELP19_SIZE",
+    "declared": 226,
+    "entries": 226
+  },
+  {
+    "array": "plan_pert_elp20",
+    "macro": "ELP20_SIZE",
+    "declared": 188,
+    "entries": 188
+  },
+  {
+    "array": "plan_pert_elp21",
+    "macro": "ELP21_SIZE",
+    "declared": 169,
+    "entries": 169
+  },
+  {
+    "array": "tidal_effects_elp22",
+    "macro": "ELP22_SIZE",
+    "declared": 3,
+    "entries": 3
+  },
+  {
+    "array": "tidal_effects_elp23",
+    "macro": "ELP23_SIZE",
+    "declared": 2,
+    "entries": 2
+  },
+  {
+    "array": "tidal_effects_elp24",
+    "macro": "ELP24_SIZE",
+    "declared": 2,
+    "entries": 2
+  },
+  {
+    "array": "tidal_effects_elp25",
+    "macro": "ELP25_SIZE",
+    "declared": 6,
+    "entries": 6
+  },
+  {
+    "array": "tidal_effects_elp26",
+    "macro": "ELP26_SIZE",
+    "declared": 4,
+    "entries": 4
+  },
+  {
+    "array": "tidal_effects_elp27",
+    "macro": "ELP27_SIZE",
+    "declared": 5,
+    "entries": 5
+  },
+  {
+    "array": "moon_pert_elp28",
+    "macro": "ELP28_SIZE",
+    "declared": 20,
+    "entries": 20
+  },
+  {
+    "array": "moon_pert_elp29",
+    "macro": "ELP29_SIZE",
+    "declared": 12,
+    "entries": 12
+  },
+  {
+    "array": "moon_pert_elp30",
+    "macro": "ELP30_SIZE",
+    "declared": 14,
+    "entries": 14
+  },
+  {
+    "array": "rel_pert_elp31",
+    "macro": "ELP31_SIZE",
+    "declared": 11,
+    "entries": 11
+  },
+  {
+    "array": "rel_pert_elp32",
+    "macro": "ELP32_SIZE",
+    "declared": 4,
+    "entries": 4
+  },
+  {
+    "array": "rel_pert_elp33",
+    "macro": "ELP33_SIZE",
+    "declared": 10,
+    "entries": 10
+  },
+  {
+    "array": "plan_sol_pert_elp34",
+    "macro": "ELP34_SIZE",
+    "declared": 28,
+    "entries": 28
+  },
+  {
+    "array": "plan_sol_pert_elp35",
+    "macro": "ELP35_SIZE",
+    "declared": 13,
+    "entries": 13
+  },
+  {
+    "array": "plan_sol_pert_elp36",
+    "macro": "ELP36_SIZE",
+    "declared": 19,
+    "entries": 19
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "static_driver_count_all_conditional_rows": 140,
+  "capacity": 256,
+  "duplicate_symbols": [],
+  "missing_literal_includes": [
+    "focuser_wemacro_bt/indigo_focuser_wemacro_bt.h",
+    "focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.h",
+    "ccd_gphoto2/indigo_ccd_gphoto2.h"
+  ],
+  "constellation_lines": 118,
+  "line_zero_sentinels_ok": true,
+  "missing_hips": [],
+  "conservative_coordinate_bytes_upper": 24108,
+  "buffer_capacity": 1048576
+}

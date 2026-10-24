@@ -1,0 +1,285 @@
+[
+  {
+    "path": "indigo_libs/indigo/indigo_agent.h",
+    "extern_declarations": 4,
+    "defines": 6,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_align.h",
+    "extern_declarations": 36,
+    "defines": 13,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_ao_driver.h",
+    "extern_declarations": 4,
+    "defines": 16,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_aux_driver.h",
+    "extern_declarations": 6,
+    "defines": 6,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_avi.h",
+    "extern_declarations": 3,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_base64.h",
+    "extern_declarations": 3,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_bus.h",
+    "extern_declarations": 141,
+    "defines": 28,
+    "inline_functions": [
+      "static inline void *indigo_safe_malloc(size_t size) {",
+      "static inline void* indigo_safe_malloc_copy(size_t size, void* from) {",
+      "static inline void *indigo_safe_realloc(void *pointer, size_t size) {",
+      "static inline void *indigo_safe_realloc_copy(void *pointer, size_t size, void *from) {",
+      "static inline void indigo_safe_free(void *pointer) {",
+      "static inline char *indigo_safe_strncpy(char *dst, const char *src, size_t size) {"
+    ]
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_ccd_driver.h",
+    "extern_declarations": 19,
+    "defines": 124,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_client.h",
+    "extern_declarations": 16,
+    "defines": 7,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_client_xml.h",
+    "extern_declarations": 2,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_config.h",
+    "extern_declarations": 2,
+    "defines": 22,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_dome_azimuth.h",
+    "extern_declarations": 3,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_dome_driver.h",
+    "extern_declarations": 4,
+    "defines": 59,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_driver.h",
+    "extern_declarations": 39,
+    "defines": 65,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_driver_json.h",
+    "extern_declarations": 2,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_driver_xml.h",
+    "extern_declarations": 2,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_dslr_raw.h",
+    "extern_declarations": 2,
+    "defines": 5,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_filter.h",
+    "extern_declarations": 15,
+    "defines": 70,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_fits.h",
+    "extern_declarations": 1,
+    "defines": 5,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_focuser_driver.h",
+    "extern_declarations": 4,
+    "defines": 38,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_gp_guider.h",
+    "extern_declarations": 16,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_gps_driver.h",
+    "extern_declarations": 4,
+    "defines": 28,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_guider_driver.h",
+    "extern_declarations": 4,
+    "defines": 16,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_io.h",
+    "extern_declarations": 17,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_json.h",
+    "extern_declarations": 6,
+    "defines": 6,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_md5.h",
+    "extern_declarations": 3,
+    "defines": 5,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_mount_driver.h",
+    "extern_declarations": 20,
+    "defines": 111,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_platesolver.h",
+    "extern_declarations": 9,
+    "defines": 98,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_polaralign_driver.h",
+    "extern_declarations": 4,
+    "defines": 27,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_polynomial_fit.h",
+    "extern_declarations": 6,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_raw_utils.h",
+    "extern_declarations": 33,
+    "defines": 11,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_rotator_driver.h",
+    "extern_declarations": 8,
+    "defines": 30,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_ser.h",
+    "extern_declarations": 3,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_server_tcp.h",
+    "extern_declarations": 13,
+    "defines": 6,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_service_discovery.h",
+    "extern_declarations": 3,
+    "defines": 6,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_session.h",
+    "extern_declarations": 1,
+    "defines": 1,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_stretch.h",
+    "extern_declarations": 32,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_tiff.h",
+    "extern_declarations": 5,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_timer.h",
+    "extern_declarations": 19,
+    "defines": 9,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_token.h",
+    "extern_declarations": 10,
+    "defines": 5,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_uni_io.h",
+    "extern_declarations": 71,
+    "defines": 31,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_usb_utils.h",
+    "extern_declarations": 4,
+    "defines": 8,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_usbserial_utils.h",
+    "extern_declarations": 4,
+    "defines": 8,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_version.h",
+    "extern_declarations": 4,
+    "defines": 4,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_wheel_driver.h",
+    "extern_declarations": 4,
+    "defines": 13,
+    "inline_functions": []
+  },
+  {
+    "path": "indigo_libs/indigo/indigo_xml.h",
+    "extern_declarations": 11,
+    "defines": 6,
+    "inline_functions": []
+  }
+]

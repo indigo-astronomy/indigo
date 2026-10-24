@@ -1,0 +1,19 @@
+{
+  "title": "Pentax response lengths control stack allocation and unbounded fixed-offset decode",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Severity medium; confidence high; functional/security input-boundary finding. indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:551-568,582-596,605-613,621-655 obtain a uint32 length from camera readiness, allocate uint8_t buffer[length], pass length to the uint16 pentax_read argument at503, and decode identity/firmware/full-state offsets without a minimum payload check. Oversized replies can exhaust the stack; short or length-truncated transfers can leave the subsequent fixed offsets outside valid input. The SCSI helper399-447 also does not require an exact data-stage count before accepting CSW success. Distinct from active020 and021 (open/readiness). Minimal fix: bounded response storage, exact transfer count, reject unsupported lengths before allocation/narrowing, validate all model-state offsets against received bytes; fake USB short/large status regressions. Source-only evidence, no adversarial fixture or reproduction executed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-9). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-024; driver-ac-report.md alias AC-9; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": null,
+  "id": "FND-20261024121920-3bd2-repository-audit-024"
+}

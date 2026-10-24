@@ -2,8 +2,8 @@
   "title": "Motion completion lacks an overall timeout in several wheels/mounts",
   "category": "functional",
   "severity": "medium",
-  "summary": "`wheel_quantum/indigo_wheel_quantum.driver:36-40` repeatedly reads valid `P` positions until the requested slot; a controller continuing to report another slot never lets this synchronous handler return. Individual serial read timeout does not bound a stream of valid replies, so disconnect is queued behind it. Related asynchronous endless-BUSY shapes occur in `wheel_trutek:77-80` (slot0), `wheel_xagyl:99-102` (wrong slot), `wheel_asi:155-156` and calibration175-176 (`pos == -1`), `wheel_playerone:149-155` (the30-poll bound applies only to initial target0, not ordinary motion), `mount_pmc8:620-622` (moving park rates), and `mount_temma:297-301` (GOTO status s1; park already has a deadline). Remediation: use monotonic operation deadlines and bounded finalizers, retain last measured position and requested target, publish ALERT on expiry, and perform protocol-supported stop/recovery. Characterize stationary/wrong-target/endless-moving replies plus queued abort/disconnect. Bounded transport transactions alone are not whole-operation timeouts.",
-  "evidence": "driver-b-review.md section B-02; exact current source paths and contract evidence in that section.",
+  "summary": "`wheel_quantum/indigo_wheel_quantum.driver:36-40` repeatedly reads valid `P` positions until the requested slot; a controller continuing to report another slot never lets this synchronous handler return. Individual serial read timeout does not bound a stream of valid replies, so disconnect is queued behind it. Related asynchronous endless-BUSY shapes occur in `wheel_trutek:77-80` (slot0), `wheel_xagyl:99-102` (wrong slot), `wheel_asi:155-156` and calibration175-176 (`pos == -1`), `wheel_playerone:149-155` (the30-poll bound applies only to initial target0, not ordinary motion), `mount_pmc8:620-622` (moving park rates), and `mount_temma:297-301` (GOTO status s1; park already has a deadline). Remediation: use monotonic operation deadlines and bounded finalizers, retain last measured position and requested target, publish ALERT on expiry, and perform protocol-supported stop/recovery. Characterize stationary/wrong-target/endless-moving replies plus queued abort/disconnect. Bounded transport transactions alone are not whole-operation timeouts. Additional current paths: nfocus138-152, optec208-211 and nexstar1030-1033 requeue valid in-progress replies without an overall deadline; bounded polls keep abort serviceable but do not bound completion. Next: include these drivers in deadline and recovery follow-up.",
+  "evidence": "driver-b-review.md section B-02; exact current source paths and contract evidence in that section.; current reconciliation: 20261024121920-3bd2-repository-audit/reconciliation.md",
   "status": "open",
   "owner": "coordinator",
   "blocking": false,
@@ -11,6 +11,11 @@
     {
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-b-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "reconciliation.md",
       "revision": null
     }
   ],

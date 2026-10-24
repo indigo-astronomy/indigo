@@ -1,0 +1,296 @@
+{
+  "version": 2,
+  "task": "20261024121920-3bd2-repository-audit",
+  "scope": [
+    ".factory/project.md",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-*.json",
+    ".factory/findings/active/FND-000040.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-022.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-024.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-035.json",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/completions/20261024121920-3bd2-repository-audit.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024121920-3bd2-repository-audit.json": [
+      "100644",
+      "blob",
+      "ea1aefd0a604d15a3f0b7464120e27f081a58ab4"
+    ],
+    ".factory/findings/active/FND-000040.json": [
+      "100644",
+      "blob",
+      "e41bedcbf08d8ef6bc44f13b2566f7b3dafa9e46"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-022.json": [
+      "100644",
+      "blob",
+      "95ca483583362f33a6bf323f6af2ff136806f3a5"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-024.json": [
+      "100644",
+      "blob",
+      "3256dc40d77270e2d3d9a119f168ff1ff95f543d"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-035.json": [
+      "100644",
+      "blob",
+      "62c3ca8a9ff63e1d948646b5dd40af6db46d9b68"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "93497a5ba7ec9c9dd69c60699d9f9178cdee0973"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "a7066768c1d01d8443a6d39217a75b1c2f0ac0b2"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-003.json": [
+      "100644",
+      "blob",
+      "d864eb38833a3f4bd269f10383295b06872cb184"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-004.json": [
+      "100644",
+      "blob",
+      "02d0100f70a34b2294536a64db51bd6d0848f9ee"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-005.json": [
+      "100644",
+      "blob",
+      "3121879b235cf41cc6fbb208c630af1651efe1d4"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-006.json": [
+      "100644",
+      "blob",
+      "5a705224b3728c4b2e20516e4faef12540a898db"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-007.json": [
+      "100644",
+      "blob",
+      "838ed5f90ed18fde653fc6ad21b17c080c0699ec"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-008.json": [
+      "100644",
+      "blob",
+      "945d1ef5f1ca08c9553cf5219dbc6f0bb9d159d2"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-009.json": [
+      "100644",
+      "blob",
+      "31ed06ec3f50995184ee272acab151a94f884dfe"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-010.json": [
+      "100644",
+      "blob",
+      "4618102034be42b2696647adcc98261314429212"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "bd2bcf036c178bd133c9853f3e45d799fcffe972"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-012.json": [
+      "100644",
+      "blob",
+      "6457da8ee36e55b3e5d0f686d3a85ef343d49c25"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-013.json": [
+      "100644",
+      "blob",
+      "9c54d9581e482bb2d7e0921d73293ac7377eaeaa"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-014.json": [
+      "100644",
+      "blob",
+      "d4a320ae7f7a5c3703535a17e84eae40e730647c"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-015.json": [
+      "100644",
+      "blob",
+      "c36c8c463e6a319cd38c0eb338ebb6dbce2b004a"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-016.json": [
+      "100644",
+      "blob",
+      "10b2734bca378ced4b12ec9e4cf0cda3aaee3935"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-017.json": [
+      "100644",
+      "blob",
+      "775b6967d090cf952500df1e94121679513dfa53"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-018.json": [
+      "100644",
+      "blob",
+      "ff01514eeb0334fa7b4adc9bd4545b9c4d5d3d7e"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-019.json": [
+      "100644",
+      "blob",
+      "15664bae735670d56dd0b82fe2d14562d07edca3"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-020.json": [
+      "100644",
+      "blob",
+      "419bc24cd3085bcb466dc993c16b22febd22863c"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-021.json": [
+      "100644",
+      "blob",
+      "8850f735d58984da7732a6b904f0bbea7c03e5eb"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-022.json": [
+      "100644",
+      "blob",
+      "ddf5d84aa1f569067dece91c9c6ddcac88511c9e"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-023.json": [
+      "100644",
+      "blob",
+      "1e9ae90417ec691bb4faed7ee35540e1652c27a1"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-024.json": [
+      "100644",
+      "blob",
+      "8b1f36f7d519e7afeb269959e0322d410e87ff64"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-025.json": [
+      "100644",
+      "blob",
+      "036fbbbb3e1bd6490815082633ca6cfaf5cff808"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-026.json": [
+      "100644",
+      "blob",
+      "f8ede9e9ecb5a87dbafd5070672f03c29d41d252"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-027.json": [
+      "100644",
+      "blob",
+      "af8879e4e6e5a25d9336fd84ba9d6d03c27a104d"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-028.json": [
+      "100644",
+      "blob",
+      "4e3f41c175e23999c177043c3c9df9731a7e76d8"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-029.json": [
+      "100644",
+      "blob",
+      "93486e325c74332dca71b39dfa63ee74763bb32a"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-030.json": [
+      "100644",
+      "blob",
+      "30d9076b92da63b8186285dba3ee7d1c685f5a10"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-031.json": [
+      "100644",
+      "blob",
+      "92284ad73dc405e54e93227f419927c98d3c1854"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-032.json": [
+      "100644",
+      "blob",
+      "355cb256e488e45d614b993e140702f51264d50a"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-033.json": [
+      "100644",
+      "blob",
+      "5998e335487a70ddce2f2274d56910e8908606c8"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-034.json": [
+      "100644",
+      "blob",
+      "8a02af895605491320cd41fa7b0372b3272bcaf9"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-035.json": [
+      "100644",
+      "blob",
+      "aecd8055ea02dc721040fc5b2976b82c51ca4a91"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-036.json": [
+      "100644",
+      "blob",
+      "0704b54c12fefd14dd7923803a0ed220ee9c2e53"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-037.json": [
+      "100644",
+      "blob",
+      "ff66862edba9e9944e6a076fd0f5569e284783a0"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-038.json": [
+      "100644",
+      "blob",
+      "b777ab163da397dea6cc7c702066754ecfe16799"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-039.json": [
+      "100644",
+      "blob",
+      "e67eb4e963c093ab770fff167ca055dea68f41af"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-040.json": [
+      "100644",
+      "blob",
+      "9a58d74464e83d7800d59e93b6628d1e69edff8c"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-041.json": [
+      "100644",
+      "blob",
+      "2b9100355fa116d7552c1a3924748e4dc94bc233"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-042.json": [
+      "100644",
+      "blob",
+      "96f705ed0c12f1a93af34cfe057eb9eb52ff7f35"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-043.json": [
+      "100644",
+      "blob",
+      "12c4689375e15550b56ddf812ed19f353f74ab59"
+    ],
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-044.json": [
+      "100644",
+      "blob",
+      "6fadc2dfcbd82d58efa54a8cc28ffa3eb211b999"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "537ecc65c2c29a76792f2e5ad6109497104db40a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "b3ffcf418b5b0c51741bfa5a2442cf7439715d85"
+    ]
+  }
+}
