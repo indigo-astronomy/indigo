@@ -185,6 +185,12 @@ The same CGUSB adapter, connected with another ST4 cable to iEXOS-100 firmware E
 
 An unstable USB link was replaced by the owner; the final read-only stability check passed 480 replies over 55.257 seconds. Successful motion run restored home to within one RA microstep (0.3125 arcsec), tracking off, zero rates and original directions before closing DTR. Earlier failed experiment-script attempts and owner-assisted recovery are retained in [iEXOS verification](../../.factory/tasks/archive/20261024102929-75ee-verify-cgusbst4-iexos/verification.md). This raw hardware comparison does not change driver acceptance-suite counts or measure electrical pulse precision. Mapping remains 0/1/2/3 = N/S/E/W.
 
+## NYX-101 retest with the iEXOS-tested ST4 cable (2026-10-24)
+
+Returning the same adapter and iEXOS-tested cable to NYX-101 firmware 1.32.1 reproduces the reversal at DEC +70, side E: code 0 gives -14.552/-14.545 arcsec and code 1 +14.529/+14.529 arcsec for 2 s. Direct NYX n/s controls have the expected signs (+15.037/+15.030 and -15.054/-15.053), with zero idle DEC motor steps. The original ST4 cable alone therefore cannot explain the NYX/iEXOS difference. NYX ST4 input interpretation/configuration/firmware remains unresolved; no universal driver mapping change follows.
+
+The run restored parked/tracking-off/R6, DEC, side E and target, but the exact RA return assertion detected -80 motor steps versus the initial count. This residual and its disposition are retained in [same-cable verification](../../.factory/tasks/archive/20261024105327-f79c-verify-nyx-same-st4-cable/verification.md), together with the nonzero script exit; no stored park or counters were rewritten. This raw comparison does not change driver acceptance counts or certify optical/electrical pulse timing.
+
 ## Final test summary — numeric protocol repair
 
 - Simulated tests: 7 executed, 7 passed; additional sanitizer variant: 2 executed, 2 passed.
