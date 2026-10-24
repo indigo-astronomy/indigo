@@ -1611,7 +1611,12 @@ var indigo_sequencer = {
 		var agent = this.devices[IMAGER_AGENT];
 		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
 		if (property != null) {
-			this.saved_batch = property.items;
+			this.saved_batch = {};
+			for (var name in property.items) {
+				if (Object.prototype.hasOwnProperty.call(property.items, name)) {
+					this.saved_batch[name] = property.items[name];
+				}
+			}
 			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 		} else {
 			this.failure("Can't save batch");

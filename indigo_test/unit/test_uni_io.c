@@ -566,8 +566,17 @@ static void connection_lost_after_peer_close(void) {
 	close(listener);
 }
 
+static void standard_stream_handles_have_file_descriptors(void) {
+	indigo_uni_handle *handles[] = { indigo_stdin_handle, indigo_stdout_handle, indigo_stderr_handle };
+	for (int i = 0; i < 3; i++) {
+		ASSERT_EQ_INT(INDIGO_FILE_HANDLE, handles[i]->type);
+		ASSERT_EQ_INT(i, handles[i]->fd);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "standard_stream_handles_have_file_descriptors", standard_stream_handles_have_file_descriptors },
 		{ "read_section_accepts_null_ignore_list", read_section_accepts_null_ignore_list },
 		{ "read_section_accepts_null_terminator_list", read_section_accepts_null_terminator_list },
 		{ "read_section_still_ignores_and_terminates", read_section_still_ignores_and_terminates },

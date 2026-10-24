@@ -25,6 +25,7 @@
  */
 
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -423,33 +424,61 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 // Reads the saved alignment points into the model and the alignment properties without publishing them, for the
 // connection, which defines the properties afterwards. Returns false when there is no saved file.
 static bool mount_read_alignment_points(indigo_device *device) {
-	char sexagesimal[128], sexagesimal2[128];
 	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, false, ".alignment");
-	if (handle != NULL) {
-		int count;
-		char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-		indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
-		sscanf(buffer, "%d", &count);
-		MOUNT_CONTEXT->alignment_point_count = count;
-		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
-		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 0;
-		for (int i = 0; i < count; i++) {
-			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-			indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
-			int used;
-			sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", &used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
-			point->used = used;
-			snprintf(name, INDIGO_NAME_SIZE, "%d", i);
-			snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
-			indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
-			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i + 1, name, label, false);
-		}
-		indigo_uni_close(&handle);
-		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
-		return true;
+	if (handle == NULL) {
+		return false;
 	}
-	return false;
+	indigo_alignment_point points[MOUNT_MAX_ALIGNMENT_POINTS];
+	char buffer[1024], *end;
+	long length = indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
+	bool valid = length > 0 && length < sizeof(buffer) - 1;
+	long count = 0;
+	if (valid) {
+		errno = 0;
+		count = strtol(buffer, &end, 10);
+		valid = end != buffer && errno == 0 && count >= 0 && count <= MOUNT_MAX_ALIGNMENT_POINTS;
+		while (isspace((unsigned char)*end)) {
+			end++;
+		}
+		valid = valid && *end == 0;
+	}
+	for (int i = 0; valid && i < count; i++) {
+		indigo_alignment_point *point = points + i;
+		double used, side_of_pier;
+		char extra;
+		length = indigo_uni_read_line(handle, buffer, sizeof(buffer) - 1);
+		valid = length > 0 && length < sizeof(buffer) - 1;
+		if (valid) {
+			valid = sscanf(buffer, "%lg %lg %lg %lg %lg %lg %lg %c", &used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &side_of_pier, &extra) == 7;
+		}
+		if (valid) {
+			valid = (used == 0 || used == 1) && (side_of_pier == MOUNT_SIDE_EAST || side_of_pier == MOUNT_SIDE_WEST) && isfinite(point->ra) && isfinite(point->dec) && isfinite(point->raw_ra) && isfinite(point->raw_dec) && isfinite(point->lst) && point->ra >= 0 && point->ra <= 24 && point->raw_ra >= 0 && point->raw_ra <= 24 && point->dec >= -90 && point->dec <= 90 && point->raw_dec >= -90 && point->raw_dec <= 90 && point->lst >= 0 && point->lst <= 24;
+		}
+		if (valid) {
+			point->used = used != 0;
+			point->side_of_pier = (int)side_of_pier;
+		}
+	}
+	indigo_uni_close(&handle);
+	if (!valid) {
+		INDIGO_DRIVER_ERROR("indigo_mount_driver", "Invalid saved alignment points for %s", device->name);
+		return false;
+	}
+	memcpy(MOUNT_CONTEXT->alignment_points, points, count * sizeof(*points));
+	MOUNT_CONTEXT->alignment_point_count = (int)count;
+	MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = (int)count;
+	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? (int)count + 1 : 0;
+	char sexagesimal[128], sexagesimal2[128], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+	for (int i = 0; i < count; i++) {
+		indigo_alignment_point *point = MOUNT_CONTEXT->alignment_points + i;
+		snprintf(name, INDIGO_NAME_SIZE, "%d", i);
+		snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos_r(point->ra, "%2d:%02d:%02d", sexagesimal, sizeof(sexagesimal)), indigo_dtos_r(point->dec, "%2d:%02d:%02d", sexagesimal2, sizeof(sexagesimal2)), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
+		indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
+		indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i + 1, name, label, false);
+	}
+	MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
+	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
+	return true;
 }
 
 // The properties are defined only while the device is connected, and the number of points can change, so they are

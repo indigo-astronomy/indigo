@@ -1,0 +1,29 @@
+{
+  "title": "Standard unified I/O handles initialize the wrong fields",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261024155149-8381-fix-core-audit-findings",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_uni_io.c:87-89; public handle struct is index,type,fd-union but standard handle positional initializers supply FILE,1,0 / FILE,2,0. stdout is COM descriptor0 and stderrTCP descriptor0; generated standalone mains use stdin/stdout XML adapters. Use designated type/fd/index initialization. Source-only; no stream writes performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-6). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-006; core-report.md alias CORE-6; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024155149-8381-fix-core-audit-findings/findings.md; verification.md: test_uni_io / standard_stream_handles_have_file_descriptors. Designated initialization binds each standard file descriptor to a FILE handle.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024121920-3bd2-repository-audit-006"
+}

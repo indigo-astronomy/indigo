@@ -37,10 +37,10 @@ This document explains how INDIGO drivers, and the framework code they depend on
 | MountSim acceptance | `indigo_test/mountsim/` | MountSim macOS application | no, macOS only |
 | Physical hardware | `indigo_test/hardware/test_<driver>_hw.c` | the real device | no |
 | Benchmarks | `indigo_test/benchmark/` and `-D*_TIMING_BENCHMARK` builds | any | no (`make benchmark`) |
-| Shell compliance scripts | `indigo_tests/*_compliance.sh` | a running `indigo_server`, via `indigo_prop_tool` | no |
+| Shell compliance scripts | `indigo_test/shell_compliance/*_compliance.sh` | a running `indigo_server`, via `indigo_prop_tool` | no |
 | Manual testing | `indigo_server` with drivers, a client or `indigo_prop_tool` | simulator or hardware | no |
 
-`indigo_test/` (singular) contains the automated C suite. `indigo_tests/` (plural) is a separate bash framework described in [End-to-End Tests With indigo_server](#end-to-end-tests-with-indigo_server).
+`indigo_test/` contains the automated C suite. Its `shell_compliance/` subdirectory contains the separate Bash framework described in [End-to-End Tests With indigo_server](#end-to-end-tests-with-indigo_server).
 
 ### Unit tests
 
@@ -347,12 +347,12 @@ indigo_prop_tool get_state "<Device>.CONNECTION"
 
 `-r host[:port]` selects a remote server, `-w OK|BUSY|ALERT|IDLE|ANY` waits for a state, `-t` sets the wait in seconds (default 2), and `-v`/`-vv`/`-vvv` enable logging. Run `indigo_prop_tool -h` for the full list.
 
-### Shell compliance scripts (`indigo_tests/`)
+### Shell compliance scripts (`indigo_test/shell_compliance/`)
 
-`indigo_tests/indigo_test_framework.sh` is a bash library on top of `indigo_prop_tool`, documented in [indigo_tests/INDIGO_TEST_FRAMEWORK.md](../indigo_tests/INDIGO_TEST_FRAMEWORK.md). Class scripts (`ao_`, `filter_wheel_`, `focuser_`, `gps_`, `guider_`, `rotator_compliance.sh`) run against any device on a running server:
+`indigo_test/shell_compliance/indigo_test_framework.sh` is a bash library on top of `indigo_prop_tool`, documented in [indigo_test/shell_compliance/INDIGO_TEST_FRAMEWORK.md](../indigo_test/shell_compliance/INDIGO_TEST_FRAMEWORK.md). Class scripts (`ao_`, `filter_wheel_`, `focuser_`, `gps_`, `guider_`, `rotator_compliance.sh`) run against any device on a running server:
 
 ```sh
-INDIGO_PROP_TOOL=build/bin/indigo_prop_tool indigo_tests/focuser_compliance.sh "Focuser Simulator" localhost:7624
+INDIGO_PROP_TOOL=build/bin/indigo_prop_tool indigo_test/shell_compliance/focuser_compliance.sh "Focuser Simulator" localhost:7624
 ```
 
 They are useful for a quick check of a real device or a server build. They are not part of `make test`, and [DRIVER_TESTING_RULES.md](../indigo_test/DRIVER_TESTING_RULES.md) folds their scenarios into the C suite.
@@ -402,7 +402,7 @@ How the generator itself works is in [DRIVER_GENERATOR_BASICS.md](DRIVER_GENERAT
 * **Hand-typed hardware records do not match detected names.** Records written before `tools/run_driver_test.py` name the hardware by hand, for example `ASI120MC-S`, while the script records the detected model, `ZWO ASI120MC-S`. The first script run of such hardware adds a line next to the old one instead of replacing it; remove the old line once.
 * **Record timestamps are local to each host.** A run on a host set to UTC and one on a host in another zone are written in different zones, so their order in `## Testing` can be off by the difference.
 * **Older fork loops do not plan in the parent.** About forty suites fork their cases in a loop of their own and do not call `indigo_test_plan()`, so a child that dies before `indigo_run_tests()` is missing from the recorded total. The run is still recorded as failed through the exit code.
-* **`indigo_server` path untested automatically.** Network protocol, BLOB transfer and server-side driver loading are covered by unit parser tests and manual or `indigo_tests/` scripts, not by the default suite. The opt-in `test-detach-abort-network` runs the server's TCP listener and XML adapter in process, but only for connection loss during manual motion; it does not start the `indigo_server` executable.
+* **`indigo_server` path untested automatically.** Network protocol, BLOB transfer and server-side driver loading are covered by unit parser tests and manual or `indigo_test/shell_compliance/` scripts, not by the default suite. The opt-in `test-detach-abort-network` runs the server's TCP listener and XML adapter in process, but only for connection loss during manual motion; it does not start the `indigo_server` executable.
 
 ---
 
@@ -416,4 +416,4 @@ How the generator itself works is in [DRIVER_GENERATOR_BASICS.md](DRIVER_GENERAT
 * [Makefiles](MAKEFILES.md)
 * [Server and Drivers Guide](INDIGO_SERVER_AND_DRIVERS_GUIDE.md)
 * [indigo_test/AGENTS.md](../indigo_test/AGENTS.md), [indigo_test/DRIVER_TESTING_RULES.md](../indigo_test/DRIVER_TESTING_RULES.md), [indigo_test/mountsim/USAGE.md](../indigo_test/mountsim/USAGE.md)
-* [indigo_tests/INDIGO_TEST_FRAMEWORK.md](../indigo_tests/INDIGO_TEST_FRAMEWORK.md)
+* [indigo_test/shell_compliance/INDIGO_TEST_FRAMEWORK.md](../indigo_test/shell_compliance/INDIGO_TEST_FRAMEWORK.md)

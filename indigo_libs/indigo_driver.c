@@ -1692,7 +1692,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(PROFILE_PROPERTY, property, false);
 		for (int i = 0; i < PROFILE_PROPERTY->count; i++) {
 			if (PROFILE_PROPERTY->items[i].sw.value) {
-				if (test_config_file(device->name, 0, ".config")) {
+				if (test_config_file(device->name, i, ".config")) {
 					if (CONFIG_PROPERTY->count != 3) {
 						indigo_delete_property(device, CONFIG_PROPERTY, NULL);
 						CONFIG_PROPERTY->count = 3;

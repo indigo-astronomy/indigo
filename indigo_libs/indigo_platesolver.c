@@ -279,20 +279,25 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			indigo_send_message(device, ALERT_PROPERTY, "Imager Agent is busy");
 			return false;
 		}
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state = INDIGO_IDLE_STATE;
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME, AGENT_IMAGER_CAPTURE_ITEM_NAME, exposure);
-		for (int i = 0; i < 6000; i++) { // wait 60s to become BUSY or ALERT
+		for (int i = 0; i < 6000; i++) { // wait 60s for capture acceptance or completion
 			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
 				abort_exposure(device);
 				return false;
 			}
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_BUSY_STATE || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_ALERT_STATE) {
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state != INDIGO_IDLE_STATE) {
 				break;
 			}
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_ALERT_STATE) {
 			indigo_send_message(device, ALERT_PROPERTY, "Capture on Imager Agent failed");
+			return false;
+		}
+		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state != INDIGO_BUSY_STATE && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state != INDIGO_OK_STATE) {
+			indigo_send_message(device, ALERT_PROPERTY, "Capture on Imager Agent was not accepted before timeout");
 			return false;
 		}
 		indigo_send_message(device, IDLE_PROPERTY, "Capture started");
@@ -305,6 +310,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			return false;
 		}
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, exposure);
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state = INDIGO_IDLE_STATE;
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_PREVIEW_1_ITEM_NAME, true);
 		for (int i = 0; i < 100; i++) { // wait 1s to become BUSY or ALERT
 			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
@@ -312,13 +318,17 @@ static bool start_exposure(indigo_device *device, double exposure) {
 				abort_exposure(device);
 				return false;
 			}
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state == INDIGO_BUSY_STATE || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state == INDIGO_ALERT_STATE) {
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state != INDIGO_IDLE_STATE) {
 				break;
 			}
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state == INDIGO_ALERT_STATE) {
 			indigo_send_message(device, ALERT_PROPERTY, "Capture on Guider Agent failed");
+			return false;
+		}
+		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state != INDIGO_BUSY_STATE && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state != INDIGO_OK_STATE) {
+			indigo_send_message(device, ALERT_PROPERTY, "Capture on Guider Agent was not accepted before timeout");
 			return false;
 		}
 		indigo_send_message(device, IDLE_PROPERTY, "Capture started");
@@ -682,9 +692,16 @@ static void solve(indigo_platesolver_task *task) {
 				reference2 = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2;
 				reference3 = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3;
 			}
-			indigo_polar_alignment_error_3p(&reference1, &reference2, &reference3, &AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value, &AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value, &INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error, &INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error);
-			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value *= RAD2DEG;
-			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value *= RAD2DEG;
+			double drift2, drift3;
+			if (!indigo_polar_alignment_error_3p(&reference1, &reference2, &reference3, &drift2, &drift3, &INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error, &INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error)) {
+				AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_IDLE;
+				indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+				process_failed(device, "Polar alignment reference positions do not define a valid alignment");
+				return;
+			}
+			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value = drift2 * RAD2DEG;
+			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value = drift3 * RAD2DEG;
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error = sqrt(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error);
 			indigo_debug("Initial polar error: %.2f degrees", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error * 60);
 			// here we do not care about the refraction since we work with real coordinates

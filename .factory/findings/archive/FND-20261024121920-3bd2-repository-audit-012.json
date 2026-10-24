@@ -1,0 +1,29 @@
+{
+  "title": "RGB48 endian conversion swaps only one channel worth of samples",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261024155149-8381-fix-core-audit-findings",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_ccd_driver.c:1829-1834: for48bit input and little_endianfalse, swaps size=widthheight uint16 samples while RGB48 has3size. Remaining two thirds byte-reversed before output/preview conversion. Iterate channelssamples, ordinary multichannel endian tests. No active endian record located; source-only. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-12). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-012; core-report.md alias CORE-12; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261024155149-8381-fix-core-audit-findings/findings.md; verification.md: test_rgb48. Both RGB48 pixels retain all six expected 16-bit samples after full processing.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024121920-3bd2-repository-audit-012"
+}

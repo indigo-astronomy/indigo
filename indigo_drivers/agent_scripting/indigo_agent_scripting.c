@@ -25,7 +25,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x0300000D
+#define DRIVER_VERSION 0x0300000E
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -76,6 +76,11 @@ static char boot_js[] = {
 	0
 };
 
+typedef struct property_snapshot {
+	indigo_property *property;
+	struct property_snapshot *next;
+} property_snapshot;
+
 typedef struct {
 	indigo_property *agent_run_script_property;
 	indigo_property *agent_add_script_property;
@@ -88,6 +93,8 @@ typedef struct {
 	indigo_timer *timers[MAX_TIMER_COUNT];
 	duk_context *ctx;
 	pthread_mutex_t mutex;
+	pthread_mutex_t snapshot_mutex;
+	property_snapshot *snapshots;
 } scripting_agent_private_data;
 
 static scripting_agent_private_data *private_data = NULL;
@@ -452,15 +459,41 @@ static duk_ret_t change_switch_property(duk_context *ctx) {
 
 //function indigo_define_text_property(device_name, property_name, property_group, property_label, items, item_defs, state, perm, message)
 
+static property_snapshot *copy_property_snapshot(indigo_property *property) {
+	property_snapshot *snapshot = indigo_safe_malloc(sizeof(property_snapshot));
+	snapshot->property = indigo_copy_property(NULL, property);
+	pthread_mutex_lock(&PRIVATE_DATA->snapshot_mutex);
+	snapshot->next = PRIVATE_DATA->snapshots;
+	PRIVATE_DATA->snapshots = snapshot;
+	pthread_mutex_unlock(&PRIVATE_DATA->snapshot_mutex);
+	return snapshot;
+}
+
+static indigo_property *take_property_snapshot(void *data) {
+	property_snapshot *snapshot = data;
+	pthread_mutex_lock(&PRIVATE_DATA->snapshot_mutex);
+	property_snapshot **entry = &PRIVATE_DATA->snapshots;
+	while (*entry != snapshot) {
+		entry = &(*entry)->next;
+	}
+	*entry = snapshot->next;
+	pthread_mutex_unlock(&PRIVATE_DATA->snapshot_mutex);
+	indigo_property *property = snapshot->property;
+	free(snapshot);
+	return property;
+}
+
 static void define_property_handler(indigo_device *device, void *data) {
-	indigo_property *property = (indigo_property *)data;
+	indigo_property *property = take_property_snapshot(data);
 	indigo_define_property(device, property, NULL);
+	indigo_release_property(property);
 }
 
 static void redefine_property_handler(indigo_device *device, void *data) {
-	indigo_property *property = (indigo_property *)data;
+	indigo_property *property = take_property_snapshot(data);
 	indigo_delete_property(device, property, NULL);
 	indigo_define_property(device, property, NULL);
+	indigo_release_property(property);
 }
 
 static duk_ret_t _define_text_property(duk_context *ctx, bool redefine) {
@@ -496,7 +529,7 @@ static duk_ret_t _define_text_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -561,7 +594,7 @@ static duk_ret_t _define_number_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -615,7 +648,7 @@ static duk_ret_t _define_switch_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -667,7 +700,7 @@ static duk_ret_t _define_light_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -688,12 +721,13 @@ static duk_ret_t redefine_light_property(duk_context *ctx) {
 //function indigo_update_text_property(device_name, property_name, items, state, message)
 
 static void update_property_handler(indigo_device *device, void *data) {
-	indigo_property *property = (indigo_property *)data;
+	indigo_property *property = take_property_snapshot(data);
 	for (int i = 0; i < property->count; i++) {
 		property->items[i].do_update = true;
 	}
 	property->do_update = true;
 	indigo_update_property(device, property, NULL);
+	indigo_release_property(property);
 }
 
 static duk_ret_t update_text_property(duk_context *ctx) {
@@ -717,7 +751,7 @@ static duk_ret_t update_text_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -749,7 +783,7 @@ static duk_ret_t update_number_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -781,7 +815,7 @@ static duk_ret_t update_switch_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -813,7 +847,7 @@ static duk_ret_t update_light_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, copy_property_snapshot(tmp));
 			if (message) {
 				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
@@ -1131,6 +1165,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
     pthread_mutexattr_init(&Attr);
     pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&PRIVATE_DATA->mutex, &Attr);
+	pthread_mutex_init(&PRIVATE_DATA->snapshot_mutex, NULL);
 		if ((PRIVATE_DATA->ctx = duk_create_heap_default())) {
       pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			duk_push_c_function(PRIVATE_DATA->ctx, error_message, 1);
@@ -1546,7 +1581,12 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	}
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	return indigo_device_detach(device);
+	indigo_result result = indigo_device_detach(device);
+	while (PRIVATE_DATA->snapshots) {
+		indigo_release_property(take_property_snapshot(PRIVATE_DATA->snapshots));
+	}
+	pthread_mutex_destroy(&PRIVATE_DATA->snapshot_mutex);
+	return result;
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation

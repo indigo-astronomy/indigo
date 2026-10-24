@@ -1,0 +1,34 @@
+{
+  "INDIGO_TEST_FRAMEWORK.md": {
+    "sha256": "e3d893796c02f3518e65be2d2c8e49a407eba092cbbf6d3d5947e762a921af85",
+    "mode": "0o644"
+  },
+  "gps_compliance.sh": {
+    "sha256": "c0f479eaf367606a265f4743923ea830b0379869f94a41d7d2cd5e3a367c87eb",
+    "mode": "0o755"
+  },
+  "indigo_test_framework.sh": {
+    "sha256": "4d50df2ea3e011d9e1df9d6a865f5234249d93b48a2fb59b5a3183dd8a6bb7d7",
+    "mode": "0o755"
+  },
+  "rotator_compliance.sh": {
+    "sha256": "448c36375344f2635debed7657f7f97843801aec2d6297c586fe1497bbeaac4a",
+    "mode": "0o755"
+  },
+  "guider_compliance.sh": {
+    "sha256": "27a0a2b38778ce3cb44fbae967d87624ad8d62d781f20439a23a602c126a5719",
+    "mode": "0o755"
+  },
+  "ao_compliance.sh": {
+    "sha256": "8478189bee8db2d9cf542411922567e584c2316aa37eb88f410a16a428ac45bf",
+    "mode": "0o755"
+  },
+  "filter_wheel_compliance.sh": {
+    "sha256": "a930b6bfba1c899c066a1119bae55e56c08336a79ce04c02737ca51d542f23c3",
+    "mode": "0o755"
+  },
+  "focuser_compliance.sh": {
+    "sha256": "e4d4812d48176a61eb299e881c3f26905573fb2f5e62671ec297c15a83167a9a",
+    "mode": "0o755"
+  }
+}

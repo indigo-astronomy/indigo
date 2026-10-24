@@ -1,0 +1,20 @@
+{
+  "completed_tasks": 61,
+  "completed_non_audit_tasks_since_full_review": 9,
+  "uncovered_work_tasks": [
+    "20261024120152-52cb-primaluce-alto-driver",
+    "20261024135437-8e0c-fix-property-copy",
+    "20261024150354-a911-fix-usb-serial-gps-findings",
+    "20261024161128-3861-giotto-request-versus-poll",
+    "20261024155149-8381-fix-core-audit-findings",
+    "20261024163549-1b30-alto-request-versus-poll",
+    "20261024163448-86d4-fix-imager-test-cleanup",
+    "20261024173043-e5df-move-shell-compliance-tests",
+    "20261024180111-5753-fix-scripting-findings"
+  ],
+  "last_full_review_task": "20261024121920-3bd2-repository-audit",
+  "last_full_review_date": "2026-10-24",
+  "last_full_review_revision": "9d45bc8ccadaf0c3aab6c454c38429fec21d1699",
+  "last_task_review_task": "20261024180111-5753-fix-scripting-findings",
+  "full_review_due": false
+}

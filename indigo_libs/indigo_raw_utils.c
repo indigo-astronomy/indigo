@@ -1235,14 +1235,15 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 }
 
 indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest) {
-	if (include_width <= 0) {
+	if (include_width < 2 * BG_RADIUS + 2) {
 		return INDIGO_FAILED;
 	}
-	if (include_height <= 0) {
+	if (include_height < 2 * BG_RADIUS + 2) {
 		return INDIGO_FAILED;
 	}
-	if ((data == NULL) || (digest == NULL))
+	if (data == NULL || digest == NULL || include_left < 0 || include_top < 0 || include_width > width || include_height > height || include_left > width - include_width || include_top > height - include_height) {
 		return INDIGO_FAILED;
+	}
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
@@ -1671,6 +1672,9 @@ static double indigo_stddev_8(uint8_t set[], const int width, const int height, 
 			real_count++;
 		}
 	}
+	if (real_count == 0) {
+		return 0;
+	}
 	m = sum / real_count;
 
 	const double threshold = (SATURATION_8 - m) * 0.3 + m;
@@ -1713,6 +1717,9 @@ static double indigo_stddev_masked_8(uint8_t set[], const uint8_t mask[], const 
 				real_count++;
 			}
 		}
+	}
+	if (real_count == 0) {
+		return 0;
 	}
 	m = sum / real_count;
 
@@ -1762,6 +1769,9 @@ static double indigo_stddev_masked_rgb24(uint8_t set[], const uint8_t mask[], co
 				real_count++;
 			}
 		}
+	}
+	if (real_count == 0) {
+		return 0;
 	}
 	m = sum / (real_count * 3);
 
@@ -1815,6 +1825,9 @@ static double indigo_stddev_rgb24(uint8_t set[], const int width, const int heig
 			real_count++;
 		}
 	}
+	if (real_count == 0) {
+		return 0;
+	}
 	m = sum / (real_count * 3);
 
 	const double threshold = (SATURATION_8 - m) * 0.3 + m;
@@ -1860,6 +1873,9 @@ static double indigo_stddev_16(uint16_t set[], const int width, const int height
 			real_count++;
 		}
 	}
+	if (real_count == 0) {
+		return 0;
+	}
 	m = sum / real_count;
 
 	const double threshold = (SATURATION_16 - m) * 0.3 + m;
@@ -1902,6 +1918,9 @@ static double indigo_stddev_masked_16(uint16_t set[], const uint8_t mask[], cons
 				real_count++;
 			}
 		}
+	}
+	if (real_count == 0) {
+		return 0;
 	}
 	m = sum / real_count;
 
@@ -1951,6 +1970,9 @@ static double indigo_stddev_masked_rgb48(uint16_t set[], const uint8_t mask[], c
 				real_count++;
 			}
 		}
+	}
+	if (real_count == 0) {
+		return 0;
 	}
 	m = sum / (real_count * 3);
 
@@ -2003,6 +2025,9 @@ static double indigo_stddev_rgb48(uint16_t set[], const int width, const int hei
 			sum += set[i + 2];
 			real_count++;
 		}
+	}
+	if (real_count == 0) {
+		return 0;
 	}
 	m = sum / (real_count * 3);
 

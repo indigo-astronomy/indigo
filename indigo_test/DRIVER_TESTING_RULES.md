@@ -1,6 +1,6 @@
 # Driver Testing Rules
 
-This document is a reference for automated driver compliance tests. It summarizes the default property visibility from the base driver implementations in `../indigo_libs/` and the compliance scenarios from `../indigo_tests/*_compliance.sh` plus the in-process simulator tests in `integration/`.
+This document is a reference for automated driver compliance tests. It summarizes the default property visibility from the base driver implementations in `../indigo_libs/` and the compliance scenarios from `shell_compliance/*_compliance.sh` plus the in-process simulator tests in `integration/`.
 
 Concrete drivers may unhide optional properties, reduce item counts, add driver-specific properties, or expose multiple logical devices. Tests should assert the base contract first, then assert the concrete driver extensions explicitly.
 
@@ -178,7 +178,7 @@ Run with the real driver and SDK/USB transport, using capability discovery to se
 
 ## Wheel Drivers
 
-Source: `../indigo_libs/indigo_wheel_driver.c`; scenarios from `../indigo_tests/filter_wheel_compliance.sh`.
+Source: `../indigo_libs/indigo_wheel_driver.c`; scenarios from `shell_compliance/filter_wheel_compliance.sh`.
 
 Visible before connection:
 
@@ -221,7 +221,7 @@ Discover actual slot count; move to representative slots and verify device posit
 
 ## Focuser Drivers
 
-Source: `../indigo_libs/indigo_focuser_driver.c`; scenarios from `../indigo_tests/focuser_compliance.sh`.
+Source: `../indigo_libs/indigo_focuser_driver.c`; scenarios from `shell_compliance/focuser_compliance.sh`.
 
 Visible before connection:
 
@@ -294,7 +294,7 @@ Use a small valid travel interval: move both directions, perform supported absol
 
 ## Guider Drivers
 
-Source: `../indigo_libs/indigo_guider_driver.c`; scenarios from `../indigo_tests/guider_compliance.sh`.
+Source: `../indigo_libs/indigo_guider_driver.c`; scenarios from `shell_compliance/guider_compliance.sh`.
 
 Visible before connection:
 
@@ -346,7 +346,7 @@ Use the real driver and SDK/transport to send all four directions, overlapping a
 
 ## AO Drivers
 
-Source: `../indigo_libs/indigo_ao_driver.c`; scenarios from `../indigo_tests/ao_compliance.sh`.
+Source: `../indigo_libs/indigo_ao_driver.c`; scenarios from `shell_compliance/ao_compliance.sh`.
 
 Visible before connection:
 
@@ -387,7 +387,7 @@ Connect and send small corrections in all four directions; verify device acknowl
 
 ## GPS Drivers
 
-Source: `../indigo_libs/indigo_gps_driver.c`; scenarios from `../indigo_tests/gps_compliance.sh`.
+Source: `../indigo_libs/indigo_gps_driver.c`; scenarios from `shell_compliance/gps_compliance.sh`.
 
 Visible before connection:
 
@@ -436,7 +436,7 @@ Connect to the available receiver, verify incoming data is reflected in fix stat
 
 ## Rotator Drivers
 
-Source: `../indigo_libs/indigo_rotator_driver.c`; scenarios from `../indigo_tests/rotator_compliance.sh`.
+Source: `../indigo_libs/indigo_rotator_driver.c`; scenarios from `shell_compliance/rotator_compliance.sh`.
 
 Visible before connection:
 

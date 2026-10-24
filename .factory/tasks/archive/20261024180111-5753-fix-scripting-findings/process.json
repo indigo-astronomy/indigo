@@ -1,0 +1,115 @@
+{
+  "version": 2,
+  "task": "20261024180111-5753-fix-scripting-findings",
+  "scope": [
+    "indigo_drivers/agent_scripting/*",
+    "indigo_test/integration/test_agent_scripting.c",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/findings/*/FND-20261024121920-3bd2-repository-audit-035.json",
+    ".factory/findings/*/FND-20261023101753-bc8d-complete-repository-audit-046.json",
+    ".factory/completions/20261024180111-5753-fix-scripting-findings.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scripting"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024180111-5753-fix-scripting-findings.json": [
+      "100644",
+      "blob",
+      "446d8ef7114f180f6360900048c2bd6ac300b29a"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-046.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-035.json": null,
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-046.json": [
+      "100644",
+      "blob",
+      "8a7a2bc7f9000f0c09c8767e8981b8c246ccbb79"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-035.json": [
+      "100644",
+      "blob",
+      "2436aac4e2f8e6d15116fb9a1dae56cacfda266f"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "38db0d3c3e8f41f14ccd8c7d29904455cf311657"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "ea823c3d41c05be5a55e9dc758d45c38f670056d"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "661ee400b654dea9ef4014d2bf95df1e8a2f2358"
+    ],
+    "indigo_drivers/agent_scripting/README.md": [
+      "100644",
+      "blob",
+      "c60358c7cfaf019607deaa7be24131cfd58e0a0a"
+    ],
+    "indigo_drivers/agent_scripting/REFACTOR.md": [
+      "100644",
+      "blob",
+      "0fa1fedf3c29bd51b8e1ec2b14caaecd0c50d564"
+    ],
+    "indigo_drivers/agent_scripting/indigo_agent_scripting.c": [
+      "100644",
+      "blob",
+      "88c0bdb7f572997c964088b5626efdffe32f0515"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "cd5800b08efc446b5616f4b355c937748fb8c8aa"
+    ],
+    "indigo_test/integration/test_agent_scripting.c": [
+      "100644",
+      "blob",
+      "a64bddcc5f0826287401c7ec380e03ffd50d21cd"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "4e96fd937b5c8a4817491e5bde595234b8e684bd"
+    ]
+  }
+}

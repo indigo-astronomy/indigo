@@ -1,0 +1,6 @@
+Definition: 
+Sources:    duktape.c indigo_agent_scripting.c
+Archive:    indigo_agent_scripting.a
+SO library: indigo_agent_scripting.dylib
+duktape.o indigo_agent_scripting.o 
+

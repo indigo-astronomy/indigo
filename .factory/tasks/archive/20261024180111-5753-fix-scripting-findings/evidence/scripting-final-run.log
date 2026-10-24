@@ -1,0 +1,239 @@
++ make -C /Users/polakovic/Development/indigo/indigo_drivers/agent_scripting -f ../../Makefile.drv all
+Definition: 
+Sources:    duktape.c indigo_agent_scripting.c
+Archive:    indigo_agent_scripting.a
+SO library: indigo_agent_scripting.dylib
+duktape.o indigo_agent_scripting.o 
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_agent_scripting.o indigo_agent_scripting.c
+/usr/bin/libtool -static -o /Users/polakovic/Development/indigo/build/drivers/indigo_agent_scripting.a duktape.o indigo_agent_scripting.o
+/usr/bin/clang -shared -o /Users/polakovic/Development/indigo/build/drivers/indigo_agent_scripting.dylib -Wl,-force_load /Users/polakovic/Development/indigo/build/drivers/indigo_agent_scripting.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lindigocat -lusb-1.0
++ make check-lib build/integration/test_agent_scripting build/integration/test_agent_scripting_sequencer
+make: `build/integration/test_agent_scripting' is up to date.
+make: `build/integration/test_agent_scripting_sequencer' is up to date.
++ ./build/integration/test_agent_scripting
+Running Scripting Agent integration
+  PASS schema and lifecycle
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS immediate execution and recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS repeated execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS long script execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS script create rename execute delete
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS empty name recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS duplicate script recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS saved script failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS delete acknowledgement
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS delete unknown script
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS script capacity and reuse
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS configuration long text roundtrip
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load order after reinitialize
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS shutdown during automatic load
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load existing scripts
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-unload execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-unload failure
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS hook defaults and rename
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS invalid rename recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:08:36.498246 Application: Failed to create /tmp/indigo_scripting_test_RPrajb/.indigo/Scripting_Agent.config
+20:08:36.499304 Application: Failed to create /tmp/indigo_scripting_test_RPrajb/.indigo/Scripting_Agent.config
+20:08:36.499470 Application: Failed to create /tmp/indigo_scripting_test_RPrajb/.indigo/Scripting_Agent.config
+  PASS configuration save failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS low-level change bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS enumeration and BLOB enable bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS define update redefine delete bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS queued property snapshots
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS binding defaults and large property
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS cached property capacity and reuse
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS boot.js cache and callbacks
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS boot.js property change helper
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:08:36.607671 Application: indigo_agent_scripting[populate_blob:349]: indigo_populate_http_blob_item() failed
+20:08:36.609107 Application: Failed to create /no/such/scripting-test/blob.bin
+20:08:36.609260 Application: indigo_agent_scripting[save_blob:332]: indigo_save_blob() failed
+  PASS BLOB populate and save bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS conversion and astronomy bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:08:36.766211 Application: indigo_agent_scripting[timer_handler:934]: timer call failed (Error: timer callback failure)
+  PASS timer scheduling cancellation capacity
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS shutdown cancels pending timers
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:08:36.927021 Application: error-binding
+20:08:36.929001 Application: cached property 'Scripting test peer'.PEER_BLOB, state = Ok, perm = RO
+20:08:36.929597 Application:   DATA = [url: 'http://test.invalid/blob', size: 0, format: '.bin', reference: 0x105277620]
+  PASS logging and message bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:08:36.938354 Application: indigo_agent_scripting[agent_update_property:1633]: indigo_on_update_property() call failed (Error: update callback)
+20:08:36.940323 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+20:08:36.940876 Application: indigo_agent_scripting[agent_delete_property:1653]: indigo_on_delete_property() call failed (Error: delete callback)
+20:08:36.941281 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+20:08:36.941708 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+20:08:36.942113 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+20:08:36.942501 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+20:08:36.942875 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+20:08:36.943236 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+20:08:36.943584 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+20:08:36.943929 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+20:08:36.944276 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+20:08:36.944606 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+20:08:36.944941 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+20:08:36.945276 Application: indigo_agent_scripting[agent_enumerate_properties:1285]: indigo_on_enumerate_properties() call failed (Error: enumerate callback)
+20:08:36.945611 Application: indigo_agent_scripting[agent_change_property:1524]: indigo_on_change_property() call failed (Error: change callback)
+20:08:36.945922 Application: indigo_agent_scripting[agent_update_property:1633]: indigo_on_update_property() call failed (Error: update callback)
+20:08:36.946228 Application: indigo_agent_scripting[agent_update_property:1633]: indigo_on_update_property() call failed (Error: update callback)
+  PASS callback exception recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS invalid binding argument recovery
+Scripting Agent integration: all tests passed
+Scripting Agent: 36/36 passed (including cleanup)
++ ./build/integration/test_agent_scripting_sequencer
+Running Sequencer.js integration
+  PASS library inventory and properties
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS published property schema
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS all public constructors
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS focus batch snapshot
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS loop and timing construction
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS nested loop execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS capture accounting and overloads
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS empty sequence execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS evaluate wait and messages
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS string arguments and UTC break
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure abort policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure continue policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure recovery policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS recovery without point
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS pause resume abort reset
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS past waits and breaks
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator imaging
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator preview
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator stream
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator mount dome GPS rotator
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator agent features
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator altitude and hour angle
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding calibration step
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS custom agent arguments
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS configuration and driver orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS astrometry orchestration
+Sequencer.js integration: all tests passed
+Sequencer.js: 27/27 passed (including cleanup)
+141 driver(s) written to /Users/polakovic/Development/indigo/TEST_SUMMARY.md
+
+agent_scripting: 63/63 OK
+recorded in indigo_drivers/agent_scripting/README.md:
+2026-10-24 20:08 3.0.0.14 mac arm64 simulator 63/63 OK

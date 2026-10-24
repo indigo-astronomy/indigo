@@ -1,0 +1,104 @@
+{
+  "version": 2,
+  "task": "20261024163448-86d4-fix-imager-test-cleanup",
+  "scope": [
+    "indigo_test/integration/test_agent_imager_instances.c",
+    "indigo_test/integration/test_agent_imager_cleanup.py",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/agent_imager/REFACTOR.md",
+    "indigo_drivers/agent_imager/README.md",
+    "TEST_SUMMARY.md",
+    ".factory/findings/active/FND-20261024155149-8381-fix-core-audit-findings-001.json",
+    ".factory/findings/archive/FND-20261024155149-8381-fix-core-audit-findings-001.json",
+    ".factory/completions/20261024163448-86d4-fix-imager-test-cleanup.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_imager_cleanup"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_imager"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261024163448-86d4-fix-imager-test-cleanup.json": [
+      "100644",
+      "blob",
+      "f2ce1d554ee251f61247544f448cc83bef9b7749"
+    ],
+    ".factory/findings/archive/FND-20261024155149-8381-fix-core-audit-findings-001.json": [
+      "100644",
+      "blob",
+      "3eda6b3e0c9364bceea1fed3244d84a02a33520a"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "b07cb3a7b3a55068399a714d2e23a7bee5736277"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "880794cf5face9ce8f053b24c0c08f05fe012f5f"
+    ],
+    "indigo_drivers/agent_imager/README.md": [
+      "100644",
+      "blob",
+      "0a9d6bc74579a4f27522aa0fe76a38b46404d604"
+    ],
+    "indigo_drivers/agent_imager/REFACTOR.md": [
+      "100644",
+      "blob",
+      "9924dbdada52593c33cbc6bd2932eab8f3d9529c"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "97d79914d64676c837592dd1d454542bf4d7a8be"
+    ],
+    "indigo_test/integration/test_agent_imager_cleanup.py": [
+      "100644",
+      "blob",
+      "31d252c83d97a8e1c1b878abe37904bc9661b208"
+    ],
+    "indigo_test/integration/test_agent_imager_instances.c": [
+      "100644",
+      "blob",
+      "796fa4026901eaf40a31baec363741e1c3bc0a72"
+    ]
+  }
+}

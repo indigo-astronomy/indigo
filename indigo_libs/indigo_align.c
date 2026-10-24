@@ -30,6 +30,7 @@
 #include <indigo/indigo_bus.h>
 #endif
 #include <indigo/indigo_align.h>
+#include <float.h>
 
 const double TWO_PI = 2 * M_PI;
 const double DEG2RAD = M_PI / 180.0;
@@ -685,7 +686,7 @@ bool indigo_polar_alignment_error_3p(
 	double *u,
 	double *v
 ) {
-	if (u == NULL || v == NULL || d2 == NULL || d3 == NULL) {
+	if (p1 == NULL || p2 == NULL || p3 == NULL || u == NULL || v == NULL || d2 == NULL || d3 == NULL) {
 		return false;
 	}
 
@@ -704,8 +705,18 @@ bool indigo_polar_alignment_error_3p(
 	double k3 = cos_a3 - cos_a1;
 	double k4 = sin_a3 - sin_a1;
 
-	*v = (*d3 * k1 - *d2 * k3) / (k4 * k1 - k2 * k3);
-	*u = (*d2 - *v * k2) / k1;
+	double determinant = k1 * k4 - k2 * k3;
+	double scale = fabs(k1 * k4) + fabs(k2 * k3);
+	if (!isfinite(determinant) || fabs(determinant) <= DBL_EPSILON * scale || determinant == 0) {
+		return false;
+	}
+	double result_u = (*d2 * k4 - *d3 * k2) / determinant;
+	double result_v = (*d3 * k1 - *d2 * k3) / determinant;
+	if (!isfinite(result_u) || !isfinite(result_v)) {
+		return false;
+	}
+	*u = result_u;
+	*v = result_v;
 
 	return true;
 }

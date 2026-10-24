@@ -1,0 +1,9 @@
+Running Scripting Agent integration
+Timeout waiting for AGENT_SCRIPTING_RUN_SCRIPT state 1 after revision 7 (observed state 3, revision 9)
+integration/test_agent_scripting.c:236: wait_property(RUN, before, state)
+JavaScript assertion: JSON.stringify(eventValues)===JSON.stringify(['first','second','third','fourth'])
+integration/test_agent_scripting.c:807: assertion failed: check_js("JSON.stringify(eventValues)===JSON.stringify(['first','second','third','fourth'])")
+  FAIL queued property snapshots
+Scripting Agent integration: 2 test(s) failed
+FAILED queued property snapshots (status 256)
+Scripting Agent: 0/1 passed (including cleanup)

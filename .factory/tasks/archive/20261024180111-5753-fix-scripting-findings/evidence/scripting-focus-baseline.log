@@ -1,0 +1,13 @@
+Running Sequencer.js integration
+Timeout waiting for Scripting Agent.AGENT_SCRIPTING_RUN_SCRIPT state 1 (state 3, revision 9/7)
+Executing on-load scripts
+Sequencer installed
+Sequence started
+Sequence finished
+Failed to execute script 'Run script' (Error: sequencer test assertion failed)
+JavaScript assertion failed: indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.COUNT===7 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.EXPOSURE===12 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.DELAY===3
+integration/test_agent_scripting_sequencer.c:497: assertion failed: check_js("indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.COUNT===7 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.EXPOSURE===12 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.DELAY===3")
+  FAIL focus batch snapshot
+Sequencer.js integration: 1 test(s) failed
+FAILED focus batch snapshot (status 256)
+Sequencer.js: 0/1 passed (including cleanup)

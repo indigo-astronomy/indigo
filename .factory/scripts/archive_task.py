@@ -14,7 +14,7 @@ from urllib.parse import quote, unquote, urlsplit, urlunsplit
 ROOT = Path(__file__).resolve().parents[2]
 LIMIT = 1024 * 1024
 # INDIGO owner exclusions also apply to archive-time link maintenance.
-EXCLUDED_PREFIXES = ("indigo_drivers/ccd_apogee/", "indigo_drivers/ccd_sbig/", "indigo_drivers/mount_asi/", "indigo_drivers/mount_mxhd/", "indigo_drivers/system_ascol/", "indigo_tests/", "obsoleted_drivers/")
+EXCLUDED_PREFIXES = ("indigo_drivers/ccd_apogee/", "indigo_drivers/ccd_sbig/", "indigo_drivers/mount_asi/", "indigo_drivers/mount_mxhd/", "indigo_drivers/system_ascol/", "indigo_tests/", "indigo_test/shell_compliance/", "obsoleted_drivers/")
 # Standard inline links/images and reference definitions; leave URLs and prose alone.
 LINK = re.compile(r'''(?P<prefix>!?\[[^\]\n]*\]\(|^ {0,3}\[[^\]\n]+\]:[ \t]*)(?:<(?P<angle>[^>\n]+)>|(?P<bare>[^\s()]+)(?=[ \t]*(?:\)|["']|$)))''', re.M)
 

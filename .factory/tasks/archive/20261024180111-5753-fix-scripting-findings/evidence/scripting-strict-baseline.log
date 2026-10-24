@@ -1,0 +1,4 @@
+/tmp/indigo_agent_scripting_baseline.c:1660:2: error: missing field 'force_property_updates' initializer [-Werror,-Wmissing-field-initializers]
+ 1660 |         };
+      |         ^
+1 error generated.

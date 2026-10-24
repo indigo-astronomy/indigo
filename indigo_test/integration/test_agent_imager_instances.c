@@ -413,21 +413,70 @@ static bool setup(void) {
 	return true;
 }
 
+// Inject only the observed result after the caller has executed the real cleanup step.
+static void cleanup_check(bool success, const char *operation) {
+	const char *injected = getenv("INDIGO_TEST_FAIL_CLEANUP");
+	if (injected && !strcmp(injected, operation)) {
+		fprintf(stderr, "Injected cleanup failure: %s\n", operation);
+		success = false;
+	}
+	if (injected != NULL) {
+		fprintf(stderr, "Cleanup check: %s (%s)\n", operation, success ? "OK" : "failed");
+	}
+	if (!success) {
+		fprintf(stderr, "Cleanup failed: %s\n", operation);
+		indigo_test_failures++;
+	}
+}
+
 static void cleanup(void) {
+	const char *agents[] = { LEADER, MEMBER_2, MEMBER_3, GUIDER };
+	for (unsigned i = 0; i < ARRAY_SIZE(agents); i++) {
+		if (observer_attached && running(agents[i])) {
+			cleanup_check(change_switch(agents[i], AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true), agents[i]);
+		}
+	}
+	for (unsigned i = 0; i < ARRAY_SIZE(agents); i++) {
+		if (observer_attached && exists(agents[i], AGENT_START_PROCESS_PROPERTY_NAME)) {
+			cleanup_check(WAIT_UNTIL(!running(agents[i]), 30), agents[i]);
+		}
+	}
 	if (guider_started) {
-		indigo_agent_guider(INDIGO_DRIVER_SHUTDOWN, NULL);
+		indigo_result result = indigo_agent_guider(INDIGO_DRIVER_SHUTDOWN, NULL);
+		cleanup_check(result == INDIGO_OK, "guider shutdown");
+		guider_started = result != INDIGO_OK;
 	}
 	if (imager_started) {
-		indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL);
+		indigo_result result = indigo_agent_imager(INDIGO_DRIVER_SHUTDOWN, NULL);
+		cleanup_check(result == INDIGO_OK, "imager shutdown");
+		imager_started = result != INDIGO_OK;
+	}
+	const char *devices[] = { GUIDER_OUTPUT, "CCD Guider Simulator (AO)", "CCD Imager Simulator (focuser)", "CCD Imager Simulator (wheel)", IMAGER_CAMERA, GUIDER_CAMERA, BAHTINOV_CAMERA, "DSLR Simulator", "CCD File Simulator" };
+	for (unsigned i = 0; i < ARRAY_SIZE(devices); i++) {
+		if (observer_attached && exists(devices[i], CONNECTION_PROPERTY_NAME) && (!switch_value(devices[i], CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME) || state(devices[i], CONNECTION_PROPERTY_NAME) == INDIGO_BUSY_STATE)) {
+			cleanup_check(set_switch(devices[i], CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true), devices[i]);
+		}
 	}
 	if (ccd_started) {
-		indigo_ccd_simulator(INDIGO_DRIVER_SHUTDOWN, NULL);
+		indigo_result result = indigo_ccd_simulator(INDIGO_DRIVER_SHUTDOWN, NULL);
+		cleanup_check(result == INDIGO_OK, "CCD simulator shutdown");
+		ccd_started = result != INDIGO_OK;
 	}
 	if (observer_attached) {
-		indigo_detach_client(&observer);
+		indigo_result result = indigo_detach_client(&observer);
+		cleanup_check(result == INDIGO_OK, "observer detach");
+		observer_attached = result != INDIGO_OK;
 	}
 	if (bus_started) {
-		indigo_stop();
+		indigo_result result = indigo_stop();
+		cleanup_check(result == INDIGO_OK, "bus stop");
+		bus_started = result != INDIGO_OK;
+	}
+	if (!observer_attached || !bus_started) {
+		for (unsigned i = 0; i < ARRAY_SIZE(cache); i++) {
+			indigo_release_property(cache[i].property);
+			cache[i].property = NULL;
+		}
 	}
 }
 
@@ -595,24 +644,45 @@ static const indigo_test_case tests[] = {
 	{ "independent instances do not interfere", independent_instances_do_not_interfere }
 };
 
+static indigo_test_function current_case;
+
+static void case_with_cleanup(void) {
+	if (!indigo_test_use_private_home()) {
+		indigo_test_failures++;
+		return;
+	}
+	if (setup()) {
+		current_case();
+	}
+	cleanup();
+	indigo_test_remove_private_home();
+}
+
 int main(int argc, char **argv) {
 	setvbuf(stdout, NULL, _IONBF, 0);
-	int result = 0, executed = 0, passed = 0;
+	int result = 0, executed = 0, passed = 0, selected = 0;
+	const char *filter = argc > 1 ? argv[1] : getenv("INDIGO_TEST_CASE_FILTER");
 	for (int i = 0; i < (int)ARRAY_SIZE(tests); i++) {
-		if (argc > 1 && !strstr(tests[i].name, argv[1])) {
+		if (filter == NULL || strstr(tests[i].name, filter)) {
+			selected++;
+		}
+	}
+	indigo_test_plan("Imager Agent instance coordination", selected, filter);
+	for (int i = 0; i < (int)ARRAY_SIZE(tests); i++) {
+		if (filter != NULL && !strstr(tests[i].name, filter)) {
 			continue;
 		}
 		executed++;
 		pid_t child = fork();
 		if (child == 0) {
-			alarm(420);
-			if (!indigo_test_use_private_home()) {
+			if (unsetenv("INDIGO_TEST_CASE_FILTER") != 0) {
+				perror("unsetenv");
 				exit(1);
 			}
-			bool ready = setup();
-			int status = ready ? indigo_run_tests("Imager Agent instance coordination", tests + i, 1) : 1;
-			cleanup();
-			indigo_test_remove_private_home();
+			alarm(420);
+			current_case = tests[i].function;
+			const indigo_test_case child_case = { tests[i].name, case_with_cleanup };
+			int status = indigo_run_tests("Imager Agent instance coordination", &child_case, 1);
 			exit(status || indigo_test_failures ? 1 : 0);
 		}
 		int status = -1;

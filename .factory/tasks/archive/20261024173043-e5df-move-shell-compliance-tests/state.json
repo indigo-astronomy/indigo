@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024173043-e5df-move-shell-compliance-tests",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive completed execution and verify committed candidate; integration/publication unrequested.",
+  "blocker": null
+}

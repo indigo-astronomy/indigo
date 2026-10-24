@@ -503,7 +503,7 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 				*value_pointer = 0;
 				handler = handler(TEXT_VALUE_STATE, name_buffer, value_buffer, &property, device, client, NULL);
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' TEXT_VALUE -> VALUE1", c));
-			} else if (c == '\\') {
+			} else if (c == '\\' && !is_escaped) {
 				is_escaped = true;
 			} else if (value_pointer - value_buffer < JSON_BUFFER_SIZE) {
 				if (is_escaped) {

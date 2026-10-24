@@ -84,9 +84,9 @@ static int next_handle_index(void) {
 }
 
 
-indigo_uni_handle _indigo_stdin_handle = { INDIGO_FILE_HANDLE, 0, 0 };
-indigo_uni_handle _indigo_stdout_handle = { INDIGO_FILE_HANDLE, 1, 0 };
-indigo_uni_handle _indigo_stderr_handle = { INDIGO_FILE_HANDLE, 2, 0 };
+indigo_uni_handle _indigo_stdin_handle = { .index = 0, .type = INDIGO_FILE_HANDLE, .fd = 0 };
+indigo_uni_handle _indigo_stdout_handle = { .index = 0, .type = INDIGO_FILE_HANDLE, .fd = 1 };
+indigo_uni_handle _indigo_stderr_handle = { .index = 0, .type = INDIGO_FILE_HANDLE, .fd = 2 };
 
 indigo_uni_handle *indigo_stdin_handle = &_indigo_stdin_handle;
 indigo_uni_handle *indigo_stdout_handle = &_indigo_stdout_handle;

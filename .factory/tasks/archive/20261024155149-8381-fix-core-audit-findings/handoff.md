@@ -1,0 +1,21 @@
+# Handoff
+
+Task: 20261024155149-8381-fix-core-audit-findings. Branch: task/20261024155149-8381-fix-core-audit-findings. Base/master: 21efe303fe63575c3574f1579285828d9ba568cc. Clean starting checkout; no fetch authorization assumed.
+
+Writer: root Codex coordinator/developer. Read-only patch consultants: image_math, agent_fixes, core_io, under standing project delegation authorization; no provider switch. Host: Codex desktop, shell/read/write/test and local Git available (Git mutations require sandbox escalation); network restricted. Actual model/effort not exposed. Selected balanced for routine repair assignments; high complexity split into bounded patches, current owner host retained; no new charges/budget ceiling. Security review tier will be reassessed against actual defensive changes.
+
+Transitions: coordinator startup -> analyst specification -> planner -> test designer -> developer; corresponding roles explicitly read. Scope and acceptance: brief/specification/test-plan. Maintenance audit not due (2 uncovered work tasks, last audit 2026-10-24). Provenance pin unchanged; no pending template upgrade assigned.
+
+Next: capture baseline, apply scoped patches and run verification. Integration/publication and branch cleanup pending; master remains untouched.
+
+Verification transition: shared library rebuilt (including client variant); final 345-case unit suite passed with local loopback/PTY sandbox escalation. Factory check/security and all 188 Factory tests passed. Current numerical fixture comprises two cases / 54 assertions and passed ASan/UBSan; image math and defensive config/DNS tests also passed sanitizers. Unit baseline sandbox failures were environmental; expected exponent-zero regression failure was recorded separately before the production fix.
+
+Quality reviewers used fresh read-only contexts across disjoint author scopes. They found and rechecked coordinate-domain parsing, local drift publication, exact midpoint limits and Darwin-only DNS fixture registration. Root remains sole source writer and will reconcile formal reports after complete imager integration. No public properties changed, so PROPERTIES.md requires no update. This is a bounded bug repair, not a generated-driver migration; MIGRATION_STATUS.md does not change. Driver test verification uses non-interactive hardware-free simulator mode as part of the repair, not a separate requested hardware test run.
+
+Target synchronization: local master remains base 21efe303fe63575c3574f1579285828d9ba568cc; `git merge --ff-only master` reported already up to date. No remote fetch/push/integration performed. Security review is scoped defensive bounds/data-handling validation (balanced/current host), with no new authentication, network exposure, dependencies or substantive sensitive-service change. Actual host model/effort remains unknown; no provider switch or new charges.
+
+All fifteen requested finding records have been archived as fixed with original evidence retained and this task/findings.md linked. An integrity check during the multi-record batch observed a transient navigator mismatch while the lifecycle helper was writing; the subsequent completed-batch check passed. No concurrent source writer was used. Final read-only test reinspection passed; the final recorder is finishing the remaining imager instance cases.
+
+Final transitions: verifier -> documenter (header contract, driver record and REFACTOR updated) -> quality-reviewer (fresh scoped reviews and final test reinspection) -> security-reviewer (defensive boundaries/lifetimes) -> coordinator. Actual passing checks and the 57-case recorded run are in verification.md; one unchanged teardown weakness remains open as nonblocking FND-20261024155149-8381-fix-core-audit-findings-001. All 15 requested records are fixed/archived. Source writer remains root; no further implementation is assigned.
+
+Execution complete, ready for local final commit after evidence archival/content binding. Delivery is ready-for-integration only: master integration, publication and deletion of this unmerged task branch are pending owner authorization. Preserve the branch until that delivery is completed. No remote operation was performed. Final commit SHA and committed-range gate outcome are reported externally. No quality/security waiver or owner risk acceptance was used.

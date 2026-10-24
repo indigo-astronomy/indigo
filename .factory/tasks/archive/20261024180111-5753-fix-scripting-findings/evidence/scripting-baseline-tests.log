@@ -1,0 +1,245 @@
+mkdir -p build/integration
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -c ../indigo_drivers/agent_scripting/duktape.c -o build/integration/agent_scripting_duktape.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -Dindigo_populate_http_blob_item=scripting_test_populate_blob -Dindigo_set_timer_with_data=scripting_test_set_timer -Dtime=scripting_test_time -c ../indigo_drivers/agent_scripting/indigo_agent_scripting.c -o build/integration/agent_scripting_driver.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST integration/test_agent_scripting.c build/integration/agent_scripting_duktape.o build/integration/agent_scripting_driver.o -o build/integration/test_agent_scripting -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -DINDIGO_SCRIPTING_TEST /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libindigocat.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib
+build/integration/test_agent_scripting
+Running Scripting Agent integration
+  PASS schema and lifecycle
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS immediate execution and recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS repeated execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS long script execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS script create rename execute delete
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS empty name recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS duplicate script recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS saved script failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS delete acknowledgement
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS delete unknown script
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS script capacity and reuse
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS configuration long text roundtrip
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load order after reinitialize
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS shutdown during automatic load
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load existing scripts
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-unload execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-unload failure
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS hook defaults and rename
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS invalid rename recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:03:39.244360 Application: Failed to create /tmp/indigo_scripting_test_IPbTHj/.indigo/Scripting_Agent.config
+20:03:39.245010 Application: Failed to create /tmp/indigo_scripting_test_IPbTHj/.indigo/Scripting_Agent.config
+20:03:39.245238 Application: Failed to create /tmp/indigo_scripting_test_IPbTHj/.indigo/Scripting_Agent.config
+  PASS configuration save failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS low-level change bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS enumeration and BLOB enable bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS define update redefine delete bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS binding defaults and large property
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS cached property capacity and reuse
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS boot.js cache and callbacks
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS boot.js property change helper
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:03:39.346963 Application: indigo_agent_scripting[populate_blob:342]: indigo_populate_http_blob_item() failed
+20:03:39.348823 Application: Failed to create /no/such/scripting-test/blob.bin
+20:03:39.349042 Application: indigo_agent_scripting[save_blob:325]: indigo_save_blob() failed
+  PASS BLOB populate and save bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS conversion and astronomy bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:03:39.510636 Application: indigo_agent_scripting[timer_handler:900]: timer call failed (Error: timer callback failure)
+  PASS timer scheduling cancellation capacity
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS shutdown cancels pending timers
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:03:39.670509 Application: error-binding
+20:03:39.673319 Application: cached property 'Scripting test peer'.PEER_BLOB, state = Ok, perm = RO
+20:03:39.673973 Application:   DATA = [url: 'http://test.invalid/blob', size: 0, format: '.bin', reference: 0x7bf54025b0]
+  PASS logging and message bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+20:03:39.685099 Application: indigo_agent_scripting[agent_update_property:1593]: indigo_on_update_property() call failed (Error: update callback)
+20:03:39.687514 Application: indigo_agent_scripting[agent_define_property:1575]: indigo_on_define_property() call failed (Error: define callback)
+20:03:39.687960 Application: indigo_agent_scripting[agent_delete_property:1613]: indigo_on_delete_property() call failed (Error: delete callback)
+20:03:39.688349 Application: indigo_agent_scripting[agent_send_message:1628]: indigo_on_send_message() call failed (Error: message callback)
+20:03:39.688782 Application: indigo_agent_scripting[agent_define_property:1575]: indigo_on_define_property() call failed (Error: define callback)
+20:03:39.689257 Application: indigo_agent_scripting[agent_send_message:1628]: indigo_on_send_message() call failed (Error: message callback)
+20:03:39.689682 Application: indigo_agent_scripting[agent_define_property:1575]: indigo_on_define_property() call failed (Error: define callback)
+20:03:39.690086 Application: indigo_agent_scripting[agent_send_message:1628]: indigo_on_send_message() call failed (Error: message callback)
+20:03:39.690406 Application: indigo_agent_scripting[agent_define_property:1575]: indigo_on_define_property() call failed (Error: define callback)
+20:03:39.690722 Application: indigo_agent_scripting[agent_send_message:1628]: indigo_on_send_message() call failed (Error: message callback)
+20:03:39.691040 Application: indigo_agent_scripting[agent_define_property:1575]: indigo_on_define_property() call failed (Error: define callback)
+20:03:39.691351 Application: indigo_agent_scripting[agent_send_message:1628]: indigo_on_send_message() call failed (Error: message callback)
+20:03:39.691666 Application: indigo_agent_scripting[agent_define_property:1575]: indigo_on_define_property() call failed (Error: define callback)
+20:03:39.691977 Application: indigo_agent_scripting[agent_send_message:1628]: indigo_on_send_message() call failed (Error: message callback)
+20:03:39.692381 Application: indigo_agent_scripting[agent_enumerate_properties:1250]: indigo_on_enumerate_properties() call failed (Error: enumerate callback)
+20:03:39.692707 Application: indigo_agent_scripting[agent_change_property:1489]: indigo_on_change_property() call failed (Error: change callback)
+20:03:39.693023 Application: indigo_agent_scripting[agent_update_property:1593]: indigo_on_update_property() call failed (Error: update callback)
+20:03:39.693352 Application: indigo_agent_scripting[agent_update_property:1593]: indigo_on_update_property() call failed (Error: update callback)
+  PASS callback exception recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS invalid binding argument recovery
+Scripting Agent integration: all tests passed
+Scripting Agent: 35/35 passed (including cleanup)
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_libs/indigo_filter.c -o build/integration/sequencer_filter.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/agent_scripting/duktape.c -o build/integration/sequencer_duktape.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -Dtime=sequencer_test_time -c ../indigo_drivers/agent_scripting/indigo_agent_scripting.c -o build/integration/sequencer_scripting.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/agent_imager/indigo_agent_imager.c -o build/integration/sequencer_imager.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/agent_mount/indigo_agent_mount.c -o build/integration/sequencer_mount.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/agent_guider/indigo_agent_guider.c -o build/integration/sequencer_guider.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/ccd_simulator/indigo_ccd_simulator.c -o build/integration/sequencer_ccd_simulator.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/ccd_simulator/indigo_ccd_simulator_data.c -o build/integration/sequencer_ccd_simulator_data.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/mount_simulator/indigo_mount_simulator.c -o build/integration/sequencer_mount_simulator.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/dome_simulator/indigo_dome_simulator.c -o build/integration/sequencer_dome_simulator.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/gps_simulator/indigo_gps_simulator.c -o build/integration/sequencer_gps_simulator.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' -c ../indigo_drivers/rotator_simulator/indigo_rotator_simulator.c -o build/integration/sequencer_rotator_simulator.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' integration/test_agent_scripting_sequencer.c build/integration/sequencer_filter.o build/integration/sequencer_duktape.o build/integration/sequencer_scripting.o build/integration/sequencer_imager.o build/integration/sequencer_mount.o build/integration/sequencer_guider.o build/integration/sequencer_ccd_simulator.o build/integration/sequencer_ccd_simulator_data.o build/integration/sequencer_mount_simulator.o build/integration/sequencer_dome_simulator.o build/integration/sequencer_gps_simulator.o build/integration/sequencer_rotator_simulator.o -o build/integration/test_agent_scripting_sequencer -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -DINDIGO_SCRIPTING_TEST -DSEQUENCER_JS_PATH='"/Users/polakovic/Development/indigo/indigo_drivers/agent_scripting/library/Sequencer.js"' /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libindigocat.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib
+build/integration/test_agent_scripting_sequencer
+Running Sequencer.js integration
+  PASS library inventory and properties
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS published property schema
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS all public constructors
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+Timeout waiting for Scripting Agent.AGENT_SCRIPTING_RUN_SCRIPT state 1 (state 3, revision 9/7)
+Executing on-load scripts
+Sequencer installed
+Sequence started
+Sequence finished
+Failed to execute script 'Run script' (Error: sequencer test assertion failed)
+JavaScript assertion failed: indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.COUNT===7 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.EXPOSURE===12 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.DELAY===3
+integration/test_agent_scripting_sequencer.c:497: assertion failed: check_js("indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.COUNT===7 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.EXPOSURE===12 && indigo_devices['Batch Test'].AGENT_IMAGER_BATCH.items.DELAY===3")
+  FAIL focus batch snapshot
+Sequencer.js integration: 1 test(s) failed
+FAILED focus batch snapshot (status 256)
+Running Sequencer.js integration
+  PASS loop and timing construction
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS nested loop execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS capture accounting and overloads
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS empty sequence execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS evaluate wait and messages
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS string arguments and UTC break
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure abort policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure continue policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure recovery policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS recovery without point
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS pause resume abort reset
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS past waits and breaks
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator imaging
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator preview
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator stream
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator mount dome GPS rotator
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator agent features
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator altitude and hour angle
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding calibration step
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS custom agent arguments
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS configuration and driver orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS astrometry orchestration
+Sequencer.js integration: all tests passed
+Sequencer.js: 26/27 passed (including cleanup)
+make: *** [test-agent-scripting-sequencer] Error 1
