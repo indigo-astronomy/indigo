@@ -54,6 +54,10 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image \
 	$(UNIT_BUILD)/test_raw_to_fits
+ifeq ($(OS_DETECTED),Darwin)
+UNIT_TESTS += $(UNIT_BUILD)/test_usbserial_enumeration_macos
+endif
+
 INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_ccd_file_names \
 	$(INTEGRATION_BUILD)/test_aux_simulator \
 	$(INTEGRATION_BUILD)/test_agent_alpaca_cache \
@@ -304,7 +308,7 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-unit test-integration test-buildsystem test-imager-download test-tool-input-safety test-mount-manual-motion
+test: test-unit test-integration test-buildsystem test-imager-download test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
 
 # Browser script regression; requires Node.js with the built-in test runner.
 .PHONY: test-mount-manual-motion
@@ -3505,3 +3509,21 @@ $(UNIT_BUILD)/test_core_text_bounds: unit/test_core_text_bounds.c test_runner.h 
 
 $(INTEGRATION_BUILD)/test_ccd_file_names: integration/test_ccd_file_names.c test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+# Fake IOKit enumeration exercises the macOS production path without real devices.
+ifeq ($(OS_DETECTED),Darwin)
+USB_ENUM_REPLACEMENTS = -DIOServiceMatching=usb_test_IOServiceMatching -DIOServiceGetMatchingServices=usb_test_IOServiceGetMatchingServices -DIOIteratorNext=usb_test_IOIteratorNext -DIOObjectRelease=usb_test_IOObjectRelease -DIORegistryEntryCreateIterator=usb_test_IORegistryEntryCreateIterator -DIORegistryEntryCreateCFProperty=usb_test_IORegistryEntryCreateCFProperty -DCFRelease=usb_test_CFRelease
+
+$(UNIT_BUILD)/usbserial_enumeration_macos.o: ../indigo_libs/indigo_usbserial_utils.c ../indigo_libs/indigo/indigo_usbserial_utils.h Makefile | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) $(USB_ENUM_REPLACEMENTS) -c $< -o $@
+
+$(UNIT_BUILD)/test_usbserial_enumeration_macos: unit/test_usbserial_enumeration_macos.c test_runner.h $(UNIT_BUILD)/usbserial_enumeration_macos.o | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(UNIT_BUILD)/usbserial_enumeration_macos.o $(TEST_LDFLAGS)
+endif
+
+.PHONY: test-gps-compliance-script test-omnisim-startup
+test-gps-compliance-script:
+	python3 -B unit/test_gps_compliance_script.py
+
+test-omnisim-startup:
+	python3 -B unit/test_omnisim_startup.py

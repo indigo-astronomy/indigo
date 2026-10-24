@@ -64,27 +64,38 @@ test_property_exists "Test GEOGRAPHIC_COORDINATES.ELEVATION item exists" "$DEVIC
 echo ""
 echo "--- Testing Optional GPS-Specific Properties ---"
 
-# UTC_TIME is optional - will show SKIP if not present
-test_property_exists "Test UTC_TIME property exists" "$DEVICE.UTC_TIME"
-test_property_exists "Test UTC_TIME.TIME item exists" "$DEVICE.UTC_TIME" "TIME"
-
-# UTC_TIME.OFFSET is optional item (like GUIDER_RATE.DEC_RATE)
-if property_exists "$DEVICE.UTC_TIME" "OFFSET"; then
-	print_test_result "Test UTC_TIME.OFFSET item exists" "PASS"
+# UTC_TIME is optional, but TIME is required when the property is present.
+if property_exists "$DEVICE.UTC_TIME"; then
+	test_property_exists "Test UTC_TIME property exists" "$DEVICE.UTC_TIME"
+	test_property_exists "Test UTC_TIME.TIME item exists" "$DEVICE.UTC_TIME" "TIME"
+	# UTC_TIME.OFFSET remains optional.
+	if property_exists "$DEVICE.UTC_TIME" "OFFSET"; then
+		print_test_result "Test UTC_TIME.OFFSET item exists" "PASS"
+	else
+		print_test_result "Optional item UTC_TIME.OFFSET does not exist" "SKIP"
+	fi
 else
-	print_test_result "Optional item UTC_TIME.OFFSET does not exist" "SKIP"
+	print_test_result "Optional property UTC_TIME does not exist" "SKIP"
 fi
 
-# GPS_STATUS is optional (light property)
-test_property_exists "Test GPS_STATUS property exists" "$DEVICE.GPS_STATUS"
-test_property_exists "Test GPS_STATUS.NO_FIX item exists" "$DEVICE.GPS_STATUS" "NO_FIX"
-test_property_exists "Test GPS_STATUS.2D_FIX item exists" "$DEVICE.GPS_STATUS" "2D_FIX"
-test_property_exists "Test GPS_STATUS.3D_FIX item exists" "$DEVICE.GPS_STATUS" "3D_FIX"
+# GPS_STATUS is optional; a present property must expose all fix indicators.
+if property_exists "$DEVICE.GPS_STATUS"; then
+	test_property_exists "Test GPS_STATUS property exists" "$DEVICE.GPS_STATUS"
+	test_property_exists "Test GPS_STATUS.NO_FIX item exists" "$DEVICE.GPS_STATUS" "NO_FIX"
+	test_property_exists "Test GPS_STATUS.2D_FIX item exists" "$DEVICE.GPS_STATUS" "2D_FIX"
+	test_property_exists "Test GPS_STATUS.3D_FIX item exists" "$DEVICE.GPS_STATUS" "3D_FIX"
+else
+	print_test_result "Optional property GPS_STATUS does not exist" "SKIP"
+fi
 
-# GPS_ADVANCED is optional
-test_property_exists "Test GPS_ADVANCED property exists" "$DEVICE.GPS_ADVANCED"
-test_property_exists "Test GPS_ADVANCED.ENABLED item exists" "$DEVICE.GPS_ADVANCED" "ENABLED"
-test_property_exists "Test GPS_ADVANCED.DISABLED item exists" "$DEVICE.GPS_ADVANCED" "DISABLED"
+# GPS_ADVANCED is optional; both switches are required when it is present.
+if property_exists "$DEVICE.GPS_ADVANCED"; then
+	test_property_exists "Test GPS_ADVANCED property exists" "$DEVICE.GPS_ADVANCED"
+	test_property_exists "Test GPS_ADVANCED.ENABLED item exists" "$DEVICE.GPS_ADVANCED" "ENABLED"
+	test_property_exists "Test GPS_ADVANCED.DISABLED item exists" "$DEVICE.GPS_ADVANCED" "DISABLED"
+else
+	print_test_result "Optional property GPS_ADVANCED does not exist" "SKIP"
+fi
 
 echo ""
 echo "--- Testing GEOGRAPHIC_COORDINATES Values ---"
@@ -187,3 +198,9 @@ fi
 
 echo ""
 print_test_summary
+
+# Report failure only after connection restoration and the complete summary.
+if [ "$TESTS_FAILED" -gt 0 ]; then
+	exit 1
+fi
+exit 0

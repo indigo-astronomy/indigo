@@ -1,0 +1,14 @@
+test_readiness_failure_does_not_signal_an_already_exited_child (__main__.OmniSimStartupTests) ... ok
+test_readiness_failure_retains_existing_force_stop_fallback (__main__.OmniSimStartupTests) ... ok
+test_readiness_failure_stops_owned_session_and_preserves_exception (__main__.OmniSimStartupTests) ... ok
+test_readiness_interrupt_stops_owned_session (__main__.OmniSimStartupTests) ... ok
+test_ready_process_is_returned_and_parent_output_is_closed (__main__.OmniSimStartupTests) ... ok
+test_ready_response_does_not_return_an_already_exited_child (__main__.OmniSimStartupTests) ... ok
+test_spawn_failure_closes_output_without_waiting (__main__.OmniSimStartupTests) ... ok
+test_stop_failure_does_not_replace_readiness_failure (__main__.OmniSimStartupTests) ... ok
+test_stop_interrupt_does_not_replace_readiness_failure (__main__.OmniSimStartupTests) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.008s
+
+OK

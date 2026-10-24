@@ -1,0 +1,3 @@
+# Repair USB enumeration, GPS compliance and OmniSim startup findings
+
+Owner explicitly requested FND-20261023101753-bc8d-complete-repository-audit-001 and FND-000030, then added FND-20261024121920-3bd2-repository-audit-041. Repair these in one task, preserving public APIs and unrelated behavior. No driver/generator/off-limits changes. The explicit FND-000030 request authorizes a targeted change to indigo_tests/gps_compliance.sh despite exclusion of that directory from routine work; no broad legacy test sweep is assigned. New regressions live in maintained indigo_test/. No new merge/push authorization inferred from delivery of the preceding task.

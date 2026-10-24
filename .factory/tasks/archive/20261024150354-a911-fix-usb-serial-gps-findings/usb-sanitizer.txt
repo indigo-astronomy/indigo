@@ -1,0 +1,19 @@
+clang -std=gnu11 -g -O1 -DINDIGO_MACOS -Duint=unsigned -Iindigo_libs -Ibuild/include -fsanitize=address,undefined -fno-omit-frame-pointer -DIOServiceMatching=usb_test_IOServiceMatching -DIOServiceGetMatchingServices=usb_test_IOServiceGetMatchingServices -DIOIteratorNext=usb_test_IOIteratorNext -DIOObjectRelease=usb_test_IOObjectRelease -DIORegistryEntryCreateIterator=usb_test_IORegistryEntryCreateIterator -DIORegistryEntryCreateCFProperty=usb_test_IORegistryEntryCreateCFProperty -DCFRelease=usb_test_CFRelease -c indigo_libs/indigo_usbserial_utils.c -o /tmp/indigo-usb-enumeration-sanitize/usbserial.o
+indigo_libs/indigo_usbserial_utils.c:57:50: warning: 'kIOMasterPortDefault' is deprecated: first deprecated in macOS 12.0 [-Wdeprecated-declarations]
+   57 |         kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &iter);
+      |                                                         ^~~~~~~~~~~~~~~~~~~~
+      |                                                         kIOMainPortDefault
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/IOKit.framework/Headers/IOKitLib.h:133:19: note: 'kIOMasterPortDefault' has been explicitly marked deprecated here
+  133 | const mach_port_t kIOMasterPortDefault
+      |                   ^
+1 warning generated.
+clang -std=gnu11 -g -O1 -DINDIGO_MACOS -Duint=unsigned -Iindigo_libs -Ibuild/include -fsanitize=address,undefined -fno-omit-frame-pointer indigo_test/unit/test_usbserial_enumeration_macos.c /tmp/indigo-usb-enumeration-sanitize/usbserial.o -Lbuild/lib -lindigo -framework CoreFoundation -framework IOKit -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib -o /tmp/indigo-usb-enumeration-sanitize/test_usbserial
+
+Running macOS USB serial enumeration
+  PASS all_endpoints_preserve_metadata_and_order
+  PASS capacity_one_stops_before_another_endpoint
+  PASS exact_capacity_does_not_acquire_next_usb_device
+  PASS nonpositive_capacity_does_not_acquire_resources
+  PASS hubs_missing_paths_and_failed_iterators_release_resources
+  PASS discovery_setup_failures_have_no_owned_resources
+macOS USB serial enumeration: all tests passed
