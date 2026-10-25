@@ -25,7 +25,7 @@ driver giotto {
 	label = "PrimaluceLab GIOTTO Flat Panel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
-	version = 6;
+	version = 7;
 	serial {
 		pattern {
 			// The panel uses the Silicon Labs CP2102N bridge with its default VID/PID and product string, as the
@@ -82,11 +82,13 @@ driver giotto {
 			if (*status->ip_address) {
 				snprintf(port, sizeof(port), "%d", PRIMALUCE_HTTP_DEFAULT_PORT);
 			}
-			if (!update || strcmp(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address) || strcmp(X_WIFI_STATUS_PORT_ITEM->text.value, port) || strcmp(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection)) {
+			// IDLE while the device cannot be reached over WiFi: not joined in station mode, or WiFi off.
+			indigo_property_state state = status->reachable ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			if (!update || state != X_WIFI_STATUS_PROPERTY->state || strcmp(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address) || strcmp(X_WIFI_STATUS_PORT_ITEM->text.value, port) || strcmp(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection)) {
 				INDIGO_COPY_VALUE(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address);
 				INDIGO_COPY_VALUE(X_WIFI_STATUS_PORT_ITEM->text.value, port);
 				INDIGO_COPY_VALUE(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection);
-				X_WIFI_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				X_WIFI_STATUS_PROPERTY->state = state;
 				if (update) {
 					indigo_update_property(device, X_WIFI_STATUS_PROPERTY, NULL);
 				}

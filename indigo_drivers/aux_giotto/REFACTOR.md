@@ -310,3 +310,21 @@ later address (the simulator assigns the address at the restart).
 
 - Simulated tests: 30 run, 30 passed: `2026-10-25 02:39 3.0.0.6 linux x64 simulator 30/30 OK`.
 - Hardware tests: the driver sessions above; the recorded hardware suite was not rerun.
+
+## WiFi status state (3.0.0.7, 2026-10-25, task 20261025001458-4524-primaluce-wifi-status-idle)
+
+At the requester's request `X_WIFI_STATUS` is IDLE while the panel cannot be reached over WiFi: in station mode before it
+has joined the network (`CONNECTION` `disconnected`) and with WiFi off. It is OK while joined or with the access point on.
+The decision is `primalucelib_wifi_status.reachable`; a change of state alone is published as well.
+
+Hardware (requester's GIOTTO, 2026-10-25, server trace): OFF published `X_WIFI_STATUS` Idle with `off`, AP published Ok
+with the access point address. `indigo_prop_tool` printed OK for the Idle state: it uses the legacy protocol, for which
+INDIGO's XML parser maps `Idle` to OK; INDIGO protocol clients receive IDLE.
+
+Tests: `wifi_modes` (OFF IDLE, AP and STA OK); library unit case `wifi status shows where the controller is` (station before joining, joined, access
+point, off).
+
+## Final test summary (3.0.0.7)
+
+- Simulated tests: 30 run, 30 passed: `2026-10-25 03:16 3.0.0.7 linux x64 simulator 30/30 OK`.
+- Hardware tests: the session above; the recorded hardware suite was not rerun.
