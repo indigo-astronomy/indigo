@@ -36,14 +36,9 @@ The full repository audit is due; this owner-requested PTP follow-up continues t
 - 2026-10-25: task created on the owner's request; probes, fixes, reviews, recorded runs; complete.
 
 ## Final delivery
-Task execution can be archived after acceptance/reviews, before the final commit; this does not claim delivery. Record integration/publication/cleanup state, remaining owner actions and references to the acceptance, quality and security conclusions. Do not copy their report bodies.
-
-## Portable process evidence
-Complete process.json from actual results, with scope globs, version 2 reviewed Git content identities, passing check references and any triggered risk reviews. Run the committed-range process check under [the shared routine](../../../routines/process-checks.md); structural success is not approval or proof of execution.
-
+Execution, reviews and archive are complete; integration into master, push and branch cleanup are pending the owner. Acceptance: verification.md; quality: quality-review.md; security: security.md.
 
 ## Central findings handoff
-- Relevant canonical FND IDs and registry reference: TODO
-- Reconciliation decisions or blockers, if any: TODO; current ownership/status stays in the registry
-- Durable report pins and findings check/prune-gate evidence: TODO
-Read the active register only; retain unresolved findings and the ID counter across task cleanup. Do not attach the archive wholesale.
+- Relevant canonical FND IDs and registry reference: none; this task created no finding records.
+- Reconciliation decisions or blockers, if any: none.
+- Durable report pins and findings check/prune-gate evidence: Findings valid: 86 active, 119 archived; task evidence checks passed. passed before and after archival.
