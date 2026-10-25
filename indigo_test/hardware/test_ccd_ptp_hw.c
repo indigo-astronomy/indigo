@@ -47,6 +47,7 @@ typedef struct {
 	unsigned width, height;
 	bool complete, valid;
 	double deviation;
+	double exposure_time;
 } observed_image;
 
 typedef struct {
@@ -95,14 +96,60 @@ static int property_slot(int device_index, const char *name) {
 // JPEG: complete when it ends with EOI; dimensions and pixel deviation from a full decode, which
 // also proves the payload is not truncated. TIFF-based RAW (ARW, NEF, CR2, DNG): byte-order header;
 // Fujifilm RAF: its magic.
+static unsigned exif_read(const uint8_t *bytes, long size, long offset, int length, bool little) {
+	unsigned value = 0;
+	if (offset < 0 || offset > size - length) {
+		return 0;
+	}
+	for (int i = 0; i < length; i++) {
+		value |= (unsigned)bytes[offset + (little ? i : length - 1 - i)] << (8 * i);
+	}
+	return value;
+}
+
+// EXIF ExposureTime (tag 0x829A in the Exif IFD) of a JPEG, or -1.
+static double exif_exposure_time(const uint8_t *bytes, long size) {
+	for (long i = 2; i + 10 < size && bytes[i] == 0xFF; i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3])) {
+		if (bytes[i + 1] != 0xE1 || memcmp(bytes + i + 4, "Exif\0\0", 6)) {
+			continue;
+		}
+		long tiff = i + 10;
+		bool little = bytes[tiff] == 'I';
+		long ifd = tiff + exif_read(bytes, size, tiff + 4, 4, little);
+		for (int level = 0; level < 2 && ifd + 2 < size; level++) {
+			unsigned count = exif_read(bytes, size, ifd, 2, little);
+			long next = 0;
+			for (unsigned entry = 0; entry < count && ifd + 2 + 12 * (entry + 1) <= size; entry++) {
+				long at = ifd + 2 + 12 * entry;
+				unsigned tag = exif_read(bytes, size, at, 2, little);
+				unsigned value = exif_read(bytes, size, at + 8, 4, little);
+				if (level == 0 && tag == 0x8769) {
+					next = tiff + value;
+				} else if (level == 1 && tag == 0x829A && tiff + value + 8 <= size) {
+					unsigned numerator = exif_read(bytes, size, tiff + value, 4, little), denominator = exif_read(bytes, size, tiff + value + 4, 4, little);
+					return denominator ? (double)numerator / denominator : -1;
+				}
+			}
+			if (!next) {
+				break;
+			}
+			ifd = next;
+		}
+		break;
+	}
+	return -1;
+}
+
 static void inspect_image(observed_image *image, indigo_item *item) {
 	const uint8_t *bytes = item->blob.value;
 	long size = item->blob.size;
 	memset(image, 0, sizeof(*image));
 	snprintf(image->format, sizeof(image->format), "%s", item->blob.format);
 	image->size = size;
+	image->exposure_time = -1;
 	if (!strcmp(item->blob.format, ".jpeg")) {
 		image->complete = size > 4 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[size - 2] == 0xFF && bytes[size - 1] == 0xD9;
+		image->exposure_time = image->complete ? exif_exposure_time(bytes, size) : -1;
 		struct jpeg_decompress_struct info = { 0 };
 		struct jpeg_error_mgr errors;
 		info.err = jpeg_std_error(&errors);
@@ -1074,6 +1121,49 @@ cleanup:
 	return;
 }
 
+// A long timed shot interrupted by a disconnect must not come back as the image of the next session's first
+// exposure (ILCE-7RM4 delivered a 10 s shot for a 1/100 s exposure, 2026-10-25). Two shots.
+static void reconnect_during_exposure(void) {
+	CHECK(camera >= 0);
+	char long_shutter[INDIGO_NAME_SIZE] = "";
+	if (writable(DSLR_SHUTTER_PROPERTY_NAME) && !is_stepping(DSLR_SHUTTER_PROPERTY_NAME) && !find_label(DSLR_SHUTTER_PROPERTY_NAME, "10\"", long_shutter)) {
+		find_label(DSLR_SHUTTER_PROPERTY_NAME, "10s", long_shutter);
+	}
+	if (!*long_shutter) {
+		printf("    no writable 10 s shutter, skipped\n");
+		return;
+	}
+	CHECK(select_jpeg());
+	CHECK(select_name(DSLR_SHUTTER_PROPERTY_NAME, long_shutter));
+	unsigned revision = property_revision(camera, CCD_EXPOSURE_PROPERTY_NAME);
+	indigo_change_number_property_1(&client, devices[camera].name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 10);
+	CHECK(wait_state(camera, CCD_EXPOSURE_PROPERTY_NAME, revision, INDIGO_BUSY_STATE, 10));
+	// The countdown runs once the shutter is pressed.
+	double deadline = indigo_monotonic_time() + 20;
+	while (number_value(camera, CCD_EXPOSURE_PROPERTY_NAME, 0) > 9 && indigo_monotonic_time() < deadline) {
+		indigo_usleep(100000);
+	}
+	indigo_property *exposure = snapshot(camera, CCD_EXPOSURE_PROPERTY_NAME);
+	bool running = exposure && exposure->state == INDIGO_BUSY_STATE && exposure->items[0].number.value <= 9;
+	indigo_release_property(exposure);
+	CHECK(running);
+	CHECK(disconnect_device(camera));
+	CHECK(connect_camera());
+	// Right after a new session ILCE-7RM4 reports no shutter value for a moment, so DSLR_SHUTTER is read-only.
+	for (int iteration = 0; iteration < 100 && !writable(DSLR_SHUTTER_PROPERTY_NAME); iteration++) {
+		indigo_usleep(100000);
+	}
+	CHECK(writable(DSLR_SHUTTER_PROPERTY_NAME));
+	CHECK(use_fixed_shutter());
+	CHECK(!is_selected(DSLR_SHUTTER_PROPERTY_NAME, long_shutter));
+	CHECK(acquire(0.01, 120));
+	observed_device after = state_copy();
+	printf("    image after reconnect: EXIF exposure %g s\n", after.image.exposure_time);
+	CHECK(after.image.exposure_time < 0 || after.image.exposure_time < 1);
+cleanup:
+	return;
+}
+
 // Restores the initial settings before the driver is shut down, so the last case leaves the camera
 // as it was found.
 static void shutdown_and_reinit(void) {
@@ -1122,6 +1212,7 @@ int main(int argc, char **argv) {
 		{ "Indefinite live view, abort and restart", indefinite_liveview_abort_and_restart },
 		{ "Lens focuser", lens_focuser },
 		{ "Reconnect", reconnect },
+		{ "Reconnect during exposure", reconnect_during_exposure },
 		{ "Shutdown and reinit", shutdown_and_reinit }
 	};
 	int result = 1;
