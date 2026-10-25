@@ -1354,7 +1354,7 @@ test-focuser-astroasis-sdk-sanitize: $(INTEGRATION_BUILD)/test_focuser_astroasis
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk_sanitize
 
 EFW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include
-EFW_SDK_TEST_REPLACEMENTS = -Dlibusb_hotplug_register_callback_sim=efw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=efw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=efw_test_usb_start -Dindigo_attach_device=efw_test_attach -Dindigo_detach_device=efw_test_detach -Dlibusb_hotplug_register_callback=efw_test_usb_register -Dlibusb_hotplug_deregister_callback=efw_test_usb_deregister -Dlibusb_ref_device=efw_test_usb_ref -Dlibusb_unref_device=efw_test_usb_unref -Dlibusb_get_device_descriptor=efw_test_usb_descriptor
+EFW_SDK_TEST_REPLACEMENTS = -DEFW_MOVE_TIMEOUT=3.0 -DEFW_CALIBRATION_TIMEOUT=4.0 -Dlibusb_hotplug_register_callback_sim=efw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=efw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=efw_test_usb_start -Dindigo_attach_device=efw_test_attach -Dindigo_detach_device=efw_test_detach -Dlibusb_hotplug_register_callback=efw_test_usb_register -Dlibusb_hotplug_deregister_callback=efw_test_usb_deregister -Dlibusb_ref_device=efw_test_usb_ref -Dlibusb_unref_device=efw_test_usb_unref -Dlibusb_get_device_descriptor=efw_test_usb_descriptor
 
 $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o: ../indigo_drivers/wheel_asi/indigo_wheel_asi.c ../indigo_drivers/wheel_asi/indigo_wheel_asi.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $(EFW_SDK_TEST_REPLACEMENTS) -c $< -o $@

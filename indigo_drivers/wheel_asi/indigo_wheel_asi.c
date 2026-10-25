@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_wheel_asi"
 #define DRIVER_LABEL         "ZWO ASI Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -53,6 +53,14 @@
 #define ASI_VENDOR_ID        0x03c3
 #define NO_DEVICE            -1
 #define ADVANCED_GROUP       "Advanced"
+// An EFW turns between any two slots in a few seconds and calibrates in well under half a minute;
+// these bound a position that stays unknown (-1) for good. The fake SDK test builds shorten them.
+#ifndef EFW_MOVE_TIMEOUT
+#define EFW_MOVE_TIMEOUT     30.0
+#endif
+#ifndef EFW_CALIBRATION_TIMEOUT
+#define EFW_CALIBRATION_TIMEOUT 60.0
+#endif
 
 //- define
 
@@ -82,6 +90,7 @@ typedef struct {
 	char custom_suffix[9];
 	int current_slot, target_slot;
 	int slot_count;
+	double move_deadline;
 	//- data
 } asi_private_data;
 
@@ -137,8 +146,12 @@ static void wheel_move_finalizer(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, pos, res);
 	if (res != EFW_SUCCESS) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (pos == -1) {
+	} else if (pos == -1 && indigo_monotonic_time() < PRIVATE_DATA->move_deadline) {
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+	} else if (pos == -1) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Filter wheel did not report a position in %.0f s", EFW_MOVE_TIMEOUT);
+		return;
 	} else {
 		PRIVATE_DATA->current_slot = pos + 1;
 		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
@@ -161,8 +174,15 @@ static void wheel_calibrate_finalizer(indigo_device *device) {
 		indigo_update_property(device, X_CALIBRATE_PROPERTY, "Failed to read calibration status");
 		return;
 	}
-	if (pos == -1) {
+	if (pos == -1 && indigo_monotonic_time() < PRIVATE_DATA->move_deadline) {
 		indigo_execute_handler_in(device, 1, wheel_calibrate_finalizer);
+		return;
+	}
+	if (pos == -1) {
+		WHEEL_SLOT_PROPERTY->state = X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		X_CALIBRATE_START_ITEM->sw.value = false;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration did not finish in %.0f s", EFW_CALIBRATION_TIMEOUT);
 		return;
 	}
 	WHEEL_SLOT_ITEM->number.value =
@@ -208,6 +228,7 @@ static void wheel_connection_handler(indigo_device *device) {
 				X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
 				if (pos == -1) {
 					PRIVATE_DATA->target_slot = 0;
+					PRIVATE_DATA->move_deadline = indigo_monotonic_time() + EFW_MOVE_TIMEOUT;
 					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 				} else {
@@ -273,6 +294,7 @@ static void wheel_slot_handler(indigo_device *device) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		} else {
+			PRIVATE_DATA->move_deadline = indigo_monotonic_time() + EFW_MOVE_TIMEOUT;
 			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		}
 	}
@@ -299,6 +321,7 @@ static void wheel_x_calibrate_handler(indigo_device *device) {
 		int res = EFWCalibrate(PRIVATE_DATA->dev_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWCalibrate(%d) = %d", PRIVATE_DATA->dev_id, res);
 		if (res == EFW_SUCCESS) {
+			PRIVATE_DATA->move_deadline = indigo_monotonic_time() + EFW_CALIBRATION_TIMEOUT;
 			indigo_execute_handler_in(device, 1, wheel_calibrate_finalizer);
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;

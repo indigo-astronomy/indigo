@@ -278,6 +278,47 @@ static void calibration_noop_and_interrupted_reconnect(void) {
 	ASSERT_TRUE(connection(false));
 }
 
+// The test build shortens EFW_MOVE_TIMEOUT to 3 s and EFW_CALIBRATION_TIMEOUT to 4 s. A wheel whose
+// position stays unknown (-1) ends the move or the calibration ALERT after its deadline, keeps the
+// last measured slot, and a disconnect during such a move is served at once.
+static void endless_motion_ends_at_the_deadline(void) {
+	ASSERT_TRUE(connection(true));
+	int current = (int)find_cached_item(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME)->number.value;
+	int target = current == 4 ? 2 : 4;
+	int moves = atomic_load(&set_position_calls);
+	double started = indigo_monotonic_time();
+	indigo_change_number_property_1(&simulator_test_client, efw.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, target);
+	ASSERT_TRUE(wait_atomic(&set_position_calls, moves + 1));
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	double elapsed = indigo_monotonic_time() - started;
+	printf("endless move ended ALERT after %.1f s\n", elapsed);
+	ASSERT_TRUE(elapsed >= 2.5);
+	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, current, 0));
+	int reads = atomic_load(&read_calls);
+	indigo_usleep(1200000);
+	ASSERT_EQ_INT(reads, atomic_load(&read_calls));
+	int calibrations = atomic_load(&calibrate_calls);
+	started = indigo_monotonic_time();
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, "X_CALIBRATE", "START", true);
+	ASSERT_TRUE(wait_atomic(&calibrate_calls, calibrations + 1));
+	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_ALERT_STATE));
+	elapsed = indigo_monotonic_time() - started;
+	printf("endless calibration ended ALERT after %.1f s\n", elapsed);
+	ASSERT_TRUE(elapsed >= 3.5);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(WHEEL_SLOT_PROPERTY_NAME)->state);
+	ASSERT_FALSE(find_cached_item("X_CALIBRATE", "START")->sw.value);
+	moves = atomic_load(&set_position_calls);
+	indigo_change_number_property_1(&simulator_test_client, efw.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, target);
+	ASSERT_TRUE(wait_atomic(&set_position_calls, moves + 1));
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	started = indigo_monotonic_time();
+	ASSERT_TRUE(connection(false));
+	ASSERT_TRUE(indigo_monotonic_time() - started < 2);
+	atomic_store(&current_slot, target - 1);
+	atomic_store(&moving, false);
+}
+
 static void hotplug_capacity_and_failed_attach_retry(void) {
 	atomic_store(&visible_count, 2);
 	atomic_store(&fail_attach, 1);
@@ -320,6 +361,7 @@ int main(void) {
 		{ "initialization failures", initialization_failures },
 		{ "polling and calibration read failures", polling_and_calibration_read_failures },
 		{ "calibration noop and interrupted reconnect", calibration_noop_and_interrupted_reconnect },
+		{ "endless motion ends at the deadline", endless_motion_ends_at_the_deadline },
 		{ "failed attach and full capacity retry", hotplug_capacity_and_failed_attach_retry }
 	};
 	int result = indigo_run_tests("ASI EFW SDK integration", tests, sizeof(tests) / sizeof(tests[0]));
