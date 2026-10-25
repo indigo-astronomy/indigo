@@ -24,6 +24,7 @@
 #include <indigo/indigo_client.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_names.h>
 
 #include "../test_runner.h"
 
@@ -336,9 +337,48 @@ static void slave_query_stores_at_most_max_devices(void) {
 	ASSERT_TRUE(all_bounded);
 }
 
+// SESSION_FEATURES is one property shared by all clients: a change naming one item kept the other item of the client
+// that enumerated last instead of the value of the client that sent the change
+static bool session_reply_property_updates, session_reply_item_updates;
+
+static indigo_result session_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->name, SESSION_FEATURES_PROPERTY_NAME)) {
+		session_reply_property_updates = indigo_get_switch(property, SESSION_FORCE_PROPERTY_UPDATES_ITEM_NAME);
+		session_reply_item_updates = indigo_get_switch(property, SESSION_FORCE_ITEM_UPDATES_ITEM_NAME);
+	}
+	return INDIGO_OK;
+}
+
+static void session_feature_change_keeps_unnamed_feature_of_its_client(void) {
+	static indigo_client client_a = { .name = "Session client A", .version = INDIGO_VERSION_CURRENT, .update_property = session_update };
+	static indigo_client client_b = { .name = "Session client B", .version = INDIGO_VERSION_CURRENT, .update_property = session_update };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&client_a));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&client_b));
+	client_a.force_property_updates = false;
+	client_a.force_item_updates = true;
+	client_b.force_property_updates = false;
+	client_b.force_item_updates = false;
+	indigo_enumerate_properties(&client_b, &INDIGO_ALL_PROPERTIES);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&client_a, "Server", SESSION_FEATURES_PROPERTY_NAME, SESSION_FORCE_PROPERTY_UPDATES_ITEM_NAME, true));
+	bool a_property_updates = client_a.force_property_updates, a_item_updates = client_a.force_item_updates;
+	bool reply_property_updates = session_reply_property_updates, reply_item_updates = session_reply_item_updates;
+	bool b_property_updates = client_b.force_property_updates, b_item_updates = client_b.force_item_updates;
+	indigo_detach_client(&client_b);
+	indigo_detach_client(&client_a);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	ASSERT_TRUE(a_property_updates);
+	ASSERT_TRUE(a_item_updates);
+	ASSERT_TRUE(reply_property_updates);
+	ASSERT_TRUE(reply_item_updates);
+	ASSERT_FALSE(b_property_updates);
+	ASSERT_FALSE(b_item_updates);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "slave_query_stores_at_most_max_devices", slave_query_stores_at_most_max_devices },
+		{ "session_feature_change_keeps_unnamed_feature_of_its_client", session_feature_change_keeps_unnamed_feature_of_its_client },
 		{ "numeric_zero_exponents_and_format_status", numeric_zero_exponents_and_format_status },
 		{ "refusal_of_an_idle_property_publishes_alert", refusal_of_an_idle_property_publishes_alert },
 		{ "refusal_of_a_busy_property_is_only_a_message", refusal_of_a_busy_property_is_only_a_message },
