@@ -16515,6 +16515,7 @@
 				A27CA5D4B716CED190391A11 /* FND-20261024121920-3bd2-repository-audit-042.json */,
 				A21AF23EC8B8FB89D75EE7B3 /* FND-20261024155149-8381-fix-core-audit-findings-001.json */,
 				4F945538E804D77B129FE818 /* FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json */,
+				3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -19091,7 +19092,6 @@
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
 				7CE754E6D88ACCCBE2D60593 /* FND-20261024202957-6bd9-fix-ccd-rpi-001.json */,
 				DE8C90EC1179EB94E2CB290D /* FND-20261025093224-2d50-fix-ptp-findings-001.json */,
-				3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */,
 			);
 			path = active;
 			sourceTree = "<group>";

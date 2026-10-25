@@ -2,7 +2,7 @@
   "title": "Sony ILCE-7RM4 capture after a reconnect never completes and the exposure stays BUSY",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261025113906-c862-ptp-fuji-hardware-test",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261025134403-8427-fix-sony-capture-deadline",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Hardware run 2026-10-25 13:00 UTC on 3.0.0.58: in the third iteration of the Reconnect case the A7R4 accepts the capture but sends no ObjectAdded or error, and CCD_EXPOSURE stays BUSY with no driver deadline. Intermittent (passed at 12:46, not reproduced manually). Next: capture completion deadline ending ALERT in ptp_sony_exposure(), fake case for a lost object, hardware rerun.",
   "evidence": "indigo_drivers/ccd_ptp/README.md Testing record 2026-10-25 13:00 ILCE-7RM4 15/13 Failed; task findings.md; indigo_drivers/ccd_ptp/indigo_ptp_sony.c ptp_sony_exposure",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261025134403-8427-fix-sony-capture-deadline verification.md: ignored shutter press detected and retried (LENR-aware window), Sony session reopen delayed 1 s after CloseSession; fake regressions sony_ignored_press, sony_long_exposure_noise_reduction, sony_fast_reopen; recorded ILCE-7RM4 hardware run 15/15 OK on 3.0.0.59.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261025113906-c862-ptp-fuji-hardware-test-001"
 }

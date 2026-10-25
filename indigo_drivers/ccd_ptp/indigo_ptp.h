@@ -33,10 +33,14 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 							0x0300003A
+#define DRIVER_VERSION 							0x0300003B
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
+#ifndef PTP_SONY_REOPEN_DELAY
+#define PTP_SONY_REOPEN_DELAY       1
+#endif
+
 #ifndef PTP_CAPTURE_TIMEOUT
 #define PTP_CAPTURE_TIMEOUT         60
 #endif
@@ -443,6 +447,7 @@ typedef struct {
 	double capture_deadline;
 	double phase_deadline;
 	double connected_at;
+	double closed_at;
 	unsigned stream_retries;
 	unsigned stream_stop_retries;
 	unsigned capture_stop_retries;

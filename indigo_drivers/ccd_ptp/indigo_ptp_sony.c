@@ -1545,16 +1545,34 @@ static bool sony_capture_stop(indigo_device *device) {
 }
 
 #define SONY_SESSION_BUSY_WINDOW	10
+#ifndef SONY_SHOT_CONFIRM_TIME
+#define SONY_SHOT_CONFIRM_TIME		3
+#endif
+#define SONY_SHOT_RETRIES					2
+
+static double sony_shutter_time(indigo_device *device) {
+	uint32_t a = (uint32_t)(SONY_PRIVATE_DATA->shutter_speed >> 16) & 0xFFFF;
+	uint32_t b = (uint32_t)SONY_PRIVATE_DATA->shutter_speed & 0xFFFF;
+	return b ? (double)a / b : 0;
+}
 
 bool ptp_sony_exposure(indigo_device *device) {
 	if (PRIVATE_DATA->capture_phase == 0) {
 		PRIVATE_DATA->capture_stop = sony_capture_stop;
 		SONY_PRIVATE_DATA->downloaded_objects = 0;
+		SONY_PRIVATE_DATA->shot_retries = 0;
+		SONY_PRIVATE_DATA->shot_deadline = 0;
 		if (PRIVATE_DATA->abort_capture) {
 			return false;
 		}
 		if (SONY_PRIVATE_DATA->needs_pre_capture_delay && indigo_monotonic_time() < PRIVATE_DATA->connected_at + 3) {
 			return true;
+		}
+		PRIVATE_DATA->capture_phase = 4;
+	}
+	if (PRIVATE_DATA->capture_phase == 4) {
+		if (PRIVATE_DATA->abort_capture) {
+			return false;
 		}
 		int16_t value = 2;
 		SONY_PRIVATE_DATA->focus_state = 1;
@@ -1587,6 +1605,14 @@ bool ptp_sony_exposure(indigo_device *device) {
 			return false;
 		}
 		ptp_capture_start(device, bulb, 0);
+		if (!bulb) {
+			double shutter_time = sony_shutter_time(device);
+			if (shutter_time < CCD_EXPOSURE_ITEM->number.target) {
+				shutter_time = CCD_EXPOSURE_ITEM->number.target;
+			}
+			// Long exposure noise reduction (on by default from 1 s) records a dark frame of the same length.
+			SONY_PRIVATE_DATA->shot_deadline = indigo_monotonic_time() + (shutter_time >= 1 ? 2 * shutter_time : shutter_time) + SONY_SHOT_CONFIRM_TIME;
+		}
 		return true;
 	}
 	if (PRIVATE_DATA->capture_phase == 1) {
@@ -1599,6 +1625,18 @@ bool ptp_sony_exposure(indigo_device *device) {
 		PRIVATE_DATA->capture_phase = 2;
 	}
 	ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
+	// After a reconnect ILCE-7RM4 may accept a full press, refocus and never shoot; ObjectInMemory then stays 0.
+	if (SONY_PRIVATE_DATA->api_version == SONY_NEW_API && PRIVATE_DATA->capture_phase == 2 && SONY_PRIVATE_DATA->shot_deadline > 0 && !PRIVATE_DATA->abort_capture && !PRIVATE_DATA->readout_detected && !PRIVATE_DATA->image_added && SONY_PRIVATE_DATA->downloaded_objects == 0 && property && property->value.number.value == 0 && indigo_monotonic_time() >= SONY_PRIVATE_DATA->shot_deadline && ptp_sony_refresh_properties(device) && property->value.number.value == 0) {
+		if (SONY_PRIVATE_DATA->shot_retries >= SONY_SHOT_RETRIES) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera did not take the picture after %d attempts", SONY_PRIVATE_DATA->shot_retries + 1);
+			return false;
+		}
+		SONY_PRIVATE_DATA->shot_retries++;
+		SONY_PRIVATE_DATA->shot_deadline = 0;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Camera did not take the picture, pressing the shutter again");
+		PRIVATE_DATA->capture_phase = 4;
+		return true;
+	}
 	if (!PRIVATE_DATA->readout_detected && property && property->value.number.value > 0x8000) {
 		// Even an aborted NEW_API capture must drain its object before reuse.
 		uint32_t dummy[] = { 0xffffc001 };

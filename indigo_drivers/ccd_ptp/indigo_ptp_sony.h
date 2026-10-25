@@ -146,6 +146,8 @@ typedef struct {
 	uint64_t shutter_speed;
 	bool is_dual_compression;
 	unsigned downloaded_objects;
+	int shot_retries;
+	double shot_deadline;
 	int steps;
 	uint32_t api_version;
 	bool needs_pre_capture_delay;
