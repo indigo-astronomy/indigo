@@ -3,7 +3,7 @@
   "title": "LINUXDRV-003: GPIO/PWM export and unexport helpers return on the first failure without rolling back or continuing cleanup",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -16,9 +16,19 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-a-review.md",
       "revision": null
+    },
+    {
+      "id": "20261025074335-0b62-fix-rpio-gpio-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "LINUXDRV-003: GPIO/PWM export and unexport helpers return on the first failure without rolling back or continuing cleanup. A partial connect failure can leave some GPIOs/PWMs exported, and a disconnect can stop after one unexport error while leaving the rest of the pins exported. Track successfully exported resources during connect and perform best-effort cleanup of all resources on failure and disconnect. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current cleanup is best-effort and no longer stops at first failure. Remaining concrete ownership issue: rollback/disconnect can unexport resources already present before this driver session. Next: track per-session ownership and regress pre-exported resources plus partial setup failures; retain original provenance.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:31; historical locations: `aux_asiair/indigo_aux_asiair.c:482`, `aux_asiair/indigo_aux_asiair.c:505`, `aux_rpio/indigo_aux_rpio.c:555`, `aux_rpio/indigo_aux_rpio.c:581`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025074335-0b62-fix-rpio-gpio-findings/verification.md; per-session ownership bits in rpio_sysfs, only session exports are unexported; 'pre-exported pins stay exported', 'failed connect keeps pre-exported pins', aux_rpio hardware case on Raspberry Pi 5 and 3B+.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

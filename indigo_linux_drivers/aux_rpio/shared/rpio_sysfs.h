@@ -55,6 +55,12 @@ typedef struct {
 	int pwm_chip;
 	/** True when the PWM chip was found and the PWM outputs are in use. */
 	bool pwm_present;
+	/** Bit i is set when this session exported output line i, input line i
+	    or PWM channel i. Anything exported before the session, by another
+	    program or a previous run, is used but never unexported. */
+	unsigned int owned_outputs;
+	unsigned int owned_inputs;
+	unsigned int owned_channels;
 } rpio_sysfs;
 
 /** Resolve the GPIO controller base and the PWM chip. Always succeeds; the
@@ -62,11 +68,12 @@ typedef struct {
 extern void rpio_sysfs_resolve(rpio_sysfs *sysfs);
 
 /** Export every pin and set its direction. On failure every pin exported by
-    this call is unexported again, so a failed attempt leaves nothing behind. */
+    this call is unexported again, so a failed attempt leaves nothing behind.
+    Pins and channels that were already exported are used and left exported. */
 extern bool rpio_sysfs_export_all(rpio_sysfs *sysfs);
 
-/** Unexport everything this driver exported. Best effort: a failing pin is
-    logged and the remaining pins are still released. */
+/** Unexport everything this session exported, and nothing else. Best effort:
+    a failing pin is logged and the remaining pins are still released. */
 extern void rpio_sysfs_unexport_all(rpio_sysfs *sysfs);
 
 /** Write one output line, through PWM enable for a PWM backed line. */

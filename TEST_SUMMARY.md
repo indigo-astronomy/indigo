@@ -72,9 +72,11 @@
 |  | 2026-10-09 14:49 | 3.0.0.34 | linux arm64 | PegasusAstro Pocket Powerbox Advance Arduino simulator (ESP32-S3) | 12 / 12 | ✅ OK |
 |  | 2026-10-09 14:51 | 3.0.0.34 | linux arm64 | PegasusAstro Pocket Powerbox Arduino simulator (ESP32-S3) | 12 / 12 | ✅ OK |
 |  | 2026-10-09 14:53 | 3.0.0.34 | linux arm64 | PegasusAstro Saddle Powerbox Arduino simulator (ESP32-S3) | 12 / 12 | ✅ OK |
-| aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
-|  | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
-|  | 2026-09-27 02:04 | 3.0.0.11 | linux x64 | fake SDK | 23 / 23 | ✅ OK |
+| aux_rpio | 2026-09-27 02:04 | 3.0.0.11 | linux x64 | fake SDK | 23 / 23 | ✅ OK |
+|  | 2026-10-25 09:10 | 3.0.0.12 | linux arm64 | fake SDK | 28 / 28 | ✅ OK |
+|  | 2026-10-25 09:11 | 3.0.0.12 | linux arm64 | Raspberry Pi 5 | 5 / 5 | ✅ OK |
+|  | 2026-10-25 09:12 | 3.0.0.12 | linux arm64 | fake SDK (Raspberry Pi 3B+) | 28 / 28 | ✅ OK |
+|  | 2026-10-25 09:13 | 3.0.0.12 | linux arm64 | Raspberry Pi 3B+ | 5 / 5 | ✅ OK |
 | aux_rts | 2026-09-23 19:19 | 3.0.0.11 | linux arm64 | simulator | 10 / 10 | ✅ OK |
 |  | 2026-09-23 19:22 | 3.0.0.11 | linux arm64 | FTDI serial loopback | 9 / 9 | ✅ OK |
 |  | 2026-09-27 20:55 | 3.0.0.12 | mac arm64 | simulator | 10 / 10 | ✅ OK |

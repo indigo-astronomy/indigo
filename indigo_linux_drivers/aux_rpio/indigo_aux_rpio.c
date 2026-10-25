@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000B
+#define DRIVER_VERSION       0x0300000C
 #define DRIVER_NAME          "indigo_aux_rpio"
 #define DRIVER_LABEL         "Raspberry Pi GPIO"
 #define AUX_DEVICE_NAME      "Raspberry Pi GPIO"
@@ -213,18 +213,27 @@ static double rpio_pulse_delay(indigo_device *device) {
 
 // One finalizer serves every output of the device: it switches off each
 // output whose pulse has elapsed and rearms itself for the next deadline.
+// An output that cannot be switched off may still be energized, so it is
+// shown on in ALERT state; switching it off again retries the write.
 static void relay_pulse_finalizer(indigo_device *device) {
 	double now = indigo_monotonic_time();
 	bool updated = false;
+	bool failed = false;
 	for (int i = 0; i < OUTPUT_COUNT; i++) {
 		if (PRIVATE_DATA->pulse_until[i] > 0 && now >= PRIVATE_DATA->pulse_until[i]) {
 			PRIVATE_DATA->pulse_until[i] = 0;
-			rpio_sysfs_write_output(&PRIVATE_DATA->sysfs, i, false);
-			(AUX_GPIO_OUTLETS_PROPERTY->items + i)->sw.value = false;
+			if (rpio_sysfs_write_output(&PRIVATE_DATA->sysfs, i, false)) {
+				(AUX_GPIO_OUTLETS_PROPERTY->items + i)->sw.value = false;
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Output #%d pulse end failed, the output may still be on", i + 1);
+				failed = true;
+			}
 			updated = true;
 		}
 	}
-	if (updated) {
+	if (failed) {
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_GPIO_OUTLETS_PROPERTY, INDIGO_ALERT_STATE, "Output pulse could not be ended, the output may still be on");
+	} else if (updated) {
 		indigo_update_property(device, AUX_GPIO_OUTLETS_PROPERTY, NULL);
 	}
 	double delay = rpio_pulse_delay(device);

@@ -209,8 +209,11 @@ static bool rpio_sysfs_pin_exported(rpio_sysfs *sysfs, int pin) {
 	return stat(path, &status) == 0 && S_ISDIR(status.st_mode);
 }
 
-static bool rpio_sysfs_export_pin(rpio_sysfs *sysfs, int pin) {
+// Sets created when the pin was exported by this call rather than found
+// exported already.
+static bool rpio_sysfs_export_pin(rpio_sysfs *sysfs, int pin, bool *created) {
 	char path[RPIO_SYSFS_PATH_SIZE];
+	*created = false;
 	if (rpio_sysfs_pin_exported(sysfs, pin)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pin #%d is already exported", pin);
 		return true;
@@ -220,6 +223,7 @@ static bool rpio_sysfs_export_pin(rpio_sysfs *sysfs, int pin) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to export pin #%d as sysfs GPIO %d", pin, sysfs->gpio_base + pin);
 		return false;
 	}
+	*created = true;
 	return true;
 }
 
@@ -229,7 +233,11 @@ static bool rpio_sysfs_unexport_pin(rpio_sysfs *sysfs, int pin) {
 		return true;
 	}
 	snprintf(path, sizeof(path), "%s/unexport", RPIO_SYSFS_GPIO_ROOT);
-	return rpio_sysfs_write_number(path, sysfs->gpio_base + pin);
+	if (!rpio_sysfs_write_number(path, sysfs->gpio_base + pin)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to unexport pin #%d", pin);
+		return false;
+	}
+	return true;
 }
 
 // A freshly exported node appears owned by root and is only handed to the gpio
@@ -251,15 +259,17 @@ static bool rpio_sysfs_wait_for_pin(rpio_sysfs *sysfs, int pin) {
 	return false;
 }
 
+// An output that already is one is left alone, because writing "out" drives
+// it low. An input is always written: on the RP1 of a Raspberry Pi 5 a freshly
+// exported line reads "in" while its pin function is still none, and only the
+// write makes it an input.
 static bool rpio_sysfs_set_direction(rpio_sysfs *sysfs, int pin, bool input) {
 	char path[RPIO_SYSFS_PATH_SIZE];
 	char current[RPIO_SYSFS_VALUE_SIZE];
 	rpio_sysfs_pin_path(sysfs, path, sizeof(path), pin, "direction");
-	if (rpio_sysfs_read_text(path, current, sizeof(current))) {
-		if ((current[0] == 'i') == input) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pin #%d direction is already %s", pin, input ? "in" : "out");
-			return true;
-		}
+	if (!input && rpio_sysfs_read_text(path, current, sizeof(current)) && current[0] == 'o') {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pin #%d direction is already out", pin);
+		return true;
 	}
 	return rpio_sysfs_write_text(path, input ? "in" : "out");
 }
@@ -276,22 +286,34 @@ static bool rpio_sysfs_write_pin(rpio_sysfs *sysfs, int pin, bool value) {
 	return rpio_sysfs_write_text(path, value ? "1" : "0");
 }
 
-static bool rpio_sysfs_export_pwm(rpio_sysfs *sysfs, int channel) {
+// Sets created when the channel was exported by this call rather than found
+// exported already.
+static bool rpio_sysfs_export_pwm(rpio_sysfs *sysfs, int channel, bool *created) {
 	char path[RPIO_SYSFS_PATH_SIZE];
+	*created = false;
 	rpio_sysfs_pwm_path(sysfs, path, sizeof(path), channel, "enable");
 	int fd = open(path, O_RDONLY);
 	if (fd >= 0) {
 		close(fd);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PWM channel %d is already exported", channel);
 		return true;
 	}
 	snprintf(path, sizeof(path), "%s/pwmchip%d/export", RPIO_SYSFS_PWM_ROOT, sysfs->pwm_chip);
-	return rpio_sysfs_write_number(path, channel);
+	if (!rpio_sysfs_write_number(path, channel)) {
+		return false;
+	}
+	*created = true;
+	return true;
 }
 
 static bool rpio_sysfs_unexport_pwm(rpio_sysfs *sysfs, int channel) {
 	char path[RPIO_SYSFS_PATH_SIZE];
 	snprintf(path, sizeof(path), "%s/pwmchip%d/unexport", RPIO_SYSFS_PWM_ROOT, sysfs->pwm_chip);
-	return rpio_sysfs_write_number(path, channel);
+	if (!rpio_sysfs_write_number(path, channel)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to unexport PWM channel %d", channel);
+		return false;
+	}
+	return true;
 }
 
 static bool rpio_sysfs_enable_pwm(rpio_sysfs *sysfs, int channel, bool value) {
@@ -306,25 +328,32 @@ static bool rpio_sysfs_pwm_enabled(rpio_sysfs *sysfs, int channel, int *value) {
 	return rpio_sysfs_read_number(path, value);
 }
 
+static int rpio_sysfs_bit_count(unsigned int bits) {
+	int count = 0;
+	for (; bits; bits &= bits - 1) {
+		count++;
+	}
+	return count;
+}
+
 bool rpio_sysfs_export_all(rpio_sysfs *sysfs) {
-	int exported_outputs = 0;
-	int exported_inputs = 0;
-	int exported_channels = 0;
 	bool failed = false;
+	bool created = false;
+	sysfs->owned_outputs = sysfs->owned_inputs = sysfs->owned_channels = 0;
 	for (int i = 0; i < sysfs->pwm_count && sysfs->pwm_present && !failed; i++) {
-		failed = !rpio_sysfs_export_pwm(sysfs, i);
-		exported_channels += failed ? 0 : 1;
+		failed = !rpio_sysfs_export_pwm(sysfs, i, &created);
+		sysfs->owned_channels |= created ? 1U << i : 0;
 	}
 	for (int i = 0; i < sysfs->output_count && !failed; i++) {
 		if (rpio_sysfs_channel_of(sysfs, i) >= 0) {
 			continue;
 		}
-		failed = !rpio_sysfs_export_pin(sysfs, sysfs->output_pins[i]);
-		exported_outputs += failed ? 0 : 1;
+		failed = !rpio_sysfs_export_pin(sysfs, sysfs->output_pins[i], &created);
+		sysfs->owned_outputs |= created ? 1U << i : 0;
 	}
 	for (int i = 0; i < sysfs->input_count && !failed; i++) {
-		failed = !rpio_sysfs_export_pin(sysfs, sysfs->input_pins[i]);
-		exported_inputs += failed ? 0 : 1;
+		failed = !rpio_sysfs_export_pin(sysfs, sysfs->input_pins[i], &created);
+		sysfs->owned_inputs |= created ? 1U << i : 0;
 	}
 	for (int i = 0; i < sysfs->output_count && !failed; i++) {
 		if (rpio_sysfs_channel_of(sysfs, i) >= 0) {
@@ -336,7 +365,7 @@ bool rpio_sysfs_export_all(rpio_sysfs *sysfs) {
 		failed = !rpio_sysfs_wait_for_pin(sysfs, sysfs->input_pins[i]) || !rpio_sysfs_set_direction(sysfs, sysfs->input_pins[i], true);
 	}
 	if (failed) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rolling back %d output, %d input and %d PWM exports", exported_outputs, exported_inputs, exported_channels);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rolling back %d output, %d input and %d PWM exports", rpio_sysfs_bit_count(sysfs->owned_outputs), rpio_sysfs_bit_count(sysfs->owned_inputs), rpio_sysfs_bit_count(sysfs->owned_channels));
 		rpio_sysfs_unexport_all(sysfs);
 		return false;
 	}
@@ -345,17 +374,21 @@ bool rpio_sysfs_export_all(rpio_sysfs *sysfs) {
 
 void rpio_sysfs_unexport_all(rpio_sysfs *sysfs) {
 	for (int i = 0; i < sysfs->input_count; i++) {
-		rpio_sysfs_unexport_pin(sysfs, sysfs->input_pins[i]);
+		if (sysfs->owned_inputs & (1U << i)) {
+			rpio_sysfs_unexport_pin(sysfs, sysfs->input_pins[i]);
+		}
 	}
 	for (int i = 0; i < sysfs->output_count; i++) {
-		if (rpio_sysfs_channel_of(sysfs, i) >= 0) {
-			continue;
+		if (sysfs->owned_outputs & (1U << i)) {
+			rpio_sysfs_unexport_pin(sysfs, sysfs->output_pins[i]);
 		}
-		rpio_sysfs_unexport_pin(sysfs, sysfs->output_pins[i]);
 	}
 	for (int i = 0; i < sysfs->pwm_count && sysfs->pwm_present; i++) {
-		rpio_sysfs_unexport_pwm(sysfs, i);
+		if (sysfs->owned_channels & (1U << i)) {
+			rpio_sysfs_unexport_pwm(sysfs, i);
+		}
 	}
+	sysfs->owned_outputs = sysfs->owned_inputs = sysfs->owned_channels = 0;
 }
 
 bool rpio_sysfs_write_output(rpio_sysfs *sysfs, int line, bool value) {

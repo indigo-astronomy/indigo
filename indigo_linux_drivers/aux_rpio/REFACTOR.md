@@ -330,6 +330,19 @@ Numbering is stable; each entry gets a regression test before it is fixed.
   when hidden, and their change handlers run unconditionally.
 - Fix: skip when the chip is absent.
 
+### D16 RP1 inputs are left without a pin function
+
+- Impact: on a Raspberry Pi 5 whose input pins have function `none` (the state after a reboot),
+  connect succeeds but none of the eight inputs is configured; `pinctrl` keeps reporting `none`.
+- Root cause: `rpio_sysfs_set_direction()` skipped the write when `direction` already read `in`.
+  A freshly exported RP1 line reads `in`, but the RP1 sets the pin function only on the write.
+- Discovery: reproduced on hardware on 2026-10-25 (3.0.0.12 candidate, hardware cases 1 and 3
+  failed), then by hand with `export` and `echo in > direction`. Pre-existing; the 2026-09-20 run
+  passed because the pins were still configured from earlier use.
+- Fix: an input is always written; only an output that already reads `out` is skipped.
+- Regression test: `inputs are configured on the RP1` with the RP1 model in `sysfs_gpio_fake.h`,
+  and the hardware cases run from all inputs at `none`. See the 3.0.0.12 section below.
+
 ## Plan
 
 Each step is independently verifiable and is marked here with its result as soon as it runs.
@@ -463,6 +476,7 @@ Each step is independently verifiable and is marked here with its result as soon
 | D14 the input poller survives disconnect | fixed, the generated callback returns when not connected |
 | D9a the bounded wait waited for readability | fixed, it waits for writability |
 | D15 PWM routing inferred from chip existence | fixed, PWM is opt-in through `X_AUX_PWM` |
+| D16 RP1 inputs left without a pin function | fixed in 3.0.0.12, inputs are always written |
 
 ### D3 is still an assumption, but it is now opt-in
 
@@ -554,13 +568,71 @@ x64 (Ubuntu 24.04, gcc 13.3), hardware-free suite only; no hardware run.
 cd indigo_test && INDIGO_TEST_FILTER="PWM" ./build/integration/test_aux_rpio_sysfs
 ```
 
+## Export ownership, pulse end failure and RP1 inputs (3.0.0.12, 2026-10-25)
+
+Findings FND-000014 to FND-000018 and FND-20261023065605-60d4-repository-audit-011 in
+`.factory/findings/`, task `20261025074335-0b62-fix-rpio-gpio-findings`. The sysfs layer is shared
+with aux_asiair, which got the same changes (3.0.0.8).
+
+- **Environment:** Raspberry Pi 5 Model B Rev 1.0 (Debian 12, kernel `6.12.87+rpt-rpi-2712`,
+  RP1 header controller at base 571) and Raspberry Pi 3 Model B Plus Rev 1.3 (kernel
+  `6.18.50+rpt-rpi-v8`, header controller at base 512), aarch64, nothing connected to either
+  40-pin header (the Raspberry Pi 3B+ carries only an OV5647 camera on CSI).
+- **FND-000016 (source audit, reproduced in the fake):** rollback and disconnect unexported every
+  pin and PWM channel of the driver, also those exported before the session by another program.
+  **Fix:** `rpio_sysfs` records in `owned_outputs`, `owned_inputs` and `owned_channels` what the
+  session exported itself; `rpio_sysfs_unexport_all()` releases only those. A pin left exported by
+  a crashed earlier run is therefore left exported as well. Failed unexports are now logged.
+  **Regression tests:** `pre-exported pins stay exported` (pin 16 and PWM channel 0 exported
+  before connect, also across a reconnect) and `failed connect keeps pre-exported pins`; hardware
+  case `a pin exported before the connection stays exported` exports GPIO 16 through sysfs, drives
+  it high and low through Output #5 (checked with `pinctrl`) and checks that the node survives the
+  disconnect. Against 3.0.0.11 both fake cases fail (the node is unexported).
+- **FND-20261023065605-60d4-repository-audit-011 (source audit, reproduced in the fake):**
+  `relay_pulse_finalizer()` ignored a failed OFF write and published the output OFF.
+  **Fix:** the item stays ON, the error is logged and `AUX_GPIO_OUTLETS` is published ALERT;
+  switching the output off again retries the write. A request to switch it ON finds pin and item
+  both on and writes nothing, which matches the energized output; the ALERT state stays until the
+  next `AUX_GPIO_OUTLETS` request publishes its own state. **Regression test:** `failed pulse end
+  is reported` (fake `fail_value_write` armed while a 2 s pulse on Output #4 runs).
+- **D16 RP1 inputs keep no pin function (reproduced on the Raspberry Pi 5, pre-existing):** with
+  every input pin at function `none` (`pinctrl set ... no`, the state after a reboot), connect
+  left all eight inputs at `none`: `rpio_sysfs_set_direction()` skipped the write because a
+  freshly exported RP1 line already reads `in`, but the RP1 sets the pin function only when
+  `direction` is written. The hardware cases `connect claims the header pins` and `inputs are
+  configured and readable` failed (3 of 5). The September run passed only because the pins were
+  still configured from earlier use. Confirmed by hand: after `export` the line reads `in` and
+  `pinctrl` shows `none`; `echo in > direction` makes it `ip`. **Fix:** an input is always
+  written; only an output that already reads `out` is skipped, since writing `out` drives it low.
+  **Fake:** `sysfs_gpio_fake.h` models the RP1 (`gpio_base != 0`): an exported line has no
+  function (`configured`) until its direction is written. **Regression test:** `inputs are
+  configured on the RP1` fails against the unfixed function (checked on the Raspberry Pi 5) and
+  passes with the fix; the hardware run after the fix started from all inputs at `none`.
+- **FND-000014, FND-000015 (no code change):** current source already checks every PWM readback,
+  rejects a zero period in `rpio_sysfs_get_pwm()` and NUL-terminates every sysfs read at the
+  returned length (`rpio_sysfs_read_text()`). New regression test `zero PWM period is reported`:
+  the poll publishes both PWM properties ALERT with the previous finite 100 / 100 and nothing is
+  written; `empty value read is an error` already covers the short read.
+- **FND-000017, FND-000018 (no code change):** the generated driver owns no `relay_mutex` or
+  `port_mutex`; property allocation goes through `indigo_safe_malloc()`, which never returns NULL,
+  so the partial-attach path the finding describes cannot be reached.
+- **Verification:** final recorded runs with `python3 tools/run_driver_test.py aux_rpio` and
+  `--hw --type "Raspberry Pi 5"` / `--type "Raspberry Pi 3B+"` on each Pi: fake 28/28 on both,
+  hardware 5/5 on both. `make -C indigo_test test-aux-rpio-sysfs-asan` passes on the Raspberry
+  Pi 5; on the Raspberry Pi 3B+ the ASan runtime aborts before `main` (`sanitizer_allocator_primary64.h:131`
+  CHECK, the kernel's address space layout), so no ASan result exists for that machine.
+  Regeneration of both `.driver` files reproduces the checked-in output.
+
 ## Final test summary
 
-- Simulated tests: 23 executed, 23 passed (Linux x64, 3.0.0.11). Earlier: 19 executed, 19 passed.
+- Simulated tests: 28 executed, 28 passed on the Raspberry Pi 5 and again on the Raspberry Pi 3B+
+  (3.0.0.12). Earlier: 23 executed, 23 passed (Linux x64, 3.0.0.11) and 19 executed, 19 passed.
   The pre-migration baseline against the unmodified driver
   was 18 executed, 6 passed; the 12 failures were the recorded expected baseline failures for D1,
   D5, D7, D9 and D14, and all of them now pass.
-- Hardware tests: 4 executed, 4 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected
+- Hardware tests: 5 executed, 5 passed on the Raspberry Pi 5 and 5 executed, 5 passed on the
+  Raspberry Pi 3B+ (3.0.0.12), after D16 had failed 2 of the 5 on the Raspberry Pi 5. Earlier:
+  4 executed, 4 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected
   to the 40-pin header, and repeated twice with identical results. All eight outputs physically
   switch, measured through `pinctrl` rather than through the driver's own interface. Before the
   D15 fix the same test measured six of eight. Three non-destructive topology inspections were run

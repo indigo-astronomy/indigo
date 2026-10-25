@@ -210,6 +210,48 @@ static void inputs_are_readable(void) {
 	}
 }
 
+static bool write_sysfs_number(const char *path, int value) {
+	FILE *file = fopen(path, "w");
+	if (file == NULL) {
+		return false;
+	}
+	bool ok = fprintf(file, "%d", value) > 0;
+	return fclose(file) == 0 && ok;
+}
+
+// FND-000016. A pin that was exported before the connection belongs to whoever
+// exported it: the driver drives it while connected but leaves the node in
+// place on disconnect. Output #5 (GPIO 16) is exported here through sysfs, as
+// another program would do it, and released by the test afterwards.
+static void preexported_pin_stays_exported(void) {
+	int base = header_base();
+	int pin = output_pins[4];
+	indigo_change_switch_property_1(&test_client, RPIO_DEVICE_NAME, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	ASSERT_TRUE(wait_for_connection(false));
+	ASSERT_TRUE(pin_node_is_gone(pin, base));
+	ASSERT_TRUE(write_sysfs_number("/sys/class/gpio/export", base + pin));
+	indigo_usleep(300000);
+	ASSERT_FALSE(pin_node_is_gone(pin, base));
+	indigo_change_switch_property_1(&test_client, RPIO_DEVICE_NAME, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	ASSERT_TRUE(wait_for_connection(true));
+	set_outlet(4, true);
+	ASSERT_TRUE(pin_is_output_level(pin, "hi"));
+	set_outlet(4, false);
+	ASSERT_TRUE(pin_is_output_level(pin, "lo"));
+	indigo_change_switch_property_1(&test_client, RPIO_DEVICE_NAME, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	ASSERT_TRUE(wait_for_connection(false));
+	indigo_usleep(300000);
+	ASSERT_FALSE(pin_node_is_gone(pin, base));
+	ASSERT_TRUE(pin_node_is_gone(output_pins[3], base));
+	ASSERT_TRUE(pin_node_is_gone(input_pins[0], base));
+	ASSERT_TRUE(write_sysfs_number("/sys/class/gpio/unexport", base + pin));
+	indigo_usleep(100000);
+	ASSERT_TRUE(pin_node_is_gone(pin, base));
+	// The last case releases a normal session again.
+	indigo_change_switch_property_1(&test_client, RPIO_DEVICE_NAME, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	ASSERT_TRUE(wait_for_connection(true));
+}
+
 static void disconnect_releases_every_pin(void) {
 	indigo_change_switch_property_1(&test_client, RPIO_DEVICE_NAME, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
 	ASSERT_TRUE(wait_for_connection(false));
@@ -239,6 +281,7 @@ int main(int argc, char **argv) {
 		{ "connect claims the header pins", connect_and_export },
 		{ "outputs drive the physical pins", outputs_drive_the_physical_pins },
 		{ "inputs are configured and readable", inputs_are_readable },
+		{ "a pin exported before the connection stays exported", preexported_pin_stays_exported },
 		{ "disconnect releases every pin", disconnect_releases_every_pin }
 	};
 	return indigo_run_tests("aux_rpio hardware tests", tests, ARRAY_SIZE(tests));

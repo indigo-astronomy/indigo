@@ -7198,6 +7198,18 @@
 		E3770911FF2CB563BC9D803D /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		446A84059AF252B4763AA5BC /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		A760447BAF9ECD27AB316C99 /* 20261025001458-4524-primaluce-wifi-status-idle.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025001458-4524-primaluce-wifi-status-idle.json"; sourceTree = "<group>"; };
+		8B14E5E956FB7AAB0B6AB296 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		7C050D6891952C61512EB4EB /* findings.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "findings.md"; sourceTree = "<group>"; };
+		FE1E2284A8A904519419A9C2 /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		C968FC789F749926D2781840 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		3A442C6487344BD3AFF510EE /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		8D2DD9B93C1DECADD538D9C7 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		FDDFC230FD96AD4DAA4BF558 /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		0ED63EF1D09D69353B1B79C2 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		559CBF830FA54EDE9167DBE0 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		4AC414EEE588844D83E00D13 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		3F1BCB9A480CBAEA78B91E48 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		E800FCFF03CFA4E27FC04773 /* 20261025074335-0b62-fix-rpio-gpio-findings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025074335-0b62-fix-rpio-gpio-findings.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16326,6 +16338,7 @@
 				1C76C96F145DBAE00668C5E2 /* 20261024213010-b356-primaluce-panel-cover-firmware-bound */,
 				582498753B30FC8537004227 /* 20261024221319-1235-primaluce-wifi-status */,
 				801559B057D1D381ED8F0B6C /* 20261025001458-4524-primaluce-wifi-status-idle */,
+				D949EA4F2764B2ED06421447 /* 20261025074335-0b62-fix-rpio-gpio-findings */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -16380,6 +16393,11 @@
 				B75F523ADB53F70E6C693D97 /* FND-000004.json */,
 				9C2B8FC2F863059D344B519D /* FND-000005.json */,
 				2365540113A4B7BEB46DD53C /* FND-000006.json */,
+				FE0BFABEB5203AEE3372EFFF /* FND-000014.json */,
+				562ED6DDC55CF7B3CEFA3BEF /* FND-000015.json */,
+				46CA671A922CD3F530C5F4E9 /* FND-000016.json */,
+				401D13B5F839D7571CD5ADE9 /* FND-000017.json */,
+				6575AB7EB3748644ADC55EEB /* FND-000018.json */,
 				DAD10109315479002ECDE2DB /* FND-000021.json */,
 				BA1E8F77B1577BBF32A3F120 /* FND-000022.json */,
 				1A14ED931088CA0DFC3E1229 /* FND-000023.json */,
@@ -16407,6 +16425,7 @@
 				D55F27B889214F57A08D4704 /* FND-000060.json */,
 				184DAC56214113B6FEF7ADCD /* FND-20261023065605-60d4-repository-audit-001.json */,
 				38459A389B8C3EED51B06D1C /* FND-20261023065605-60d4-repository-audit-002.json */,
+				D758D2EB391BE03D271BC676 /* FND-20261023065605-60d4-repository-audit-011.json */,
 				75FDFD6173244249966D2AA0 /* FND-20261023080442-7930-primaluce-arco-sestosenso3-001.json */,
 				D4FD7C06BD727AE700CE1F8D /* FND-20261023080442-7930-primaluce-arco-sestosenso3-002.json */,
 				406A56E55BADF348176AF43D /* FND-20261023080442-7930-primaluce-arco-sestosenso3-003.json */,
@@ -18624,6 +18643,7 @@
 				AA05DF155124448390C94540 /* 20261024213010-b356-primaluce-panel-cover-firmware-bound.json */,
 				7C703492C8A3ECF8BC2CB61B /* 20261024221319-1235-primaluce-wifi-status.json */,
 				A760447BAF9ECD27AB316C99 /* 20261025001458-4524-primaluce-wifi-status-idle.json */,
+				E800FCFF03CFA4E27FC04773 /* 20261025074335-0b62-fix-rpio-gpio-findings.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -18971,11 +18991,6 @@
 				5F5C3D8104259C2A7ED8C542 /* FND-000011.json */,
 				C8408524350193891BDE82AD /* FND-000012.json */,
 				B33D5E9553AFDD8534771BA1 /* FND-000013.json */,
-				FE0BFABEB5203AEE3372EFFF /* FND-000014.json */,
-				562ED6DDC55CF7B3CEFA3BEF /* FND-000015.json */,
-				46CA671A922CD3F530C5F4E9 /* FND-000016.json */,
-				401D13B5F839D7571CD5ADE9 /* FND-000017.json */,
-				6575AB7EB3748644ADC55EEB /* FND-000018.json */,
 				1DF5224DD284B0B53A43A993 /* FND-000019.json */,
 				AF47E6E132D8D85848C70B03 /* FND-000020.json */,
 				BC82B300B40AE795785799B7 /* FND-000028.json */,
@@ -19001,7 +19016,6 @@
 				AA9F5611A5443AA464964012 /* FND-20261023065605-60d4-repository-audit-008.json */,
 				AF516D9985C82CE14D79F565 /* FND-20261023065605-60d4-repository-audit-009.json */,
 				AFEADDF7C08438C4F4A25951 /* FND-20261023065605-60d4-repository-audit-010.json */,
-				D758D2EB391BE03D271BC676 /* FND-20261023065605-60d4-repository-audit-011.json */,
 				3ADC6477B64DB6A94F639E92 /* FND-20261023065605-60d4-repository-audit-012.json */,
 				0A0F760E02EA65CFC5ADA5A0 /* FND-20261023101753-bc8d-complete-repository-audit-003.json */,
 				AC4DB870FEB0BAB7942BF129 /* FND-20261023101753-bc8d-complete-repository-audit-004.json */,
@@ -20178,6 +20192,24 @@
 				446A84059AF252B4763AA5BC /* verification.md */,
 			);
 			path = "20261025001458-4524-primaluce-wifi-status-idle";
+			sourceTree = "<group>";
+		};
+		D949EA4F2764B2ED06421447 /* 20261025074335-0b62-fix-rpio-gpio-findings */ = {
+			isa = PBXGroup;
+			children = (
+				8B14E5E956FB7AAB0B6AB296 /* brief.md */,
+				7C050D6891952C61512EB4EB /* findings.md */,
+				FE1E2284A8A904519419A9C2 /* handoff.md */,
+				C968FC789F749926D2781840 /* plan.md */,
+				3A442C6487344BD3AFF510EE /* process.json */,
+				8D2DD9B93C1DECADD538D9C7 /* quality-review.md */,
+				FDDFC230FD96AD4DAA4BF558 /* security.md */,
+				0ED63EF1D09D69353B1B79C2 /* specification.md */,
+				559CBF830FA54EDE9167DBE0 /* state.json */,
+				4AC414EEE588844D83E00D13 /* test-plan.md */,
+				3F1BCB9A480CBAEA78B91E48 /* verification.md */,
+			);
+			path = "20261025074335-0b62-fix-rpio-gpio-findings";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

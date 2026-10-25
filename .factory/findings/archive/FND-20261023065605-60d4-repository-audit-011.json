@@ -2,7 +2,7 @@
   "title": "GPIO pulse finalizers report OFF after a failed hardware stop",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261023065605-60d4-repository-audit",
       "report": "independent-review.md",
       "revision": null
+    },
+    {
+      "id": "20261025074335-0b62-fix-rpio-gpio-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "Pulse finalizers ignore the failed OFF write, clear the deadline and publish OFF even when the relay may remain energized. Source-confirmed independent driver review; no hardware reproduction. Next: propagate stop failure and test failed OFF writes with a fake backend.",
   "evidence": "indigo_drivers/aux_asiair/indigo_aux_asiair.driver:109-114; indigo_drivers/aux_rpio/indigo_aux_rpio.driver:120-125",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025074335-0b62-fix-rpio-gpio-findings/verification.md; relay_pulse_finalizer() keeps a port ON and publishes AUX_GPIO_OUTLETS ALERT on a failed OFF write in aux_rpio 12 and aux_asiair 8; 'failed pulse end is reported' in both suites.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023065605-60d4-repository-audit-011"
 }

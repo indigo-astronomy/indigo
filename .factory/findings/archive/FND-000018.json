@@ -3,7 +3,7 @@
   "title": "LINUXDRV-005: If custom property allocation fails after `indigo_aux_attach()` has already succeeded, `aux_attach()` returns `INDIGO_FAILED` without releasing any properties allocated b",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -16,9 +16,19 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-a-review.md",
       "revision": null
+    },
+    {
+      "id": "20261025074335-0b62-fix-rpio-gpio-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "LINUXDRV-005: If custom property allocation fails after `indigo_aux_attach()` has already succeeded, `aux_attach()` returns `INDIGO_FAILED` without releasing any properties allocated before the failed allocation and without detaching the base AUX context. Add a single cleanup path that releases partially initialized properties, destroys initialized mutexes, and calls `indigo_aux_detach()`. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current property constructors use indigo_safe_malloc, which terminates rather than returning NULL. The historical partial-attach NULL-return premise is unreachable under that contract. Next: dedicated verified disposition against the actual allocator/lifecycle, preserving historical observation.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:33; historical locations: `aux_asiair/indigo_aux_asiair.c:696`, `aux_rpio/indigo_aux_rpio.c:861`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "not_a_bug",
+    "evidence": "20261025074335-0b62-fix-rpio-gpio-findings/findings.md; property allocation goes through indigo_safe_malloc(), which asserts and exits instead of returning NULL, so the partial-attach NULL path is unreachable.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

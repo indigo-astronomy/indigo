@@ -28,7 +28,7 @@
 | aux_joystick            | 3️⃣ | ❌ No  | ⛔ N/A | ✅ Yes | ✅ HW  | 14 / 2 | |
 | aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 35 / 0 | |
 | aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
-| aux_rpio                | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 23 / 4 | ⛔ RPi only |
+| aux_rpio                | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 28 / 5 | ⛔ RPi only |
 | aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 9 | |
 | aux_simulator          | 3️⃣ | ✅ Project | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | |
 | aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |

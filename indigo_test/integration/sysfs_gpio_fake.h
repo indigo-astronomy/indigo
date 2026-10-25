@@ -74,6 +74,9 @@ typedef struct {
 	bool exported;
 	bool direction_present;
 	bool is_input;
+	// The pin function is set. On the RP1 of a Raspberry Pi 5 an exported line
+	// reads "in" but has no function until its direction is written.
+	bool configured;
 	int value;
 } fake_pin;
 
@@ -271,6 +274,17 @@ static bool fake_pin_is_input(int bcm_pin) {
 	return is_input;
 }
 
+static bool fake_pin_is_configured(int bcm_pin) {
+	int pin = fake_sysfs_pin(bcm_pin);
+	bool configured = false;
+	pthread_mutex_lock(&fake.mutex);
+	if (pin >= 0 && pin < FAKE_MAX_PINS) {
+		configured = fake.pins[pin].configured;
+	}
+	pthread_mutex_unlock(&fake.mutex);
+	return configured;
+}
+
 static void fake_set_pin_value(int bcm_pin, int value) {
 	int pin = fake_sysfs_pin(bcm_pin);
 	pthread_mutex_lock(&fake.mutex);
@@ -278,6 +292,38 @@ static void fake_set_pin_value(int bcm_pin, int value) {
 		fake.pins[pin].value = value;
 	}
 	pthread_mutex_unlock(&fake.mutex);
+}
+
+// Models a pin or a PWM channel exported before the driver connects, by
+// another program or by an earlier run of the driver.
+static void fake_preexport_pin(int bcm_pin, bool is_input) {
+	int pin = fake_sysfs_pin(bcm_pin);
+	pthread_mutex_lock(&fake.mutex);
+	if (pin >= 0 && pin < FAKE_MAX_PINS) {
+		fake.pins[pin].exported = true;
+		fake.pins[pin].direction_present = true;
+		fake.pins[pin].is_input = is_input;
+		fake.pins[pin].configured = true;
+	}
+	pthread_mutex_unlock(&fake.mutex);
+}
+
+static void fake_preexport_pwm(int channel) {
+	pthread_mutex_lock(&fake.mutex);
+	if (channel >= 0 && channel < FAKE_PWM_CHANNELS) {
+		fake.pwm[channel].exported = true;
+	}
+	pthread_mutex_unlock(&fake.mutex);
+}
+
+static bool fake_pwm_exported(int channel) {
+	bool exported = false;
+	pthread_mutex_lock(&fake.mutex);
+	if (channel >= 0 && channel < FAKE_PWM_CHANNELS) {
+		exported = fake.pwm[channel].exported;
+	}
+	pthread_mutex_unlock(&fake.mutex);
+	return exported;
 }
 
 static int fake_exported_pin_count(void) {
@@ -586,6 +632,7 @@ ssize_t sysfs_test_write(int fd, const void *buffer, size_t size) {
 			fake.pins[value].exported = true;
 			fake.pins[value].direction_present = !fake.direction_appears_late;
 			fake.pins[value].is_input = true;
+			fake.pins[value].configured = fake.gpio_base == 0;
 			fake_trace("export %d", value);
 			break;
 		case FAKE_NODE_GPIO_UNEXPORT:
@@ -603,6 +650,7 @@ ssize_t sysfs_test_write(int fd, const void *buffer, size_t size) {
 				return -1;
 			}
 			fake.pins[index].is_input = text[0] == 'i';
+			fake.pins[index].configured = true;
 			fake_trace("direction %d %s", index, fake.pins[index].is_input ? "in" : "out");
 			break;
 		case FAKE_NODE_PIN_VALUE:
