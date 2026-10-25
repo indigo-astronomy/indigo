@@ -210,6 +210,56 @@ cleanup:
 }
 
 // Without the 0x83 identity frame the device is not a Trutek wheel and the open has to roll back.
+// The 0x83 reply carries the filter count as 0x30 + count; a count the 16 allocated slot items
+// cannot hold must refuse the connection before any slot property is published.
+static void assert_count_byte_is_refused(const char *count_byte) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--count-byte", count_byte, NULL };
+	SERIAL_CHECK_TRUE(start_trutek(&simulator, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&trutek_wheel));
+	online = true;
+	SERIAL_CHECK_TRUE(!connect_serial_device(&trutek_wheel, simulator.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(!has_defined_property(WHEEL_SLOT_NAME_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(WHEEL_SLOT_OFFSET_PROPERTY_NAME));
+cleanup:
+	if (online) {
+		if (context.connected) {
+			disconnect_serial_device(&trutek_wheel);
+		}
+		tear_down_serial_driver(&trutek_wheel);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void malformed_filter_count_is_refused(void) {
+	// 0 filters, 17 filters, 0xFF (207 filters) and 0x20 (a negative count).
+	assert_count_byte_is_refused("48");
+	assert_count_byte_is_refused("65");
+	assert_count_byte_is_refused("255");
+	assert_count_byte_is_refused("32");
+}
+
+static void largest_allocated_filter_count_is_accepted(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	// 0x40 reports 16 filters, all the slot items allocated.
+	const char *arguments[] = { "--count-byte", "64", NULL };
+	SERIAL_CHECK_TRUE(start_trutek(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&trutek_wheel, simulator.port));
+	online = true;
+	indigo_property *names = find_cached_property(WHEEL_SLOT_NAME_PROPERTY_NAME);
+	indigo_property *offsets = find_cached_property(WHEEL_SLOT_OFFSET_PROPERTY_NAME);
+	indigo_property *slot = find_cached_property(WHEEL_SLOT_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(names != NULL && names->count == 16);
+	SERIAL_CHECK_TRUE(offsets != NULL && offsets->count == 16);
+	SERIAL_CHECK_TRUE(slot != NULL && fabs(slot->items[0].number.max - 16) < .001);
+cleanup:
+	if (online) { stop_serial_driver(&trutek_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void silent_port_is_refused(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_trutek(&simulator, NULL));
@@ -230,7 +280,9 @@ int main(void) {
 		{ "reselecting_the_current_slot_completes", reselecting_the_current_slot_completes },
 		{ "reconnect_rebuilds_the_slot_table", reconnect_rebuilds_the_slot_table },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
-		{ "silent_port_is_refused", silent_port_is_refused }
+		{ "silent_port_is_refused", silent_port_is_refused },
+		{ "malformed_filter_count_is_refused", malformed_filter_count_is_refused },
+		{ "largest_allocated_filter_count_is_accepted", largest_allocated_filter_count_is_accepted }
 	};
 	return indigo_run_tests("Trutek wheel serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

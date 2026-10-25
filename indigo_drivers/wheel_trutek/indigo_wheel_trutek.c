@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_wheel_trutek"
 #define DRIVER_LABEL         "Trutek Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Trutek Filter Wheel"
@@ -66,11 +66,18 @@ static bool trutek_open(indigo_device *device, const char **error_message) {
 	if (PRIVATE_DATA->handle != NULL) {
 		unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
 		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x83) {
-			WHEEL_SLOT_ITEM->number.min = 1;
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = buffer[2] - 0x30;
-			if (trutek_query(device)) {
-				WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-				return true;
+			int count = buffer[2] - 0x30;
+			// The slot properties cannot hold more items than they were allocated with.
+			if (count < 1 || count > WHEEL_SLOT_NAME_PROPERTY->allocated_count || count > WHEEL_SLOT_OFFSET_PROPERTY->allocated_count) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid filter count %d", count);
+				*error_message = "The wheel reports an invalid filter count";
+			} else {
+				WHEEL_SLOT_ITEM->number.min = 1;
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = count;
+				if (trutek_query(device)) {
+					WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
+					return true;
+				}
 			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
