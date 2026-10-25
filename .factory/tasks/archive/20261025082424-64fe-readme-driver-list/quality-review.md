@@ -2,7 +2,7 @@
 
 Verdict: pass
 Reviewer and independence: same agent as the author (no separate reviewer for a documentation-only change); limitation recorded.
-Reviewed state: README.md diff over `64380bf9e`.
+Reviewed state: README.md diff over `a18556e61`.
 
 ## Scope and method
 Checked that each added entry corresponds to an existing, built driver directory, wording follows the existing list style, numbering continues without gaps, and the prerequisite text matches the driver behaviour (stub build without libcamera, see `indigo_linux_drivers/ccd_libcamera/Makefile.inc`).

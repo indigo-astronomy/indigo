@@ -6,7 +6,7 @@ Status: complete
 README.md only.
 
 ## Baseline
-- Commands and environment: macOS checkout at origin/master `64380bf9e`.
+- Commands and environment: macOS checkout at origin/master `a18556e61`.
 - Existing failures: not applicable.
 - Repository revision / working-tree state: clean.
 

@@ -1,7 +1,7 @@
 # Verification
 
 Verdict: pass
-Reviewed source: working-tree change of README.md over `64380bf9e`; source identity in process.json. Same agent as the author.
+Reviewed source: working-tree change of README.md over `a18556e61`; source identity in process.json. Same agent as the author.
 
 ## Results
 - AC-001: Debian/Raspberry Pi OS and Fedora sections name `libcamera-dev` / `libcamera-devel` as optional, with the effect of their absence. `apt-cache policy libcamera-dev` on the Raspberry Pi (Debian 13): installed 0.7.2+rpt20261009-1. Fedora name not verified on a Fedora host.
