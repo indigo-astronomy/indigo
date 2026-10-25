@@ -54,6 +54,7 @@ typedef struct {
 	char last_message[INDIGO_VALUE_SIZE];
 	double last_number_value;
 	indigo_token last_token;
+	indigo_property_state last_state;
 } protocol_xml_context;
 
 static protocol_xml_context context;
@@ -93,6 +94,7 @@ static indigo_result test_client_define_property(indigo_client *client, indigo_d
 	}
 	context.define_count++;
 	context.last_type = property->type;
+	context.last_state = property->state;
 	INDIGO_COPY_NAME(context.last_property, property->name);
 	if (property->count > 0) {
 		INDIGO_COPY_NAME(context.last_item, property->items[property->count - 1].name);
@@ -489,6 +491,71 @@ static void xml_client_adapter_parses_remote_property_events(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+// Parses text as the remote server's reply on the adapter's input.
+static void parse_reply(indigo_device *adapter, const char *path, const char *text) {
+	FILE *file = fopen(path, "wb");
+	ASSERT_TRUE(file != NULL);
+	fputs(text, file);
+	fclose(file);
+	indigo_uni_handle *input = indigo_uni_open_file(path, INDIGO_LOG_NONE);
+	ASSERT_TRUE(input != NULL);
+	((indigo_adapter_context *)adapter->device_context)->input = input;
+	indigo_xml_parse(adapter, NULL);
+	indigo_uni_close(&input);
+	((indigo_adapter_context *)adapter->device_context)->input = NULL;
+}
+
+// A client that starts with a request for one property (indigo_prop_tool) asks for the protocol switch with it; before,
+// it stayed on the legacy protocol, where 'Idle' reads as OK. An INDI server, which does not switch, keeps that reading.
+static void xml_client_adapter_switches_protocol_with_a_named_request(void) {
+	char output[8192], expected[256];
+	reset_context();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&test_client));
+	indigo_uni_handle *handle = indigo_uni_create_file("build/unit/protocol_xml_named_request.tmp", INDIGO_LOG_NONE);
+	ASSERT_TRUE(handle != NULL);
+	indigo_device *adapter = indigo_xml_client_adapter("Protocol Peer", "", handle, handle);
+	ASSERT_TRUE(adapter != NULL);
+	ASSERT_EQ_INT(INDIGO_VERSION_LEGACY, adapter->version);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(adapter));
+	indigo_property *request = indigo_init_text_property(NULL, TEST_DEVICE_NAME, TEXT_PROPERTY_NAME, "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
+	ASSERT_TRUE(request != NULL);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_client_parser_enumerate_properties(adapter, &test_client, request));
+	reset_context();
+	parse_reply(adapter, "build/unit/protocol_xml_switch_reply.tmp", "<switchProtocol version='3.0'/>\n<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='ro' state='Idle'>\n<defText name='VALUE' label='Value'>off</defText>\n</defTextVector>\n");
+	ASSERT_EQ_INT(INDIGO_VERSION_3_0, adapter->version);
+	ASSERT_EQ_INT(1, context.define_count);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, context.last_state);
+	// Once switched, a request carries no switch.
+	ASSERT_EQ_INT(INDIGO_OK, indigo_xml_client_parser_enumerate_properties(adapter, &test_client, request));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(adapter));
+	indigo_release_xml_client_adapter(adapter);
+	indigo_uni_close(&handle);
+	ASSERT_TRUE(read_file("build/unit/protocol_xml_named_request.tmp", output, sizeof(output)));
+	// The first named request asks for the switch; the one after the switch does not.
+	snprintf(expected, sizeof(expected), "<getProperties version='1.7' switch='%d.%d' device='Protocol Test Device' name='PROTOCOL_TEXT'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
+	char *first = strstr(output, expected);
+	ASSERT_TRUE(first != NULL);
+	ASSERT_TRUE(strstr(first + strlen(expected), "<getProperties device='Protocol Test Device' name='PROTOCOL_TEXT'/>\n") != NULL);
+	// A legacy server never switches: its 'Idle' still reads as OK.
+	handle = indigo_uni_create_file("build/unit/protocol_xml_legacy_request.tmp", INDIGO_LOG_NONE);
+	ASSERT_TRUE(handle != NULL);
+	adapter = indigo_xml_client_adapter("Legacy Peer", "", handle, handle);
+	ASSERT_TRUE(adapter != NULL);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(adapter));
+	reset_context();
+	parse_reply(adapter, "build/unit/protocol_xml_legacy_reply.tmp", "<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='ro' state='Idle'>\n<defText name='VALUE' label='Value'>off</defText>\n</defTextVector>\n");
+	ASSERT_EQ_INT(INDIGO_VERSION_LEGACY, adapter->version);
+	ASSERT_EQ_INT(1, context.define_count);
+	ASSERT_EQ_INT(INDIGO_OK_STATE, context.last_state);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(adapter));
+	indigo_release_xml_client_adapter(adapter);
+	indigo_uni_close(&handle);
+	indigo_release_property(request);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&test_client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+}
+
 static void xml_parser_ignores_malformed_fixture_without_change(void) {
 	reset_context();
 
@@ -521,6 +588,7 @@ int main(void) {
 		{ "xml_client_adapter_serializes_requests", xml_client_adapter_serializes_requests },
 		{ "xml_parser_routes_change_and_enable_blob_fixtures", xml_parser_routes_change_and_enable_blob_fixtures },
 		{ "xml_client_adapter_parses_remote_property_events", xml_client_adapter_parses_remote_property_events },
+		{ "xml_client_adapter_switches_protocol_with_a_named_request", xml_client_adapter_switches_protocol_with_a_named_request },
 		{ "xml_parser_ignores_malformed_fixture_without_change", xml_parser_ignores_malformed_fixture_without_change }
 	};
 	return indigo_run_tests("XML protocol unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));

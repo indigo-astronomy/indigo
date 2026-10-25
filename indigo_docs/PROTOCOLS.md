@@ -30,6 +30,14 @@ Extensions are enabled only in case of succesfull handshake with two possible va
 → <getProperties version='1.7' client='My Client' switch='2.0'>
 ← <switchProtocol version='2.0'/>
 ```
+The offer can also come with a request for one device or property, as INDIGO clients send it when they start with such
+a request. `version` and `switch` precede `device` and `name`, because the server switches before it reads the name,
+which is therefore in INDIGO form:
+
+```
+→ <getProperties version='1.7' switch='2.0' device='CCD Simulator' name='CCD_EXPOSURE'/>
+← <switchProtocol version='2.0'/>
+```
 In case of successful handshake for version 2.0 the following extensions can be used:
 
 1. BLOBs in BASE64 representation can use any line length instead of fixed 74 characters for much faster encoding/decoding.

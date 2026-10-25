@@ -1,0 +1,77 @@
+{
+  "version": 2,
+  "task": "20261025004416-0995-xml-client-named-request-protocol",
+  "scope": [
+    "indigo_libs/indigo_xml.c",
+    "indigo_test/unit/test_protocol_xml.c",
+    "indigo_docs/PROTOCOLS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/integration/test_detach_abort"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025004416-0995-xml-client-named-request-protocol.json": [
+      "100644",
+      "blob",
+      "68179e7ff3d8af13114ab24b9b62ac5bc60d4d7a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "92f2ed532353b48fd6090d083d9673770f2d470f"
+    ],
+    "indigo_docs/PROTOCOLS.md": [
+      "100644",
+      "blob",
+      "7b1059a7aa06d4705cf05458400eefbdde8446b3"
+    ],
+    "indigo_libs/indigo_xml.c": [
+      "100644",
+      "blob",
+      "3a21a991b9d77867439028da552e6a69dd00e754"
+    ],
+    "indigo_test/unit/test_protocol_xml.c": [
+      "100644",
+      "blob",
+      "d685fe39de28fa1ed8a45277dcc5565ec8e5f9d7"
+    ]
+  }
+}
