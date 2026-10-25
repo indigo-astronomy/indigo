@@ -688,7 +688,9 @@ bool primalucelib_reply_wifi_status(primalucelib_link *link, primalucelib_wifi_s
 		if ((text = primalucelib_reply_string(link, PRIMALUCE_REPLY_LAN_CONNECTION)) != NULL) {
 			INDIGO_COPY_NAME(status->connection, text);
 		}
+		status->reachable = *status->connection && strcmp(status->connection, PRIMALUCE_WIFI_CONNECTION_DISCONNECTED);
 	} else if (status->access_point) {
+		status->reachable = true;
 		if ((text = primalucelib_reply_string(link, PRIMALUCE_REPLY_ACCESS_POINT_IP)) != NULL) {
 			INDIGO_COPY_NAME(status->ip_address, text);
 		}

@@ -144,6 +144,8 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
   mode still reported the station address of an earlier session with `LANCONN` `disconnected` (HW (SESTO SENSO 3),
   HW (GIOTTO)), so `primalucelib_reply_wifi_status()` gives one address to connect to: the station address in station
   mode, the access point address while the access point is on, none while it is off. The web server answers on port 80.
+  `reachable` says whether the controller can be reached over WiFi: joined in station mode (`LANCONN` other than
+  `disconnected`) or the access point on.
   Right after `AP_SET_STATUS` `on` the GIOTTO took about 3 s to answer, and an `off` was sometimes still read back `on`
   at once (also with the access point on for a while) and `off` a few seconds later.
 - **Stored credentials:** the GIOTTO acknowledges a new access point SSID in access point mode but keeps its own

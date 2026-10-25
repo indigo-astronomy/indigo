@@ -616,10 +616,12 @@ extern bool primalucelib_set_access_point(primalucelib_link *link, bool on);
 // address it got on the network it joined and connection is LANSTATUS.LANCONN ("disconnected", "gotip"); outside station
 // mode the station address is not used (a SESTO SENSO 3 and a GIOTTO in access point mode still reported the one of an
 // earlier station session). With the access point on, ip_address is its address and connection "access point"; with
-// it off both are empty and "off". The web server answers on PRIMALUCE_HTTP_DEFAULT_PORT.
+// it off both are empty and "off". The web server answers on PRIMALUCE_HTTP_DEFAULT_PORT. reachable says whether the
+// controller can be reached over WiFi: joined in station mode (LANCONN other than "disconnected"), or the access point on.
 typedef struct {
 	bool station;
 	bool access_point;
+	bool reachable;
 	char ip_address[INDIGO_NAME_SIZE];
 	char connection[INDIGO_NAME_SIZE];
 	char access_point_ssid[INDIGO_VALUE_SIZE];
@@ -629,6 +631,7 @@ typedef struct {
 } primalucelib_wifi_status;
 #define PRIMALUCE_WIFI_CONNECTION_ACCESS_POINT    "access point"
 #define PRIMALUCE_WIFI_CONNECTION_OFF             "off"
+#define PRIMALUCE_WIFI_CONNECTION_DISCONNECTED    "disconnected"
 // From the reply in the link (the full state or PRIMALUCE_REQUEST_GET_WIFI_STATUS); false without LANCFG.
 extern bool primalucelib_reply_wifi_status(primalucelib_link *link, primalucelib_wifi_status *status);
 extern bool primalucelib_get_wifi_status(primalucelib_link *link, primalucelib_wifi_status *status);

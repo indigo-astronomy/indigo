@@ -793,18 +793,22 @@ static void wifi_status_shows_where_the_controller_is(void) {
 		"{\"res\":{\"get\":{\"LANCFG\":\"sta\",\"WIFIAP\":{\"SSID\":\"GIOTTO1\",\"PWD\":\"primalucelab\",\"IP\":\"192.168.4.1\",\"STATUS\":\"off\"},\"WIFISTA\":{\"SSID\":\"Home \\\"net\\\"\",\"PWD\":\"back\\\\slash\\u0021\",\"IP\":\"10.0.0.23\"},\"LANSTATUS\":{\"LANCONN\":\"gotip\"}}}}\n",
 		"{\"res\":{\"get\":{\"LANCFG\":\"ap\",\"WIFIAP\":{\"IP\":\"192.168.4.1\",\"STATUS\":\"on\"},\"WIFISTA\":{\"IP\":\"10.0.0.23\"},\"LANSTATUS\":{\"LANCONN\":\"disconnected\"}}}}\n",
 		"{\"res\":{\"get\":{\"LANCFG\":\"ap\",\"WIFIAP\":{\"IP\":\"192.168.4.1\",\"STATUS\":\"off\"},\"WIFISTA\":{\"IP\":\"\"},\"LANSTATUS\":{\"LANCONN\":\"disconnected\"}}}}\n",
+		"{\"res\":{\"get\":{\"LANCFG\":\"sta\",\"WIFIAP\":{\"STATUS\":\"off\"},\"WIFISTA\":{\"IP\":\"\"},\"LANSTATUS\":{\"LANCONN\":\"disconnected\"}}}}\n",
 		"{\"res\":{\"get\":{\"ERROR\":\"busy\"}}}\n", NULL));
 	CHECK(primalucelib_get_wifi_status(&test_link, &status));
 	CHECK(request_matches(0, "{\"req\":{\"get\":{\"LANCFG\":\"\",\"WIFIAP\":\"\",\"WIFISTA\":\"\",\"LANSTATUS\":\"\"}}}"));
-	CHECK(status.station && !status.access_point);
+	CHECK(status.station && !status.access_point && status.reachable);
 	CHECK(!strcmp(status.ip_address, "10.0.0.23") && !strcmp(status.connection, "gotip"));
 	CHECK(!strcmp(status.station_ssid, "Home \"net\"") && !strcmp(status.station_password, "back\\slash!"));
 	CHECK(!strcmp(status.access_point_ssid, "GIOTTO1") && !strcmp(status.access_point_password, "primalucelab"));
 	CHECK(primalucelib_get_wifi_status(&test_link, &status));
-	CHECK(!status.station && status.access_point);
+	CHECK(!status.station && status.access_point && status.reachable);
 	CHECK(!strcmp(status.ip_address, "192.168.4.1") && !strcmp(status.connection, PRIMALUCE_WIFI_CONNECTION_ACCESS_POINT));
 	CHECK(primalucelib_get_wifi_status(&test_link, &status));
-	CHECK(!status.station && !status.access_point && status.ip_address[0] == 0 && !strcmp(status.connection, PRIMALUCE_WIFI_CONNECTION_OFF));
+	CHECK(!status.station && !status.access_point && !status.reachable && status.ip_address[0] == 0 && !strcmp(status.connection, PRIMALUCE_WIFI_CONNECTION_OFF));
+	// Station mode before the network is joined cannot be reached.
+	CHECK(primalucelib_get_wifi_status(&test_link, &status));
+	CHECK(status.station && !status.reachable && !strcmp(status.connection, PRIMALUCE_WIFI_CONNECTION_DISCONNECTED));
 	CHECK(!primalucelib_get_wifi_status(&test_link, &status));
 cleanup:
 	stop_peer();
