@@ -26,7 +26,7 @@ driver fbc {
 	label = "Lacerta FBC";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2026 Rumen G. Bogdanovski";
-	version = 10;
+	version = 11;
 	serial {
 		pattern {
 			vid = 0x0403;
@@ -35,6 +35,8 @@ driver fbc {
 	}
 	data {
 		char response[80];
+		double impulse_end_time;
+		double exposure_end_time;
 	}
 	code {
 		static bool fbc_command(indigo_device *device, char *command, int response, ...) {
@@ -94,6 +96,29 @@ driver fbc {
 		name = "Lacerta FBC";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
+		code {
+			// The FBC times the impulse and the exposure itself, so only the countdown is published: the
+			// remaining time rounded up to whole seconds, refreshed whenever that value changes.
+			static void fbc_countdown(indigo_device *device, indigo_property *property, double end_time, indigo_timer_callback finalizer) {
+				double remaining = end_time - indigo_monotonic_time();
+				if (remaining <= 0) {
+					property->items[0].number.value = 0;
+					property->state = INDIGO_OK_STATE;
+				} else {
+					property->items[0].number.value = ceil(remaining);
+					indigo_execute_handler_in(device, remaining - (property->items[0].number.value - 1), finalizer);
+				}
+				indigo_update_property(device, property, NULL);
+			}
+
+			static void aux_light_impulse_finalizer(indigo_device *device) {
+				fbc_countdown(device, AUX_LIGHT_IMPULSE_PROPERTY, PRIVATE_DATA->impulse_end_time, aux_light_impulse_finalizer);
+			}
+
+			static void ccd_exposure_finalizer(indigo_device *device) {
+				fbc_countdown(device, CCD_EXPOSURE_PROPERTY, PRIVATE_DATA->exposure_end_time, ccd_exposure_finalizer);
+			}
+		}
 		on_connect {
 			fbc_command(device, ": E 0 #", false);
 			fbc_command(device, ": F 0 #", false);
@@ -129,21 +154,13 @@ driver fbc {
 			group = AUX_MAIN_GROUP;
 			label = "Light impulse";
 			on_change {
-				if (fbc_command(device, ": F %d #", false, (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000))) {
+				if (fbc_command(device, ": F %d #", false, (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.target * 1000))) {
+					PRIVATE_DATA->impulse_end_time = indigo_monotonic_time() + AUX_LIGHT_IMPULSE_DURATION_ITEM->number.target;
 					AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_BUSY_STATE;
-					while (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value > 0) {
-						indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
-						if (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value > 1) {
-							indigo_usleep(INDIGO_DELAY(1));
-							AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value -= 1;
-						} else if (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value >= 0) {
-							indigo_usleep(INDIGO_DELAY(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value));
-							AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value = 0;
-						}
-					}
-					AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
+					aux_light_impulse_finalizer(device);
 				} else {
 					AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
 				}
 			}
 			item AUX_LIGHT_IMPULSE_DURATION {
@@ -160,21 +177,13 @@ driver fbc {
 			group = AUX_MAIN_GROUP;
 			label = "Shutter Control";
 			on_change {
-				if (fbc_command(device, ": E %d #", false, (int)(CCD_EXPOSURE_ITEM->number.value * 1000))) {
+				if (fbc_command(device, ": E %d #", false, (int)(CCD_EXPOSURE_ITEM->number.target * 1000))) {
+					PRIVATE_DATA->exposure_end_time = indigo_monotonic_time() + CCD_EXPOSURE_ITEM->number.target;
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-					while (CCD_EXPOSURE_ITEM->number.value > 0) {
-						indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-						if (CCD_EXPOSURE_ITEM->number.value > 1) {
-							indigo_usleep(INDIGO_DELAY(1));
-							CCD_EXPOSURE_ITEM->number.value -= 1;
-						} else if (CCD_EXPOSURE_ITEM->number.value >= 0) {
-							indigo_usleep(INDIGO_DELAY(CCD_EXPOSURE_ITEM->number.value));
-							CCD_EXPOSURE_ITEM->number.value = 0;
-						}
-					}
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+					ccd_exposure_finalizer(device);
 				} else {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				}
 			}
 			item CCD_EXPOSURE {

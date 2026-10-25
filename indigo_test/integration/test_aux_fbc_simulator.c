@@ -188,6 +188,77 @@ cleanup:
 // -------------------------------------------------------------------------------- lifecycle
 
 // on_connect pushes the retained intensity back to the panel, so a reconnect has to keep it.
+// The FBC times a long impulse itself; the driver only counts it down, so the device queue stays
+// free for other requests while the impulse runs.
+static void intensity_is_served_during_a_long_impulse(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_fbc(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&fbc_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(set_number(AUX_LIGHT_IMPULSE_PROPERTY_NAME, AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME, 20));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_IMPULSE_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	unsigned int revision = property_revision(AUX_LIGHT_INTENSITY_PROPERTY_NAME);
+	double start = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(set_number(AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 30));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	double elapsed = indigo_monotonic_time() - start;
+	printf("Intensity served %.2f s into the impulse\n", elapsed);
+	SERIAL_CHECK_TRUE(elapsed < 3);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(AUX_LIGHT_IMPULSE_PROPERTY_NAME)->state);
+	// The countdown is the remaining time rounded up to whole seconds.
+	indigo_item *duration = find_cached_item(AUX_LIGHT_IMPULSE_PROPERTY_NAME, AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME);
+	SERIAL_CHECK_TRUE(duration != NULL && duration->number.value > 15 && duration->number.value <= 20 && duration->number.value == ceil(duration->number.value));
+cleanup:
+	if (online) { stop_serial_driver(&fbc_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A disconnect requested during a long exposure is served at once, and the next session starts idle.
+static void disconnect_during_a_long_exposure_is_prompt(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_fbc(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&fbc_aux, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(set_number(CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 20));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	double start = indigo_monotonic_time();
+	disconnect_serial_device(&fbc_aux);
+	double elapsed = indigo_monotonic_time() - start;
+	printf("Disconnected %.2f s into the exposure\n", elapsed);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(elapsed < 3);
+	SERIAL_CHECK_TRUE(connect_serial_device(&fbc_aux, simulator.port));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(CCD_EXPOSURE_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(set_number(CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	if (online) { stop_serial_driver(&fbc_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A fractional exposure longer than a second lasts its exact duration, not a whole number of seconds.
+static void fractional_exposure_lasts_its_duration(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_fbc(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&fbc_aux, simulator.port));
+	online = true;
+	double start = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(set_number(CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1.5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CCD_EXPOSURE_PROPERTY_NAME, INDIGO_OK_STATE));
+	double elapsed = indigo_monotonic_time() - start;
+	printf("1.5 s exposure completed after %.2f s\n", elapsed);
+	SERIAL_CHECK_TRUE(elapsed > 1.4 && elapsed < 2.5);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0, 0.001));
+cleanup:
+	if (online) { stop_serial_driver(&fbc_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void reconnect_reapplies_the_intensity(void) {
 	external_serial_simulator simulator = { 0 };
 	bool online = false;
@@ -245,6 +316,9 @@ int main(void) {
 		{ "zero_duration_impulse_completes", zero_duration_impulse_completes },
 		{ "shutter_exposure_counts_down_to_zero", shutter_exposure_counts_down_to_zero },
 		{ "impulse_and_shutter_are_independent", impulse_and_shutter_are_independent },
+		{ "intensity_is_served_during_a_long_impulse", intensity_is_served_during_a_long_impulse },
+		{ "disconnect_during_a_long_exposure_is_prompt", disconnect_during_a_long_exposure_is_prompt },
+		{ "fractional_exposure_lasts_its_duration", fractional_exposure_lasts_its_duration },
 		{ "reconnect_reapplies_the_intensity", reconnect_reapplies_the_intensity },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "silent_port_is_refused", silent_port_is_refused }
