@@ -44,6 +44,7 @@ typedef struct {
 	const char *firmware;
 	const char *serial_number;
 	int slots;
+	const char *reported_slots;
 } simulator_options;
 
 static simulator_options options = {
@@ -53,7 +54,8 @@ static simulator_options options = {
 	.model = "Xagyl FW5125VX",
 	.firmware = "FW3.1.5",
 	.serial_number = "123456",
-	.slots = 5
+	.slots = 5,
+	.reported_slots = NULL
 };
 
 static const char *simulator_name = "wheel_xagyl";
@@ -65,7 +67,7 @@ static int target_filter = 1;
 // ----------------------------------------------------------------- runtime
 
 static void usage(const char *name) {
-	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--model <text>] [--firmware <text>] [--serial <text>] [--slots <count>]\n", name);
+	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--model <text>] [--firmware <text>] [--serial <text>] [--slots <count>] [--reported-slots <text>]\n", name);
 }
 
 static bool parse_int(const char *text, int min, int max, int *value) {
@@ -99,6 +101,9 @@ static bool parse_args(int argc, char *argv[]) {
 			if (!parse_int(argv[++i], 1, 9, &options.slots)) {
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--reported-slots") && i + 1 < argc) {
+			// A raw FilterSlots value for malformed-reply tests; the wheel keeps --slots slots.
+			options.reported_slots = argv[++i];
 		} else {
 			return false;
 		}
@@ -150,7 +155,11 @@ static bool dispatch_command(int fd, const char command[2]) {
 					snprintf(response, sizeof(response), "S/N: %s\n", options.serial_number);
 					break;
 				case '8':
-					snprintf(response, sizeof(response), "FilterSlots %d\n", options.slots);
+					if (options.reported_slots != NULL) {
+						snprintf(response, sizeof(response), "FilterSlots %s\n", options.reported_slots);
+					} else {
+						snprintf(response, sizeof(response), "FilterSlots %d\n", options.slots);
+					}
 					break;
 				default:
 					advance_filter();
