@@ -135,6 +135,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_cleanup \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_detach_abort \
 	$(INTEGRATION_BUILD)/test_server_websocket \
+	$(INTEGRATION_BUILD)/test_server_static_driver \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
@@ -493,6 +494,15 @@ $(INTEGRATION_BUILD)/test_bus_lifecycle: integration/test_bus_lifecycle.c test_r
 # AddressSanitizer with a single copy of the server code.
 SERVER_WEBSOCKET_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 SERVER_WEBSOCKET_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+# Compiles indigo_server.c into the test to drive its UNLOAD and DRIVERS handlers with a stub static driver. The
+# server source embeds the generated control panel resources, which make all builds with build/bin/indigo_server.
+$(INTEGRATION_BUILD)/test_server_static_driver: integration/test_server_static_driver.c ../indigo_server/indigo_server.c test_runner.h | $(BUILD_BIN)/indigo_server $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Wno-unused-function -Wno-return-type -o $@ $< $(TEST_LDFLAGS) -lindigocat -lz
+
+.PHONY: test-server-static-driver
+test-server-static-driver: check-lib $(INTEGRATION_BUILD)/test_server_static_driver
+	$(INTEGRATION_BUILD)/test_server_static_driver
 
 $(INTEGRATION_BUILD)/test_server_websocket: integration/test_server_websocket.c test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
