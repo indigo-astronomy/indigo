@@ -379,6 +379,31 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A reversal the rotator does not acknowledge with its FN:<n> echo, refused with ERR or left unanswered, is
+// reported with ALERT and the property keeps the flag the rotator still has.
+static void refused_direction_change_keeps_the_flag(void) {
+	static const char *faults[] = { "err", "silent" };
+	for (int i = 0; i < 2; i++) {
+		external_serial_simulator simulator = { 0 };
+		bool online = false;
+		const char *arguments[] = { "--fault-direction", faults[i], NULL };
+		fprintf(stderr, "Direction fault %s\n", faults[i]);
+		SERIAL_CHECK_TRUE(start_falcon(&simulator, arguments));
+		SERIAL_CHECK_TRUE(start_serial_driver(&falcon_rotator, simulator.port));
+		online = true;
+		assert_switch_item_value(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME, true);
+		SERIAL_CHECK_TRUE(set_switch(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME));
+		SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_DIRECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		assert_switch_item_value(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME, true);
+		assert_switch_item_value(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME, false);
+		// The rotator still answers everything else.
+		SERIAL_CHECK_TRUE(goto_position(10));
+	cleanup:
+		if (online) { stop_serial_driver(&falcon_rotator); }
+		stop_external_serial_simulator(&simulator);
+	}
+}
+
 // The rotator keeps its angle across a session, so the connect handshake has to publish the angle it
 // reports rather than the driver's own last value.
 static void reconnect_adopts_the_rotator_angle(void) {
@@ -442,6 +467,7 @@ int main(void) {
 		{ "abort_stops_a_move_short", abort_stops_a_move_short },
 		{ "the_two_motion_properties_refuse_to_overlap", the_two_motion_properties_refuse_to_overlap },
 		{ "direction_is_written_and_read_back", direction_is_written_and_read_back },
+		{ "refused_direction_change_keeps_the_flag", refused_direction_change_keeps_the_flag },
 		{ "reconnect_adopts_the_rotator_angle", reconnect_adopts_the_rotator_angle },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "vanished_port_is_refused", vanished_port_is_refused }
