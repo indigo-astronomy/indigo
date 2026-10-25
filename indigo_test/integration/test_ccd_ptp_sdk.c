@@ -102,6 +102,11 @@ static atomic_int sony_ignored_presses, sony_presses;
 static atomic_bool sony_fast_reopen_busy;
 // A 1 s camera shutter, for the long exposure noise reduction case.
 static bool sony_long_shutter;
+// ILCE-7RM2: every accepted press queues one object reported later, also for an aborted exposure, and
+// live view frames are refused with AccessDenied for a while after an object download.
+static atomic_bool sony_object_queue;
+static atomic_int sony_queued_objects;
+static double sony_liveview_denial, sony_liveview_denied_until;
 static atomic_int canon_text_size;
 static uint8_t *jpeg;
 static unsigned long jpeg_size;
@@ -364,6 +369,9 @@ static void prepare(fake_camera *c) {
 		atomic_store(&c->stuck_busy, atomic_load(&sony_fast_reopen_busy) && c->vendor == 0x054c && c->closed_at > 0 && indigo_monotonic_time() - c->closed_at < 0.5);
 	} else if (atomic_load(&c->stuck_busy) && code == ptp_operation_sony_SetControlDeviceB) {
 		c->response = ptp_response_DeviceBusy;
+		return;
+	} else if (code == ptp_operation_GetObject && arg == 0xffffc002 && c->vendor == 0x054c && indigo_monotonic_time() < sony_liveview_denied_until) {
+		c->response = ptp_response_AccessDenied;
 		return;
 	}
 	if (canon_transfer_event && code == ptp_operation_canon_TransferComplete && !combined_transfer_profile && atomic_load(&canon_transfer_received) != (int)(canon_transfer_large ? 0x200000 + 17 : jpeg_size)) {
@@ -648,8 +656,13 @@ static void prepare(fake_camera *c) {
 				c->values[3] = sony_memory_objects ? 0x8000 + sony_memory_objects : 0;
 				c->capturing = sony_memory_objects > 0;
 				c->event_sent = false;
+			} else if (atomic_load(&sony_object_queue) && c->vendor == 0x054c) {
+				c->capturing = atomic_fetch_sub(&sony_queued_objects, 1) > 1;
 			} else {
 				c->capturing = false;
+			}
+			if (c->vendor == 0x054c && sony_liveview_denial > 0) {
+				sony_liveview_denied_until = indigo_monotonic_time() + sony_liveview_denial;
 			}
 		}
 	}
@@ -957,6 +970,9 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 				if (v == 2) {
 					atomic_fetch_add(&sony_presses, 1);
 					c->pressed_at = indigo_monotonic_time();
+					if (atomic_load(&sony_object_queue) && atomic_load(&sony_ignored_presses) == 0) {
+						atomic_fetch_add(&sony_queued_objects, 1);
+					}
 				}
 				if (v == 2 && atomic_load(&sony_ignored_presses) > 0) {
 					atomic_fetch_sub(&sony_ignored_presses, 1);
@@ -1278,6 +1294,9 @@ static void end_profile(void) {
 	mirror_unknown_profile = false;
 	bulb_profile = false;
 	sony_long_shutter = false;
+	atomic_store(&sony_object_queue, false);
+	atomic_store(&sony_queued_objects, 0);
+	sony_liveview_denial = sony_liveview_denied_until = 0;
 	fuji_priority_profile = fuji_reject_bulb = fuji_af_error = fuji_reject_cancel = false;
 	fuji_action_profile = 0;
 	dual_profile = false;
@@ -2266,6 +2285,86 @@ static void sony_long_exposure_noise_reduction(void) {
 	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
 	PTP_CHECK(atomic_load(&blobs) == 1);
 	PTP_CHECK(atomic_load(&sony_presses) == 1);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+// ILCE-7RM2 hardware run 2026-10-25: the timed shot of an aborted exposure was reported about 9 s after
+// its press, during the next exposure, and was published as that exposure's image; the real image then
+// arrived during live view.
+static void sony_old_api_aborted_shot(void) {
+	atomic_store(&sony_object_queue, true);
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	atomic_store(&cameras[0].hold_image, true);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&sony_presses, 1));
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&sony_presses, 2));
+	atomic_store(&cameras[0].hold_image, false);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(wait_value(&sony_queued_objects, 0));
+	indigo_usleep(300000);
+	PTP_CHECK(atomic_load(&blobs) == 1);
+	PTP_CHECK(atomic_load(&bad_blob) == 0);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+// The object of an aborted exposure that arrives before the next exposure is not published either.
+static void sony_old_api_aborted_shot_idle(void) {
+	atomic_store(&sony_object_queue, true);
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	atomic_store(&cameras[0].hold_image, true);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&sony_presses, 1));
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+	atomic_store(&cameras[0].hold_image, false);
+	PTP_CHECK(wait_value(&sony_queued_objects, 0));
+	indigo_usleep(300000);
+	PTP_CHECK(atomic_load(&blobs) == 0);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 1);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+// A press the camera never turned into a picture expires (SONY_STALE_SHOT_TIME, 2 s in this build), so
+// the next exposure keeps its own image.
+static void sony_old_api_lost_shot_expires(void) {
+	atomic_store(&sony_object_queue, true);
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	atomic_store(&sony_ignored_presses, 1);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+	indigo_usleep(2000000);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 1);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+// ILCE-7RM2 hardware run 2026-10-25: live view right after a capture was refused with AccessDenied for
+// about 9 s, longer than the 100 polls the driver used to allow.
+static void sony_liveview_after_capture(void) {
+	atomic_store(&sony_object_queue, true);
+	sony_liveview_denial = 7;
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 1);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_STREAMING_PROPERTY_NAME, CCD_STREAMING_COUNT_ITEM_NAME, 3);
+	PTP_CHECK(wait_value(&streaming_state, INDIGO_BUSY_STATE));
+	PTP_CHECK(wait_value(&streaming_state, INDIGO_OK_STATE) || wait_value_long(&streaming_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 4);
 cleanup:
 	end_profile();
 	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
@@ -3488,6 +3587,10 @@ int main(void) {
 		{ "sony_ignored_press", sony_ignored_press },
 		{ "sony_fast_reopen", sony_fast_reopen },
 		{ "sony_long_exposure_noise_reduction", sony_long_exposure_noise_reduction },
+		{ "sony_old_api_aborted_shot", sony_old_api_aborted_shot },
+		{ "sony_old_api_aborted_shot_idle", sony_old_api_aborted_shot_idle },
+		{ "sony_old_api_lost_shot_expires", sony_old_api_lost_shot_expires },
+		{ "sony_liveview_after_capture", sony_liveview_after_capture },
 		{ "sony_af_disconnect", sony_af_disconnect },
 		{ "canon_shutter_stop_recovery", canon_shutter_stop_recovery },
 		{ "nikon_dual_preview_corrupt_jpeg", nikon_dual_preview_corrupt_jpeg },

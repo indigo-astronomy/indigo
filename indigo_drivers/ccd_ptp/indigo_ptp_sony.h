@@ -148,6 +148,10 @@ typedef struct {
 	unsigned downloaded_objects;
 	int shot_retries;
 	double shot_deadline;
+	double liveview_deadline;
+	bool shot_pending;
+	int stale_objects;
+	double shot_expires, stale_until;
 	int steps;
 	uint32_t api_version;
 	bool needs_pre_capture_delay;

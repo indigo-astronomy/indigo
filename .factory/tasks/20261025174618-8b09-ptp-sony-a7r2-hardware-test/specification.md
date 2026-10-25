@@ -1,0 +1,36 @@
+# Specification
+
+Status: final
+
+## Problem and outcome
+On the ILCE-7RM2 the hardware suite could not select values on stepping controls, live view right after a capture ended ALERT, and the image of an aborted timed shot was published as the next exposure's image. Outcome: all fixed or handled, recorded run passes.
+
+## In scope
+Sony old-API live view tolerance and stale-object handling in `indigo_ptp_sony.c/.h`, version 3.0.0.60; stepping support in the hardware suite; fake old-API profile and regressions.
+
+## Out of scope
+NEW_API behaviour (unchanged); other vendors; physical hot-plug.
+
+## Acceptance criteria
+| ID | Observable requirement | Verification method |
+| --- | --- | --- |
+| AC-001 | Sony live view tolerates AccessDenied/DeviceBusy or frameless replies for up to 30 s without a frame, the window restarting after each frame. | fake `sony_liveview_after_capture`; hardware live view cases |
+| AC-002 | On old-API Sony bodies the object of a shot whose exposure ended before its image arrived is downloaded and discarded, never published as another exposure's or a stream's image; a shot never reported expires 30 s after its expected end. | fake `sony_old_api_aborted_shot`, `sony_old_api_aborted_shot_idle`, `sony_old_api_lost_shot_expires`; hardware `Abort and reacquire`, `Finite live view` |
+| AC-003 | The hardware suite selects, reads back and restores stepping controls. | hardware `Control readback`, image cases, restore at exit |
+| AC-004 | The complete hardware suite passes on the ILCE-7RM2. | `python3 tools/run_driver_test.py ccd_ptp --hw` |
+| AC-005 | Existing fake cases pass. | `python3 tools/run_driver_test.py ccd_ptp`, sanitizer targets |
+
+## Failure behavior and edge cases
+A camera-button shot while idle is still published unless one of the driver's own shots is pending. Live view on a camera that never delivers frames now ends ALERT after 30 s instead of about 6 s.
+
+## Permissions, data, and security requirements
+Camera replies untrusted; discarded objects are downloaded only to free the camera buffer and are not stored.
+
+## Compatibility and nonfunctional requirements
+Linux libusb and macOS; NEW_API paths unchanged apart from the live view window.
+
+## Assumptions and open questions
+None blocking.
+
+## Owner decisions and requirement changes
+2026-10-25: owner asked to test with the A7R II attached to the Pi.

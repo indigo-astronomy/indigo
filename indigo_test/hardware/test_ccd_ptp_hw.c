@@ -311,6 +311,10 @@ static bool selected_item(int device_index, const char *property_name, char *nam
 static bool is_selected(const char *property_name, const char *item_name) {
 	indigo_property *property = snapshot(camera, property_name);
 	bool result = property && indigo_get_switch(property, item_name);
+	// A stepping control (see is_stepping()) always selects its current value, the middle item.
+	if (property && property->count == 3 && !strcmp(property->items[0].label, "-") && !strcmp(property->items[2].label, "+")) {
+		result = !strcmp(property->items[1].name, item_name);
+	}
 	indigo_release_property(property);
 	return result;
 }
@@ -341,9 +345,85 @@ static bool writable(const char *property_name) {
 	return result;
 }
 
+// Older Sony bodies (before ILCE-7RM4) change ISO, shutter and aperture by steps: the driver offers
+// three items, "-", the current value and "+", and the camera reports each new value itself.
+static bool is_stepping(const char *property_name) {
+	indigo_property *property = snapshot(camera, property_name);
+	bool result = property && property->count == 3 && !strcmp(property->items[0].label, "-") && !strcmp(property->items[2].label, "+");
+	indigo_release_property(property);
+	return result;
+}
+
+static bool current_step(const char *property_name, char *name, char *label) {
+	indigo_property *property = snapshot(camera, property_name);
+	bool result = property && property->count == 3;
+	if (result) {
+		snprintf(name, INDIGO_NAME_SIZE, "%s", property->items[1].name);
+		if (label) {
+			snprintf(label, INDIGO_VALUE_SIZE, "%s", property->items[1].label);
+		}
+	}
+	indigo_release_property(property);
+	return result;
+}
+
+// One step; false when the camera does not report another value (end of its range). ILCE-7RM2 applies a
+// step only after it has processed its captures, which takes about 9 s for one and 17 s for two.
+static bool step(const char *property_name, bool up) {
+	char before[INDIGO_NAME_SIZE], after[INDIGO_NAME_SIZE], button[INDIGO_NAME_SIZE];
+	indigo_property *property = snapshot(camera, property_name);
+	bool valid = property && property->count == 3;
+	if (valid) {
+		snprintf(button, sizeof(button), "%s", property->items[up ? 2 : 0].name);
+	}
+	indigo_release_property(property);
+	if (!valid || !current_step(property_name, before, NULL) || !change_switch(camera, property_name, button, INDIGO_OK_STATE)) {
+		return false;
+	}
+	for (int iteration = 0; iteration < 3000; iteration++) {
+		if (current_step(property_name, after, NULL) && strcmp(before, after)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+// Steps until the current value has one of the names or labels, first in one direction, then back
+// through the start to the other end.
+static bool step_to(const char *property_name, const char **names, const char **labels) {
+	for (int direction = 0; direction < 2; direction++) {
+		for (int steps = 0; steps < 80; steps++) {
+			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+			if (!current_step(property_name, name, label)) {
+				return false;
+			}
+			for (int i = 0; names && names[i]; i++) {
+				if (!strcmp(name, names[i])) {
+					return true;
+				}
+			}
+			for (int i = 0; labels && labels[i]; i++) {
+				if (!strcmp(label, labels[i])) {
+					return true;
+				}
+			}
+			if (!step(property_name, direction == 0)) {
+				break;
+			}
+		}
+	}
+	fprintf(stderr, "%s: no step reaches the requested value\n", property_name);
+	return false;
+}
+
 static bool select_name(const char *property_name, const char *name) {
 	if (is_selected(property_name, name)) {
 		return true;
+	}
+	if (is_stepping(property_name)) {
+		const char *names[] = { name, NULL };
+		return step_to(property_name, names, NULL);
 	}
 	if (!writable(property_name)) {
 		fprintf(stderr, "%s is read-only\n", property_name);
@@ -521,6 +601,8 @@ static bool restore_settings(void) {
 		bool present = property != NULL;
 		bool offered = present && *restored_items[i] && indigo_get_item(property, restored_items[i]) != NULL;
 		indigo_release_property(property);
+		// A stepping control reaches any value in the camera's range.
+		offered = offered || (present && is_stepping(restored_properties[i]));
 		if (*restored_items[i] && !present) {
 			fprintf(stderr, "Cannot restore %s: the property is gone\n", restored_properties[i]);
 			result = false;
@@ -561,10 +643,13 @@ static bool use_fixed_shutter(void) {
 	if (!writable(DSLR_SHUTTER_PROPERTY_NAME)) {
 		return true;
 	}
+	const char *candidates[] = { "1/100", "1/125", "1/80", "1/60", "1/160", "1/200", "1/250", NULL };
+	if (is_stepping(DSLR_SHUTTER_PROPERTY_NAME)) {
+		return step_to(DSLR_SHUTTER_PROPERTY_NAME, NULL, candidates);
+	}
 	if (!*fixed_shutter) {
-		const char *candidates[] = { "1/100", "1/125", "1/80", "1/60", "1/160", "1/200", "1/250" };
 		// Sony labels "1/100", Fujifilm "1/100s".
-		for (unsigned i = 0; i < sizeof(candidates) / sizeof(candidates[0]) && !*fixed_shutter; i++) {
+		for (unsigned i = 0; candidates[i] && !*fixed_shutter; i++) {
 			char suffixed[INDIGO_VALUE_SIZE];
 			snprintf(suffixed, sizeof(suffixed), "%ss", candidates[i]);
 			if (!find_label(DSLR_SHUTTER_PROPERTY_NAME, candidates[i], fixed_shutter)) {
@@ -625,6 +710,16 @@ static void control_readback(void) {
 		if (property == NULL || property->perm != INDIGO_RW_PERM || property->count < 2) {
 			printf("    %s is not writable, skipped\n", controls[i]);
 			indigo_release_property(property);
+			continue;
+		}
+		if (is_stepping(controls[i])) {
+			indigo_release_property(property);
+			char original[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE], other[INDIGO_NAME_SIZE], other_label[INDIGO_VALUE_SIZE];
+			CHECK(current_step(controls[i], original, label));
+			CHECK(step(controls[i], true) || step(controls[i], false));
+			CHECK(current_step(controls[i], other, other_label));
+			printf("    %s: %s -> %s (stepped)\n", controls[i], label, other_label);
+			CHECK(select_name(controls[i], original));
 			continue;
 		}
 		char original[INDIGO_NAME_SIZE] = "", other[INDIGO_NAME_SIZE] = "", label[INDIGO_VALUE_SIZE] = "";

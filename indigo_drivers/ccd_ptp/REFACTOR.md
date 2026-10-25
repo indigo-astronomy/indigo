@@ -699,3 +699,19 @@ Version 3.0.0.59 (0x0300003B). Results on the final candidate: reconnect loop 20
 Coverage gaps: physical hot-plug not established; the reopen delay is applied to every Sony body but measured on the ILCE-7RM4 only; the cause of the ignored press is not known, only detected and retried; X-T1 not rerun (Fujifilm paths unchanged).
 
 Final test summary — this run: simulated 168 run / 168 passed; hardware ILCE-7RM4 15 run / 15 passed. Diagnostic loops (14) and the superseded pre-review runs are not counted.
+
+## Sony ILCE-7RM2 hardware run (2026-10-25, in progress)
+
+Scope: owner-requested non-interactive hardware test of the Sony A7R II on the Raspberry Pi 5 (indigosky.local, Debian 12 aarch64), without physical hot-plug (task 20261025174618-8b09-ptp-sony-a7r2-hardware-test). Camera: ILCE-7RM2, USB 054c:0a6b, old Sony API (product id below 0x0ccc): ISO, shutter and aperture change by steps ("-", current, "+"), images are announced by ObjectAdded on handle 0xffffc001. Starting version 3.0.0.59 at 70d34909b; first run 2/15 (stepping controls could not be selected by the suite).
+
+Suite adaptation (test-only): stepping controls are recognised by their "-"/current/"+" items; `step_to()` steps towards a name or label, first one way, then back through the start; a step waits up to 30 s for the camera's report because the body applies a step only after it has processed its captures (about 9 s for one, 17 s for two).
+
+Found defects (hardware observations, each reproduced hardware-free):
+- D-S2-1 Live view right after a capture is refused with AccessDenied for about 9 s (17 s after two shots); the driver gave up after 100 polls (about 6 s) and streaming ended ALERT. Fix: `sony_liveview_wait()` allows `SONY_LIVEVIEW_WAIT` (30 s) without a frame, the window restarting after every frame. Fake quirk `sony_liveview_denial`; regression `sony_liveview_after_capture` (failed with the old driver).
+- D-S2-2 ObjectAdded arrives about 8.7 s after the press, also for the timed shot of an aborted exposure; the old-API exposure ends at once on abort, so the next exposure published the aborted shot's image as its own and its real image arrived during live view. Fix: `shot_pending` at the press, turned into `stale_objects` by the next exposure; such an object is downloaded and discarded (`sony_discard_object()`, also a RAW+JPEG partner), also when it arrives while idle; pending and stale shots expire `SONY_STALE_SHOT_TIME` (30 s) after the expected end of the shot, so an ignored press or a full card does not cost a later image; the ObjectInMemory polling path re-arms the readout after a discard. Fake old-API profile 0x0a6b with an object queue; regressions `sony_old_api_aborted_shot` (failed with the old driver), `sony_old_api_aborted_shot_idle`, `sony_old_api_lost_shot_expires` (failed without the expiry).
+
+Open (not fixed yet): the recorded run 18:22 UTC on 3.0.0.60 was 15/11 Failed. One exposure in `Image sizes` received no image, and from then on every exposure received the previous exposure's image (Medium JPEG during RAW+JPEG, RAW during Decoded JPEG). The camera announces every object on the same handle and serves them oldest first, so a single missed ObjectAdded leaves the driver one object behind. Intermittent: once in each of two of six full runs, not in a traced run of the image cases. Under investigation.
+
+Independent review (fresh read-only subagent): nothing blocking; fixed the missing expiry, the readout flag after a polling-path discard, the 10 s step wait, the idle-discard and expiry coverage and a misleading discard log.
+
+Version 3.0.0.60 (0x0300003C). Results so far: recorded fake run 172/172 OK (165 fake USB + 7 fake ICA) on macOS arm64 (19:26 local); ASan/UBSan fake USB and ICA suites pass; recorded hardware run ILCE-7RM2 15/11 Failed (above); traced intermediate full run 15/15.
