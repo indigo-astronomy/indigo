@@ -161,6 +161,36 @@ This is the list of requirements taken into the consideration:
 114. Lacerta LACERTA Motorfocus driver
 115. Baccam (Touptek OEM) camera driver
 116. Meade (Touptek OEM) camera driver
+117. PegasusAstro Pocket Powerbox driver
+118. PegasusAstro Ultimate Powerbox driver
+119. PegasusAstro Ultimate Powerbox v3 driver
+120. PegasusAstro USB Control Hub driver
+121. SVBONY PowerBox driver
+122. PrimaLuceLab GIOTTO flat panel driver
+123. PrimaLuceLab ALTO cover driver
+124. Auxiliary simulators driver
+125. Dome simulator
+126. Polar aligner simulator
+127. MLAstro Robotic Polar Alignment (RPA) driver
+128. QHY CMOS (modern SDK) camera driver
+129. QSI CCD driver
+130. PTP (ISO 15740) DSLR driver
+131. Bresser (Touptek OEM) camera driver
+132. SVBONY (Touptek OEM) camera driver
+133. Legacy Atik CCD driver (Mac only)
+134. Raspberry Pi camera driver (optional, Linux only)
+135. libcamera CCD driver (Linux only)
+136. Raspberry Pi GPIO AUX driver (Linux only)
+137. Askar WAF focuser driver
+138. Astroasis Oasis focuser driver
+139. Celestron / PlaneWave EFA focuser driver
+140. QHY Q-Focuser driver
+141. ZWO AM mount driver
+142. MX-HD mount driver
+143. ZWO CAA rotator driver
+144. WandererAstro field rotator driver
+145. Astroasis Oasis filter wheel driver
+146. PlayerOne filter wheel driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
@@ -176,6 +206,12 @@ It is advised to remove libraw1394-dev
 
 `sudo apt-get remove libraw1394-dev`
 
+To build the libcamera CCD driver (Raspberry Pi CSI cameras and other cameras supported by libcamera) install also
+
+`sudo apt-get install libcamera-dev`
+
+Without it the driver is built, but reports no cameras.
+
 #### Fedora
 
 `dnf install automake autoconf cmake libtool gcc gcc-c++ avahi-compat-libdns_sd-devel libudev-devel git curl curl-devel zlib-devel libusb-compat-0.1-devel systemd-devel avahi-compat-libdns_sd-devel libcurl-devel patchelf`
@@ -183,6 +219,12 @@ It is advised to remove libraw1394-dev
 It is advised to remove libraw1394-devel
 
 `dnf remove libraw1394-devel`
+
+To build the libcamera CCD driver install also
+
+`dnf install libcamera-devel`
+
+Without it the driver is built, but reports no cameras.
 
 #### macOS
 
