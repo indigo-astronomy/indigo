@@ -393,6 +393,9 @@ check-lib:
 		exit 1; \
 	}
 
+$(BUILD_BIN)/indigo_server:
+	@printf "Missing $@. Run 'make all' from the repository root first.\n"; exit 1
+
 $(UNIT_BUILD):
 	mkdir -p $@
 

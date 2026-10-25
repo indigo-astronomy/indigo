@@ -1585,14 +1585,14 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		if (upb_command(device, "SH")) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		} else {
+		if (!upb_command(device, "SH")) {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		// The cancelled request may never have reached the box, so the poll would leave it BUSY forever.
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	}
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
