@@ -192,6 +192,22 @@ static void release_camera_properties(indigo_device *device) {
 	PRIVATE_DATA->capture_ui_locked = false;
 }
 
+#ifndef USE_ICA_TRANSPORT
+static void close_session(indigo_device *device) {
+	ptp_transaction_0_0(device, ptp_operation_CloseSession);
+	PRIVATE_DATA->closed_at = indigo_monotonic_time();
+}
+
+static bool open_session(indigo_device *device) {
+	// ILCE-7RM4 reopened within milliseconds of CloseSession may answer DeviceBusy for the whole session.
+	double reopen_wait = PRIVATE_DATA->closed_at + PTP_SONY_REOPEN_DELAY - indigo_monotonic_time();
+	if (PRIVATE_DATA->vendor == SONY_VID && PRIVATE_DATA->closed_at > 0 && reopen_wait > 0) {
+		indigo_usleep((unsigned)(reopen_wait * 1000000));
+	}
+	return ptp_transaction_1_0(device, ptp_operation_OpenSession, 1);
+}
+#endif
+
 static void handle_connection(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool opened = ptp_open(device);
@@ -201,10 +217,10 @@ static void handle_connection(indigo_device *device) {
 			PRIVATE_DATA->transaction_id = 0;
 			PRIVATE_DATA->session_id = 0;
 #ifndef USE_ICA_TRANSPORT
-			result = ptp_transaction_1_0(device, ptp_operation_OpenSession, 1);
+			result = open_session(device);
 			if (!result && PRIVATE_DATA->last_error == ptp_response_SessionAlreadyOpen) {
-				ptp_transaction_0_0(device, ptp_operation_CloseSession);
-				result = ptp_transaction_1_0(device, ptp_operation_OpenSession, 1);
+				close_session(device);
+				result = open_session(device);
 			}
 #endif
 			PRIVATE_DATA->connected_at = indigo_monotonic_time();
@@ -267,7 +283,7 @@ static void handle_connection(indigo_device *device) {
 			PRIVATE_DATA->focuser_attached = false;
 		}
 #ifndef USE_ICA_TRANSPORT
-		ptp_transaction_0_0(device, ptp_operation_CloseSession);
+		close_session(device);
 #endif
 		ptp_close(device);
 		PRIVATE_DATA->session_active = false;

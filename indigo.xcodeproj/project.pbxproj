@@ -16573,6 +16573,7 @@
 				272AEF8C1795669CDDEC5541 /* FND-20261025093558-ece5-server-leak-check-001.json */,
 				1875271CA19B7349F826466C /* FND-20261025093558-ece5-server-leak-check-002.json */,
 				08595B4F480C66BC79E2C93F /* FND-20261025093558-ece5-server-leak-check-003.json */,
+				3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */,
 				F7F45DBFA6968C4ACA371E49 /* FND-20261025152706-abbf-fix-server-leaks-001.json */,
 				70519A544347C891D69EB257 /* FND-20261025152706-abbf-fix-server-leaks-002.json */,
 			);
@@ -19155,7 +19156,6 @@
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
 				7CE754E6D88ACCCBE2D60593 /* FND-20261024202957-6bd9-fix-ccd-rpi-001.json */,
 				DE8C90EC1179EB94E2CB290D /* FND-20261025093224-2d50-fix-ptp-findings-001.json */,
-				3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */,
 			);
 			path = active;
 			sourceTree = "<group>";

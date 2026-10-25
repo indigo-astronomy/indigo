@@ -48,7 +48,8 @@ typedef struct {
 	uint8_t input[0x200000 + 64];
 	uint32_t input_size, input_offset;
 	bool data_header_sent, response_sent, capturing, event_sent, bulb, transfer_requested;
-	double pressed_at;
+	double pressed_at, closed_at;
+	atomic_bool stuck_busy;
 	uint16_t response, fuji_mode;
 } fake_camera;
 
@@ -95,6 +96,12 @@ static bool sony_extension_fault, canon_info_ex_fault, object_info_short, canon_
 static uint8_t canon_text_payload[1024];
 static bool sony_compression_profile;
 static atomic_int sony_dropped_writes;
+// ILCE-7RM4 after a reconnect: a number of full presses are acknowledged but never shoot.
+static atomic_int sony_ignored_presses, sony_presses;
+// ILCE-7RM4 reopened within milliseconds of CloseSession answers DeviceBusy to every control for the session.
+static atomic_bool sony_fast_reopen_busy;
+// A 1 s camera shutter, for the long exposure noise reduction case.
+static bool sony_long_shutter;
 static atomic_int canon_text_size;
 static uint8_t *jpeg;
 static unsigned long jpeg_size;
@@ -348,6 +355,15 @@ static void prepare(fake_camera *c) {
 	bool fail_once = atomic_load(&fail_once_operation) == code && atomic_exchange(&fail_once_operation, 0) == code;
 	c->response = fail_once || atomic_load(&fail_operation) == code ? (atomic_load(&fail_reply) ? atomic_load(&fail_reply) : ptp_response_GeneralError) : ptp_response_OK;
 	if (c->response != ptp_response_OK) {
+		return;
+	}
+	if (code == ptp_operation_CloseSession) {
+		c->closed_at = indigo_monotonic_time();
+		atomic_store(&c->stuck_busy, false);
+	} else if (code == ptp_operation_OpenSession) {
+		atomic_store(&c->stuck_busy, atomic_load(&sony_fast_reopen_busy) && c->vendor == 0x054c && c->closed_at > 0 && indigo_monotonic_time() - c->closed_at < 0.5);
+	} else if (atomic_load(&c->stuck_busy) && code == ptp_operation_sony_SetControlDeviceB) {
+		c->response = ptp_response_DeviceBusy;
 		return;
 	}
 	if (canon_transfer_event && code == ptp_operation_canon_TransferComplete && !combined_transfer_profile && atomic_load(&canon_transfer_received) != (int)(canon_transfer_large ? 0x200000 + 17 : jpeg_size)) {
@@ -939,9 +955,14 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 			}
 			if (c->command.code == ptp_operation_sony_SetControlDeviceB && code == ptp_property_sony_Capture) {
 				if (v == 2) {
+					atomic_fetch_add(&sony_presses, 1);
+					c->pressed_at = indigo_monotonic_time();
+				}
+				if (v == 2 && atomic_load(&sony_ignored_presses) > 0) {
+					atomic_fetch_sub(&sony_ignored_presses, 1);
+				} else if (v == 2) {
 					c->capturing = true;
 					c->event_sent = false;
-					c->pressed_at = indigo_monotonic_time();
 					c->bulb = c->values[0] == 0;
 					if (sony_dual_order) {
 						sony_memory_objects = 2;
@@ -1187,7 +1208,7 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 		atomic_store(&fuji_bulb_started, 0);
 	} else if (vendor == 0x054c) {
 		memcpy(cameras[0].properties, sony, sizeof(sony));
-		cameras[0].values[0] = bulb_profile ? 0 : 0x10064;
+		cameras[0].values[0] = bulb_profile ? 0 : sony_long_shutter ? 0x10001 : 0x10064;
 		cameras[0].values[1] = 2;
 		cameras[0].values[2] = autofocus_profile ? 2 : 1;
 		if (sony_dual_order) {
@@ -1225,6 +1246,10 @@ static bool wait_value(atomic_int *value, int expected) {
 	return atomic_load(value) == expected;
 }
 
+static bool wait_value_long(atomic_int *value, int expected) {
+	return wait_value(value, expected) || wait_value(value, expected);
+}
+
 #define PTP_CHECK(condition) do { if (!(condition)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #condition); indigo_test_failures++; goto cleanup; } } while (0)
 
 static bool begin_profile(uint16_t vendor, uint16_t product) {
@@ -1252,6 +1277,7 @@ static void end_profile(void) {
 	profile_case = NULL;
 	mirror_unknown_profile = false;
 	bulb_profile = false;
+	sony_long_shutter = false;
 	fuji_priority_profile = fuji_reject_bulb = fuji_af_error = fuji_reject_cancel = false;
 	fuji_action_profile = 0;
 	dual_profile = false;
@@ -1270,6 +1296,13 @@ static void end_profile(void) {
 	device_info_fault = descriptor_fault = canon_custom_func_fault = object_info_delta = 0;
 	sony_extension_fault = canon_info_ex_fault = object_info_short = canon_custom_func_profile = sony_compression_profile = false;
 	atomic_store(&sony_dropped_writes, 0);
+	atomic_store(&sony_ignored_presses, 0);
+	atomic_store(&sony_presses, 0);
+	atomic_store(&sony_fast_reopen_busy, false);
+	for (int i = 0; i < FAKE_CAMERAS; i++) {
+		cameras[i].closed_at = 0;
+		atomic_store(&cameras[i].stuck_busy, false);
+	}
 	atomic_store(&gate_open, 1);
 	atomic_store(&gate_operation, 0);
 	atomic_store(&fail_register, 0);
@@ -2187,6 +2220,75 @@ static void sony_dual_jpeg_first(void) {
 
 static void sony_dual_preview_disabled(void) {
 	sony_dual_memory(1, false);
+}
+
+// ILCE-7RM4 hardware run 2026-10-25: after a reconnect the camera acknowledged the full press, refocused and
+// never shot, so the exposure stayed BUSY until the capture timeout.
+static void sony_ignored_press(void) {
+	PTP_CHECK(begin_profile(0x054c, 0x0ccc));
+	atomic_store(&sony_ignored_presses, 1);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 1);
+	PTP_CHECK(atomic_load(&sony_presses) == 2);
+	PTP_CHECK(atomic_load(&sony_ignored_presses) == 0);
+	atomic_store(&sony_ignored_presses, 10);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	// Three presses, each after the 1 s manual focus settling time.
+	PTP_CHECK(wait_value_long(&exposure_state, INDIGO_ALERT_STATE));
+	PTP_CHECK(atomic_load(&sony_presses) == 5);
+	PTP_CHECK(atomic_load(&blobs) == 1);
+	atomic_store(&sony_ignored_presses, 0);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 2);
+	PTP_CHECK(atomic_load(&sony_presses) == 6);
+	PTP_CHECK(atomic_load(&bad_blob) == 0);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+// With long exposure noise reduction the camera reports the object only after a dark frame as long as the
+// exposure; that must not be taken for an ignored press.
+static void sony_long_exposure_noise_reduction(void) {
+	sony_long_shutter = true;
+	PTP_CHECK(begin_profile(0x054c, 0x0ccc));
+	atomic_store(&cameras[0].hold_image, true);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1);
+	PTP_CHECK(wait_value(&sony_presses, 1));
+	// The object arrives after twice the shutter time, past shutter + confirm time.
+	double pressed = indigo_monotonic_time();
+	while (indigo_monotonic_time() < pressed + 1.5) {
+		indigo_usleep(10000);
+	}
+	atomic_store(&cameras[0].hold_image, false);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 1);
+	PTP_CHECK(atomic_load(&sony_presses) == 1);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+// ILCE-7RM4 hardware run 2026-10-25: a reconnect that reopened the session 7 ms after CloseSession left the
+// camera answering DeviceBusy for the whole session; the driver waits before reopening.
+static void sony_fast_reopen(void) {
+	PTP_CHECK(begin_profile(0x054c, 0x0ccc));
+	atomic_store(&sony_fast_reopen_busy, true);
+	for (int i = 1; i <= 2; i++) {
+		indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+		PTP_CHECK(wait_value(&connection_state, INDIGO_OK_STATE));
+		indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+		PTP_CHECK(wait_value(&connection_state, INDIGO_OK_STATE));
+		PTP_CHECK(!atomic_load(&cameras[0].stuck_busy));
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) == i);
+	}
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
 }
 
 static void sony_autofocus(bool disconnect) {
@@ -3383,6 +3485,9 @@ int main(void) {
 		{ "sony_dual_raw_first", sony_dual_raw_first },
 		{ "sony_dual_jpeg_first", sony_dual_jpeg_first },
 		{ "sony_dual_preview_disabled", sony_dual_preview_disabled },
+		{ "sony_ignored_press", sony_ignored_press },
+		{ "sony_fast_reopen", sony_fast_reopen },
+		{ "sony_long_exposure_noise_reduction", sony_long_exposure_noise_reduction },
 		{ "sony_af_disconnect", sony_af_disconnect },
 		{ "canon_shutter_stop_recovery", canon_shutter_stop_recovery },
 		{ "nikon_dual_preview_corrupt_jpeg", nikon_dual_preview_corrupt_jpeg },

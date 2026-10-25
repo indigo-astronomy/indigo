@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025134403-8427-fix-sony-capture-deadline",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner decides on integration and push.",
+  "blocker": null
+}
