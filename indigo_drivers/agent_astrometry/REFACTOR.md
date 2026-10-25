@@ -116,3 +116,13 @@ Recorded run `2026-10-25 17:38 2.0.0.32 linux x64 simulator 77/74 Failed`: `pola
 `polar alignment targets J2000 mount` and `polar alignment targets JNow mount` end with `AGENT_START_PROCESS` ALERT.
 They fail the same way without this change (the case run alone with 2.0.0.31 rebuilt), so they predate it; not
 investigated in this task.
+
+## Polar alignment test references (test only, 2026-10-25, task 20261025170920-4af2-astrometry-polar-test-references)
+
+The three polar alignment cases failed since `79dcf6d81` (core audit fixes), which made
+`indigo_polar_alignment_error_3p()` refuse references that cannot define an alignment: the fake solver reported the
+same field (RA 180°, Dec -30°) for every image, so the three references were identical and the agent ended the process
+with "Polar alignment reference positions do not define a valid alignment". The agent was right; the fixture was not.
+The fake solver's new `polar` mode reports the field 20° lower in RA for each reference, as the sky does when the mount
+turns by 20° of hour angle, and the third one again while the mount stays there for the recalculation. The three cases
+select it. No driver change. Recorded run: `2026-10-25 19:09 2.0.0.32 linux x64 simulator 77/77 OK`.

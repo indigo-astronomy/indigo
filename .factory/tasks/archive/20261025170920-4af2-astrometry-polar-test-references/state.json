@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025170920-4af2-astrometry-polar-test-references",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit after the requester approves the plan.",
+  "blocker": null
+}

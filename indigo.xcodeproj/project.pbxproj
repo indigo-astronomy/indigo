@@ -7252,6 +7252,17 @@
 		0AD86860000F7BF91D78FF5E /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		F78C5BEE7100DBFA7AB6410D /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		E6A0C662FE3C85F40B6A0DD5 /* 20261025152706-abbf-fix-server-leaks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025152706-abbf-fix-server-leaks.json"; sourceTree = "<group>"; };
+		286D4C5947A883488EFC7AA0 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		4197955EC64C8FA2CFBD66AA /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		6E3488784D5A20CB88E27EF3 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		8AB7E3134F8DDC3A32E9518E /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		67F993790EA207599EFB0ED0 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		38CE080B23F6677C53A1482B /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		930715CF02D7BEA3BBE9FB06 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		6B0B6776ECEA7AB107FAC429 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		631427DA9A104FF6846DD91D /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		FB82460515951ECE61A6A73B /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		4717942427B9F7EBCD8A129C /* 20261025170920-4af2-astrometry-polar-test-references.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025170920-4af2-astrometry-polar-test-references.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16385,6 +16396,7 @@
 				D949EA4F2764B2ED06421447 /* 20261025074335-0b62-fix-rpio-gpio-findings */,
 				855C45F2FB767ABC952EF7CD /* 20261025093558-ece5-server-leak-check */,
 				41143DE8702FA03AE4C1DBD7 /* 20261025152706-abbf-fix-server-leaks */,
+				752CF75D23214FAB7DB1317C /* 20261025170920-4af2-astrometry-polar-test-references */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -16549,6 +16561,7 @@
 				272AEF8C1795669CDDEC5541 /* FND-20261025093558-ece5-server-leak-check-001.json */,
 				1875271CA19B7349F826466C /* FND-20261025093558-ece5-server-leak-check-002.json */,
 				08595B4F480C66BC79E2C93F /* FND-20261025093558-ece5-server-leak-check-003.json */,
+				F7F45DBFA6968C4ACA371E49 /* FND-20261025152706-abbf-fix-server-leaks-001.json */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18701,6 +18714,7 @@
 				E800FCFF03CFA4E27FC04773 /* 20261025074335-0b62-fix-rpio-gpio-findings.json */,
 				95E6D3BC0153135C29FA87C1 /* 20261025093558-ece5-server-leak-check.json */,
 				E6A0C662FE3C85F40B6A0DD5 /* 20261025152706-abbf-fix-server-leaks.json */,
+				4717942427B9F7EBCD8A129C /* 20261025170920-4af2-astrometry-polar-test-references.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -19128,7 +19142,6 @@
 				7CE754E6D88ACCCBE2D60593 /* FND-20261024202957-6bd9-fix-ccd-rpi-001.json */,
 				DE8C90EC1179EB94E2CB290D /* FND-20261025093224-2d50-fix-ptp-findings-001.json */,
 				3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */,
-				F7F45DBFA6968C4ACA371E49 /* FND-20261025152706-abbf-fix-server-leaks-001.json */,
 				70519A544347C891D69EB257 /* FND-20261025152706-abbf-fix-server-leaks-002.json */,
 			);
 			path = active;
@@ -20326,6 +20339,23 @@
 				F78C5BEE7100DBFA7AB6410D /* verification.md */,
 			);
 			path = "20261025152706-abbf-fix-server-leaks";
+			sourceTree = "<group>";
+		};
+		752CF75D23214FAB7DB1317C /* 20261025170920-4af2-astrometry-polar-test-references */ = {
+			isa = PBXGroup;
+			children = (
+				286D4C5947A883488EFC7AA0 /* brief.md */,
+				4197955EC64C8FA2CFBD66AA /* handoff.md */,
+				6E3488784D5A20CB88E27EF3 /* plan.md */,
+				8AB7E3134F8DDC3A32E9518E /* process.json */,
+				67F993790EA207599EFB0ED0 /* quality-review.md */,
+				38CE080B23F6677C53A1482B /* security.md */,
+				930715CF02D7BEA3BBE9FB06 /* specification.md */,
+				6B0B6776ECEA7AB107FAC429 /* state.json */,
+				631427DA9A104FF6846DD91D /* test-plan.md */,
+				FB82460515951ECE61A6A73B /* verification.md */,
+			);
+			path = "20261025170920-4af2-astrometry-polar-test-references";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

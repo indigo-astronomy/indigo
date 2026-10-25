@@ -2,7 +2,7 @@
   "title": "Astrometry agent polar alignment cases end with AGENT_START_PROCESS ALERT",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261025152706-abbf-fix-server-leaks",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261025170920-4af2-astrometry-polar-test-references",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "test_agent_astrometry: 'polar alignment and recalculation', 'polar alignment targets J2000 mount' and 'polar alignment targets JNow mount' fail with AGENT_START_PROCESS ALERT instead of OK on Linux x64 (2.0.0.31 and 2.0.0.32). Not investigated. Next: run with INDIGO_TEST_DEBUG=1 and find which polar alignment step fails.",
   "evidence": "task verification.md V4 and V6; indigo_test/integration/test_agent_astrometry.c:1100 and 1131",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261025170920-4af2-astrometry-polar-test-references verification.md: the fake solver reported identical references, which indigo_polar_alignment_error_3p() refuses since 79dcf6d81; its new polar mode reports distinct references; recorded run 77/77.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261025152706-abbf-fix-server-leaks-001"
 }

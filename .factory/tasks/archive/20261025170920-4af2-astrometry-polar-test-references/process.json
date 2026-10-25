@@ -1,0 +1,83 @@
+{
+  "version": 2,
+  "task": "20261025170920-4af2-astrometry-polar-test-references",
+  "scope": [
+    "indigo_test/integration/test_agent_astrometry.c",
+    "indigo_drivers/agent_astrometry/*",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_astrometry"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025170920-4af2-astrometry-polar-test-references.json": [
+      "100644",
+      "blob",
+      "ece63806e3fa174c9cf9884c5ceff053440974a3"
+    ],
+    ".factory/findings/active/FND-20261025152706-abbf-fix-server-leaks-001.json": null,
+    ".factory/findings/archive/FND-20261025152706-abbf-fix-server-leaks-001.json": [
+      "100644",
+      "blob",
+      "d227dfefe753f322d775a0d15f917eecb3d2544c"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "66c8a904a73df1a562a0a4ffe0954812b1f5447a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "2cf7742508dd9502fe3a51f9bcc19eeb224955b3"
+    ],
+    "indigo_drivers/agent_astrometry/README.md": [
+      "100644",
+      "blob",
+      "086ddc813299b73d4ba6b281fda7ee6457d083af"
+    ],
+    "indigo_drivers/agent_astrometry/REFACTOR.md": [
+      "100644",
+      "blob",
+      "b666d0fb91eb510526385bc5c5230fc457f1a830"
+    ],
+    "indigo_test/integration/test_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "1505a0e65ca2088f88a99655bf3c7287cd6325f4"
+    ]
+  }
+}
