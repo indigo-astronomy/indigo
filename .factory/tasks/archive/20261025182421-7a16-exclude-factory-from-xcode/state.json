@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025182421-7a16-exclude-factory-from-xcode",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive verified execution and create local commit; no merge or push.",
+  "blocker": null
+}

@@ -1,0 +1,20 @@
+test_archive_does_not_read_or_modify_xcode_project (test_findings_project.FindingsProjectTests) ... ok
+test_archive_failure_after_source_unlink_restores_record (test_findings_project.FindingsProjectTests) ... ok
+test_archive_failure_before_source_unlink_preserves_record (test_findings_project.FindingsProjectTests) ... ok
+test_archive_rejects_identity_change_and_collision (test_findings_project.FindingsProjectTests) ... ok
+test_check_does_not_read_or_modify_xcode_project (test_findings_project.FindingsProjectTests) ... ok
+test_cli_create_archive_and_check_do_not_need_xcode_helper (test_findings_project.FindingsProjectTests) ... ok
+test_cli_retired_sync_project_is_rejected_without_mutation (test_findings_project.FindingsProjectTests) ... ok
+test_create_does_not_read_or_modify_xcode_project (test_findings_project.FindingsProjectTests) ... ok
+test_create_failure_after_atomic_replace_removes_new_record (test_findings_project.FindingsProjectTests) ... ok
+test_create_rejects_destination_collision_without_overwriting (test_findings_project.FindingsProjectTests) ... ok
+test_create_write_failure_leaves_no_record (test_findings_project.FindingsProjectTests) ... ok
+test_multiple_projects_do_not_block_finding_archive (test_findings_project.FindingsProjectTests) ... ok
+test_no_xcode_repository_can_archive (test_findings_project.FindingsProjectTests) ... ok
+test_rejects_risk_acceptance_without_owner_and_unknown_duplicate (test_findings_project.FindingsProjectTests) ... ok
+test_symlink_project_is_not_followed (test_findings_project.FindingsProjectTests) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 0.802s
+
+OK

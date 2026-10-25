@@ -1,0 +1,9 @@
+Working directory: /private/tmp/indigo-factory-xcode-exclusion-20261025
+[check] git diff --check
+[check] python3 .factory/scripts/findings.py check
+Findings valid: 86 active, 119 archived; task evidence checks passed.
+[check] python3 .factory/scripts/decision_index.py --check
+Decision index current.
+[check] python3 .factory/scripts/validate_project.py
+Factory project boundaries valid.
+Configured check commands passed. Assess coverage separately.

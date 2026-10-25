@@ -279,10 +279,8 @@ def create(task, filename):
 
 
 def write_record(destination, record, source=None):
-    """Commit a finding lifecycle edit and navigator change, restoring on error."""
+    """Commit a finding record edit, restoring its original location on error."""
     import task_store
-    import findings_project
-    project = findings_project.plan(ROOT)
     original = source.read_bytes() if source else None
     if destination.exists():
         raise ValueError('finding destination exists')
@@ -290,13 +288,10 @@ def write_record(destination, record, source=None):
         task_store.atomic(destination, (json.dumps(record, indent=2, allow_nan=False) + '\n').encode())
         if source:
             source.unlink()
-        findings_project.sync(ROOT)
     except (OSError, ValueError):
         if source and not source.exists():
             task_store.atomic(source, original)
         destination.unlink(missing_ok=True)
-        if project and project[0].read_bytes() != project[1]:
-            task_store.atomic(project[0], project[1])
         raise
 
 
@@ -337,11 +332,9 @@ def main():
     new = commands.add_parser('create', help='allocate and atomically create a per-task active finding')
     new.add_argument('--task', required=True)
     new.add_argument('--record', required=True, type=Path, help='complete finding JSON without id')
-    close = commands.add_parser('archive', help='archive a verified closed record and update Xcode references')
+    close = commands.add_parser('archive', help='archive a verified closed record')
     close.add_argument('id')
     close.add_argument('--record', required=True, type=Path)
-    sync = commands.add_parser('sync-project', help='reconcile Xcode findings navigator references')
-    sync.add_argument('--check', action='store_true')
     show = commands.add_parser("show", help="explicitly read one active or archived finding")
     show.add_argument("id")
     args = parser.parse_args()
@@ -351,14 +344,6 @@ def main():
             return 0
         if args.command == 'archive':
             print(archive(args.id, args.record))
-            return 0
-        if args.command == 'sync-project':
-            import task_store
-            import findings_project
-            with task_store.lifecycle_lock(ROOT):
-                all_records(active_register())
-                changed = findings_project.sync(ROOT, args.check)
-            print('Xcode findings references updated.' if changed else 'Xcode findings references current.')
             return 0
         data = active_register()
         if args.command == "list":
@@ -387,9 +372,6 @@ def main():
                 if any(not matches(TASK, task) for task in args.prune_task):
                     raise ValueError("invalid prune task ID")
                 check_tasks(records, set(args.prune_task))
-                if any(ROOT.glob('*.xcodeproj')):
-                    import findings_project
-                    findings_project.sync(ROOT, check=True)
                 output = f"Findings valid: {len(data['findings'])} active, {len(records) - len(data['findings'])} archived; task evidence checks passed."
     except (OSError, ValueError, TypeError, RecursionError, RuntimeError) as exc:
         # Never include finding payloads or subprocess output in errors.

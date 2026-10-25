@@ -1,0 +1,104 @@
+{
+  "version": 2,
+  "task": "20261025182421-7a16-exclude-factory-from-xcode",
+  "scope": [
+    "AGENTS.md",
+    ".factory/project.md",
+    ".factory/maintenance.json",
+    ".factory/routines/findings.md",
+    ".factory/scripts/README.md",
+    ".factory/scripts/findings.py",
+    ".factory/scripts/findings_project.py",
+    ".factory/template-lock.json",
+    "docs/decisions/ADR-003-exclude-factory-from-xcode.md",
+    "docs/decisions/README.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_test/factory/test_findings_project.py",
+    ".factory/completions/20261025182421-7a16-exclude-factory-from-xcode.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025182421-7a16-exclude-factory-from-xcode.json": [
+      "100644",
+      "blob",
+      "385f1f16c3b9043e660664772c5fbd4d46431d3d"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "aa4bc145f06104183c98730586c869c0ec3874e7"
+    ],
+    ".factory/routines/findings.md": [
+      "100644",
+      "blob",
+      "ffafa8c7eb1fd579f7c36b75ab5541b4f41936ae"
+    ],
+    ".factory/scripts/README.md": [
+      "100644",
+      "blob",
+      "abce0f371e2c75e313ae18d94191358dba6ccaeb"
+    ],
+    ".factory/scripts/findings.py": [
+      "100755",
+      "blob",
+      "fc209b3bb89aa20d1ed6ce4d1eac5ed4841cae6b"
+    ],
+    ".factory/scripts/findings_project.py": null,
+    ".factory/template-lock.json": [
+      "100644",
+      "blob",
+      "55b8a18adf4d505c6225465e25a62ba5c2f82ffd"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "81d90d0055642b69033f7ed6d35f4b91384c1498"
+    ],
+    "docs/decisions/ADR-003-exclude-factory-from-xcode.md": [
+      "100644",
+      "blob",
+      "05b3c197901c9885eff67c904d34a8a4c4101310"
+    ],
+    "docs/decisions/README.md": [
+      "100644",
+      "blob",
+      "a5e2faa88261c759de62b4b728a022f663b66d0d"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "1d657f862d20085860878ca679813f16df4757a2"
+    ],
+    "indigo_test/factory/test_findings_project.py": [
+      "100644",
+      "blob",
+      "916da9bb2e8d3c2b560c27e87bef9210be3d6468"
+    ]
+  }
+}

@@ -138,6 +138,15 @@
       "scope": "Repair PTP audit findings 019/026/027/028 while the full repository audit is due; recorded after the task completed because the due audit was not checked at task start",
       "checkpoint": "After this repair, before next unrelated task or release",
       "resets_checkpoint": false
+    },
+    "xcode_exclusion_deferral": {
+      "approved_by": "Peter Polakovic, explicit owner reply relayed by coordinator",
+      "date": "2026-10-25",
+      "task": "20261025182421-7a16-exclude-factory-from-xcode",
+      "scope": "Only remove .factory Xcode references and lifecycle synchronization in this adopter policy task",
+      "authority": "\u00c1no, odlo\u017ei\u0165 audit iba pre t\u00fato zmenu; potom zost\u00e1va splatn\u00fd",
+      "checkpoint": "After this change, before next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"
