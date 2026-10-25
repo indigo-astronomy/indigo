@@ -33,7 +33,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 							0x03000038
+#define DRIVER_VERSION 							0x03000039
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -400,6 +400,7 @@ typedef struct {
 	bool (* handle_event)(indigo_device *device, ptp_event_code code, uint32_t *params);
 	bool (* fix_property)(indigo_device *device, ptp_property *property);
 	bool (* set_property)(indigo_device *device, ptp_property *property);
+	bool (* refresh_properties)(indigo_device *device);
 	bool (* exposure)(indigo_device *device);
 	bool (* liveview)(indigo_device *device);
 	bool (* capture_stop)(indigo_device *device);
@@ -412,6 +413,9 @@ typedef struct {
 	bool (* check_dual_compression)(indigo_device *device);
 	indigo_property *pending_properties[PTP_MAX_ELEMENTS];
 	unsigned property_retries[PTP_MAX_ELEMENTS];
+	int64_t property_requested[PTP_MAX_ELEMENTS];
+	double property_written[PTP_MAX_ELEMENTS];
+	double property_deadline[PTP_MAX_ELEMENTS];
 	bool focuser_attached;
 	bool session_active;
 	int focus_remaining;

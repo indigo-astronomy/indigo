@@ -1333,6 +1333,8 @@ bool ptp_sony_initialise(indigo_device *device) {
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 2, 0, 0);
 		if (PRIVATE_DATA->model.product >= SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER) {
 			SONY_PRIVATE_DATA->api_version = SONY_NEW_API;
+			// ILCE-7RM4 acknowledges a SetControlDeviceA it drops while busy after a capture.
+			PRIVATE_DATA->refresh_properties = ptp_sony_refresh_properties;
 			indigo_log("0x%04x >= 0x%04x new API used", PRIVATE_DATA->model.product, SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER);
 		} else {
 			SONY_PRIVATE_DATA->api_version = SONY_OLD_API;
@@ -1405,24 +1407,29 @@ bool ptp_sony_initialise(indigo_device *device) {
 	return true;
 }
 
+bool ptp_sony_refresh_properties(indigo_device *device) {
+	void *buffer = NULL;
+	uint32_t size, count;
+	bool result = ptp_transaction_0_0_i(device, ptp_operation_sony_GetAllDevicePropData, &buffer, &size);
+	if (result) {
+		uint8_t *source = buffer;
+		source = ptp_decode_uint32(source, &count);
+		source += sizeof(uint32_t);
+		for (int i = 0; i < count; i++) {
+			source = ptp_sony_decode_property(source, device);
+			if (source == NULL) {
+				break;
+			}
+		}
+	}
+	free(buffer);
+	return result;
+}
+
 bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
 	switch ((int)code) {
 		case ptp_event_sony_PropertyChanged: {
-			void *buffer = NULL;
-			uint32_t size, count;
-			if (ptp_transaction_0_0_i(device, ptp_operation_sony_GetAllDevicePropData, &buffer, &size)) {
-				uint8_t *source = buffer;
-				source = ptp_decode_uint32(source, &count);
-				source += sizeof(uint32_t);
-				for (int i = 0; i < count; i++) {
-					source = ptp_sony_decode_property(source, device);
-					if (source == NULL) {
-						break;
-					}
-				}
-			}
-			free(buffer);
-			buffer = NULL;
+			ptp_sony_refresh_properties(device);
 			return true;
 		}
 		case ptp_event_sony_ObjectAdded: {
@@ -1496,7 +1503,7 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 			for (int i = 0; i < property->property->count; i++) {
 				indigo_item *item = property->property->items + i;
 				if (item->sw.value) {
-					value = strtol(item->name, NULL, 16);
+					value = (int64_t)strtoull(item->name, NULL, 16);
 					break;
 				}
 			}
@@ -1537,6 +1544,8 @@ static bool sony_capture_stop(indigo_device *device) {
 	return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value)) && result;
 }
 
+#define SONY_SESSION_BUSY_WINDOW	10
+
 bool ptp_sony_exposure(indigo_device *device) {
 	if (PRIVATE_DATA->capture_phase == 0) {
 		PRIVATE_DATA->capture_stop = sony_capture_stop;
@@ -1550,7 +1559,8 @@ bool ptp_sony_exposure(indigo_device *device) {
 		int16_t value = 2;
 		SONY_PRIVATE_DATA->focus_state = 1;
 		if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value))) {
-			return false;
+			// ILCE-7RM4 answers DeviceBusy for a few seconds after a new session; retry until it settles.
+			return PRIVATE_DATA->last_error == ptp_response_DeviceBusy && indigo_monotonic_time() < PRIVATE_DATA->connected_at + SONY_SESSION_BUSY_WINDOW;
 		}
 		PRIVATE_DATA->capture_phase = 3;
 		PRIVATE_DATA->phase_deadline = indigo_monotonic_time() + (SONY_PRIVATE_DATA->focus_mode == 1 ? 1 : 5);

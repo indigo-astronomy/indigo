@@ -93,6 +93,8 @@ static atomic_int command_argument[65536];
 static int device_info_fault, descriptor_fault, canon_custom_func_fault, object_info_delta;
 static bool sony_extension_fault, canon_info_ex_fault, object_info_short, canon_custom_func_profile, canon_custom_func_sent;
 static uint8_t canon_text_payload[1024];
+static bool sony_compression_profile;
+static atomic_int sony_dropped_writes;
 static atomic_int canon_text_size;
 static uint8_t *jpeg;
 static unsigned long jpeg_size;
@@ -561,6 +563,22 @@ static void prepare(fake_camera *c) {
 		word32(&p, 0);
 		for (unsigned i = 0; i < property_count(c); i++) {
 			word16(&p, c->properties[i]);
+			if (c->properties[i] == ptp_property_sony_CompressionSetting) {
+				// NEW_API enum: settable values, then all supported values.
+				word16(&p, ptp_uint8_type);
+				*p++ = 1;
+				*p++ = 0;
+				*p++ = c->values[i];
+				*p++ = c->values[i];
+				*p++ = ptp_enum_form;
+				for (int list = 0; list < 2; list++) {
+					word16(&p, 3);
+					for (uint8_t value = 1; value <= 3; value++) {
+						*p++ = value;
+					}
+				}
+				continue;
+			}
 			word16(&p, ptp_uint32_type);
 			*p++ = 1;
 			*p++ = 0;
@@ -865,6 +883,11 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 				}
 				atomic_store(&mirror_value, v);
 			}
+			// The ILCE-7RM4 acknowledges a SetControlDeviceA it drops while busy after a capture.
+			if (c->command.code == ptp_operation_sony_SetControlDeviceA && atomic_load(&sony_dropped_writes) > 0) {
+				atomic_fetch_sub(&sony_dropped_writes, 1);
+				target = NULL;
+			}
 			if (target) {
 				*target = v;
 			}
@@ -1155,6 +1178,10 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 			cameras[0].properties[4] = ptp_property_sony_CompressionSetting;
 			cameras[0].values[4] = 2;
 		}
+		if (sony_compression_profile) {
+			cameras[0].properties[4] = ptp_property_sony_CompressionSetting;
+			cameras[0].values[4] = 3;
+		}
 	} else {
 		memcpy(cameras[0].properties, standard, sizeof(standard));
 		cameras[0].values[0] = bulb_profile ? 0xffffffff : 10000;
@@ -1224,7 +1251,8 @@ static void end_profile(void) {
 	canon_transfer_fault = 0;
 	canon_transfer_large = false;
 	device_info_fault = descriptor_fault = canon_custom_func_fault = object_info_delta = 0;
-	sony_extension_fault = canon_info_ex_fault = object_info_short = canon_custom_func_profile = false;
+	sony_extension_fault = canon_info_ex_fault = object_info_short = canon_custom_func_profile = sony_compression_profile = false;
+	atomic_store(&sony_dropped_writes, 0);
 	atomic_store(&gate_open, 1);
 	atomic_store(&gate_operation, 0);
 	atomic_store(&fail_register, 0);
@@ -3080,6 +3108,73 @@ static bool canon_text_write(const char *value) {
 	return result;
 }
 
+// ILCE-7RM4 answers DeviceBusy to the first AF command shortly after a session opens (seen on
+// hardware after a reconnect); the exposure retries it instead of failing, and still fails once
+// the camera stays busy past the settling window.
+static void sony_busy_after_connect(void) {
+	PTP_CHECK(begin_profile(0x054c, 0x0d18));
+	atomic_store(&fail_reply, ptp_response_DeviceBusy);
+	atomic_store(&fail_once_operation, ptp_operation_sony_SetControlDeviceB);
+	PTP_CHECK(capture_once());
+	atomic_store(&fail_operation, ptp_operation_sony_SetControlDeviceB);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_not_busy(&exposure_state) || wait_not_busy(&exposure_state));
+	PTP_CHECK(atomic_load(&exposure_state) == INDIGO_ALERT_STATE);
+	atomic_store(&fail_operation, 0);
+	atomic_store(&fail_reply, 0);
+cleanup:
+	finish_bounds_case();
+}
+
+static indigo_property_state wait_setting(ptp_property *setting) {
+	double deadline = indigo_monotonic_time() + 10;
+	while (setting->property->state == INDIGO_BUSY_STATE && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	return setting->property->state;
+}
+
+// A write the camera acknowledges but drops stays BUSY, is rewritten and confirmed from the camera's
+// own report (ILCE-7RM4, seen on hardware right after captures); one it never applies ends ALERT
+// showing the camera's value.
+static void sony_dropped_setting_write(void) {
+	sony_compression_profile = true;
+	PTP_CHECK(begin_profile(0x054c, 0x0d18));
+	ptp_property *setting = ptp_property_supported(logical[0], ptp_property_sony_CompressionSetting);
+	PTP_CHECK(setting != NULL && setting->property != NULL && setting->property->type == INDIGO_SWITCH_VECTOR);
+	// One dropped write leaves a full rewrite period inside the 3 s confirmation window.
+	for (int dropped = 0; dropped <= 1; dropped++) {
+		const char *item = dropped == 1 ? "3" : "1";
+		int writes = atomic_load(command_count + ptp_operation_sony_SetControlDeviceA);
+		atomic_store(&sony_dropped_writes, dropped);
+		indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_COMPRESSION_PROPERTY_NAME, item, true);
+		PTP_CHECK(wait_setting(setting) == INDIGO_OK_STATE);
+		PTP_CHECK(*value(cameras, ptp_property_sony_CompressionSetting) == (uint32_t)strtol(item, NULL, 16));
+		PTP_CHECK(indigo_get_switch(setting->property, item));
+		PTP_CHECK(atomic_load(command_count + ptp_operation_sony_SetControlDeviceA) == writes + dropped + 1);
+	}
+	atomic_store(&sony_dropped_writes, 100);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_COMPRESSION_PROPERTY_NAME, "2", true);
+	PTP_CHECK(wait_setting(setting) == INDIGO_ALERT_STATE);
+	PTP_CHECK(*value(cameras, ptp_property_sony_CompressionSetting) == 3);
+	PTP_CHECK(indigo_get_switch(setting->property, "3"));
+	atomic_store(&sony_dropped_writes, 0);
+cleanup:
+	finish_bounds_case();
+}
+
+// The camera identity from DeviceInfo is published in INFO once connected.
+static void device_identity_published(void) {
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	indigo_item *firmware = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME);
+	indigo_item *serial = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME);
+	PTP_CHECK(model != NULL && firmware != NULL && serial != NULL);
+	PTP_CHECK(!strcmp(model->text.value, "Queue test") && !strcmp(firmware->text.value, "1") && !strcmp(serial->text.value, "1234"));
+cleanup:
+	finish_bounds_case();
+}
+
 static void canon_long_text_property(void) {
 	char value[301];
 	for (unsigned i = 0; i < 300; i++) {
@@ -3121,6 +3216,9 @@ int main(void) {
 		{ "object_size_mismatch_sony", object_size_mismatch_sony },
 		{ "object_size_mismatch_fuji", object_size_mismatch_fuji },
 		{ "canon_long_text_property", canon_long_text_property },
+		{ "device_identity_published", device_identity_published },
+		{ "sony_busy_after_connect", sony_busy_after_connect },
+		{ "sony_dropped_setting_write", sony_dropped_setting_write },
 		{ "canon_focus_error", canon_focus_error },
 		{ "nikon_focus_error", nikon_focus_error },
 		{ "nikon_focus_stop_retry", nikon_focus_stop_retry },

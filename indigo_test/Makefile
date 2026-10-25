@@ -1860,6 +1860,15 @@ test-ccd-uvc-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_uvc_hw
 $(TEST_BUILD)/hardware/test_ccd_uvc_hw: hardware/test_ccd_uvc_hw.c hardware/hardware_device_record.h ../build/drivers/indigo_ccd_uvc.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_uvc.a -o $@ $(TEST_LDFLAGS) -ljpeg -lusb-1.0
 
+# Physical PTP camera (DSLR / mirrorless) hardware is opt-in and excluded from normal integration
+# tests. macOS builds the driver on ImageCaptureCore, Linux on libusb.
+.PHONY: test-ccd-ptp-hw
+test-ccd-ptp-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_ptp_hw
+	$(TEST_BUILD)/hardware/test_ccd_ptp_hw --run
+
+$(TEST_BUILD)/hardware/test_ccd_ptp_hw: hardware/test_ccd_ptp_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_ccd_ptp.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_ptp.a -o $@ $(TEST_LDFLAGS) -ljpeg $(if $(filter Darwin,$(OS_DETECTED)),-framework ImageCaptureCore -framework Cocoa -framework IOKit,-lusb-1.0)
+
 # Physical Starlight Xpress camera hardware is opt-in and excluded from normal integration tests.
 .PHONY: test-ccd-sx-hw
 test-ccd-sx-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_sx_hw
