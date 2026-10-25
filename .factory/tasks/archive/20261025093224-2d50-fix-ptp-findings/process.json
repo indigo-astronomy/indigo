@@ -9,7 +9,8 @@
     "indigo.xcodeproj/project.pbxproj",
     ".factory/findings/*",
     ".factory/tasks/*",
-    ".factory/completions/*"
+    ".factory/completions/*",
+    ".factory/maintenance.json"
   ],
   "checks": [
     {

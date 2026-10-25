@@ -25,7 +25,7 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - Budget: none defined.
 
 ## Maintenance
-`./.factory/scripts/maintenance status` reports the full repository audit due (22 work tasks since 20261024121920-3bd2-repository-audit). This was not checked before the task started and no owner deferral is recorded for it; the owner decides on a deferral or on running the audit next.
+`./.factory/scripts/maintenance status` reports the full repository audit due (22 work tasks since 20261024121920-3bd2-repository-audit). This was not checked before the task started. On 2026-10-25, after completion, the owner approved recording a deferral for this task (`ptp_findings_fix_deferral` in maintenance.json, separate commit); the audit stays due before the next unrelated task or release.
 
 ## Git delivery tracking
 - Task branch: `task/20261025093224-2d50-fix-ptp-findings`, from master `93bb23d76`.
