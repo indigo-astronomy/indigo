@@ -63,7 +63,8 @@
     }
   ],
   "risk_reviews": {
-    "hardware-io": "security.md"
+    "hardware-io": "security.md",
+    "data-model": "security.md"
   },
   "reviews": [],
   "reviewed_content": {

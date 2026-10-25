@@ -17,6 +17,7 @@ USB PTP camera replies (untrusted) in the Sony exposure state machine and the co
 | Data, secrets, cryptography, and logs | No | one new log/error line without device data |
 | Filesystem and outbound network access | No | none |
 | Dependencies and configuration | No | none |
+| Data model (status documents) | Yes | `MIGRATION_STATUS.md` changes only the ccd_ptp automated-test counts (168 / 15), matching the registered fake and hardware cases; Comment column untouched |
 | Abuse and failure behavior | Yes | retry count and reopen wait are bounded (2 retries, 1 s); abort and capture deadline unchanged |
 
 ## Automated checks
