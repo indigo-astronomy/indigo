@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_wheel_playerone"
 #define DRIVER_LABEL         "Player One Filter Wheel"
 #define WHEEL_DEVICE_NAME    "%s"
@@ -50,6 +50,12 @@
 //+ define
 
 #define PONE_VENDOR_ID       0xa0a0
+// A Player One wheel turns between any two slots in a few seconds; 15 s (the bound the initial
+// positioning always had) ends any move that keeps reporting PW_ERROR_IS_MOVING. The fake SDK
+// test build shortens it.
+#ifndef PW_MOVE_TIMEOUT
+#define PW_MOVE_TIMEOUT      15.0
+#endif
 
 //- define
 
@@ -78,7 +84,7 @@ typedef struct {
 	char model[64];
 	char custom_suffix[MAX_NAME_LEN + 1];
 	int current_slot, target_slot, slot_count;
-	int initialization_polls;
+	double move_deadline;
 	int count;
 	//- data
 } playerone_private_data;
@@ -139,9 +145,9 @@ static void wheel_move_finalizer(indigo_device *device) {
 	int position = -1;
 	int res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &position);
 	if (res == PW_ERROR_IS_MOVING) {
-		if (PRIVATE_DATA->target_slot == 0 && --PRIVATE_DATA->initialization_polls == 0) {
+		if (indigo_monotonic_time() >= PRIVATE_DATA->move_deadline) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Initial positioning timed out after 15 seconds");
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, PRIVATE_DATA->target_slot == 0 ? "Initial positioning timed out after %.0f seconds" : "Filter wheel move timed out after %.0f seconds", PW_MOVE_TIMEOUT);
 		} else {
 			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		}
@@ -195,7 +201,7 @@ static void wheel_connection_handler(indigo_device *device) {
 				X_RESET_PROPERTY->state = INDIGO_OK_STATE;
 				if (res == PW_ERROR_IS_MOVING) {
 					PRIVATE_DATA->target_slot = 0;
-					PRIVATE_DATA->initialization_polls = 30;
+					PRIVATE_DATA->move_deadline = indigo_monotonic_time() + PW_MOVE_TIMEOUT;
 					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 				} else {
@@ -256,6 +262,7 @@ static void wheel_slot_handler(indigo_device *device) {
 			indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set filter failed (%d)", res);
 		} else {
 			PRIVATE_DATA->target_slot = (int)target;
+			PRIVATE_DATA->move_deadline = indigo_monotonic_time() + PW_MOVE_TIMEOUT;
 			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		}

@@ -447,6 +447,42 @@ cleanup:
 	stop_fixture();
 }
 
+// A controller that keeps answering S with "moving" never ends a move by itself. An abort is still
+// served at once, and a move left alone is stopped and ends ALERT once NFOCUS_MOVE_TIMEOUT (one second
+// per step plus 10 s) has passed; no poll follows and a fresh move works.
+static void endless_motion_is_abortable_and_times_out(void) {
+	SERIAL_CHECK_TRUE(start_fixture(NULL));
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("S", "sticky_moving"));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 5, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count("S", 2));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_command_count(":F11000#", 1));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1, INDIGO_BUSY_STATE));
+	bool expired = false;
+	for (int i = 0; i < 200 && !expired; i++) {
+		expired = find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE;
+		indigo_usleep(100000);
+	}
+	double elapsed = indigo_monotonic_time() - started;
+	printf("endless move %s after %.1f s\n", expired ? "ended ALERT" : "still BUSY", elapsed);
+	SERIAL_CHECK_TRUE(expired);
+	SERIAL_CHECK_TRUE(elapsed >= 10.5);
+	SERIAL_CHECK_EQ_INT(2, command_count(":F11000#"));
+	int polls = command_count("S");
+	indigo_usleep(1000000);
+	SERIAL_CHECK_EQ_INT(polls, command_count("S"));
+	unlink(fault_path);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE));
+cleanup:
+	unlink(fault_path);
+	driver_stop();
+	stop_fixture();
+}
+
 // Aborting while nothing moves sends no stop; a request with the item OFF is answered without a command.
 static void abort_idle_and_off_request(void) {
 	SERIAL_CHECK_TRUE(start_fixture(NULL));
@@ -599,6 +635,7 @@ int main(void) {
 		{ "relative_motion", relative_motion },
 		{ "busy_guard_and_abort", busy_guard_and_abort },
 		{ "status_failure_alerts_and_recovers", status_failure_alerts_and_recovers },
+		{ "endless_motion_is_abortable_and_times_out", endless_motion_is_abortable_and_times_out },
 		{ "additional_instances", additional_instances },
 		{ "abort_idle_and_off_request", abort_idle_and_off_request },
 		{ "disconnect_during_motion", disconnect_during_motion },

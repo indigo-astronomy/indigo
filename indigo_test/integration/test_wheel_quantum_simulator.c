@@ -20,8 +20,9 @@
 
 // Wheel class coverage for indigo_wheel_quantum against the standalone Quantum simulator over a
 // real PTY. The Quantum protocol is zero based on the wire (G<slot-1>) and one based in INDIGO, and
-// the wheel streams a P<position> line per step until it arrives, so quantum_goto() consumes the
-// whole move before returning. The driver homes to slot 1 on connect and advertises seven slots.
+// the wheel streams a P<position> line per step until it arrives; the WHEEL_SLOT finalizer consumes
+// one line per step and ends the move in ALERT after QUANTUM_MOVE_TIMEOUT. The driver homes to
+// slot 1 on connect and advertises seven slots.
 
 #include <indigo_drivers/wheel_quantum/indigo_wheel_quantum.h>
 
@@ -151,6 +152,71 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// -------------------------------------------------------------------------------- move deadline
+
+// QUANTUM_MOVE_TIMEOUT in the driver is 20 s; the waits below leave margin for scheduling.
+#define QUANTUM_MOVE_TIMEOUT_SECONDS 20.0
+
+static bool wait_for_property_state_within(const char *property_name, indigo_property_state state, double seconds) {
+	double deadline = indigo_monotonic_time() + seconds;
+	while (indigo_monotonic_time() < deadline) {
+		indigo_property *property = find_cached_property(property_name);
+		if (property != NULL && property->state == state) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// A jammed wheel keeps answering valid P replies for its old slot. The move must end in ALERT once
+// the operation deadline passes, keep the last measured slot, and leave the wheel usable.
+static void stuck_wheel_alerts_after_the_move_deadline(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--stuck", NULL };
+	SERIAL_CHECK_TRUE(start_quantum(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&quantum_wheel, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0.001));
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(request_slot(4));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_within(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, QUANTUM_MOVE_TIMEOUT_SECONDS + 10));
+	double elapsed = indigo_monotonic_time() - started;
+	printf("Stuck move ended in ALERT after %.1f s\n", elapsed);
+	SERIAL_CHECK_TRUE(elapsed >= QUANTUM_MOVE_TIMEOUT_SECONDS - 1);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0.001));
+	SERIAL_CHECK_TRUE(select_slot(1));
+cleanup:
+	if (online) { stop_serial_driver(&quantum_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The stuck move runs as a bounded finalizer, so a disconnect queued during it is served promptly.
+static void disconnect_during_a_stuck_move_is_served(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--stuck", NULL };
+	SERIAL_CHECK_TRUE(start_quantum(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&quantum_wheel, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(request_slot(5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(500000);
+	double started = indigo_monotonic_time();
+	disconnect_serial_device(&quantum_wheel);
+	double elapsed = indigo_monotonic_time() - started;
+	printf("Disconnect during a stuck move took %.1f s\n", elapsed);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(elapsed < 5);
+	online = false;
+	tear_down_serial_driver(&quantum_wheel);
+cleanup:
+	if (online) { stop_serial_driver(&quantum_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // -------------------------------------------------------------------------------- lifecycle
 
 static void reconnect_homes_the_wheel(void) {
@@ -218,6 +284,8 @@ int main(void) {
 		{ "moves_through_first_intermediate_and_last_slots", moves_through_first_intermediate_and_last_slots },
 		{ "reselecting_the_current_slot_completes", reselecting_the_current_slot_completes },
 		{ "slot_beyond_the_device_capacity_is_refused", slot_beyond_the_device_capacity_is_refused },
+		{ "stuck_wheel_alerts_after_the_move_deadline", stuck_wheel_alerts_after_the_move_deadline },
+		{ "disconnect_during_a_stuck_move_is_served", disconnect_during_a_stuck_move_is_served },
 		{ "reconnect_homes_the_wheel", reconnect_homes_the_wheel },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "non_numeric_serial_is_refused", non_numeric_serial_is_refused },

@@ -20,8 +20,9 @@
 
 // Wheel class coverage for indigo_wheel_trutek against the standalone Trutek simulator over a real
 // PTY. Trutek uses a checksummed four byte binary frame; the wheel reports position 0 while it is
-// moving, so the driver polls through wheel_move_finalizer until a real slot comes back. The slot
-// count is read from the device during open rather than compiled in.
+// moving, so the driver polls through wheel_move_finalizer until a real slot comes back or the
+// TRUTEK_MOVE_TIMEOUT deadline passes. The slot count is read from the device during open rather
+// than compiled in.
 
 #include <indigo_drivers/wheel_trutek/indigo_wheel_trutek.h>
 
@@ -170,6 +171,70 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// -------------------------------------------------------------------------------- move deadline
+
+// TRUTEK_MOVE_TIMEOUT in the driver is 20 s; the waits below leave margin for scheduling.
+#define TRUTEK_MOVE_TIMEOUT_SECONDS 20.0
+
+static bool wait_for_property_state_within(const char *property_name, indigo_property_state state, double seconds) {
+	double deadline = indigo_monotonic_time() + seconds;
+	while (indigo_monotonic_time() < deadline) {
+		indigo_property *property = find_cached_property(property_name);
+		if (property != NULL && property->state == state) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// A jammed wheel reports slot 0 (moving) forever. The move must end in ALERT once the operation
+// deadline passes, and the wheel must stay usable.
+static void stuck_wheel_alerts_after_the_move_deadline(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--stuck", NULL };
+	SERIAL_CHECK_TRUE(start_trutek(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&trutek_wheel, simulator.port));
+	online = true;
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(request_slot(3));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_within(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, TRUTEK_MOVE_TIMEOUT_SECONDS + 10));
+	double elapsed = indigo_monotonic_time() - started;
+	printf("Stuck move ended in ALERT after %.1f s\n", elapsed);
+	SERIAL_CHECK_TRUE(elapsed >= TRUTEK_MOVE_TIMEOUT_SECONDS - 1);
+	SERIAL_CHECK_TRUE(select_slot(1));
+cleanup:
+	if (online) { stop_serial_driver(&trutek_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The polling finalizer leaves the queue free, so a disconnect during a stuck move is served
+// promptly and a new connection works.
+static void disconnect_during_a_stuck_move_is_served(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--stuck", NULL };
+	SERIAL_CHECK_TRUE(start_trutek(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&trutek_wheel, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(request_slot(4));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(1000000);
+	double started = indigo_monotonic_time();
+	disconnect_serial_device(&trutek_wheel);
+	double elapsed = indigo_monotonic_time() - started;
+	printf("Disconnect during a stuck move took %.1f s\n", elapsed);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(elapsed < 5);
+	SERIAL_CHECK_TRUE(connect_serial_device(&trutek_wheel, simulator.port));
+	SERIAL_CHECK_TRUE(select_slot(1));
+cleanup:
+	if (online) { stop_serial_driver(&trutek_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // -------------------------------------------------------------------------------- lifecycle
 
 // The identity frame is re-read on every connect, so the slot table and the wheel's retained
@@ -278,6 +343,8 @@ int main(void) {
 		{ "five_slot_wheel_is_reported", five_slot_wheel_is_reported },
 		{ "moves_through_first_intermediate_and_last_slots", moves_through_first_intermediate_and_last_slots },
 		{ "reselecting_the_current_slot_completes", reselecting_the_current_slot_completes },
+		{ "stuck_wheel_alerts_after_the_move_deadline", stuck_wheel_alerts_after_the_move_deadline },
+		{ "disconnect_during_a_stuck_move_is_served", disconnect_during_a_stuck_move_is_served },
 		{ "reconnect_rebuilds_the_slot_table", reconnect_rebuilds_the_slot_table },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "silent_port_is_refused", silent_port_is_refused },

@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_focuser_nfocus"
 #define DRIVER_LABEL         "Rigel Systems nFOCUS Focuser"
 #define FOCUSER_DEVICE_NAME  "nFOCUS"
@@ -50,6 +50,9 @@
 
 #define RESPONSE             (PRIVATE_DATA->response)
 #define NFOCUS_STATUS_STALL_LIMIT 12
+// A step is one motor pulse of at most 255 + 255 on- and off-time units; one second per step plus
+// 10 s bounds a move generously, and a controller reporting "moving" for good is stopped.
+#define NFOCUS_MOVE_TIMEOUT(steps) ((steps) * 1.0 + 10)
 
 //- define
 
@@ -60,6 +63,7 @@ typedef struct {
 	//+ data
 	char response[16];
 	int stalled;
+	double move_deadline;
 	bool active, uncertain, pending;
 	//- data
 } nfocus_private_data;
@@ -177,9 +181,14 @@ static void motion_finalizer(indigo_device *device) {
 		return;
 	}
 	PRIVATE_DATA->stalled = 0;
-	if (moving) {
+	if (moving && indigo_monotonic_time() < PRIVATE_DATA->move_deadline) {
 		nfocus_motion_state(device, INDIGO_BUSY_STATE);
 		indigo_execute_handler_in(device, 0.5, motion_finalizer);
+	} else if (moving) {
+		PRIVATE_DATA->active = false;
+		PRIVATE_DATA->uncertain = !nfocus_stop(device);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, "Focuser did not finish the move in time");
 	} else {
 		PRIVATE_DATA->active = PRIVATE_DATA->uncertain = false;
 		nfocus_motion_state(device, INDIGO_OK_STATE);
@@ -320,6 +329,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		PRIVATE_DATA->active = true;
 		PRIVATE_DATA->uncertain = false;
 		PRIVATE_DATA->stalled = 0;
+		PRIVATE_DATA->move_deadline = indigo_monotonic_time() + NFOCUS_MOVE_TIMEOUT(steps);
 		nfocus_motion_state(device, INDIGO_BUSY_STATE);
 		indigo_execute_handler_in(device, 0.5, motion_finalizer);
 	} else {

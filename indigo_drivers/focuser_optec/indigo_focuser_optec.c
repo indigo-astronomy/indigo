@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_focuser_optec"
 #define DRIVER_LABEL         "Optec TCF-S Focuser"
 #define FOCUSER_DEVICE_NAME  "Optec TCF-S"
@@ -55,6 +55,9 @@
 #define OPTEC_STALL_POLLS    50
 // the move reply is awaited for 10 ms per step plus 5 s (Optec's own driver allows 6 ms per step plus 1 s)
 #define OPTEC_REPLY_POLLS(steps) ((int)((steps) / 100.0 / 0.1) + 50)
+// the whole move, reply and settling included, is bounded by the same 10 ms per step plus 15 s, so
+// a stream of ER= reports or a position that keeps changing cannot keep it BUSY for good
+#define OPTEC_MOVE_TIMEOUT(steps) ((steps) / 100.0 + 15)
 
 //- define
 
@@ -65,6 +68,7 @@ typedef struct {
 	//+ data
 	char response[64];
 	int position, expected_position, last_position, stalled, recovery_position, recovery_samples, reply_polls;
+	double move_deadline;
 	bool active, uncertain, automatic_mode, external, reversed, failed, acknowledged;
 	//- data
 } optec_private_data;
@@ -231,6 +235,11 @@ static void motion_failed(indigo_device *device) {
 
 static void motion_finalizer(indigo_device *device) {
 	if (!IS_CONNECTED || !PRIVATE_DATA->active) {
+		return;
+	}
+	if (indigo_monotonic_time() >= PRIVATE_DATA->move_deadline) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Move to %d did not finish in time", PRIVATE_DATA->expected_position);
+		motion_failed(device);
 		return;
 	}
 	if (!PRIVATE_DATA->acknowledged) {
@@ -417,6 +426,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	} else if (optec_command(device, -1, physical_inward ? "FI%04d" : "FO%04d", actual_steps)) {
 		PRIVATE_DATA->external = PRIVATE_DATA->failed = PRIVATE_DATA->acknowledged = false;
 		PRIVATE_DATA->reply_polls = OPTEC_REPLY_POLLS(actual_steps);
+		PRIVATE_DATA->move_deadline = indigo_monotonic_time() + OPTEC_MOVE_TIMEOUT(actual_steps);
 		PRIVATE_DATA->expected_position = target;
 		PRIVATE_DATA->last_position = PRIVATE_DATA->position;
 		PRIVATE_DATA->stalled = 0;

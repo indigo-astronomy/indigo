@@ -363,6 +363,11 @@ static bool dispatch_fault(int handle, const char *command, int length) {
 		}
 		return true;
 	}
+	if (!strcmp(action, "moving") && length == 1 && command[0] == 'S') {
+		// a motor that never finishes its move keeps reporting it is moving
+		write_reply(handle, "1", 1);
+		return true;
+	}
 	if (!strcmp(action, "absent") && !strncmp(command, ":RT", 3)) {
 		write_reply(handle, "-888", 4);
 		return true;

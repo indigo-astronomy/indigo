@@ -423,6 +423,29 @@ cleanup:
 	driver_stop();
 }
 
+// A blocking controller that keeps sending ER= reports and never its '*' cannot keep the move BUSY:
+// it ends ALERT once OPTEC_MOVE_TIMEOUT (10 ms per step plus 15 s) has passed, and the disconnect
+// that follows is served.
+static void blocking_move_endless_reports(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fault("FO0001", "reporting"));
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 1, INDIGO_BUSY_STATE));
+	bool expired = false;
+	for (int i = 0; i < 200 && !expired; i++) {
+		expired = find_cached_property(FOCUSER_STEPS_PROPERTY_NAME)->state == INDIGO_ALERT_STATE;
+		indigo_usleep(100000);
+	}
+	double elapsed = indigo_monotonic_time() - started;
+	printf("endless reports: move %s after %.1f s\n", expired ? "ended ALERT" : "still BUSY", elapsed);
+	SERIAL_CHECK_TRUE(expired);
+	SERIAL_CHECK_TRUE(elapsed >= 14.5);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state);
+cleanup:
+	driver_stop();
+}
+
 // The manual documents the temperature as T=nn.n, without a sign; 2.0 and INDI read it with scanf.
 static void unsigned_temperature(void) {
 	SERIAL_CHECK_TRUE(driver_start());
@@ -817,7 +840,7 @@ int main(void) {
 		{ "simulator_rejections", simulator_rejections, "tcf-s" },
 		{ "capabilities", capabilities, "normal" }, { "capabilities_split", capabilities, "split" }, { "capabilities_alternate", capabilities, "alternate" },
 		{ "no_probe", no_probe, "no-probe" }, { "temperature_implausible", temperature_implausible, "normal" },
-		{ "short_move", short_move, "normal" }, { "blocking_move", blocking_move, "blocking" }, { "unsigned_temperature", unsigned_temperature, "unsigned" }, { "external_motion", external_motion, "normal" },
+		{ "short_move", short_move, "normal" }, { "blocking_move", blocking_move, "blocking" }, { "blocking_move_endless_reports", blocking_move_endless_reports, "blocking" }, { "unsigned_temperature", unsigned_temperature, "unsigned" }, { "external_motion", external_motion, "normal" },
 		{ "settings_during_motion", settings_during_motion, "normal" }, { "request_versus_poll", request_versus_poll, "normal" },
 		{ "shutdown_while_connected", shutdown_while_connected, "normal" },
 		{ "relative_motion", relative_motion, "normal" }, { "controls", controls, "normal" },

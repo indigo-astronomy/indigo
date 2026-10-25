@@ -182,6 +182,72 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// -------------------------------------------------------------------------------- move deadline
+
+// XAGYL_MOVE_TIMEOUT in the driver is 20 s; the waits below leave margin for scheduling.
+#define XAGYL_MOVE_TIMEOUT_SECONDS 20.0
+
+static bool wait_for_property_state_within(const char *property_name, indigo_property_state state, double seconds) {
+	double deadline = indigo_monotonic_time() + seconds;
+	while (indigo_monotonic_time() < deadline) {
+		indigo_property *property = find_cached_property(property_name);
+		if (property != NULL && property->state == state) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// A jammed wheel keeps reporting the slot it stands at. The move must end in ALERT once the
+// operation deadline passes, with that last measured slot as the value, and the wheel must stay
+// usable.
+static void wrong_slot_alerts_after_the_move_deadline(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--stuck", NULL };
+	SERIAL_CHECK_TRUE(start_xagyl(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&xagyl_wheel, simulator.port));
+	online = true;
+	double started = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, xagyl_wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 4));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state_within(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE, XAGYL_MOVE_TIMEOUT_SECONDS + 10));
+	double elapsed = indigo_monotonic_time() - started;
+	printf("Stuck move ended in ALERT after %.1f s\n", elapsed);
+	SERIAL_CHECK_TRUE(elapsed >= XAGYL_MOVE_TIMEOUT_SECONDS - 1);
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0.001));
+	SERIAL_CHECK_TRUE(select_slot(1));
+cleanup:
+	if (online) { stop_serial_driver(&xagyl_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The polling finalizer leaves the queue free, so a disconnect during a stuck move is served
+// promptly and a new connection works.
+static void disconnect_during_a_stuck_move_is_served(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--stuck", NULL };
+	SERIAL_CHECK_TRUE(start_xagyl(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&xagyl_wheel, simulator.port));
+	online = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, xagyl_wheel.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(1000000);
+	double started = indigo_monotonic_time();
+	disconnect_serial_device(&xagyl_wheel);
+	double elapsed = indigo_monotonic_time() - started;
+	printf("Disconnect during a stuck move took %.1f s\n", elapsed);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(elapsed < 5);
+	SERIAL_CHECK_TRUE(connect_serial_device(&xagyl_wheel, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0.001));
+cleanup:
+	if (online) { stop_serial_driver(&xagyl_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // -------------------------------------------------------------------------------- lifecycle
 
 // Reconnecting re-reads identity and slot count, so the selection made before the disconnect must
@@ -291,6 +357,8 @@ int main(void) {
 		{ "single_slot_wheel_is_accepted", single_slot_wheel_is_accepted },
 		{ "moves_through_first_intermediate_and_last_slots", moves_through_first_intermediate_and_last_slots },
 		{ "reselecting_the_current_slot_completes", reselecting_the_current_slot_completes },
+		{ "wrong_slot_alerts_after_the_move_deadline", wrong_slot_alerts_after_the_move_deadline },
+		{ "disconnect_during_a_stuck_move_is_served", disconnect_during_a_stuck_move_is_served },
 		{ "reconnect_rebuilds_the_slot_table", reconnect_rebuilds_the_slot_table },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "silent_port_is_refused", silent_port_is_refused },
