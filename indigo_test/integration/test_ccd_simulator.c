@@ -865,6 +865,18 @@ static void simulator_file_noise_formats_and_failure(void) {
 	indigo_raw_header truncated_header = { INDIGO_RAW_MONO16, 64, 48 };
 	SIM_CHECK(fwrite(&truncated_header, sizeof(truncated_header), 1, file) == 1 && fclose(file) == 0);
 	SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+	// A payload one byte short of the header shape is refused instead of becoming a zero-filled frame.
+	file = fopen(sim_raw_path, "wb");
+	SIM_CHECK(file != NULL);
+	bool short_written = fwrite(&truncated_header, sizeof(truncated_header), 1, file) == 1;
+	for (int i = 0; i < 64 * 48 * 2 - 1; i++) { short_written = (fputc(ccd_test_noise(i, 0) >> 8, file) != EOF) && short_written; }
+	SIM_CHECK(fclose(file) == 0 && short_written);
+	SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
+	// So is a header cut short.
+	file = fopen(sim_raw_path, "wb");
+	SIM_CHECK(file != NULL);
+	SIM_CHECK(fwrite(&truncated_header, sizeof(truncated_header) - 1, 1, file) == 1 && fclose(file) == 0);
+	SIM_CHECK(sim_switch("CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
 	for (int format = 0; format < 4; format++) {
 		file = fopen(sim_raw_path, "wb");
 		SIM_CHECK(file != NULL);
