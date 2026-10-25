@@ -32,11 +32,19 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_wheel_xagyl"
 #define DRIVER_LABEL         "Xagyl Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Xagyl Filter Wheel"
 #define PRIVATE_DATA         ((xagyl_private_data *)device->private_data)
+
+//+ define
+
+// The wheel turns between any two of its slots in a few seconds; 20 s bounds a move generously
+// while a wheel that keeps reporting another slot is still stopped.
+#define XAGYL_MOVE_TIMEOUT   20.0
+
+//- define
 
 #pragma mark - Private data definition
 
@@ -44,6 +52,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
 	int slot;
+	double move_deadline;
 	//- data
 } xagyl_private_data;
 
@@ -107,11 +116,14 @@ static void xagyl_close(indigo_device *device) {
 
 static void wheel_move_finalizer(indigo_device *device) {
 	if (xagyl_query(device)) {
-		if (PRIVATE_DATA->slot != WHEEL_SLOT_ITEM->number.target) {
+		if (PRIVATE_DATA->slot == WHEEL_SLOT_ITEM->number.target) {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
+			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+		} else if (indigo_monotonic_time() < PRIVATE_DATA->move_deadline) {
 			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		} else {
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, "Filter wheel did not reach slot %d in %.0f s", (int)WHEEL_SLOT_ITEM->number.target, XAGYL_MOVE_TIMEOUT);
 		}
 	} else {
 		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -164,6 +176,7 @@ static void wheel_slot_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else  if (xagyl_goto(device, slot)) {
 		WHEEL_SLOT_ITEM->number.value = 0;
+		PRIVATE_DATA->move_deadline = indigo_monotonic_time() + XAGYL_MOVE_TIMEOUT;
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 	} else {
 		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
