@@ -53,6 +53,9 @@ static int speed = 0;
 static int hold_current = 1;
 static const char *wifi_status = "on";
 static const char *lan_cfg = "ap";
+// Credentials are stored as sent, still JSON-escaped, except the access point SSID in access point mode, which the
+// firmware keeps (GIOTTO firmware 1.03.09; the same firmware family).
+static char ap_ssid[200] = "SESTOSENSO20716", ap_password[200] = "primalucelab", sta_ssid[200] = "MySSID", sta_password[200] = "MyPassword";
 static const char *led_status = "on";
 static const char *model = "SESTOSENSO2";
 static const char *firmware = "3.10";
@@ -359,8 +362,9 @@ static void send_state(int handle) {
 		"{\"res\":{\"get\":{%s"
 		"\"MODNAME\":\"%s\",\"SN\":\"SESTOSENSO20716\","
 		"\"SWVERS\":{\"SWAPP\":\"%s\",\"SWWEB\":\"%s\"},\"LANCFG\":\"%s\","
-		"\"WIFIAP\":{\"SSID\":\"SESTOSENSO20716\",\"PWD\":\"primalucelab\",\"STATUS\":\"%s\"},"
-		"\"WIFISTA\":{\"SSID\":\"MySSID\",\"PWD\":\"MyPassword\"},"
+		"\"LANSTATUS\":{\"LANCONN\":\"%s\",\"PINGGW\":0,\"PINGEXTHOST\":0},"
+		"\"WIFIAP\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"192.168.4.1\",\"STATUS\":\"%s\",\"CLIENTS\":0},"
+		"\"WIFISTA\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"%s\"},"
 		"\"EXT_T\":\"%s\",\"VIN_12V\":\"13.98\",\"VIN_USB\":\"5.20\",\"DIMLEDS\":\"%s\",\"ARCO\":%d,\"CALRESTART\":{\"MOT1\":%d,\"MOT2\":%d},"
 		"\"MOT1\":{%s\"ABS_POS_STEP\":%d,%s\"BKLASH\":%d,"
 		"\"STATUS\":{\"MST\":\"%s\"},\"NTC_T\":\"37.12\",\"ERROR\":\"%s\",\"CALRESTART\":%d,\"CAL_MINPOS\":%d,\"CAL_MAXPOS\":%d,\"CAL_DIR\":\"%s\","
@@ -370,7 +374,25 @@ static void send_state(int handle) {
 		"\"RUNPRESET_1\":{\"M1HOLD\":3},\"RUNPRESET_2\":{\"M1CSPD\":5},\"RUNPRESET_3\":{\"M1CDEC\":7},"
 		"\"MOT2\":{\"ABS_POS\":%d,\"ABS_POS_DEG\":%d,\"POSITION_DEG\":%s,\"STATUS\":{\"MST\":\"%s\"},\"ERROR\":\"\",\"CALRESTART\":%d,\"CAL_STATUS\":\"%s\"}"
 		"}}}\n",
-		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, web_firmware, lan_cfg, wifi_status, external_temperature, led_status, arco_enabled, calibration_restart, calibration_restart || rotator_calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart || rotator_calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+		strncmp(model, "SESTOSENSO", 10) ? "" : presets, model, firmware, web_firmware, lan_cfg, strcmp(lan_cfg, "sta") ? "disconnected" : "gotip", ap_ssid, ap_password, wifi_status, sta_ssid, sta_password, strcmp(lan_cfg, "sta") ? "" : "192.0.2.23", external_temperature, led_status, arco_enabled, calibration_restart, calibration_restart || rotator_calibration_restart, mot1_abs_pos, focuser_position, mot1_speed, backlash, focus_motion.duration > 0 || focus_stalled ? "move" : "stop", motor_error, calibration_restart, calibration_min, calibration_max, calibration_direction, hold_current, rotator_position - rotator_offset, rotator_position - rotator_offset, rotator_angle, rotate_motion.duration > 0 ? "move" : "stop", calibration_restart || rotator_calibration_restart, serial_motion_time() < rotator_calibration_end ? "exec" : "stop");
+}
+
+// Copies the raw (still escaped) JSON string that follows key in command.
+static void copy_json_string(const char *command, const char *key, char *target, size_t size) {
+	const char *start = strstr(command, key);
+	if (start == NULL) {
+		return;
+	}
+	start += strlen(key);
+	size_t length = 0;
+	while (start[length] != 0 && start[length] != '"' && length < size - 1) {
+		length += start[length] == '\\' && start[length + 1] != 0 ? 2 : 1;
+	}
+	if (length >= size) {
+		length = size - 1;
+	}
+	memcpy(target, start, length);
+	target[length] = 0;
 }
 
 static void dispatch_command(int handle, const char *command) {
@@ -488,6 +510,11 @@ static void dispatch_command(int handle, const char *command) {
 		hold_current = extract_int_after(command, "\"HOLDCURR_STATUS\":", hold_current) ? 1 : 0;
 		sim_printf(handle, "{\"res\":{\"set\":{\"MOT1\":{\"HOLDCURR_STATUS\":\"done\"}}}}\n");
 	} else if (strstr(command, "\"WIFIAP\"") != NULL || strstr(command, "\"WIFISTA\"") != NULL) {
+		bool ap = strstr(command, "\"WIFIAP\"") != NULL;
+		if (!ap || strcmp(lan_cfg, "ap")) {
+			copy_json_string(command, "\"SSID\":\"", ap ? ap_ssid : sta_ssid, sizeof(ap_ssid));
+		}
+		copy_json_string(command, "\"PWD\":\"", ap ? ap_password : sta_password, sizeof(ap_password));
 		sim_printf(handle, "{\"res\":{\"set\":{\"WIFIAP\":{\"SSID\":\"done\",\"PWD\":\"done\"},\"WIFISTA\":{\"SSID\":\"done\",\"PWD\":\"done\"}}}}\n");
 	} else if (strstr(command, "AP_SET_STATUS") != NULL) {
 		wifi_status = strstr(command, "\"off\"") != NULL ? "off" : "on";

@@ -1199,3 +1199,32 @@ reason. Not verified on hardware for the focuser in this task (no focuser attach
 - Simulated tests: 76 run, 76 passed: `2026-10-25 00:17 3.0.0.43 linux x64 simulator 76/76 OK` (after the merge with
   3.0.0.42; its `wifi_escaped_credentials` uses an 8 character access point password, as WPA2 requires).
 - Hardware tests: 0 run for this change.
+
+## WiFi status (3.0.0.44, 2026-10-25, task 20261024221319-1235-primaluce-wifi-status)
+
+The driver showed no address to put in an `http://` port. The read-only `X_WIFI_STATUS` now shows where to connect:
+`IP_ADDRESS` (the address on the joined network in station mode, the access point address while the access point is on,
+empty when it is off), `PORT` (80, the controller's web server, shown with an address) and `CONNECTION` (in station mode
+`LANSTATUS.LANCONN`, e.g. `disconnected` or `gotip`; otherwise `access point` or `off`). It is read from the full state
+at connect, after a WiFi mode change and with the controller state every 10 s, which also shows an address the controller gets some
+time after a restart; it is published only when it changes. A SESTO SENSO 3 in access point mode still reported the
+station address of an earlier session, so that address is not used outside station mode.
+
+`X_WIFI_AP` and `X_WIFI_STA` now show what the controller stored after a change: the credentials are read back, a kept access
+point SSID is shown with the message "The controller kept the SSID ...", and a refused change shows the stored values
+again. The library decodes the JSON escapes of reply strings, so a credential with `"` or `\` reads back as entered.
+
+| Scenario | Test |
+| --- | --- |
+| Connect values in access point mode (address, port 80, `access point`), read-only | `property_contract` |
+| Station address, port and connection after a switch to station mode | `wifi_station_mode` |
+| Library: request, address rules, credentials with decoded escapes, a failed reply | `test_primalucelib` (`wifi status shows where the controller is`) |
+| Escaped credentials and a kept access point SSID | `wifi_escaped_credentials`, `controller_settings` |
+
+Not verified: the station address on hardware (needs a network the device joins), the periodic refresh picking up a
+later address (the simulator assigns the address at the restart).
+
+## Final test summary (3.0.0.44)
+
+- Simulated tests: 76 run, 76 passed: `2026-10-25 02:44 3.0.0.44 linux x64 simulator 76/76 OK`.
+- Hardware tests: 0 run for this change.
