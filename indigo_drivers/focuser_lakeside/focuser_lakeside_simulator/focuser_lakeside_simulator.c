@@ -24,7 +24,8 @@
 
 static const char *profile = "normal", *ready_file, *fault_file;
 static FILE *events;
-static bool headless, trace, moving, stalled, automatic;
+static bool headless, trace, moving, stalled, frozen, automatic;
+static double frozen_report;
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1, backlash, reverse, active_slope = 1, last_reported_position;
 static int slope[2] = { 10, 20 }, slope_direction[2] = { 0, 1 }, slope_deadband[2] = { 5, 10 }, slope_period[2] = { 6, 12 };
@@ -158,6 +159,11 @@ static bool inject(const char *command, char expected) {
 	} else if (!strcmp(action, "stall")) {
 		stalled = true;
 		return false;
+	} else if (!strcmp(action, "frozen")) {
+		// A stuck motor that keeps reporting its position: P<n> of the same position every 100 ms, never DONE.
+		stalled = frozen = true;
+		frozen_report = 0;
+		return false;
 	} else {
 		reply("%cBAD#", expected ? expected : 'X');
 	}
@@ -165,6 +171,14 @@ static bool inject(const char *command, char expected) {
 }
 
 static void update_motion(void) {
+	if (moving && frozen) {
+		double now = serial_motion_time();
+		if (now >= frozen_report) {
+			frozen_report = now + 0.1;
+			reply("P%d#", last_reported_position);
+		}
+		return;
+	}
 	if (!moving || stalled) {
 		return;
 	}
@@ -243,7 +257,7 @@ static void dispatch(const char *command) {
 		automatic = true;
 	} else if (!strcmp(command, "CH")) {
 		serial_motion_stop(&motion);
-		moving = stalled = false;
+		moving = stalled = frozen = false;
 		last_reported_position = (int)motion.position;
 	} else if (!strncmp(command, "CI", 2) && parse_unsigned(command + 2, 0, 65535, &value)) {
 		int position = (int)serial_motion_update(&motion);
