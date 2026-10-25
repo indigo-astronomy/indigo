@@ -42,7 +42,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001A
+#define DRIVER_VERSION       0x0300001B
 #define DRIVER_NAME          "indigo_mount_temma"
 #define DRIVER_LABEL         "Takahashi Temma Mount"
 #define MOUNT_DEVICE_NAME    "Takahashi Temma Mount"
@@ -56,6 +56,9 @@
 #define TEMMA_MOTION_RA_WEST 0x04
 #define TEMMA_MOTION_DEC_NORTH 0x08
 #define TEMMA_MOTION_DEC_SOUTH 0x10
+// A Temma slews half the sky in a few minutes; 600 s bounds any GOTO or park whose slew status
+// (s1) never clears.
+#define TEMMA_SLEW_TIMEOUT   600
 
 //- define
 
@@ -95,7 +98,7 @@ typedef struct {
 	indigo_property *zenith_property;
 	//+ data
 	double current_ra, current_dec;
-	double park_deadline;
+	double goto_deadline, park_deadline;
 	char telescope_side;
 	bool is_busy, start_tracking, stop_tracking;
 	unsigned char mount_motion_mask, guider_motion_mask;
@@ -356,9 +359,16 @@ static void mount_goto_finalizer(indigo_device *device) {
 	if (!IS_CONNECTED || !temma_update_position(device) || !temma_command(device, true, "s") || (strcmp(PRIVATE_DATA->response, "s0") && strcmp(PRIVATE_DATA->response, "s1"))) {
 		temma_restore_position(device);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (PRIVATE_DATA->response[1] == '1') {
+	} else if (PRIVATE_DATA->response[1] == '1' && indigo_monotonic_time() < PRIVATE_DATA->goto_deadline) {
 		indigo_update_coordinates(device, NULL);
 		indigo_execute_handler_in(device, 0.5, mount_goto_finalizer);
+		return;
+	} else if (PRIVATE_DATA->response[1] == '1') {
+		// The slew never ended: stop it and keep the position reached, the request stays the target.
+		temma_no_reply_command(device, "PS");
+		PRIVATE_DATA->start_tracking = PRIVATE_DATA->stop_tracking = false;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_coordinates(device, "Slew did not finish in time");
 		return;
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -634,6 +644,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	temma_format_position(command, sizeof(command), MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? 'D' : 'P', ra, dec);
 	if (temma_prepare_position(device) && temma_position_command(device, "%s", command)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		PRIVATE_DATA->goto_deadline = indigo_monotonic_time() + TEMMA_SLEW_TIMEOUT;
 		PRIVATE_DATA->start_tracking = MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value || MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value;
 		PRIVATE_DATA->stop_tracking = MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value;
 		indigo_update_coordinates(device, NULL);
@@ -768,7 +779,7 @@ static void mount_park_handler(indigo_device *device) {
 		char command[32];
 		temma_format_position(command, sizeof(command), 'P', ra, MOUNT_PARK_POSITION_DEC_ITEM->number.value);
 		if (temma_prepare_position(device) && temma_position_command(device, "%s", command)) {
-			PRIVATE_DATA->park_deadline = indigo_monotonic_time() + 600;
+			PRIVATE_DATA->park_deadline = indigo_monotonic_time() + TEMMA_SLEW_TIMEOUT;
 			MOUNT_PARK_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_coordinates(device, NULL);
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
