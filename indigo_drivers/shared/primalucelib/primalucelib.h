@@ -281,6 +281,7 @@ extern "C" {
 #define PRIMALUCE_REQUEST_DISABLE_LOG_OUTPUT              "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}"
 #define PRIMALUCE_REQUEST_GET_ENVIRONMENT                 "{\"req\":{\"get\":{\"EXT_T\":\"\", \"VIN_12V\": \"\", \"MOT1\":{\"NTC_T\":\"\"}}}}"
 #define PRIMALUCE_REQUEST_GET_LAN_CONFIG                  "{\"req\":{\"get\":{\"LANCFG\":\"\"}}}"
+#define PRIMALUCE_REQUEST_GET_WIFI_STATUS                 "{\"req\":{\"get\":{\"LANCFG\":\"\",\"WIFIAP\":\"\",\"WIFISTA\":\"\",\"LANSTATUS\":\"\"}}}"
 // LANCFG mode
 #define PRIMALUCE_REQUEST_SET_LAN_CONFIG                  "{\"req\":{\"set\":{\"LANCFG\":\"%s\"}}}"
 #define PRIMALUCE_REQUEST_REBOOT                          "{\"req\":{\"cmd\":{\"REBOOT\":\"\"}}}"
@@ -399,6 +400,9 @@ extern char *PRIMALUCE_REPLY_ACCESS_POINT_SSID[];
 extern char *PRIMALUCE_REPLY_ACCESS_POINT_PASSWORD[];
 extern char *PRIMALUCE_REPLY_STATION_SSID[];
 extern char *PRIMALUCE_REPLY_STATION_PASSWORD[];
+extern char *PRIMALUCE_REPLY_STATION_IP[];
+extern char *PRIMALUCE_REPLY_ACCESS_POINT_IP[];
+extern char *PRIMALUCE_REPLY_LAN_CONNECTION[];
 extern char *PRIMALUCE_REPLY_RECOVERY_DELAY[];
 extern char *PRIMALUCE_REPLY_MODEL_SUBMODEL[];
 extern char *PRIMALUCE_REPLY_FIRST_STORED_POSITION[];
@@ -608,12 +612,34 @@ typedef enum {
 // reason in primalucelib_last_error().
 extern bool primalucelib_select_wifi(primalucelib_link *link, primalucelib_wifi_mode mode, bool *restarted);
 extern bool primalucelib_set_access_point(primalucelib_link *link, bool on);
+// Where the controller can be reached over WiFi, and the credentials it stored. In station mode ip_address is the
+// address it got on the network it joined and connection is LANSTATUS.LANCONN ("disconnected", "gotip"); outside station
+// mode the station address is not used (a SESTO SENSO 3 and a GIOTTO in access point mode still reported the one of an
+// earlier station session). With the access point on, ip_address is its address and connection "access point"; with
+// it off both are empty and "off". The web server answers on PRIMALUCE_HTTP_DEFAULT_PORT.
+typedef struct {
+	bool station;
+	bool access_point;
+	char ip_address[INDIGO_NAME_SIZE];
+	char connection[INDIGO_NAME_SIZE];
+	char access_point_ssid[INDIGO_VALUE_SIZE];
+	char access_point_password[INDIGO_VALUE_SIZE];
+	char station_ssid[INDIGO_VALUE_SIZE];
+	char station_password[INDIGO_VALUE_SIZE];
+} primalucelib_wifi_status;
+#define PRIMALUCE_WIFI_CONNECTION_ACCESS_POINT    "access point"
+#define PRIMALUCE_WIFI_CONNECTION_OFF             "off"
+// From the reply in the link (the full state or PRIMALUCE_REQUEST_GET_WIFI_STATUS); false without LANCFG.
+extern bool primalucelib_reply_wifi_status(primalucelib_link *link, primalucelib_wifi_status *status);
+extern bool primalucelib_get_wifi_status(primalucelib_link *link, primalucelib_wifi_status *status);
 // The controller stores any text as a credential (ALTO1 firmware 1.03.11 took a 3 character access point password),
 // so these refuse, with the reason in primalucelib_last_error() and before anything is sent:
 // - an SSID longer than PRIMALUCE_WIFI_SSID_MAX_LENGTH, or an empty access point SSID;
 // - an access point password outside PRIMALUCE_WIFI_PASSWORD_MIN_LENGTH to PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH (WPA2);
 // - a station password longer than PRIMALUCE_WIFI_PASSWORD_MAX_LENGTH (an empty one joins an open network).
 // Accepted credentials are sent JSON-escaped; the controller decodes '"' and '\' (GIOTTO firmware 1.03.09).
+// The firmware may keep a value it acknowledged (the GIOTTO keeps its access point SSID in access point mode), so read
+// the credentials back with primalucelib_get_wifi_status().
 extern bool primalucelib_set_access_point_credentials(primalucelib_link *link, const char *ssid, const char *password);
 extern bool primalucelib_set_station_credentials(primalucelib_link *link, const char *ssid, const char *password);
 // SESTO SENSO 3: "SESTOSENSO3SC", "SESTOSENSO3LS", ... from "Model = .., SubModel = .., ARCO = ..".

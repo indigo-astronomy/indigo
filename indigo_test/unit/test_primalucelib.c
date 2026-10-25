@@ -784,6 +784,32 @@ cleanup:
 	stop_peer();
 }
 
+// The address to connect to is the station address in station mode (a SESTO SENSO 3 in access point mode kept the one
+// of an earlier station session) and the access point address while the access point is on; the credentials are read
+// back with their JSON escapes decoded.
+static void wifi_status_shows_where_the_controller_is(void) {
+	primalucelib_wifi_status status;
+	CHECK(start_peer(
+		"{\"res\":{\"get\":{\"LANCFG\":\"sta\",\"WIFIAP\":{\"SSID\":\"GIOTTO1\",\"PWD\":\"primalucelab\",\"IP\":\"192.168.4.1\",\"STATUS\":\"off\"},\"WIFISTA\":{\"SSID\":\"Home \\\"net\\\"\",\"PWD\":\"back\\\\slash\\u0021\",\"IP\":\"10.0.0.23\"},\"LANSTATUS\":{\"LANCONN\":\"gotip\"}}}}\n",
+		"{\"res\":{\"get\":{\"LANCFG\":\"ap\",\"WIFIAP\":{\"IP\":\"192.168.4.1\",\"STATUS\":\"on\"},\"WIFISTA\":{\"IP\":\"10.0.0.23\"},\"LANSTATUS\":{\"LANCONN\":\"disconnected\"}}}}\n",
+		"{\"res\":{\"get\":{\"LANCFG\":\"ap\",\"WIFIAP\":{\"IP\":\"192.168.4.1\",\"STATUS\":\"off\"},\"WIFISTA\":{\"IP\":\"\"},\"LANSTATUS\":{\"LANCONN\":\"disconnected\"}}}}\n",
+		"{\"res\":{\"get\":{\"ERROR\":\"busy\"}}}\n", NULL));
+	CHECK(primalucelib_get_wifi_status(&test_link, &status));
+	CHECK(request_matches(0, "{\"req\":{\"get\":{\"LANCFG\":\"\",\"WIFIAP\":\"\",\"WIFISTA\":\"\",\"LANSTATUS\":\"\"}}}"));
+	CHECK(status.station && !status.access_point);
+	CHECK(!strcmp(status.ip_address, "10.0.0.23") && !strcmp(status.connection, "gotip"));
+	CHECK(!strcmp(status.station_ssid, "Home \"net\"") && !strcmp(status.station_password, "back\\slash!"));
+	CHECK(!strcmp(status.access_point_ssid, "GIOTTO1") && !strcmp(status.access_point_password, "primalucelab"));
+	CHECK(primalucelib_get_wifi_status(&test_link, &status));
+	CHECK(!status.station && status.access_point);
+	CHECK(!strcmp(status.ip_address, "192.168.4.1") && !strcmp(status.connection, PRIMALUCE_WIFI_CONNECTION_ACCESS_POINT));
+	CHECK(primalucelib_get_wifi_status(&test_link, &status));
+	CHECK(!status.station && !status.access_point && status.ip_address[0] == 0 && !strcmp(status.connection, PRIMALUCE_WIFI_CONNECTION_OFF));
+	CHECK(!primalucelib_get_wifi_status(&test_link, &status));
+cleanup:
+	stop_peer();
+}
+
 // The controller stores any text as a credential, so what WiFi cannot use is refused with a reason and never sent.
 static void wifi_credentials_are_checked_before_sending(void) {
 	CHECK(start_peer("{\"res\":{\"set\":{\"WIFIAP\":{\"SSID\":\"done\",\"PWD\":\"done\"}}}}\n", "{\"res\":{\"set\":{\"WIFISTA\":{\"SSID\":\"done\",\"PWD\":\"done\"}}}}\n", NULL));
@@ -1090,6 +1116,7 @@ int main(void) {
 		{ "lookups stay within a full token array", lookups_stay_within_a_full_token_array },
 		{ "LAN mode restarts only on a change", lan_config_restarts_only_on_a_change },
 		{ "WiFi modes select the LAN mode first", wifi_modes_select_the_lan_mode_first },
+		{ "WiFi status shows where the controller is", wifi_status_shows_where_the_controller_is },
 		{ "WiFi credentials are checked before sending", wifi_credentials_are_checked_before_sending },
 		{ "models are recognized by prefix", models_are_recognized_by_prefix },
 		{ "HTTP URLs are split into host and port", http_urls_are_split_into_host_and_port },

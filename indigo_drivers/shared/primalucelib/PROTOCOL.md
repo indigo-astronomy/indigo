@@ -127,8 +127,7 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
   Both setters support full INDIGO text items even at maximum escaping expansion; larger library
   inputs that exceed the encoding buffers or complete request capacity fail without sending a partial request.
   The controller decodes the escapes: `Home \"net\"` and `back\\slash` were stored and read back as sent,
-  still escaped in the reply (HW (GIOTTO)); the library does not decode escapes in replies, so such a value
-  reads back with its backslashes.
+  still escaped in the reply (HW (GIOTTO)); the library decodes them when it parses the reply.
 - **WiFi values (HW (ALTO1)):** the controller stores whatever it is sent and acknowledges it: `LANCFG`
   `xyz`, a 3 character access point password and empty station credentials were all `"done"` and read back.
   `primalucelib_set_access_point_credentials()` and `primalucelib_set_station_credentials()` therefore
@@ -139,6 +138,18 @@ nodes     device-wide keys at the top level, motor keys under "MOT1" (focuser, c
   the `ap` mode with the access point switched off or on; a change between `sta` and `ap` restarts the
   controller. In station mode `WIFIAP.STATUS` reads `off` (HW (ALTO1)). Over HTTP the restart takes the
   controller off the network the link uses, so OFF cannot follow a restart and fails with a reason.
+- **WiFi status:** `{"req":{"get":{"LANCFG":"","WIFIAP":"","WIFISTA":"","LANSTATUS":""}}}` returns the mode, the
+  access point (`SSID`, `PWD`, `IP` 192.168.4.1, `STATUS`, `CLIENTS`), the station (`SSID`, `PWD`, `IP`, `NM`, `GW`,
+  `DNS`) and `LANSTATUS.LANCONN` (`disconnected`, `gotip` once joined; HW). A SESTO SENSO 3 and a GIOTTO in access point
+  mode still reported the station address of an earlier session with `LANCONN` `disconnected` (HW (SESTO SENSO 3),
+  HW (GIOTTO)), so `primalucelib_reply_wifi_status()` gives one address to connect to: the station address in station
+  mode, the access point address while the access point is on, none while it is off. The web server answers on port 80.
+  Right after `AP_SET_STATUS` `on` the GIOTTO took about 3 s to answer, and an `off` was sometimes still read back `on`
+  at once (also with the access point on for a while) and `off` a few seconds later.
+- **Stored credentials:** the GIOTTO acknowledges a new access point SSID in access point mode but keeps its own
+  (reported by the requester and seen in a driver session, 2026-10-25, HW (GIOTTO)), so the drivers read the credentials back after a change and show the stored
+  ones. Reply strings are decoded: the controller escapes `"` and `\` in values it reports, and the library decodes
+  these and the other JSON escapes (`\uXXXX` below 0x80) in place when it parses a reply.
 - **WiFi restart (HW (ALTO1)):** `REBOOT` is acknowledged, followed by the ESP32 boot log; the
   controller answers `MODNAME` again about 2 s later. The calibration and the cover position are kept.
   The access point reports `off` for about 4 s more and `on` from about 6 s after `REBOOT`, so a
