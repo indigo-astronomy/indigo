@@ -5934,6 +5934,7 @@
 		DF10000000000000000003 /* dome_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dome_dragonfly_simulator.c; sourceTree = "<group>"; };
 		DF10000000000000000004 /* test_dome_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_dragonfly_simulator.c; sourceTree = "<group>"; };
 		DF10000000000000000005 /* test_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_uni_io.c; sourceTree = "<group>"; };
+		C0DE20261025000000000E31 /* test_test_runner.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_test_runner.c; sourceTree = "<group>"; };
 		DF9510A9A0388C24156FC1BA /* polaralign_mlastro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = polaralign_mlastro_simulator.c; sourceTree = "<group>"; };
 		E3E24DC4AC744AD3CEED2BD9 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		E4DE0E8057EC6248BF895D9E /* test_usb_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_usb_outputs.c; sourceTree = "<group>"; };
@@ -14410,6 +14411,7 @@
 				59FA7BE7301D35FD00A35CFB /* test_raw_image.c */,
 				59FA7BE8301D35FD00A35CFB /* test_token.c */,
 				DF10000000000000000005 /* test_uni_io.c */,
+				C0DE20261025000000000E31 /* test_test_runner.c */,
 				C0DE20261022000000000006 /* test_primalucelib.c */,
 				C0DE20261001A10000000023 /* test_system_alpaca_json.c */,
 				C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */,

@@ -206,7 +206,7 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 			empty_slot = dc; /* if there is a gap - fill it */
 		}
 	}
-	if (empty_slot > INDIGO_MAX_DRIVERS) {
+	if (empty_slot >= INDIGO_MAX_DRIVERS) {
 		if (dl_handle != NULL) {
 			unload_library(dl_handle);
 		}
@@ -397,7 +397,7 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 		}
 	}
 
-	if (empty_slot > INDIGO_MAX_SERVERS) {
+	if (empty_slot >= INDIGO_MAX_SERVERS) {
 		pthread_mutex_unlock(&mutex);
 		indigo_error("[%s:%d] Max subprocess count reached", __FUNCTION__, __LINE__);
 		return INDIGO_TOO_MANY_ELEMENTS;
@@ -533,7 +533,7 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 			empty_slot = dc;
 		}
 	}
-	if (empty_slot > INDIGO_MAX_SERVERS) {
+	if (empty_slot >= INDIGO_MAX_SERVERS) {
 		pthread_mutex_unlock(&mutex);
 		indigo_error("[%s:%d] Max server count reached", __FUNCTION__, __LINE__);
 		return INDIGO_TOO_MANY_ELEMENTS;

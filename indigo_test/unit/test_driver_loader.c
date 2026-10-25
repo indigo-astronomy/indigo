@@ -23,6 +23,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_bus.h>
@@ -130,6 +133,140 @@ static void missing_entry_point_is_reported_and_driver_still_loads(void) {
 	}
 }
 
+// The registries tested 'empty_slot > capacity', so with every slot in use the next distinct entry was stored past the
+// end of the array instead of being refused with INDIGO_TOO_MANY_ELEMENTS
+static indigo_result capacity_driver(const char *suffix, indigo_driver_action action, indigo_driver_info *info) {
+	if (action == INDIGO_DRIVER_INFO && info != NULL) {
+		memset(info, 0, sizeof(*info));
+		snprintf(info->name, sizeof(info->name), "capacity_driver_%s", suffix);
+		snprintf(info->description, sizeof(info->description), "Capacity driver %s", suffix);
+		info->version = 0x0001;
+	}
+	return INDIGO_OK;
+}
+
+// every entry point has its own body, so the linker can not fold them into one address
+#define CAPACITY_DRIVER(n) static indigo_result capacity_driver_##n(indigo_driver_action action, indigo_driver_info *info) { return capacity_driver(#n, action, info); }
+#define CAPACITY_ENTRY(n) capacity_driver_##n,
+#define CAPACITY_4(M, p) M(p##0) M(p##1) M(p##2) M(p##3)
+#define CAPACITY_16(M, p) CAPACITY_4(M, p##0) CAPACITY_4(M, p##1) CAPACITY_4(M, p##2) CAPACITY_4(M, p##3)
+#define CAPACITY_64(M, p) CAPACITY_16(M, p##0) CAPACITY_16(M, p##1) CAPACITY_16(M, p##2) CAPACITY_16(M, p##3)
+#define CAPACITY_256(M, p) CAPACITY_64(M, p##0) CAPACITY_64(M, p##1) CAPACITY_64(M, p##2) CAPACITY_64(M, p##3)
+
+CAPACITY_256(CAPACITY_DRIVER, d)
+CAPACITY_DRIVER(extra)
+
+static const driver_entry_point capacity_drivers[] = { CAPACITY_256(CAPACITY_ENTRY, d) capacity_driver_extra };
+
+static void driver_registry_refuses_entry_past_capacity(void) {
+	const int count = (int)(sizeof(capacity_drivers) / sizeof(capacity_drivers[0]));
+	ASSERT_EQ_INT(INDIGO_MAX_DRIVERS + 1, count);
+	int occupied = 0;
+	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
+		if (indigo_available_drivers[i].driver != NULL) {
+			occupied++;
+		}
+	}
+	indigo_driver_entry *entries[INDIGO_MAX_DRIVERS + 1] = { NULL };
+	int added = 0;
+	indigo_result refused = INDIGO_OK;
+	for (int i = 0; i < count; i++) {
+		indigo_result result = indigo_add_driver(capacity_drivers[i], false, entries + i);
+		if (result != INDIGO_OK) {
+			refused = result;
+			break;
+		}
+		added++;
+	}
+	// a removed entry leaves a gap that the refused driver fills
+	indigo_result reused = INDIGO_FAILED;
+	indigo_driver_entry *gap = entries[0];
+	if (added > 0 && added < count && indigo_remove_driver(entries[0]) == INDIGO_OK) {
+		entries[0] = NULL;
+		reused = indigo_add_driver(capacity_drivers[added], false, entries + added);
+	}
+	bool gap_filled = entries[added] == gap;
+	for (int i = 0; i < count; i++) {
+		if (entries[i] != NULL && entries[i]->driver != NULL) {
+			indigo_remove_driver(entries[i]);
+		}
+	}
+	ASSERT_EQ_INT(INDIGO_MAX_DRIVERS - occupied, added);
+	ASSERT_EQ_INT(INDIGO_TOO_MANY_ELEMENTS, refused);
+	ASSERT_EQ_INT(INDIGO_OK, reused);
+	ASSERT_TRUE(gap_filled);
+}
+
+static bool wait_for_server_thread_stop(indigo_server_entry *server) {
+	for (int i = 0; i < 50; i++) {
+		if (!server->thread_started) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	return false;
+}
+
+// Every server is a loopback port that was free a moment ago, so its connection attempts are refused at once; a port
+// that is still bound without listening is no good, macOS lets a connection to it hang instead of refusing it.
+static void server_registry_refuses_entry_past_capacity(void) {
+	int sockets[INDIGO_MAX_SERVERS + 1];
+	int ports[INDIGO_MAX_SERVERS + 1];
+	bool bound = true;
+	for (int i = 0; i <= INDIGO_MAX_SERVERS; i++) {
+		sockets[i] = socket(AF_INET, SOCK_STREAM, 0);
+		struct sockaddr_in address = { 0 };
+		address.sin_family = AF_INET;
+		address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		socklen_t length = sizeof(address);
+		if (sockets[i] < 0 || bind(sockets[i], (struct sockaddr *)&address, sizeof(address)) != 0 || getsockname(sockets[i], (struct sockaddr *)&address, &length) != 0) {
+			bound = false;
+			ports[i] = 0;
+		} else {
+			ports[i] = ntohs(address.sin_port);
+		}
+	}
+	// all sockets stay bound until every port is known, so the ports are distinct
+	for (int i = 0; i <= INDIGO_MAX_SERVERS; i++) {
+		if (sockets[i] >= 0) {
+			close(sockets[i]);
+		}
+	}
+	indigo_server_entry *entries[INDIGO_MAX_SERVERS + 1] = { NULL };
+	int added = 0;
+	indigo_result refused = INDIGO_OK;
+	for (int i = 0; bound && i <= INDIGO_MAX_SERVERS; i++) {
+		indigo_result result = indigo_connect_server(NULL, "127.0.0.1", ports[i], entries + i, NULL);
+		if (result != INDIGO_OK) {
+			refused = result;
+			entries[i] = NULL;
+			break;
+		}
+		added++;
+	}
+	// a disconnected server frees its slot for the refused one
+	indigo_result reused = INDIGO_FAILED;
+	if (added == INDIGO_MAX_SERVERS) {
+		indigo_disconnect_server(entries[0]);
+		if (wait_for_server_thread_stop(entries[0])) {
+			entries[0] = NULL;
+			reused = indigo_connect_server(NULL, "127.0.0.1", ports[added], entries + added, NULL);
+		}
+	}
+	bool stopped = true;
+	for (int i = 0; i <= INDIGO_MAX_SERVERS; i++) {
+		if (entries[i] != NULL) {
+			indigo_disconnect_server(entries[i]);
+			stopped = wait_for_server_thread_stop(entries[i]) && stopped;
+		}
+	}
+	ASSERT_TRUE(bound);
+	ASSERT_EQ_INT(INDIGO_MAX_SERVERS, added);
+	ASSERT_EQ_INT(INDIGO_TOO_MANY_ELEMENTS, refused);
+	ASSERT_EQ_INT(INDIGO_OK, reused);
+	ASSERT_TRUE(stopped);
+}
+
 int main(void) {
 	if (!make_fixture_directory()) {
 		fprintf(stderr, "Can't create driver loader fixture directory\n");
@@ -140,7 +277,9 @@ int main(void) {
 		{ "long_path_with_extension_loads_driver", long_path_with_extension_loads_driver },
 		{ "name_longer_than_path_limit_is_rejected", name_longer_than_path_limit_is_rejected },
 		{ "too_long_entry_point_name_is_rejected", too_long_entry_point_name_is_rejected },
-		{ "missing_entry_point_is_reported_and_driver_still_loads", missing_entry_point_is_reported_and_driver_still_loads }
+		{ "missing_entry_point_is_reported_and_driver_still_loads", missing_entry_point_is_reported_and_driver_still_loads },
+		{ "driver_registry_refuses_entry_past_capacity", driver_registry_refuses_entry_past_capacity },
+		{ "server_registry_refuses_entry_past_capacity", server_registry_refuses_entry_past_capacity }
 	};
 	int result = indigo_run_tests("driver loader unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
 	remove_fixture_directory();

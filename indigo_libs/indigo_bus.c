@@ -2483,10 +2483,10 @@ int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, in
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device && device != master && device->master_device == master) {
-			slaves[count] = device;
-			if (count++ >= max) {
+			if (count >= max) {
 				break;
 			}
+			slaves[count++] = device;
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
