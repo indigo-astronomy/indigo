@@ -1068,59 +1068,78 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 		case ptp_enum_form: {
 			uint16_t count;
 			source = ptp_decode_uint16(source, &count);
-			target->count = count;
-			for (int i = 0; i < target->count; i++) {
+			// Values that do not fit PTP_MAX_ELEMENTS numbers or 16 strings are skipped.
+			int capacity = target->type == ptp_str_type ? 16 : PTP_MAX_ELEMENTS;
+			target->count = count < capacity ? count : capacity;
+			for (int i = 0; i < count; i++) {
+				int64_t *value_target = i < capacity ? target->value.sw.values + i : NULL;
 				switch (target->type) {
 					case ptp_uint8_type: {
 						uint8_t value;
 						source = ptp_decode_uint8(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int8_type: {
 						int8_t value;
 						source = ptp_decode_uint8(source, (uint8_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint16_type: {
 						uint16_t value;
 						source = ptp_decode_uint16(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int16_type: {
 						int16_t value;
 						source = ptp_decode_uint16(source, (uint16_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint32_type: {
 						uint32_t value;
 						source = ptp_decode_uint32(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int32_type: {
 						int32_t value;
 						source = ptp_decode_uint32(source, (uint32_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint64_type: {
 						uint64_t value;
 						source = ptp_decode_uint64(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int64_type: {
 						int64_t value;
 						source = ptp_decode_uint64(source, (uint64_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_str_type: {
-						if (i < 16) {
+						if (i < capacity) {
 							source = ptp_decode_string(source, target->value.sw_str.values[i]);
 						} else {
 							char tmp[PTP_MAX_CHARS];
@@ -1314,6 +1333,8 @@ bool ptp_sony_initialise(indigo_device *device) {
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 2, 0, 0);
 		if (PRIVATE_DATA->model.product >= SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER) {
 			SONY_PRIVATE_DATA->api_version = SONY_NEW_API;
+			// ILCE-7RM4 acknowledges a SetControlDeviceA it drops while busy after a capture.
+			PRIVATE_DATA->refresh_properties = ptp_sony_refresh_properties;
 			indigo_log("0x%04x >= 0x%04x new API used", PRIVATE_DATA->model.product, SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER);
 		} else {
 			SONY_PRIVATE_DATA->api_version = SONY_OLD_API;
@@ -1329,13 +1350,14 @@ bool ptp_sony_initialise(indigo_device *device) {
 			uint16_t operations[PTP_MAX_ELEMENTS] = { 0 }, *last_operation = operations;
 			uint16_t events[PTP_MAX_ELEMENTS] = { 0 }, *last_event = events;
 			uint16_t properties[PTP_MAX_ELEMENTS] = { 0 }, *last_property = properties;
+			// Codes that do not fit the zero-terminated lists are dropped.
 			for (int i = 0; i < count; i++) {
 				uint16_t code = ((uint16_t *)buffer)[i];
-				if ((code & 0x7000) == 0x1000) {
+				if ((code & 0x7000) == 0x1000 && last_operation < operations + PTP_MAX_ELEMENTS - 1) {
 					*last_operation++ = code;
-				} else if ((code & 0x7000) == 0x4000) {
+				} else if ((code & 0x7000) == 0x4000 && last_event < events + PTP_MAX_ELEMENTS - 1) {
 					*last_event++ = code;
-				} else if ((code & 0x7000) == 0x5000) {
+				} else if ((code & 0x7000) == 0x5000 && last_property < properties + PTP_MAX_ELEMENTS - 1) {
 					*last_property++ = code;
 				}
 			}
@@ -1385,39 +1407,47 @@ bool ptp_sony_initialise(indigo_device *device) {
 	return true;
 }
 
+bool ptp_sony_refresh_properties(indigo_device *device) {
+	void *buffer = NULL;
+	uint32_t size, count;
+	bool result = ptp_transaction_0_0_i(device, ptp_operation_sony_GetAllDevicePropData, &buffer, &size);
+	if (result) {
+		uint8_t *source = buffer;
+		source = ptp_decode_uint32(source, &count);
+		source += sizeof(uint32_t);
+		for (int i = 0; i < count; i++) {
+			source = ptp_sony_decode_property(source, device);
+			if (source == NULL) {
+				break;
+			}
+		}
+	}
+	free(buffer);
+	return result;
+}
+
 bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
 	switch ((int)code) {
 		case ptp_event_sony_PropertyChanged: {
-			void *buffer = NULL;
-			uint32_t size, count;
-			if (ptp_transaction_0_0_i(device, ptp_operation_sony_GetAllDevicePropData, &buffer, &size)) {
-				uint8_t *source = buffer;
-				source = ptp_decode_uint32(source, &count);
-				source += sizeof(uint32_t);
-				for (int i = 0; i < count; i++) {
-					source = ptp_sony_decode_property(source, device);
-					if (source == NULL) {
-						break;
-					}
-				}
-			}
-			free(buffer);
-			buffer = NULL;
+			ptp_sony_refresh_properties(device);
 			return true;
 		}
 		case ptp_event_sony_ObjectAdded: {
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL) && buffer) {
+			uint32_t info_size = 0;
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, &info_size) && buffer) {
 				uint32_t size;
 				char filename[PTP_MAX_CHARS];
-				memset(&filename, 0, PTP_MAX_CHARS);
-				uint8_t *source = buffer;
-				source = ptp_decode_uint32(source + 8, &size);
-				source = ptp_decode_string(source + 40 , filename);
+				bool valid = ptp_decode_object_info(buffer, info_size, &size, filename);
 				free(buffer);
 				buffer = NULL;
+				if (!valid) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, malformed ObjectInfo (%u bytes)", params[0], info_size);
+					return true;
+				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", params[0], size, filename);
-				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
+				// Publish the bytes actually received; ObjectInfo size is only advisory.
+				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, &size) && size) {
 					SONY_PRIVATE_DATA->downloaded_objects++;
 					const char *ext = strchr(filename, '.');
 					if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
@@ -1473,7 +1503,7 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 			for (int i = 0; i < property->property->count; i++) {
 				indigo_item *item = property->property->items + i;
 				if (item->sw.value) {
-					value = strtol(item->name, NULL, 16);
+					value = (int64_t)strtoull(item->name, NULL, 16);
 					break;
 				}
 			}
@@ -1514,6 +1544,8 @@ static bool sony_capture_stop(indigo_device *device) {
 	return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value)) && result;
 }
 
+#define SONY_SESSION_BUSY_WINDOW	10
+
 bool ptp_sony_exposure(indigo_device *device) {
 	if (PRIVATE_DATA->capture_phase == 0) {
 		PRIVATE_DATA->capture_stop = sony_capture_stop;
@@ -1527,7 +1559,8 @@ bool ptp_sony_exposure(indigo_device *device) {
 		int16_t value = 2;
 		SONY_PRIVATE_DATA->focus_state = 1;
 		if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(value))) {
-			return false;
+			// ILCE-7RM4 answers DeviceBusy for a few seconds after a new session; retry until it settles.
+			return PRIVATE_DATA->last_error == ptp_response_DeviceBusy && indigo_monotonic_time() < PRIVATE_DATA->connected_at + SONY_SESSION_BUSY_WINDOW;
 		}
 		PRIVATE_DATA->capture_phase = 3;
 		PRIVATE_DATA->phase_deadline = indigo_monotonic_time() + (SONY_PRIVATE_DATA->focus_mode == 1 ? 1 : 5);

@@ -130,6 +130,14 @@
       "scope": "Repair server audit 003/006/007/018 and XML cached-RO-BLOB leak before due full repository audit",
       "checkpoint": "After these five repairs, before next unrelated task or release",
       "resets_checkpoint": false
+    },
+    "ptp_findings_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit reply in this chat",
+      "date": "2026-10-25",
+      "task": "20261025093224-2d50-fix-ptp-findings",
+      "scope": "Repair PTP audit findings 019/026/027/028 while the full repository audit is due; recorded after the task completed because the due audit was not checked at task start",
+      "checkpoint": "After this repair, before next unrelated task or release",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

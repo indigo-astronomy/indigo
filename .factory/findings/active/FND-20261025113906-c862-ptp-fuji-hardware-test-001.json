@@ -1,0 +1,19 @@
+{
+  "title": "Sony ILCE-7RM4 capture after a reconnect never completes and the exposure stays BUSY",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025113906-c862-ptp-fuji-hardware-test",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Hardware run 2026-10-25 13:00 UTC on 3.0.0.58: in the third iteration of the Reconnect case the A7R4 accepts the capture but sends no ObjectAdded or error, and CCD_EXPOSURE stays BUSY with no driver deadline. Intermittent (passed at 12:46, not reproduced manually). Next: capture completion deadline ending ALERT in ptp_sony_exposure(), fake case for a lost object, hardware rerun.",
+  "evidence": "indigo_drivers/ccd_ptp/README.md Testing record 2026-10-25 13:00 ILCE-7RM4 15/13 Failed; task findings.md; indigo_drivers/ccd_ptp/indigo_ptp_sony.c ptp_sony_exposure",
+  "resolution": null,
+  "id": "FND-20261025113906-c862-ptp-fuji-hardware-test-001"
+}

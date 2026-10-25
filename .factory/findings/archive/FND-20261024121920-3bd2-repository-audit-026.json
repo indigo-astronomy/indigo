@@ -2,7 +2,7 @@
   "title": "PTP descriptor/vendor-extension collections trust input counts beyond destination capacities",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261025093224-2d50-fix-ptp-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "Severity medium; confidence high; input bounds. Generic descriptor indigo_drivers/ccd_ptp/indigo_ptp.c:751-814 stores unbounded enum counts then writes value.sw.values[i]; capacity is1024 at indigo_ptp.h:325. Text enums only decode first16 but preserve larger target->count, later indexed through that count by update at1506-1512 and1556 onward; text storage is16 at header329. Sony duplicates numeric enum writes at indigo_ptp_sony.c:1072-1132, and its extension-info classifier1325-1349 appends received entries to1024-element local collections without caps. Canon indigo_ptp_canon.c:1036-1074 validates group count/size only by assert but does not validate group ID before indexing ex_func_group[16][1024], record extent, or item count; its updated pointer list has unchecked appends1071 and1176 despite outer record framing. The generic positive count/fixed-array issue and Canon group/list issue may merit separate follow-up records. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-11). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-026; driver-ac-report.md alias AC-11; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025093224-2d50-fix-ptp-findings/verification.md; descriptor enum counts clamped to 1024 numbers / 16 strings and every value length-checked; Sony extension info, Nikon vendor codes, Canon GetDeviceInfoEx, Fuji hidden properties and ptp_append_* capacity-checked; Canon CustomFuncEx validated before storing, update list and set_number_property bounded (3.0.0.56); descriptor_oversized_enum, descriptor_truncated_enum, sony_oversized_extension_info, canon_oversized_device_info_ex, canon_custom_func_ex_bounds. Residual length-only reads tracked in FND-20261025093224-2d50-fix-ptp-findings-001",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-026"
 }

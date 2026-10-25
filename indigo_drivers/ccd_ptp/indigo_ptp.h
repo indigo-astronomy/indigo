@@ -33,7 +33,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 							0x03000037
+#define DRIVER_VERSION 							0x0300003A
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -400,6 +400,7 @@ typedef struct {
 	bool (* handle_event)(indigo_device *device, ptp_event_code code, uint32_t *params);
 	bool (* fix_property)(indigo_device *device, ptp_property *property);
 	bool (* set_property)(indigo_device *device, ptp_property *property);
+	bool (* refresh_properties)(indigo_device *device);
 	bool (* exposure)(indigo_device *device);
 	bool (* liveview)(indigo_device *device);
 	bool (* capture_stop)(indigo_device *device);
@@ -412,6 +413,9 @@ typedef struct {
 	bool (* check_dual_compression)(indigo_device *device);
 	indigo_property *pending_properties[PTP_MAX_ELEMENTS];
 	unsigned property_retries[PTP_MAX_ELEMENTS];
+	int64_t property_requested[PTP_MAX_ELEMENTS];
+	double property_written[PTP_MAX_ELEMENTS];
+	double property_deadline[PTP_MAX_ELEMENTS];
 	bool focuser_attached;
 	bool session_active;
 	int focus_remaining;
@@ -469,9 +473,10 @@ extern uint8_t *ptp_decode_uint16(uint8_t *source, uint16_t *target);
 extern uint8_t *ptp_decode_uint32(uint8_t *source, uint32_t *target);
 extern uint8_t *ptp_decode_uint64(uint8_t *source, uint64_t *target);
 extern uint8_t *ptp_decode_uint128(uint8_t *source, char *target);
-extern uint8_t *ptp_decode_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count);
-extern uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count);
-extern uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device);
+extern uint8_t *ptp_decode_uint16_array(uint8_t *source, uint8_t *end, uint16_t *target, uint32_t *count);
+extern uint8_t *ptp_decode_uint32_array(uint8_t *source, uint8_t *end, uint32_t *target, uint32_t *count);
+extern uint8_t *ptp_decode_device_info(uint8_t *source, uint32_t size, indigo_device *device);
+extern bool ptp_decode_object_info(void *buffer, uint32_t size, uint32_t *object_size, char *filename);
 extern uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *device, ptp_property *target);
 extern uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_property *target);
 
@@ -486,6 +491,7 @@ extern void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source);
 
 extern ptp_property *ptp_property_supported(indigo_device *device, uint16_t code);
 extern bool ptp_operation_supported(indigo_device *device, uint16_t code);
+extern uint32_t ptp_type_size(ptp_type type);
 
 extern bool ptp_open(indigo_device *device);
 extern bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_sizee);

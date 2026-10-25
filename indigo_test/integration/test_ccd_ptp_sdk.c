@@ -40,7 +40,7 @@
 typedef struct {
 	uint16_t vendor, product;
 	atomic_bool visible, opened, hold_image, hold_focus, af_held;
-	bool af_event;
+	bool af_event, hid_only;
 	atomic_int refs, opens, closes, frames, releases, held_us;
 	uint16_t properties[32];
 	uint32_t values[32];
@@ -90,6 +90,12 @@ static int sony_dual_order, sony_memory_objects;
 static atomic_int preview_blobs, countdown_value, sony_focus_value;
 static atomic_int iso_state, bias_state, lock_state, zoom_state, af_state, host_time_state, destination_state;
 static atomic_int command_argument[65536];
+static int device_info_fault, descriptor_fault, canon_custom_func_fault, object_info_delta;
+static bool sony_extension_fault, canon_info_ex_fault, object_info_short, canon_custom_func_profile, canon_custom_func_sent;
+static uint8_t canon_text_payload[1024];
+static bool sony_compression_profile;
+static atomic_int sony_dropped_writes;
+static atomic_int canon_text_size;
 static uint8_t *jpeg;
 static unsigned long jpeg_size;
 
@@ -97,6 +103,13 @@ static const simulator_driver_case ptp_case = {
 	"PTP-over-USB Camera", "indigo_ccd_ptp", "Canon EOS 600D", indigo_ccd_ptp, true,
 	base_properties_without_instances, ARRAY_SIZE(base_properties_without_instances), hidden_base_properties_without_instances, ARRAY_SIZE(hidden_base_properties_without_instances), NULL, 0, NULL, 0
 };
+
+// The property cache follows one device name; a case observing a Fujifilm X-T1 profile selects this.
+static const simulator_driver_case fuji_case = {
+	"PTP-over-USB Camera", "indigo_ccd_ptp", "Fujifilm X-T1", indigo_ccd_ptp, true,
+	base_properties_without_instances, ARRAY_SIZE(base_properties_without_instances), hidden_base_properties_without_instances, ARRAY_SIZE(hidden_base_properties_without_instances), NULL, 0, NULL, 0
+};
+static const simulator_driver_case *profile_case;
 
 static fake_camera *camera(void *token) {
 	return token;
@@ -155,6 +168,35 @@ static uint8_t *canon_transfer_record(uint8_t *record, uint16_t code) {
 		}
 	}
 	return record + size;
+}
+
+// CustomFuncEx PropValueChanged record: size, event, code, total size, group count and one group
+// { id, size in bytes from the size field, item count, item { code, value size in words, value } }.
+static void canon_custom_func_record(uint8_t **p) {
+	uint32_t words[] = { 44, ptp_event_canon_PropValueChanged, ptp_property_canon_CustomFuncEx, 28, 1, 1, 20, 1, 0x0101, 1, 7 };
+	switch (canon_custom_func_fault) {
+		case 1:
+			words[5] = 0;
+			break;
+		case 2:
+			words[5] = 17;
+			break;
+		case 3:
+			words[6] = 24;
+			break;
+		case 4:
+			words[7] = 2;
+			break;
+		case 5:
+			words[9] = 2;
+			break;
+		case 6:
+			words[4] = 17;
+			break;
+	}
+	for (unsigned i = 0; i < ARRAY_SIZE(words); i++) {
+		word32(p, words[i]);
+	}
 }
 
 static unsigned property_count(fake_camera *c) {
@@ -268,10 +310,27 @@ static void device_info(fake_camera *c, uint8_t **p) {
 		}
 	}
 	array16(p, supported, count);
-	array16(p, NULL, 0);
+	if (device_info_fault == 3) {
+		// More event codes than the 1024-element destination holds.
+		word32(p, 1100);
+		for (unsigned i = 0; i < 1100; i++) {
+			word16(p, 0x4800 + i);
+		}
+	} else {
+		array16(p, NULL, 0);
+	}
+	if (device_info_fault == 2) {
+		// The array announces more codes than the reply carries.
+		word32(p, property_count(c));
+		word16(p, c->properties[0]);
+		return;
+	}
 	array16(p, c->properties, property_count(c));
 	array16(p, NULL, 0);
 	array16(p, NULL, 0);
+	if (device_info_fault == 1) {
+		return;
+	}
 	string(p, "INDIGO fake");
 	string(p, "Queue test");
 	string(p, "1");
@@ -298,6 +357,38 @@ static void prepare(fake_camera *c) {
 		device_info(c, &p);
 	} else if (code == ptp_operation_GetDevicePropDesc) {
 		uint32_t *v = value(c, arg);
+		if (descriptor_fault && arg == ptp_property_WhiteBalance) {
+			// 1: more enum values than the destination holds, 2: enum count beyond the reply.
+			word16(&p, arg);
+			word16(&p, ptp_uint16_type);
+			*p++ = 1;
+			word16(&p, 2);
+			word16(&p, 2);
+			*p++ = ptp_enum_form;
+			word16(&p, descriptor_fault == 1 ? 1100 : 10);
+			for (unsigned i = 0; i < (descriptor_fault == 1 ? 1100 : 4); i++) {
+				word16(&p, i + 1);
+			}
+			c->input_size = p - c->input;
+			return;
+		}
+		if (descriptor_fault && arg == ptp_property_ImageSize) {
+			// More string enum values than the 16-element destination holds.
+			word16(&p, arg);
+			word16(&p, ptp_str_type);
+			*p++ = 1;
+			string(&p, "W00");
+			string(&p, "W00");
+			*p++ = ptp_enum_form;
+			word16(&p, 20);
+			for (unsigned i = 0; i < 20; i++) {
+				char text[8];
+				snprintf(text, sizeof(text), "W%02u", i);
+				string(&p, text);
+			}
+			c->input_size = p - c->input;
+			return;
+		}
 		if (c->vendor == 0x04cb && arg == ptp_property_fuji_AutoFocus) {
 			if (fuji_action_profile == 3) {
 				c->response = ptp_response_DevicePropNotSupported;
@@ -364,7 +455,15 @@ static void prepare(fake_camera *c) {
 		}
 	} else if (code == ptp_operation_canon_GetDeviceInfoEx) {
 		word32(&p, 0);
-		word32(&p, 0);
+		if (canon_info_ex_fault) {
+			// More event codes than the 1024-element destination holds.
+			word32(&p, 1100);
+			for (unsigned i = 0; i < 1100; i++) {
+				word32(&p, 0xC800 + i);
+			}
+		} else {
+			word32(&p, 0);
+		}
 		word32(&p, property_count(c));
 		for (unsigned i = 0; i < property_count(c); i++) {
 			word32(&p, c->properties[i]);
@@ -372,6 +471,14 @@ static void prepare(fake_camera *c) {
 	} else if (code == ptp_operation_canon_GetEvent) {
 		for (unsigned i = 0; i < property_count(c); i++) {
 			if (c->properties[i] == ptp_property_canon_MirrorUpSetting && atomic_load(&mirror_suppress_events)) {
+				continue;
+			}
+			if (c->properties[i] == ptp_property_canon_CustomFuncEx) {
+				// Sent once, so the polling thread does not rewrite the groups while the test reads them.
+				if (!canon_custom_func_sent) {
+					canon_custom_func_record(&p);
+					canon_custom_func_sent = true;
+				}
 				continue;
 			}
 			if (c->properties[i] == ptp_property_canon_ImageFormat) {
@@ -449,6 +556,12 @@ static void prepare(fake_camera *c) {
 			c->event_sent = true;
 		}
 	} else if (code == ptp_operation_sony_GetSDIOGetExtDeviceInfo) {
+		if (sony_extension_fault) {
+			// More operation codes than the 1024-element lists hold.
+			for (unsigned i = 0; i < 1100; i++) {
+				word16(&p, 0x1800 + i);
+			}
+		}
 		for (unsigned i = 0; i < property_count(c); i++) {
 			word16(&p, c->properties[i]);
 		}
@@ -457,6 +570,22 @@ static void prepare(fake_camera *c) {
 		word32(&p, 0);
 		for (unsigned i = 0; i < property_count(c); i++) {
 			word16(&p, c->properties[i]);
+			if (c->properties[i] == ptp_property_sony_CompressionSetting) {
+				// NEW_API enum: settable values, then all supported values.
+				word16(&p, ptp_uint8_type);
+				*p++ = 1;
+				*p++ = 0;
+				*p++ = c->values[i];
+				*p++ = c->values[i];
+				*p++ = ptp_enum_form;
+				for (int list = 0; list < 2; list++) {
+					word16(&p, 3);
+					for (uint8_t value = 1; value <= 3; value++) {
+						*p++ = value;
+					}
+				}
+				continue;
+			}
 			word16(&p, ptp_uint32_type);
 			*p++ = 1;
 			*p++ = 0;
@@ -475,9 +604,12 @@ static void prepare(fake_camera *c) {
 	} else if (code == ptp_operation_GetObjectInfo) {
 		memset(p, 0, 52);
 		uint8_t *size = p + 8;
-		word32(&size, nikon_dual_profile && arg == 2 ? dng_size : jpeg_size);
+		word32(&size, (nikon_dual_profile && arg == 2 ? dng_size : jpeg_size) + object_info_delta);
 		p += 52;
 		string(&p, nikon_dual_profile && arg == 2 ? "FAKE.DNG" : sony_dual_order && ((sony_memory_objects == 2) == (sony_dual_order == 1)) ? "FAKE.ARW" : "FAKE.JPG");
+		if (object_info_short) {
+			p = c->input + 20;
+		}
 	} else if (code == ptp_operation_GetObject || code == ptp_operation_canon_GetObject || code == ptp_operation_nikon_GetLiveViewImg || code == ptp_operation_canon_GetViewFinderData || code == ptp_operation_olympus_GetLiveViewImage) {
 		if (code == ptp_operation_canon_GetViewFinderData) {
 			word32(&p, atomic_load(&malformed) ? 3 : jpeg_size + 8);
@@ -661,11 +793,14 @@ static const struct libusb_endpoint_descriptor endpoints[] = {
 };
 static const struct libusb_interface_descriptor setting = { .bInterfaceNumber = 0, .bNumEndpoints = 3, .bInterfaceClass = 6, .bInterfaceSubClass = 1, .bInterfaceProtocol = 1, .endpoint = endpoints };
 static const struct libusb_interface interface = { .altsetting = &setting, .num_altsetting = 1 };
+// The ILCE-6000 in charging mode enumerates as 054c:0994 with a single HID interface.
+static const struct libusb_interface_descriptor hid_setting = { .bInterfaceNumber = 0, .bNumEndpoints = 1, .bInterfaceClass = 3, .endpoint = endpoints + 2 };
+static const struct libusb_interface hid_interface = { .altsetting = &hid_setting, .num_altsetting = 1 };
 
 int ptp_test_config(libusb_device *dev, uint8_t index, struct libusb_config_descriptor **result) {
 	*result = calloc(1, sizeof(**result));
 	(*result)->bNumInterfaces = 1;
-	(*result)->interface = &interface;
+	(*result)->interface = camera(dev)->hid_only ? &hid_interface : &interface;
 	return 0;
 }
 
@@ -744,6 +879,11 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 				memcpy(&v, packet->payload.data, size - PTP_CONTAINER_HDR_SIZE < 4 ? size - PTP_CONTAINER_HDR_SIZE : 4);
 			}
 			uint32_t *target = value(c, code);
+			if (c->command.code == ptp_operation_canon_SetDevicePropValueEx && code == ptp_property_canon_Artist) {
+				unsigned length = size - PTP_CONTAINER_HDR_SIZE;
+				memcpy(canon_text_payload, packet->payload.data, length < sizeof(canon_text_payload) ? length : sizeof(canon_text_payload));
+				atomic_store(&canon_text_size, length);
+			}
 			if (c->command.code == ptp_operation_canon_SetDevicePropValueEx && code == ptp_property_canon_MirrorUpSetting) {
 				atomic_fetch_add(&mirror_writes, 1);
 				if (atomic_load(&mirror_reject) == 2 || (atomic_load(&mirror_reject) == 1 && target && *target == v)) {
@@ -752,6 +892,17 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 					return LIBUSB_SUCCESS;
 				}
 				atomic_store(&mirror_value, v);
+			}
+			// The ILCE-7RM4 acknowledges a SetControlDeviceA it drops while busy after a capture.
+			if (c->command.code == ptp_operation_sony_SetControlDeviceA && atomic_load(&sony_dropped_writes) > 0) {
+				atomic_fetch_sub(&sony_dropped_writes, 1);
+				target = NULL;
+			}
+			// The X-T1, whose d208 actions lack BULB start and stop, rejects a Bulb ExposureTime.
+			if (c->vendor == 0x04cb && code == ptp_property_ExposureTime && v == 0xffffffff && (fuji_action_profile == 1 || fuji_action_profile == 2)) {
+				c->response = ptp_response_InvalidDevicePropValue;
+				*length = size;
+				return LIBUSB_SUCCESS;
 			}
 			if (target) {
 				*target = v;
@@ -1001,6 +1152,8 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 	atomic_store(&gate_open, 0);
 	memset(command_count, 0, sizeof(command_count));
 	atomic_store(&offset_mode, 64);
+	atomic_store(&canon_text_size, 0);
+	canon_custom_func_sent = false;
 	cameras[0].vendor = vendor;
 	cameras[0].product = product;
 	atomic_store(&cameras[0].visible, true);
@@ -1022,6 +1175,9 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 		if (dual_profile) {
 			cameras[0].properties[6] = ptp_property_canon_ImageFormat;
 		}
+		if (canon_custom_func_profile) {
+			cameras[0].properties[6] = ptp_property_canon_CustomFuncEx;
+		}
 	} else if (vendor == 0x04cb) {
 		memcpy(cameras[0].properties, fuji, sizeof(fuji));
 		cameras[0].values[0] = bulb_profile ? 0xffffffff : 10000;
@@ -1038,6 +1194,10 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 			cameras[0].properties[4] = ptp_property_sony_CompressionSetting;
 			cameras[0].values[4] = 2;
 		}
+		if (sony_compression_profile) {
+			cameras[0].properties[4] = ptp_property_sony_CompressionSetting;
+			cameras[0].values[4] = 3;
+		}
 	} else {
 		memcpy(cameras[0].properties, standard, sizeof(standard));
 		cameras[0].values[0] = bulb_profile ? 0xffffffff : 10000;
@@ -1045,6 +1205,10 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 		if (nikon_dual_profile) {
 			cameras[0].properties[3] = ptp_property_CompressionSetting;
 			cameras[0].values[3] = 7;
+		}
+		if (descriptor_fault) {
+			cameras[0].properties[3] = ptp_property_WhiteBalance;
+			cameras[0].properties[4] = ptp_property_ImageSize;
 		}
 		if (vendor == 0x07b4 && bulb_profile) {
 			cameras[0].properties[3] = ptp_property_olympus_Shutterspeed;
@@ -1066,7 +1230,7 @@ static bool wait_value(atomic_int *value, int expected) {
 static bool begin_profile(uint16_t vendor, uint16_t product) {
 	reset_fake(vendor, product);
 	bus_thread = pthread_self();
-	reset_simulator_context(&ptp_case);
+	reset_simulator_context(profile_case ? profile_case : &ptp_case);
 	atomic_store(&connection_state, INDIGO_OK_STATE);
 	atomic_store(&exposure_state, INDIGO_OK_STATE);
 	atomic_store(&streaming_state, INDIGO_OK_STATE);
@@ -1085,6 +1249,7 @@ static bool begin_profile(uint16_t vendor, uint16_t product) {
 }
 
 static void end_profile(void) {
+	profile_case = NULL;
 	mirror_unknown_profile = false;
 	bulb_profile = false;
 	fuji_priority_profile = fuji_reject_bulb = fuji_af_error = fuji_reject_cancel = false;
@@ -1102,6 +1267,9 @@ static void end_profile(void) {
 	canon_transfer_filename = "IMG_778.CR3";
 	canon_transfer_fault = 0;
 	canon_transfer_large = false;
+	device_info_fault = descriptor_fault = canon_custom_func_fault = object_info_delta = 0;
+	sony_extension_fault = canon_info_ex_fault = object_info_short = canon_custom_func_profile = sony_compression_profile = false;
+	atomic_store(&sony_dropped_writes, 0);
 	atomic_store(&gate_open, 1);
 	atomic_store(&gate_operation, 0);
 	atomic_store(&fail_register, 0);
@@ -2343,6 +2511,90 @@ cleanup:
 	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
 }
 
+static bool cached_item_present(const char *property_name, const char *item_name, bool present) {
+	double deadline = indigo_monotonic_time() + 5;
+	while ((find_cached_item(property_name, item_name) != NULL) != present && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	return (find_cached_item(property_name, item_name) != NULL) == present;
+}
+
+static bool cached_item_selected(const char *property_name, const char *item_name) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	return item != NULL && item->sw.value;
+}
+
+// X-T1 hardware run: Bulb was offered although the camera declares no USB BULB, and its write was
+// rejected. Bulb stays only while the camera reports it.
+static void fuji_bulb_not_offered(void) {
+	fuji_priority_profile = true;
+	fuji_action_profile = 1;
+	profile_case = &fuji_case;
+	PTP_CHECK(begin_profile(1227, 703));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "2710", true));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "1e84800", true));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff", false));
+	end_profile();
+	bulb_profile = fuji_priority_profile = true;
+	fuji_action_profile = 1;
+	profile_case = &fuji_case;
+	PTP_CHECK(begin_profile(1227, 703));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff", true));
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff"));
+	atomic_store(&shutter_state, -1);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_SHUTTER_PROPERTY_NAME, "2710", true);
+	PTP_CHECK(wait_value(&shutter_state, INDIGO_OK_STATE));
+	// Gone with the completed write, before the next value poll could remove it.
+	PTP_CHECK(find_cached_item(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff") == NULL);
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "2710"));
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
+}
+
+// X-T1 hardware run: after a rejected write DSLR_SHUTTER stayed on the rejected value, and so did the
+// value the next exposure used.
+static void rejected_setting_readback(void) {
+	profile_case = &fuji_case;
+	PTP_CHECK(begin_profile(1227, 703));
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "2710"));
+	atomic_store(&fail_operation, ptp_operation_SetDevicePropValue);
+	atomic_store(&shutter_state, -1);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_SHUTTER_PROPERTY_NAME, "1e84800", true);
+	PTP_CHECK(wait_value(&shutter_state, INDIGO_ALERT_STATE));
+	atomic_store(&fail_operation, 0);
+	PTP_CHECK(*value(cameras, ptp_property_ExposureTime) == 10000);
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "2710"));
+	PTP_CHECK(!cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "1e84800"));
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
+}
+
+// Hardware run: an ILCE-6000 charging over USB (054c:0994, HID only) was attached as "Sony Camera"
+// through the Sony vendor wildcard and failed to connect.
+static void sony_charger_not_attached(void) {
+	PTP_CHECK(begin_profile(1356, 3352));
+	cameras[1].vendor = 0x054c;
+	cameras[1].product = 0x0994;
+	cameras[1].hid_only = true;
+	atomic_store(&cameras[1].visible, true);
+	callback(NULL, (libusb_device *)(cameras + 1), LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	// Hot-plug events are serialized, so once the camera's removal is processed so is the charger.
+	callback(NULL, (libusb_device *)cameras, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	PTP_CHECK(wait_value(&attached, 0));
+	PTP_CHECK(logical[1] == NULL);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[1].refs));
+}
+
 static void fuji_bulb_missing_actions(void) {
 	fuji_bulb_declared_unsupported(1);
 }
@@ -2740,6 +2992,310 @@ static void olympus_focus_error(void) {
 	focus_error_profile(1972, 310, ptp_operation_olympus_MFDrive);
 }
 
+static ptp_private_data *ptp_data(void) {
+	return (ptp_private_data *)logical[0]->private_data;
+}
+
+static unsigned code_count(const uint16_t *codes) {
+	unsigned count = 0;
+	while (count < PTP_MAX_ELEMENTS && codes[count]) {
+		count++;
+	}
+	return count;
+}
+
+static bool wait_not_busy(atomic_int *state) {
+	double deadline = indigo_monotonic_time() + 10;
+	while (atomic_load(state) == INDIGO_BUSY_STATE && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	return atomic_load(state) != INDIGO_BUSY_STATE;
+}
+
+static bool capture_once(void) {
+	int before = atomic_load(&blobs);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	return wait_value(&exposure_state, INDIGO_OK_STATE) && atomic_load(&blobs) == before + 1 && atomic_load(&bad_blob) == 0;
+}
+
+static void finish_bounds_case(void) {
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(atomic_load(&cameras[0].opens), atomic_load(&cameras[0].closes));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
+}
+
+static void device_info_truncated(void) {
+	device_info_fault = 1;
+	PTP_CHECK(begin_profile(0x04b0, 0x0421));
+	PTP_CHECK(ptp_data()->info_manufacturer[0] == 0 && ptp_data()->info_model[0] == 0 && ptp_data()->info_device_version[0] == 0 && ptp_data()->info_serial_number[0] == 0);
+	PTP_CHECK(ptp_operation_supported(logical[0], ptp_operation_GetObject));
+	PTP_CHECK(ptp_property_supported(logical[0], ptp_property_ExposureTime) != NULL);
+	PTP_CHECK(capture_once());
+cleanup:
+	finish_bounds_case();
+}
+
+// ICA delivers exactly the received bytes, without the USB transport padding; ASan sees any read past them.
+static void device_info_exact_buffer(void) {
+	uint8_t scratch[4096], *p = scratch;
+	reset_fake(0x04b0, 0x0421);
+	for (int fault = 1; fault <= 2; fault++) {
+		p = scratch;
+		device_info_fault = fault;
+		device_info(cameras, &p);
+		device_info_fault = 0;
+		uint32_t size = (uint32_t)(p - scratch);
+		uint8_t *buffer = malloc(size);
+		memcpy(buffer, scratch, size);
+		ptp_private_data *private_data = indigo_safe_malloc(sizeof(ptp_private_data));
+		strcpy(private_data->info_model, "stale");
+		indigo_device device = { .private_data = private_data };
+		ASSERT_TRUE(ptp_decode_device_info(buffer, size, &device) == NULL);
+		ASSERT_TRUE(private_data->info_model[0] == 0);
+		ASSERT_EQ_INT(fault == 1 ? 3 : 0, code_count(private_data->info_properties_supported));
+		ASSERT_TRUE(code_count(private_data->info_operations_supported) > 0);
+		free(private_data);
+		free(buffer);
+	}
+}
+
+static void device_info_short_array(void) {
+	device_info_fault = 2;
+	PTP_CHECK(begin_profile(0x04b0, 0x0421));
+	PTP_CHECK(ptp_operation_supported(logical[0], ptp_operation_GetObject));
+	PTP_CHECK(ptp_property_supported(logical[0], ptp_property_ExposureTime) == NULL);
+	PTP_CHECK(ptp_data()->info_manufacturer[0] == 0 && ptp_data()->info_model[0] == 0);
+cleanup:
+	finish_bounds_case();
+}
+
+static void device_info_oversized_array(void) {
+	device_info_fault = 3;
+	PTP_CHECK(begin_profile(0x04b0, 0x0421));
+	PTP_CHECK(code_count(ptp_data()->info_events_supported) == PTP_MAX_ELEMENTS - 1);
+	PTP_CHECK(ptp_data()->info_events_supported[PTP_MAX_ELEMENTS - 2] == 0x4800 + PTP_MAX_ELEMENTS - 2);
+	PTP_CHECK(ptp_property_supported(logical[0], ptp_property_ExposureTime) != NULL);
+	PTP_CHECK(!strcmp(ptp_data()->info_model, "Queue test") && !strcmp(ptp_data()->info_serial_number, "1234"));
+	PTP_CHECK(capture_once());
+cleanup:
+	finish_bounds_case();
+}
+
+static void descriptor_oversized_enum(void) {
+	descriptor_fault = 1;
+	PTP_CHECK(begin_profile(0x04b0, 0x0421));
+	ptp_property *balance = ptp_property_supported(logical[0], ptp_property_WhiteBalance);
+	PTP_CHECK(balance != NULL && balance->count == PTP_MAX_ELEMENTS && balance->value.sw.values[PTP_MAX_ELEMENTS - 1] == PTP_MAX_ELEMENTS);
+	PTP_CHECK(balance->property != NULL && balance->property->count == PTP_MAX_ELEMENTS);
+	ptp_property *size = ptp_property_supported(logical[0], ptp_property_ImageSize);
+	PTP_CHECK(size != NULL && size->count == 16 && !strcmp(size->value.sw_str.values[15], "W15") && !strcmp(size->value.sw_str.value, "W00"));
+	PTP_CHECK(size->property != NULL && size->property->count == 16);
+	PTP_CHECK(capture_once());
+cleanup:
+	finish_bounds_case();
+}
+
+static void descriptor_truncated_enum(void) {
+	descriptor_fault = 2;
+	PTP_CHECK(begin_profile(0x04b0, 0x0421));
+	ptp_property *balance = ptp_property_supported(logical[0], ptp_property_WhiteBalance);
+	PTP_CHECK(balance != NULL && balance->count == 4 && balance->value.sw.values[3] == 4);
+	PTP_CHECK(balance->property != NULL && balance->property->count == 4);
+	PTP_CHECK(capture_once());
+cleanup:
+	finish_bounds_case();
+}
+
+static void sony_oversized_extension_info(void) {
+	sony_extension_fault = true;
+	PTP_CHECK(begin_profile(0x054c, 0x0d18));
+	PTP_CHECK(code_count(ptp_data()->info_operations_supported) == PTP_MAX_ELEMENTS - 1);
+	PTP_CHECK(ptp_property_supported(logical[0], ptp_property_sony_ShutterSpeed) != NULL);
+	PTP_CHECK(capture_once());
+cleanup:
+	finish_bounds_case();
+}
+
+static void canon_oversized_device_info_ex(void) {
+	canon_info_ex_fault = true;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	PTP_CHECK(code_count(ptp_data()->info_events_supported) == PTP_MAX_ELEMENTS - 1);
+	PTP_CHECK(ptp_property_supported(logical[0], ptp_property_canon_ShutterSpeed) != NULL);
+	PTP_CHECK(capture_once());
+cleanup:
+	finish_bounds_case();
+}
+
+static void canon_custom_func_case(int fault) {
+	fprintf(stderr, "custom function fault %d\n", fault);
+	canon_custom_func_profile = true;
+	canon_custom_func_fault = fault;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	canon_private_data *canon = ptp_data()->vendor_private_data;
+	ptp_property *item = ptp_property_supported(logical[0], 0x8101);
+	if (fault == 0) {
+		PTP_CHECK(canon->ex_func_group[0][0] == 32 && canon->ex_func_group[0][2] == 1 && canon->ex_func_group[0][3] == 20 && canon->ex_func_group[0][4] == 1);
+		PTP_CHECK(item != NULL && item->value.sw.value == 7);
+	} else {
+		for (unsigned i = 0; i < 16; i++) {
+			PTP_CHECK(canon->ex_func_group[i][0] == 0);
+		}
+		PTP_CHECK(item == NULL);
+	}
+	PTP_CHECK(capture_once());
+cleanup:
+	finish_bounds_case();
+}
+
+static void canon_custom_func_ex_bounds(void) {
+	for (int fault = 0; fault <= 6; fault++) {
+		canon_custom_func_case(fault);
+	}
+}
+
+static void object_size_case(uint16_t vendor, uint16_t product, int delta, bool short_info) {
+	fprintf(stderr, "object size vendor=%04x delta=%d short=%d\n", vendor, delta, short_info);
+	object_info_delta = delta;
+	object_info_short = short_info;
+	PTP_CHECK(begin_profile(vendor, product));
+	if (short_info) {
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_not_busy(&exposure_state));
+		PTP_CHECK(atomic_load(&blobs) == 0);
+		PTP_CHECK(atomic_load(command_count + ptp_operation_GetObjectInfo) > 0);
+		PTP_CHECK(atomic_load(command_count + ptp_operation_GetObject) == 0);
+		object_info_short = false;
+		// Sony still holds the rejected object and may deliver it together with the next one.
+		indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+		PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+		PTP_CHECK(atomic_load(&blobs) >= 1 && atomic_load(&bad_blob) == 0);
+	} else {
+		PTP_CHECK(capture_once());
+	}
+cleanup:
+	finish_bounds_case();
+}
+
+static void object_size_mismatch(uint16_t vendor, uint16_t product) {
+	object_size_case(vendor, product, 4096, false);
+	object_size_case(vendor, product, -100, false);
+	object_size_case(vendor, product, 0, true);
+}
+
+static void object_size_mismatch_nikon(void) {
+	object_size_mismatch(0x04b0, 0x0421);
+}
+
+static void object_size_mismatch_sony(void) {
+	object_size_mismatch(0x054c, 0x0d18);
+}
+
+static void object_size_mismatch_fuji(void) {
+	object_size_mismatch(0x04cb, 0x02bf);
+}
+
+static bool canon_text_write(const char *value) {
+	indigo_property *property = indigo_init_text_property(NULL, logical[0]->name, "TEST_TEXT", "Test", "Test", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_text_item(property->items, "VALUE", "Value", value);
+	ptp_property target = { .code = ptp_property_canon_Artist, .type = ptp_str_type, .property = property };
+	atomic_store(&canon_text_size, 0);
+	// The write runs on the test thread by design; it is not bus-callback I/O.
+	int io = atomic_load(&bus_io);
+	bool result = ptp_canon_set_property(logical[0], &target);
+	atomic_store(&bus_io, io);
+	indigo_release_property(property);
+	return result;
+}
+
+// ILCE-7RM4 answers DeviceBusy to the first AF command shortly after a session opens (seen on
+// hardware after a reconnect); the exposure retries it instead of failing, and still fails once
+// the camera stays busy past the settling window.
+static void sony_busy_after_connect(void) {
+	PTP_CHECK(begin_profile(0x054c, 0x0d18));
+	atomic_store(&fail_reply, ptp_response_DeviceBusy);
+	atomic_store(&fail_once_operation, ptp_operation_sony_SetControlDeviceB);
+	PTP_CHECK(capture_once());
+	atomic_store(&fail_operation, ptp_operation_sony_SetControlDeviceB);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_not_busy(&exposure_state) || wait_not_busy(&exposure_state));
+	PTP_CHECK(atomic_load(&exposure_state) == INDIGO_ALERT_STATE);
+	atomic_store(&fail_operation, 0);
+	atomic_store(&fail_reply, 0);
+cleanup:
+	finish_bounds_case();
+}
+
+static indigo_property_state wait_setting(ptp_property *setting) {
+	double deadline = indigo_monotonic_time() + 10;
+	while (setting->property->state == INDIGO_BUSY_STATE && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	return setting->property->state;
+}
+
+// A write the camera acknowledges but drops stays BUSY, is rewritten and confirmed from the camera's
+// own report (ILCE-7RM4, seen on hardware right after captures); one it never applies ends ALERT
+// showing the camera's value.
+static void sony_dropped_setting_write(void) {
+	sony_compression_profile = true;
+	PTP_CHECK(begin_profile(0x054c, 0x0d18));
+	ptp_property *setting = ptp_property_supported(logical[0], ptp_property_sony_CompressionSetting);
+	PTP_CHECK(setting != NULL && setting->property != NULL && setting->property->type == INDIGO_SWITCH_VECTOR);
+	// One dropped write leaves a full rewrite period inside the 3 s confirmation window.
+	for (int dropped = 0; dropped <= 1; dropped++) {
+		const char *item = dropped == 1 ? "3" : "1";
+		int writes = atomic_load(command_count + ptp_operation_sony_SetControlDeviceA);
+		atomic_store(&sony_dropped_writes, dropped);
+		indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_COMPRESSION_PROPERTY_NAME, item, true);
+		PTP_CHECK(wait_setting(setting) == INDIGO_OK_STATE);
+		PTP_CHECK(*value(cameras, ptp_property_sony_CompressionSetting) == (uint32_t)strtol(item, NULL, 16));
+		PTP_CHECK(indigo_get_switch(setting->property, item));
+		PTP_CHECK(atomic_load(command_count + ptp_operation_sony_SetControlDeviceA) == writes + dropped + 1);
+	}
+	atomic_store(&sony_dropped_writes, 100);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_COMPRESSION_PROPERTY_NAME, "2", true);
+	PTP_CHECK(wait_setting(setting) == INDIGO_ALERT_STATE);
+	PTP_CHECK(*value(cameras, ptp_property_sony_CompressionSetting) == 3);
+	PTP_CHECK(indigo_get_switch(setting->property, "3"));
+	atomic_store(&sony_dropped_writes, 0);
+cleanup:
+	finish_bounds_case();
+}
+
+// The camera identity from DeviceInfo is published in INFO once connected.
+static void device_identity_published(void) {
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	indigo_item *model = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_MODEL_ITEM_NAME);
+	indigo_item *firmware = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME);
+	indigo_item *serial = find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_SERIAL_NUM_ITEM_NAME);
+	PTP_CHECK(model != NULL && firmware != NULL && serial != NULL);
+	PTP_CHECK(!strcmp(model->text.value, "Queue test") && !strcmp(firmware->text.value, "1") && !strcmp(serial->text.value, "1234"));
+cleanup:
+	finish_bounds_case();
+}
+
+static void canon_long_text_property(void) {
+	char value[301];
+	for (unsigned i = 0; i < 300; i++) {
+		value[i] = 'A' + i % 26;
+	}
+	value[300] = 0;
+	uint32_t length = 0;
+	PTP_CHECK(begin_profile(0x04a9, 0x3218));
+	PTP_CHECK(canon_text_write(value));
+	PTP_CHECK(atomic_load(&canon_text_size) == 8 + PTP_MAX_CHARS);
+	memcpy(&length, canon_text_payload, sizeof(length));
+	PTP_CHECK(length == 8 + PTP_MAX_CHARS);
+	PTP_CHECK(!memcmp(canon_text_payload + 8, value, PTP_MAX_CHARS - 1) && canon_text_payload[8 + PTP_MAX_CHARS - 1] == 0);
+	PTP_CHECK(canon_text_write("INDIGO"));
+	PTP_CHECK(atomic_load(&canon_text_size) == 8 + 7);
+	PTP_CHECK(!memcmp(canon_text_payload + 8, "INDIGO", 7));
+cleanup:
+	finish_bounds_case();
+}
+
 int main(void) {
 	indigo_test_use_private_home();
 	make_jpeg();
@@ -2748,6 +3304,22 @@ int main(void) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
 	const indigo_test_case tests[] = {
+		{ "device_info_truncated", device_info_truncated },
+		{ "device_info_exact_buffer", device_info_exact_buffer },
+		{ "device_info_short_array", device_info_short_array },
+		{ "device_info_oversized_array", device_info_oversized_array },
+		{ "descriptor_oversized_enum", descriptor_oversized_enum },
+		{ "descriptor_truncated_enum", descriptor_truncated_enum },
+		{ "sony_oversized_extension_info", sony_oversized_extension_info },
+		{ "canon_oversized_device_info_ex", canon_oversized_device_info_ex },
+		{ "canon_custom_func_ex_bounds", canon_custom_func_ex_bounds },
+		{ "object_size_mismatch_nikon", object_size_mismatch_nikon },
+		{ "object_size_mismatch_sony", object_size_mismatch_sony },
+		{ "object_size_mismatch_fuji", object_size_mismatch_fuji },
+		{ "canon_long_text_property", canon_long_text_property },
+		{ "device_identity_published", device_identity_published },
+		{ "sony_busy_after_connect", sony_busy_after_connect },
+		{ "sony_dropped_setting_write", sony_dropped_setting_write },
 		{ "canon_focus_error", canon_focus_error },
 		{ "nikon_focus_error", nikon_focus_error },
 		{ "nikon_focus_stop_retry", nikon_focus_stop_retry },
@@ -2793,6 +3365,9 @@ int main(void) {
 		{ "fuji_bulb_priority_abort", fuji_bulb_priority_abort },
 		{ "fuji_bulb_rejected_recovery", fuji_bulb_rejected_recovery },
 		{ "fuji_bulb_missing_actions", fuji_bulb_missing_actions },
+		{ "fuji_bulb_not_offered", fuji_bulb_not_offered },
+		{ "rejected_setting_readback", rejected_setting_readback },
+		{ "sony_charger_not_attached", sony_charger_not_attached },
 		{ "fuji_bulb_missing_stop", fuji_bulb_missing_stop },
 		{ "fuji_bulb_unknown_actions", fuji_bulb_unknown_actions },
 		{ "fuji_af_failure_cleanup", fuji_af_failure_cleanup },

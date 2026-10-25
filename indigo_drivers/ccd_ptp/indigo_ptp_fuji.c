@@ -369,20 +369,28 @@ static void ptp_fuji_get_event(indigo_device *device) {
 				uint32_t count = 0;
 				uint8_t *source = buffer;
 				void *image_buffer = NULL;
-				source = ptp_decode_uint32(source, &count);
+				if (size >= sizeof(uint32_t)) {
+					source = ptp_decode_uint32(source, &count);
+				}
+				if (count > (size - sizeof(uint32_t)) / sizeof(uint32_t)) {
+					count = 0;
+				}
 				for (uint32_t i = 0; i < count; ++i) {
-					uint32_t handle = 0;
+					uint32_t handle = 0, info_size = 0;
 					source = ptp_decode_uint32(source, &handle);
-					if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, handle, &image_buffer, NULL)) {
+					if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, handle, &image_buffer, &info_size)) {
 						uint32_t image_size;
 						char filename[PTP_MAX_CHARS];
-						uint8_t *source = image_buffer;
-						source = ptp_decode_uint32(source + 8, &image_size);
-						source = ptp_decode_string(source + 40 , filename);
+						bool valid = ptp_decode_object_info(image_buffer, info_size, &image_size, filename);
 						free(image_buffer);
 						image_buffer = NULL;
+						if (!valid) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, malformed ObjectInfo (%u bytes)", handle, info_size);
+							continue;
+						}
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", handle, image_size, filename);
-						if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &image_buffer, NULL)) {
+						// Publish the bytes actually received; ObjectInfo size is only advisory.
+						if (image_size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &image_buffer, &image_size) && image_size) {
 							const char *ext = strchr(filename, '.');
 							if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
 								if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
@@ -400,6 +408,10 @@ static void ptp_fuji_get_event(indigo_device *device) {
 							if (ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle)) {
 								INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_operation_DeleteObject succeed.");
 							}
+						} else if (image_buffer) {
+							// An empty object still comes with a transport buffer.
+							free(image_buffer);
+							image_buffer = NULL;
 						}
 					}
 				}
@@ -460,8 +472,9 @@ bool ptp_fuji_initialise(indigo_device *device) {
 				for (last = 0; PRIVATE_DATA->info_properties_supported[last]; last++) {
 				}
 				// overwrite last
-				if (last != -1) {
+				if (last < PTP_MAX_ELEMENTS - 1) {
 					PRIVATE_DATA->info_properties_supported[last] = hidden_properties[i];
+					PRIVATE_DATA->info_properties_supported[last + 1] = 0;
 					ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + last);
 				}
 			}
@@ -480,8 +493,9 @@ bool ptp_fuji_initialise(indigo_device *device) {
 			for (last = 0; PRIVATE_DATA->info_properties_supported[last]; last++) {
 			}
 			// overwrite last
-			if (last != -1) {
+			if (last < PTP_MAX_ELEMENTS - 1) {
 				PRIVATE_DATA->info_properties_supported[last] = ptp_property_FNumber;
+				PRIVATE_DATA->info_properties_supported[last + 1] = 0;
 				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + last);
 			}
 		}
@@ -510,6 +524,11 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 					stop |= action == 0x000c;
 				}
 				FUJI_PRIVATE_DATA->bulb_supported = start && stop;
+				// ExposureTime is usually decoded first and still offers Bulb.
+				ptp_property *shutter = ptp_property_supported(device, ptp_property_ExposureTime);
+				if (shutter && !FUJI_PRIVATE_DATA->bulb_supported && ptp_fuji_fix_property(device, shutter)) {
+					ptp_update_property(device, shutter);
+				}
 			}
 			return true;
 		}
@@ -524,15 +543,22 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 				property->writable = false;
 			} else {
 				// enumeration succeed
-				// search bulb property
+				// A camera declaring USB actions without BULB start and stop (e.g. X-T1) rejects a Bulb
+				// write, so Bulb is offered only while the camera itself reports it.
+				bool bulb_offered = !FUJI_PRIVATE_DATA->action_enum_known || FUJI_PRIVATE_DATA->bulb_supported || property->value.sw.value == 0xffffffff;
 				bool has_bulb = false;
 				for (int i=0; i < property->count; ++i) {
 					if (property->value.sw.values[i] == 0xffffffff) {
-						has_bulb = true;
-						break;
+						if (bulb_offered) {
+							has_bulb = true;
+						} else {
+							memmove(property->value.sw.values + i, property->value.sw.values + i + 1, (property->count - i - 1) * sizeof(property->value.sw.values[0]));
+							property->count -= 1;
+							i -= 1;
+						}
 					}
 				}
-				if (!has_bulb) {
+				if (!has_bulb && bulb_offered && property->count < PTP_MAX_ELEMENTS) {
 					// some model (e.g. X-T4) does not enumerate Bulb
 					property->value.sw.values[property->count] = 0xffffffff;
 					property->count += 1;
@@ -589,6 +615,10 @@ bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
 	}
 	if (!ptp_set_property(device, property)) {
 		return false;
+	}
+	// Leaving Bulb removes it at once where USB BULB is not declared, not only on the next poll.
+	if (property->code == ptp_property_ExposureTime && ptp_fuji_fix_property(device, property)) {
+		ptp_update_property(device, property);
 	}
 	if (property->code == ptp_property_ExposureProgramMode) {
 		ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureTime));

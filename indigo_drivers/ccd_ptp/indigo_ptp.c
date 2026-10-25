@@ -24,6 +24,7 @@
  */
 
 #include <stdio.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -450,12 +451,14 @@ uint8_t *ptp_encode_uint64(uint64_t source, uint8_t *target) {
 	return target + sizeof(uint64_t);
 }
 
+// Every target holds PTP_MAX_CHARS, so up to 255 characters and the terminator fit.
 uint8_t *ptp_decode_string(uint8_t *source, char *target) {
 	uint8_t length = *source++;
 	for (int i = 0; i < length; i++) {
 		*target++ = *source++;
 		source++;
 	}
+	*target = 0;
 	return source;
 }
 
@@ -489,40 +492,78 @@ uint8_t *ptp_decode_uint128(uint8_t *source, char *target) {
 	return source;
 }
 
-uint8_t *ptp_decode_uint16_array(uint8_t *source, uint16_t *target, uint32_t *count) {
-	uint32_t length;
-	source = ptp_decode_uint32(source, &length);
-	assert(length < PTP_MAX_ELEMENTS);
-	for (int i = 0; i < length; i++) {
+// Bounded readers return NULL when the field does not fit before end; a NULL source propagates.
+static uint8_t *ptp_decode_uint16_bounded(uint8_t *source, uint8_t *end, uint16_t *target) {
+	if (source == NULL || source > end || end - source < (ptrdiff_t)sizeof(uint16_t)) {
+		return NULL;
+	}
+	return ptp_decode_uint16(source, target);
+}
+
+static uint8_t *ptp_decode_uint32_bounded(uint8_t *source, uint8_t *end, uint32_t *target) {
+	if (source == NULL || source > end || end - source < (ptrdiff_t)sizeof(uint32_t)) {
+		return NULL;
+	}
+	return ptp_decode_uint32(source, target);
+}
+
+static uint8_t *ptp_decode_string_bounded(uint8_t *source, uint8_t *end, char *target) {
+	if (source == NULL || source >= end || end - source < 1 + 2 * (ptrdiff_t)*source) {
+		return NULL;
+	}
+	return ptp_decode_string(source, target);
+}
+
+// Arrays longer than the PTP_MAX_ELEMENTS destination keep their first PTP_MAX_ELEMENTS - 1 codes and the terminator.
+uint8_t *ptp_decode_uint16_array(uint8_t *source, uint8_t *end, uint16_t *target, uint32_t *count) {
+	uint32_t length = 0;
+	*target = 0;
+	if (count) {
+		*count = 0;
+	}
+	source = ptp_decode_uint32_bounded(source, end, &length);
+	if (source == NULL || length > (end - source) / sizeof(uint16_t)) {
+		return NULL;
+	}
+	uint32_t stored = length < PTP_MAX_ELEMENTS ? length : PTP_MAX_ELEMENTS - 1;
+	for (uint32_t i = 0; i < stored; i++) {
 		source = ptp_decode_uint16(source, target++);
 	}
 	*target = 0;
 	if (count) {
-		*count = length;
+		*count = stored;
 	}
-	return source;
+	return source + (length - stored) * sizeof(uint16_t);
 }
 
-uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *count) {
-	uint32_t length;
-	source = ptp_decode_uint32(source, &length);
-	assert(length < PTP_MAX_ELEMENTS);
-	for (int i = 0; i < length; i++) {
+uint8_t *ptp_decode_uint32_array(uint8_t *source, uint8_t *end, uint32_t *target, uint32_t *count) {
+	uint32_t length = 0;
+	*target = 0;
+	if (count) {
+		*count = 0;
+	}
+	source = ptp_decode_uint32_bounded(source, end, &length);
+	if (source == NULL || length > (end - source) / sizeof(uint32_t)) {
+		return NULL;
+	}
+	uint32_t stored = length < PTP_MAX_ELEMENTS ? length : PTP_MAX_ELEMENTS - 1;
+	for (uint32_t i = 0; i < stored; i++) {
 		source = ptp_decode_uint32(source, target++);
 	}
 	*target = 0;
 	if (count) {
-		*count = length;
+		*count = stored;
 	}
-	return source;
+	return source + (length - stored) * sizeof(uint32_t);
 }
 
+// Both targets are zero-terminated PTP_MAX_ELEMENTS arrays; codes that do not fit are dropped.
 void ptp_append_uint16_16_array(uint16_t *target, uint16_t *source) {
 	int index = 0;
 	for (index = 0; target[index]; index++) {
 		;
 	}
-	for (int i = 0; source[i]; i++) {
+	for (int i = 0; source[i] && index < PTP_MAX_ELEMENTS - 1; i++) {
 		target[index++] = source[i];
 	}
 	target[index] = 0;
@@ -533,27 +574,34 @@ void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source) {
 	for (index = 0; target[index]; index++) {
 		;
 	}
-	for (int i = 0; source[i]; i++) {
+	for (int i = 0; source[i] && index < PTP_MAX_ELEMENTS - 1; i++) {
 		target[index++] = source[i];
 	}
 	target[index] = 0;
 }
 
-uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device) {
-	source = ptp_decode_uint16(source, &PRIVATE_DATA->info_standard_version);
-	source = ptp_decode_uint32(source, &PRIVATE_DATA->info_vendor_extension_id);
-	source = ptp_decode_uint16(source, &PRIVATE_DATA->info_vendor_extension_version);
-	source = ptp_decode_string(source, PRIVATE_DATA->info_vendor_extension_desc);
-	source = ptp_decode_uint16(source, &PRIVATE_DATA->info_functional_mode);
-	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_operations_supported, NULL);
-	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_events_supported, NULL);
-	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_properties_supported, NULL);
-	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_capture_formats_supported, NULL);
-	source = ptp_decode_uint16_array(source, PRIVATE_DATA->info_image_formats_supported, NULL);
-	source = ptp_decode_string(source, PRIVATE_DATA->info_manufacturer);
-	source = ptp_decode_string(source, PRIVATE_DATA->info_model);
-	source = ptp_decode_string(source, PRIVATE_DATA->info_device_version);
-	source = ptp_decode_string(source, PRIVATE_DATA->info_serial_number);
+// A truncated reply keeps the fields decoded so far; the remaining ones stay empty.
+uint8_t *ptp_decode_device_info(uint8_t *source, uint32_t size, indigo_device *device) {
+	uint8_t *end = source + size;
+	PRIVATE_DATA->info_vendor_extension_desc[0] = PRIVATE_DATA->info_manufacturer[0] = PRIVATE_DATA->info_model[0] = PRIVATE_DATA->info_device_version[0] = PRIVATE_DATA->info_serial_number[0] = 0;
+	PRIVATE_DATA->info_operations_supported[0] = PRIVATE_DATA->info_events_supported[0] = PRIVATE_DATA->info_properties_supported[0] = PRIVATE_DATA->info_capture_formats_supported[0] = PRIVATE_DATA->info_image_formats_supported[0] = 0;
+	source = ptp_decode_uint16_bounded(source, end, &PRIVATE_DATA->info_standard_version);
+	source = ptp_decode_uint32_bounded(source, end, &PRIVATE_DATA->info_vendor_extension_id);
+	source = ptp_decode_uint16_bounded(source, end, &PRIVATE_DATA->info_vendor_extension_version);
+	source = ptp_decode_string_bounded(source, end, PRIVATE_DATA->info_vendor_extension_desc);
+	source = ptp_decode_uint16_bounded(source, end, &PRIVATE_DATA->info_functional_mode);
+	source = ptp_decode_uint16_array(source, end, PRIVATE_DATA->info_operations_supported, NULL);
+	source = ptp_decode_uint16_array(source, end, PRIVATE_DATA->info_events_supported, NULL);
+	source = ptp_decode_uint16_array(source, end, PRIVATE_DATA->info_properties_supported, NULL);
+	source = ptp_decode_uint16_array(source, end, PRIVATE_DATA->info_capture_formats_supported, NULL);
+	source = ptp_decode_uint16_array(source, end, PRIVATE_DATA->info_image_formats_supported, NULL);
+	source = ptp_decode_string_bounded(source, end, PRIVATE_DATA->info_manufacturer);
+	source = ptp_decode_string_bounded(source, end, PRIVATE_DATA->info_model);
+	source = ptp_decode_string_bounded(source, end, PRIVATE_DATA->info_device_version);
+	source = ptp_decode_string_bounded(source, end, PRIVATE_DATA->info_serial_number);
+	if (source == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Truncated DeviceInfo (%u bytes)", size);
+	}
 	if (PRIVATE_DATA->info_vendor_extension_id == ptp_vendor_microsoft) {
 		if (strstr(PRIVATE_DATA->info_manufacturer, "Nikon")) {
 			PRIVATE_DATA->info_vendor_extension_id = ptp_vendor_nikon;
@@ -576,13 +624,29 @@ uint8_t *ptp_decode_device_info(uint8_t *source, indigo_device *device) {
 	return source;
 }
 
+// ObjectInfo: ObjectCompressedSize at offset 8, Filename string at offset 52.
+bool ptp_decode_object_info(void *buffer, uint32_t size, uint32_t *object_size, char *filename) {
+	uint8_t *source = buffer, *end = source + size;
+	*object_size = 0;
+	*filename = 0;
+	if (buffer == NULL || size < 52) {
+		return false;
+	}
+	ptp_decode_uint32(source + 8, object_size);
+	return ptp_decode_string_bounded(source + 52, end, filename) != NULL;
+}
+
 #define CHECK_SENTINEL() if (sentinel <= source) { INDIGO_LOG(indigo_log("check_sentinel failed.")); return sentinel; }
+#define CHECK_SIZE(size) if (source > sentinel || sentinel - source < (ptrdiff_t)(size)) { INDIGO_LOG(indigo_log("check_size failed.")); return NULL; }
 
 uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *device, ptp_property *target) {
 	uint8_t *sentinel = source + size;
+	CHECK_SIZE(5);
 	source = ptp_decode_uint16(source, &target->code);
 	source = ptp_decode_uint16(source, &target->type);
 	source = ptp_decode_uint8(source, &target->writable);
+	// Default and current value.
+	CHECK_SIZE(2 * ptp_type_size(target->type));
 	switch (target->type) {
 		case ptp_undef_type: {
 			return source;
@@ -636,7 +700,11 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 			break;
 		}
 		case ptp_str_type: {
+			CHECK_SIZE(1);
+			CHECK_SIZE(1 + 2 * *source);
 			source += *source *2 + 1;
+			CHECK_SIZE(1);
+			CHECK_SIZE(1 + 2 * *source);
 			source = ptp_decode_string(source, target->value.text.value);
 			break;
 		}
@@ -668,6 +736,7 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 			}
 			break;
 		case ptp_range_form:
+			CHECK_SIZE(3 * ptp_type_size(target->type));
 			switch (target->type) {
 				case ptp_uint8_type: {
 					uint8_t min, max, step;
@@ -758,62 +827,89 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 			}
 			break;
 		case ptp_enum_form: {
+			// Values that do not fit PTP_MAX_ELEMENTS numbers or 16 strings are skipped, a truncated list ends at the last complete value.
 			uint16_t count;
+			CHECK_SIZE(2);
 			source = ptp_decode_uint16(source, &count);
-			target->count = count;
-			for (int i = 0; i < target->count; i++) {
+			int capacity = target->type == ptp_str_type ? 16 : PTP_MAX_ELEMENTS, stored = 0;
+			for (int i = 0; i < count; i++) {
+				ptrdiff_t element_size = target->type == ptp_str_type ? (source < sentinel ? 1 + 2 * *source : 1) : ptp_type_size(target->type);
+				if (source > sentinel || sentinel - source < element_size) {
+					INDIGO_LOG(indigo_log("code:%x enum truncated at %d of %d", target->code, i, count));
+					break;
+				}
+				int64_t *value_target = i < capacity ? target->value.sw.values + i : NULL;
 				switch (target->type) {
 					case ptp_uint8_type: {
 						uint8_t value;
 						source = ptp_decode_uint8(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int8_type: {
 						int8_t value;
 						source = ptp_decode_uint8(source, (uint8_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint16_type: {
 						uint16_t value;
 						source = ptp_decode_uint16(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int16_type: {
 						int16_t value;
 						source = ptp_decode_uint16(source, (uint16_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint32_type: {
 						uint32_t value;
 						source = ptp_decode_uint32(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int32_type: {
 						int32_t value;
 						source = ptp_decode_uint32(source, (uint32_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint64_type: {
 						uint64_t value;
 						source = ptp_decode_uint64(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int64_type: {
 						int64_t value;
 						source = ptp_decode_uint64(source, (uint64_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_str_type: {
-						if (i < 16) {
+						if (i < capacity) {
 							source = ptp_decode_string(source, target->value.sw_str.values[i]);
+						} else {
+							char tmp[PTP_MAX_CHARS];
+							source = ptp_decode_string(source, tmp);
 						}
 						break;
 					}
@@ -821,7 +917,9 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown target type: %d code=%x", target->type, target->code);
 						return NULL;
 				}
+				stored = i + 1;
 			}
+			target->count = stored < capacity ? stored : capacity;
 			break;
 		}
 	}
@@ -1656,8 +1754,9 @@ static void ptp_check_event(indigo_device *device) {
 
 bool ptp_initialise(indigo_device *device) {
 	void *buffer = NULL;
-	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer, NULL)) {
-		ptp_decode_device_info(buffer, device);
+	uint32_t size = 0;
+	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer, &size)) {
+		ptp_decode_device_info(buffer, size, device);
 		PTP_DUMP_DEVICE_INFO();
 		if (PRIVATE_DATA->inject_property) {
 			PRIVATE_DATA->inject_property(device);
@@ -1690,7 +1789,6 @@ bool ptp_initialise(indigo_device *device) {
 		}
 #endif
 		PTP_DUMP_DEVICE_INFO();
-		uint32_t size = 0;
 		for (int i = 0; properties[i]; i++) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, &size)) {
 				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
@@ -1715,19 +1813,25 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 	switch (code) {
 		case ptp_event_ObjectAdded: {
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL)) {
+			uint32_t info_size = 0;
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, &info_size)) {
 				uint32_t size;
 				char filename[PTP_MAX_CHARS];
-				uint8_t *source = buffer;
-				source = ptp_decode_uint32(source + 8, &size);
-				source = ptp_decode_string(source + 40 , filename);
+				bool valid = ptp_decode_object_info(buffer, info_size, &size, filename);
 				free(buffer);
 				buffer = NULL;
-				if (CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
+				if (!valid) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, malformed ObjectInfo (%u bytes)", params[0], info_size);
+				} else if (CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s' skipped", params[0], size, filename);
 				} else {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s' downloading", params[0], size, filename);
-					if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
+					// Publish the bytes actually received; ObjectInfo size is only advisory.
+					uint32_t metadata_size = size;
+					if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, &size) && size) {
+						if (size != metadata_size) {
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, received %u bytes, ObjectInfo size %u", params[0], size, metadata_size);
+						}
 						const char *ext = strchr(filename, '.');
 						if (ext != NULL && PRIVATE_DATA->check_dual_compression != NULL && PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
 							if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {

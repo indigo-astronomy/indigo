@@ -1,0 +1,131 @@
+{
+  "version": 2,
+  "task": "20261025113906-c862-ptp-fuji-hardware-test",
+  "scope": [
+    "indigo_drivers/ccd_ptp/*",
+    "indigo_test/hardware/test_ccd_ptp_hw.c",
+    "indigo_test/integration/test_ccd_ptp_sdk.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/active/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_ptp",
+        "--hw",
+        "--device",
+        "Fujifilm X-T1"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_ptp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-ccd-ptp-sdk-sanitize",
+        "test-ccd-ptp-ica-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "hardware-io": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025113906-c862-ptp-fuji-hardware-test.json": [
+      "100644",
+      "blob",
+      "aee24d46a23cc62f323dd94f075d620b3b38a8e6"
+    ],
+    ".factory/findings/active/FND-20261025113906-c862-ptp-fuji-hardware-test-001.json": [
+      "100644",
+      "blob",
+      "cdd4fd1957711e41bf8808da87e98d3fe5bc4c56"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "52a6e00a4cb2d977906fbc40a98322f214a27e9f"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "e44ae36274470785a7fd728bc9c5fee612ea6d75"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "318f6aa2d23c790038089ae0d74aa7c748b7aa7f"
+    ],
+    "indigo_drivers/ccd_ptp/README.md": [
+      "100644",
+      "blob",
+      "5bab7a4111a5ba71dd834b1da830ee200d86409d"
+    ],
+    "indigo_drivers/ccd_ptp/REFACTOR.md": [
+      "100644",
+      "blob",
+      "c076787ef8e474167b1aa9dec2c0042f3efb46d2"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ccd_ptp.c": [
+      "100644",
+      "blob",
+      "bb785ccea5fc0bd84afc12fd8ddc20fd7fb2cdbf"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp.h": [
+      "100644",
+      "blob",
+      "23dac39b665d1c9cbbe575fd695be60c115b2589"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c": [
+      "100644",
+      "blob",
+      "fc69f7baeb7b44dc0718f74a9b79895ea6a6d6c9"
+    ],
+    "indigo_test/hardware/test_ccd_ptp_hw.c": [
+      "100644",
+      "blob",
+      "c446de31cf9872718f7c6081a5f09cfd49683d5b"
+    ],
+    "indigo_test/integration/test_ccd_ptp_sdk.c": [
+      "100644",
+      "blob",
+      "00cfb9eaa8b6918e6f6e7d03d4bef5c7fcaeeb8b"
+    ]
+  }
+}

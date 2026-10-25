@@ -68,6 +68,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
+		// Model, firmware and serial number come from DeviceInfo when the camera connects.
+		INFO_PROPERTY->count = 8;
 		CCD_MODE_PROPERTY->hidden = true;
 		CCD_STREAMING_PROPERTY->hidden = PRIVATE_DATA->liveview == NULL;
 		CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
@@ -224,6 +226,10 @@ static void handle_connection(indigo_device *device) {
 					indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
 				}
 			}
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, *PRIVATE_DATA->info_model ? PRIVATE_DATA->info_model : device->name);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, *PRIVATE_DATA->info_device_version ? PRIVATE_DATA->info_device_version : "N/A");
+			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, *PRIVATE_DATA->info_serial_number ? PRIVATE_DATA->info_serial_number : "N/A");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			indigo_cancel_pending_handlers(device);
@@ -318,6 +324,70 @@ static void handle_zoom(indigo_device *device) {
 	indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 }
 
+#define PTP_PROPERTY_VERIFY_TIMEOUT	3
+#define PTP_PROPERTY_REWRITE_DELAY	1
+
+// Requested value of a switch whose items are named by their hexadecimal camera value.
+static bool requested_value(indigo_property *property, int64_t *value) {
+	for (int i = 0; i < property->count; i++) {
+		if (property->items[i].sw.value) {
+			char *end = NULL;
+			*value = (int64_t)strtoull(property->items[i].name, &end, 16);
+			return end != property->items[i].name && *end == 0;
+		}
+	}
+	return false;
+}
+
+// A rejected write leaves the request in the property and in the cached camera value; read back what
+// the camera holds instead. This may redefine the property.
+static void read_back_rejected(indigo_device *device, size_t index) {
+	if (!IS_CONNECTED || PRIVATE_DATA->detaching) {
+		return;
+	}
+	if (PRIVATE_DATA->refresh_properties) {
+		PRIVATE_DATA->refresh_properties(device);
+	} else if (ptp_operation_supported(device, ptp_operation_GetDevicePropDesc)) {
+		ptp_refresh_property(device, PRIVATE_DATA->properties + index);
+	}
+}
+
+static void set_property_complete(indigo_device *device, size_t index, bool result, const char *message) {
+	indigo_property *definition = PRIVATE_DATA->properties[index].property;
+	indigo_release_property(PRIVATE_DATA->pending_properties[index]);
+	PRIVATE_DATA->pending_properties[index] = NULL;
+	if (definition) {
+		definition->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, definition, message);
+	}
+}
+
+// Confirms the write against the camera's own report and rewrites a dropped value until the deadline.
+static void set_property_finalizer(indigo_device *device, void *data) {
+	size_t index = (size_t)data;
+	indigo_property *request = PRIVATE_DATA->pending_properties[index];
+	ptp_property *target = PRIVATE_DATA->properties + index;
+	if (!request || !target->property || !IS_CONNECTED) {
+		return;
+	}
+	bool applied = PRIVATE_DATA->refresh_properties(device) && target->value.sw.value == PRIVATE_DATA->property_requested[index];
+	double now = indigo_monotonic_time();
+	if (applied || now >= PRIVATE_DATA->property_deadline[index] || PRIVATE_DATA->detaching) {
+		set_property_complete(device, index, applied, applied ? NULL : "The camera did not apply the value");
+		return;
+	}
+	if (now - PRIVATE_DATA->property_written[index] >= PTP_PROPERTY_REWRITE_DELAY) {
+		indigo_property_copy_values(target->property, request, false);
+		if (!PRIVATE_DATA->set_property(device, target) && PRIVATE_DATA->last_error != ptp_response_DeviceBusy) {
+			read_back_rejected(device, index);
+			set_property_complete(device, index, false, NULL);
+			return;
+		}
+		PRIVATE_DATA->property_written[index] = now;
+	}
+	indigo_execute_handler_with_data_in(device, 0.2, set_property_finalizer, data);
+}
+
 static void handle_set_property(indigo_device *device, void *data) {
 	size_t index = (size_t)data;
 	assert(index < PTP_MAX_ELEMENTS);
@@ -334,10 +404,18 @@ static void handle_set_property(indigo_device *device, void *data) {
 		indigo_execute_handler_with_data_in(device, 0.05, handle_set_property, data);
 		return;
 	}
-	PRIVATE_DATA->pending_properties[index] = NULL;
-	indigo_release_property(request);
-	definition->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	indigo_update_property(device, definition, NULL);
+	// A camera that may drop an acknowledged write keeps the property BUSY until its report confirms it.
+	if (result && PRIVATE_DATA->refresh_properties && definition->type == INDIGO_SWITCH_VECTOR && target->type != ptp_str_type && requested_value(definition, PRIVATE_DATA->property_requested + index)) {
+		double now = indigo_monotonic_time();
+		PRIVATE_DATA->property_written[index] = now;
+		PRIVATE_DATA->property_deadline[index] = now + PTP_PROPERTY_VERIFY_TIMEOUT;
+		indigo_execute_handler_with_data_in(device, 0.2, set_property_finalizer, data);
+		return;
+	}
+	if (!result) {
+		read_back_rejected(device, index);
+	}
+	set_property_complete(device, index, result, NULL);
 }
 
 static void streaming_finish(indigo_device *device, bool result) {
@@ -1006,6 +1084,27 @@ static ICABrowser *browser;
 
 #else
 
+// Only a still image (PTP) interface can be opened; other USB functions of a camera vendor, such as
+// the HID charger of a Sony body, are not cameras.
+static bool has_ptp_interface(libusb_device *dev, const struct libusb_device_descriptor *descriptor) {
+	for (int config = 0; config < descriptor->bNumConfigurations; config++) {
+		struct libusb_config_descriptor *config_descriptor = NULL;
+		if (libusb_get_config_descriptor(dev, config, &config_descriptor) < 0) {
+			continue;
+		}
+		bool found = false;
+		for (int iface = 0; iface < config_descriptor->bNumInterfaces && !found; iface++) {
+			const struct libusb_interface *interface = config_descriptor->interface + iface;
+			found = interface->num_altsetting > 0 && interface->altsetting->bInterfaceClass == 0x06 && interface->altsetting->bInterfaceSubClass == 0x01 && interface->altsetting->bInterfaceProtocol == 0x01;
+		}
+		libusb_free_config_descriptor(config_descriptor);
+		if (found) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static void process_plug_event(indigo_device *unused, void *data) {
 	(void)unused;
 	libusb_device *dev = data;
@@ -1018,7 +1117,7 @@ static void process_plug_event(indigo_device *unused, void *data) {
 			}
 		}
 		struct libusb_device_descriptor descriptor;
-		if (!duplicate && libusb_get_device_descriptor(dev, &descriptor) >= 0) {
+		if (!duplicate && libusb_get_device_descriptor(dev, &descriptor) >= 0 && has_ptp_interface(dev, &descriptor)) {
 			char usb_path[INDIGO_NAME_SIZE];
 			indigo_get_usb_path(dev, usb_path);
 			indigo_device *device = attach_device(descriptor.idVendor, descriptor.idProduct, usb_path);

@@ -1,0 +1,19 @@
+{
+  "title": "PTP value and Sony property-data decoders still read without a reply length",
+  "category": "security",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025093224-2d50-fix-ptp-findings",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Residual of audit 019/026 found by the fix review. ptp_sony_decode_property() walks GetAllDevicePropData by the received count without the buffer size; ptp_decode_property_value() (Fuji and Olympus value polls) decodes strings and numbers without a size; Canon AvailListChanged image-format entries are bounded by count, not by their variable size. Writes on these paths are now capacity-checked, so the remaining impact is reads past the reply (USB pads 1024 zeroed bytes, ICA does not). Source-only, not reproduced. Next: pass the reply end into these decoders and add fake truncated-reply cases.",
+  "evidence": "indigo_drivers/ccd_ptp/indigo_ptp_sony.c ptp_sony_decode_property and its GetAllDevicePropData callers; indigo_drivers/ccd_ptp/indigo_ptp.c ptp_decode_property_value; indigo_drivers/ccd_ptp/indigo_ptp_canon.c ptp_event_canon_AvailListChanged",
+  "resolution": null,
+  "id": "FND-20261025093224-2d50-fix-ptp-findings-001"
+}

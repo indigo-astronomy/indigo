@@ -310,13 +310,16 @@ bool ptp_olympus_handle_event(indigo_device *device, ptp_event_code code, uint32
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "%s: param1 = %08x", ptp_event_olympus_code_label(code), params[0]);
 			if (params[0] != 0) {
 				void *buffer = NULL;
-				if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL) && buffer) {
+				uint32_t info_size = 0;
+				if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, &info_size) && buffer) {
 					uint32_t size;
 					char filename[PTP_MAX_CHARS];
-					uint8_t *source = buffer;
-					source = ptp_decode_uint32(source + 8, &size);
-					ptp_decode_string(source + 40, filename);
+					bool valid = ptp_decode_object_info(buffer, info_size, &size, filename);
 					free(buffer);
+					if (!valid) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s: handle = %08x, malformed ObjectInfo (%u bytes)", ptp_event_olympus_code_label(code), params[0], info_size);
+						return true;
+					}
 					if (size == OLYMPUS_PRIVATE_DATA->last_object_size && !strcmp(filename, OLYMPUS_PRIVATE_DATA->last_object_name)) {
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "duplicate copy of '%s' from second storage slot skipped", filename);
 						if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value) {
