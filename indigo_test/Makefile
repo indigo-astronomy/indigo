@@ -503,6 +503,13 @@ test-server-websocket: check-lib $(INTEGRATION_BUILD)/test_server_websocket
 test-server-websocket-sanitize: check-lib $(INTEGRATION_BUILD)/test_server_websocket_sanitize
 	$(INTEGRATION_BUILD)/test_server_websocket_sanitize
 
+# Memory leak check of the indigo_server executable with the simulator drivers under Valgrind. Opt-in and slow (several
+# minutes): it starts the server on a free loopback port, exercises every simulator device LEAK_CYCLES times (default 1)
+# and fails on definitely or indirectly lost memory. Needs valgrind and a built server (make all in the repository root).
+.PHONY: test-server-leaks
+test-server-leaks:
+	python3 leak/run_server_leak_check.py $(if $(LEAK_CYCLES),--cycles $(LEAK_CYCLES))
+
 $(INTEGRATION_BUILD)/ccd_simulator_test_driver.o: ../indigo_drivers/ccd_simulator/indigo_ccd_simulator.c Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -Dindigo_set_timer=sim_test_set_timer -Dindigo_reschedule_timer=sim_test_reschedule_timer -c $< -o $@
 

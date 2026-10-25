@@ -1,0 +1,19 @@
+{
+  "title": "Astrometry agent does not free its device private data at shutdown",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025093558-ece5-server-leak-check",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "INDIGO_DRIVER_INIT allocates astrometry_private_data for the agent device (indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1340); INDIGO_DRIVER_SHUTDOWN detaches and frees the device but not device->private_data (528 bytes per load/unload). Next: free the private data after detach.",
+  "evidence": "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1340 and the INDIGO_DRIVER_SHUTDOWN case; valgrind, task verification.md",
+  "resolution": null,
+  "id": "FND-20261025093558-ece5-server-leak-check-003"
+}

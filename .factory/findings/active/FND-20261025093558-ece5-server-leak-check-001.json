@@ -1,0 +1,19 @@
+{
+  "title": "CCD_FPS property is never released by indigo_ccd_detach",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025093558-ece5-server-leak-check",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_ccd_attach() creates CCD_FPS_PROPERTY (indigo_libs/indigo_ccd_driver.c:242) but indigo_ccd_detach() never releases it; it is the only CCD base-class property without a release. Every CCD device of every driver loses 3656 bytes per attach/detach: at driver unload and on every unplug of a hot-plug camera. Valgrind: 5 blocks, 18280 bytes, one per simulator CCD device. Next: release CCD_FPS_PROPERTY in indigo_ccd_detach().",
+  "evidence": "indigo_libs/indigo_ccd_driver.c:242; valgrind via indigo_test/leak/run_server_leak_check.py, task verification.md",
+  "resolution": null,
+  "id": "FND-20261025093558-ece5-server-leak-check-001"
+}

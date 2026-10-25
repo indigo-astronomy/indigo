@@ -1,0 +1,19 @@
+{
+  "title": "Guider agent never releases AGENT_GUIDER_RESET_MKGP_PROPERTY",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025093558-ece5-server-leak-check",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "agent_device_attach() creates AGENT_GUIDER_RESET_MKGP_PROPERTY (indigo_drivers/agent_guider/indigo_agent_guider.c:2782) and agent_device_detach() releases its neighbour AGENT_GUIDER_RESET_PPEC_PROPERTY but not this one; 3656 bytes lost per agent attach/detach. Next: add the release.",
+  "evidence": "indigo_drivers/agent_guider/indigo_agent_guider.c:2782, release list near line 3287; valgrind, task verification.md",
+  "resolution": null,
+  "id": "FND-20261025093558-ece5-server-leak-check-002"
+}
