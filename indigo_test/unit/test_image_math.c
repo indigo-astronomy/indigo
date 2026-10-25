@@ -20,6 +20,7 @@
 
 #include "../test_runner.h"
 #include <math.h>
+#include <stdio.h>
 #include <string.h>
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_stretch.h>
@@ -136,13 +137,92 @@ static void donuts_rejects_unsupported_regions(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_delete_frame_digest(&digest));
 }
 
+typedef void (*debayer_8_fn)(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer);
+typedef void (*debayer_16_fn)(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer);
+
+static const struct {
+	const char *pattern;
+	debayer_8_fn debayer_8;
+	debayer_16_fn debayer_16;
+} debayer_patterns[] = {
+	{ "RGGB", indigo_debayer_8_rggb, indigo_debayer_16_rggb },
+	{ "GBRG", indigo_debayer_8_gbrg, indigo_debayer_16_gbrg },
+	{ "GRBG", indigo_debayer_8_grbg, indigo_debayer_16_grbg },
+	{ "BGGR", indigo_debayer_8_bggr, indigo_debayer_16_bggr }
+};
+
+static int bayer_channel(const char *pattern, int row, int column) {
+	char color = pattern[(row & 1) * 2 + (column & 1)];
+	return color == 'R' ? 0 : color == 'G' ? 1 : 2;
+}
+
+// Reference interpolation: every channel is the mean of the in-bounds pixels of that color in the 3x3 neighbourhood.
+static double bayer_reference(const double *raw, const char *pattern, int width, int height, int row, int column, int channel) {
+	if (bayer_channel(pattern, row, column) == channel) {
+		return raw[row * width + column];
+	}
+	double sum = 0;
+	int count = 0;
+	for (int r = row - 1; r <= row + 1; r++) {
+		for (int c = column - 1; c <= column + 1; c++) {
+			if (r < 0 || c < 0 || r >= height || c >= width || (r == row && c == column)) {
+				continue;
+			}
+			if (bayer_channel(pattern, r, c) == channel) {
+				sum += raw[r * width + c];
+				count++;
+			}
+		}
+	}
+	return count ? sum / count : -1;
+}
+
+static void debayer_uses_only_in_bounds_neighbours(void) {
+	const int sizes[][2] = { { 2, 2 }, { 4, 2 }, { 2, 4 }, { 4, 4 }, { 6, 4 }, { 5, 3 } };
+	for (unsigned p = 0; p < sizeof(debayer_patterns) / sizeof(debayer_patterns[0]); p++) {
+		for (unsigned s = 0; s < sizeof(sizes) / sizeof(sizes[0]); s++) {
+			const int width = sizes[s][0], height = sizes[s][1], size = width * height;
+			/* the frame is followed by sentinel pixels which an out of frame read would average in */
+			uint8_t input_8[6 * 4 + 16];
+			uint16_t input_16[6 * 4 + 16];
+			double reference_8[6 * 4], reference_16[6 * 4];
+			uint8_t output_8[6 * 4 * 3], output_16[6 * 4 * 3];
+			for (int i = 0; i < size + 16; i++) {
+				input_8[i] = i < size ? (uint8_t)(10 + 7 * i) : 255;
+				input_16[i] = i < size ? (uint16_t)(2560 + 1792 * i) : 65535;
+			}
+			for (int i = 0; i < size; i++) {
+				reference_8[i] = input_8[i];
+				reference_16[i] = input_16[i];
+			}
+			debayer_patterns[p].debayer_8(input_8, width, height, output_8);
+			debayer_patterns[p].debayer_16(input_16, width, height, output_16);
+			for (int row = 0; row < height; row++) {
+				for (int column = 0; column < width; column++) {
+					for (int channel = 0; channel < 3; channel++) {
+						int index = 3 * (row * width + column) + channel;
+						uint8_t expected_8 = (uint8_t)bayer_reference(reference_8, debayer_patterns[p].pattern, width, height, row, column, channel);
+						uint8_t expected_16 = (uint8_t)((uint16_t)bayer_reference(reference_16, debayer_patterns[p].pattern, width, height, row, column, channel) >> 8);
+						if (expected_8 != output_8[index] || expected_16 != output_16[index]) {
+							fprintf(stderr, "%s %dx%d pixel (%d, %d) channel %d: expected %d/%d, got %d/%d\n", debayer_patterns[p].pattern, width, height, column, row, channel, expected_8, expected_16, output_8[index], output_16[index]);
+						}
+						ASSERT_EQ_INT(expected_8, output_8[index]);
+						ASSERT_EQ_INT(expected_16, output_16[index]);
+					}
+				}
+			}
+		}
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "stretch_identity_and_limits", stretch_identity_and_limits },
 		{ "stretch_white_balance_ties_and_black", stretch_white_balance_ties_and_black },
 		{ "polar_alignment_symmetric_and_singular", polar_alignment_symmetric_and_singular },
 		{ "contrast_empty_mask_and_valid_samples", contrast_empty_mask_and_valid_samples },
-		{ "donuts_rejects_unsupported_regions", donuts_rejects_unsupported_regions }
+		{ "donuts_rejects_unsupported_regions", donuts_rejects_unsupported_regions },
+		{ "debayer_uses_only_in_bounds_neighbours", debayer_uses_only_in_bounds_neighbours }
 	};
 	return indigo_run_tests("Image math regressions", tests, sizeof(tests) / sizeof(*tests));
 }

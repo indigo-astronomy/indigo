@@ -21,6 +21,13 @@
 #include <string.h>
 #include <limits.h>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#if defined(__APPLE__)
+#include <malloc/malloc.h>
+#elif defined(__GLIBC__)
+#include <malloc.h>
+#endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_raw_utils.h>
@@ -274,6 +281,141 @@ static void selection_interior_star_preserves_measurements(void) {
 	ASSERT_NEAR(4.5, y, 1e-12);
 }
 
+#define STAR_FRAME_SIZE 256
+
+static void add_gaussian_star(uint16_t *data, int width, int height, double cx, double cy, double sigma, double amplitude) {
+	for (int j = 0; j < height; j++) {
+		for (int i = 0; i < width; i++) {
+			double dx = i - cx, dy = j - cy;
+			double value = data[j * width + i] + amplitude * exp(-(dx * dx + dy * dy) / (2 * sigma * sigma));
+			data[j * width + i] = value > 65535 ? 65535 : (uint16_t)value;
+		}
+	}
+}
+
+static uint16_t *make_star_frame(const double (*stars)[2], int count) {
+	uint16_t *data = malloc(STAR_FRAME_SIZE * STAR_FRAME_SIZE * sizeof(uint16_t));
+	if (data == NULL) {
+		abort();
+	}
+	for (int i = 0; i < STAR_FRAME_SIZE * STAR_FRAME_SIZE; i++) {
+		/* deterministic low-level background texture */
+		data[i] = (uint16_t)(1000 + ((i * 2654435761u) >> 28));
+	}
+	for (int i = 0; i < count; i++) {
+		add_gaussian_star(data, STAR_FRAME_SIZE, STAR_FRAME_SIZE, stars[i][0], stars[i][1], 2.0, 20000);
+	}
+	return data;
+}
+
+static bool star_listed(const indigo_star_detection *list, int count, double x, double y) {
+	for (int i = 0; i < count; i++) {
+		if (fabs(list[i].x - x) < 2 && fabs(list[i].y - y) < 2) {
+			return true;
+		}
+	}
+	return false;
+}
+
+static void star_exclusion_removes_only_the_rectangle(void) {
+	/* inside the rectangle, same x outside its y span, same y outside its x span, outside both */
+	const double stars[][2] = { { 128, 128 }, { 128, 50 }, { 50, 128 }, { 50, 50 } };
+	uint16_t *data = make_star_frame(stars, 4);
+	indigo_star_detection list[16] = { { 0 } };
+	int found = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_find_stars_precise_clipped(INDIGO_RAW_MONO16, data, 8, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 16, 0, 0, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 0, 0, 0, 0, list, &found));
+	ASSERT_EQ_INT(4, found);
+	found = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_find_stars_precise_clipped(INDIGO_RAW_MONO16, data, 8, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 16, 0, 0, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 108, 108, 40, 40, list, &found));
+	ASSERT_EQ_INT(3, found);
+	ASSERT_FALSE(star_listed(list, found, 128, 128));
+	ASSERT_TRUE(star_listed(list, found, 128, 50));
+	ASSERT_TRUE(star_listed(list, found, 50, 128));
+	ASSERT_TRUE(star_listed(list, found, 50, 50));
+	free(data);
+}
+
+static void psf_map_uses_only_measured_stars(void) {
+	/* a single star near the top-left corner, measured independently */
+	const double stars[][2] = { { 40, 40 } };
+	uint16_t *data = make_star_frame(stars, 1);
+	indigo_star_detection list[4] = { { 0 } };
+	int found = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_find_stars_precise(INDIGO_RAW_MONO16, data, 8, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 4, list, &found));
+	ASSERT_EQ_INT(1, found);
+	double star_hfd = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_selection_psf(INDIGO_RAW_MONO16, data, list[0].x, list[0].y, 8, STAR_FRAME_SIZE, STAR_FRAME_SIZE, NULL, &star_hfd, NULL));
+	ASSERT_TRUE(star_hfd > 0);
+	/* stars_max = 1 fills the list exactly, larger capacities leave unused entries behind it */
+	const int capacities[] = { 1, 2, 10 };
+	for (unsigned c = 0; c < sizeof(capacities) / sizeof(capacities[0]); c++) {
+		unsigned char map[64 * 64 * 3];
+		double psf_min = -1, psf_max = -1, corners[9] = { 0 };
+		ASSERT_EQ_INT(INDIGO_OK, indigo_make_psf_map(INDIGO_RAW_MONO16, data, 8, STAR_FRAME_SIZE, STAR_FRAME_SIZE, capacities[c], INDIGO_RAW_RGB24, hfd, 64, 64, map, &psf_min, &psf_max, corners));
+		ASSERT_NEAR(star_hfd, psf_min, 1e-9);
+		ASSERT_NEAR(star_hfd, psf_max, 1e-9);
+	}
+	free(data);
+}
+
+static void psf_map_without_stars_is_empty(void) {
+	uint16_t *data = make_star_frame(NULL, 0);
+	unsigned char map[64 * 64 * 4];
+	double psf_min = -1, psf_max = -1, corners[9] = { -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+	ASSERT_EQ_INT(INDIGO_OK, indigo_make_psf_map(INDIGO_RAW_MONO16, data, 8, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 10, INDIGO_RAW_RGBA32, fwhm, 64, 64, map, &psf_min, &psf_max, corners));
+	ASSERT_NEAR(0, psf_min, 0);
+	ASSERT_NEAR(0, psf_max, 0);
+	for (int i = 0; i < 9; i++) {
+		ASSERT_NEAR(0, corners[i], 0);
+	}
+	free(data);
+}
+
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define RAW_TEST_ADDRESS_SANITIZER 1
+#endif
+#endif
+#if defined(__SANITIZE_ADDRESS__)
+#define RAW_TEST_ADDRESS_SANITIZER 1
+#endif
+
+/* the sanitizer allocator quarantines freed blocks, so heap accounting is meaningful only without it */
+static size_t heap_in_use(void) {
+#if defined(RAW_TEST_ADDRESS_SANITIZER)
+	return 0;
+#elif defined(__APPLE__)
+	malloc_statistics_t stats;
+	malloc_zone_statistics(NULL, &stats);
+	return stats.size_in_use;
+#elif defined(__GLIBC__) && (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 33))
+	return mallinfo2().uordblks;
+#else
+	return 0;
+#endif
+}
+
+static void bahtinov_error_releases_binarized_frame(void) {
+	/* a frame without spikes is rejected after binarization, the common failure path */
+	const double stars[][2] = { { 128, 128 } };
+	uint16_t *data = make_star_frame(stars, 1);
+	double rho1, theta1, rho2, theta2, rho3, theta3;
+	ASSERT_NEAR(-1, indigo_bahtinov_error(INDIGO_RAW_MONO16, data, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 1.0, &rho1, &theta1, &rho2, &theta2, &rho3, &theta3), 0);
+	size_t before = heap_in_use();
+	const int repeats = 16;
+	for (int i = 0; i < repeats; i++) {
+		ASSERT_NEAR(-1, indigo_bahtinov_error(INDIGO_RAW_MONO16, data, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 1.0, &rho1, &theta1, &rho2, &theta2, &rho3, &theta3), 0);
+	}
+	size_t after = heap_in_use();
+	if (before == 0 && after == 0) {
+		printf("SKIP heap accounting is not available on this platform\n");
+	} else {
+		/* each leaked binarized frame would add width * height bytes */
+		ASSERT_TRUE(after < before + (size_t)STAR_FRAME_SIZE * STAR_FRAME_SIZE * repeats / 2);
+	}
+	free(data);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "raw_validation_accepts_complete_formats_and_metadata", raw_validation_accepts_complete_formats_and_metadata },
@@ -293,7 +435,11 @@ int main(void) {
 		{ "color_raw_is_not_treated_as_bayered", color_raw_is_not_treated_as_bayered },
 		{ "bayer_channel_equalization_balances_simple_mono8_frame", bayer_channel_equalization_balances_simple_mono8_frame },
 		{ "saturation_mask_marks_saturated_feature", saturation_mask_marks_saturated_feature },
-		{ "contrast_for_constant_frame_is_zero_and_not_saturated", contrast_for_constant_frame_is_zero_and_not_saturated }
+		{ "contrast_for_constant_frame_is_zero_and_not_saturated", contrast_for_constant_frame_is_zero_and_not_saturated },
+		{ "star_exclusion_removes_only_the_rectangle", star_exclusion_removes_only_the_rectangle },
+		{ "psf_map_uses_only_measured_stars", psf_map_uses_only_measured_stars },
+		{ "psf_map_without_stars_is_empty", psf_map_without_stars_is_empty },
+		{ "bahtinov_error_releases_binarized_frame", bahtinov_error_releases_binarized_frame }
 	};
 	return indigo_run_tests("raw image unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));
 }

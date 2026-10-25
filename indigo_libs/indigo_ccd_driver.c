@@ -2276,7 +2276,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 			}
 		} else if (handle != NULL) {
-			if (!indigo_uni_write(handle, blob_value, blob_size)) {
+			if (indigo_uni_write(handle, blob_value, blob_size) != (long)blob_size) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}
@@ -2396,7 +2396,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_uni_handle *handle = indigo_uni_create_file(file_name, -INDIGO_LOG_TRACE);
 						if (handle != NULL) {
-							if (!indigo_uni_write(handle, (char*)image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
+							if (indigo_uni_write(handle, (char*)image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header)) != (long)(image_size + sizeof(indigo_raw_header))) {
 								CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 								message = strerror(errno);
 							}
@@ -2519,7 +2519,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 				}
 			}
 		} else if (handle != NULL) {
-			if (!indigo_uni_write(handle, data, data_size)) {
+			if (indigo_uni_write(handle, data, data_size) != (long)data_size) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}

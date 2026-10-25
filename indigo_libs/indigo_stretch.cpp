@@ -59,10 +59,10 @@ template <typename T> static inline void debayer(T *raw, int index, int row, int
 			} else if (column == width - 1) {
 				if (row == 0) {
 					green = (raw[index - 1] + raw[index + width]) / 2.0;
-					blue = (raw[index + width - 1] + raw[index + width + 1]) / 2.0;
+					blue = raw[index + width - 1];
 				} else if (row == height - 1) {
 					green = (raw[index - 1] + raw[index - width]) / 2.0;
-					blue = (raw[index - width - 1] + raw[index - width + 1]) / 2.0;
+					blue = raw[index - width - 1];
 				} else {
 					green = (raw[index - 1] + raw[index + width] + raw[index - width]) / 3.0;
 					blue = (raw[index - width - 1] + raw[index + width - 1]) / 2.0;
@@ -123,7 +123,7 @@ template <typename T> static inline void debayer(T *raw, int index, int row, int
 					red = raw[index - width + 1];
 					green = (raw[index + 1] + raw[index - width]) / 2.0;
 				} else {
-					red = raw[index - width + 1];
+					red = (raw[index - width + 1] + raw[index + width + 1]) / 2.0;
 					green = (raw[index + 1] + raw[index + width] + raw[index - width]) / 3.0;
 				}
 			} else if (column == width - 1) {

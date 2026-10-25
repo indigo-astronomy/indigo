@@ -57,7 +57,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_primalucelib \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image \
-	$(UNIT_BUILD)/test_raw_to_fits
+	$(UNIT_BUILD)/test_raw_to_fits \
+	$(UNIT_BUILD)/test_recording_io
 ifeq ($(OS_DETECTED),Darwin)
 UNIT_TESTS += $(UNIT_BUILD)/test_usbserial_enumeration_macos $(UNIT_BUILD)/test_service_discovery
 endif
@@ -428,6 +429,9 @@ $(UNIT_BUILD)/test_raw_to_fits: unit/test_raw_to_fits.c test_runner.h | $(UNIT_B
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_recording_io: unit/test_recording_io.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 # Instrument the production RAW helpers as a separate object, before the static library.

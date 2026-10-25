@@ -5959,6 +5959,7 @@
 		A3C51E7F0B2D49E6812F4D10 /* test_indigo_js_formatting.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "test_indigo_js_formatting.js"; sourceTree = "<group>"; };
 		AA962949773AAF60E258ECBB /* test_network_url.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_network_url.c"; sourceTree = "<group>"; };
 		C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_raw_to_fits.c"; sourceTree = "<group>"; };
+		FBBB92755A5466F3D70A6EB0 /* test_recording_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_recording_io.c"; sourceTree = "<group>"; };
 		F6E14E01192CC6BDFBEE1051 /* test_findings_project.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "test_findings_project.py"; sourceTree = "<group>"; };
 		20502CEAA434A0CAEC595E82 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "REFACTOR.md"; sourceTree = "<group>"; };
 		D164AC4C2D21AED85E0B0EC1 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Makefile.inc"; sourceTree = "<group>"; };
@@ -14412,6 +14413,7 @@
 				C0DE20261022000000000006 /* test_primalucelib.c */,
 				C0DE20261001A10000000023 /* test_system_alpaca_json.c */,
 				C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */,
+				FBBB92755A5466F3D70A6EB0 /* test_recording_io.c */,
 				AA962949773AAF60E258ECBB /* test_network_url.c */,
 			);
 			path = unit;

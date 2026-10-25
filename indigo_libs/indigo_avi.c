@@ -49,37 +49,41 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_avi.h>
 
+static bool write_exact(indigo_uni_handle *handle, const char *buffer, long length) {
+	return indigo_uni_write(handle, buffer, length) == length;
+}
+
 static bool write_int(indigo_uni_handle *handle, uint32_t n) {
 	unsigned char buffer[4];
 	buffer[0] = n;
 	buffer[1] = n >> 8;
 	buffer[2] = n >> 16;
 	buffer[3] = n >> 24;
-	return indigo_uni_write(handle, (const char *)buffer, 4);
+	return write_exact(handle, (const char *)buffer, 4);
 }
 
 static bool write_short(indigo_uni_handle *handle, uint16_t n) {
 	unsigned char buffer[2];
 	buffer[0] = (uint8_t)n;
 	buffer[1] = (uint8_t)(n >> 8);
-	return indigo_uni_write(handle, (const char *)buffer, 2);
+	return write_exact(handle, (const char *)buffer, 2);
 }
 
 static bool write_chars(indigo_uni_handle *handle, const char *s) {
 	int count = (int)strlen(s);
-	return indigo_uni_write(handle, s, count);
+	return write_exact(handle, s, count);
 }
 
 static bool write_chars_bin(indigo_uni_handle *handle, const char *s, int count) {
-	return indigo_uni_write(handle, s, count);
+	return write_exact(handle, s, count);
 }
 
 static bool tell(indigo_uni_handle *handle, long *offset) {
-	return (*offset = indigo_uni_seek(handle, 0, SEEK_CUR)) != -1;
+	return (*offset = indigo_uni_seek(handle, 0, SEEK_CUR)) >= 0;
 }
 
 static bool seek(indigo_uni_handle *handle, long offset) {
-	return indigo_uni_seek(handle, offset, SEEK_SET);
+	return indigo_uni_seek(handle, offset, SEEK_SET) >= 0;
 }
 
 static bool write_avi_header(indigo_uni_handle *handle, struct gwavi_header_t *avi_header) {
@@ -319,23 +323,29 @@ bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len) {
 	if (!gwavi || !buffer || len < 256) {
 		return false;
 	}
-	gwavi->offset_count++;
-	gwavi->stream_header.data_length++;
 	maxi_pad = len % 4;
 	if (maxi_pad > 0) {
 		maxi_pad = 4 - maxi_pad;
 	}
-	if (gwavi->offset_count >= gwavi->offsets_len) {
+	if (gwavi->offsets_ptr >= gwavi->offsets_len) {
+		unsigned int *offsets = (unsigned int *)realloc(gwavi->offsets, (size_t)(gwavi->offsets_len + 1024) * sizeof(unsigned int));
+		if (offsets == NULL) {
+			INDIGO_ERROR(indigo_error("gwavi_add_frame: could not allocate memory for gwavi offsets table"));
+			return false;
+		}
+		gwavi->offsets = offsets;
 		gwavi->offsets_len += 1024;
-		gwavi->offsets = (unsigned int *)realloc(gwavi->offsets, (size_t)gwavi->offsets_len * sizeof(unsigned int));
 	}
-	gwavi->offsets[gwavi->offsets_ptr++] = (unsigned int)(len + maxi_pad);
-	if (!write_chars_bin(gwavi->handle, "00dc", 4) || !write_int(gwavi->handle, (unsigned int)(len + maxi_pad)) || !indigo_uni_write(gwavi->handle, (const char *)buffer, (long)len))
+	if (!write_chars_bin(gwavi->handle, "00dc", 4) || !write_int(gwavi->handle, (unsigned int)(len + maxi_pad)) || !write_exact(gwavi->handle, (const char *)buffer, (long)len))
 		return false;
 	for (t = 0; t < maxi_pad; t++) {
-		if (!indigo_uni_write(gwavi->handle, &zero, 1))
+		if (!write_exact(gwavi->handle, &zero, 1))
 			return false;
 	}
+	/* count the frame only after its chunk is completely written */
+	gwavi->offsets[gwavi->offsets_ptr++] = (unsigned int)(len + maxi_pad);
+	gwavi->offset_count++;
+	gwavi->stream_header.data_length++;
 	return true;
 }
 
