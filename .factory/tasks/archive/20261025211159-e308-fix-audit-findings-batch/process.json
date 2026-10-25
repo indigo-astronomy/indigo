@@ -148,7 +148,9 @@
   "risk_reviews": {
     "input-validation": "security.md",
     "hardware-io": "security.md",
-    "network": "security.md"
+    "network": "security.md",
+    "data-model": "security.md",
+    "process-policy": "security.md"
   },
   "reviews": [],
   "reviewed_content": {

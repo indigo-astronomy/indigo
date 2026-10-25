@@ -17,6 +17,7 @@ Device replies (serial/USB) entering drivers, image files read by the file camer
 | Data, secrets, cryptography, and logs | No | No secrets or logging of sensitive data added |
 | Filesystem and outbound network access | Yes | Incomplete local image saves are removed and ALERTed (bc8d-004); HTTP gzip partial stream no longer served (60d4-009) |
 | Dependencies and configuration | No | Only existing zlib is linked additionally into unit tests |
+| Data model and process policy | Yes | MIGRATION_STATUS.md: only the hardware-free test count column of changed drivers was raised by the number of added cases; the Comment column is untouched. indigo_test/AGENTS.md: one line documenting the new `test-indigo-js-formatting` target; no rule or permission changed |
 | Abuse and failure behavior | Yes | Bounded deadlines for endless device replies (bc8d-024, 3bd2-018, bc8d-025, bc8d-017/018); legacy printf over-read (bc8d-016); HID close of an aliased descriptor (bc8d-003) |
 
 ## Automated checks
