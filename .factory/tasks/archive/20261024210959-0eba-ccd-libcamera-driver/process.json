@@ -101,12 +101,12 @@
     "TEST_SUMMARY.md": [
       "100644",
       "blob",
-      "583db11f384837bffd0348e6a72319abc724e639"
+      "86aaf052d9fda386543c6ad50800f1dec5cb0539"
     ],
     "indigo.xcodeproj/project.pbxproj": [
       "100755",
       "blob",
-      "f049c11a157dbd4dda786885798f060871aaa75b"
+      "5d4b4ef36479aa9b243c6ecbb627c95e25aabb49"
     ],
     "indigo_docs/DRIVER_GENERATOR_MIGRATION.md": [
       "100644",
@@ -116,7 +116,7 @@
     "indigo_docs/PROPERTIES.md": [
       "100644",
       "blob",
-      "2735b0e7238d732fe12a25976f7438233509265c"
+      "e7badb328c696b643686575f5476d1d82c72716a"
     ],
     "indigo_linux_drivers/ccd_libcamera/Makefile.inc": [
       "100644",
