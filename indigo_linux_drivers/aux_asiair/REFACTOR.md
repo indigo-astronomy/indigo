@@ -253,13 +253,36 @@ hardware-free suite only; no hardware run.
 cd indigo_test && INDIGO_TEST_CASE_FILTER="write failure is reported" ./build/integration/test_aux_asiair_sysfs
 ```
 
+## Export ownership and pulse end failure (3.0.0.8, 2026-10-25)
+
+Findings FND-000014 to FND-000018 and FND-20261023065605-60d4-repository-audit-011, task
+`20261025074335-0b62-fix-rpio-gpio-findings`. The changes are in the shared sysfs layer and in
+`relay_pulse_finalizer()`; aux_rpio `REFACTOR.md` (3.0.0.12) has the full analysis, including D16
+(RP1 inputs), which does not affect this driver because it has no inputs.
+
+- **Environment:** Raspberry Pi 5 Model B Rev 1.0 (Debian 12, kernel `6.12.87+rpt-rpi-2712`,
+  RP1 header controller at base 571) and Raspberry Pi 3 Model B Plus Rev 1.3 (kernel
+  `6.18.50+rpt-rpi-v8`, header controller at base 512), aarch64, nothing connected to either
+  40-pin header (the Raspberry Pi 3B+ carries only an OV5647 camera on CSI).
+- **FND-000016:** only pins and PWM channels the session exported itself are unexported on
+  rollback and disconnect. **Regression tests:** `pre-exported pins stay exported` (pin 13 and PWM
+  channel 0) and `failed connect keeps pre-exported pins`.
+- **FND-20261023065605-60d4-repository-audit-011:** a failed pulse-end write keeps the port ON and
+  publishes `AUX_GPIO_OUTLETS` ALERT. **Regression test:** `failed pulse end is reported` (Output #3).
+- **FND-000014:** **Regression test:** `zero PWM period is reported`. FND-000015, 017 and 018 need
+  no change, see the aux_rpio record.
+- **Verification:** `python3 tools/run_driver_test.py aux_asiair` and `--hw --type ...` on each Pi:
+  fake 24/24 and hardware 3/3 on both. Regeneration reproduces the checked-in output.
+
 ## Final test summary
 
-- Simulated tests: 20 executed, 20 passed (Linux x64, 3.0.0.7). Earlier: 18 executed, 18 passed
+- Simulated tests: 24 executed, 24 passed on the Raspberry Pi 5 and again on the Raspberry Pi 3B+
+  (3.0.0.8). Earlier: 20 executed, 20 passed (Linux x64, 3.0.0.7) and 18 executed, 18 passed
   (Linux x64, 3.0.0.6) and 16 executed, 16 passed on
   the Raspberry Pi 5. The pre-migration baseline against the unmodified driver was 15 executed,
   8 passed.
-- Hardware tests: 3 executed, 3 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected
+- Hardware tests: 3 executed, 3 passed on the Raspberry Pi 5 and 3 executed, 3 passed on the
+  Raspberry Pi 3B+ (3.0.0.8). Earlier: 3 executed, 3 passed, on a Raspberry Pi 5 Model B Rev 1.0 with nothing connected
   to the 40-pin header, and repeated twice with identical results. All four ports physically
   switch, measured through `pinctrl` rather than through the driver's own interface. Before the
   D15 fix the same test measured two of four. No ASIAIR was available, so the ASIAIR power
