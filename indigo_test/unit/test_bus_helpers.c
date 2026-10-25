@@ -300,8 +300,45 @@ static void refusal_of_a_busy_property_is_only_a_message(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+// indigo_query_slave_devices() stored a slave before it checked the capacity, so it wrote one entry past max
+static void slave_query_stores_at_most_max_devices(void) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	static indigo_device master = INDIGO_DEVICE_INITIALIZER("Slave query master", NULL, NULL, NULL, NULL, NULL);
+	static indigo_device slave_devices[3] = {
+		INDIGO_DEVICE_INITIALIZER("Slave query slave 1", NULL, NULL, NULL, NULL, NULL),
+		INDIGO_DEVICE_INITIALIZER("Slave query slave 2", NULL, NULL, NULL, NULL, NULL),
+		INDIGO_DEVICE_INITIALIZER("Slave query slave 3", NULL, NULL, NULL, NULL, NULL)
+	};
+	master.master_device = &master;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(&master));
+	for (int i = 0; i < 3; i++) {
+		slave_devices[i].master_device = &master;
+		ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(slave_devices + i));
+	}
+	indigo_device *sentinel = (indigo_device *)&sentinel;
+	indigo_device *slaves[5] = { sentinel, sentinel, sentinel, sentinel, sentinel };
+	int none = indigo_query_slave_devices(&master, slaves, 0);
+	bool none_untouched = slaves[0] == sentinel;
+	int two = indigo_query_slave_devices(&master, slaves, 2);
+	bool two_bounded = slaves[0] != sentinel && slaves[1] != sentinel && slaves[2] == sentinel;
+	int all = indigo_query_slave_devices(&master, slaves, 5);
+	bool all_bounded = slaves[2] != sentinel && slaves[3] == sentinel;
+	for (int i = 0; i < 3; i++) {
+		indigo_detach_device(slave_devices + i);
+	}
+	indigo_detach_device(&master);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	ASSERT_EQ_INT(0, none);
+	ASSERT_TRUE(none_untouched);
+	ASSERT_EQ_INT(2, two);
+	ASSERT_TRUE(two_bounded);
+	ASSERT_EQ_INT(3, all);
+	ASSERT_TRUE(all_bounded);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "slave_query_stores_at_most_max_devices", slave_query_stores_at_most_max_devices },
 		{ "numeric_zero_exponents_and_format_status", numeric_zero_exponents_and_format_status },
 		{ "refusal_of_an_idle_property_publishes_alert", refusal_of_an_idle_property_publishes_alert },
 		{ "refusal_of_a_busy_property_is_only_a_message", refusal_of_a_busy_property_is_only_a_message },
