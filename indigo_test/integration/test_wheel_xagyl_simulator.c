@@ -225,6 +225,54 @@ cleanup:
 }
 
 // Opening a port that answers nothing must roll the connection back rather than report success.
+// FilterSlots is a decimal count; a count the 16 allocated slot items cannot hold must refuse
+// the connection before any slot property is published.
+static void assert_reported_slots_are_refused(const char *reported_slots) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--reported-slots", reported_slots, NULL };
+	SERIAL_CHECK_TRUE(start_xagyl(&simulator, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&xagyl_wheel));
+	online = true;
+	SERIAL_CHECK_TRUE(!connect_serial_device(&xagyl_wheel, simulator.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(!has_defined_property(WHEEL_SLOT_NAME_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(WHEEL_SLOT_OFFSET_PROPERTY_NAME));
+cleanup:
+	if (online) {
+		if (context.connected) {
+			disconnect_serial_device(&xagyl_wheel);
+		}
+		tear_down_serial_driver(&xagyl_wheel);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void malformed_filter_count_is_refused(void) {
+	assert_reported_slots_are_refused("0");
+	assert_reported_slots_are_refused("17");
+	assert_reported_slots_are_refused("100");
+	assert_reported_slots_are_refused("-3");
+}
+
+static void largest_allocated_filter_count_is_accepted(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--reported-slots", "16", NULL };
+	SERIAL_CHECK_TRUE(start_xagyl(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&xagyl_wheel, simulator.port));
+	online = true;
+	indigo_property *names = find_cached_property(WHEEL_SLOT_NAME_PROPERTY_NAME);
+	indigo_property *offsets = find_cached_property(WHEEL_SLOT_OFFSET_PROPERTY_NAME);
+	indigo_property *slot = find_cached_property(WHEEL_SLOT_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(names != NULL && names->count == 16);
+	SERIAL_CHECK_TRUE(offsets != NULL && offsets->count == 16);
+	SERIAL_CHECK_TRUE(slot != NULL && fabs(slot->items[0].number.max - 16) < .001);
+cleanup:
+	if (online) { stop_serial_driver(&xagyl_wheel); }
+	stop_external_serial_simulator(&simulator);
+}
+
 static void silent_port_is_refused(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_xagyl(&simulator, NULL));
@@ -245,7 +293,9 @@ int main(void) {
 		{ "reselecting_the_current_slot_completes", reselecting_the_current_slot_completes },
 		{ "reconnect_rebuilds_the_slot_table", reconnect_rebuilds_the_slot_table },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
-		{ "silent_port_is_refused", silent_port_is_refused }
+		{ "silent_port_is_refused", silent_port_is_refused },
+		{ "malformed_filter_count_is_refused", malformed_filter_count_is_refused },
+		{ "largest_allocated_filter_count_is_accepted", largest_allocated_filter_count_is_accepted }
 	};
 	return indigo_run_tests("Xagyl wheel serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

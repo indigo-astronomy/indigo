@@ -159,6 +159,80 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// The cover is polled by a finalizer, so the device queue serves other requests while it moves.
+static void light_is_served_while_the_cover_moves(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--cover-time", "8000", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_FLIPFLAT_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&flipflat, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(switch_on(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_COVER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	unsigned int revision = property_revision(AUX_LIGHT_SWITCH_PROPERTY_NAME);
+	double start = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(switch_on(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	double elapsed = indigo_monotonic_time() - start;
+	printf("Light served %.2f s into the cover motion\n", elapsed);
+	SERIAL_CHECK_TRUE(elapsed < 3);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(AUX_COVER_PROPERTY_NAME)->state);
+	for (int i = 0; i < 150 && find_cached_property(AUX_COVER_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, find_cached_property(AUX_COVER_PROPERTY_NAME)->state);
+	assert_switch_item_value(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME, true);
+cleanup:
+	if (online) { stop_serial_driver(&flipflat); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A disconnect requested while the cover moves is served at once, and the next session starts idle.
+static void disconnect_while_the_cover_moves_is_prompt(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--cover-time", "20000", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_FLIPFLAT_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&flipflat, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(switch_on(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_COVER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	double start = indigo_monotonic_time();
+	disconnect_serial_device(&flipflat);
+	double elapsed = indigo_monotonic_time() - start;
+	printf("Disconnected %.2f s into the cover motion\n", elapsed);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(elapsed < 3);
+	SERIAL_CHECK_TRUE(connect_serial_device(&flipflat, simulator.port));
+	SERIAL_CHECK_TRUE(find_cached_property(AUX_COVER_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+cleanup:
+	if (online) { stop_serial_driver(&flipflat); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A cover that never reports its end position ends ALERT at the 30 s deadline.
+static void a_stuck_cover_times_out(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--cover-time", "60000", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_FLIPFLAT_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&flipflat, simulator.port));
+	online = true;
+	double start = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(switch_on(AUX_COVER_PROPERTY_NAME, AUX_COVER_OPEN_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_COVER_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	for (int i = 0; i < 400 && find_cached_property(AUX_COVER_PROPERTY_NAME)->state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	double elapsed = indigo_monotonic_time() - start;
+	printf("Cover gave up after %.2f s\n", elapsed);
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(AUX_COVER_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(elapsed > 29 && elapsed < 34);
+cleanup:
+	if (online) { stop_serial_driver(&flipflat); }
+	stop_external_serial_simulator(&simulator);
+}
+
 // An unrecognised id falls through to the permissive default: everything published, model Unknown.
 static void unknown_model_exposes_every_control(void) {
 	external_serial_simulator simulator = { 0 };
@@ -317,6 +391,9 @@ int main(void) {
 		{ "unknown_model_exposes_every_control", unknown_model_exposes_every_control },
 		{ "flat_man_xl_and_l_are_recognised", flat_man_xl_and_l_are_recognised },
 		{ "cover_opens_and_closes", cover_opens_and_closes },
+		{ "light_is_served_while_the_cover_moves", light_is_served_while_the_cover_moves },
+		{ "disconnect_while_the_cover_moves_is_prompt", disconnect_while_the_cover_moves_is_prompt },
+		{ "a_stuck_cover_times_out", a_stuck_cover_times_out },
 		{ "light_switches_on_and_off", light_switches_on_and_off },
 		{ "intensity_round_trips_through_the_device_scale", intensity_round_trips_through_the_device_scale },
 		{ "connect_reads_back_the_device_state", connect_reads_back_the_device_state },
