@@ -16,6 +16,7 @@ sysfs GPIO/PWM files of the local machine, shared with other programs on the sam
 | Data, secrets, cryptography, and logs | No | New log lines carry pin/channel numbers only. |
 | Filesystem and outbound network access | Yes | Fewer unexports than before (only session-owned); the hardware test writes only `/sys/class/gpio/export` and `unexport` for GPIO 16. No network. |
 | Dependencies and configuration | No | None. |
+| Data model (MIGRATION_STATUS.md) | Yes | Only the Automated Tests counts of aux_rpio (28 / 5) and aux_asiair (24 / 3) changed, matching the suites; Comment column preserved. |
 | Abuse and failure behavior | Yes | A failed pulse end now reports ALERT with the output ON instead of a false OFF, which is the safer state for relays. |
 
 ## Automated checks

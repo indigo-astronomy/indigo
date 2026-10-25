@@ -1,5 +1,7 @@
 # Verification
 
+Verdict: pass
+
 Tested candidate: `task/20261025074335-0b62-fix-rpio-gpio-findings` at master `64380bf9e` plus the uncommitted diff, the same tree on both Pis (`git diff` of the Raspberry Pi 3B+ checkout is byte-identical to the development tree after the records were copied back). Mode: non-interactive hardware run (owner request: fix the RPi findings, verify aux_rpio on both Pis).
 
 ## Hosts
