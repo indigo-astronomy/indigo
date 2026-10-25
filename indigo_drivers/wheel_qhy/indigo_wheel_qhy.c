@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_wheel_qhy"
 #define DRIVER_LABEL         "QHY CFW Filter Wheel"
 #define WHEEL_DEVICE_NAME    "CFW Filter Wheel"
@@ -145,7 +145,15 @@ static void wheel_connection_handler(indigo_device *device) {
 				}
 				if (result) {
 					if (qhy_command(device, "MXP", reply, 1, 1)) {
-						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = isdigit(reply[0]) ? reply[0] - '0' : reply[0] - 'A' + 10;
+						int count = isdigit(reply[0]) ? reply[0] - '0' : reply[0] - 'A' + 10;
+						// The slot properties cannot hold more items than they were allocated with.
+						if (count < 1 || count > WHEEL_SLOT_NAME_PROPERTY->allocated_count || count > WHEEL_SLOT_OFFSET_PROPERTY->allocated_count) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid filter count %d", count);
+							indigo_send_message(device, ALERT_PROPERTY, "The wheel reports an invalid filter count");
+							connection_result = false;
+						} else {
+							WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = count;
+						}
 					}
 					// A wheel that cannot say where it is gets every slot request sent.
 					PRIVATE_DATA->current_slot = 0;
@@ -176,6 +184,9 @@ static void wheel_connection_handler(indigo_device *device) {
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
+			if (!connection_result) {
+				qhy_close(device);
+			}
 			//- wheel.on_connect
 		}
 		if (connection_result) {
