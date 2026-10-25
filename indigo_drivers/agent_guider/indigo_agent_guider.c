@@ -25,7 +25,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x03000035
+#define DRIVER_VERSION 0x03000036
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -3285,6 +3285,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DITHER_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_RESET_PPEC_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_RESET_MKGP_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_LOG_PROPERTY);
 	indigo_release_property(AGENT_PROCESS_FEATURES_PROPERTY);
 	for (int i = 0; i <= INDIGO_MAX_MULTISTAR_COUNT; i++) {

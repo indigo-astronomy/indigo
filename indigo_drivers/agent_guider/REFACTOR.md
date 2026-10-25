@@ -75,3 +75,10 @@ Status: hardware-free validation complete. Production defects `DRV-124` through 
   - `calibration step ignored pulses`: a mount ignoring pulses under 150 ms is measured with 0.2 s, given 0.0625 s and fails in the Dec leg.
 - The web UI's calibration step presets replace 0.01, below the former minimum, with 0 and name it auto in the tooltip.
 - Version `0x03000032` to `0x03000033` for the first version, and to `0x03000034` for the checked step. On macOS arm64: `test_agent_guider` 95/95 and `test_agent_scripting_sequencer` 26/26 passed. `test_agent_imager_guider_mount` passed 10/10 in two runs. In an earlier run three dithering cases failed while the server was being used interactively; rerun alone, `dither cadence skip and after last frame`, `imager abort while dithering` and `guider abort while dithering releases imager` passed. Guiding starts after 57.0 s with the changed agent and 55.9 s with the committed one, of the 180 s the cases allow.
+
+## Released reset property (3.0.0.54, 2026-10-25, task {ID})
+
+`AGENT_GUIDER_RESET_MKGP_PROPERTY`, created at attach, was not released at detach (3656 bytes per attach/detach;
+FND-20261025093558-ece5-server-leak-check-002, found by `make -C indigo_test test-server-leaks`). It is released with
+its neighbour `AGENT_GUIDER_RESET_PPEC_PROPERTY`. Recorded run: `2026-10-25 17:30 3.0.0.54 linux x64 simulator 95/95
+OK`; the leak check reports no definite loss.

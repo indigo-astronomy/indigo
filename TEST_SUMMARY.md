@@ -28,8 +28,8 @@
 |  | 2026-10-01 15:27 | 2.0.0.27 | mac arm64 | simulator | 68 / 68 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
 |  | 2026-09-27 19:42 | 3.0.0.28 | mac arm64 | simulator | 56 / 56 | ✅ OK |
-| agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
-|  | 2026-09-28 11:09 | 3.0.0.50 | mac arm64 | simulator | 90 / 90 | ✅ OK |
+| agent_guider | 2026-09-28 11:09 | 3.0.0.50 | mac arm64 | simulator | 90 / 90 | ✅ OK |
+|  | 2026-10-25 17:30 | 3.0.0.54 | linux x64 | simulator | 95 / 95 | ✅ OK |
 | agent_imager | 2026-09-24 12:56 | 3.0.0.61 | linux x64 | simulator | 53 / 53 | ✅ OK |
 |  | 2026-10-24 20:43 | 3.0.0.66 | mac arm64 | simulator | 63 / 63 | ✅ OK |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
