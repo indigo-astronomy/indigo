@@ -25,7 +25,7 @@ driver giotto {
 	label = "PrimaluceLab GIOTTO Flat Panel";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
-	version = 5;
+	version = 6;
 	serial {
 		pattern {
 			// The panel uses the Silicon Labs CP2102N bridge with its default VID/PID and product string, as the
@@ -74,6 +74,50 @@ driver giotto {
 				indigo_set_switch(property, item, true);
 			}
 			property->state = INDIGO_ALERT_STATE;
+		}
+
+		// Shows where the device can be reached over WiFi (see primalucelib_wifi_status); publishes only a change.
+		static void publish_wifi_status(indigo_device *device, primalucelib_wifi_status *status, bool update) {
+			char port[16] = "";
+			if (*status->ip_address) {
+				snprintf(port, sizeof(port), "%d", PRIMALUCE_HTTP_DEFAULT_PORT);
+			}
+			if (!update || strcmp(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address) || strcmp(X_WIFI_STATUS_PORT_ITEM->text.value, port) || strcmp(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection)) {
+				INDIGO_COPY_VALUE(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address);
+				INDIGO_COPY_VALUE(X_WIFI_STATUS_PORT_ITEM->text.value, port);
+				INDIGO_COPY_VALUE(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection);
+				X_WIFI_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				if (update) {
+					indigo_update_property(device, X_WIFI_STATUS_PROPERTY, NULL);
+				}
+			}
+		}
+
+		// Shows the credentials the controller stored, which may differ from the requested ones: the firmware keeps the
+		// access point SSID in access point mode, and a refused request changes nothing.
+		static void show_stored_credentials(indigo_device *device, indigo_property *property, const char *reason) {
+			primalucelib_wifi_status wifi_status;
+			char requested[INDIGO_VALUE_SIZE];
+			bool access_point = property == X_WIFI_AP_PROPERTY;
+			INDIGO_COPY_VALUE(requested, property->items[0].text.value);
+			if (primalucelib_get_wifi_status(LINK, &wifi_status)) {
+				INDIGO_COPY_VALUE(property->items[0].text.value, access_point ? wifi_status.access_point_ssid : wifi_status.station_ssid);
+				INDIGO_COPY_VALUE(property->items[1].text.value, access_point ? wifi_status.access_point_password : wifi_status.station_password);
+			}
+			if (reason != NULL) {
+				property->state = INDIGO_ALERT_STATE;
+				if (*reason) {
+					indigo_update_property(device, property, "%s", reason);
+				} else {
+					indigo_update_property(device, property, NULL);
+				}
+			} else if (strcmp(requested, property->items[0].text.value)) {
+				property->state = INDIGO_OK_STATE;
+				indigo_update_property(device, property, "The controller kept the SSID %s", property->items[0].text.value);
+			} else {
+				property->state = INDIGO_OK_STATE;
+				indigo_update_property(device, property, NULL);
+			}
 		}
 
 		// Publishes property with the reason the controller gave for the last refusal, if it gave one.
@@ -170,6 +214,10 @@ driver giotto {
 					X_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 				indigo_update_property(device, X_STATE_PROPERTY, NULL);
+				primalucelib_wifi_status wifi_status;
+				if (primalucelib_get_wifi_status(LINK, &wifi_status)) {
+					publish_wifi_status(device, &wifi_status, true);
+				}
 			}
 			indigo_execute_handler_in(device, POLL_PERIOD, aux_timer_callback);
 		}
@@ -230,6 +278,10 @@ driver giotto {
 				indigo_set_switch(X_WIFI_PROPERTY, strcmp(text, PRIMALUCE_ACCESS_POINT_ON) ? X_WIFI_OFF_ITEM : X_WIFI_AP_ITEM, true);
 			}
 			PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+			primalucelib_wifi_status wifi_status;
+			if (primalucelib_reply_wifi_status(LINK, &wifi_status)) {
+				publish_wifi_status(device, &wifi_status, false);
+			}
 			if ((text = primalucelib_reply_string(LINK, PRIMALUCE_REPLY_ACCESS_POINT_SSID))) {
 				INDIGO_COPY_VALUE(X_WIFI_AP_SSID_ITEM->text.value, text);
 			}
@@ -654,6 +706,11 @@ driver giotto {
 				bool restarted = false;
 				if (primalucelib_select_wifi(LINK, X_WIFI_STA_ITEM->sw.value ? PRIMALUCE_WIFI_STATION : X_WIFI_AP_ITEM->sw.value ? PRIMALUCE_WIFI_ACCESS_POINT : PRIMALUCE_WIFI_OFF, &restarted)) {
 					PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+					// A restarted controller may still be joining the network; the state poll shows the address later.
+					primalucelib_wifi_status wifi_status;
+					if (!(restarted && primalucelib_is_http(LINK)) && primalucelib_get_wifi_status(LINK, &wifi_status)) {
+						publish_wifi_status(device, &wifi_status, true);
+					}
 					if (restarted && primalucelib_is_http(LINK)) {
 						indigo_send_message(device, X_WIFI_PROPERTY, "The panel restarts to apply the WiFi mode and leaves its current network");
 					}
@@ -685,12 +742,12 @@ driver giotto {
 			label = "AP WiFi settings";
 			on_change {
 				// The library refuses what WiFi cannot use (an SSID of 1 to 32 characters and a WPA2 password of 8 to 63);
-				// the panel would store it.
-				if (!primalucelib_set_access_point_credentials(LINK, X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value)) {
-					X_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
-					update_with_refusal(device, X_WIFI_AP_PROPERTY);
-					return;
-				}
+				// the panel would store it. The property then shows what the panel stored.
+				bool result = primalucelib_set_access_point_credentials(LINK, X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value);
+				char reason[INDIGO_VALUE_SIZE];
+				INDIGO_COPY_VALUE(reason, primalucelib_last_error(LINK));
+				show_stored_credentials(device, X_WIFI_AP_PROPERTY, result ? NULL : reason);
+				return;
 			}
 			item X_WIFI_AP_SSID {
 				name = "AP_SSID";
@@ -708,11 +765,11 @@ driver giotto {
 			group = AUX_ADVANCED_GROUP;
 			label = "STA WiFi settings";
 			on_change {
-				if (!primalucelib_set_station_credentials(LINK, X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
-					X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;
-					update_with_refusal(device, X_WIFI_STA_PROPERTY);
-					return;
-				}
+				bool result = primalucelib_set_station_credentials(LINK, X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value);
+				char reason[INDIGO_VALUE_SIZE];
+				INDIGO_COPY_VALUE(reason, primalucelib_last_error(LINK));
+				show_stored_credentials(device, X_WIFI_STA_PROPERTY, result ? NULL : reason);
+				return;
 			}
 			item X_WIFI_STA_SSID {
 				name = "STA_SSID";
@@ -722,6 +779,30 @@ driver giotto {
 			item X_WIFI_STA_PASSWORD {
 				name = "STA_PASSWORD";
 				label = "Password";
+				value = "";
+			}
+		}
+		text X_WIFI_STATUS {
+			name = "X_WIFI_STATUS";
+			group = AUX_ADVANCED_GROUP;
+			label = "WiFi status";
+			perm = INDIGO_RO_PERM;
+			// Where to connect with an http:// port: the address on the joined network in station mode, the access point
+			// address in access point mode; CONNECTION is the network state or "access point". Read at connect, after a
+			// WiFi mode change and with the panel state.
+			item X_WIFI_STATUS_IP_ADDRESS {
+				name = "IP_ADDRESS";
+				label = "IP address";
+				value = "";
+			}
+			item X_WIFI_STATUS_PORT {
+				name = "PORT";
+				label = "Port";
+				value = "";
+			}
+			item X_WIFI_STATUS_CONNECTION {
+				name = "CONNECTION";
+				label = "Network";
 				value = "";
 			}
 		}

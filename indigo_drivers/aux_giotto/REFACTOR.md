@@ -267,3 +267,46 @@ fixed there in 3.0.0.42). Versions longer than the 511 characters of the item ov
 
 - Simulated tests: 30 run, 30 passed: `2026-10-25 00:31 3.0.0.5 linux x64 simulator 30/30 OK`.
 - Hardware tests: 0 run for this change (real firmware versions are short).
+
+## WiFi status (3.0.0.6, 2026-10-25, task 20261024221319-1235-primaluce-wifi-status)
+
+The driver showed no address to put in an `http://` port. The read-only `X_WIFI_STATUS` now shows where to connect:
+`IP_ADDRESS` (the address on the joined network in station mode, the access point address while the access point is on,
+empty when it is off), `PORT` (80, the controller's web server, shown with an address) and `CONNECTION` (in station mode
+`LANSTATUS.LANCONN`, e.g. `disconnected` or `gotip`; otherwise `access point` or `off`). It is read from the full state
+at connect, after a WiFi mode change and with the panel state every 10 s, which also shows an address the panel gets some
+time after a restart; it is published only when it changes. A SESTO SENSO 3 in access point mode still reported the
+station address of an earlier session, so that address is not used outside station mode.
+
+`X_WIFI_AP` and `X_WIFI_STA` now show what the panel stored after a change: the credentials are read back, a kept access
+point SSID is shown with the message "The controller kept the SSID ...", and a refused change shows the stored values
+again. The library decodes the JSON escapes of reply strings, so a credential with `"` or `\` reads back as entered.
+
+Hardware (requester's GIOTTO, firmware 1.03.09, over USB, 2026-10-25; driver session through `indigo_prop_tool`, with
+the first layout of this property): at connect the access point address and no station address, although the panel
+reported the address of an earlier station session in access point mode (the case the rule is for). Seven OFF/AP
+switches: six showed the new state at once; one OFF sent about 5 s after AP was still read back `on` by the panel and
+was shown by the next 10 s refresh. Right after AP the panel took about 3 s to answer. The requester found that the panel
+keeps its access point SSID in access point mode while the property kept the requested one; this led to the read-back
+below.
+
+Final layout on the same panel (2026-10-25, driver session through `indigo_prop_tool`): at connect `IP_ADDRESS`
+192.168.4.1, `PORT` 80, `CONNECTION` `access point`, and the stored credentials. A new access point SSID was acknowledged
+but the panel kept its own; the read-back showed the kept SSID. A 3 character password ended ALERT with the reason and the
+stored password shown again. A station password with `\` was sent escaped and read back as entered. After OFF the panel
+again reported the access point `on` at once, so the status showed it until the next refresh. All values were restored.
+
+| Scenario | Test |
+| --- | --- |
+| Connect values in access point mode (address, port 80, `access point`), read-only | `property_contract` |
+| Station address, port and connection after a switch to station mode | `wifi_modes` |
+| Library: request, address rules, credentials with decoded escapes, a failed reply | `test_primalucelib` (`wifi status shows where the controller is`) |
+| OFF leaves no address and shows `off`; a kept SSID is shown with a message; a refused change shows the stored values | `wifi_modes`, `wifi_credentials` |
+
+Not verified: the station address on hardware (needs a network the device joins), the periodic refresh picking up a
+later address (the simulator assigns the address at the restart).
+
+## Final test summary (3.0.0.6)
+
+- Simulated tests: 30 run, 30 passed: `2026-10-25 02:39 3.0.0.6 linux x64 simulator 30/30 OK`.
+- Hardware tests: the driver sessions above; the recorded hardware suite was not rerun.
