@@ -1,0 +1,44 @@
+{
+  "version": 2,
+  "task": "20261025085359-20cf-clarify-idle-property-state",
+  "scope": [
+    "indigo_docs/PROTOCOLS.md",
+    "indigo_libs/indigo/indigo_bus.h",
+    ".factory/completions/20261025085359-20cf-clarify-idle-property-state.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    "indigo_docs/PROTOCOLS.md": [
+      "100644",
+      "blob",
+      "b49d2a8d9ca32791f6680301ab0ed7a6fe7bb1dc"
+    ],
+    "indigo_libs/indigo/indigo_bus.h": [
+      "100644",
+      "blob",
+      "90cf013630543886382ebf941f49e53720e1e3c5"
+    ],
+    ".factory/completions/20261025085359-20cf-clarify-idle-property-state.json": [
+      "100644",
+      "blob",
+      "f42ad74fb0f16fb9c0240db2b4f8f040ba7f0708"
+    ]
+  }
+}

@@ -73,9 +73,10 @@ Inline XML BLOBs received from an upstream device are limited to 256 MiB per ite
 
 6. Every newXXXVector request may contain 'token' attribute containing client token used to allow write access to the protected or locked device. Please see: [INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
 
-If protocol version 2.0 is used, INDIGO property and item names are used (more gramatically and semantically consistent),
-while if version 1.7 is used, names of  commonly used names are maped to their INDI counter parts.  Also "Idle" property state is mapped
-to "Ok" state ("Idle" state is not used as a property state in INDIGO, just as a light item value).
+Protocol version 2.0 uses INDIGO property and item names, while version 1.7 maps commonly used names to their INDI counterparts.
+When receiving property states over legacy XML protocol version 1.7, INDIGO maps "Idle" to "Ok" for compatibility.
+XML protocol version 2.0 preserves "Idle". Light item values preserve "Idle" in both versions.
+INDIGO uses "Idle" both as a property state and as a light item value.
 
 ## INDIGO JSON protocol
 

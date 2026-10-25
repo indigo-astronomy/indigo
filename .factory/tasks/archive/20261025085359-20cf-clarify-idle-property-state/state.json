@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025085359-20cf-clarify-idle-property-state",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive and commit verified text-only execution; integration and publication remain pending owner authorization.",
+  "blocker": null
+}
