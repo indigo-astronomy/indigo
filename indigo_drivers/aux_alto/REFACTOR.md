@@ -255,3 +255,17 @@ later address (the simulator assigns the address at the restart).
 
 - Simulated tests: 33 run, 33 passed: `2026-10-25 02:41 3.0.0.6 linux x64 simulator 33/33 OK`.
 - Hardware tests: 0 run for this change.
+
+## WiFi status state (3.0.0.7, 2026-10-25, task 20261025001458-4524-primaluce-wifi-status-idle)
+
+At the requester's request `X_WIFI_STATUS` is IDLE while the cover cannot be reached over WiFi: in station mode before it
+has joined the network (`CONNECTION` `disconnected`) and with WiFi off. It is OK while joined or with the access point on.
+The decision is `primalucelib_wifi_status.reachable`; a change of state alone is published as well.
+
+Tests: `property_contract`, `wifi_modes`; library unit case `wifi status shows where the controller is` (station before joining, joined, access
+point, off).
+
+## Final test summary (3.0.0.7)
+
+- Simulated tests: 33 run, 33 passed: `2026-10-25 03:18 3.0.0.7 linux x64 simulator 33/33 OK`.
+- Hardware tests: 0 run for this change.

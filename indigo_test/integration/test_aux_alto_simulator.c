@@ -411,6 +411,7 @@ static void property_contract(void) {
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", "80"));
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "access point"));
 	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_TEMPERATURE_ITEM_NAME, 30.8, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.37, .005));
 	disconnect_serial_device(&alto);
@@ -888,6 +889,7 @@ static void wifi_modes(void) {
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "IP_ADDRESS", "192.0.2.23"));
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", "80"));
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "gotip"));
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
 	disconnect_serial_device(&alto);
 	SERIAL_CHECK_TRUE(connect_alto());
 	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));
