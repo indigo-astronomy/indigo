@@ -619,6 +619,47 @@ cleanup:
 	stop_serial_driver(&mount_simulator);
 }
 
+// MULTI_POINT has no alignment model; its translations returned success without writing the result, so a GOTO kept
+// a stale raw target and the reported position stopped following the mount. They pass the coordinates through now.
+static void mount_multi_point_alignment_passes_coordinates_through(void) {
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
+	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
+	SERIAL_CHECK_TRUE(unpark_mount());
+	unsigned int revision = property_revision(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM_NAME)->sw.value);
+	double ra = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
+	double dec = cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME);
+	SERIAL_CHECK_TRUE(fabs(ra - cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME)) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(dec - cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME)) < 0.001);
+	// translated to raw: the GOTO target reaches the mount unchanged
+	double target_ra = fmod(ra + 1, 24);
+	double target_dec = dec - 10;
+	SERIAL_CHECK_TRUE(select_coordinate_action(MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, change_mount_coordinates(target_ra, target_dec));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME)->number.target - target_ra) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(find_cached_item(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME)->number.target - target_dec) < 0.001);
+	// raw to translated: the reported position follows the mount to the target
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, target_ra, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, target_dec, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME, target_ra, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, target_dec, 0.001));
+	// the home slew translates its position as well
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME)) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - cached_number_value(MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME)) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - target_dec) > 1);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, mount_simulator.device_name, MOUNT_ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM_NAME, true));
+cleanup:
+	stop_serial_driver(&mount_simulator);
+}
+
 static void mount_park_home_and_parked_guards(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&mount_simulator));
 	SERIAL_CHECK_TRUE(connect_serial_device(&mount_simulator, NULL));
@@ -1738,6 +1779,7 @@ int main(void) {
 		{ "mount_goto_runs_on_queue_and_rejects_overlap", mount_goto_runs_on_queue_and_rejects_overlap },
 		{ "mount_abort_allows_fresh_goto", mount_abort_allows_fresh_goto },
 		{ "mount_alignment_model_is_frozen_during_slew", mount_alignment_model_is_frozen_during_slew },
+		{ "mount_multi_point_alignment_passes_coordinates_through", mount_multi_point_alignment_passes_coordinates_through },
 		{ "mount_park_home_and_parked_guards", mount_park_home_and_parked_guards },
 		{ "mount_manual_axes_reverse_and_abort", mount_manual_axes_reverse_and_abort },
 		{ "mount_supports_all_rate_modes", mount_supports_all_rate_modes },
