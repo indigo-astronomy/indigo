@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_mount_pmc8"
 #define DRIVER_LABEL         "PMC Eight Mount"
 #define MOUNT_DEVICE_NAME    "Mount PMC Eight"
@@ -126,6 +126,7 @@ typedef struct {
 	bool saved_position;
 	int32_t saved_ha, saved_dec;
 	double goto_deadline;
+	double park_deadline;
 	bool poll_failed;
 	//- data
 } pmc8_private_data;
@@ -672,18 +673,24 @@ static void mount_goto_finalizer(indigo_device *device) {
 
 // The park position is where both axis counts are zero: counterweight down, telescope at the
 // pole. The park is complete when both axes stand still close to it; the coordinates are BUSY
-// while the park moves the mount.
+// while the park moves the mount. A park still moving when the time its distance allows
+// (pmc8_point_deadline) has passed is stopped and fails.
 static void mount_park_finalizer(indigo_device *device) {
 	if (MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
 		return;
 	}
+	const char *message = NULL;
 	int32_t raw_ha = 0, raw_dec = 0, ra_rate = 0, dec_rate = 0;
 	if (pmc8_get_position(device, &raw_ha, &raw_dec) && pmc8_get_rate(device, &ra_rate, &dec_rate)) {
-		if (ra_rate != 0 || dec_rate != 0) {
+		if ((ra_rate != 0 || dec_rate != 0) && indigo_monotonic_time() < PRIVATE_DATA->park_deadline) {
 			indigo_execute_handler_in(device, 0.5, mount_park_finalizer);
 			return;
 		}
-		if (abs(raw_ha) < 0xFFF && abs(raw_dec) < 0xFFF) {
+		if (ra_rate != 0 || dec_rate != 0) {
+			pmc8_abort_point(device);
+			pmc8_wait_for_stop(device);
+			message = "Park did not finish in time";
+		} else if (abs(raw_ha) < 0xFFF && abs(raw_dec) < 0xFFF) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_coordinates(device, NULL);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -695,7 +702,7 @@ static void mount_park_finalizer(indigo_device *device) {
 	indigo_update_coordinates(device, NULL);
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 	MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, message);
 }
 
 //- mount.code
@@ -1008,7 +1015,9 @@ static void mount_park_handler(indigo_device *device) {
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		// A park replaces a GOTO still running, whose next pass would point away from the park position.
 		indigo_cancel_pending_handler(device, mount_goto_finalizer);
+		double deadline = pmc8_point_deadline(device, 0, 0);
 		if (pmc8_point(device, false, 0, 0)) {
+			PRIVATE_DATA->park_deadline = deadline;
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_coordinates(device, NULL);
