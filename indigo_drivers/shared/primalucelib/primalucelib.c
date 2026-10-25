@@ -57,6 +57,9 @@ char *PRIMALUCE_REPLY_ACCESS_POINT_SSID[] = { "res", "get", "WIFIAP", "SSID", NU
 char *PRIMALUCE_REPLY_ACCESS_POINT_PASSWORD[] = { "res", "get", "WIFIAP", "PWD", NULL };
 char *PRIMALUCE_REPLY_STATION_SSID[] = { "res", "get", "WIFISTA", "SSID", NULL };
 char *PRIMALUCE_REPLY_STATION_PASSWORD[] = { "res", "get", "WIFISTA", "PWD", NULL };
+char *PRIMALUCE_REPLY_STATION_IP[] = { "res", "get", "WIFISTA", "IP", NULL };
+char *PRIMALUCE_REPLY_ACCESS_POINT_IP[] = { "res", "get", "WIFIAP", "IP", NULL };
+char *PRIMALUCE_REPLY_LAN_CONNECTION[] = { "res", "get", "LANSTATUS", "LANCONN", NULL };
 char *PRIMALUCE_REPLY_RECOVERY_DELAY[] = { "res", "get", "RECOVER_DELAY", NULL };
 char *PRIMALUCE_REPLY_MODEL_SUBMODEL[] = { "res", "srv", "GET_MODEL_SUBMODEL", NULL };
 char *PRIMALUCE_REPLY_FIRST_STORED_POSITION[] = { "res", "get", "PRESET_1", NULL };
@@ -240,6 +243,31 @@ static bool primalucelib_request_verb(const char *request, char *verb, size_t si
 	return true;
 }
 
+// Decodes the JSON escapes of a NUL-terminated string in place: the controller escapes '"' and '\' in values it
+// reports (a station SSID 'Home "net"' reads back as "Home \"net\""). \uXXXX below 0x80 becomes the character; any
+// other \u sequence is kept as it is.
+static void primalucelib_unescape(char *text) {
+	char *out = text;
+	for (char *in = text; *in; in++) {
+		if (*in != '\\' || in[1] == 0) {
+			*out++ = *in;
+			continue;
+		}
+		char next = *++in;
+		unsigned int code;
+		if (next == 'u' && isxdigit((unsigned char)in[1]) && isxdigit((unsigned char)in[2]) && isxdigit((unsigned char)in[3]) && isxdigit((unsigned char)in[4]) && sscanf(in + 1, "%4x", &code) == 1 && code < 0x80) {
+			*out++ = (char)code;
+			in += 4;
+		} else if (next == 'u') {
+			*out++ = '\\';
+			*out++ = next;
+		} else {
+			*out++ = next == 'n' ? '\n' : next == 't' ? '\t' : next == 'r' ? '\r' : next == 'b' ? '\b' : next == 'f' ? '\f' : next;
+		}
+	}
+	*out = 0;
+}
+
 // Parses the response buffer and NUL-terminates its string tokens. False for a quoted string or a
 // reply that is not complete JSON.
 static bool primalucelib_parse_reply(primalucelib_link *link) {
@@ -263,6 +291,7 @@ static bool primalucelib_parse_reply(primalucelib_link *link) {
 	for (int i = 0; i < link->token_count; i++) {
 		if (link->tokens[i].type == JSMN_STRING) {
 			link->response[link->tokens[i].end] = 0;
+			primalucelib_unescape(link->response + link->tokens[i].start);
 		}
 	}
 	return true;
@@ -635,6 +664,49 @@ bool primalucelib_select_wifi(primalucelib_link *link, primalucelib_wifi_mode mo
 		return true;
 	}
 	return primalucelib_set_access_point(link, mode == PRIMALUCE_WIFI_ACCESS_POINT);
+}
+
+static void primalucelib_copy_reply_value(primalucelib_link *link, char *path[], char *target) {
+	char *text = primalucelib_reply_string(link, path);
+	if (text != NULL) {
+		INDIGO_COPY_VALUE(target, text);
+	}
+}
+
+bool primalucelib_reply_wifi_status(primalucelib_link *link, primalucelib_wifi_status *status) {
+	char *text;
+	memset(status, 0, sizeof(*status));
+	if ((text = primalucelib_reply_string(link, PRIMALUCE_REPLY_LAN_CONFIG)) == NULL) {
+		return false;
+	}
+	status->station = !strcmp(text, PRIMALUCE_LAN_STATION);
+	status->access_point = !status->station && (text = primalucelib_reply_string(link, PRIMALUCE_REPLY_ACCESS_POINT_STATUS)) != NULL && !strcmp(text, PRIMALUCE_ACCESS_POINT_ON);
+	if (status->station) {
+		if ((text = primalucelib_reply_string(link, PRIMALUCE_REPLY_STATION_IP)) != NULL) {
+			INDIGO_COPY_NAME(status->ip_address, text);
+		}
+		if ((text = primalucelib_reply_string(link, PRIMALUCE_REPLY_LAN_CONNECTION)) != NULL) {
+			INDIGO_COPY_NAME(status->connection, text);
+		}
+		status->reachable = *status->connection && strcmp(status->connection, PRIMALUCE_WIFI_CONNECTION_DISCONNECTED);
+	} else if (status->access_point) {
+		status->reachable = true;
+		if ((text = primalucelib_reply_string(link, PRIMALUCE_REPLY_ACCESS_POINT_IP)) != NULL) {
+			INDIGO_COPY_NAME(status->ip_address, text);
+		}
+		INDIGO_COPY_NAME(status->connection, PRIMALUCE_WIFI_CONNECTION_ACCESS_POINT);
+	} else {
+		INDIGO_COPY_NAME(status->connection, PRIMALUCE_WIFI_CONNECTION_OFF);
+	}
+	primalucelib_copy_reply_value(link, PRIMALUCE_REPLY_ACCESS_POINT_SSID, status->access_point_ssid);
+	primalucelib_copy_reply_value(link, PRIMALUCE_REPLY_ACCESS_POINT_PASSWORD, status->access_point_password);
+	primalucelib_copy_reply_value(link, PRIMALUCE_REPLY_STATION_SSID, status->station_ssid);
+	primalucelib_copy_reply_value(link, PRIMALUCE_REPLY_STATION_PASSWORD, status->station_password);
+	return true;
+}
+
+bool primalucelib_get_wifi_status(primalucelib_link *link, primalucelib_wifi_status *status) {
+	return primalucelib_request(link, PRIMALUCE_REQUEST_GET_WIFI_STATUS) && primalucelib_reply_wifi_status(link, status);
 }
 
 bool primalucelib_set_access_point(primalucelib_link *link, bool on) {

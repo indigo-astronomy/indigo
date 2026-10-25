@@ -316,8 +316,8 @@ static void append(char *buffer, const char *format, ...) {
 	va_end(args);
 }
 
-// WiFi as the hardware showed it (ALTO1 firmware 1.03.11): every LANCFG and credential is stored as sent and
-// acknowledged, LANCFG takes effect at the next REBOOT, the access point is off in station mode, and a restarting
+// WiFi as the hardware showed it (ALTO1 firmware 1.03.11, GIOTTO firmware 1.03.09): every LANCFG and credential is
+// acknowledged and stored as sent, except the access point SSID in access point mode, which is kept; LANCFG takes effect at the next REBOOT, the access point is off in station mode, and a restarting
 // controller answers nothing until it has booted.
 #define BOOT_TIME    1.0
 #define CREDENTIAL   65
@@ -347,8 +347,13 @@ static void append_access_point(char *buffer) {
 	append(buffer, "\"WIFIAP\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"192.168.4.1\",\"NM\":\"255.255.255.0\",\"STATUS\":\"%s\",\"CLIENTS\":0}", ap_ssid, ap_password, access_point && !station ? "on" : "off");
 }
 
+// In station mode the controller has joined the network and got an address (a documentation address here).
 static void append_station(char *buffer) {
-	append(buffer, "\"WIFISTA\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"\"}", sta_ssid, sta_password);
+	append(buffer, "\"WIFISTA\":{\"SSID\":\"%s\",\"PWD\":\"%s\",\"IP\":\"%s\"}", sta_ssid, sta_password, station ? "192.0.2.23" : "");
+}
+
+static void append_lan_status(char *buffer) {
+	append(buffer, "\"LANSTATUS\":{\"LANCONN\":\"%s\",\"PINGGW\":0,\"PINGEXTHOST\":0}", station ? "gotip" : "disconnected");
 }
 
 // Each member of WIFIAP or WIFISTA is answered on its own.
@@ -362,7 +367,8 @@ static void set_credentials(char *buffer, const char *json, const jsmntok_t *tok
 		const jsmntok_t *field = tokens + member;
 		const char *result = NOT_FOUND;
 		if (token_is(json, field, "SSID") || token_is(json, field, "PWD")) {
-			if (refused == NULL) {
+			bool kept = ap && !station && token_is(json, field, "SSID");
+			if (refused == NULL && !kept) {
 				char *target = token_is(json, field, "SSID") ? (ap ? ap_ssid : sta_ssid) : (ap ? ap_password : sta_password);
 				copy_token(target, CREDENTIAL, json, tokens + member + 1);
 			}
@@ -407,6 +413,8 @@ static void full_state(char *buffer) {
 	append_access_point(buffer);
 	append(buffer, ",");
 	append_station(buffer);
+	append(buffer, ",");
+	append_lan_status(buffer);
 	append(buffer, ",");
 	for (int i = 0; i < PRESET_COUNT; i++) {
 		append_preset(buffer, i);
@@ -479,6 +487,8 @@ static void get_member(char *buffer, const char *json, const jsmntok_t *tokens, 
 		append_access_point(buffer);
 	} else if (token_is(json, token, "WIFISTA")) {
 		append_station(buffer);
+	} else if (token_is(json, token, "LANSTATUS")) {
+		append_lan_status(buffer);
 	} else {
 		append(buffer, "\"%.*s\":\"" NOT_FOUND "\"", token->end - token->start, json + token->start);
 	}

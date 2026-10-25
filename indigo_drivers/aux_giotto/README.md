@@ -33,4 +33,4 @@ indigo_server indigo_aux_giotto
 ## Testing
 
 - 2026-10-24 14:31 3.0.0.1 linux x64 GIOTTO 8/8 OK
-- 2026-10-25 00:31 3.0.0.5 linux x64 simulator 30/30 OK
+- 2026-10-25 03:16 3.0.0.7 linux x64 simulator 30/30 OK

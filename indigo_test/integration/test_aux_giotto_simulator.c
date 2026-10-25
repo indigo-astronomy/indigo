@@ -48,6 +48,7 @@
 #define X_WIFI_PROPERTY_NAME               "X_WIFI"
 #define X_WIFI_AP_PROPERTY_NAME            "X_WIFI_AP"
 #define X_WIFI_STA_PROPERTY_NAME           "X_WIFI_STA"
+#define X_WIFI_STATUS_PROPERTY_NAME        "X_WIFI_STATUS"
 #define X_WIFI_AP_ITEM_NAME                "AP"
 #define X_WIFI_STA_ITEM_NAME               "STA"
 #define ON_ITEM_NAME                       "ON"
@@ -379,6 +380,11 @@ static void property_contract(void) {
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "primalucelab"));
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "MySSID"));
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD", "MyPassword"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "IP_ADDRESS", "192.168.4.1"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", "80"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "access point"));
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_TEMPERATURE_ITEM_NAME, 29.74, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.13, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_USB_ITEM_NAME, 5.33, .005));
@@ -778,10 +784,19 @@ static void wifi_credentials(void) {
 	clear_messages();
 	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "abc", INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(message_seen("at least 8 characters"));
-	SERIAL_CHECK_EQ_INT(1, requests("\"WIFIAP\""));
+	SERIAL_CHECK_EQ_INT(1, requests("{\"req\":{\"set\":{\"WIFIAP\""));
 	// '"' and '\' are sent escaped; the panel decodes them (GIOTTO firmware 1.03.09).
 	SERIAL_CHECK_TRUE(text_change(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD", "pass\"word", INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"PWD\":\"pass\\\"word\"", 1));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD", "pass\"word"));
+	// In access point mode the panel keeps its SSID; the property shows the kept one and says so.
+	clear_messages();
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_SSID", "Flats", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(message_seen("kept the SSID GIOTTO12000001"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_SSID", "GIOTTO12000001"));
+	// A refused change shows the stored values again.
+	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "short", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "skyflats"));
 	disconnect_serial_device(&giotto);
 	SERIAL_CHECK_TRUE(connect_giotto());
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Observatory"));
@@ -797,9 +812,19 @@ static void wifi_modes(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}", 1));
 	SERIAL_CHECK_EQ_INT(0, requests("\"REBOOT\""));
+	// The switched off access point has no address to show.
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "IP_ADDRESS", ""));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", ""));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "off"));
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->state == INDIGO_IDLE_STATE);
 	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"LANCFG\":\"sta\"}}}", 1));
 	SERIAL_CHECK_EQ_INT(1, requests("\"REBOOT\""));
+	// The address the controller got on the joined network is shown; the access point is off.
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "IP_ADDRESS", "192.0.2.23"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", "80"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "gotip"));
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
 	disconnect_serial_device(&giotto);
 	SERIAL_CHECK_TRUE(connect_giotto());
 	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));

@@ -1,0 +1,196 @@
+{
+  "version": 2,
+  "task": "20261025001458-4524-primaluce-wifi-status-idle",
+  "scope": [
+    "indigo_drivers/shared/primalucelib/*",
+    "indigo_test/unit/test_primalucelib.c",
+    "indigo_drivers/focuser_primaluce/*",
+    "indigo_drivers/aux_giotto/*",
+    "indigo_drivers/aux_alto/*",
+    "indigo_test/integration/test_aux_giotto_simulator.c",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "indigo_test/integration/test_focuser_primaluce_simulator.c",
+    "indigo_docs/PROPERTIES.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_giotto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_primaluce"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "serial-io": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025001458-4524-primaluce-wifi-status-idle.json": [
+      "100644",
+      "blob",
+      "f05ec9c790da82652976ef5987ef0d5c5ea377f8"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "de4c25c88f36fa11c3c4e2e5ce466e31d78d9f77"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "6bd75c3ce4770f846eb110530e4f47bf8e9e1311"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "e486f34fd02d3c3243b23edd209f782ef38cbfef"
+    ],
+    "indigo_drivers/aux_alto/README.md": [
+      "100644",
+      "blob",
+      "bddc4e9e24d51d14c166b0f72b5736836cfa91ef"
+    ],
+    "indigo_drivers/aux_alto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "b4eacd255f79ae903394bc2b92fca48fb2456291"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": [
+      "100644",
+      "blob",
+      "1836ccd974efc0b3fd3868b5b5018727a1488a16"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver": [
+      "100644",
+      "blob",
+      "6d594b74a998484997f199e69581ad8ddb388f92"
+    ],
+    "indigo_drivers/aux_giotto/README.md": [
+      "100644",
+      "blob",
+      "8e390d0e429eea4f8502313072fedd1a9cae3247"
+    ],
+    "indigo_drivers/aux_giotto/REFACTOR.md": [
+      "100644",
+      "blob",
+      "4388201c7abc39d64d522b0b13570e496d6139e1"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c": [
+      "100644",
+      "blob",
+      "a1ef9c402053f6b779527231d37f291b93cd2d53"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.driver": [
+      "100644",
+      "blob",
+      "499c1ec093f6e7b34fa6444604719f28fd945b59"
+    ],
+    "indigo_drivers/focuser_primaluce/README.md": [
+      "100644",
+      "blob",
+      "91ff7355ce7749d3898d665b12950abf1a4675ee"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": [
+      "100644",
+      "blob",
+      "e3051574339c3aef6f3cd8ca39d410ec9eb4e3ab"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": [
+      "100644",
+      "blob",
+      "5c8b5821353597d7114285d9f844b0747688fb65"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": [
+      "100644",
+      "blob",
+      "e2f0d190a4f69f10dfb732de102e1e326161dca7"
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "add52a90490a30ae985ae50058af5ec877089019"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "4177b1b243ea8053aae721c8500ac91397646746"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.h": [
+      "100644",
+      "blob",
+      "3dac92b37e6d4668f34fd00c5387140defb98347"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "53332126746b602ae3b5a9698a4d5da5a6d8a704"
+    ],
+    "indigo_test/integration/test_aux_giotto_simulator.c": [
+      "100644",
+      "blob",
+      "6a5f367a0a9d212b3d9e0f5167e2c08c00b58cc7"
+    ],
+    "indigo_test/integration/test_focuser_primaluce_simulator.c": [
+      "100644",
+      "blob",
+      "4ebb0590a4d6c7b838f931d626d3d94da644e44a"
+    ],
+    "indigo_test/unit/test_primalucelib.c": [
+      "100644",
+      "blob",
+      "8f7f1eb8766cd9a42885198585d1d270f42bd2b3"
+    ]
+  }
+}

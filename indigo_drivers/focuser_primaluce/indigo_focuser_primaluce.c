@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002B
+#define DRIVER_VERSION       0x0300002D
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -123,6 +123,16 @@
 #define X_WIFI_STA_PROPERTY_NAME       "X_WIFI_STA"
 #define X_WIFI_STA_SSID_ITEM_NAME      "STA_SSID"
 #define X_WIFI_STA_PASSWORD_ITEM_NAME  "STA_PASSWORD"
+
+#define X_WIFI_STATUS_PROPERTY             (PRIVATE_DATA->x_wifi_status_property)
+#define X_WIFI_STATUS_IP_ADDRESS_ITEM      (X_WIFI_STATUS_PROPERTY->items + 0)
+#define X_WIFI_STATUS_PORT_ITEM            (X_WIFI_STATUS_PROPERTY->items + 1)
+#define X_WIFI_STATUS_CONNECTION_ITEM      (X_WIFI_STATUS_PROPERTY->items + 2)
+
+#define X_WIFI_STATUS_PROPERTY_NAME        "X_WIFI_STATUS"
+#define X_WIFI_STATUS_IP_ADDRESS_ITEM_NAME "IP_ADDRESS"
+#define X_WIFI_STATUS_PORT_ITEM_NAME       "PORT"
+#define X_WIFI_STATUS_CONNECTION_ITEM_NAME "CONNECTION"
 
 #define X_LEDS_PROPERTY                (PRIVATE_DATA->x_leds_property)
 #define X_LEDS_OFF_ITEM                (X_LEDS_PROPERTY->items + 0)
@@ -360,6 +370,7 @@ typedef struct {
 	indigo_property *x_wifi_property;
 	indigo_property *x_wifi_ap_property;
 	indigo_property *x_wifi_sta_property;
+	indigo_property *x_wifi_status_property;
 	indigo_property *x_leds_property;
 	indigo_property *x_runpreset_l_property;
 	indigo_property *x_runpreset_m_property;
@@ -426,6 +437,52 @@ static void restore_switch(indigo_property *property, indigo_item *item) {
 		indigo_set_switch(property, item, true);
 	}
 	property->state = INDIGO_ALERT_STATE;
+}
+
+// Shows where the device can be reached over WiFi (see primalucelib_wifi_status); publishes only a change.
+static void publish_wifi_status(indigo_device *device, primalucelib_wifi_status *status, bool update) {
+	char port[16] = "";
+	if (*status->ip_address) {
+		snprintf(port, sizeof(port), "%d", PRIMALUCE_HTTP_DEFAULT_PORT);
+	}
+	// IDLE while the device cannot be reached over WiFi: not joined in station mode, or WiFi off.
+	indigo_property_state state = status->reachable ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	if (!update || state != X_WIFI_STATUS_PROPERTY->state || strcmp(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address) || strcmp(X_WIFI_STATUS_PORT_ITEM->text.value, port) || strcmp(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection)) {
+		INDIGO_COPY_VALUE(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address);
+		INDIGO_COPY_VALUE(X_WIFI_STATUS_PORT_ITEM->text.value, port);
+		INDIGO_COPY_VALUE(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection);
+		X_WIFI_STATUS_PROPERTY->state = state;
+		if (update) {
+			indigo_update_property(device, X_WIFI_STATUS_PROPERTY, NULL);
+		}
+	}
+}
+
+// Shows the credentials the controller stored, which may differ from the requested ones: the firmware keeps the
+// access point SSID in access point mode, and a refused request changes nothing.
+static void show_stored_credentials(indigo_device *device, indigo_property *property, const char *reason) {
+	primalucelib_wifi_status wifi_status;
+	char requested[INDIGO_VALUE_SIZE];
+	bool access_point = property == X_WIFI_AP_PROPERTY;
+	INDIGO_COPY_VALUE(requested, property->items[0].text.value);
+	if (primalucelib_get_wifi_status(LINK, &wifi_status)) {
+		INDIGO_COPY_VALUE(property->items[0].text.value, access_point ? wifi_status.access_point_ssid : wifi_status.station_ssid);
+		INDIGO_COPY_VALUE(property->items[1].text.value, access_point ? wifi_status.access_point_password : wifi_status.station_password);
+	}
+	if (reason != NULL) {
+		property->state = INDIGO_ALERT_STATE;
+		if (*reason) {
+			indigo_update_property(device, property, "%s", reason);
+		} else {
+			indigo_update_property(device, property, NULL);
+		}
+	} else if (strcmp(requested, property->items[0].text.value)) {
+		property->state = INDIGO_OK_STATE;
+		indigo_update_property(device, property, "The controller kept the SSID %s", property->items[0].text.value);
+	} else {
+		property->state = INDIGO_OK_STATE;
+		indigo_update_property(device, property, NULL);
+	}
 }
 
 // Publishes property with the reason the controller or the library gave for the last refusal, if there is one.
@@ -914,6 +971,10 @@ static void focuser_timer_callback(indigo_device *device) {
 			X_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_STATE_PROPERTY, NULL);
 		}
+		primalucelib_wifi_status wifi_status;
+		if (primalucelib_get_wifi_status(LINK, &wifi_status)) {
+			publish_wifi_status(device, &wifi_status, true);
+		}
 	}
 	focuser_poll_position(device);
 	indigo_execute_handler_in(device, PRIVATE_DATA->external_motion ? 0.5 : POLL_PERIOD, focuser_timer_callback);
@@ -1081,6 +1142,10 @@ static void focuser_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->hold_item = selected_item(X_HOLD_CURR_PROPERTY);
 				PRIVATE_DATA->leds_item = selected_item(X_LEDS_PROPERTY);
 				PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+				primalucelib_wifi_status wifi_status;
+				if (primalucelib_reply_wifi_status(LINK, &wifi_status)) {
+					publish_wifi_status(device, &wifi_status, false);
+				}
 			}
 			//- focuser.on_connect
 		}
@@ -1090,6 +1155,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_WIFI_PROPERTY, NULL);
 			indigo_define_property(device, X_WIFI_AP_PROPERTY, NULL);
 			indigo_define_property(device, X_WIFI_STA_PROPERTY, NULL);
+			indigo_define_property(device, X_WIFI_STATUS_PROPERTY, NULL);
 			indigo_define_property(device, X_LEDS_PROPERTY, NULL);
 			indigo_define_property(device, X_RUNPRESET_L_PROPERTY, NULL);
 			indigo_define_property(device, X_RUNPRESET_M_PROPERTY, NULL);
@@ -1137,6 +1203,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			X_WIFI_PROPERTY,
 			X_WIFI_AP_PROPERTY,
 			X_WIFI_STA_PROPERTY,
+			X_WIFI_STATUS_PROPERTY,
 			X_LEDS_PROPERTY,
 			X_RUNPRESET_L_PROPERTY,
 			X_RUNPRESET_M_PROPERTY,
@@ -1167,6 +1234,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, X_WIFI_PROPERTY, NULL);
 		indigo_delete_property(device, X_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, X_WIFI_STA_PROPERTY, NULL);
+		indigo_delete_property(device, X_WIFI_STATUS_PROPERTY, NULL);
 		indigo_delete_property(device, X_LEDS_PROPERTY, NULL);
 		indigo_delete_property(device, X_RUNPRESET_L_PROPERTY, NULL);
 		indigo_delete_property(device, X_RUNPRESET_M_PROPERTY, NULL);
@@ -1206,6 +1274,11 @@ static void focuser_x_wifi_handler(indigo_device *device) {
 	bool restarted = false;
 	if (primalucelib_select_wifi(LINK, X_WIFI_STA_ITEM->sw.value ? PRIMALUCE_WIFI_STATION : X_WIFI_AP_ITEM->sw.value ? PRIMALUCE_WIFI_ACCESS_POINT : PRIMALUCE_WIFI_OFF, &restarted)) {
 		PRIVATE_DATA->wifi_item = selected_item(X_WIFI_PROPERTY);
+		// A restarted controller may still be joining the network; the state poll shows the address later.
+		primalucelib_wifi_status wifi_status;
+		if (!(restarted && primalucelib_is_http(LINK)) && primalucelib_get_wifi_status(LINK, &wifi_status)) {
+			publish_wifi_status(device, &wifi_status, true);
+		}
 		if (restarted && primalucelib_is_http(LINK)) {
 			indigo_send_message(device, X_WIFI_PROPERTY, "The controller restarts to apply the WiFi mode and leaves its current network");
 		}
@@ -1221,11 +1294,12 @@ static void focuser_x_wifi_handler(indigo_device *device) {
 static void focuser_x_wifi_ap_handler(indigo_device *device) {
 	X_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_WIFI_AP.on_change
-	if (!primalucelib_set_access_point_credentials(LINK, X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value)) {
-		X_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
-		update_with_refusal(device, X_WIFI_AP_PROPERTY);
-		return;
-	}
+	// The property shows what the controller stored, see show_stored_credentials().
+	bool result = primalucelib_set_access_point_credentials(LINK, X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value);
+	char reason[INDIGO_VALUE_SIZE];
+	INDIGO_COPY_VALUE(reason, primalucelib_last_error(LINK));
+	show_stored_credentials(device, X_WIFI_AP_PROPERTY, result ? NULL : reason);
+	return;
 	//- focuser.X_WIFI_AP.on_change
 	indigo_update_property(device, X_WIFI_AP_PROPERTY, NULL);
 }
@@ -1233,11 +1307,11 @@ static void focuser_x_wifi_ap_handler(indigo_device *device) {
 static void focuser_x_wifi_sta_handler(indigo_device *device) {
 	X_WIFI_STA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.X_WIFI_STA.on_change
-	if (!primalucelib_set_station_credentials(LINK, X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
-		X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;
-		update_with_refusal(device, X_WIFI_STA_PROPERTY);
-		return;
-	}
+	bool result = primalucelib_set_station_credentials(LINK, X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value);
+	char reason[INDIGO_VALUE_SIZE];
+	INDIGO_COPY_VALUE(reason, primalucelib_last_error(LINK));
+	show_stored_credentials(device, X_WIFI_STA_PROPERTY, result ? NULL : reason);
+	return;
 	//- focuser.X_WIFI_STA.on_change
 	indigo_update_property(device, X_WIFI_STA_PROPERTY, NULL);
 }
@@ -1668,6 +1742,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		}
 		indigo_init_text_item(X_WIFI_STA_SSID_ITEM, X_WIFI_STA_SSID_ITEM_NAME, "SSID", "");
 		indigo_init_text_item(X_WIFI_STA_PASSWORD_ITEM, X_WIFI_STA_PASSWORD_ITEM_NAME, "Password", "");
+		X_WIFI_STATUS_PROPERTY = indigo_init_text_property(NULL, device->name, X_WIFI_STATUS_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "WiFi status", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		if (X_WIFI_STATUS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(X_WIFI_STATUS_IP_ADDRESS_ITEM, X_WIFI_STATUS_IP_ADDRESS_ITEM_NAME, "IP address", "");
+		indigo_init_text_item(X_WIFI_STATUS_PORT_ITEM, X_WIFI_STATUS_PORT_ITEM_NAME, "Port", "");
+		indigo_init_text_item(X_WIFI_STATUS_CONNECTION_ITEM, X_WIFI_STATUS_CONNECTION_ITEM_NAME, "Network", "");
 		X_LEDS_PROPERTY = indigo_init_switch_property(NULL, device->name, X_LEDS_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "LEDs", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (X_LEDS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -1837,6 +1918,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_STA_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_STATUS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_LEDS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_L_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_M_PROPERTY);
@@ -1962,6 +2044,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(X_WIFI_PROPERTY);
 	indigo_release_property(X_WIFI_AP_PROPERTY);
 	indigo_release_property(X_WIFI_STA_PROPERTY);
+	indigo_release_property(X_WIFI_STATUS_PROPERTY);
 	indigo_release_property(X_LEDS_PROPERTY);
 	indigo_release_property(X_RUNPRESET_L_PROPERTY);
 	indigo_release_property(X_RUNPRESET_M_PROPERTY);

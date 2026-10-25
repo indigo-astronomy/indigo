@@ -49,6 +49,7 @@
 #define X_WIFI_AP_SSID_ITEM_NAME           "AP_SSID"
 #define X_WIFI_AP_PASSWORD_ITEM_NAME       "AP_PASSWORD"
 #define X_WIFI_STA_PROPERTY_NAME           "X_WIFI_STA"
+#define X_WIFI_STATUS_PROPERTY_NAME        "X_WIFI_STATUS"
 #define X_WIFI_STA_SSID_ITEM_NAME          "STA_SSID"
 #define X_WIFI_STA_PASSWORD_ITEM_NAME      "STA_PASSWORD"
 #define X_LEDS_PROPERTY_NAME               "X_LEDS"
@@ -1262,6 +1263,11 @@ static void wifi_station_mode(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"WIFISTA\":{\"SSID\":\"INDIGO-STA\"", 1));
 	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"LANCFG\":\"sta\"", 1));
+	// The address the controller got on the joined network is shown; the access point is off.
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "IP_ADDRESS", "192.0.2.23"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", "80"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "gotip"));
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->state == INDIGO_OK_STATE);
 	disconnect_serial_device(&primaluce_focuser);
 	SERIAL_CHECK_TRUE(connect_focuser());
 	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));
