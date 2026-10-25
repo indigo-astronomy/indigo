@@ -45,6 +45,7 @@ typedef struct {
 	bool no_ds18b20;
 	bool no_sht40;
 	int refuse_port_once;
+	int boot_noise;
 } simulator_options;
 
 static simulator_options options = {
@@ -53,7 +54,8 @@ static simulator_options options = {
 	.ready_file = NULL,
 	.no_ds18b20 = false,
 	.no_sht40 = false,
-	.refuse_port_once = -1
+	.refuse_port_once = -1,
+	.boot_noise = 0
 };
 
 static const char *simulator_name = "svbpowerbox";
@@ -68,6 +70,7 @@ static void usage(const char *name) {
 	printf("  -T, --no-ds18b20        Simulate missing DS18B20 (returns -127 C)\n");
 	printf("  -H, --no-sht40          Simulate missing SHT40 (temp -2 C, random RH)\n");
 	printf("  --refuse-port-once <n>  Reject the first set_port for port index <n> (0xAA echo, port unchanged)\n");
+	printf("  --boot-noise <s>        Send a boot log line every 100 ms for up to <s> seconds, until the first request byte\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
@@ -89,6 +92,11 @@ static double ds18b20 = 19.7;
 static double sht40_t = 22.3;
 static double sht40_h = 48.5;
 static double sht40_h_random = -1.0;
+
+// The boot log of --boot-noise runs until the first request byte arrives, as a box stuck in a logging loop
+// that only a request ends. The mutex keeps a log line from following the reply to that request.
+static pthread_mutex_t noise_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool noise_active = false;
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -177,6 +185,12 @@ static bool parse_args(int argc, char *argv[]) {
 			options.no_ds18b20 = true;
 		} else if (!strcmp(argv[i], "-H") || !strcmp(argv[i], "--no-sht40")) {
 			options.no_sht40 = true;
+		} else if (!strcmp(argv[i], "--boot-noise")) {
+			if (++i == argc) {
+				fprintf(stderr, "--boot-noise requires a duration in seconds\n");
+				return false;
+			}
+			options.boot_noise = atoi(argv[i]);
 		} else if (!strcmp(argv[i], "--refuse-port-once")) {
 			if (++i == argc) {
 				fprintf(stderr, "--refuse-port-once requires a port index\n");
@@ -197,6 +211,9 @@ static int sim_read_byte(int fd, unsigned char *byte) {
 	while (running) {
 		ssize_t count = read(fd, byte, 1);
 		if (count == 1) {
+			pthread_mutex_lock(&noise_mutex);
+			noise_active = false;
+			pthread_mutex_unlock(&noise_mutex);
 			return 0;
 		}
 		if (count < 0) {
@@ -444,10 +461,31 @@ static void dispatch_command(int fd, const unsigned char *cmd, int cmd_len) {
 	}
 }
 
+static void *boot_noise(void *arg) {
+	(void)arg;
+	static const char line[] = "ets Jun  8 2016 00:22:57 rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)\r\n";
+	for (int i = 0; running && i < options.boot_noise * 10; i++) {
+		pthread_mutex_lock(&noise_mutex);
+		bool active = noise_active;
+		if (active && serial_fd >= 0) {
+			// Nobody may have the port open yet, a failed or partial write is just lost noise.
+			ssize_t written = write(serial_fd, line, sizeof(line) - 1);
+			(void)written;
+		}
+		pthread_mutex_unlock(&noise_mutex);
+		if (!active) {
+			break;
+		}
+		usleep(100000);
+	}
+	return NULL;
+}
+
 // ----------------------------------------------------------------- main
 
 int main(int argc, char *argv[]) {
-	pthread_t thread;
+	pthread_t thread, noise_thread;
+	bool noise_started = false;
 	unsigned char cmd[10];
 	char port[128];
 
@@ -487,6 +525,11 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	if (options.boot_noise > 0) {
+		noise_active = true;
+		noise_started = pthread_create(&noise_thread, NULL, boot_noise, NULL) == 0;
+	}
+
 	while (running) {
 		int cmd_len = sim_read_frame(serial_fd, cmd);
 		if (cmd_len > 0) {
@@ -501,5 +544,8 @@ int main(int argc, char *argv[]) {
 		serial_fd = -1;
 	}
 	pthread_join(thread, NULL);
+	if (noise_started) {
+		pthread_join(noise_thread, NULL);
+	}
 	return 0;
 }
