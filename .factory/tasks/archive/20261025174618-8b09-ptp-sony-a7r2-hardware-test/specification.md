@@ -6,7 +6,7 @@ Status: final
 On the ILCE-7RM2 the hardware suite could not select values on stepping controls, live view right after a capture ended ALERT, and the image of an aborted timed shot was published as the next exposure's image. Outcome: all fixed or handled, recorded run passes.
 
 ## In scope
-Sony old-API live view tolerance and stale-object handling in `indigo_ptp_sony.c/.h`, version 3.0.0.60; stepping support in the hardware suite; fake old-API profile and regressions.
+Sony old-API live view tolerance, stale-object handling, ignored-press retry, write confirmation and leftover drain in `indigo_ptp_sony.c/.h`, `indigo_ccd_ptp.c`, `indigo_ptp.h`, version 3.0.0.60; stepping support in the hardware suite; fake old-API profile and regressions.
 
 ## Out of scope
 NEW_API behaviour (unchanged); other vendors; physical hot-plug.
@@ -18,6 +18,9 @@ NEW_API behaviour (unchanged); other vendors; physical hot-plug.
 | AC-002 | On old-API Sony bodies the object of a shot whose exposure ended before its image arrived is downloaded and discarded, never published as another exposure's or a stream's image; a shot never reported expires 30 s after its expected end. | fake `sony_old_api_aborted_shot`, `sony_old_api_aborted_shot_idle`, `sony_old_api_lost_shot_expires`; hardware `Abort and reacquire`, `Finite live view` |
 | AC-003 | The hardware suite selects, reads back and restores stepping controls. | hardware `Control readback`, image cases, restore at exit |
 | AC-004 | The complete hardware suite passes on the ILCE-7RM2. | `python3 tools/run_driver_test.py ccd_ptp --hw` |
+| AC-006 | A Sony full press the camera ignores is repeated (at most twice) on every Sony body, old API included. | fake `sony_old_api_ignored_press`; hardware (two retries in a traced loop) |
+| AC-007 | A Sony SetControlDeviceA write keeps its property BUSY until the camera reports the value (old API: 15 s window, 5 s rewrite period); a stepping write is not confirmed. | fake `sony_old_api_late_setting_write`, `sony_old_api_dropped_setting_write`, `sony_old_api_step_not_rewritten` |
+| AC-008 | An old-API exposure drains ready objects left in the camera before the press, one at a time. | fake `sony_old_api_leftover_drained` |
 | AC-005 | Existing fake cases pass. | `python3 tools/run_driver_test.py ccd_ptp`, sanitizer targets |
 
 ## Failure behavior and edge cases

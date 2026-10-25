@@ -392,7 +392,7 @@ static void set_property_finalizer(indigo_device *device, void *data) {
 		set_property_complete(device, index, applied, applied ? NULL : "The camera did not apply the value");
 		return;
 	}
-	if (now - PRIVATE_DATA->property_written[index] >= PTP_PROPERTY_REWRITE_DELAY) {
+	if (now - PRIVATE_DATA->property_written[index] >= (PRIVATE_DATA->property_rewrite_delay > 0 ? PRIVATE_DATA->property_rewrite_delay : PTP_PROPERTY_REWRITE_DELAY)) {
 		indigo_property_copy_values(target->property, request, false);
 		if (!PRIVATE_DATA->set_property(device, target) && PRIVATE_DATA->last_error != ptp_response_DeviceBusy) {
 			read_back_rejected(device, index);
@@ -414,6 +414,7 @@ static void handle_set_property(indigo_device *device, void *data) {
 		return;
 	}
 	indigo_property_copy_values(definition, request, false);
+	PRIVATE_DATA->write_unconfirmed = false;
 	bool result = PRIVATE_DATA->set_property(device, target);
 	if (!result && PRIVATE_DATA->last_error == ptp_response_DeviceBusy && ++PRIVATE_DATA->property_retries[index] <= 100 && !PRIVATE_DATA->detaching) {
 		definition->state = INDIGO_BUSY_STATE;
@@ -421,10 +422,10 @@ static void handle_set_property(indigo_device *device, void *data) {
 		return;
 	}
 	// A camera that may drop an acknowledged write keeps the property BUSY until its report confirms it.
-	if (result && PRIVATE_DATA->refresh_properties && definition->type == INDIGO_SWITCH_VECTOR && target->type != ptp_str_type && requested_value(definition, PRIVATE_DATA->property_requested + index)) {
+	if (result && PRIVATE_DATA->refresh_properties && !PRIVATE_DATA->write_unconfirmed && definition->type == INDIGO_SWITCH_VECTOR && target->type != ptp_str_type && requested_value(definition, PRIVATE_DATA->property_requested + index)) {
 		double now = indigo_monotonic_time();
 		PRIVATE_DATA->property_written[index] = now;
-		PRIVATE_DATA->property_deadline[index] = now + PTP_PROPERTY_VERIFY_TIMEOUT;
+		PRIVATE_DATA->property_deadline[index] = now + (PRIVATE_DATA->property_verify_timeout > 0 ? PRIVATE_DATA->property_verify_timeout : PTP_PROPERTY_VERIFY_TIMEOUT);
 		indigo_execute_handler_with_data_in(device, 0.2, set_property_finalizer, data);
 		return;
 	}

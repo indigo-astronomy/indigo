@@ -102,11 +102,16 @@ static atomic_int sony_ignored_presses, sony_presses;
 static atomic_bool sony_fast_reopen_busy;
 // A 1 s camera shutter, for the long exposure noise reduction case.
 static bool sony_long_shutter;
+// Mode dial on M, so the shutter is writable.
+static bool sony_manual_mode;
 // ILCE-7RM2: every accepted press queues one object reported later, also for an aborted exposure, and
 // live view frames are refused with AccessDenied for a while after an object download.
 static atomic_bool sony_object_queue;
 static atomic_int sony_queued_objects;
 static double sony_liveview_denial, sony_liveview_denied_until;
+// ILCE-7RM2 acknowledges a SetControlDeviceA and applies it only after a while (seen up to about 9 s).
+static double sony_late_write_delay, sony_late_write_at;
+static uint32_t *sony_late_write_target, sony_late_write_value;
 static atomic_int canon_text_size;
 static uint8_t *jpeg;
 static unsigned long jpeg_size;
@@ -590,6 +595,10 @@ static void prepare(fake_camera *c) {
 			word16(&p, c->properties[i]);
 		}
 	} else if (code == ptp_operation_sony_GetAllDevicePropData) {
+		if (sony_late_write_target && indigo_monotonic_time() >= sony_late_write_at) {
+			*sony_late_write_target = sony_late_write_value;
+			sony_late_write_target = NULL;
+		}
 		word32(&p, property_count(c));
 		word32(&p, 0);
 		for (unsigned i = 0; i < property_count(c); i++) {
@@ -657,7 +666,9 @@ static void prepare(fake_camera *c) {
 				c->capturing = sony_memory_objects > 0;
 				c->event_sent = false;
 			} else if (atomic_load(&sony_object_queue) && c->vendor == 0x054c) {
-				c->capturing = atomic_fetch_sub(&sony_queued_objects, 1) > 1;
+				int remaining = atomic_fetch_sub(&sony_queued_objects, 1) - 1;
+				c->capturing = remaining > 0;
+				c->values[3] = remaining > 0 ? remaining : 0;
 			} else {
 				c->capturing = false;
 			}
@@ -927,6 +938,12 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 				atomic_fetch_sub(&sony_dropped_writes, 1);
 				target = NULL;
 			}
+			if (c->command.code == ptp_operation_sony_SetControlDeviceA && sony_late_write_delay > 0 && target) {
+				sony_late_write_target = target;
+				sony_late_write_value = v;
+				sony_late_write_at = indigo_monotonic_time() + sony_late_write_delay;
+				target = NULL;
+			}
 			// The X-T1, whose d208 actions lack BULB start and stop, rejects a Bulb ExposureTime.
 			if (c->vendor == 0x04cb && code == ptp_property_ExposureTime && v == 0xffffffff && (fuji_action_profile == 1 || fuji_action_profile == 2)) {
 				c->response = ptp_response_InvalidDevicePropValue;
@@ -971,7 +988,8 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 					atomic_fetch_add(&sony_presses, 1);
 					c->pressed_at = indigo_monotonic_time();
 					if (atomic_load(&sony_object_queue) && atomic_load(&sony_ignored_presses) == 0) {
-						atomic_fetch_add(&sony_queued_objects, 1);
+						// ObjectInMemory counts the shots being processed (ILCE-7RM2 reports 1 about 1 s after a shot).
+						c->values[3] = atomic_fetch_add(&sony_queued_objects, 1) + 1;
 					}
 				}
 				if (v == 2 && atomic_load(&sony_ignored_presses) > 0) {
@@ -1235,6 +1253,11 @@ static void reset_fake(uint16_t vendor, uint16_t product) {
 			cameras[0].properties[4] = ptp_property_sony_CompressionSetting;
 			cameras[0].values[4] = 3;
 		}
+		if (sony_manual_mode) {
+			int slot = cameras[0].properties[4] ? 5 : 4;
+			cameras[0].properties[slot] = ptp_property_ExposureProgramMode;
+			cameras[0].values[slot] = 1;
+		}
 	} else {
 		memcpy(cameras[0].properties, standard, sizeof(standard));
 		cameras[0].values[0] = bulb_profile ? 0xffffffff : 10000;
@@ -1293,10 +1316,12 @@ static void end_profile(void) {
 	profile_case = NULL;
 	mirror_unknown_profile = false;
 	bulb_profile = false;
-	sony_long_shutter = false;
+	sony_long_shutter = sony_manual_mode = false;
 	atomic_store(&sony_object_queue, false);
 	atomic_store(&sony_queued_objects, 0);
 	sony_liveview_denial = sony_liveview_denied_until = 0;
+	sony_late_write_delay = sony_late_write_at = 0;
+	sony_late_write_target = NULL;
 	fuji_priority_profile = fuji_reject_bulb = fuji_af_error = fuji_reject_cancel = false;
 	fuji_action_profile = 0;
 	dual_profile = false;
@@ -2314,6 +2339,64 @@ cleanup:
 	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
 }
 
+// ILCE-7RM2 hardware run 2026-10-25: a press made 0.4 s after the previous download was ignored; the
+// exposure presses again instead of waiting for the capture timeout.
+static void sony_old_api_ignored_press(void) {
+	atomic_store(&sony_object_queue, true);
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	atomic_store(&sony_ignored_presses, 1);
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(atomic_load(&blobs) == 1);
+	PTP_CHECK(atomic_load(&sony_presses) == 2);
+	PTP_CHECK(atomic_load(&sony_queued_objects) == 0);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+// ILCE-7RM2 hardware run 2026-10-25: the RAW of a pair stayed in the camera (ObjectInMemory 0x8001) and
+// was returned as a later exposure's image; a ready object is drained before the press.
+static void sony_old_api_leftover_drained(void) {
+	atomic_store(&sony_object_queue, true);
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	atomic_store(&cameras[0].hold_image, true);
+	atomic_store(&sony_queued_objects, 1);
+	cameras[0].values[3] = 0x8001;
+	cameras[0].capturing = true;
+	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
+	PTP_CHECK(wait_value(&sony_presses, 1));
+	PTP_CHECK(atomic_load(&sony_queued_objects) == 1);
+	atomic_store(&cameras[0].hold_image, false);
+	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
+	PTP_CHECK(wait_value(&sony_queued_objects, 0));
+	indigo_usleep(300000);
+	PTP_CHECK(atomic_load(&blobs) == 1);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
+static indigo_property_state wait_setting(ptp_property *setting);
+
+// An old-API shutter step is sent once; the camera's new value is not a requested value to confirm.
+static void sony_old_api_step_not_rewritten(void) {
+	sony_manual_mode = true;
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	ptp_property *shutter = ptp_property_supported(logical[0], ptp_property_sony_ShutterSpeed);
+	PTP_CHECK(shutter != NULL && shutter->property != NULL && shutter->property->count == 3);
+	int steps = atomic_load(command_count + ptp_operation_sony_SetControlDeviceB);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, shutter->property->name, shutter->property->items[2].name, true);
+	PTP_CHECK(wait_setting(shutter) == INDIGO_OK_STATE);
+	// Longer than the old-API rewrite period of this build (2.5 s).
+	indigo_usleep(3000000);
+	PTP_CHECK(atomic_load(command_count + ptp_operation_sony_SetControlDeviceB) == steps + 1);
+	PTP_CHECK(shutter->property->state == INDIGO_OK_STATE);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+}
+
 // The object of an aborted exposure that arrives before the next exposure is not published either.
 static void sony_old_api_aborted_shot_idle(void) {
 	atomic_store(&sony_object_queue, true);
@@ -2340,9 +2423,10 @@ cleanup:
 static void sony_old_api_lost_shot_expires(void) {
 	atomic_store(&sony_object_queue, true);
 	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
-	atomic_store(&sony_ignored_presses, 1);
+	// Every press of the exposure is ignored, so it ends ALERT after its retries.
+	atomic_store(&sony_ignored_presses, 3);
 	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
-	PTP_CHECK(wait_value(&exposure_state, INDIGO_ALERT_STATE));
+	PTP_CHECK(wait_value_long(&exposure_state, INDIGO_ALERT_STATE));
 	indigo_usleep(2000000);
 	indigo_change_number_property_1(&simulator_test_client, logical[0]->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.02);
 	PTP_CHECK(wait_value(&exposure_state, INDIGO_OK_STATE));
@@ -3439,9 +3523,9 @@ static indigo_property_state wait_setting(ptp_property *setting) {
 // A write the camera acknowledges but drops stays BUSY, is rewritten and confirmed from the camera's
 // own report (ILCE-7RM4, seen on hardware right after captures); one it never applies ends ALERT
 // showing the camera's value.
-static void sony_dropped_setting_write(void) {
+static void sony_dropped_setting_write_on(uint16_t product) {
 	sony_compression_profile = true;
-	PTP_CHECK(begin_profile(0x054c, 0x0d18));
+	PTP_CHECK(begin_profile(0x054c, product));
 	ptp_property *setting = ptp_property_supported(logical[0], ptp_property_sony_CompressionSetting);
 	PTP_CHECK(setting != NULL && setting->property != NULL && setting->property->type == INDIGO_SWITCH_VECTOR);
 	// One dropped write leaves a full rewrite period inside the 3 s confirmation window.
@@ -3461,6 +3545,35 @@ static void sony_dropped_setting_write(void) {
 	PTP_CHECK(*value(cameras, ptp_property_sony_CompressionSetting) == 3);
 	PTP_CHECK(indigo_get_switch(setting->property, "3"));
 	atomic_store(&sony_dropped_writes, 0);
+cleanup:
+	finish_bounds_case();
+}
+
+static void sony_dropped_setting_write(void) {
+	sony_dropped_setting_write_on(0x0d18);
+}
+
+// ILCE-7RM2 hardware run 2026-10-25: a compression write made right after a capture was acknowledged
+// and never applied, so a RAW+JPEG exposure came back as JPEG only.
+static void sony_old_api_dropped_setting_write(void) {
+	sony_dropped_setting_write_on(0x0a6b);
+}
+
+// ILCE-7RM2 hardware run 2026-10-25: a write applied seconds after it was acknowledged; the property
+// stays BUSY until the camera reports it, without rewriting it every second.
+static void sony_old_api_late_setting_write(void) {
+	sony_compression_profile = true;
+	sony_late_write_delay = 1.5;
+	PTP_CHECK(begin_profile(0x054c, 0x0a6b));
+	ptp_property *setting = ptp_property_supported(logical[0], ptp_property_sony_CompressionSetting);
+	PTP_CHECK(setting != NULL && setting->property != NULL);
+	int writes = atomic_load(command_count + ptp_operation_sony_SetControlDeviceA);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_COMPRESSION_PROPERTY_NAME, "1", true);
+	indigo_usleep(500000);
+	PTP_CHECK(setting->property->state == INDIGO_BUSY_STATE);
+	PTP_CHECK(wait_setting(setting) == INDIGO_OK_STATE);
+	PTP_CHECK(*value(cameras, ptp_property_sony_CompressionSetting) == 1);
+	PTP_CHECK(atomic_load(command_count + ptp_operation_sony_SetControlDeviceA) == writes + 1);
 cleanup:
 	finish_bounds_case();
 }
@@ -3521,6 +3634,8 @@ int main(void) {
 		{ "device_identity_published", device_identity_published },
 		{ "sony_busy_after_connect", sony_busy_after_connect },
 		{ "sony_dropped_setting_write", sony_dropped_setting_write },
+		{ "sony_old_api_dropped_setting_write", sony_old_api_dropped_setting_write },
+		{ "sony_old_api_late_setting_write", sony_old_api_late_setting_write },
 		{ "canon_focus_error", canon_focus_error },
 		{ "nikon_focus_error", nikon_focus_error },
 		{ "nikon_focus_stop_retry", nikon_focus_stop_retry },
@@ -3588,6 +3703,9 @@ int main(void) {
 		{ "sony_fast_reopen", sony_fast_reopen },
 		{ "sony_long_exposure_noise_reduction", sony_long_exposure_noise_reduction },
 		{ "sony_old_api_aborted_shot", sony_old_api_aborted_shot },
+		{ "sony_old_api_ignored_press", sony_old_api_ignored_press },
+		{ "sony_old_api_leftover_drained", sony_old_api_leftover_drained },
+		{ "sony_old_api_step_not_rewritten", sony_old_api_step_not_rewritten },
 		{ "sony_old_api_aborted_shot_idle", sony_old_api_aborted_shot_idle },
 		{ "sony_old_api_lost_shot_expires", sony_old_api_lost_shot_expires },
 		{ "sony_liveview_after_capture", sony_liveview_after_capture },

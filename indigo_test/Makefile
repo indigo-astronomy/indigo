@@ -2697,7 +2697,7 @@ $(INTEGRATION_BUILD)/ccd_ptp_sdk_ccd_framework.o: ../indigo_libs/indigo_ccd_driv
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_ptp_sdk_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=2 -c $< -o $@
+	$(CC) $(TEST_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=2 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_ptp_sdk: integration/test_ccd_ptp_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(PTP_SDK_TEST_OBJECTS) | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DPTP_STOP_RETRY_LIMIT=5 $< $(PTP_SDK_TEST_OBJECTS) -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
@@ -2714,7 +2714,7 @@ $(INTEGRATION_BUILD)/ccd_ptp_sanitize_ccd_framework.o: ../indigo_libs/indigo_ccd
 	$(CC) $(PTP_SANITIZE_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_ptp_sanitize_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(PTP_SANITIZE_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=2 -c $< -o $@
+	$(CC) $(PTP_SANITIZE_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=2 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_ptp_sdk_sanitize: integration/test_ccd_ptp_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(PTP_SANITIZE_OBJECTS) | $(INTEGRATION_BUILD)
 	$(CC) $(PTP_SANITIZE_CFLAGS) -DPTP_STOP_RETRY_LIMIT=5 $< $(PTP_SANITIZE_OBJECTS) -o $@ $(PTP_SANITIZE_LDFLAGS)

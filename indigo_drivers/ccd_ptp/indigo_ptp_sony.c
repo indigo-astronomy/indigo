@@ -44,6 +44,13 @@
 #define SONY_ILCE_7RM4A_PRODUCT_ID 0x0d9f
 // SONY ILCE-9M2 with Camera Remote SDK Ver.1.10.00
 #define SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER SONY_ILCE_7RM4_PRODUCT_ID
+
+#ifndef SONY_OLD_API_VERIFY_TIMEOUT
+#define SONY_OLD_API_VERIFY_TIMEOUT 15
+#endif
+#ifndef SONY_OLD_API_REWRITE_DELAY
+#define SONY_OLD_API_REWRITE_DELAY 5
+#endif
 #define SONY_NEW_API 300
 #define SONY_OLD_API 200
 
@@ -1331,13 +1338,16 @@ bool ptp_sony_initialise(indigo_device *device) {
 		uint32_t size;
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 1, 0, 0);
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 2, 0, 0);
+		// ILCE-7RM4 drops a SetControlDeviceA it acknowledged while busy after a capture; ILCE-7RM2 applies
+		// one up to about 9 s later (when idle), and a shot taken before that uses the old value.
+		PRIVATE_DATA->refresh_properties = ptp_sony_refresh_properties;
 		if (PRIVATE_DATA->model.product >= SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER) {
 			SONY_PRIVATE_DATA->api_version = SONY_NEW_API;
-			// ILCE-7RM4 acknowledges a SetControlDeviceA it drops while busy after a capture.
-			PRIVATE_DATA->refresh_properties = ptp_sony_refresh_properties;
 			indigo_log("0x%04x >= 0x%04x new API used", PRIVATE_DATA->model.product, SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER);
 		} else {
 			SONY_PRIVATE_DATA->api_version = SONY_OLD_API;
+			PRIVATE_DATA->property_verify_timeout = SONY_OLD_API_VERIFY_TIMEOUT;
+			PRIVATE_DATA->property_rewrite_delay = SONY_OLD_API_REWRITE_DELAY;
 			indigo_log("0x%04x < 0x%04x old API used", PRIVATE_DATA->model.product, SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER);
 		}
 		if (PRIVATE_DATA->model.product == SONY_ILCE_7RM4_PRODUCT_ID || PRIVATE_DATA->model.product == SONY_ILCE_7RM4A_PRODUCT_ID) {
@@ -1426,9 +1436,10 @@ bool ptp_sony_refresh_properties(indigo_device *device) {
 	return result;
 }
 
-// Downloads an object nobody waits for (with its RAW+JPEG partner) so the camera can release it.
-static void sony_discard_object(indigo_device *device, uint32_t handle) {
-	for (int i = 0; i < 2; i++) {
+// Downloads an object nobody waits for so the camera can release it; with pair, also the RAW+JPEG partner
+// announced by the same event.
+static void sony_discard_object(indigo_device *device, uint32_t handle, bool pair) {
+	for (int i = 0; i < (pair ? 2 : 1); i++) {
 		void *buffer = NULL;
 		uint32_t info_size = 0, size = 0;
 		char filename[PTP_MAX_CHARS] = "";
@@ -1470,7 +1481,7 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 				} else {
 					SONY_PRIVATE_DATA->shot_pending = false;
 				}
-				sony_discard_object(device, params[0]);
+				sony_discard_object(device, params[0], true);
 				return true;
 			}
 			void *buffer = NULL;
@@ -1534,6 +1545,8 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 					value = -value;
 				}
 				indigo_set_switch(property->property, property->property->items + 1, true);
+				// A step has no requested value the camera could confirm.
+				PRIVATE_DATA->write_unconfirmed = true;
 				return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, property->code, &value, sizeof(uint16_t));
 			}
 		}
@@ -1607,6 +1620,22 @@ bool ptp_sony_exposure(indigo_device *device) {
 		SONY_PRIVATE_DATA->downloaded_objects = 0;
 		SONY_PRIVATE_DATA->shot_retries = 0;
 		SONY_PRIVATE_DATA->shot_deadline = 0;
+		if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API && !PRIVATE_DATA->abort_capture) {
+			// A ready object left in the camera (the RAW of a pair shot before a compression write applied, or
+			// a late shot) would be returned as this exposure's image; drain it first, as libgphoto2 does.
+			ptp_property *memory = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
+			// One object per check: touching 0xffffc001 without a ready object is reported to crash the firmware.
+			// Each drained object is counted as one late shot; a RAW left from a published pair may thus clear
+			// the count of another late shot, which then expires by time.
+			for (int i = 0; memory && i < 4 && ptp_sony_refresh_properties(device) && memory->value.number.value > 0x8000; i++) {
+				sony_discard_object(device, 0xffffc001, false);
+				if (SONY_PRIVATE_DATA->shot_pending) {
+					SONY_PRIVATE_DATA->shot_pending = false;
+				} else if (SONY_PRIVATE_DATA->stale_objects > 0) {
+					SONY_PRIVATE_DATA->stale_objects--;
+				}
+			}
+		}
 		if (SONY_PRIVATE_DATA->shot_pending && indigo_monotonic_time() < SONY_PRIVATE_DATA->shot_expires) {
 			// The previous exposure ended before its image arrived; that image comes first.
 			SONY_PRIVATE_DATA->stale_objects++;
@@ -1682,8 +1711,9 @@ bool ptp_sony_exposure(indigo_device *device) {
 		PRIVATE_DATA->capture_phase = 2;
 	}
 	ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
-	// After a reconnect ILCE-7RM4 may accept a full press, refocus and never shoot; ObjectInMemory then stays 0.
-	if (SONY_PRIVATE_DATA->api_version == SONY_NEW_API && PRIVATE_DATA->capture_phase == 2 && SONY_PRIVATE_DATA->shot_deadline > 0 && !PRIVATE_DATA->abort_capture && !PRIVATE_DATA->readout_detected && !PRIVATE_DATA->image_added && SONY_PRIVATE_DATA->downloaded_objects == 0 && property && property->value.number.value == 0 && indigo_monotonic_time() >= SONY_PRIVATE_DATA->shot_deadline && ptp_sony_refresh_properties(device) && property->value.number.value == 0) {
+	// After a reconnect ILCE-7RM4 may accept a full press, refocus and never shoot, and ILCE-7RM2 ignores a
+	// press made right after the previous download; ObjectInMemory then stays 0.
+	if (PRIVATE_DATA->capture_phase == 2 && SONY_PRIVATE_DATA->shot_deadline > 0 && !PRIVATE_DATA->abort_capture && !PRIVATE_DATA->readout_detected && !PRIVATE_DATA->image_added && SONY_PRIVATE_DATA->downloaded_objects == 0 && property && property->value.number.value == 0 && indigo_monotonic_time() >= SONY_PRIVATE_DATA->shot_deadline && ptp_sony_refresh_properties(device) && property->value.number.value == 0) {
 		if (SONY_PRIVATE_DATA->shot_retries >= SONY_SHOT_RETRIES) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera did not take the picture after %d attempts", SONY_PRIVATE_DATA->shot_retries + 1);
 			return false;

@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "active_task": "20261025174618-8b09-ptp-sony-a7r2-hardware-test",
-  "phase": "implementation",
-  "status": "active",
-  "assigned_role": "coordinator",
-  "next_action": "Fix the lost ObjectAdded lag on old-API Sony bodies, rerun the recorded hardware test.",
-  "blocker": null
-}

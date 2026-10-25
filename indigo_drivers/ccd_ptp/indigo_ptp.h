@@ -417,6 +417,9 @@ typedef struct {
 	bool (* check_dual_compression)(indigo_device *device);
 	indigo_property *pending_properties[PTP_MAX_ELEMENTS];
 	unsigned property_retries[PTP_MAX_ELEMENTS];
+	bool write_unconfirmed;
+	// Vendor overrides of the write confirmation window and rewrite period, 0 for the defaults.
+	double property_verify_timeout, property_rewrite_delay;
 	int64_t property_requested[PTP_MAX_ELEMENTS];
 	double property_written[PTP_MAX_ELEMENTS];
 	double property_deadline[PTP_MAX_ELEMENTS];

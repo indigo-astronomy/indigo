@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025174618-8b09-ptp-sony-a7r2-hardware-test",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner decides on integration and push.",
+  "blocker": null
+}

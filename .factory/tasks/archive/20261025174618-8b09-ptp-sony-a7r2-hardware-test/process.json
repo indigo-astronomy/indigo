@@ -1,0 +1,138 @@
+{
+  "version": 2,
+  "task": "20261025174618-8b09-ptp-sony-a7r2-hardware-test",
+  "scope": [
+    "indigo_drivers/ccd_ptp/*",
+    "indigo_test/hardware/test_ccd_ptp_hw.c",
+    "indigo_test/integration/test_ccd_ptp_sdk.c",
+    "indigo_test/Makefile",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/active/*",
+    ".factory/findings/archive/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_ptp",
+        "--hw",
+        "--device",
+        "Sony Alpha A7RII"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_ptp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-ccd-ptp-sdk-sanitize",
+        "test-ccd-ptp-ica-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "hardware-io": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025174618-8b09-ptp-sony-a7r2-hardware-test.json": [
+      "100644",
+      "blob",
+      "7891da2810477712a64f7bf7c27b9418ea295fdc"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "23abf31988bfbc1ce938df0fd14c819618fc156c"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "eb685cedd5ec8f3786e3395c1639c731ca1496cf"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "a18c60ff030696355d9167b724b50ca9bea218a8"
+    ],
+    "indigo_drivers/ccd_ptp/README.md": [
+      "100644",
+      "blob",
+      "d973781e76c2d609848733597978063d592b1f67"
+    ],
+    "indigo_drivers/ccd_ptp/REFACTOR.md": [
+      "100644",
+      "blob",
+      "d40c5117a95dc4e351235c4bb66872b195024371"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ccd_ptp.c": [
+      "100644",
+      "blob",
+      "3009f132c1643b06b67d2203ae018b9cc5d12ab8"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp.h": [
+      "100644",
+      "blob",
+      "174f6b29011e40e1812ae86e8c62e5632d7f0919"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_sony.c": [
+      "100644",
+      "blob",
+      "a4f9c6dcdfa822e588126ecbaa3f39014b0979c7"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_sony.h": [
+      "100644",
+      "blob",
+      "337669980f02b541091e9d49a51e8ecfe31badbd"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "4189a0672fb17e0052c692eb4d40dc93a570736c"
+    ],
+    "indigo_test/hardware/test_ccd_ptp_hw.c": [
+      "100644",
+      "blob",
+      "493067a8cc2e2758bccc15a0b623ea102365cf98"
+    ],
+    "indigo_test/integration/test_ccd_ptp_sdk.c": [
+      "100644",
+      "blob",
+      "4cf7aee120f4c8cb60e7ccd10d1b1905a27d1814"
+    ]
+  }
+}
