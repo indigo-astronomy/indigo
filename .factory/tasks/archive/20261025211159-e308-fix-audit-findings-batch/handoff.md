@@ -59,5 +59,5 @@ Complete process.json from actual results, with scope globs, version 2 reviewed 
 ## Central findings handoff
 - Relevant canonical FND IDs and registry reference: the 31 IDs in brief.md (archived, kind fixed) and new -001..-006 (active)
 - Reconciliation decisions or blockers, if any: none; current ownership/status stays in the registry
-- Durable report pins and findings check/prune-gate evidence: `./.factory/scripts/findings check` passes (61 active, 181 archived after closure)
+- Durable report pins and findings check/prune-gate evidence: `./.factory/scripts/findings check` passes after closure (61 active)
 Read the active register only; retain unresolved findings and the ID counter across task cleanup. Do not attach the archive wholesale.
