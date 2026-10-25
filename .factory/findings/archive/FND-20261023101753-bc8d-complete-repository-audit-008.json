@@ -1,0 +1,29 @@
+{
+  "title": "Bahtinov processing leaks its binarized frame",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_raw_utils.c:3501-3576: indigo_bahtinov_error owns the non-NULL buffer returned by indigo_binarize, then never frees mono on either success or failure return. Agent imager calls it for repeated focus frames at indigo_agent_imager.c:1002. Leaks width*height bytes per frame. Next: Free mono after Hough construction or in common cleanup. Verify repeated success and rejected-spike frames with allocation accounting.",
+  "evidence": "indigo_raw_utils.c:3501-3576: indigo_bahtinov_error owns the non-NULL buffer returned by indigo_binarize, then never frees mono on either success or failure return. Agent imager calls it for repeated focus frames at indigo_agent_imager.c:1002. Leaks width*height bytes per frame.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: fe7c177a6: Bahtinov binarized frame freed; bahtinov_error_releases_binarized_frame.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-008"
+}

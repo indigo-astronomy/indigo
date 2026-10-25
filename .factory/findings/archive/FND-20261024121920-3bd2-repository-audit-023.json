@@ -1,0 +1,29 @@
+{
+  "title": "Firmware simulator receive buffers lack terminator capacity",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "- Locations: indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.ino:87-90; indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.ino:80,271,276-279. - Severity: low; confidence: high; category: functional/simulator input boundary. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: FlipFlat zeroes a 32-byte array, then lets readBytesUntil fill all32 bytes and calls strcmp without appending NUL. NexDome3 declares ReceiveBuffer[COMMAND_LENGTH], accepts COMMAND_LENGTH data bytes and then writes NUL at index COMMAND_LENGTH when the terminator arrives. - Impact: full-size abnormal serial input can make FlipFlat compare beyond its local buffer or make NexDome3 write one byte beyond the receive array. These are manual firmware simulators, not the portable production driver. No flashing/hardware/reproduction performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-8). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-023; driver-ac-report.md alias AC-8; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: 811a3db42, 3527d6b86: terminator capacity in flipflat and nexdome3 firmware simulators; inspection only, not compiled (no arduino-cli).",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024121920-3bd2-repository-audit-023"
+}

@@ -1,0 +1,29 @@
+{
+  "title": "FlipFlat cover operation blocks its serialized handler",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "Cover handler sleeps/polls for up to 30 seconds, delaying queued disconnect. Next: bounded finalizer and disconnect/stop characterization.",
+  "evidence": "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver:151-171",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: aux_flipflat b975448f9 (v13): aux_cover_finalizer with 30 s deadline; 16/16.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-018"
+}

@@ -1,0 +1,29 @@
+{
+  "title": "SVB powerbox boot drain has no overall deadline",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "- Location: indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.driver:141-157, especially 147-156. - Severity: medium; confidence: high; category: functional/availability. Owner: coordinator; status: open; nonblocking audit follow-up. - Evidence: comment promises \"up to 3 seconds, 300 ms silence\", but the loop is conditioned only on repeated 300000-microsecond waits. No overall deadline, byte cap or iteration limit exists. Successful arriving data resets the effective wait indefinitely. - Impact: a controller in a reset/logging loop or continuous serial noise can keep the serialized connect handler active indefinitely, postponing disconnect and other operations. No hardware interaction or induced failure occurred. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-3). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-018; driver-ac-report.md alias AC-3; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: aux_svbpowerbox 44d41ded0 (v6): 3 s overall boot drain deadline; endless_boot_log_is_bounded; 16/16.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024121920-3bd2-repository-audit-018"
+}

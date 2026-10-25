@@ -1,0 +1,29 @@
+{
+  "id": "FND-000048",
+  "title": "TGT-D29: the aux_upb focuser poll publishes FOCUSER_POSITION and FOCUSER_STEPS OK over a queued request when SI reports no motion",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021211058-e043-remove-switch-target-review",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "TGT-D29 (alias from the retired indigo_drivers/REVIEW_SWITCH_TARGETS.md): the aux_upb focuser on_timer sets FOCUSER_POSITION and FOCUSER_STEPS OK when SI reports no motion without checking for a queued request. A position request whose handler has not sent the move yet is shown OK, and a FOCUSER_STEPS request that should be refused as overlapping is accepted. Seen as the intermittent focuser_overlapping_request_is_rejected failure (2 of 3 runs on 3.0.0.34, 2 of 9 on 3.0.0.35); still open in driver version 38. Next action: a scoped aux_upb repair task that leaves BUSY focuser properties to their pending handler in the SI branch, with a deterministic regression test.",
+  "evidence": "85c7c3d9207b80b35a80047cb71dcb1419ad3c7e:indigo_drivers/REVIEW_SWITCH_TARGETS.md:201 (status Open); indigo_drivers/aux_upb/REFACTOR.md:374, :406, :411",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: aux_upb bb697e6aa (v39) and 1619d4243: SI no-motion poll leaves queued BUSY requests to the handler, abort ends a cancelled request in ALERT; focuser_poll_leaves_a_queued_request_busy; 52/52.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

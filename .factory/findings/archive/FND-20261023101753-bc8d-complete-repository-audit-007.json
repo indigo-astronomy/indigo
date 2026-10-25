@@ -1,0 +1,29 @@
+{
+  "title": "PSF map iterates beyond usable stars and consumes failed measurements",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_raw_utils.c:3153-3166: last_star = used_stars-first_star is an exclusive upper bound, but loop uses k <= last_star. For 1-9 usable stars, it consumes stars[used_stars]; at capacity this reads beyond allocation, otherwise a zero-initialized unused entry contaminates edge averages. FF-06 also makes ignoring indigo_selection_psf failure at 3106 material: uninitialized outputs are used. Next: Use k < last_star and retain stars only when PSF succeeds; handle zero/constant usable values. Verify 0/1/9 and capacity-filled star lists with map output.",
+  "evidence": "indigo_raw_utils.c:3153-3166: last_star = used_stars-first_star is an exclusive upper bound, but loop uses k <= last_star. For 1-9 usable stars, it consumes stars[used_stars]; at capacity this reads beyond allocation, otherwise a zero-initialized unused entry contaminates edge averages. FF-06 also makes ignoring indigo_selection_psf failure at 3106 material: uninitialized outputs are used.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: fe7c177a6: PSF map k < last_star, failed PSF skipped; psf_map_* regressions; test-raw-image-sanitize pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-007"
+}
