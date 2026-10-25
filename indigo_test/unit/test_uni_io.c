@@ -37,6 +37,7 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
+#include <indigo/indigo_io.h>
 
 #include "../test_runner.h"
 
@@ -574,6 +575,90 @@ static void standard_stream_handles_have_file_descriptors(void) {
 	}
 }
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+// hid_device shares a union with fd: a HID handle without a device aliases descriptor 0, which the close of the
+// HID handle went on to shut down and close
+static void hid_close_leaves_aliased_descriptor_open(void) {
+	int saved = dup(0);
+	int null_fd = open("/dev/null", O_RDONLY);
+	ASSERT_TRUE(null_fd >= 0);
+	ASSERT_TRUE(dup2(null_fd, 0) == 0);
+	close(null_fd);
+	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+	memset(handle, 0, sizeof(*handle));
+	handle->type = INDIGO_HID_HANDLE;
+	handle->hid_device = NULL;
+	int aliased_fd = handle->fd;
+	indigo_uni_close(&handle);
+	bool still_open = fcntl(0, F_GETFD) != -1;
+	if (saved >= 0) {
+		dup2(saved, 0);
+		close(saved);
+	} else {
+		close(0);
+	}
+	ASSERT_EQ_INT(0, aliased_fd);
+	ASSERT_TRUE(handle == NULL);
+	ASSERT_TRUE(still_open);
+}
+
+static int open_unlinked_temporary_file(void) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s/indigo_test_printf.XXXXXX", getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
+	int fd = mkstemp(path);
+	if (fd >= 0) {
+		unlink(path);
+	}
+	return fd;
+}
+
+// The legacy formatter passed the full vsnprintf() length to indigo_write() even when the output did not fit its
+// buffer, so it sent bytes from beyond the buffer instead of the end of the output
+static void legacy_printf_sends_output_longer_than_its_buffer(void) {
+	int fd = open_unlinked_temporary_file();
+	ASSERT_TRUE(fd >= 0);
+	size_t size = INDIGO_BUFFER_SIZE + 100;
+	char *text = malloc(size + 1);
+	char *read_back = malloc(size + 16);
+	bool ok = text != NULL && read_back != NULL;
+	if (ok) {
+		for (size_t i = 0; i < size; i++) {
+			text[i] = 'a' + (char)(i % 26);
+		}
+		text[size] = '\0';
+		ok = indigo_printf(fd, "%s|%d", text, 42);
+	}
+	long total = 0;
+	if (ok) {
+		lseek(fd, 0, SEEK_SET);
+		long count;
+		while ((count = read(fd, read_back + total, size + 16 - total)) > 0) {
+			total += count;
+		}
+	}
+	bool same = ok && total == (long)size + 3 && !memcmp(read_back, text, size) && !memcmp(read_back + size, "|42", 3);
+	close(fd);
+	free(text);
+	free(read_back);
+	ASSERT_TRUE(ok);
+	ASSERT_EQ_INT((int)size + 3, (int)total);
+	ASSERT_TRUE(same);
+}
+
+static void legacy_printf_sends_short_output_unchanged(void) {
+	int fd = open_unlinked_temporary_file();
+	ASSERT_TRUE(fd >= 0);
+	bool ok = indigo_printf(fd, ":%s%03d#", "GR", 7) && indigo_printf(fd, "plain");
+	char buffer[32] = { 0 };
+	lseek(fd, 0, SEEK_SET);
+	long count = read(fd, buffer, sizeof(buffer) - 1);
+	close(fd);
+	ASSERT_TRUE(ok);
+	ASSERT_EQ_INT(12, (int)count);
+	ASSERT_STREQ(":GR007#plain", buffer);
+}
+#endif
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "standard_stream_handles_have_file_descriptors", standard_stream_handles_have_file_descriptors },
@@ -586,6 +671,9 @@ int main(void) {
 		{ "serial_open_reports_not_a_serial_port", serial_open_reports_not_a_serial_port },
 		{ "serial_open_clears_error_on_success", serial_open_clears_error_on_success },
 		{ "serial_port_reopens_after_close", serial_port_reopens_after_close },
+		{ "hid_close_leaves_aliased_descriptor_open", hid_close_leaves_aliased_descriptor_open },
+		{ "legacy_printf_sends_output_longer_than_its_buffer", legacy_printf_sends_output_longer_than_its_buffer },
+		{ "legacy_printf_sends_short_output_unchanged", legacy_printf_sends_short_output_unchanged },
 #endif
 		{ "wait_for_data_continues_after_signal", wait_for_data_continues_after_signal },
 		{ "wait_for_data_keeps_timeout_after_signal", wait_for_data_keeps_timeout_after_signal },

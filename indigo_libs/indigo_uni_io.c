@@ -2465,24 +2465,27 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		*handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #if !defined(INDIGO_CLIENT)
+		// hid_device shares the union with fd, so a HID handle must not reach the descriptor cleanup below
 		if (copy->type == INDIGO_HID_HANDLE ) {
 			hid_close((hid_device *)copy->hid_device);
 		} else
 #endif
-		if (copy->type == INDIGO_COM_HANDLE) {
-			// Release the exclusive claim of the open: a Linux pseudo-terminal keeps TIOCEXCL after its
-			// last descriptor is closed while the other end stays open, and refuses the next open with EBUSY.
-			ioctl(copy->fd, TIOCNXCL);
+		{
+			if (copy->type == INDIGO_COM_HANDLE) {
+				// Release the exclusive claim of the open: a Linux pseudo-terminal keeps TIOCEXCL after its
+				// last descriptor is closed while the other end stays open, and refuses the next open with EBUSY.
+				ioctl(copy->fd, TIOCNXCL);
+			}
+			if (copy->type != INDIGO_FILE_HANDLE) {
+				// Set linger option to avoid TIME_WAIT state
+				struct linger ling;
+				ling.l_onoff = 1;
+				ling.l_linger = 1;
+				setsockopt(copy->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+				shutdown(copy->fd, SHUT_RDWR);
+			}
+			close(copy->fd);
 		}
-		if (copy->type != INDIGO_FILE_HANDLE) {
-			// Set linger option to avoid TIME_WAIT state
-			struct linger ling;
-			ling.l_onoff = 1;
-			ling.l_linger = 1;
-			setsockopt(copy->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
-			shutdown(copy->fd, SHUT_RDWR);
-		}
-		close(copy->fd);
 #elif defined(INDIGO_WINDOWS)
 #if !defined(INDIGO_CLIENT)
 		if (copy->type == INDIGO_HID_HANDLE ) {
