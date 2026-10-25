@@ -40,7 +40,7 @@
 typedef struct {
 	uint16_t vendor, product;
 	atomic_bool visible, opened, hold_image, hold_focus, af_held;
-	bool af_event;
+	bool af_event, hid_only;
 	atomic_int refs, opens, closes, frames, releases, held_us;
 	uint16_t properties[32];
 	uint32_t values[32];
@@ -103,6 +103,13 @@ static const simulator_driver_case ptp_case = {
 	"PTP-over-USB Camera", "indigo_ccd_ptp", "Canon EOS 600D", indigo_ccd_ptp, true,
 	base_properties_without_instances, ARRAY_SIZE(base_properties_without_instances), hidden_base_properties_without_instances, ARRAY_SIZE(hidden_base_properties_without_instances), NULL, 0, NULL, 0
 };
+
+// The property cache follows one device name; a case observing a Fujifilm X-T1 profile selects this.
+static const simulator_driver_case fuji_case = {
+	"PTP-over-USB Camera", "indigo_ccd_ptp", "Fujifilm X-T1", indigo_ccd_ptp, true,
+	base_properties_without_instances, ARRAY_SIZE(base_properties_without_instances), hidden_base_properties_without_instances, ARRAY_SIZE(hidden_base_properties_without_instances), NULL, 0, NULL, 0
+};
+static const simulator_driver_case *profile_case;
 
 static fake_camera *camera(void *token) {
 	return token;
@@ -786,11 +793,14 @@ static const struct libusb_endpoint_descriptor endpoints[] = {
 };
 static const struct libusb_interface_descriptor setting = { .bInterfaceNumber = 0, .bNumEndpoints = 3, .bInterfaceClass = 6, .bInterfaceSubClass = 1, .bInterfaceProtocol = 1, .endpoint = endpoints };
 static const struct libusb_interface interface = { .altsetting = &setting, .num_altsetting = 1 };
+// The ILCE-6000 in charging mode enumerates as 054c:0994 with a single HID interface.
+static const struct libusb_interface_descriptor hid_setting = { .bInterfaceNumber = 0, .bNumEndpoints = 1, .bInterfaceClass = 3, .endpoint = endpoints + 2 };
+static const struct libusb_interface hid_interface = { .altsetting = &hid_setting, .num_altsetting = 1 };
 
 int ptp_test_config(libusb_device *dev, uint8_t index, struct libusb_config_descriptor **result) {
 	*result = calloc(1, sizeof(**result));
 	(*result)->bNumInterfaces = 1;
-	(*result)->interface = &interface;
+	(*result)->interface = camera(dev)->hid_only ? &hid_interface : &interface;
 	return 0;
 }
 
@@ -887,6 +897,12 @@ int ptp_test_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char 
 			if (c->command.code == ptp_operation_sony_SetControlDeviceA && atomic_load(&sony_dropped_writes) > 0) {
 				atomic_fetch_sub(&sony_dropped_writes, 1);
 				target = NULL;
+			}
+			// The X-T1, whose d208 actions lack BULB start and stop, rejects a Bulb ExposureTime.
+			if (c->vendor == 0x04cb && code == ptp_property_ExposureTime && v == 0xffffffff && (fuji_action_profile == 1 || fuji_action_profile == 2)) {
+				c->response = ptp_response_InvalidDevicePropValue;
+				*length = size;
+				return LIBUSB_SUCCESS;
 			}
 			if (target) {
 				*target = v;
@@ -1214,7 +1230,7 @@ static bool wait_value(atomic_int *value, int expected) {
 static bool begin_profile(uint16_t vendor, uint16_t product) {
 	reset_fake(vendor, product);
 	bus_thread = pthread_self();
-	reset_simulator_context(&ptp_case);
+	reset_simulator_context(profile_case ? profile_case : &ptp_case);
 	atomic_store(&connection_state, INDIGO_OK_STATE);
 	atomic_store(&exposure_state, INDIGO_OK_STATE);
 	atomic_store(&streaming_state, INDIGO_OK_STATE);
@@ -1233,6 +1249,7 @@ static bool begin_profile(uint16_t vendor, uint16_t product) {
 }
 
 static void end_profile(void) {
+	profile_case = NULL;
 	mirror_unknown_profile = false;
 	bulb_profile = false;
 	fuji_priority_profile = fuji_reject_bulb = fuji_af_error = fuji_reject_cancel = false;
@@ -2494,6 +2511,90 @@ cleanup:
 	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
 }
 
+static bool cached_item_present(const char *property_name, const char *item_name, bool present) {
+	double deadline = indigo_monotonic_time() + 5;
+	while ((find_cached_item(property_name, item_name) != NULL) != present && indigo_monotonic_time() < deadline) {
+		indigo_usleep(10000);
+	}
+	return (find_cached_item(property_name, item_name) != NULL) == present;
+}
+
+static bool cached_item_selected(const char *property_name, const char *item_name) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	return item != NULL && item->sw.value;
+}
+
+// X-T1 hardware run: Bulb was offered although the camera declares no USB BULB, and its write was
+// rejected. Bulb stays only while the camera reports it.
+static void fuji_bulb_not_offered(void) {
+	fuji_priority_profile = true;
+	fuji_action_profile = 1;
+	profile_case = &fuji_case;
+	PTP_CHECK(begin_profile(1227, 703));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "2710", true));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "1e84800", true));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff", false));
+	end_profile();
+	bulb_profile = fuji_priority_profile = true;
+	fuji_action_profile = 1;
+	profile_case = &fuji_case;
+	PTP_CHECK(begin_profile(1227, 703));
+	PTP_CHECK(cached_item_present(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff", true));
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff"));
+	atomic_store(&shutter_state, -1);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_SHUTTER_PROPERTY_NAME, "2710", true);
+	PTP_CHECK(wait_value(&shutter_state, INDIGO_OK_STATE));
+	// Gone with the completed write, before the next value poll could remove it.
+	PTP_CHECK(find_cached_item(DSLR_SHUTTER_PROPERTY_NAME, "ffffffff") == NULL);
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "2710"));
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
+}
+
+// X-T1 hardware run: after a rejected write DSLR_SHUTTER stayed on the rejected value, and so did the
+// value the next exposure used.
+static void rejected_setting_readback(void) {
+	profile_case = &fuji_case;
+	PTP_CHECK(begin_profile(1227, 703));
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "2710"));
+	atomic_store(&fail_operation, ptp_operation_SetDevicePropValue);
+	atomic_store(&shutter_state, -1);
+	indigo_change_switch_property_1(&simulator_test_client, logical[0]->name, DSLR_SHUTTER_PROPERTY_NAME, "1e84800", true);
+	PTP_CHECK(wait_value(&shutter_state, INDIGO_ALERT_STATE));
+	atomic_store(&fail_operation, 0);
+	PTP_CHECK(*value(cameras, ptp_property_ExposureTime) == 10000);
+	PTP_CHECK(cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "2710"));
+	PTP_CHECK(!cached_item_selected(DSLR_SHUTTER_PROPERTY_NAME, "1e84800"));
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
+}
+
+// Hardware run: an ILCE-6000 charging over USB (054c:0994, HID only) was attached as "Sony Camera"
+// through the Sony vendor wildcard and failed to connect.
+static void sony_charger_not_attached(void) {
+	PTP_CHECK(begin_profile(1356, 3352));
+	cameras[1].vendor = 0x054c;
+	cameras[1].product = 0x0994;
+	cameras[1].hid_only = true;
+	atomic_store(&cameras[1].visible, true);
+	callback(NULL, (libusb_device *)(cameras + 1), LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	// Hot-plug events are serialized, so once the camera's removal is processed so is the charger.
+	callback(NULL, (libusb_device *)cameras, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	PTP_CHECK(wait_value(&attached, 0));
+	PTP_CHECK(logical[1] == NULL);
+cleanup:
+	end_profile();
+	ASSERT_EQ_INT(0, atomic_load(&bus_io));
+	ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[1].refs));
+}
+
 static void fuji_bulb_missing_actions(void) {
 	fuji_bulb_declared_unsupported(1);
 }
@@ -3264,6 +3365,9 @@ int main(void) {
 		{ "fuji_bulb_priority_abort", fuji_bulb_priority_abort },
 		{ "fuji_bulb_rejected_recovery", fuji_bulb_rejected_recovery },
 		{ "fuji_bulb_missing_actions", fuji_bulb_missing_actions },
+		{ "fuji_bulb_not_offered", fuji_bulb_not_offered },
+		{ "rejected_setting_readback", rejected_setting_readback },
+		{ "sony_charger_not_attached", sony_charger_not_attached },
 		{ "fuji_bulb_missing_stop", fuji_bulb_missing_stop },
 		{ "fuji_bulb_unknown_actions", fuji_bulb_unknown_actions },
 		{ "fuji_af_failure_cleanup", fuji_af_failure_cleanup },

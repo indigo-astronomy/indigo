@@ -7212,6 +7212,7 @@
 		3F1BCB9A480CBAEA78B91E48 /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		E800FCFF03CFA4E27FC04773 /* 20261025074335-0b62-fix-rpio-gpio-findings.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025074335-0b62-fix-rpio-gpio-findings.json"; sourceTree = "<group>"; };
 		DE8C90EC1179EB94E2CB290D /* FND-20261025093224-2d50-fix-ptp-findings-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261025093224-2d50-fix-ptp-findings-001.json"; sourceTree = "<group>"; };
+		3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261025113906-c862-ptp-fuji-hardware-test-001.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -19077,6 +19078,7 @@
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
 				7CE754E6D88ACCCBE2D60593 /* FND-20261024202957-6bd9-fix-ccd-rpi-001.json */,
 				DE8C90EC1179EB94E2CB290D /* FND-20261025093224-2d50-fix-ptp-findings-001.json */,
+				3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */,
 			);
 			path = active;
 			sourceTree = "<group>";

@@ -21,8 +21,8 @@
 // Physical PTP camera (DSLR / mirrorless) acceptance test over USB. Compression, image size,
 // shutter and the other camera controls are found by their labels, so the cases skip what the
 // connected body does not offer. Every setting a case changes is restored. Images go to a
-// private directory only; DSLR_DELETE_IMAGE is switched OFF on connect, so the frames the suite
-// shoots stay on the camera card. Hot-plug is not part of this suite.
+// private directory only; DSLR_DELETE_IMAGE is switched ON on connect, so the frames the suite
+// shoots do not fill the camera card. Hot-plug is not part of this suite.
 
 #include <pthread.h>
 #include <math.h>
@@ -79,7 +79,11 @@ static int device_slot(const char *name) {
 	return -1;
 }
 
+// A cleanup path may run without a selected camera (index -1).
 static int property_slot(int device_index, const char *name) {
+	if (device_index < 0) {
+		return -1;
+	}
 	for (int property_index = 0; property_index < MAX_PROPERTIES; property_index++) {
 		if (devices[device_index].properties[property_index] && !strcmp(devices[device_index].properties[property_index]->name, name)) {
 			return property_index;
@@ -89,7 +93,8 @@ static int property_slot(int device_index, const char *name) {
 }
 
 // JPEG: complete when it ends with EOI; dimensions and pixel deviation from a full decode, which
-// also proves the payload is not truncated. TIFF-based RAW (ARW, NEF, CR2, DNG): byte-order header.
+// also proves the payload is not truncated. TIFF-based RAW (ARW, NEF, CR2, DNG): byte-order header;
+// Fujifilm RAF: its magic.
 static void inspect_image(observed_image *image, indigo_item *item) {
 	const uint8_t *bytes = item->blob.value;
 	long size = item->blob.size;
@@ -138,7 +143,7 @@ static void inspect_image(observed_image *image, indigo_item *item) {
 		image->complete = channels && (uint64_t)header.width * header.height * channels + sizeof(header) <= (uint64_t)size;
 		image->valid = image->complete && header.width && header.height;
 	} else {
-		image->complete = size > 8 && ((bytes[0] == 'I' && bytes[1] == 'I' && bytes[2] == 0x2A && bytes[3] == 0) || (bytes[0] == 'M' && bytes[1] == 'M' && bytes[2] == 0 && bytes[3] == 0x2A) || (bytes[0] == 'I' && bytes[1] == 'I' && bytes[2] == 0x55));
+		image->complete = size > 16 && ((bytes[0] == 'I' && bytes[1] == 'I' && bytes[2] == 0x2A && bytes[3] == 0) || (bytes[0] == 'M' && bytes[1] == 'M' && bytes[2] == 0 && bytes[3] == 0x2A) || (bytes[0] == 'I' && bytes[1] == 'I' && bytes[2] == 0x55) || !memcmp(bytes, "FUJIFILMCCD-RAW ", 16));
 		image->valid = image->complete;
 	}
 }
@@ -259,12 +264,18 @@ static bool wait_state(int device_index, const char *name, unsigned after, indig
 }
 
 static bool change_switch(int device_index, const char *name, const char *item, indigo_property_state state) {
+	if (device_index < 0) {
+		return false;
+	}
 	unsigned before = property_revision(device_index, name);
 	indigo_change_switch_property_1(&client, devices[device_index].name, name, item, true);
 	return wait_state(device_index, name, before, state, 60);
 }
 
 static bool change_number(int device_index, const char *name, const char *item, double value, indigo_property_state state, double timeout) {
+	if (device_index < 0) {
+		return false;
+	}
 	unsigned before = property_revision(device_index, name);
 	indigo_change_number_property_1(&client, devices[device_index].name, name, item, value);
 	return wait_state(device_index, name, before, state, timeout);
@@ -350,6 +361,36 @@ static bool select_name(const char *property_name, const char *name) {
 	return true;
 }
 
+// Compression items carry vendor labels: Sony offers "JPEG" and "RAW+JPEG", Fujifilm "FINE",
+// "NORMAL" and "FINE+RAW". JPEG only is "JPEG" or else the first label without RAW, RAW+JPEG is
+// "RAW+JPEG" or else the first label combining RAW with another format.
+static bool find_compression(bool jpeg, bool raw, char *name) {
+	if (find_label(DSLR_COMPRESSION_PROPERTY_NAME, jpeg && raw ? "RAW+JPEG" : jpeg ? "JPEG" : "RAW", name)) {
+		return true;
+	}
+	indigo_property *property = snapshot(camera, DSLR_COMPRESSION_PROPERTY_NAME);
+	bool found = false;
+	for (int i = 0; property && i < property->count && !found; i++) {
+		const char *label = property->items[i].label;
+		bool has_raw = strstr(label, "RAW") != NULL;
+		if ((jpeg && !raw && !has_raw) || (jpeg && raw && has_raw && strchr(label, '+'))) {
+			snprintf(name, INDIGO_NAME_SIZE, "%s", property->items[i].name);
+			found = true;
+		}
+	}
+	indigo_release_property(property);
+	return found;
+}
+
+static bool select_jpeg(void) {
+	char name[INDIGO_NAME_SIZE];
+	if (!find_compression(true, false, name)) {
+		fprintf(stderr, "%s offers no JPEG only item\n", DSLR_COMPRESSION_PROPERTY_NAME);
+		return false;
+	}
+	return select_name(DSLR_COMPRESSION_PROPERTY_NAME, name);
+}
+
 static double number_value(int device_index, const char *property_name, int item_index) {
 	indigo_property *property = snapshot(device_index, property_name);
 	double result = property && property->count > item_index ? property->items[item_index].number.value : NAN;
@@ -379,16 +420,17 @@ static bool acquire(double duration, double timeout) {
 	return true;
 }
 
-// The driver deletes downloaded frames from the card by default on most vendors; keep them.
-static bool keep_card_images(void) {
+// Downloaded test frames are deleted from the camera, so a run does not write them to the card. The
+// driver deletes only the objects it has just downloaded.
+static bool delete_test_images(void) {
 	indigo_property *property = snapshot(camera, DSLR_DELETE_IMAGE_PROPERTY_NAME);
-	bool change = property && !property->hidden && property->perm == INDIGO_RW_PERM && !indigo_get_switch(property, DSLR_DELETE_IMAGE_OFF_ITEM_NAME);
+	bool change = property && !property->hidden && property->perm == INDIGO_RW_PERM && !indigo_get_switch(property, DSLR_DELETE_IMAGE_ON_ITEM_NAME);
 	indigo_release_property(property);
-	return !change || change_switch(camera, DSLR_DELETE_IMAGE_PROPERTY_NAME, DSLR_DELETE_IMAGE_OFF_ITEM_NAME, INDIGO_OK_STATE);
+	return !change || change_switch(camera, DSLR_DELETE_IMAGE_PROPERTY_NAME, DSLR_DELETE_IMAGE_ON_ITEM_NAME, INDIGO_OK_STATE);
 }
 
 static bool connect_camera(void) {
-	return change_switch(camera, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_OK_STATE) && keep_card_images() && change_switch(camera, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, INDIGO_OK_STATE) && change_switch(camera, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, INDIGO_OK_STATE);
+	return change_switch(camera, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, INDIGO_OK_STATE) && delete_test_images() && change_switch(camera, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, INDIGO_OK_STATE) && change_switch(camera, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, INDIGO_OK_STATE);
 }
 
 static bool disconnected(int device_index) {
@@ -456,8 +498,10 @@ static void find_focuser(void) {
 	pthread_mutex_unlock(&mutex);
 }
 
-// Settings the suite changes, captured after the first connection and restored at the end.
-static const char *restored_properties[] = { DSLR_COMPRESSION_PROPERTY_NAME, CCD_MODE_PROPERTY_NAME, DSLR_SHUTTER_PROPERTY_NAME, DSLR_ISO_PROPERTY_NAME, DSLR_WHITE_BALANCE_PROPERTY_NAME, DSLR_FOCUS_MODE_PROPERTY_NAME, CCD_PREVIEW_PROPERTY_NAME };
+// Settings the suite changes, captured after the first connection and restored at the end. Fujifilm
+// control priority comes last: any other write switches the body to PC priority, and only camera
+// priority brings back what the camera's own dials select (e.g. Bulb with the shutter dial on B).
+static const char *restored_properties[] = { DSLR_COMPRESSION_PROPERTY_NAME, CCD_MODE_PROPERTY_NAME, DSLR_SHUTTER_PROPERTY_NAME, DSLR_ISO_PROPERTY_NAME, DSLR_WHITE_BALANCE_PROPERTY_NAME, DSLR_FOCUS_MODE_PROPERTY_NAME, CCD_PREVIEW_PROPERTY_NAME, "DSLR_ControlPriority" };
 static char restored_items[sizeof(restored_properties) / sizeof(restored_properties[0])][INDIGO_NAME_SIZE];
 
 static void remember_settings(void) {
@@ -471,17 +515,38 @@ static void remember_settings(void) {
 
 static bool restore_settings(void) {
 	bool result = true;
+	bool deferred[sizeof(restored_properties) / sizeof(restored_properties[0])] = { false };
 	for (unsigned i = 0; i < sizeof(restored_properties) / sizeof(restored_properties[0]); i++) {
 		indigo_property *property = snapshot(camera, restored_properties[i]);
 		bool present = property != NULL;
+		bool offered = present && *restored_items[i] && indigo_get_item(property, restored_items[i]) != NULL;
 		indigo_release_property(property);
 		if (*restored_items[i] && !present) {
 			fprintf(stderr, "Cannot restore %s: the property is gone\n", restored_properties[i]);
 			result = false;
 			continue;
 		}
-		if (*restored_items[i] && writable(restored_properties[i]) && !select_name(restored_properties[i], restored_items[i])) {
+		// The camera owns a read-only setting.
+		if (!*restored_items[i] || !writable(restored_properties[i])) {
+			continue;
+		}
+		// A value the camera reported but no longer offers (Fujifilm Bulb under PC priority) cannot be
+		// written; it must come back with the camera's control priority.
+		if (!offered) {
+			deferred[i] = true;
+			continue;
+		}
+		if (!select_name(restored_properties[i], restored_items[i])) {
 			fprintf(stderr, "Failed to restore %s to %s\n", restored_properties[i], restored_items[i]);
+			result = false;
+		}
+	}
+	for (unsigned i = 0; i < sizeof(restored_properties) / sizeof(restored_properties[0]); i++) {
+		for (int iteration = 0; deferred[i] && iteration < 500 && !is_selected(restored_properties[i], restored_items[i]); iteration++) {
+			indigo_usleep(10000);
+		}
+		if (deferred[i] && !is_selected(restored_properties[i], restored_items[i])) {
+			fprintf(stderr, "%s did not return to %s\n", restored_properties[i], restored_items[i]);
 			result = false;
 		}
 	}
@@ -498,8 +563,13 @@ static bool use_fixed_shutter(void) {
 	}
 	if (!*fixed_shutter) {
 		const char *candidates[] = { "1/100", "1/125", "1/80", "1/60", "1/160", "1/200", "1/250" };
+		// Sony labels "1/100", Fujifilm "1/100s".
 		for (unsigned i = 0; i < sizeof(candidates) / sizeof(candidates[0]) && !*fixed_shutter; i++) {
-			find_label(DSLR_SHUTTER_PROPERTY_NAME, candidates[i], fixed_shutter);
+			char suffixed[INDIGO_VALUE_SIZE];
+			snprintf(suffixed, sizeof(suffixed), "%ss", candidates[i]);
+			if (!find_label(DSLR_SHUTTER_PROPERTY_NAME, candidates[i], fixed_shutter)) {
+				find_label(DSLR_SHUTTER_PROPERTY_NAME, suffixed, fixed_shutter);
+			}
 		}
 	}
 	return *fixed_shutter && select_name(DSLR_SHUTTER_PROPERTY_NAME, fixed_shutter);
@@ -570,6 +640,14 @@ static void control_readback(void) {
 		printf("    %s: %s -> %s (%s)\n", controls[i], original, other, label);
 		CHECK(*original && *other);
 		CHECK(select_name(controls[i], other));
+		indigo_property *changed = snapshot(camera, controls[i]);
+		bool offered = changed && indigo_get_item(changed, original) != NULL;
+		indigo_release_property(changed);
+		if (!offered) {
+			// Fujifilm Bulb from the shutter dial is not writable; restore_settings() brings it back.
+			printf("    %s %s is no longer offered, restored at exit\n", controls[i], original);
+			continue;
+		}
 		CHECK(select_name(controls[i], original));
 	}
 cleanup:
@@ -578,7 +656,7 @@ cleanup:
 
 static void jpeg_exposures(void) {
 	CHECK(camera >= 0);
-	CHECK(select_label(DSLR_COMPRESSION_PROPERTY_NAME, "JPEG"));
+	CHECK(select_jpeg());
 	CHECK(use_fixed_shutter());
 	for (int i = 0; i < 3; i++) {
 		CHECK(acquire(0.01, 60));
@@ -596,7 +674,7 @@ static void image_sizes(void) {
 	unsigned long pixels[8] = { 0 };
 	int count = 0;
 	CHECK(camera >= 0);
-	CHECK(select_label(DSLR_COMPRESSION_PROPERTY_NAME, "JPEG"));
+	CHECK(select_jpeg());
 	CHECK(use_fixed_shutter());
 	indigo_property *mode = snapshot(camera, CCD_MODE_PROPERTY_NAME);
 	if (mode == NULL || mode->perm != INDIGO_RW_PERM) {
@@ -642,7 +720,7 @@ cleanup:
 static void raw_exposure(void) {
 	CHECK(camera >= 0);
 	char name[INDIGO_NAME_SIZE];
-	if (!find_label(DSLR_COMPRESSION_PROPERTY_NAME, "RAW", name)) {
+	if (!find_compression(false, true, name)) {
 		printf("    RAW is not offered, skipped\n");
 		return;
 	}
@@ -662,7 +740,7 @@ cleanup:
 static void raw_jpeg_with_preview(void) {
 	CHECK(camera >= 0);
 	char name[INDIGO_NAME_SIZE];
-	if (!find_label(DSLR_COMPRESSION_PROPERTY_NAME, "RAW+JPEG", name)) {
+	if (!find_compression(true, true, name)) {
 		printf("    RAW+JPEG is not offered, skipped\n");
 		return;
 	}
@@ -683,7 +761,7 @@ static void raw_jpeg_with_preview(void) {
 	}
 	// The pair must be fully drained: a following JPEG shot delivers its own single image.
 	CHECK(select_name(CCD_PREVIEW_PROPERTY_NAME, CCD_PREVIEW_DISABLED_ITEM_NAME));
-	CHECK(select_label(DSLR_COMPRESSION_PROPERTY_NAME, "JPEG"));
+	CHECK(select_jpeg());
 	CHECK(acquire(0.01, 60));
 	CHECK(!strcmp(state_copy().image.format, ".jpeg"));
 cleanup:
@@ -694,7 +772,7 @@ cleanup:
 // The decoded RAW format turns the camera JPEG into an RGB24 image of the same size.
 static void decoded_jpeg(void) {
 	CHECK(camera >= 0);
-	CHECK(select_label(DSLR_COMPRESSION_PROPERTY_NAME, "JPEG"));
+	CHECK(select_jpeg());
 	CHECK(use_fixed_shutter());
 	CHECK(acquire(0.01, 60));
 	observed_device native = state_copy();
@@ -712,7 +790,7 @@ cleanup:
 // Upload BOTH saves the native file next to the client copy; the file must hold exactly the BLOB.
 static void local_save(void) {
 	CHECK(camera >= 0);
-	CHECK(select_label(DSLR_COMPRESSION_PROPERTY_NAME, "JPEG"));
+	CHECK(select_jpeg());
 	CHECK(use_fixed_shutter());
 	unsigned before = property_revision(camera, CCD_LOCAL_MODE_PROPERTY_NAME);
 	indigo_change_text_property_1_raw(&client, devices[camera].name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_LOCAL_MODE_DIR_ITEM_NAME, image_dir);
@@ -743,10 +821,10 @@ static void bulb_exposures(void) {
 	CHECK(camera >= 0);
 	char bulb[INDIGO_NAME_SIZE];
 	if (!find_label(DSLR_SHUTTER_PROPERTY_NAME, "Bulb", bulb)) {
-		printf("    Bulb is not offered (mode dial not in M?), skipped\n");
+		printf("    Bulb is not offered (mode dial not in M, or no USB BULB), skipped\n");
 		return;
 	}
-	CHECK(select_label(DSLR_COMPRESSION_PROPERTY_NAME, "JPEG"));
+	CHECK(select_jpeg());
 	CHECK(select_name(DSLR_SHUTTER_PROPERTY_NAME, bulb));
 	double durations[] = { 1.25, 2.5 };
 	for (unsigned i = 0; i < sizeof(durations) / sizeof(durations[0]); i++) {
@@ -763,7 +841,7 @@ cleanup:
 static void abort_and_reacquire(void) {
 	CHECK(camera >= 0);
 	char bulb[INDIGO_NAME_SIZE];
-	CHECK(select_label(DSLR_COMPRESSION_PROPERTY_NAME, "JPEG"));
+	CHECK(select_jpeg());
 	bool has_bulb = find_label(DSLR_SHUTTER_PROPERTY_NAME, "Bulb", bulb);
 	if (has_bulb) {
 		CHECK(select_name(DSLR_SHUTTER_PROPERTY_NAME, bulb));
@@ -778,7 +856,22 @@ static void abort_and_reacquire(void) {
 	revision = property_revision(camera, CCD_EXPOSURE_PROPERTY_NAME);
 	double started = indigo_monotonic_time();
 	indigo_change_switch_property_1(&client, devices[camera].name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
-	CHECK(wait_state(camera, CCD_EXPOSURE_PROPERTY_NAME, revision, INDIGO_ALERT_STATE, 30));
+	if (has_bulb) {
+		CHECK(wait_state(camera, CCD_EXPOSURE_PROPERTY_NAME, revision, INDIGO_ALERT_STATE, 30));
+	} else {
+		// Without BULB the camera's own shutter ends the frame, possibly before the abort arrives.
+		indigo_property_state state = INDIGO_BUSY_STATE;
+		for (int iteration = 0; iteration < 3000 && state == INDIGO_BUSY_STATE; iteration++) {
+			indigo_property *exposure = snapshot(camera, CCD_EXPOSURE_PROPERTY_NAME);
+			state = exposure ? exposure->state : INDIGO_ALERT_STATE;
+			indigo_release_property(exposure);
+			if (state == INDIGO_BUSY_STATE) {
+				indigo_usleep(10000);
+			}
+		}
+		printf("    timed exposure %s\n", state == INDIGO_OK_STATE ? "completed before the abort" : state == INDIGO_ALERT_STATE ? "aborted" : "still busy");
+		CHECK(state == INDIGO_OK_STATE || state == INDIGO_ALERT_STATE);
+	}
 	printf("    abort completed after %.3f s\n", indigo_monotonic_time() - started);
 	// A BULB abort closes the shutter, and the camera may still store and hand over that frame.
 	indigo_usleep(5000000);

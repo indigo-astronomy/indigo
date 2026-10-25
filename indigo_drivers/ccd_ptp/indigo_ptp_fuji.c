@@ -524,6 +524,11 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 					stop |= action == 0x000c;
 				}
 				FUJI_PRIVATE_DATA->bulb_supported = start && stop;
+				// ExposureTime is usually decoded first and still offers Bulb.
+				ptp_property *shutter = ptp_property_supported(device, ptp_property_ExposureTime);
+				if (shutter && !FUJI_PRIVATE_DATA->bulb_supported && ptp_fuji_fix_property(device, shutter)) {
+					ptp_update_property(device, shutter);
+				}
 			}
 			return true;
 		}
@@ -538,15 +543,22 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 				property->writable = false;
 			} else {
 				// enumeration succeed
-				// search bulb property
+				// A camera declaring USB actions without BULB start and stop (e.g. X-T1) rejects a Bulb
+				// write, so Bulb is offered only while the camera itself reports it.
+				bool bulb_offered = !FUJI_PRIVATE_DATA->action_enum_known || FUJI_PRIVATE_DATA->bulb_supported || property->value.sw.value == 0xffffffff;
 				bool has_bulb = false;
 				for (int i=0; i < property->count; ++i) {
 					if (property->value.sw.values[i] == 0xffffffff) {
-						has_bulb = true;
-						break;
+						if (bulb_offered) {
+							has_bulb = true;
+						} else {
+							memmove(property->value.sw.values + i, property->value.sw.values + i + 1, (property->count - i - 1) * sizeof(property->value.sw.values[0]));
+							property->count -= 1;
+							i -= 1;
+						}
 					}
 				}
-				if (!has_bulb) {
+				if (!has_bulb && bulb_offered && property->count < PTP_MAX_ELEMENTS) {
 					// some model (e.g. X-T4) does not enumerate Bulb
 					property->value.sw.values[property->count] = 0xffffffff;
 					property->count += 1;
@@ -603,6 +615,10 @@ bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
 	}
 	if (!ptp_set_property(device, property)) {
 		return false;
+	}
+	// Leaving Bulb removes it at once where USB BULB is not declared, not only on the next poll.
+	if (property->code == ptp_property_ExposureTime && ptp_fuji_fix_property(device, property)) {
+		ptp_update_property(device, property);
 	}
 	if (property->code == ptp_property_ExposureProgramMode) {
 		ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureTime));
