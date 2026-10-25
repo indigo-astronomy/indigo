@@ -952,6 +952,14 @@ Driver-specific use of existing properties: `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_
 
 Source: `indigo_drivers/ccd_iidc/indigo_ccd_iidc.driver`.
 
+### ccd_libcamera
+
+Driver-specific use of existing properties: `CCD_EXPOSURE`, `CCD_FRAME`, `CCD_GAIN`, `CCD_IMAGE_FORMAT`, `CCD_INFO`, `CCD_MODE`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`.
+
+`CCD_MODE` lists the RAW sensor modes the camera reports, largest first; `CCD_BIN` and `CCD_TEMPERATURE` are hidden. `CCD_EXPOSURE`, `CCD_STREAMING` exposure and `CCD_GAIN` take their limits from the camera, and `CCD_GAIN` is hidden on cameras without analogue gain. `CCD_FRAME` is a software subframe aligned to the 2x2 Bayer cell on colour sensors.
+
+Source: `indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.driver`.
+
 ### ccd_mi
 
 Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EGAIN`, `CCD_GAIN`, `CCD_MODE`, `CCD_READ_MODE`, `CCD_TEMPERATURE`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.

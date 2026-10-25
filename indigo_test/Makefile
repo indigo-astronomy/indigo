@@ -112,6 +112,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_cleanup \
 	$(INTEGRATION_BUILD)/test_ccd_svb_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_iidc_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_uvc_sdk \
+	$(INTEGRATION_BUILD)/test_ccd_libcamera_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_ptp_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_ccd_ssag_usb \
@@ -1657,6 +1658,43 @@ $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize: integration/test_ccd_iidc_sdk.c
 .PHONY: test-ccd-iidc-sdk-sanitize
 test-ccd-iidc-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_iidc_sdk_sanitize
+
+# The libcamera driver is tested through its C bridge: the test defines the lcam_* functions the
+# generated driver calls instead of indigo_ccd_libcamera_bridge.cpp, so it needs no libcamera.
+LIBCAMERA_SDK_TEST_INCLUDE = -I../indigo_linux_drivers/ccd_libcamera
+LIBCAMERA_SDK_TEST_REPLACEMENTS = -Dindigo_attach_device=lcam_test_attach -Dindigo_detach_device=lcam_test_detach -DLIBCAMERA_READOUT_TIMEOUT=0.3
+LIBCAMERA_SDK_TEST_DEPENDENCIES = ../indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.c ../indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.h ../indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera_bridge.h Makefile
+
+$(INTEGRATION_BUILD)/ccd_libcamera_sdk_driver.o: $(LIBCAMERA_SDK_TEST_DEPENDENCIES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(LIBCAMERA_SDK_TEST_INCLUDE) $(LIBCAMERA_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_libcamera_sdk: integration/test_ccd_libcamera_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_libcamera_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(LIBCAMERA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_libcamera_sdk_driver.o -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
+
+.PHONY: test-ccd-libcamera-sdk
+test-ccd-libcamera-sdk: $(INTEGRATION_BUILD)/test_ccd_libcamera_sdk
+	$(INTEGRATION_BUILD)/test_ccd_libcamera_sdk
+
+LIBCAMERA_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+LIBCAMERA_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(TOUPTEK_SDK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
+
+$(INTEGRATION_BUILD)/ccd_libcamera_sdk_driver_sanitize.o: $(LIBCAMERA_SDK_TEST_DEPENDENCIES) | $(INTEGRATION_BUILD)
+	$(CC) $(LIBCAMERA_SANITIZE_CFLAGS) $(LIBCAMERA_SDK_TEST_INCLUDE) $(LIBCAMERA_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_ccd_libcamera_sdk_sanitize: integration/test_ccd_libcamera_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/ccd_libcamera_sdk_driver_sanitize.o | $(INTEGRATION_BUILD)
+	$(CC) $(LIBCAMERA_SANITIZE_CFLAGS) $(LIBCAMERA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/ccd_libcamera_sdk_driver_sanitize.o -o $@ $(LIBCAMERA_SANITIZE_LDFLAGS)
+
+.PHONY: test-ccd-libcamera-sdk-sanitize
+test-ccd-libcamera-sdk-sanitize: $(INTEGRATION_BUILD)/test_ccd_libcamera_sdk_sanitize
+	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_ccd_libcamera_sdk_sanitize
+
+# Physical libcamera cameras (Raspberry Pi CSI) are opt-in and Linux only.
+.PHONY: test-ccd-libcamera-hw
+test-ccd-libcamera-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_libcamera_hw
+	$(TEST_BUILD)/hardware/test_ccd_libcamera_hw --run
+
+$(TEST_BUILD)/hardware/test_ccd_libcamera_hw: hardware/test_ccd_libcamera_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_ccd_libcamera.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_libcamera.a -o $@ $(TEST_LDFLAGS) $(shell pkg-config --libs libcamera 2>/dev/null) -lstdc++
 
 # Physical IIDC camera hardware is opt-in and excluded from normal integration tests.
 # Physical Meade DSI hardware is opt-in; HW_HOTPLUG=1 adds the unplug cases, which switch the camera's USB port on Linux.

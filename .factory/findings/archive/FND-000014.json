@@ -3,7 +3,7 @@
   "title": "LINUXDRV-001: PWM change handlers ignore failed `*_pwm_get()` calls, then compute frequency or duty from `period` initialized to zero",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -16,9 +16,19 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-a-review.md",
       "revision": null
+    },
+    {
+      "id": "20261025074335-0b62-fix-rpio-gpio-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "LINUXDRV-001: PWM change handlers ignore failed `*_pwm_get()` calls, then compute frequency or duty from `period` initialized to zero. If the PWM sysfs node disappears, permission is denied, or a read fails, this can divide by zero or push nonsensical PWM values while still updating the property as successful. Check the read result, set the changed property to `INDIGO_ALERT_STATE`, and return before doing math or writes. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current source inspection finds checked PWM reads and positive period guards; original division-by-zero shape is absent. Next: run focused current sysfs failure regressions and retain closure evidence before moving this historical record.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:29; historical locations: `aux_asiair/indigo_aux_asiair.c:853`, `aux_asiair/indigo_aux_asiair.c:875`, `aux_rpio/indigo_aux_rpio.c:1028`, `aux_rpio/indigo_aux_rpio.c:1050`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025074335-0b62-fix-rpio-gpio-findings/findings.md; current rpio_sysfs_get_pwm() rejects failed reads and a zero period and callers check it; regression test 'zero PWM period is reported' in both sysfs suites, recorded runs on Raspberry Pi 5 and 3B+ (verification.md).",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

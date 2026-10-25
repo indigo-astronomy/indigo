@@ -659,6 +659,54 @@ static void sdk_startup_discovery_without_hotplug(void) {
 	ASSERT_TRUE(verify && drain && detach && destroy && verify < drain && drain < detach && detach < destroy);
 }
 
+// Devices an SDK enumerates without a USB device behind them, such as libcamera CSI cameras.
+static void sdk_discovery_without_usb(void) {
+	ASSERT_TRUE(write_text(DEFINITION, "driver architecture_test { label = \"No USB\"; version = 1; code { static int handles[2]; static bool architecture_test_open(indigo_device *device) { return true; } static void architecture_test_close(indigo_device *device) { } } sdk { hotplug = false; usb = false; discover { for (int i = 0; i < 2; i++) { process_plug_event_handler(NULL, handles + i); } } plug { plug_result = dev != NULL; } unplug { (void)dev; } } ccd { name = \"%s\"; } }\n"));
+	char *arguments[] = { TEST_GENERATOR, DEFINITION, NULL };
+	ASSERT_TRUE(run(arguments));
+	char generated[65536];
+	ASSERT_TRUE(read_text("indigo_ccd_architecture_test.c", generated, sizeof(generated)));
+	const char *absent[] = { "libusb_ref_device", "libusb_unref_device", "libusb_get_device_list", "libusb_get_device_descriptor", "libusb_hotplug_register_callback", "libusb_hotplug_deregister_callback", "indigo_start_usb_event_handler", "usbdev" };
+	for (unsigned i = 0; i < sizeof(absent) / sizeof(absent[0]); i++) {
+		if (strstr(generated, absent[i])) {
+			fprintf(stderr, "    unexpected %s\n", absent[i]);
+		}
+		ASSERT_TRUE(strstr(generated, absent[i]) == NULL);
+	}
+	ASSERT_TRUE(strstr(generated, "\tvoid *sdkdev;") != NULL);
+	ASSERT_TRUE(strstr(generated, "\tvoid *dev = data;") != NULL);
+	ASSERT_TRUE(strstr(generated, "private_data->sdkdev = dev;") != NULL);
+	ASSERT_TRUE(strstr(generated, "process_plug_event_handler(NULL, handles + i);") != NULL);
+	ASSERT_TRUE(strstr(generated, "discover_devices_handler, &driver_queue_mutex)") != NULL);
+	char *shutdown = strstr(generated, "case INDIGO_DRIVER_SHUTDOWN:");
+	ASSERT_TRUE(shutdown != NULL);
+	char *verify = strstr(shutdown, "verify_devices_disconnected()");
+	char *drain = strstr(shutdown, "indigo_queue_drain(driver_queue)");
+	char *detach = strstr(shutdown, "process_unplug_event_handler(NULL, PRIVATE_DATA->sdkdev);");
+	char *destroy = strstr(shutdown, "indigo_queue_delete(&driver_queue)");
+	ASSERT_TRUE(verify && drain && detach && destroy && verify < drain && drain < detach && detach < destroy);
+	for (int cpp = 0; cpp < 2; cpp++) {
+		char *compile[] = { TEST_CC, "-x", cpp ? "c++" : "c", cpp ? "-std=gnu++11" : "-std=gnu11", "-fsyntax-only", TEST_PLATFORM, "-I" TEST_INCLUDE, "-I" TEST_USB_INCLUDE, "indigo_ccd_architecture_test.c", NULL };
+		ASSERT_TRUE(run(compile));
+	}
+	// The USB-free path has no libusb events or descriptors, so the attributes that need them are refused.
+	const char *invalid[] = {
+		"sdk { usb = false; discover { } }",
+		"sdk { hotplug = false; usb = false; }",
+		"sdk { hotplug = false; usb = false; vid = 1; discover { } }",
+		"sdk { hotplug = false; usb = false; pid = 1; discover { } }",
+		"sdk { hotplug = false; usb = false; discovery_retries = 2; discover { } }",
+		"sdk { hotplug = false; discover { } }"
+	};
+	for (unsigned i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+		char definition[1024];
+		snprintf(definition, sizeof(definition), "driver architecture_test { %s ccd { name = \"%%s\"; } }\n", invalid[i]);
+		ASSERT_TRUE(write_text(DEFINITION, definition));
+		printf("    refused: %s\n", invalid[i]);
+		ASSERT_TRUE(!run(arguments));
+	}
+}
+
 static void generated_code_compiles_as_c_and_cpp(void) {
 	const char *transports[] = { "serial;", "", "libusb { vid = 0x1618; }", "sdk { vid = 0x1618; }", "sdk { vid = 0x1618; discovery_retries = 2; unplug_match { unplug_result = false; } }", "hid { vid = 0x1618; }", "sdk { hotplug = false; vid = 0x1618; }" };
 	for (unsigned i = 0; i < sizeof(transports) / sizeof(transports[0]); i++) {
@@ -733,6 +781,7 @@ int main(void) {
 		{ "Device capacity defaults to five and survives extraction", max_devices_defaults_to_five_and_survives_extraction },
 		{ "Virtual connection_result controls success and preserves legacy output", virtual_connection_result_controls_completion },
 		{ "SDK startup discovery without hot-plug", sdk_startup_discovery_without_hotplug },
+		{ "SDK discovery without USB", sdk_discovery_without_usb },
 		{ "C++ output selection, C linkage, extraction and unchanged C default", cpp_output_selection_and_extraction },
 		{ "Generated transport scaffolding compiles as C11 and C++11", generated_code_compiles_as_c_and_cpp },
 		{ "Old and C++ compatible USB registration preserve VID/PID on extraction", usb_registration_reverse_extraction },

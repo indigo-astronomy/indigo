@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025082424-64fe-readme-driver-list",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit; merge and push only with owner approval.",
+  "blocker": null
+}

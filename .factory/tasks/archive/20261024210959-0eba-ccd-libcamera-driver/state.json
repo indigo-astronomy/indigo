@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261024210959-0eba-ccd-libcamera-driver",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Single final commit on the task branch; integration and push not authorized.",
+  "blocker": null
+}

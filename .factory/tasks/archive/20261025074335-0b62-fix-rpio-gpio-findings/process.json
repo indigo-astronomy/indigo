@@ -1,0 +1,244 @@
+{
+  "version": 2,
+  "task": "20261025074335-0b62-fix-rpio-gpio-findings",
+  "scope": [
+    "indigo_linux_drivers/aux_rpio/*",
+    "indigo_linux_drivers/aux_asiair/*",
+    "indigo_test/integration/sysfs_gpio_fake.h",
+    "indigo_test/integration/test_aux_rpio_sysfs.c",
+    "indigo_test/integration/test_aux_asiair_sysfs.c",
+    "indigo_test/hardware/test_aux_rpio_hw.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/findings/*",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_rpio"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_rpio",
+        "--hw",
+        "--type",
+        "Raspberry Pi 5"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_rpio",
+        "--hw",
+        "--type",
+        "Raspberry Pi 3B+"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_asiair"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_asiair",
+        "--hw",
+        "--type",
+        "Raspberry Pi 5"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_asiair",
+        "--hw",
+        "--type",
+        "Raspberry Pi 3B+"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-aux-rpio-sysfs-asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "hardware-io": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025074335-0b62-fix-rpio-gpio-findings.json": [
+      "100644",
+      "blob",
+      "91fc8acaea047f7fd71c386ba1655fbfda147db3"
+    ],
+    ".factory/findings/active/FND-000014.json": null,
+    ".factory/findings/active/FND-000015.json": null,
+    ".factory/findings/active/FND-000016.json": null,
+    ".factory/findings/active/FND-000017.json": null,
+    ".factory/findings/active/FND-000018.json": null,
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-011.json": null,
+    ".factory/findings/archive/FND-000014.json": [
+      "100644",
+      "blob",
+      "1083dee195192b7a2c9da6780a5fc821a004d749"
+    ],
+    ".factory/findings/archive/FND-000015.json": [
+      "100644",
+      "blob",
+      "6d8a4f4b606f0ad6b44e9a0013f0b2664c9a69b3"
+    ],
+    ".factory/findings/archive/FND-000016.json": [
+      "100644",
+      "blob",
+      "a0472e79b314e446f7adaabf492ba930287e4631"
+    ],
+    ".factory/findings/archive/FND-000017.json": [
+      "100644",
+      "blob",
+      "35e6804ee136aea698a17a5583064b495f39b89f"
+    ],
+    ".factory/findings/archive/FND-000018.json": [
+      "100644",
+      "blob",
+      "e46ac5fa3dad85f473ce2c68e05567df033dd524"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "f1427dc3e51e0b1ac230dcac9c43aef51cf8b607"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "8f9c8150dd04041ea9d0792bfc66ba4a247ab5a8"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "27f77be290ab3c731565427e5fac0aa4d0c78853"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "a07ecb611b23caf9d740429fdb9e8c794905d56f"
+    ],
+    "indigo_linux_drivers/aux_asiair/README.md": [
+      "100644",
+      "blob",
+      "f186f1e661bbcac7f0c6b9051a4270ac94d629b2"
+    ],
+    "indigo_linux_drivers/aux_asiair/REFACTOR.md": [
+      "100644",
+      "blob",
+      "ffdd472a80590ce0dbc9499ec52b079bf53c38e9"
+    ],
+    "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.c": [
+      "100644",
+      "blob",
+      "bffb81fa754f921603b0b3d15a90ce84363976cc"
+    ],
+    "indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver": [
+      "100644",
+      "blob",
+      "4758666484cf006292d82757889541de9959bcf8"
+    ],
+    "indigo_linux_drivers/aux_rpio/README.md": [
+      "100644",
+      "blob",
+      "3632e12f4b21a4647da513f5e6ef42a759d27eb0"
+    ],
+    "indigo_linux_drivers/aux_rpio/REFACTOR.md": [
+      "100644",
+      "blob",
+      "d8c8d09fcfb8713b26d31de4add87e067ee673cb"
+    ],
+    "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.c": [
+      "100644",
+      "blob",
+      "c170a760bc31b415ab9a86fadebcd83ccfca898f"
+    ],
+    "indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver": [
+      "100644",
+      "blob",
+      "1945ade03ff26ba5125c4f9583776a9efc11b83e"
+    ],
+    "indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c": [
+      "100644",
+      "blob",
+      "e410cc5acd4d8f8ea8cf3a334dd256c7e3c26474"
+    ],
+    "indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.h": [
+      "100644",
+      "blob",
+      "406b8c2113b9fcc91aae7a7c47832bd922635bf2"
+    ],
+    "indigo_test/hardware/test_aux_rpio_hw.c": [
+      "100644",
+      "blob",
+      "1d57dba3a1c821fcfb7be18c1a4869026469c1a7"
+    ],
+    "indigo_test/integration/sysfs_gpio_fake.h": [
+      "100644",
+      "blob",
+      "9dd5fbf3ea6585b913288503d6b0b98be73a1232"
+    ],
+    "indigo_test/integration/test_aux_asiair_sysfs.c": [
+      "100644",
+      "blob",
+      "a12bcbbcd6280ea6ed9c9c3458f9cfcd037fba9e"
+    ],
+    "indigo_test/integration/test_aux_rpio_sysfs.c": [
+      "100644",
+      "blob",
+      "849bbdcf2c75ec1d9e94c3bd41488225ec8c16bf"
+    ]
+  }
+}

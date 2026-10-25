@@ -15,7 +15,7 @@
 | ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 16 | |
 | aux_alto                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 29 / 9 | |
 | aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
-| aux_asiair              | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 20 / 3 | ⛔ RPi only |
+| aux_asiair              | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 24 / 3 | ⛔ RPi only |
 | aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 6 / 0 | |
 | aux_cloudwatcher        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | aux_dragonfly           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
@@ -28,7 +28,7 @@
 | aux_joystick            | 3️⃣ | ❌ No  | ⛔ N/A | ✅ Yes | ✅ HW  | 14 / 2 | |
 | aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 35 / 0 | |
 | aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
-| aux_rpio                | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 23 / 4 | ⛔ RPi only |
+| aux_rpio                | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 28 / 5 | ⛔ RPi only |
 | aux_rts                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 10 / 9 | |
 | aux_simulator          | 3️⃣ | ✅ Project | ✅ Yes | ✅ Yes | ✅ Sim | 13 / 0 | |
 | aux_skyalert            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
@@ -51,6 +51,7 @@
 | ccd_dsi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
 | ccd_fli                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 22 / 0 | |
 | ccd_iidc                | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 1 | ⏰ TODO - make libdc1394 for Windows |
+| ccd_libcamera           | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 15 / 10 | |
 | ccd_mallin              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_mi                  | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 18 / 1 | ⛔ Unix and Windows SDKs are not compatible |
 | ccd_ogma                | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |

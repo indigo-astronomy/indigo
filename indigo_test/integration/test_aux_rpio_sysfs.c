@@ -40,6 +40,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <math.h>
+
 #include <indigo_linux_drivers/aux_rpio/indigo_aux_rpio.h>
 
 #include "serial_simulator_test_common.h"
@@ -102,10 +104,7 @@ static void assert_property_deleted(const char *name) {
 
 // PWM is opt-in, so a scenario that exercises it has to ask for it before the
 // device is connected.
-static bool start_driver_with_pwm(int gpio_base) {
-	if (!bring_up_driver(gpio_base, true)) {
-		return false;
-	}
+static bool enable_pwm(void) {
 	if (indigo_change_switch_property_1(&simulator_test_client, RPIO_DEVICE_NAME, "X_AUX_PWM", "ENABLED", true) != INDIGO_OK) {
 		return false;
 	}
@@ -114,12 +113,19 @@ static bool start_driver_with_pwm(int gpio_base) {
 	for (int i = 0; i < 50; i++) {
 		indigo_item *item = find_cached_item("X_AUX_PWM", "ENABLED");
 		if (item != NULL && item->sw.value) {
-			return connect_driver();
+			return true;
 		}
 		indigo_usleep(100000);
 	}
 	printf("X_AUX_PWM did not switch to ENABLED\n");
 	return false;
+}
+
+static bool start_driver_with_pwm(int gpio_base) {
+	if (!bring_up_driver(gpio_base, true)) {
+		return false;
+	}
+	return enable_pwm() && connect_driver();
 }
 
 static void record_reference_trace(const char *name) {
@@ -603,6 +609,140 @@ cleanup:
 	stop_driver();
 }
 
+// Found by the Raspberry Pi 5 hardware run of 3.0.0.12: an exported RP1 line
+// reads "in" but has no pin function until "in" is written, so skipping the
+// write for an input that reads "in" left every input unconfigured.
+static void inputs_are_configured_on_the_rp1(void) {
+	SERIAL_CHECK_TRUE(start_driver(571, false));
+	for (int i = 0; i < 8; i++) {
+		ASSERT_TRUE(fake_pin_is_configured(driver_input_pins[i]));
+		ASSERT_TRUE(fake_pin_is_configured(driver_output_pins[i]));
+		ASSERT_TRUE(fake_pin_is_input(driver_input_pins[i]));
+	}
+	ASSERT_TRUE(fake_trace_contains("direction 590 in"));
+cleanup:
+	stop_driver();
+}
+
+// FND-20261023065605-60d4-repository-audit-011 reproducer. A pulse whose end
+// cannot be written must not be shown as switched off: the output may still be
+// energized. Switching it off again retries the write. The pulse is long, so
+// the write failure is armed well before the pulse ends, also on a slow host.
+static void failed_pulse_end_is_reported(void) {
+	SERIAL_CHECK_TRUE(start_driver(0, false));
+	unsigned int revision = property_revision(AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, RPIO_DEVICE_NAME, AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, 2000));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	revision = property_revision(AUX_GPIO_OUTLETS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, RPIO_DEVICE_NAME, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(1, fake_pin_value(driver_output_pins[3]));
+	revision = property_state_revision(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	pthread_mutex_lock(&fake.mutex);
+	fake.fail_value_write = true;
+	pthread_mutex_unlock(&fake.mutex);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	ASSERT_TRUE(fake_trace_contains("value-fail 26"));
+	ASSERT_EQ_INT(1, fake_pin_value(driver_output_pins[3]));
+	assert_switch_item_value(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, true);
+	pthread_mutex_lock(&fake.mutex);
+	fake.fail_value_write = false;
+	pthread_mutex_unlock(&fake.mutex);
+	revision = property_revision(AUX_GPIO_OUTLETS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, RPIO_DEVICE_NAME, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, false));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(AUX_GPIO_OUTLETS_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	ASSERT_EQ_INT(0, fake_pin_value(driver_output_pins[3]));
+	assert_switch_item_value(AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, false);
+cleanup:
+	pthread_mutex_lock(&fake.mutex);
+	fake.fail_value_write = false;
+	pthread_mutex_unlock(&fake.mutex);
+	stop_driver();
+}
+
+// FND-000016 reproducer. A pin and a PWM channel exported before the
+// connection, by another program or an earlier run, are used but stay exported
+// after a disconnect; everything the session exported itself is released.
+static void preexported_pins_stay_exported(void) {
+	SERIAL_CHECK_TRUE(bring_up_driver(0, true));
+	fake_preexport_pin(16, false);
+	fake_preexport_pwm(0);
+	SERIAL_CHECK_TRUE(enable_pwm());
+	SERIAL_CHECK_TRUE(connect_driver());
+	ASSERT_EQ_INT(-1, fake_trace_index_of("pwm-export 0"));
+	ASSERT_TRUE(fake_trace_contains("pwm-export 1"));
+	ASSERT_FALSE(fake_pin_is_input(16));
+	disconnect_serial_device(&driver);
+	ASSERT_TRUE(fake_pin_exported(16));
+	ASSERT_EQ_INT(1, fake_exported_pin_count());
+	ASSERT_TRUE(fake_pwm_exported(0));
+	ASSERT_FALSE(fake_pwm_exported(1));
+	ASSERT_EQ_INT(-1, fake_trace_index_of("unexport 16"));
+	ASSERT_EQ_INT(-1, fake_trace_index_of("pwm-unexport 0"));
+	ASSERT_TRUE(fake_trace_contains("pwm-unexport 1"));
+	// A reconnect uses the pin again and still leaves it to its owner.
+	pthread_mutex_lock(&fake.mutex);
+	fake.trace_count = 0;
+	pthread_mutex_unlock(&fake.mutex);
+	SERIAL_CHECK_TRUE(connect_driver());
+	disconnect_serial_device(&driver);
+	ASSERT_TRUE(fake_pin_exported(16));
+	ASSERT_TRUE(fake_pwm_exported(0));
+	ASSERT_EQ_INT(-1, fake_trace_index_of("unexport 16"));
+	ASSERT_EQ_INT(-1, fake_trace_index_of("pwm-unexport 0"));
+cleanup:
+	stop_driver();
+}
+
+// FND-000016 reproducer. A connection that fails partway through rolls back
+// only what it exported itself.
+static void failed_connect_keeps_preexported_pins(void) {
+	SERIAL_CHECK_TRUE(bring_up_driver(0, false));
+	fake_preexport_pin(16, false);
+	pthread_mutex_lock(&fake.mutex);
+	fake.fail_export_after = 5;
+	pthread_mutex_unlock(&fake.mutex);
+	enumerate_simulator_device();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, RPIO_DEVICE_NAME, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(CONNECTION_PROPERTY_NAME));
+	assert_switch_item_value(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, false);
+	ASSERT_TRUE(fake_trace_count_of("export-fail") > 0);
+	ASSERT_TRUE(fake_pin_exported(16));
+	ASSERT_EQ_INT(1, fake_exported_pin_count());
+cleanup:
+	stop_driver();
+}
+
+// FND-000014 regression test; the guard predates the test. A channel that
+// reports a zero period is a failed
+// readback, not an infinite frequency, and nothing is written from it.
+static void zero_pwm_period_is_reported(void) {
+	SERIAL_CHECK_TRUE(start_driver_with_pwm(0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME, INDIGO_OK_STATE));
+	unsigned int frequency_revision = property_state_revision(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	unsigned int duty_revision = property_state_revision(AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	pthread_mutex_lock(&fake.mutex);
+	fake.pwm_zero_period = true;
+	fake.trace_count = 0;
+	pthread_mutex_unlock(&fake.mutex);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME, INDIGO_ALERT_STATE, frequency_revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME, INDIGO_ALERT_STATE, duty_revision));
+	double frequency = cached_number_value(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+	double duty = cached_number_value(AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME);
+	printf("published with a zero period: frequency %g, duty cycle %g\n", frequency, duty);
+	ASSERT_TRUE(isfinite(frequency));
+	ASSERT_TRUE(isfinite(duty));
+	ASSERT_NEAR(100, frequency, 0.001);
+	ASSERT_NEAR(100, duty, 0.001);
+	ASSERT_EQ_INT(0, fake_trace_count_of("pwm-period 0"));
+	ASSERT_EQ_INT(0, fake_trace_count_of("pwm-duty 0"));
+cleanup:
+	pthread_mutex_lock(&fake.mutex);
+	fake.pwm_zero_period = false;
+	pthread_mutex_unlock(&fake.mutex);
+	stop_driver();
+}
+
 int main(void) {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	alarm(300);
@@ -613,6 +753,11 @@ int main(void) {
 		{ "pins are offset by the controller base", connect_offsets_pins_by_the_controller_base },
 		{ "outputs are written and read back", outputs_are_written_and_read_back },
 		{ "pulsed output returns to zero", pulsed_output_returns_to_zero },
+		{ "inputs are configured on the RP1", inputs_are_configured_on_the_rp1 },
+		{ "failed pulse end is reported", failed_pulse_end_is_reported },
+		{ "pre-exported pins stay exported", preexported_pins_stay_exported },
+		{ "failed connect keeps pre-exported pins", failed_connect_keeps_preexported_pins },
+		{ "zero PWM period is reported", zero_pwm_period_is_reported },
 		{ "inputs are polled and published", inputs_are_polled_and_published },
 		{ "PWM is off by default", pwm_is_off_by_default },
 		{ "PWM channels are programmed when present", pwm_channels_are_programmed_when_present },

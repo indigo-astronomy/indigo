@@ -550,3 +550,7 @@ Connect hardware before INIT; new devices require SHUTDOWN/INIT. The shared
 queue still serializes discovery and connection handling, and SHUTDOWN drains
 that queue before generated detach/free and the driver's `on_shutdown` block.
 The default `hotplug = true` behavior is unchanged.
+
+### SDK discovery without USB
+
+Some SDKs enumerate devices that have no USB device behind them, for example the CSI cameras libcamera reports. `sdk { hotplug = false; usb = false; discover { ... } plug { ... } }` replaces the USB inventory with the `discover` block, which runs once on the driver queue after INIT. It calls `process_plug_event_handler(NULL, handle)` for every device, where `handle` is any `void *` that identifies the device for the lifetime of the driver (for example an element of a static array the block fills). The `plug` block receives it as `void *dev`, together with `private_data`, `name` and `plug_result`, and the generated private data keeps it in `void *sdkdev` instead of `libusb_device *usbdev`. No libusb reference counting, descriptor filtering or USB event handler is generated. `usb = false` requires `hotplug = false` and a `discover` block and does not accept `vid`, `pid` or `discovery_retries`; `discover` is accepted only together with `usb = false`. SHUTDOWN drains the driver queue and detaches every device through the generated unplug handler, as for USB SDK drivers. Omitting the attribute (`usb = true`) leaves existing generated output unchanged. Example: `indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.driver`.

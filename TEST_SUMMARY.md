@@ -43,9 +43,11 @@
 |  | 2026-10-25 03:18 | 3.0.0.7 | linux x64 | simulator | 33 / 33 | ✅ OK |
 | aux_arteskyflat | 2026-09-27 20:47 | 3.0.0.9 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 |  | 2026-10-09 13:18 | 3.0.0.9 | linux arm64 | Artesky Flat Box Arduino simulator (ESP32-S3) | 6 / 6 | ✅ OK |
-| aux_asiair | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | fake SDK | 16 / 16 | ✅ OK |
-|  | 2026-09-20 22:35 | 3.0.0.4 | linux arm64 | Raspberry Pi 5 | 3 / 3 | ✅ OK |
-|  | 2026-09-27 02:07 | 3.0.0.7 | linux x64 | fake SDK | 20 / 20 | ✅ OK |
+| aux_asiair | 2026-09-27 02:07 | 3.0.0.7 | linux x64 | fake SDK | 20 / 20 | ✅ OK |
+|  | 2026-10-25 09:11 | 3.0.0.8 | linux arm64 | fake SDK | 24 / 24 | ✅ OK |
+|  | 2026-10-25 09:11 | 3.0.0.8 | linux arm64 | Raspberry Pi 5 | 3 / 3 | ✅ OK |
+|  | 2026-10-25 09:13 | 3.0.0.8 | linux arm64 | fake SDK (Raspberry Pi 3B+) | 24 / 24 | ✅ OK |
+|  | 2026-10-25 09:14 | 3.0.0.8 | linux arm64 | Raspberry Pi 3B+ | 3 / 3 | ✅ OK |
 | aux_astromechanics | 2026-10-09 13:34 | 3.0.0.8 | mac arm64 | simulator | 7 / 7 | ✅ OK |
 |  | 2026-10-09 13:42 | 3.0.0.8 | linux arm64 | ASTROMECHANICS LPM Arduino simulator (ESP32-S3) | 4 / 4 | ✅ OK |
 | aux_cloudwatcher | 2026-09-27 07:28 | 3.0.0.15 | linux x64 | simulator | 17 / 17 | ✅ OK |
@@ -72,9 +74,11 @@
 |  | 2026-10-09 14:49 | 3.0.0.34 | linux arm64 | PegasusAstro Pocket Powerbox Advance Arduino simulator (ESP32-S3) | 12 / 12 | ✅ OK |
 |  | 2026-10-09 14:51 | 3.0.0.34 | linux arm64 | PegasusAstro Pocket Powerbox Arduino simulator (ESP32-S3) | 12 / 12 | ✅ OK |
 |  | 2026-10-09 14:53 | 3.0.0.34 | linux arm64 | PegasusAstro Saddle Powerbox Arduino simulator (ESP32-S3) | 12 / 12 | ✅ OK |
-| aux_rpio | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | fake SDK | 19 / 19 | ✅ OK |
-|  | 2026-09-20 22:35 | 3.0.0.9 | linux arm64 | Raspberry Pi 5 | 4 / 4 | ✅ OK |
-|  | 2026-09-27 02:04 | 3.0.0.11 | linux x64 | fake SDK | 23 / 23 | ✅ OK |
+| aux_rpio | 2026-09-27 02:04 | 3.0.0.11 | linux x64 | fake SDK | 23 / 23 | ✅ OK |
+|  | 2026-10-25 09:10 | 3.0.0.12 | linux arm64 | fake SDK | 28 / 28 | ✅ OK |
+|  | 2026-10-25 09:11 | 3.0.0.12 | linux arm64 | Raspberry Pi 5 | 5 / 5 | ✅ OK |
+|  | 2026-10-25 09:12 | 3.0.0.12 | linux arm64 | fake SDK (Raspberry Pi 3B+) | 28 / 28 | ✅ OK |
+|  | 2026-10-25 09:13 | 3.0.0.12 | linux arm64 | Raspberry Pi 3B+ | 5 / 5 | ✅ OK |
 | aux_rts | 2026-09-23 19:19 | 3.0.0.11 | linux arm64 | simulator | 10 / 10 | ✅ OK |
 |  | 2026-09-23 19:22 | 3.0.0.11 | linux arm64 | FTDI serial loopback | 9 / 9 | ✅ OK |
 |  | 2026-09-27 20:55 | 3.0.0.12 | mac arm64 | simulator | 10 / 10 | ✅ OK |
@@ -143,6 +147,9 @@
 |  | 2026-09-27 21:34 | 3.0.0.22 | mac arm64 | fake SDK | 16 / 16 | ✅ OK |
 |  | 2026-10-02 21:02 | 3.0.0.22 | mac arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
 |  | 2026-10-06 23:55 | 3.0.0.22 | linux arm64 | Chameleon CMLN-13S2M | 1 / 1 | ✅ OK |
+| ccd_libcamera | 2026-10-25 00:08 | 3.0.0.1 | mac arm64 | fake SDK | 15 / 15 | ✅ OK |
+|  | 2026-10-25 00:08 | 3.0.0.1 | linux arm64 | fake SDK | 15 / 15 | ✅ OK |
+|  | 2026-10-25 08:23 | 3.0.0.1 | linux arm64 | ov5647 | 10 / 10 | ✅ OK |
 | ccd_mallin | 2026-09-27 21:34 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_meade | 2026-09-27 21:37 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_mi | 2026-09-27 08:00 | 3.0.0.39 | linux x64 | fake SDK | 18 / 18 | ✅ OK |

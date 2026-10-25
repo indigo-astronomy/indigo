@@ -3,7 +3,7 @@
   "title": "LINUXDRV-004: `relay_mutex` and `port_mutex` are initialized but never destroyed before the private data is freed",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -16,9 +16,19 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-a-review.md",
       "revision": null
+    },
+    {
+      "id": "20261025074335-0b62-fix-rpio-gpio-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "LINUXDRV-004: `relay_mutex` and `port_mutex` are initialized but never destroyed before the private data is freed. This is unlikely to affect a single-process normal shutdown, but repeated driver load/unload cycles leak pthread mutex resources and complicate sanitizers. Destroy both mutexes during detach/delete after timers are cancelled and no callbacks can use them. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current generated GPIO drivers no longer own historical relay_mutex/port_mutex members. Next: capture removed-ownership and current lifecycle checks for verified historical closure; not silently closed by this audit.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_linux_drivers/REVIEW.md:32; historical locations: `aux_asiair/indigo_aux_asiair.c:694`, `aux_asiair/indigo_aux_asiair.c:941`, `aux_rpio/indigo_aux_rpio.c:859`, `aux_rpio/indigo_aux_rpio.c:1140`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025074335-0b62-fix-rpio-gpio-findings/findings.md; the generated aux_rpio and aux_asiair drivers own no relay_mutex/port_mutex and create no pthread mutex.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

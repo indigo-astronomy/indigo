@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "task": "20261025082424-64fe-readme-driver-list",
+  "scope": [
+    "README.md",
+    ".factory/completions/20261025082424-64fe-readme-driver-list.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025082424-64fe-readme-driver-list.json": [
+      "100644",
+      "blob",
+      "d3836c3bb677ce56e4f552f3620ea70a0374fb8b"
+    ],
+    "README.md": [
+      "100644",
+      "blob",
+      "4e1c887a6b0c1e17ffd4e3a7d7e84187b5403a52"
+    ]
+  }
+}
