@@ -42,13 +42,15 @@ typedef struct {
 	bool trace;
 	const char *ready_file;
 	int slots;
+	bool stuck;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
-	.slots = 5
+	.slots = 5,
+	.stuck = false
 };
 
 static const char *simulator_name = "wheel_trutek";
@@ -60,7 +62,7 @@ static int target_filter = 1;
 // ----------------------------------------------------------------- runtime
 
 static void usage(const char *name) {
-	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--slots <count>]\n", name);
+	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--slots <count>] [--stuck]\n", name);
 }
 
 static bool parse_int(const char *text, int min, int max, int *value) {
@@ -84,6 +86,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--ready-file") && i + 1 < argc) {
 			options.ready_file = argv[++i];
+		} else if (!strcmp(argv[i], "--stuck")) {
+			options.stuck = true;
 		} else if (!strcmp(argv[i], "--slots") && i + 1 < argc) {
 			if (!parse_int(argv[++i], 1, 9, &options.slots)) {
 				return false;
@@ -115,6 +119,10 @@ static void trace_frame(const char *prefix, const uint8_t frame[4]) {
 }
 
 static void advance_filter(void) {
+	if (options.stuck) {
+		// A jammed wheel keeps reporting that it is moving and never reaches the target.
+		return;
+	}
 	if (current_filter < target_filter) {
 		current_filter++;
 	} else if (current_filter > target_filter) {
