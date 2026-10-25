@@ -37,7 +37,6 @@
     ".factory/scripts/decision_index.py": ".factory/scripts/decision_index.py",
     ".factory/scripts/findings": ".factory/scripts/findings",
     ".factory/scripts/findings.py": ".factory/scripts/findings.py",
-    ".factory/scripts/findings_project.py": ".factory/scripts/findings_project.py",
     ".factory/scripts/git_snapshot.py": ".factory/scripts/git_snapshot.py",
     ".factory/scripts/maintenance": ".factory/scripts/maintenance",
     ".factory/scripts/maintenance.py": ".factory/scripts/maintenance.py",

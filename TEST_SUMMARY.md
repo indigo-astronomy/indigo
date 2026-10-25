@@ -24,12 +24,12 @@
 |  | 2026-10-04 10:43 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Switch, ALPACA Switch Simulator (OmniSim 0.5.0 via system_alpaca) | 331 / 331 | ✅ OK |
 |  | 2026-10-04 10:52 | 3.0.0.13 | mac arm64 | ConformU 4.5.0 Telescope, ALPACA Telescope Simulator (OmniSim 0.5.0 via system_alpaca) | 234 / 234 | ✅ OK |
 |  | 2026-10-24 20:43 | 3.0.0.17 | mac arm64 | simulator | 4 / 4 | ✅ OK |
-| agent_astrometry | 2026-09-24 12:56 | 2.0.0.23 | linux x64 | simulator | 31 / 31 | ✅ OK |
-|  | 2026-10-01 15:27 | 2.0.0.27 | mac arm64 | simulator | 68 / 68 | ✅ OK |
+| agent_astrometry | 2026-10-01 15:27 | 2.0.0.27 | mac arm64 | simulator | 68 / 68 | ✅ OK |
+|  | 2026-10-25 19:09 | 2.0.0.32 | linux x64 | simulator | 77 / 77 | ✅ OK |
 | agent_config | 2026-09-24 12:56 | 3.0.0.28 | linux x64 | simulator | 56 / 56 | ✅ OK |
 |  | 2026-09-27 19:42 | 3.0.0.28 | mac arm64 | simulator | 56 / 56 | ✅ OK |
-| agent_guider | 2026-09-24 12:56 | 3.0.0.48 | linux x64 | simulator | 88 / 88 | ✅ OK |
-|  | 2026-09-28 11:09 | 3.0.0.50 | mac arm64 | simulator | 90 / 90 | ✅ OK |
+| agent_guider | 2026-09-28 11:09 | 3.0.0.50 | mac arm64 | simulator | 90 / 90 | ✅ OK |
+|  | 2026-10-25 17:30 | 3.0.0.54 | linux x64 | simulator | 95 / 95 | ✅ OK |
 | agent_imager | 2026-09-24 12:56 | 3.0.0.61 | linux x64 | simulator | 53 / 53 | ✅ OK |
 |  | 2026-10-24 20:43 | 3.0.0.66 | mac arm64 | simulator | 63 / 63 | ✅ OK |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
@@ -188,8 +188,8 @@
 |  | 2026-10-06 23:52 | 3.0.0.46 | linux arm64 | QHY5III178M | 1 / 1 | ✅ OK |
 | ccd_qsi | 2026-09-27 08:05 | 3.0.0.23 | linux x64 | fake SDK | 61 / 61 | ✅ OK |
 | ccd_rising | 2026-09-27 21:49 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
-| ccd_simulator | 2026-09-27 13:44 | 3.0.0.37 | linux x64 | simulator | 25 / 25 | ✅ OK |
-|  | 2026-10-01 09:31 | 3.0.0.43 | mac arm64 | simulator | 26 / 26 | ✅ OK |
+| ccd_simulator | 2026-10-01 09:31 | 3.0.0.43 | mac arm64 | simulator | 26 / 26 | ✅ OK |
+|  | 2026-10-25 19:48 | 3.0.0.43 | linux x64 | simulator | 26 / 26 | ✅ OK |
 | ccd_ssag | 2026-09-22 10:13 | 3.0.0.14 | mac arm64 | QHY5 | 1 / 1 | ✅ OK |
 |  | 2026-09-27 21:53 | 3.0.0.16 | mac arm64 | fake SDK | 13 / 13 | ✅ OK |
 | ccd_ssg | 2026-09-27 21:53 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |

@@ -311,7 +311,10 @@ static void create_fake_tools(void) {
 		"  solve_1s) sleep 1 ;;\n"
 		"esac\n"
 		"echo 'message: fake solver running'\n"
-		"echo 'Field center: (RA,Dec) = (180, -30)'\n"
+		"case \"$ASTROMETRY_FAKE_MODE\" in\n"
+		"  polar) n=$(cat \"$ASTROMETRY_FAKE_LOG.solves\" 2>/dev/null || echo 0); echo $((n + 1)) > \"$ASTROMETRY_FAKE_LOG.solves\"; [ $n -gt 2 ] && n=2; echo \"Field center: (RA,Dec) = ($((180 - 20 * n)), -30)\" ;;\n"
+		"  *) echo 'Field center: (RA,Dec) = (180, -30)' ;;\n"
+		"esac\n"
 		"case \"$ASTROMETRY_FAKE_MODE\" in\n"
 		"  arcminutes) echo 'Field size: 120 x 60 arcminutes' ;;\n"
 		"  arcseconds) echo 'Field size: 7200 x 3600 arcseconds' ;;\n"
@@ -1091,7 +1094,11 @@ static void polar_alignment_failures(void) {
 	ASSERT_TRUE(has_message("Polar alignment is not in progress"));
 }
 
+// The three polar alignment references have to be different positions: the fake solver's polar mode reports the field
+// 20 degrees lower in RA for each of them, as the sky does when the mount turns by 20 degrees of hour angle, and the
+// third one again afterwards, while the mount stays there for the recalculation.
 static void polar_alignment_and_recalculation(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "polar", 1);
 	ASSERT_TRUE(select_related(IMAGER));
 	ASSERT_TRUE(select_related(MOUNT));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, 0));
@@ -1117,6 +1124,7 @@ static void polar_alignment_and_recalculation(void) {
 // The polar error is computed in JNow, so the second and third references have to be taken with the JNow declination
 // of the first one kept, whatever epoch the mount works in; the targets go to the mount in its own epoch.
 static void polar_alignment_targets_keep_jnow_declination(double mount_epoch) {
+	setenv("ASTROMETRY_FAKE_MODE", "polar", 1);
 	ASSERT_TRUE(select_related(IMAGER));
 	ASSERT_TRUE(select_related(MOUNT));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, 0));

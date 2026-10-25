@@ -1,0 +1,96 @@
+{
+  "version": 2,
+  "task": "20261025093558-ece5-server-leak-check",
+  "scope": [
+    "indigo_test/leak/*",
+    "indigo_test/Makefile",
+    "indigo_test/AGENTS.md",
+    "indigo_docs/DRIVER_TESTING_BASICS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "indigo_test/leak/run_server_leak_check.py",
+        "--cycles",
+        "3"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025093558-ece5-server-leak-check.json": [
+      "100644",
+      "blob",
+      "c5c5f34b0b7c64a201993bc114918bb2cdce1aef"
+    ],
+    ".factory/findings/active/FND-20261025093558-ece5-server-leak-check-001.json": [
+      "100644",
+      "blob",
+      "ab20a22071c8c2ad8c09a5114c4bea46d88f9e7f"
+    ],
+    ".factory/findings/active/FND-20261025093558-ece5-server-leak-check-002.json": [
+      "100644",
+      "blob",
+      "64aa96c4540a7dc38777304aaa16b4f0471a2e27"
+    ],
+    ".factory/findings/active/FND-20261025093558-ece5-server-leak-check-003.json": [
+      "100644",
+      "blob",
+      "f478d7630678af40580322489e0218eb2d5ed95f"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "a3538b0b25716d14bc12ab2be9e92e76cef6ca19"
+    ],
+    "indigo_docs/DRIVER_TESTING_BASICS.md": [
+      "100644",
+      "blob",
+      "a72a0df38cca2b37e5aed451125db897295c357c"
+    ],
+    "indigo_test/AGENTS.md": [
+      "100644",
+      "blob",
+      "1999a78c5793470b5fc0ec97ddd74c3bd2c5501b"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "f706392931804229c6acf7283bd852712ea171df"
+    ],
+    "indigo_test/leak/run_server_leak_check.py": [
+      "100644",
+      "blob",
+      "9d4eae35b0dfac6fd72961a9f519e23280bc577e"
+    ]
+  }
+}

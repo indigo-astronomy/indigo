@@ -1,0 +1,29 @@
+{
+  "title": "CCD simulator guider camera does not follow mount simulator guiding in its test",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025152706-abbf-fix-server-leaks",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261025174819-e272-ccd-simulator-follow-pier-side",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "test_ccd_simulator: simulator_guider_camera_follows_mount_simulator_guiding fails on Linux x64 on the tree of 09dfbfcdc, with and without the leak fixes. Not investigated. Next: run the case alone with debug output.",
+  "evidence": "task verification.md V5 and V6; indigo_test/integration/test_ccd_simulator.c",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261025174819-e272-ccd-simulator-follow-pier-side verification.md: the case assumed the east side of the pier, the mount takes the side the hour angle gives at the time of the run; the case now checks the side the mount took; recorded run 26/26.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261025152706-abbf-fix-server-leaks-002"
+}

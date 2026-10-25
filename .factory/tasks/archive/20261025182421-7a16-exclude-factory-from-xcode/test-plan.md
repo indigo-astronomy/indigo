@@ -1,0 +1,3 @@
+# Test plan
+
+Capture baseline affected findings regressions where practical, then exercise create/archive/check isolation from malformed, linked, absent and multiple Xcode projects. Preserve identity/collision/approval/duplicate and record-write/unlink rollback scenarios. Run .factory/scripts/check, test and security (Factory integration only), plutil lint, parsed PBX equality outside removed subtree, source/record hash inventories, decision index and committed process gates. No native/hardware/forbidden-driver/vendor execution is required for this metadata scope. No unconfigured command is a pass.

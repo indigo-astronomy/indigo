@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0200001F
+#define DRIVER_VERSION 0x02000020
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -1360,6 +1360,7 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 			}
 			if (agent_device != NULL) {
 				indigo_detach_device(agent_device);
+				free(agent_device->private_data);
 				free(agent_device);
 				agent_device = NULL;
 			}

@@ -69,6 +69,7 @@ Follow .factory/routines/model-selection.md using .factory/openai-model-policy.j
 - Resolve blocking findings, track nonblocking follow-up, and reverify fixes. Maintenance status is derived from durable per-task completion records; the coordinator owns policy and qualified audit declarations. A task diff review never resets the full-audit checkpoint. This rule does not create a background automation.
 
 ## Engineering
+- Xcode projects must not reference `.factory/` or any of its contents, including navigator groups, folder/file references and build membership. Factory metadata changes must not trigger Xcode project edits.
 - Make the smallest maintainable change that satisfies the specification.
 - Follow existing architecture and conventions. Explain new dependencies and significant design decisions.
 - Keep unrelated refactoring separate. Do not overwrite, reset, or discard unrelated changes.

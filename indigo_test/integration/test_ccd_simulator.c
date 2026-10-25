@@ -1215,7 +1215,7 @@ static bool mount_connect(const char *device_name, bool connected) {
 
 // Mount Simulator and CCD Guider Simulator in one process: pulses of either guider move the same mount and the image follows it
 static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
-	bool mount_started = false;
+	bool mount_started = false, pier_west = false;
 	double x0, y0, x1, y1, x2, y2, x3, y3;
 	indigo_simulated_mount_state state;
 	SIM_CHECK(sim_follow_begin());
@@ -1245,6 +1245,11 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	SIM_CHECK(fabs(cached_number_value("SIMULATION_SETUP", "RA") - FOLLOW_RA) < 1e-9);
 	SIM_CHECK(fabs(cached_number_value("SIMULATION_SETUP", "DEC") - FOLLOW_DEC) < 1e-9);
 	SIM_CHECK(fabs(x0 - atomic_load(&sim_width) / 2.0) < 2 && fabs(y0 - atomic_load(&sim_height) / 2.0) < 2);
+	// The mount takes the side of the pier that the hour angle of the target gives at the time of the run, so the shifts
+	// are checked for the side it took.
+	SIM_CHECK(indigo_get_simulated_mount_state(&state));
+	pier_west = state.west;
+	printf("    the mount is on the %s side of the pier\n", pier_west ? "west" : "east");
 	SIM_CHECK(mount_connect("Mount Simulator (guider)", true));
 	indigo_usleep(200000);
 	// 3 s at the default 50 % of sidereal rate is 22.6 arcsec, about 1.88 px
@@ -1254,7 +1259,7 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	SIM_CHECK(mount_state_changes(state.ra, state.dec, 6));
 	SIM_CHECK(sim_expose_centroid(&x1, &y1));
 	printf("    3 s north pulse shifted the star by %.3f, %.3f px, expected %.3f px\n", x1 - x0, y1 - y0, expected);
-	SIM_CHECK(shifted_along(x1 - x0, y1 - y0, true, false, expected, 0.25));
+	SIM_CHECK(shifted_along(x1 - x0, y1 - y0, true, pier_west, expected, 0.25));
 	SIM_CHECK(indigo_get_simulated_mount_state(&state));
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "Mount Simulator (guider)", GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, 3000) == INDIGO_OK);
 	SIM_CHECK(mount_state_changes(state.ra, state.dec, 6));
@@ -1262,7 +1267,7 @@ static void simulator_guider_camera_follows_mount_simulator_guiding(void) {
 	// the RA axis turns by the same angle, the sky moves by cos(dec) of it
 	expected *= 1.00273791 * 15 / 15.0410686 * cos(FOLLOW_DEC * M_PI / 180);
 	printf("    3 s west pulse shifted the star by %.3f, %.3f px, expected %.3f px\n", x2 - x1, y2 - y1, expected);
-	SIM_CHECK(shifted_along(x2 - x1, y2 - y1, false, false, expected, 0.25));
+	SIM_CHECK(shifted_along(x2 - x1, y2 - y1, false, pier_west, expected, 0.25));
 	// The camera's own guider moves the mount back: the star returns and the mount takes the move over
 	SIM_CHECK(indigo_get_simulated_mount_state(&state));
 	SIM_CHECK(indigo_change_number_property_1(&simulator_test_client, "CCD Guider Simulator (guider)", GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, 3000) == INDIGO_OK);
