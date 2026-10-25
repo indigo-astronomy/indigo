@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_aux_usbdp"
 #define DRIVER_LABEL         "USB Dewpoint"
 #define AUX_DEVICE_NAME      "USB Dewpoint"
@@ -244,8 +244,9 @@ static bool usbdp_open(indigo_device *device, const char **error_message) {
 				}
 				return true;
 			}
-			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
+		// Every failed identification releases the port opened by this attempt.
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;
 }
