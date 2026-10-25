@@ -313,7 +313,7 @@ static bool check_frame(unsigned bit_depth) {
 }
 
 // Light and dark current raise the mean and the noise grows with them, so the sum of both grows with
-// the exposure whether the camera sees a scene or is covered.
+// the exposure whether the camera sees a lit scene or a dark room.
 static double frame_signal(void) {
 	observed_device frame = last_frame();
 	return frame.last_mean + frame.last_deviation;
@@ -471,7 +471,7 @@ static void gain_control(void) {
 	}
 	double original = gain->items[0].number.value, minimum = gain->items[0].number.min, maximum = gain->items[0].number.max;
 	indigo_release_property(gain);
-	// On a covered OV5647 the mean even drops with gain (noise is clipped at zero below the black
+	// On an OV5647 in a dark room the mean even drops with gain (noise is clipped at zero below the black
 	// level) while the noise grows five times between the extreme gains, so either counts.
 	double low = minimum, high = maximum;
 	CHECK(change_number(CCD_GAIN_PROPERTY_NAME, CCD_GAIN_ITEM_NAME, low, INDIGO_OK_STATE));

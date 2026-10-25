@@ -39,6 +39,6 @@ Driver is developed and tested with:
 
 ## Testing
 
-- 2026-10-25 00:04 3.0.0.1 linux arm64 ov5647 10/10 OK
 - 2026-10-25 00:08 3.0.0.1 mac arm64 fake SDK 15/15 OK
 - 2026-10-25 00:08 3.0.0.1 linux arm64 fake SDK 15/15 OK
+- 2026-10-25 08:23 3.0.0.1 linux arm64 ov5647 10/10 OK

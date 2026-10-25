@@ -101,7 +101,7 @@
     "TEST_SUMMARY.md": [
       "100644",
       "blob",
-      "e689e4d45972eecfa43fbfdd552b899296b8d6b8"
+      "583db11f384837bffd0348e6a72319abc724e639"
     ],
     "indigo.xcodeproj/project.pbxproj": [
       "100755",
@@ -126,12 +126,12 @@
     "indigo_linux_drivers/ccd_libcamera/README.md": [
       "100644",
       "blob",
-      "c26e7300da1fb226b8465b27909e329a445cc625"
+      "ea510193233eb68675ac83e6ca6e609b334dd450"
     ],
     "indigo_linux_drivers/ccd_libcamera/REFACTOR.md": [
       "100644",
       "blob",
-      "fed18c5a47a523bae6276d1d90b5ac5e943d0af9"
+      "28dd9e8c0fdf63a3cad1faaa32b7cfd019371ebc"
     ],
     "indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.c": [
       "100644",
@@ -171,7 +171,7 @@
     "indigo_test/hardware/test_ccd_libcamera_hw.c": [
       "100644",
       "blob",
-      "6725c41fc5aa358d47aa66b1ed57928477135e4d"
+      "d728ea594619ed796ca22da1410713f0fef13268"
     ],
     "indigo_test/integration/test_ccd_libcamera_sdk.c": [
       "100644",
