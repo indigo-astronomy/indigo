@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 60.32499.20260902 */
+/* Version: 60.33015.20261024 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -294,6 +294,7 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_HEAT_MIN                  0       /* Heat */
 #define OGMACAM_LANE_MIN                  0       /* Lane */
 #define OGMACAM_FAN_MIN                   0       /* Fan */
+#define OGMACAM_CDSGAIN_MIN               0       /* CDS Gain */
 
 typedef struct {
     unsigned    width;
@@ -332,7 +333,7 @@ typedef struct {
 } OgmacamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 60.32499.20260902
+    get the version of this dll/so/dylib, which is: 60.33015.20261024
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -418,6 +419,7 @@ OGMACAM_API(HRESULT)  Ogmacam_Load(HOgmacam h, const char* strPara);
 #define OGMACAM_EVENT_TRIGGER_ALLOW     0x4002    /* hardware event: next trigger allow */
 #define OGMACAM_EVENT_HEARTBEAT         0x4003    /* hardware event: heartbeat, can be used to monitor whether the camera is alive */
 #define OGMACAM_EVENT_TRIGGER_IN        0x4004    /* hardware event: trigger in */
+#define OGMACAM_EVENT_TRIGGER_FAIL      0x4005    /* hardware event: trigger fail */
 #define OGMACAM_EVENT_FACTORY           0x8001    /* restore factory settings */
 
 #if defined(_WIN32)
@@ -486,7 +488,7 @@ typedef struct {
     unsigned reserved;
     unsigned strideRaw;             /* stride of RAW, 0 means = image width (no padding) */
     OgmacamFrameInfoV4* ptrInfo;
-    void* snapCtx;
+    void* usrPtr;
     void* ptrRaw;                   /* RAW, see OGMACAM_OPTION_IMAGEPTRRAW */
     unsigned char* ptr8;
     unsigned short* ptr16;
@@ -599,7 +601,7 @@ OGMACAM_API(HRESULT)  Ogmacam_Pause(HOgmacam h, int bPause); /* 1 => pause, 0 =>
 OGMACAM_API(HRESULT)  Ogmacam_Snap(HOgmacam h, unsigned nResolutionIndex);  /* still image snap */
 OGMACAM_API(HRESULT)  Ogmacam_SnapN(HOgmacam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple still image snap */
 OGMACAM_API(HRESULT)  Ogmacam_SnapR(HOgmacam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple RAW still image snap */
-OGMACAM_API(HRESULT)  Ogmacam_SnapV2(HOgmacam h, unsigned nResolutionIndex, unsigned nNumber, int eRGB, void* snapCtx);
+OGMACAM_API(HRESULT)  Ogmacam_SnapV2(HOgmacam h, unsigned nResolutionIndex, unsigned nNumber, int eRGB, void* usrPtr);
 
 /*
     soft trigger:
@@ -727,6 +729,7 @@ OGMACAM_API(HRESULT)  Ogmacam_get_MinAutoExpoTimeAGain(HOgmacam h, unsigned* min
 OGMACAM_API(HRESULT)  Ogmacam_get_ExpoTime(HOgmacam h, unsigned* Time); /* in microseconds */
 OGMACAM_API(HRESULT)  Ogmacam_put_ExpoTime(HOgmacam h, unsigned Time); /* in microseconds */
 OGMACAM_API(HRESULT)  Ogmacam_get_RealExpoTime(HOgmacam h, unsigned* Time); /* actual exposure time */
+OGMACAM_API(HRESULT)  Ogmacam_get_RealExpoGain(HOgmacam h, unsigned short* Gain); /* actual gain */
 OGMACAM_API(HRESULT)  Ogmacam_get_ExpTimeRange(HOgmacam h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 OGMACAM_API(HRESULT)  Ogmacam_get_ExpoAGain(HOgmacam h, unsigned short* Gain); /* percent, such as 300 */
@@ -965,7 +968,6 @@ OGMACAM_API(HRESULT)  Ogmacam_put_Str(HOgmacam h, const char* strName, const cha
 /* strValue: output buffer (128 bytes are always sufficient) */
 OGMACAM_API(HRESULT)  Ogmacam_get_Str(HOgmacam h, const char* strName, char strValue[]);
 OGMACAM_API(HRESULT)  Ogmacam_get_Enum(HOgmacam h, const char* strName, int* pNumber, int arrValue[], const char* arrString[]);
-OGMACAM_API(HRESULT)  Ogmacam_get_StrPtr(HOgmacam h, const char* strName, const char** strValue);
 
 /* [RW] = Read/Write; [RO] = Read Only; [WO] = Write Only */
 #define OGMACAM_OPTION_NOFRAME_TIMEOUT        0x01       /* [RW] no frame timeout: 0 => disable, positive value (>= OGMACAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
@@ -1275,7 +1277,7 @@ OGMACAM_API(HRESULT)  Ogmacam_get_StrPtr(HOgmacam h, const char* strName, const 
 #define OGMACAM_OPTION_GVSP_WAIT_PERCENT      0x73       /* [RW] GVSP wait percent: range = [0, 100], default = (trigger mode: 100, realtime: 0, other: 1) */
 #define OGMACAM_OPTION_RESET_SEQ_TIMESTAMP    0x74       /* [WO] Reset to 0: 1 => seq; 2 => timestamp; 3 => both */
 #define OGMACAM_OPTION_TRIGGER_CANCEL_MODE    0x75       /* [RW] Trigger cancel mode: 0 => no frame, 1 => output frame; default: 0 */
-#define OGMACAM_OPTION_MECHANICALSHUTTER      0x76       /* [RW] Mechanical shutter: 0 => open, 1 => close; default: 0 */
+#define OGMACAM_OPTION_MECHANICALSHUTTER      0x76       /* [RW] Mechanical shutter: 0 => open, 1 => close, 2 => auto; default: 0 */
 #define OGMACAM_OPTION_LINE_TIME              0x77       /* [RO] Line-time of sensor in nanosecond */
 #define OGMACAM_OPTION_ZERO_PADDING           0x78       /* [RW] Zero padding: 0 => high, 1 => low; default: 0 */
 #define OGMACAM_OPTION_UPTIME                 0x79       /* [RO] device uptime in millisecond */
@@ -1310,7 +1312,7 @@ OGMACAM_API(HRESULT)  Ogmacam_get_StrPtr(HOgmacam h, const char* strName, const 
                                                               However, anti-blooming structures can reduce the effective quantum efficiency and introduce non linearity into the sensor.
                                                               Therefore, anti-blooming sensors are not recommended for applications requiring very low light or high accuracy measurements.
                                                          */
-#define OGMACAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming */
+#define OGMACAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming: maximum */
 #define OGMACAM_OPTION_CDS_MAX                0x8d       /* [RO] Correlated Double Sampling */
 #define OGMACAM_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(areascan), 1(linescan) */
 #define OGMACAM_OPTION_OPERATIONMODE          0x8f       /* [RW] TDI Operation Mode: 1(area), 2(TDI) */
