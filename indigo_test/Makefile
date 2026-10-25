@@ -449,7 +449,7 @@ $(UNIT_BUILD)/test_md5: unit/test_md5.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h | $(UNIT_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lz
 
 # Static PrimaLuce Lab protocol library, linked by the PrimaLuce drivers and their tests.
 PRIMALUCELIB = $(BUILD_LIB)/libprimalucelib.a
@@ -3559,7 +3559,7 @@ $(SECURITY_BUILD)/test_transport_cache_security: unit/test_transport_cache_secur
 	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
 
 $(SECURITY_BUILD)/indigo_server_tcp_http.o: ../indigo_libs/indigo_server_tcp.c ../indigo_libs/indigo/indigo_bus.h Makefile | $(SECURITY_BUILD)
-	$(CC) $(SECURITY_CFLAGS) -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -c $< -o $@
+	$(CC) $(SECURITY_CFLAGS) -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -Dindigo_uni_compress=http_test_compress -c $< -o $@
 
 $(SECURITY_BUILD)/indigo_uni_io_http.o: ../indigo_libs/indigo_uni_io.c Makefile | $(SECURITY_BUILD)
 	$(CC) $(SECURITY_CFLAGS) -Dindigo_async=http_test_async -c $< -o $@
