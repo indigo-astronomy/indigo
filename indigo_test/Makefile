@@ -318,7 +318,7 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-unit test-integration test-buildsystem test-imager-download test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+test: test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
 
 # Browser script regression; requires Node.js with the built-in test runner.
 .PHONY: test-mount-manual-motion
@@ -328,6 +328,10 @@ test-mount-manual-motion:
 .PHONY: test-imager-download
 test-imager-download:
 	node --test unit/test_imager_download.js
+
+.PHONY: test-indigo-js-formatting
+test-indigo-js-formatting:
+	node --test unit/test_indigo_js_formatting.js
 
 .PHONY: test-tool-input-safety
 test-tool-input-safety: $(BUILD_LIB)/libindigo_client.a

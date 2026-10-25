@@ -5955,6 +5955,7 @@
 		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
 		1B45EF8F7869FEC2AFF22010 /* run_server_leak_check.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_leak_check.py; sourceTree = "<group>"; };
 		D953B0583D568EBDF4A6B59C /* test_imager_download.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "test_imager_download.js"; sourceTree = "<group>"; };
+		A3C51E7F0B2D49E6812F4D10 /* test_indigo_js_formatting.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "test_indigo_js_formatting.js"; sourceTree = "<group>"; };
 		AA962949773AAF60E258ECBB /* test_network_url.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_network_url.c"; sourceTree = "<group>"; };
 		C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_raw_to_fits.c"; sourceTree = "<group>"; };
 		F6E14E01192CC6BDFBEE1051 /* test_findings_project.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "test_findings_project.py"; sourceTree = "<group>"; };
@@ -14389,6 +14390,7 @@
 				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
 				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,
 				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
+				A3C51E7F0B2D49E6812F4D10 /* test_indigo_js_formatting.js */,
 				D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */,
 				C1709E72227841389E72BABD /* test_transport_cache_security.c */,
 				59FA7C0C301DD71000A35CFB /* test_timer.c */,
