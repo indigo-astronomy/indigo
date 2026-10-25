@@ -1930,14 +1930,23 @@ indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *devic
 		}
 	}
 	if (property != NULL) {
+		// Until the server switches the protocol (<switchProtocol>), a request for a device or a property asks for the switch
+		// too, as the request for everything does: a client that starts with such a request (indigo_prop_tool) would stay on
+		// the legacy protocol, where 'Idle' reads as OK and names are translated. The server switches before it reads the
+		// name, so the name goes untranslated. An INDI server ignores the switch.
+		char negotiation[64] = "";
+		if (device->version == INDIGO_VERSION_LEGACY) {
+			snprintf(negotiation, sizeof(negotiation), " version='1.7' switch='%d.%d'", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
+			property_name = property->name;
+		}
 		if (*property->device && property_name) {
-			INDIGO_PRINTF(handle, "<getProperties device='%s' name='%s'/>\n", indigo_xml_escape(device_name), property_name);
+			INDIGO_PRINTF(handle, "<getProperties%s device='%s' name='%s'/>\n", negotiation, indigo_xml_escape(device_name), property_name);
 		} else if (*property->device) {
-			INDIGO_PRINTF(handle, "<getProperties device='%s'/>\n", indigo_xml_escape(device_name));
+			INDIGO_PRINTF(handle, "<getProperties%s device='%s'/>\n", negotiation, indigo_xml_escape(device_name));
 		} else if (*indigo_property_name(device->version, property)) {
-			INDIGO_PRINTF(handle, "<getProperties name='%s'/>\n", property_name);
+			INDIGO_PRINTF(handle, "<getProperties%s name='%s'/>\n", negotiation, property_name);
 		} else {
-			INDIGO_PRINTF(handle, "<getProperties/>\n");
+			INDIGO_PRINTF(handle, "<getProperties%s/>\n", negotiation);
 		}
 	} else if (indigo_client_name) {
 		INDIGO_PRINTF(handle, "<getProperties version='1.7' client='%s' switch='%d.%d'/>\n", indigo_client_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);

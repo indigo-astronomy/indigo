@@ -7187,6 +7187,17 @@
 		E3770911FF2CB563BC9D803D /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
 		446A84059AF252B4763AA5BC /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
 		A760447BAF9ECD27AB316C99 /* 20261025001458-4524-primaluce-wifi-status-idle.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025001458-4524-primaluce-wifi-status-idle.json"; sourceTree = "<group>"; };
+		11BB4B920CDA154F75C38C41 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		BE53D4D071D62EB12D9E912C /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		52F5203C6EBBABBE4E9E23DC /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		908563662ED0E717726B67ED /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		D4852614A7DDA2983085F724 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		BE220FB5908451235CE0384E /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		CC4FB9594A6BC5B218CB21D0 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		78369C0F3FF5048410BC0ED4 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		98451E41C6231F7F520DFC42 /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		735C3CB7760EBE030AE21D3C /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		43FC700521F9CD53A34D15D4 /* 20261025004416-0995-xml-client-named-request-protocol.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025004416-0995-xml-client-named-request-protocol.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16298,6 +16309,7 @@
 				1C76C96F145DBAE00668C5E2 /* 20261024213010-b356-primaluce-panel-cover-firmware-bound */,
 				582498753B30FC8537004227 /* 20261024221319-1235-primaluce-wifi-status */,
 				801559B057D1D381ED8F0B6C /* 20261025001458-4524-primaluce-wifi-status-idle */,
+				6DF705A15A54BF1AF413AC85 /* 20261025004416-0995-xml-client-named-request-protocol */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18594,6 +18606,7 @@
 				AA05DF155124448390C94540 /* 20261024213010-b356-primaluce-panel-cover-firmware-bound.json */,
 				7C703492C8A3ECF8BC2CB61B /* 20261024221319-1235-primaluce-wifi-status.json */,
 				A760447BAF9ECD27AB316C99 /* 20261025001458-4524-primaluce-wifi-status-idle.json */,
+				43FC700521F9CD53A34D15D4 /* 20261025004416-0995-xml-client-named-request-protocol.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -20148,6 +20161,23 @@
 				446A84059AF252B4763AA5BC /* verification.md */,
 			);
 			path = "20261025001458-4524-primaluce-wifi-status-idle";
+			sourceTree = "<group>";
+		};
+		6DF705A15A54BF1AF413AC85 /* 20261025004416-0995-xml-client-named-request-protocol */ = {
+			isa = PBXGroup;
+			children = (
+				11BB4B920CDA154F75C38C41 /* brief.md */,
+				BE53D4D071D62EB12D9E912C /* handoff.md */,
+				52F5203C6EBBABBE4E9E23DC /* plan.md */,
+				908563662ED0E717726B67ED /* process.json */,
+				D4852614A7DDA2983085F724 /* quality-review.md */,
+				BE220FB5908451235CE0384E /* security.md */,
+				CC4FB9594A6BC5B218CB21D0 /* specification.md */,
+				78369C0F3FF5048410BC0ED4 /* state.json */,
+				98451E41C6231F7F520DFC42 /* test-plan.md */,
+				735C3CB7760EBE030AE21D3C /* verification.md */,
+			);
+			path = "20261025004416-0995-xml-client-named-request-protocol";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
