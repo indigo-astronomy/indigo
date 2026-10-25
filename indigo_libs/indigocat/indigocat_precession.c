@@ -94,8 +94,9 @@ equatorial_coords_s indigocat_apply_proper_motion(const equatorial_coords_s *c0,
 void indigocat_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec) {
 	equatorial_coords_s coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD };
 	double now = 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
-	if (pmra != 0 && pmdec != 0)
+	if (pmra != 0 || pmdec != 0) {
 		coordinates = indigocat_apply_proper_motion(&coordinates, pmra, pmdec, 2000.0, now);
+	}
 	coordinates = indigocat_precess(&coordinates, 2000.0, now);
 	*ra = coordinates.ra * RAD2DEG / 15;
 	*dec = coordinates.dec * RAD2DEG;

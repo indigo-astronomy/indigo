@@ -20,7 +20,10 @@
 
 #include <math.h>
 
+#include <time.h>
+
 #include <indigo/indigo_align.h>
+#include <indigo/indigocat/indigocat_precession.h>
 
 #include "../test_runner.h"
 
@@ -162,8 +165,26 @@ static void polar_alignment_recalculation_follows_the_polar_error(void) {
 	}
 }
 
+/* The proper motion was applied only when both of its components were nonzero. */
+static void proper_motion_in_one_axis_is_applied(void) {
+	const double ra0 = 6, dec0 = 20;
+	const double motions[][2] = { { 100000, 0 }, { 0, 100000 }, { 100000, -50000 }, { 0, 0 } };
+	for (int i = 0; i < (int)(sizeof(motions) / sizeof(motions[0])); i++) {
+		double now = 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
+		equatorial_coords_s coordinates = { ra0 * 15 * DEG2RAD, dec0 * DEG2RAD };
+		coordinates = indigocat_apply_proper_motion(&coordinates, motions[i][0], motions[i][1], 2000.0, now);
+		coordinates = indigocat_precess(&coordinates, 2000.0, now);
+		double ra = ra0, dec = dec0;
+		indigocat_j2k_to_jnow_pm(&ra, &dec, motions[i][0], motions[i][1]);
+		/* a second between the two computations moves the position by far less than this */
+		ASSERT_NEAR(coordinates.ra * RAD2DEG / 15, ra, 1e-6);
+		ASSERT_NEAR(coordinates.dec * RAD2DEG, dec, 1e-5);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "proper_motion_in_one_axis_is_applied", proper_motion_in_one_axis_is_applied },
 		{ "polar_error_correction_inverts_its_application", polar_error_correction_inverts_its_application },
 		{ "polar_alignment_recalculation_follows_the_polar_error", polar_alignment_recalculation_follows_the_polar_error },
 		{ "parallactic_angle_matches_reference_values", parallactic_angle_matches_reference_values },
