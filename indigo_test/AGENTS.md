@@ -66,6 +66,7 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 - `make -C indigo_test test-integration` runs bus and simulator-driver integration tests only.
 - `make -C indigo_test test-server-leaks` (opt-in, several minutes, needs Valgrind) runs `indigo_server` with the simulator drivers under Valgrind memcheck, exercises every device `LEAK_CYCLES` times and reports the leaks by allocating INDIGO function; it fails on definitely or indirectly lost memory. Compare one cycle with several to tell a leak per operation from a single one.
 - `make -C indigo_test test-imager-download` runs the browser download regression with Node.js 18+ and its built-in test runner; it needs no native build. The full `test` target includes this check.
+- `make -C indigo_test test-indigo-js-formatting` runs the Node.js regression of the sexagesimal and HOST_TIME timestamp helpers in `indigo_server/resource/indigo.js`; the full `test` target includes it.
 - `make -C indigo_test benchmark` builds and runs the benchmarks. They are not part of `test`.
 - `make -C indigo_test test-clean` removes generated `indigo_test/build` binaries and dSYM files.
 - Setting `INDIGO_SIMULATOR_TRACE_DIR=<dir>` on a serial simulator test run copies every fixture's simulator command event log into that directory as `<test case>-<n>.events`. Use it to record a reference trace before a driver refactoring and to compare the ordered protocol interactions afterwards.

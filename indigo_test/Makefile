@@ -135,6 +135,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_cleanup \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_detach_abort \
 	$(INTEGRATION_BUILD)/test_server_websocket \
+	$(INTEGRATION_BUILD)/test_server_static_driver \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
@@ -318,7 +319,7 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-unit test-integration test-buildsystem test-imager-download test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+test: test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
 
 # Browser script regression; requires Node.js with the built-in test runner.
 .PHONY: test-mount-manual-motion
@@ -328,6 +329,10 @@ test-mount-manual-motion:
 .PHONY: test-imager-download
 test-imager-download:
 	node --test unit/test_imager_download.js
+
+.PHONY: test-indigo-js-formatting
+test-indigo-js-formatting:
+	node --test unit/test_indigo_js_formatting.js
 
 .PHONY: test-tool-input-safety
 test-tool-input-safety: $(BUILD_LIB)/libindigo_client.a
@@ -445,7 +450,7 @@ $(UNIT_BUILD)/test_md5: unit/test_md5.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h | $(UNIT_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lz
 
 # Static PrimaLuce Lab protocol library, linked by the PrimaLuce drivers and their tests.
 PRIMALUCELIB = $(BUILD_LIB)/libprimalucelib.a
@@ -489,6 +494,15 @@ $(INTEGRATION_BUILD)/test_bus_lifecycle: integration/test_bus_lifecycle.c test_r
 # AddressSanitizer with a single copy of the server code.
 SERVER_WEBSOCKET_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 SERVER_WEBSOCKET_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+# Compiles indigo_server.c into the test to drive its UNLOAD and DRIVERS handlers with a stub static driver. The
+# server source embeds the generated control panel resources, which make all builds with build/bin/indigo_server.
+$(INTEGRATION_BUILD)/test_server_static_driver: integration/test_server_static_driver.c ../indigo_server/indigo_server.c test_runner.h | $(BUILD_BIN)/indigo_server $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Wno-unused-function -Wno-return-type -o $@ $< $(TEST_LDFLAGS) -lindigocat -lz
+
+.PHONY: test-server-static-driver
+test-server-static-driver: check-lib $(INTEGRATION_BUILD)/test_server_static_driver
+	$(INTEGRATION_BUILD)/test_server_static_driver
 
 $(INTEGRATION_BUILD)/test_server_websocket: integration/test_server_websocket.c test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
@@ -3555,7 +3569,7 @@ $(SECURITY_BUILD)/test_transport_cache_security: unit/test_transport_cache_secur
 	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
 
 $(SECURITY_BUILD)/indigo_server_tcp_http.o: ../indigo_libs/indigo_server_tcp.c ../indigo_libs/indigo/indigo_bus.h Makefile | $(SECURITY_BUILD)
-	$(CC) $(SECURITY_CFLAGS) -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -c $< -o $@
+	$(CC) $(SECURITY_CFLAGS) -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -Dindigo_uni_compress=http_test_compress -c $< -o $@
 
 $(SECURITY_BUILD)/indigo_uni_io_http.o: ../indigo_libs/indigo_uni_io.c Makefile | $(SECURITY_BUILD)
 	$(CC) $(SECURITY_CFLAGS) -Dindigo_async=http_test_async -c $< -o $@

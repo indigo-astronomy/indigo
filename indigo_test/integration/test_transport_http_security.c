@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <zlib.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_server_tcp.h>
@@ -91,6 +92,17 @@ long http_test_write(indigo_uni_handle *handle, const char *buffer, long length)
 		return -1;
 	}
 	return indigo_uni_write(handle, buffer, length);
+}
+
+static atomic_bool fail_compress;
+
+void http_test_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
+	if (atomic_exchange(&fail_compress, false)) {
+		// what indigo_uni_compress() reports for a stream that did not reach Z_STREAM_END
+		*out_size = 0;
+		return;
+	}
+	indigo_uni_compress(name, in_buffer, in_size, out_buffer, out_size);
 }
 
 bool http_test_async(void *fun(void *), void *data) {
@@ -250,6 +262,78 @@ static bool download_matches(const char *expected, size_t size) {
 	close(fd);
 	char *body = strstr(response, "\r\n\r\n");
 	return result && !strncmp(response, "HTTP/1.1 200 ", 13) && body && strlen(body + 4) == size && memcmp(body + 4, expected, size) == 0;
+}
+
+// Binary safe GET of the uploaded BLOB with gzip accepted; returns the body size or -1.
+static long download_gzip(char *response, size_t capacity, char **body, bool *gzip) {
+	int fd = connect_loopback(indigo_server_tcp_port);
+	if (fd < 0) {
+		return -1;
+	}
+	char request[256];
+	int length = snprintf(request, sizeof(request), "GET /blob/%p.bin HTTP/1.1\r\nAccept-Encoding: gzip\r\nConnection: close\r\n\r\n", upload_property->items);
+	if (write(fd, request, length) != length) {
+		close(fd);
+		return -1;
+	}
+	size_t received = 0;
+	ssize_t count;
+	while (received + 1 < capacity && (count = read(fd, response + received, capacity - received - 1)) > 0) {
+		received += count;
+	}
+	close(fd);
+	response[received] = 0;
+	char *separator = strstr(response, "\r\n\r\n");
+	// the line start matters, X-Uncompressed-Content-Length also ends with Content-Length
+	char *content_length = strstr(response, "\r\nContent-Length: ");
+	if (strncmp(response, "HTTP/1.1 200 ", 13) || separator == NULL || content_length == NULL || content_length > separator) {
+		return -1;
+	}
+	*body = separator + 4;
+	char *encoding = strstr(response, "\r\nContent-Encoding: gzip\r\n");
+	*gzip = encoding != NULL && encoding < separator;
+	long body_size = (long)(received - (size_t)(*body - response));
+	return body_size == strtol(content_length + 18, NULL, 10) ? body_size : -1;
+}
+
+static void incompressible_gzip_download_is_complete(void) {
+	char payload[INDIGO_BLOB_UPLOAD_LIMIT];
+	unsigned state = 0x9e3779b9;
+	for (int i = 0; i < (int)sizeof(payload); i++) {
+		state = state * 1103515245 + 12345;
+		payload[i] = (char)(state >> 24);
+	}
+	char headers[64];
+	snprintf(headers, sizeof(headers), "Content-Length: %zu\r\n", sizeof(payload));
+	ASSERT_TRUE(upload(headers, payload, sizeof(payload), 200));
+	indigo_use_blob_compression = true;
+	char response[4096];
+	char *body = NULL;
+	bool gzip = false;
+	long size = download_gzip(response, sizeof(response), &body, &gzip);
+	ASSERT_TRUE(size > (long)sizeof(payload));
+	ASSERT_TRUE(gzip);
+	unsigned char output[sizeof(payload) + 1];
+	z_stream inflater = { 0 };
+	ASSERT_EQ_INT(Z_OK, inflateInit2(&inflater, MAX_WBITS + 16));
+	inflater.next_in = (Bytef *)body;
+	inflater.avail_in = (uInt)size;
+	inflater.next_out = output;
+	inflater.avail_out = sizeof(output);
+	int result = inflate(&inflater, Z_FINISH);
+	unsigned long total = inflater.total_out;
+	inflateEnd(&inflater);
+	ASSERT_EQ_INT(Z_STREAM_END, result);
+	ASSERT_EQ_INT(sizeof(payload), total);
+	ASSERT_TRUE(memcmp(output, payload, sizeof(payload)) == 0);
+#ifdef INDIGO_HTTP_FAULT_INJECTION
+	atomic_store(&fail_compress, true);
+	size = download_gzip(response, sizeof(response), &body, &gzip);
+	ASSERT_EQ_INT(sizeof(payload), size);
+	ASSERT_FALSE(gzip);
+	ASSERT_TRUE(memcmp(body, payload, sizeof(payload)) == 0);
+#endif
+	indigo_use_blob_compression = false;
 }
 
 static void malformed_framing_preserves_cache(void) {
@@ -631,6 +715,7 @@ int main(int argc, char **argv) {
 		{ "malformed framing preserves cache", malformed_framing_preserves_cache },
 		{ "short EOF preserves cache", short_eof_preserves_cache },
 		{ "valid empty and whitespace length", valid_empty_and_ows_upload },
+		{ "incompressible gzip download is complete", incompressible_gzip_download_is_complete },
 		{ "private receive and responsive publication", private_receive_does_not_block_publication },
 		{ "stalled body deadline", stalled_body_times_out_without_publication },
 #ifdef INDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT

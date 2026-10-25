@@ -2765,16 +2765,18 @@ void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned
 	header.comment = Z_NULL;
 	header.extra = Z_NULL;
 	int r = deflateInit2(&defstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 9, Z_DEFAULT_STRATEGY);
-	if (r == Z_OK) {
-		r = deflateSetHeader(&defstream, &header);
+	if (r != Z_OK) {
+		*out_size = 0;
+		return;
 	}
-	if (r >= 0) {
+	r = deflateSetHeader(&defstream, &header);
+	if (r == Z_OK) {
 		r = deflate(&defstream, Z_FINISH);
 	}
-	if (r >= 0) {
-		r = deflateEnd(&defstream);
-	}
-	if (r >= 0) {
+	// only Z_STREAM_END means the whole gzip stream fits the output buffer, anything else is an incomplete stream
+	bool complete = r == Z_STREAM_END;
+	r = deflateEnd(&defstream);
+	if (complete && r == Z_OK) {
 		*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
 	} else {
 		*out_size = 0;

@@ -5841,6 +5841,7 @@
 		C0DE20261003A10000000003 /* test_system_alpaca_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_system_alpaca_hw.c; sourceTree = "<group>"; };
 		C0DE20261004BEEF00000001 /* PROTOCOL.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOL.md; sourceTree = "<group>"; };
 		C0DE20261006D0AB00000001 /* test_server_driver_stress.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_driver_stress.c; sourceTree = "<group>"; };
+		B7E2D41C9A0F4C3E85D61A27 /* test_server_static_driver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_static_driver.c; sourceTree = "<group>"; };
 		C0DE20261006D0AB00000002 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		C0DE20261008190000000001 /* test_focuser_wemacro_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_wemacro_hw.c; sourceTree = "<group>"; };
 		C0DE20261008195000000001 /* test_focuser_mjkzz_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_mjkzz_hw.c; sourceTree = "<group>"; };
@@ -5955,6 +5956,7 @@
 		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
 		1B45EF8F7869FEC2AFF22010 /* run_server_leak_check.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_leak_check.py; sourceTree = "<group>"; };
 		D953B0583D568EBDF4A6B59C /* test_imager_download.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "test_imager_download.js"; sourceTree = "<group>"; };
+		A3C51E7F0B2D49E6812F4D10 /* test_indigo_js_formatting.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "test_indigo_js_formatting.js"; sourceTree = "<group>"; };
 		AA962949773AAF60E258ECBB /* test_network_url.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_network_url.c"; sourceTree = "<group>"; };
 		C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "test_raw_to_fits.c"; sourceTree = "<group>"; };
 		F6E14E01192CC6BDFBEE1051 /* test_findings_project.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = "test_findings_project.py"; sourceTree = "<group>"; };
@@ -14389,6 +14391,7 @@
 				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
 				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,
 				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
+				A3C51E7F0B2D49E6812F4D10 /* test_indigo_js_formatting.js */,
 				D0F49E4E16504118ACB3E8BF /* test_protocol_security.c */,
 				C1709E72227841389E72BABD /* test_transport_cache_security.c */,
 				59FA7C0C301DD71000A35CFB /* test_timer.c */,
@@ -14479,6 +14482,7 @@
 				C0DE20260926D0AB00000001 /* test_detach_abort.c */,
 				8F4EA6F415E6514CA9C5EDC2 /* test_server_websocket.c */,
 				C0DE20261006D0AB00000001 /* test_server_driver_stress.c */,
+				B7E2D41C9A0F4C3E85D61A27 /* test_server_static_driver.c */,
 				C0DE20260911000100000001 /* test_ccd_altair_sdk.c */,
 				59910AA43054836E00FB1C2F /* test_ccd_asi_sdk.c */,
 				9D56D35A3058283B00725436 /* test_ccd_atik_sdk.c */,

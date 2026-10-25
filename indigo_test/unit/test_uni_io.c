@@ -31,6 +31,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <zlib.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <errno.h>
 #endif
@@ -574,9 +575,77 @@ static void standard_stream_handles_have_file_descriptors(void) {
 	}
 }
 
+// Deterministic incompressible bytes: deflate stores them, so the gzip stream is larger than the input.
+static void fill_incompressible(char *buffer, unsigned size) {
+	unsigned state = 0x12345678;
+	for (unsigned i = 0; i < size; i++) {
+		state = state * 1103515245 + 12345;
+		buffer[i] = (char)(state >> 24);
+	}
+}
+
+static bool gunzip_matches(const unsigned char *stream, unsigned stream_size, const char *expected, unsigned expected_size) {
+	unsigned char *output = malloc(expected_size + 1);
+	z_stream inflater = { 0 };
+	if (output == NULL || inflateInit2(&inflater, MAX_WBITS + 16) != Z_OK) {
+		free(output);
+		return false;
+	}
+	inflater.next_in = (Bytef *)stream;
+	inflater.avail_in = stream_size;
+	inflater.next_out = output;
+	inflater.avail_out = expected_size + 1;
+	int result = inflate(&inflater, Z_FINISH);
+	bool matches = result == Z_STREAM_END && inflater.avail_in == 0 && inflater.total_out == expected_size && memcmp(output, expected, expected_size) == 0;
+	inflateEnd(&inflater);
+	free(output);
+	return matches;
+}
+
+static void compress_rejects_output_buffer_too_small(void) {
+	char input[32];
+	unsigned char output[32];
+	for (int i = 0; i < 32; i++) {
+		input[i] = (char)i;
+	}
+	unsigned size = sizeof(output);
+	indigo_uni_compress("image", input, sizeof(input), output, &size);
+	ASSERT_EQ_INT(0, size);
+	char large[70000];
+	fill_incompressible(large, sizeof(large));
+	unsigned char *large_output = malloc(sizeof(large));
+	ASSERT_TRUE(large_output != NULL);
+	size = sizeof(large);
+	indigo_uni_compress("image", large, sizeof(large), large_output, &size);
+	ASSERT_EQ_INT(0, size);
+	free(large_output);
+}
+
+static void compress_incompressible_payload_round_trips(void) {
+	unsigned sizes[] = { 1, 32, 16384, 70000, 300000 };
+	for (int i = 0; i < (int)(sizeof(sizes) / sizeof(sizes[0])); i++) {
+		unsigned input_size = sizes[i];
+		char *input = malloc(input_size);
+		// the capacity used by the HTTP BLOB download
+		unsigned capacity = input_size + input_size / 1000 + 64;
+		unsigned char *output = malloc(capacity);
+		ASSERT_TRUE(input != NULL && output != NULL);
+		fill_incompressible(input, input_size);
+		unsigned size = capacity;
+		indigo_uni_compress("image", input, input_size, output, &size);
+		ASSERT_TRUE(size > 0);
+		ASSERT_TRUE(size <= capacity);
+		ASSERT_TRUE(gunzip_matches(output, size, input, input_size));
+		free(input);
+		free(output);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "standard_stream_handles_have_file_descriptors", standard_stream_handles_have_file_descriptors },
+		{ "compress_rejects_output_buffer_too_small", compress_rejects_output_buffer_too_small },
+		{ "compress_incompressible_payload_round_trips", compress_incompressible_payload_round_trips },
 		{ "read_section_accepts_null_ignore_list", read_section_accepts_null_ignore_list },
 		{ "read_section_accepts_null_terminator_list", read_section_accepts_null_terminator_list },
 		{ "read_section_still_ignores_and_terminates", read_section_still_ignores_and_terminates },
