@@ -77,7 +77,7 @@
 #define DEGREES_TO_STEPS(deg)                  (deg * steps_per_degree)
 
 
-char ReceiveBuffer[COMMAND_LENGTH];
+char ReceiveBuffer[COMMAND_LENGTH + 1]; // COMMAND_LENGTH characters and the terminating NUL
 String ResponseMessage;
 char CurrentSymbol;
 int ReceiveCounter = 0;
