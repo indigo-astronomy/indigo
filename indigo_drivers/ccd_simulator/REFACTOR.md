@@ -307,3 +307,12 @@ Version 43. The focuser kept the range of the base class, -9 999 999 to 9 999 99
 `FOCUSER_POSITION` now runs from -20 000 to 20 000 steps, `FOCUSER_STEPS` up to 40 000, and `FOCUSER_SPEED` defaults to its maximum of 100, which is 1000 steps per second, so the whole travel takes 40 s. `start_focuser_move()` ends a relative move at the end of the travel. The zero position stays in the middle of the travel, so the focus model and the existing tests, which set the speed they need themselves, are unchanged.
 
 Validation on macOS arm64: recorded run `python3 tools/run_driver_test.py ccd_simulator` 26/26; `agent_imager` 55/55 (not recorded, its sources are unchanged); ConformU focuser test through `indigo_agent_alpaca` 35/35. Hardware 0 run / 0 passed.
+
+## Mount-following case independent of the time of day (test only, 2026-10-25, task 20261025174819-e272-ccd-simulator-follow-pier-side)
+
+`simulator_guider_camera_follows_mount_simulator_guiding` slews the real mount simulator to Betelgeuse (RA 5.92 h)
+and checked the guide pulse shifts for the east side of the pier. The mount takes the side the hour angle gives at the
+time of the run, so the case failed when it took the west side: the star moved by the expected 1.86 px but in the
+opposite direction (FND-20261025152706-abbf-fix-server-leaks-002). The case now reads the side from the simulated mount
+state after the slew and checks the shifts for it. No driver change. Recorded run:
+`2026-10-25 19:48 3.0.0.43 linux x64 simulator 26/26 OK` (the mount was on the west side).

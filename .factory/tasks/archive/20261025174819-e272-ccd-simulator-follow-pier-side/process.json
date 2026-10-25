@@ -1,0 +1,83 @@
+{
+  "version": 2,
+  "task": "20261025174819-e272-ccd-simulator-follow-pier-side",
+  "scope": [
+    "indigo_test/integration/test_ccd_simulator.c",
+    "indigo_drivers/ccd_simulator/*",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_simulator"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025174819-e272-ccd-simulator-follow-pier-side.json": [
+      "100644",
+      "blob",
+      "c25eabd185ce3637a96d8d77cc400de010148f79"
+    ],
+    ".factory/findings/active/FND-20261025152706-abbf-fix-server-leaks-002.json": null,
+    ".factory/findings/archive/FND-20261025152706-abbf-fix-server-leaks-002.json": [
+      "100644",
+      "blob",
+      "eecb0b5e393d23c53396ea124889cbe9969860aa"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "5791530d2ec8ff9b0bc3fcab9ec896908c563bf7"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "69cfedebca433f1befdc2d35f7f9b0ee78a26fb7"
+    ],
+    "indigo_drivers/ccd_simulator/README.md": [
+      "100644",
+      "blob",
+      "733d57bf63c592a64de87fe5cc7b7f3ddd3cb6a0"
+    ],
+    "indigo_drivers/ccd_simulator/REFACTOR.md": [
+      "100644",
+      "blob",
+      "69154d489523ed828626fce88fa14a214f6dbb3a"
+    ],
+    "indigo_test/integration/test_ccd_simulator.c": [
+      "100644",
+      "blob",
+      "df5732c5eccc9f0c31dca9532b84744d88457134"
+    ]
+  }
+}
