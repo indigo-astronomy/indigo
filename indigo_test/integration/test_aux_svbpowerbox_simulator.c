@@ -417,6 +417,36 @@ cleanup:
 	tear_down_serial_driver(&svbpowerbox_aux);
 }
 
+// A box that keeps sending its boot log is waited for 3 s at most: the connection completes or is refused instead
+// of staying BUSY. The simulator log stops at the first request (8 s at most), so a later connection succeeds.
+static void endless_boot_log_is_bounded(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--boot-noise", "8", NULL };
+	SERIAL_CHECK_TRUE(start_powerbox(&simulator, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&svbpowerbox_aux));
+	online = true;
+	double started = indigo_monotonic_time();
+	bool connected = connect_serial_device(&svbpowerbox_aux, simulator.port);
+	for (int i = 0; i < 20 && !connected && context.last_connection_state == INDIGO_BUSY_STATE; i++) {
+		indigo_usleep(100000);
+	}
+	double elapsed = indigo_monotonic_time() - started;
+	if (context.last_connection_state == INDIGO_BUSY_STATE) {
+		fprintf(stderr, "Connection still BUSY after %.1f s of boot log\n", elapsed);
+	}
+	SERIAL_CHECK_TRUE(context.last_connection_state != INDIGO_BUSY_STATE);
+	SERIAL_CHECK_TRUE(elapsed < 6);
+	if (!connected) {
+		// A log line sent just before the handshake request may have garbled its reply.
+		SERIAL_CHECK_TRUE(connect_serial_device(&svbpowerbox_aux, simulator.port));
+	}
+	SERIAL_CHECK_TRUE(wait_for_first_poll());
+cleanup:
+	if (online) { stop_serial_driver(&svbpowerbox_aux); }
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
@@ -433,7 +463,8 @@ int main(void) {
 		{ "both_sensors_missing_reports_no_readings", both_sensors_missing_reports_no_readings },
 		{ "reconnect_restores_the_controls", reconnect_restores_the_controls },
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
-		{ "silent_port_is_refused", silent_port_is_refused }
+		{ "silent_port_is_refused", silent_port_is_refused },
+		{ "endless_boot_log_is_bounded", endless_boot_log_is_bounded }
 	};
 	return indigo_run_tests("SVBONY PowerBox serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

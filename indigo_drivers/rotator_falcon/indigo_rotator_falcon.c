@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000C
+#define DRIVER_VERSION       0x0300000D
 #define DRIVER_NAME          "indigo_rotator_falcon"
 #define DRIVER_LABEL         "PegasusAstro Falcon rotator"
 #define ROTATOR_DEVICE_NAME  "Pegasus Falcon rotator"
@@ -45,6 +45,7 @@ typedef struct {
 	//+ data
 	char response[128];
 	bool abort;
+	bool reversed;
 	//- data
 } falcon_private_data;
 
@@ -169,6 +170,7 @@ static void rotator_connection_handler(indigo_device *device) {
 		connection_result = falcon_open(device, &error_message);
 		if (connection_result) {
 			//+ rotator.on_connect
+			PRIVATE_DATA->reversed = ROTATOR_DIRECTION_REVERSED_ITEM->sw.value;
 			falcon_command(device, "FH");
 			falcon_command(device, "DR:0");
 			if (falcon_command(device, "FA")) {
@@ -185,6 +187,7 @@ static void rotator_connection_handler(indigo_device *device) {
 					token = strtok_r(NULL, ":", &pnt); // do_derotation
 					token = strtok_r(NULL, ":", &pnt); // motor_reverse
 					if (token) {
+						PRIVATE_DATA->reversed = *token != '0';
 						if (*token == '0') {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
 						} else {
@@ -203,6 +206,7 @@ static void rotator_connection_handler(indigo_device *device) {
 					token = strtok_r(NULL, ":", &pnt); // microsteps
 					token = strtok_r(NULL, ":", &pnt); // direction
 					if (token) {
+						PRIVATE_DATA->reversed = *token != '0';
 						if (*token == '0') {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
 						} else {
@@ -261,7 +265,14 @@ static void rotator_position_handler(indigo_device *device) {
 static void rotator_direction_handler(indigo_device *device) {
 	ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_DIRECTION.on_change
-	if (!falcon_command(device, "FN:%d", ROTATOR_DIRECTION_NORMAL_ITEM->sw.value ? 0 : 1) && !strncmp(PRIVATE_DATA->response, "FN:", 3)) {
+	// The rotator echoes an accepted FN:<n>; anything else leaves it with the flag it had.
+	bool reversed = ROTATOR_DIRECTION_REVERSED_ITEM->sw.value;
+	char acknowledgement[8];
+	snprintf(acknowledgement, sizeof(acknowledgement), "FN:%d", reversed ? 1 : 0);
+	if (falcon_command(device, "FN:%d", reversed ? 1 : 0) && !strcmp(PRIVATE_DATA->response, acknowledgement)) {
+		PRIVATE_DATA->reversed = reversed;
+	} else {
+		indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, PRIVATE_DATA->reversed ? ROTATOR_DIRECTION_REVERSED_ITEM : ROTATOR_DIRECTION_NORMAL_ITEM, true);
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- rotator.ROTATOR_DIRECTION.on_change

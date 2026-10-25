@@ -27,6 +27,7 @@
 
 //+ include
 
+#include <limits.h>
 #include <math.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_mount_driver.h>
@@ -53,7 +54,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002B
+#define DRIVER_VERSION       0x0300002C
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -977,14 +978,15 @@ static bool open_file_image(indigo_device *device) {
 		return false;
 	}
 	indigo_raw_header header = { 0 };
-	bool result = indigo_uni_read(handle, (char *)&header, sizeof(header));
+	// indigo_uni_read() returns the count read before the end of the file, only the full count is a complete header or image.
+	bool result = indigo_uni_read(handle, (char *)&header, sizeof(header)) == (long)sizeof(header);
 	int bytes = header.signature == INDIGO_RAW_MONO8 ? 1 : header.signature == INDIGO_RAW_MONO16 ? 2 : header.signature == INDIGO_RAW_RGB24 ? 3 : header.signature == INDIGO_RAW_RGB48 ? 6 : 0;
 	bool valid_size = bytes > 0 && header.width > 0 && header.height > 0 && (size_t)header.width <= SIZE_MAX / (size_t)header.height / (size_t)bytes;
 	size_t size = valid_size ? (size_t)header.width * (size_t)header.height * (size_t)bytes : 0;
-	char *raw_image = result && size > 0 && size <= SIZE_MAX - FITS_HEADER_SIZE ? indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE) : NULL;
+	char *raw_image = result && size > 0 && size <= LONG_MAX && size <= SIZE_MAX - FITS_HEADER_SIZE ? indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE) : NULL;
 	char *image = raw_image != NULL ? indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE) : NULL;
 	if (raw_image != NULL && image != NULL) {
-		result = indigo_uni_read(handle, raw_image + FITS_HEADER_SIZE, size);
+		result = indigo_uni_read(handle, raw_image + FITS_HEADER_SIZE, (long)size) == (long)size;
 	}
 	indigo_uni_close(&handle);
 	if (!result || raw_image == NULL || image == NULL) {

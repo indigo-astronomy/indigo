@@ -26,7 +26,7 @@ driver falcon {
 	label = "PegasusAstro Falcon rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 12;
+	version = 13;
 	multi_device_support = true;
 	serial {
 		pattern {
@@ -41,6 +41,7 @@ driver falcon {
 	data {
 		char response[128];
 		bool abort;
+		bool reversed;
 	}
 	code {
 		static bool falcon_command(indigo_device *device, char *command, ...) {
@@ -95,6 +96,7 @@ driver falcon {
 		name = "Pegasus Falcon rotator";
 		additional_instances = true;
 		on_connect {
+			PRIVATE_DATA->reversed = ROTATOR_DIRECTION_REVERSED_ITEM->sw.value;
 			falcon_command(device, "FH");
 			falcon_command(device, "DR:0");
 			if (falcon_command(device, "FA")) {
@@ -111,6 +113,7 @@ driver falcon {
 					token = strtok_r(NULL, ":", &pnt); // do_derotation
 					token = strtok_r(NULL, ":", &pnt); // motor_reverse
 					if (token) {
+						PRIVATE_DATA->reversed = *token != '0';
 						if (*token == '0') {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
 						} else {
@@ -129,6 +132,7 @@ driver falcon {
 					token = strtok_r(NULL, ":", &pnt); // microsteps
 					token = strtok_r(NULL, ":", &pnt); // direction
 					if (token) {
+						PRIVATE_DATA->reversed = *token != '0';
 						if (*token == '0') {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
 						} else {
@@ -219,7 +223,14 @@ driver falcon {
 		}
 		inherited ROTATOR_DIRECTION {
 			on_change {
-				if (!falcon_command(device, "FN:%d", ROTATOR_DIRECTION_NORMAL_ITEM->sw.value ? 0 : 1) && !strncmp(PRIVATE_DATA->response, "FN:", 3)) {
+				// The rotator echoes an accepted FN:<n>; anything else leaves it with the flag it had.
+				bool reversed = ROTATOR_DIRECTION_REVERSED_ITEM->sw.value;
+				char acknowledgement[8];
+				snprintf(acknowledgement, sizeof(acknowledgement), "FN:%d", reversed ? 1 : 0);
+				if (falcon_command(device, "FN:%d", reversed ? 1 : 0) && !strcmp(PRIVATE_DATA->response, acknowledgement)) {
+					PRIVATE_DATA->reversed = reversed;
+				} else {
+					indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, PRIVATE_DATA->reversed ? ROTATOR_DIRECTION_REVERSED_ITEM : ROTATOR_DIRECTION_NORMAL_ITEM, true);
 					ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}

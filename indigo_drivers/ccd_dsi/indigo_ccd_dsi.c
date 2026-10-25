@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_ccd_dsi"
 #define DRIVER_LABEL         "Meade DSI Camera"
 #define CCD_DEVICE_NAME      "%s"

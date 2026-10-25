@@ -62,6 +62,9 @@ static int slow_outlet, slow_state;
 static bool slow_armed;
 // Test control: every command received is appended to this file before it is answered.
 static const char *command_log;
+// Test control: the command delay_command received while delay_file exists removes the file and is answered
+// 0.5 s late, so a request can arrive while a poll waits for that reply.
+static const char *delay_file, *delay_command;
 static serial_motion motion = { .position = 50, .target = 50 };
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
@@ -171,6 +174,10 @@ static void dispatch_command(int fd, const char *cmd) {
 	}
 	if (inject_fault(fd, cmd)) {
 		return;
+	}
+	if (delay_file != NULL && !strcmp(cmd, delay_command) && access(delay_file, F_OK) == 0) {
+		unlink(delay_file);
+		usleep(500000);
 	}
 	long position = serial_motion_update(&motion);
 	bool moving = motion.position != motion.target;
@@ -315,6 +322,9 @@ int main(int argc, char **argv) {
 			}
 		} else if (!strcmp(argv[i], "--command-log") && i + 1 < argc) {
 			command_log = argv[++i];
+		} else if (!strcmp(argv[i], "--delay-file") && i + 2 < argc) {
+			delay_file = argv[++i];
+			delay_command = argv[++i];
 		} else if (!strcmp(argv[i], "--slow-file") && i + 3 < argc) {
 			slow_file = argv[++i];
 			slow_outlet = atoi(argv[++i]);
@@ -340,7 +350,7 @@ int main(int argc, char **argv) {
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (strcmp(argv[i], "--headless")) {
-			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--autodew-mode N] [--hub-off] [--no-probe] [--outlet-current N] [--outlet-after N OUTLET VALUE] [--slow-file PATH OUTLET VALUE] [--command-log PATH] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
+			fprintf(stderr, "Usage: %s [--headless] [--trace] [--ready-file path] [--model upb|upb2] [--overcurrent FLAGS] [--weather T H D] [--power V A W] [--autodew] [--autodew-mode N] [--hub-off] [--no-probe] [--outlet-current N] [--outlet-after N OUTLET VALUE] [--slow-file PATH OUTLET VALUE] [--delay-file PATH CMD] [--command-log PATH] [--fault CMD invalid|short|silent|close] [--fault-once CMD MODE] [--fault-after N CMD MODE]\n", argv[0]);
 			return 1;
 		}
 	}

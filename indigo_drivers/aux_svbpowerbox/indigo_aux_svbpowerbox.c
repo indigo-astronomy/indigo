@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_svbpowerbox"
 #define DRIVER_LABEL         "SVBONY PowerBox"
 #define AUX_DEVICE_NAME      "SVBONY PowerBox"
@@ -236,11 +236,13 @@ static bool svbpowerbox_open(indigo_device *device, const char **error_message) 
 		// Reset the ESP32 by clearing DTR/RTS
 		indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
 		indigo_uni_set_rts(PRIVATE_DATA->handle, false);
-		// Wait for boot messages to clear (up to 3 seconds, 300 ms silence)
+		// Wait for boot messages to clear (up to 3 seconds, 300 ms silence); a box that keeps sending
+		// is not waited for longer, the handshake below decides whether it answers.
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for device boot...");
 		char boot_buf[512];
 		long n;
-		while (indigo_uni_wait_for_data(PRIVATE_DATA->handle, 300000) > 0) {
+		double boot_deadline = indigo_monotonic_time() + 3;
+		while (indigo_monotonic_time() < boot_deadline && indigo_uni_wait_for_data(PRIVATE_DATA->handle, 300000) > 0) {
 			n = indigo_uni_read_available(PRIVATE_DATA->handle, boot_buf, sizeof(boot_buf));
 			if (n > 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Boot data (%ld bytes)", n);
