@@ -51,6 +51,7 @@
 #define X_WIFI_PROPERTY_NAME               "X_WIFI"
 #define X_WIFI_AP_PROPERTY_NAME            "X_WIFI_AP"
 #define X_WIFI_STA_PROPERTY_NAME           "X_WIFI_STA"
+#define X_WIFI_STATUS_PROPERTY_NAME        "X_WIFI_STATUS"
 #define X_WIFI_AP_ITEM_NAME                "AP"
 #define X_WIFI_STA_ITEM_NAME               "STA"
 #define ON_ITEM_NAME                       "ON"
@@ -406,6 +407,10 @@ static void property_contract(void) {
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_AP_PROPERTY_NAME, "AP_PASSWORD", "primalucelab"));
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "MySSID"));
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_PASSWORD", "MyPassword"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "IP_ADDRESS", "192.168.4.1"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", "80"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "access point"));
+	SERIAL_CHECK_TRUE(find_cached_property(X_WIFI_STATUS_PROPERTY_NAME)->perm == INDIGO_RO_PERM);
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_TEMPERATURE_ITEM_NAME, 30.8, .005));
 	SERIAL_CHECK_TRUE(number_is(X_STATE_PROPERTY_NAME, X_STATE_VIN_12V_ITEM_NAME, 13.37, .005));
 	disconnect_serial_device(&alto);
@@ -862,7 +867,7 @@ static void wifi_credentials(void) {
 	SERIAL_CHECK_TRUE(message_seen("at least 8 characters"));
 	SERIAL_CHECK_TRUE(text_change(X_WIFI_AP_PROPERTY_NAME, "AP_SSID", "", INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(message_seen("needs an SSID"));
-	SERIAL_CHECK_EQ_INT(1, requests("\"WIFIAP\""));
+	SERIAL_CHECK_EQ_INT(1, requests("{\"req\":{\"set\":{\"WIFIAP\""));
 	disconnect_serial_device(&alto);
 	SERIAL_CHECK_TRUE(connect_alto());
 	SERIAL_CHECK_TRUE(text_is(X_WIFI_STA_PROPERTY_NAME, "STA_SSID", "Observatory"));
@@ -879,6 +884,10 @@ static void wifi_modes(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"set\":{\"LANCFG\":\"sta\"}}}", 1));
 	SERIAL_CHECK_EQ_INT(1, requests("\"REBOOT\""));
+	// The address the controller got on the joined network is shown; the access point is off.
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "IP_ADDRESS", "192.0.2.23"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "PORT", "80"));
+	SERIAL_CHECK_TRUE(text_is(X_WIFI_STATUS_PROPERTY_NAME, "CONNECTION", "gotip"));
 	disconnect_serial_device(&alto);
 	SERIAL_CHECK_TRUE(connect_alto());
 	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, X_WIFI_STA_ITEM_NAME, true));
