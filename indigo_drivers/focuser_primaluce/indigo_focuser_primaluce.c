@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002C
+#define DRIVER_VERSION       0x0300002D
 #define DRIVER_NAME          "indigo_focuser_primaluce"
 #define DRIVER_LABEL         "PrimaluceLab Focuser/Rotator"
 #define FOCUSER_DEVICE_NAME  "PrimaluceLab Focuser"
@@ -445,11 +445,13 @@ static void publish_wifi_status(indigo_device *device, primalucelib_wifi_status 
 	if (*status->ip_address) {
 		snprintf(port, sizeof(port), "%d", PRIMALUCE_HTTP_DEFAULT_PORT);
 	}
-	if (!update || strcmp(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address) || strcmp(X_WIFI_STATUS_PORT_ITEM->text.value, port) || strcmp(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection)) {
+	// IDLE while the device cannot be reached over WiFi: not joined in station mode, or WiFi off.
+	indigo_property_state state = status->reachable ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	if (!update || state != X_WIFI_STATUS_PROPERTY->state || strcmp(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address) || strcmp(X_WIFI_STATUS_PORT_ITEM->text.value, port) || strcmp(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection)) {
 		INDIGO_COPY_VALUE(X_WIFI_STATUS_IP_ADDRESS_ITEM->text.value, status->ip_address);
 		INDIGO_COPY_VALUE(X_WIFI_STATUS_PORT_ITEM->text.value, port);
 		INDIGO_COPY_VALUE(X_WIFI_STATUS_CONNECTION_ITEM->text.value, status->connection);
-		X_WIFI_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+		X_WIFI_STATUS_PROPERTY->state = state;
 		if (update) {
 			indigo_update_property(device, X_WIFI_STATUS_PROPERTY, NULL);
 		}
