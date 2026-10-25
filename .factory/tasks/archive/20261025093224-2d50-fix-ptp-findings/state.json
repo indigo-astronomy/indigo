@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025093224-2d50-fix-ptp-findings",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner decides on the audit deferral, integration and push.",
+  "blocker": null
+}

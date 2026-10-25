@@ -1015,8 +1015,10 @@ static void ptp_canon_get_event(indigo_device *device) {
 							break;
 						}
 						case ptp_str_type: {
-							strncpy((char *)property->value.text.value, (char *)source, PTP_MAX_CHARS);
-							property->value.text.value[PTP_MAX_CHARS - 1] = '\0';
+							// The value is NUL-terminated within the record, if at all.
+							size_t length = strnlen((char *)source, size - 12 < PTP_MAX_CHARS - 1 ? size - 12 : PTP_MAX_CHARS - 1);
+							memcpy(property->value.text.value, source, length);
+							property->value.text.value[length] = '\0';
 							break;
 						}
 						case ptp_undef_type: {
@@ -1033,15 +1035,38 @@ static void ptp_canon_get_event(indigo_device *device) {
 								}
 								case ptp_property_canon_CustomFuncEx: {
 									property = NULL;
+									// Record payload after its event header and property code: total size, group count, then groups of
+									// { id, size in bytes from the size field, item count, items of { code, value size in words, value } }.
+									// The whole record is validated before anything is stored; a malformed one is rejected.
 									source += sizeof(uint32_t);
 									unsigned int *source_uint32 = (unsigned int *)source;
-									int offset = 0;
-									unsigned int group_count = source_uint32[offset++];
-									assert(group_count <= 16);
+									uint32_t available = size > 16 ? (size - 16) / sizeof(uint32_t) : 0;
+									uint32_t offset = 0;
+									bool valid = available >= 1 && source_uint32[0] <= 16;
+									unsigned int group_count = valid ? source_uint32[offset++] : 0;
+									for (int i = 0; valid && i < group_count; i++) {
+										valid = offset + 2 <= available;
+										unsigned int group = valid ? source_uint32[offset] - 1 : 0;
+										unsigned int group_size = valid ? source_uint32[offset + 1] : 0;
+										valid = valid && group < 16 && group_size >= 8 && group_size <= 1024 && group_size % sizeof(uint32_t) == 0 && (group_size - 4) / sizeof(uint32_t) <= available - offset - 2;
+										uint32_t group_end = offset + 2 + (group_size - 4) / sizeof(uint32_t);
+										offset += 2;
+										unsigned int item_count = valid ? source_uint32[offset++] : 0;
+										// Items must lie within the stored group copy, the value word included.
+										for (int j = 0; valid && j < item_count; j++) {
+											valid = offset + 2 < group_end && source_uint32[offset + 1] <= group_end - offset - 2;
+											offset += valid ? 2 + source_uint32[offset + 1] : 0;
+										}
+									}
+									if (!valid) {
+										INDIGO_DRIVER_ERROR(DRIVER_NAME, "Malformed CustomFuncEx record (%u bytes)", size);
+										PRIVATE_DATA->last_error = ptp_response_GeneralError;
+										break;
+									}
+									offset = 1;
 									for (int i = 0; i < group_count; i++) {
 										unsigned int group = source_uint32[offset++] - 1;
 										unsigned int group_size = source_uint32[offset++];
-										assert(group_size <= 1024);
 										CANON_PRIVATE_DATA->ex_func_group[group][0] = group_size + 12; // total size
 										CANON_PRIVATE_DATA->ex_func_group[group][1] = 1; // group count
 										CANON_PRIVATE_DATA->ex_func_group[group][2] = group + 1; // group
@@ -1058,6 +1083,10 @@ static void ptp_canon_get_event(indigo_device *device) {
 												}
 											}
 											if (PRIVATE_DATA->info_properties_supported[index] == 0) {
+												if (index >= PTP_MAX_ELEMENTS - 1) {
+													offset += value_size;
+													continue;
+												}
 												PRIVATE_DATA->info_properties_supported[index] = item_code;
 												PRIVATE_DATA->info_properties_supported[index + 1] = 0;
 											}
@@ -1068,7 +1097,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 											ex_property->writable = true;
 											ex_property->value.sw.value = source_uint32[offset];
 											offset += value_size;
-											*next_updated++ = ex_property;
+											if (next_updated < updated + PTP_MAX_ELEMENTS - 1) {
+												*next_updated++ = ex_property;
+											}
 											INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ex-property = %s (%04x), value = %0x", PRIVATE_DATA->property_code_label(item_code), item_code, ex_property->value.sw.value);
 										}
 									}
@@ -1173,7 +1204,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 					} else {
 						property->count = count;
 					}
-					*next_updated++ = property;
+					if (next_updated < updated + PTP_MAX_ELEMENTS - 1) {
+						*next_updated++ = property;
+					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "count = %d", property->count);
 					break;
 				}
@@ -1426,17 +1459,18 @@ bool ptp_canon_initialise(indigo_device *device) {
 	if (!ptp_initialise(device))
 		return false;
 	void *buffer = NULL;
-	if (!ptp_transaction_0_0_i(device, ptp_operation_canon_GetDeviceInfoEx, &buffer, NULL)) {
+	uint32_t size = 0;
+	if (!ptp_transaction_0_0_i(device, ptp_operation_canon_GetDeviceInfoEx, &buffer, &size)) {
 		if (buffer) {
 			free(buffer);
 		}
 		return false;
 	}
-	uint8_t *source = buffer + sizeof(uint32_t);
+	uint8_t *source = size >= sizeof(uint32_t) ? (uint8_t *)buffer + sizeof(uint32_t) : NULL, *end = (uint8_t *)buffer + size;
 	uint32_t events[PTP_MAX_ELEMENTS], properties[PTP_MAX_ELEMENTS];
-	source = ptp_decode_uint32_array(source, events, NULL);
+	source = ptp_decode_uint32_array(source, end, events, NULL);
 	ptp_append_uint16_32_array(PRIVATE_DATA->info_events_supported, events);
-	source = ptp_decode_uint32_array(source, properties, NULL);
+	source = ptp_decode_uint32_array(source, end, properties, NULL);
 	ptp_append_uint16_32_array(PRIVATE_DATA->info_properties_supported, properties);
 	if (buffer) {
 		free(buffer);
@@ -1485,7 +1519,7 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 		target = ptp_encode_uint32((uint32_t)((i2 >> 8) & 0xFF), target);
 		target = ptp_encode_uint32((uint32_t)(i2 & 0xFF), target);
 	} else if ((code & 0xF000) == 0x8000) {
-		for (int i = 0; CANON_PRIVATE_DATA->ex_func_group[i][0]; i++) {
+		for (int i = 0; i < 16 && CANON_PRIVATE_DATA->ex_func_group[i][0]; i++) {
 			uint32_t *group = CANON_PRIVATE_DATA->ex_func_group[i];
 			int offset = 4;
 			unsigned int item_count = group[offset++];
@@ -1493,6 +1527,9 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 				unsigned int item = group[offset++];
 				unsigned int value_size = group[offset++];
 				if ((item | 0x8000) == code) {
+					if (group[0] > sizeof(buffer) - (target - buffer)) {
+						return false;
+					}
 					group[offset++] = (uint32_t)value;
 					memcpy(target, group, group[0]);
 					target += group[0];
@@ -1531,10 +1568,13 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 	return result;
 }
 
+// Values longer than PTP_MAX_CHARS - 1 bytes are sent truncated, always with the terminator.
 static bool set_string_property(indigo_device *device, uint16_t code, char *value) {
 	uint8_t buffer[PTP_MAX_CHARS + 2 * sizeof(uint32_t)], *target = buffer + 2 * sizeof(uint32_t);
-	strncpy((char *)target, value, PTP_MAX_CHARS);
-	target += strlen((char *)target) + 1;
+	size_t length = strnlen(value, PTP_MAX_CHARS - 1);
+	memcpy(target, value, length);
+	target[length] = 0;
+	target += length + 1;
 	uint32_t size = *((uint32_t *)buffer) = (uint32_t)(target - buffer);
 	*((uint32_t *)buffer + 1) = code;
 	return ptp_transaction_0_0_o(device, ptp_operation_canon_SetDevicePropValueEx, buffer, size);

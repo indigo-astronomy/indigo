@@ -1068,59 +1068,78 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 		case ptp_enum_form: {
 			uint16_t count;
 			source = ptp_decode_uint16(source, &count);
-			target->count = count;
-			for (int i = 0; i < target->count; i++) {
+			// Values that do not fit PTP_MAX_ELEMENTS numbers or 16 strings are skipped.
+			int capacity = target->type == ptp_str_type ? 16 : PTP_MAX_ELEMENTS;
+			target->count = count < capacity ? count : capacity;
+			for (int i = 0; i < count; i++) {
+				int64_t *value_target = i < capacity ? target->value.sw.values + i : NULL;
 				switch (target->type) {
 					case ptp_uint8_type: {
 						uint8_t value;
 						source = ptp_decode_uint8(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int8_type: {
 						int8_t value;
 						source = ptp_decode_uint8(source, (uint8_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint16_type: {
 						uint16_t value;
 						source = ptp_decode_uint16(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int16_type: {
 						int16_t value;
 						source = ptp_decode_uint16(source, (uint16_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint32_type: {
 						uint32_t value;
 						source = ptp_decode_uint32(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int32_type: {
 						int32_t value;
 						source = ptp_decode_uint32(source, (uint32_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_uint64_type: {
 						uint64_t value;
 						source = ptp_decode_uint64(source, &value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_int64_type: {
 						int64_t value;
 						source = ptp_decode_uint64(source, (uint64_t *)&value);
-						target->value.sw.values[i] = value;
+						if (value_target) {
+							*value_target = value;
+						}
 						break;
 					}
 					case ptp_str_type: {
-						if (i < 16) {
+						if (i < capacity) {
 							source = ptp_decode_string(source, target->value.sw_str.values[i]);
 						} else {
 							char tmp[PTP_MAX_CHARS];
@@ -1329,13 +1348,14 @@ bool ptp_sony_initialise(indigo_device *device) {
 			uint16_t operations[PTP_MAX_ELEMENTS] = { 0 }, *last_operation = operations;
 			uint16_t events[PTP_MAX_ELEMENTS] = { 0 }, *last_event = events;
 			uint16_t properties[PTP_MAX_ELEMENTS] = { 0 }, *last_property = properties;
+			// Codes that do not fit the zero-terminated lists are dropped.
 			for (int i = 0; i < count; i++) {
 				uint16_t code = ((uint16_t *)buffer)[i];
-				if ((code & 0x7000) == 0x1000) {
+				if ((code & 0x7000) == 0x1000 && last_operation < operations + PTP_MAX_ELEMENTS - 1) {
 					*last_operation++ = code;
-				} else if ((code & 0x7000) == 0x4000) {
+				} else if ((code & 0x7000) == 0x4000 && last_event < events + PTP_MAX_ELEMENTS - 1) {
 					*last_event++ = code;
-				} else if ((code & 0x7000) == 0x5000) {
+				} else if ((code & 0x7000) == 0x5000 && last_property < properties + PTP_MAX_ELEMENTS - 1) {
 					*last_property++ = code;
 				}
 			}
@@ -1407,17 +1427,20 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 		}
 		case ptp_event_sony_ObjectAdded: {
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL) && buffer) {
+			uint32_t info_size = 0;
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, &info_size) && buffer) {
 				uint32_t size;
 				char filename[PTP_MAX_CHARS];
-				memset(&filename, 0, PTP_MAX_CHARS);
-				uint8_t *source = buffer;
-				source = ptp_decode_uint32(source + 8, &size);
-				source = ptp_decode_string(source + 40 , filename);
+				bool valid = ptp_decode_object_info(buffer, info_size, &size, filename);
 				free(buffer);
 				buffer = NULL;
+				if (!valid) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, malformed ObjectInfo (%u bytes)", params[0], info_size);
+					return true;
+				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", params[0], size, filename);
-				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
+				// Publish the bytes actually received; ObjectInfo size is only advisory.
+				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, &size) && size) {
 					SONY_PRIVATE_DATA->downloaded_objects++;
 					const char *ext = strchr(filename, '.');
 					if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {

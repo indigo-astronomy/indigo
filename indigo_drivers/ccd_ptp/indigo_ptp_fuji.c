@@ -369,20 +369,28 @@ static void ptp_fuji_get_event(indigo_device *device) {
 				uint32_t count = 0;
 				uint8_t *source = buffer;
 				void *image_buffer = NULL;
-				source = ptp_decode_uint32(source, &count);
+				if (size >= sizeof(uint32_t)) {
+					source = ptp_decode_uint32(source, &count);
+				}
+				if (count > (size - sizeof(uint32_t)) / sizeof(uint32_t)) {
+					count = 0;
+				}
 				for (uint32_t i = 0; i < count; ++i) {
-					uint32_t handle = 0;
+					uint32_t handle = 0, info_size = 0;
 					source = ptp_decode_uint32(source, &handle);
-					if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, handle, &image_buffer, NULL)) {
+					if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, handle, &image_buffer, &info_size)) {
 						uint32_t image_size;
 						char filename[PTP_MAX_CHARS];
-						uint8_t *source = image_buffer;
-						source = ptp_decode_uint32(source + 8, &image_size);
-						source = ptp_decode_string(source + 40 , filename);
+						bool valid = ptp_decode_object_info(image_buffer, info_size, &image_size, filename);
 						free(image_buffer);
 						image_buffer = NULL;
+						if (!valid) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, malformed ObjectInfo (%u bytes)", handle, info_size);
+							continue;
+						}
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", handle, image_size, filename);
-						if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &image_buffer, NULL)) {
+						// Publish the bytes actually received; ObjectInfo size is only advisory.
+						if (image_size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &image_buffer, &image_size) && image_size) {
 							const char *ext = strchr(filename, '.');
 							if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
 								if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
@@ -400,6 +408,10 @@ static void ptp_fuji_get_event(indigo_device *device) {
 							if (ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle)) {
 								INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_operation_DeleteObject succeed.");
 							}
+						} else if (image_buffer) {
+							// An empty object still comes with a transport buffer.
+							free(image_buffer);
+							image_buffer = NULL;
 						}
 					}
 				}
@@ -460,8 +472,9 @@ bool ptp_fuji_initialise(indigo_device *device) {
 				for (last = 0; PRIVATE_DATA->info_properties_supported[last]; last++) {
 				}
 				// overwrite last
-				if (last != -1) {
+				if (last < PTP_MAX_ELEMENTS - 1) {
 					PRIVATE_DATA->info_properties_supported[last] = hidden_properties[i];
+					PRIVATE_DATA->info_properties_supported[last + 1] = 0;
 					ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + last);
 				}
 			}
@@ -480,8 +493,9 @@ bool ptp_fuji_initialise(indigo_device *device) {
 			for (last = 0; PRIVATE_DATA->info_properties_supported[last]; last++) {
 			}
 			// overwrite last
-			if (last != -1) {
+			if (last < PTP_MAX_ELEMENTS - 1) {
 				PRIVATE_DATA->info_properties_supported[last] = ptp_property_FNumber;
+				PRIVATE_DATA->info_properties_supported[last + 1] = 0;
 				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + last);
 			}
 		}

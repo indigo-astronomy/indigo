@@ -2,7 +2,7 @@
   "title": "PTP object downloads publish the metadata size instead of actual downloaded bytes",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261025093224-2d50-fix-ptp-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "Severity medium; confidence high; security/functional length contract. Generic indigo_drivers/ccd_ptp/indigo_ptp.c:1718-1737 reads advertised image size from ObjectInfo, then GetObject uses data_in_size=NULL and forwards the prior metadata size to preview/image. Sony indigo_ptp_sony.c:1410-1437 and Fuji indigo_ptp_fuji.c:379-392 repeat this. Transport allocates from actual data-container length (indigo_ptp.c:1387-1410, with1024 padding on raw USB; ICA allocates exact input length1150-1156). If metadata exceeds received length/padding, native publication or local save reads beyond that allocation. The sink trusts data_size for file write and blob size (indigo_libs/indigo_ccd_driver.c:2610,2629-2632). Minimal fix: request/retain actual downloaded length, validate metadata independently, and pass only verified actual bytes to all consumers. Add fake transport mismatched metadata/object tests. Distinct from active019 DeviceInfo parsing. No reproduction executed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-12). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-027; driver-ac-report.md alias AC-12; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025093224-2d50-fix-ptp-findings/verification.md; generic (Nikon, Olympus), Sony and Fuji ObjectAdded paths publish the byte count GetObject returned, ObjectInfo parsed by ptp_decode_object_info() and rejected when short (3.0.0.56); object_size_mismatch_nikon, object_size_mismatch_sony, object_size_mismatch_fuji",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-027"
 }

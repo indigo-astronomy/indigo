@@ -2,7 +2,7 @@
   "title": "Canon text-property encoding may scan and send beyond its stack buffer",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261025093224-2d50-fix-ptp-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "Severity medium; confidence high; length/termination. indigo_drivers/ccd_ptp/indigo_ptp_canon.c:1534-1540 copies256 characters with strncpy into a256-byte payload without forcing NUL, then strlen derives the transfer length. The caller1545-1547 passes the framework text item's value, whose capacity is larger than256; a valid long text property is sufficient to lose termination. This can overread stack bytes and use that inflated length for the USB/ICA outgoing copy. Minimal fix: reject an overlong PTP text value or reserve and write a terminator with a checked explicit encoded length; test longest accepted property and one-too-long. No matching active finding identified. Source-only, no payload/reproduction. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-13). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-028; driver-ac-report.md alias AC-13; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025093224-2d50-fix-ptp-findings/verification.md; Canon set_string_property() sends at most PTP_MAX_CHARS - 1 bytes plus the terminator (3.0.0.56); canon_long_text_property",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-028"
 }

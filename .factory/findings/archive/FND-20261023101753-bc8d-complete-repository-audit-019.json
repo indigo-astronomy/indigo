@@ -4,7 +4,7 @@
   "severity": "medium",
   "summary": "Device-info path passes payload without remaining length into primitive/string/array decoders. Isolated helper diagnostic demonstrates missing bounds, not full transport reachability because transport adds padding. Next: bounded cursor parsing and fake transport short/oversized count regressions.",
   "evidence": "indigo_drivers/ccd_ptp/indigo_ptp.c:453-557,1657-1668",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -12,8 +12,18 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-a-review.md",
       "revision": null
+    },
+    {
+      "id": "20261025093224-2d50-fix-ptp-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025093224-2d50-fix-ptp-findings/verification.md; ptp_decode_device_info() decodes within the received size with bounded readers, strings are terminated and arrays keep at most PTP_MAX_ELEMENTS - 1 codes (indigo_ccd_ptp 3.0.0.56); device_info_truncated, device_info_exact_buffer, device_info_short_array, device_info_oversized_array",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-019"
 }

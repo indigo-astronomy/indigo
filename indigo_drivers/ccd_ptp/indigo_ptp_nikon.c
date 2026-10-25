@@ -774,9 +774,10 @@ bool ptp_nikon_initialise(indigo_device *device) {
 	}
 	if (ptp_operation_supported(device, ptp_operation_nikon_GetVendorPropCodes)) {
 		void *buffer = NULL;
-		if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetVendorPropCodes, &buffer, NULL)) {
+		uint32_t buffer_size = 0;
+		if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetVendorPropCodes, &buffer, &buffer_size)) {
 			uint16_t properties[PTP_MAX_ELEMENTS];
-			ptp_decode_uint16_array(buffer, properties, NULL);
+			ptp_decode_uint16_array(buffer, (uint8_t *)buffer + buffer_size, properties, NULL);
 			free(buffer);
 			buffer = NULL;
 			uint16_t *target = PRIVATE_DATA->info_properties_supported;
@@ -785,7 +786,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 				;
 			}
 			uint32_t size = 0;
-			for (int i = 0; properties[i]; i++) {
+			for (int i = 0; properties[i] && index < PTP_MAX_ELEMENTS - 1; i++) {
 				uint16_t code = properties[i];
 				char *name = PRIVATE_DATA->property_code_name(code);
 				bool skip = true;

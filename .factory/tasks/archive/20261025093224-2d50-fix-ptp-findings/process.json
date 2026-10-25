@@ -1,0 +1,167 @@
+{
+  "version": 2,
+  "task": "20261025093224-2d50-fix-ptp-findings",
+  "scope": [
+    "indigo_drivers/ccd_ptp/*",
+    "indigo_test/integration/test_ccd_ptp_sdk.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/findings/*",
+    ".factory/tasks/*",
+    ".factory/completions/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_ptp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-ccd-ptp-sdk-sanitize",
+        "test-ccd-ptp-ica-sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_drivers/ccd_ptp",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "input-validation": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025093224-2d50-fix-ptp-findings.json": [
+      "100644",
+      "blob",
+      "eaa26c65594d520341bc01916c9ff4c3440feebc"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-019.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-026.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-027.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-028.json": null,
+    ".factory/findings/active/FND-20261025093224-2d50-fix-ptp-findings-001.json": [
+      "100644",
+      "blob",
+      "b076f4f78061f365d9322d33c2c679582cdf2bec"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-019.json": [
+      "100644",
+      "blob",
+      "78fbb39424d565f09bbaeac2e70c8306f5d4b131"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-026.json": [
+      "100644",
+      "blob",
+      "0fcbaa1138b3944f7d020cffc42961f5e9b4a94a"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-027.json": [
+      "100644",
+      "blob",
+      "ed1e0ebf347c0bfb8fced6659803246835a9b0ef"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-028.json": [
+      "100644",
+      "blob",
+      "bacbefd60be4e69c02b5cdea6d1061cf1b4a4b78"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "4885814d3e4a1639e98ccc3d7204d6834579acf7"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "8801428e4f058b44f01b38edee3284cd3a817f5b"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "efd318c880d12876531bd612357ca70685543b7d"
+    ],
+    "indigo_drivers/ccd_ptp/README.md": [
+      "100644",
+      "blob",
+      "cfe5c61ed3886ed33431d7470328770e94924cf6"
+    ],
+    "indigo_drivers/ccd_ptp/REFACTOR.md": [
+      "100644",
+      "blob",
+      "2cc334c8fa58e817b1c0f0ff7b38dca25087c82a"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp.c": [
+      "100644",
+      "blob",
+      "6179b13b60c08ac61f8e4daedf6527e8ada6a6cc"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp.h": [
+      "100644",
+      "blob",
+      "faee7cb3bdd27ae6aee16f2f5801628856a41d5a"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_canon.c": [
+      "100644",
+      "blob",
+      "1e750ff4194ff96daa068dad5dea4ca122c57916"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c": [
+      "100644",
+      "blob",
+      "5da968058ee42539056ed1ea1f84dfc20f699d4c"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_nikon.c": [
+      "100644",
+      "blob",
+      "52584d167046db9b5df0c3775f82cdbbc64b1a67"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_olympus.c": [
+      "100644",
+      "blob",
+      "7110ece18b75a3a888c0ac86065d694fd7a10fa0"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_sony.c": [
+      "100644",
+      "blob",
+      "1e2fa07cc8c122bd04c6d807348a8c9fc8eb56ab"
+    ],
+    "indigo_test/integration/test_ccd_ptp_sdk.c": [
+      "100644",
+      "blob",
+      "1db23a8a4ea504dc1229d812b0a6f95babe81bac"
+    ]
+  }
+}
