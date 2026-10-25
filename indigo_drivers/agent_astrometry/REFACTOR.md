@@ -105,3 +105,14 @@ Validation evidence so far: `make -C indigo_test test-agent-astrometry-sanitize`
 At the user's explicit request to end testing and commit, README and TEST_SUMMARY record the aggregate 68/68: the complete fake-tool suite passed 35/35 through `tools/run_driver_test.py agent_astrometry` after the test synchronization fix, and the unchanged real-solver suite passed 33/33 through the same script in the preceding complete run. These are results from separate runs, not a claim that one final combined run completed successfully. The last combined repetition was stopped at the user's request during the sky-position cases, with no failure reported so far. The earlier complete combined run was 67/68 before the test synchronization fix.
 
 Simulated tests in the recorded aggregate: 68 run, 68 passed. Additional ASan/UBSan validation after all changes: 35 run, 35 passed. Hardware tests: 0 run, 0 passed. The shared-framework duplicate-abort startup race remains outside this parser repair, as described above.
+
+## Freed private data at shutdown (2.0.0.32, 2026-10-25, task {ID})
+
+`INDIGO_DRIVER_SHUTDOWN` freed the agent device but not its private data, allocated at `INDIGO_DRIVER_INIT` (528 bytes
+per load/unload; FND-20261025093558-ece5-server-leak-check-003, found by `make -C indigo_test test-server-leaks`). It is
+freed after the device is detached; the leak check reports no definite loss.
+
+Recorded run `2026-10-25 17:38 2.0.0.32 linux x64 simulator 77/74 Failed`: `polar alignment and recalculation`,
+`polar alignment targets J2000 mount` and `polar alignment targets JNow mount` end with `AGENT_START_PROCESS` ALERT.
+They fail the same way without this change (the case run alone with 2.0.0.31 rebuilt), so they predate it; not
+investigated in this task.
