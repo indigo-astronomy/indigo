@@ -7239,6 +7239,19 @@
 		95E6D3BC0153135C29FA87C1 /* 20261025093558-ece5-server-leak-check.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025093558-ece5-server-leak-check.json"; sourceTree = "<group>"; };
 		DE8C90EC1179EB94E2CB290D /* FND-20261025093224-2d50-fix-ptp-findings-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261025093224-2d50-fix-ptp-findings-001.json"; sourceTree = "<group>"; };
 		3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261025113906-c862-ptp-fuji-hardware-test-001.json"; sourceTree = "<group>"; };
+		F7F45DBFA6968C4ACA371E49 /* FND-20261025152706-abbf-fix-server-leaks-001.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261025152706-abbf-fix-server-leaks-001.json"; sourceTree = "<group>"; };
+		70519A544347C891D69EB257 /* FND-20261025152706-abbf-fix-server-leaks-002.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "FND-20261025152706-abbf-fix-server-leaks-002.json"; sourceTree = "<group>"; };
+		29152A02378B8BE42FD8D2C1 /* brief.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "brief.md"; sourceTree = "<group>"; };
+		1689F9C1F45419BB1639B692 /* handoff.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "handoff.md"; sourceTree = "<group>"; };
+		B324B7ADDBCD83A239630D99 /* plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "plan.md"; sourceTree = "<group>"; };
+		C5C35722523BE9961A3FCFE4 /* process.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "process.json"; sourceTree = "<group>"; };
+		6A73DDCDD708AAC1B82958E5 /* quality-review.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "quality-review.md"; sourceTree = "<group>"; };
+		CFB32D94A3E50E5C86DC5EBD /* security.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "security.md"; sourceTree = "<group>"; };
+		0AE47F2015AF7F1B771C79C1 /* specification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "specification.md"; sourceTree = "<group>"; };
+		563759D0A8A0520396214216 /* state.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "state.json"; sourceTree = "<group>"; };
+		0AD86860000F7BF91D78FF5E /* test-plan.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "test-plan.md"; sourceTree = "<group>"; };
+		F78C5BEE7100DBFA7AB6410D /* verification.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "verification.md"; sourceTree = "<group>"; };
+		E6A0C662FE3C85F40B6A0DD5 /* 20261025152706-abbf-fix-server-leaks.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "20261025152706-abbf-fix-server-leaks.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -16371,6 +16384,7 @@
 				6DF705A15A54BF1AF413AC85 /* 20261025004416-0995-xml-client-named-request-protocol */,
 				D949EA4F2764B2ED06421447 /* 20261025074335-0b62-fix-rpio-gpio-findings */,
 				855C45F2FB767ABC952EF7CD /* 20261025093558-ece5-server-leak-check */,
+				41143DE8702FA03AE4C1DBD7 /* 20261025152706-abbf-fix-server-leaks */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -16532,6 +16546,9 @@
 				A27CA5D4B716CED190391A11 /* FND-20261024121920-3bd2-repository-audit-042.json */,
 				A21AF23EC8B8FB89D75EE7B3 /* FND-20261024155149-8381-fix-core-audit-findings-001.json */,
 				4F945538E804D77B129FE818 /* FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json */,
+				272AEF8C1795669CDDEC5541 /* FND-20261025093558-ece5-server-leak-check-001.json */,
+				1875271CA19B7349F826466C /* FND-20261025093558-ece5-server-leak-check-002.json */,
+				08595B4F480C66BC79E2C93F /* FND-20261025093558-ece5-server-leak-check-003.json */,
 			);
 			path = archive;
 			sourceTree = "<group>";
@@ -18683,6 +18700,7 @@
 				43FC700521F9CD53A34D15D4 /* 20261025004416-0995-xml-client-named-request-protocol.json */,
 				E800FCFF03CFA4E27FC04773 /* 20261025074335-0b62-fix-rpio-gpio-findings.json */,
 				95E6D3BC0153135C29FA87C1 /* 20261025093558-ece5-server-leak-check.json */,
+				E6A0C662FE3C85F40B6A0DD5 /* 20261025152706-abbf-fix-server-leaks.json */,
 			);
 			path = completions;
 			sourceTree = "<group>";
@@ -19109,10 +19127,9 @@
 				62B1CC0E5A6001E22972F026 /* FND-20261024121920-3bd2-repository-audit-044.json */,
 				7CE754E6D88ACCCBE2D60593 /* FND-20261024202957-6bd9-fix-ccd-rpi-001.json */,
 				DE8C90EC1179EB94E2CB290D /* FND-20261025093224-2d50-fix-ptp-findings-001.json */,
-				272AEF8C1795669CDDEC5541 /* FND-20261025093558-ece5-server-leak-check-001.json */,
-				1875271CA19B7349F826466C /* FND-20261025093558-ece5-server-leak-check-002.json */,
-				08595B4F480C66BC79E2C93F /* FND-20261025093558-ece5-server-leak-check-003.json */,
 				3A6FBD0CE9B846B30EADB598 /* FND-20261025113906-c862-ptp-fuji-hardware-test-001.json */,
+				F7F45DBFA6968C4ACA371E49 /* FND-20261025152706-abbf-fix-server-leaks-001.json */,
+				70519A544347C891D69EB257 /* FND-20261025152706-abbf-fix-server-leaks-002.json */,
 			);
 			path = active;
 			sourceTree = "<group>";
@@ -20292,6 +20309,23 @@
 				DEE2F0805DB39446433F0445 /* verification.md */,
 			);
 			path = "20261025093558-ece5-server-leak-check";
+			sourceTree = "<group>";
+		};
+		41143DE8702FA03AE4C1DBD7 /* 20261025152706-abbf-fix-server-leaks */ = {
+			isa = PBXGroup;
+			children = (
+				29152A02378B8BE42FD8D2C1 /* brief.md */,
+				1689F9C1F45419BB1639B692 /* handoff.md */,
+				B324B7ADDBCD83A239630D99 /* plan.md */,
+				C5C35722523BE9961A3FCFE4 /* process.json */,
+				6A73DDCDD708AAC1B82958E5 /* quality-review.md */,
+				CFB32D94A3E50E5C86DC5EBD /* security.md */,
+				0AE47F2015AF7F1B771C79C1 /* specification.md */,
+				563759D0A8A0520396214216 /* state.json */,
+				0AD86860000F7BF91D78FF5E /* test-plan.md */,
+				F78C5BEE7100DBFA7AB6410D /* verification.md */,
+			);
+			path = "20261025152706-abbf-fix-server-leaks";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

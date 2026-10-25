@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261025152706-abbf-fix-server-leaks",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit after the requester approves the plan.",
+  "blocker": null
+}

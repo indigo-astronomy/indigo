@@ -1,0 +1,19 @@
+{
+  "title": "CCD simulator guider camera does not follow mount simulator guiding in its test",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025152706-abbf-fix-server-leaks",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "test_ccd_simulator: simulator_guider_camera_follows_mount_simulator_guiding fails on Linux x64 on the tree of 09dfbfcdc, with and without the leak fixes. Not investigated. Next: run the case alone with debug output.",
+  "evidence": "task verification.md V5 and V6; indigo_test/integration/test_ccd_simulator.c",
+  "resolution": null,
+  "id": "FND-20261025152706-abbf-fix-server-leaks-002"
+}

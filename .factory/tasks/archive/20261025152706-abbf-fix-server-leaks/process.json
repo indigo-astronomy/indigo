@@ -1,0 +1,144 @@
+{
+  "version": 2,
+  "task": "20261025152706-abbf-fix-server-leaks",
+  "scope": [
+    "indigo_libs/indigo_ccd_driver.c",
+    "indigo_drivers/agent_guider/*",
+    "indigo_drivers/agent_astrometry/*",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "indigo_test/leak/run_server_leak_check.py",
+        "--cycles",
+        "1"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_guider"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261025152706-abbf-fix-server-leaks.json": [
+      "100644",
+      "blob",
+      "41a7582dcc0979699cc62a52435b35b9c5596394"
+    ],
+    ".factory/findings/active/FND-20261025093558-ece5-server-leak-check-001.json": null,
+    ".factory/findings/active/FND-20261025093558-ece5-server-leak-check-002.json": null,
+    ".factory/findings/active/FND-20261025093558-ece5-server-leak-check-003.json": null,
+    ".factory/findings/active/FND-20261025152706-abbf-fix-server-leaks-001.json": [
+      "100644",
+      "blob",
+      "7d90e46d5e3b6579c763f7ab85ec0ee24083e075"
+    ],
+    ".factory/findings/active/FND-20261025152706-abbf-fix-server-leaks-002.json": [
+      "100644",
+      "blob",
+      "34382dee243ce17958ba03c89a621214bff798b2"
+    ],
+    ".factory/findings/archive/FND-20261025093558-ece5-server-leak-check-001.json": [
+      "100644",
+      "blob",
+      "cf6f53459859be7679a41704ea922446c38dbb25"
+    ],
+    ".factory/findings/archive/FND-20261025093558-ece5-server-leak-check-002.json": [
+      "100644",
+      "blob",
+      "f24e230c90fa4bf607dba02bd666ffd84be355a2"
+    ],
+    ".factory/findings/archive/FND-20261025093558-ece5-server-leak-check-003.json": [
+      "100644",
+      "blob",
+      "3db5fd252de1f2233e9b07b81a05666302c7663e"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "9b7a1da859bef583162f639bbf65b2c1044c34f4"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "0c0ca90a973fda2305ce003715c6bce680f45ee0"
+    ],
+    "indigo_drivers/agent_astrometry/README.md": [
+      "100644",
+      "blob",
+      "5b09e0a0bd5e7f9d09b6bbd811cb88c02b258b61"
+    ],
+    "indigo_drivers/agent_astrometry/REFACTOR.md": [
+      "100644",
+      "blob",
+      "5aa318fcf17e31eba67bd8f32db3d87bef3fce22"
+    ],
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "2d35d884c5547c8c99ffacdf7e5c96e604b782dc"
+    ],
+    "indigo_drivers/agent_guider/README.md": [
+      "100644",
+      "blob",
+      "9e2c32557d3bb6799de1985e60077aec9f87d294"
+    ],
+    "indigo_drivers/agent_guider/REFACTOR.md": [
+      "100644",
+      "blob",
+      "aa18169a02ef07899989130289ebaea034cf8783"
+    ],
+    "indigo_drivers/agent_guider/indigo_agent_guider.c": [
+      "100644",
+      "blob",
+      "319b0c58d6f0f5f2afa577def5e3570c832b43f5"
+    ],
+    "indigo_libs/indigo_ccd_driver.c": [
+      "100644",
+      "blob",
+      "594c758169d0eeedb123dc5dd7ad284b3a319ab3"
+    ]
+  }
+}

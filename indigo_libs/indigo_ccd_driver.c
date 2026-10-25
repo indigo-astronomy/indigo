@@ -984,6 +984,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_EXPOSURE_PROPERTY);
 	indigo_release_property(CCD_STREAMING_PROPERTY);
 	indigo_release_property(CCD_STREAMING_SETTINGS_PROPERTY);
+	indigo_release_property(CCD_FPS_PROPERTY);
 	indigo_release_property(CCD_ABORT_EXPOSURE_PROPERTY);
 	indigo_release_property(CCD_FRAME_PROPERTY);
 	indigo_release_property(CCD_BIN_PROPERTY);

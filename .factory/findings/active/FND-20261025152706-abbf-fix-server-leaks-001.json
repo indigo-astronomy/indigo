@@ -1,0 +1,19 @@
+{
+  "title": "Astrometry agent polar alignment cases end with AGENT_START_PROCESS ALERT",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025152706-abbf-fix-server-leaks",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "test_agent_astrometry: 'polar alignment and recalculation', 'polar alignment targets J2000 mount' and 'polar alignment targets JNow mount' fail with AGENT_START_PROCESS ALERT instead of OK on Linux x64 (2.0.0.31 and 2.0.0.32). Not investigated. Next: run with INDIGO_TEST_DEBUG=1 and find which polar alignment step fails.",
+  "evidence": "task verification.md V4 and V6; indigo_test/integration/test_agent_astrometry.c:1100 and 1131",
+  "resolution": null,
+  "id": "FND-20261025152706-abbf-fix-server-leaks-001"
+}
