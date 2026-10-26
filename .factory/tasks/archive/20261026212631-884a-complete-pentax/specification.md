@@ -10,3 +10,7 @@ AC-5: Existing INDIGO DSLR image pipeline and upload modes; no unsupported strea
 AC-6: Original baseline, production fake USB/bus regressions, ASan/UBSan/configured checks and short grouped non-interactive physical test if claim accessible. Snapshot/restore settings, no physical unplug, conserve batteries.
 
 High complexity (shutter/readout/abort state, untrusted segments, USB ownership); medium risk (camera settings/images, memory safety). Use protocol facts from open-source sources, no copied copyleft source or new dependency. Hardware baseline discovery succeeds but claim fails(-99), no settings writes/exposures; blocked evidence is not a pass.
+
+## Owner-approved delivery revision
+
+On 2026-10-26 the owner explicitly requested commit, merge and push now and continuation later on Linux (delivery-decision.md). AC-1 through AC-5 are delivered with software/fake-USB evidence only. AC-6's physical acceptance gate is deferred, not passed. Hardware limitations and the failed 1/0 recorded run remain visible. This task closes the current software delivery; a later Linux hardware task must establish physical behavior.

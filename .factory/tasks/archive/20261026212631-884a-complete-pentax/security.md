@@ -1,6 +1,6 @@
 # Pentax capture security review
 
-Independent in-host reviewer `/root/pentax_capture_review`; did not implement production code or tests. Reviewed evolving task candidate based on local master64e965d7f, then reinspected the final partial K-m/K2000 capture/control/lifecycle implementation and production-backed fake tests. Final reviewed source blob: ab1b7f5a1994031233d604e600e0407dddea2dd0; fake-test blob: e0ad77c067a1c9e06cbfe4d5e938ad4e6f4c3a59. The task remains physically blocked and unfinished; this security verdict does not archive or complete it. This is a scoped security review, not whole-repository audit, complete camera acceptance or proof that no defects remain.
+Independent in-host reviewer `/root/pentax_capture_review`; did not implement production code or tests. Reviewed evolving task candidate based on local master64e965d7f, then reinspected the final K-m/K2000 capture/control/lifecycle software implementation and production-backed fake tests. Final reviewed source blob: ab1b7f5a1994031233d604e600e0407dddea2dd0; fake-test blob: e0ad77c067a1c9e06cbfe4d5e938ad4e6f4c3a59. The owner subsequently approved software delivery with physical acceptance explicitly deferred to Linux in delivery-decision.md. This review supports that software scope; physical acceptance remains unverified and this security verdict does not itself authorize publication or archive the task. This is a scoped security review, not whole-repository audit, complete camera acceptance or proof that no defects remain.
 
 ## Scope and trust boundaries
 
@@ -30,7 +30,7 @@ Capture mode/shutter are read back before trigger, with nonzero rational operand
 CWD `/private/tmp/indigo-complete-pentax`, macOS arm64, local copied INDIGO dependencies.
 
 - `./.factory/scripts/security`: exit0; configured local-boundary validator passed. This structural check is not USB/capture coverage.
-- `make -C indigo_test build/integration/test_ccd_pentax_usb_sanitize` then `ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 indigo_test/build/integration/test_ccd_pentax_usb_sanitize`: exit0, all31 registered cases passed on the final partial candidate. Independent output `/private/tmp/pentax-independent-final-sanitize.log`; build output `/private/tmp/pentax-independent-final-sanitize-build.log`. Earlier26-case results are superseded by this final run.
+- `make -C indigo_test build/integration/test_ccd_pentax_usb_sanitize` then `ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=halt_on_error=1 indigo_test/build/integration/test_ccd_pentax_usb_sanitize`: exit0, all31 registered cases passed on the final software candidate. Independent output `/private/tmp/pentax-independent-final-sanitize.log`; build output `/private/tmp/pentax-independent-final-sanitize-build.log`. Earlier26-case results are superseded by this final run.
 
 The fake suite compiles the actual production implementation and exercises real public property/queue handling for capture, abort, retained BLOB and recovery. LeakSanitizer is unavailable on this macOS host; no whole-process leak certification is claimed. Explicit ownership assertions and source analysis support the repaired paths.
 
@@ -40,6 +40,12 @@ No hardware was run by this reviewer. Coordinator hardware attempts discover K-m
 
 Synchronous trigger/status and transport transactions may delay a scheduled bulb stop; describe the measured interval/limits rather than claiming exact physical shutter duration. Zero-type segment readiness currently consumes the descriptor retry budget; compatibility under delayed descriptor availability remains a functional validation gap.
 
-The previously reported countdown issue is fixed/retested. Security sign-off does not waive physical acceptance, broader driver capability coverage, final quality or committed-candidate gates. Camera-setting restoration is verified by command error handling and synthetic state, not a physical readback demonstration. No residual risk was accepted and no complete-driver/hardware readiness claim is made.
+The previously reported countdown issue is fixed/retested. The owner explicitly defers the physical acceptance gate for this software delivery; security sign-off does not convert the failed hardware result into a pass or waive broader capability, final quality or committed-candidate gates. Camera-setting restoration is verified by command error handling and synthetic state, not a physical readback demonstration. No residual risk was accepted and no complete-driver/hardware readiness claim is made.
+
+## Owner-approved software delivery documentation recheck
+
+Read delivery-decision.md, the revised specification/verification/handoff, linux-follow-up.md and the completion section of REFACTOR. The preserved owner instruction explicitly requests commit, merge and push now, with continuation later on Linux. This is a scoped physical-validation exception, not acceptance of an undisclosed security risk. Documentation consistently retains the failed1/0 macOS hardware result, absence of real camera payload/timing/restoration evidence, no Linux camera visibility in Docker and no VM entitlement change. The later Linux task must establish actual control/readback/restoration, native capture/abort/readout behavior and timing while preserving card/RAM images and respecting battery constraints.
+
+The source and fake-test blobs remain exactly those identified above; `git diff --name-only 2c5744636 -- indigo_drivers/ccd_pentax/indigo_ccd_pentax.c indigo_test/integration/test_ccd_pentax_usb.c` returned no changed paths. No renewed behavioral test or hardware activity was needed for the documentation-only delivery revision. The prior independent31/31 sanitizer and configured-security results remain applicable. No new scoped security blocker or risk acceptance was introduced by the documentation change. Required final process/candidate checks and actual authorized Git delivery remain coordinator gates.
 
 Verdict: pass

@@ -11,3 +11,11 @@ Hardware continuation is blocked: all claim attempts, including confirmed UID 0,
 Checkpoint rationale: preserve the substantial source/test work before the owner closes the holding desktop app. This is an unfinished task checkpoint, not a completed-task commit or delivery; no task archival, completion record, merge or push is authorized. Continue on this exact task branch without rewriting history.
 
 Final checkpoint: fake31/31 and ASan/UBSan31/31; configured Factory190/190, native universal build/check/security/Xcode syntax pass. Independent quality/security reports pass only their scoped software diff. Verification is blocked by physical USB access, including Docker VM absence of K-m. Keep task live and preserve this branch/worktree; no completion record/archive/integration. Canonical repaired findings are reconciled in findings.md.
+
+## Owner-authorized delivery continuation
+
+Peter Polakovic, explicit chat instruction on 2026-10-26: "ok, urob commit, merge a push. budeme pokracovat neskor na linuxe".
+
+Current role: coordinator, completing software delivery with physical acceptance explicitly deferred to Linux. Preserve all failed hardware evidence and the checkpoint history. Refresh independent documentation reviews, archive this completed software execution, commit closure evidence, validate the committed range, fast-forward master and push origin/master. No hardware run is requested now. Linux follow-up remains outstanding; full audit remains due.
+
+Execution/reviews complete for the owner-approved software scope. Independent final documentation quality and security rechecks pass; production/test source blobs are unchanged from checkpoint2c5744636. Structural check/security/Xcode syntax pass after the documentation revision; prior31/31 normal+sanitizer and190/190 Factory evidence remains applicable. Archive and final commit now pending, then committed-range validation and authorized master/origin delivery. Deferred Linux hardware acceptance is retained in state.json and linux-follow-up.md; no physical pass is claimed.

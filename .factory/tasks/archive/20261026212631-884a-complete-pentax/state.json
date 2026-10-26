@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "active_task": "20261026212631-884a-complete-pentax",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive the owner-approved software delivery, commit closure evidence, validate the committed candidate, then fast-forward master/push and clean the completed task branch.",
+  "blocker": null,
+  "deferred_hardware_validation": {
+    "status": "pending_linux",
+    "owner_authority": "Peter Polakovic, explicit chat instruction on 2026-10-26: \"ok, urob commit, merge a push. budeme pokracovat neskor na linuxe\".",
+    "evidence": "linux-follow-up.md",
+    "last_hardware_result": "1 planned, 0 passed; USB interface claim failed"
+  }
+}

@@ -1,6 +1,6 @@
-# Verification of partial Pentax completion
+# Verification of Pentax software delivery
 
-Base/local master64e965d7f21a257f073e95c74f0d253de57d8361, isolated task branch. Root implemented source; independent test designer wrote regressions and separate reviewers inspected security/quality. No claim of full hardware acceptance.
+Base/local master64e965d7f21a257f073e95c74f0d253de57d8361, isolated task branch. Root implemented source; independent test designer wrote regressions and separate reviewers inspected security/quality. No claim of full hardware acceptance. The owner explicitly authorizes software delivery with physical verification deferred to Linux; see delivery-decision.md.
 
 ## Software results
 
@@ -15,6 +15,8 @@ K-m discovery succeeds but interface acquisition fails-99 in ordinary execution,
 
 Docker Linux was started and inspected: only virtual root hubs, no K-m, no imported USB/IP device. This is a missing hardware prerequisite, not a passing Linux test. See docker.md and hardware-access.md for exact evidence/continuation.
 
-AC1..5 have software evidence only. AC6 hardware gate is blocked. Other camera models, nativeRAW payloads and platforms remain unverified. No VM entitlement added. No merge/push or completed-task archive authorized. A checkpoint retains unfinished work for independent hardware continuation.
+AC-1 through AC-5 have software evidence only. AC-6 physical acceptance remains unverified and is explicitly deferred by the owner for this delivery. Other camera models, nativeRAW payloads and platforms remain unverified. No VM entitlement added. The owner now authorizes commit/merge/push of this software result and defers hardware acceptance to a later Linux task. The earlier checkpoint remains in history; closure includes archive/process evidence. Physical failures remain failures, not waived passing tests.
 
-Verdict: blocked
+Verdict: pass
+
+This passing verdict is for the owner-approved software delivery scope and its documented hardware exception, not for physical camera acceptance. Required committed-range checks remain delivery gates and will be reported externally after the final commit.

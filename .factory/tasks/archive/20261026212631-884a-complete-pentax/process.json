@@ -10,7 +10,8 @@
     "indigo_test/Makefile",
     "indigo.xcodeproj/project.pbxproj",
     "indigo_docs/PROPERTIES.md",
-    "TEST_SUMMARY.md"
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261026212631-884a-complete-pentax.json"
   ],
   "checks": [
     {
@@ -38,18 +39,30 @@
       "command": [
         "python3",
         "tools/run_driver_test.py",
-        "ccd_pentax",
-        "--hw",
-        "--type",
-        "PENTAX K-m"
+        "ccd_pentax"
       ],
-      "result": "fail",
-      "evidence": "hardware-access.md"
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "ASAN_OPTIONS=detect_leaks=0",
+        "UBSAN_OPTIONS=halt_on_error=1",
+        "indigo_test/build/integration/test_ccd_pentax_usb_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
     }
   ],
   "risk_reviews": {},
   "reviews": [],
   "reviewed_content": {
+    ".factory/completions/20261026212631-884a-complete-pentax.json": [
+      "100644",
+      "blob",
+      "418192791243d97b01fa6e42595553ad92b82411"
+    ],
     ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-001.json": [
       "100644",
       "blob",
@@ -108,7 +121,7 @@
     "indigo_drivers/ccd_pentax/REFACTOR.md": [
       "100644",
       "blob",
-      "198758aa13a8b65c9416c8c7fe541bac564c50c3"
+      "0630c325b6b28a144858a06f823a7646cc1bc480"
     ],
     "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c": [
       "100644",
