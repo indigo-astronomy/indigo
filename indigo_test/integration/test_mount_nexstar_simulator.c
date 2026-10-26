@@ -2009,6 +2009,47 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+#ifdef INDIGO_TEST_MOTION_DEADLINE
+
+static void nexstar_park_deadline_stops_and_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "stall", "b"));
+	clear_simulator_events(&simulator);
+	record_messages();
+	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	double requested = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(strstr(recorded_messages, "Park did not finish in time") != NULL);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - requested >= 1);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - requested < 8);
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4D"));
+	SERIAL_CHECK_TRUE(count_simulator_events(&simulator, "50 02 10 24 00") >= 1);
+	SERIAL_CHECK_TRUE(count_simulator_events(&simulator, "50 02 11 24 00") >= 1);
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_TRUE(wait_for_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, 0.001));
+	revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, nexstar_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(find_cached_item(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME)->sw.value);
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4D"));
+cleanup:
+	stop_recording_messages();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+#endif
+
 // Requests a site and checks the 'W' command (latitude d m s sign, longitude d m s sign) that reaches the controller.
 static bool site_is_sent(const external_serial_simulator *simulator, double latitude, double longitude, const unsigned int *expected) {
 	const char *items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
@@ -2361,6 +2402,9 @@ cleanup:
 
 int main(void) {
 	const indigo_test_case tests[] = {
+#ifdef INDIGO_TEST_MOTION_DEADLINE
+		{ "nexstar_park_deadline_stops_and_recovers", nexstar_park_deadline_stops_and_recovers }
+#else
 		{ "nexstar_mount_connects_both_protocol_dialects", nexstar_mount_connects_both_protocol_dialects },
 		{ "nexstar_skywatcher_executes_coordinates_tracking_and_motion", nexstar_skywatcher_executes_coordinates_tracking_and_motion },
 		{ "nexstar_celestron_mount_passes_serial_compliance_checks", nexstar_celestron_mount_passes_serial_compliance_checks },
@@ -2399,6 +2443,7 @@ int main(void) {
 		{ "nexstar_gps_refuses_without_accessory", nexstar_gps_refuses_without_accessory },
 		{ "nexstar_goto_during_guide_pulse", nexstar_goto_during_guide_pulse },
 		{ "nexstar_location_request_survives_poll", nexstar_location_request_survives_poll }
+#endif
 	};
 	return indigo_run_tests("NexStar mount serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

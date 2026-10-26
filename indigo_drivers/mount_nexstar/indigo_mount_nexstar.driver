@@ -46,7 +46,9 @@ driver nexstar {
 		#define REFRESH_SECONDS (0.5)
 		// A NexStar slews across the whole sky in a few minutes at its fastest rate; 300 s bounds a park
 		// whose goto never reports completion.
+		#ifndef NEXSTAR_PARK_TIMEOUT
 		#define NEXSTAR_PARK_TIMEOUT (300)
+		#endif
 		#define GPS_DEVICE_NAME "Mount Nexstar (gps)"
 		#define NEXSTAR_AVX_MODEL_ID 20
 		#define NEXSTAR_CGX_MODEL_ID 23

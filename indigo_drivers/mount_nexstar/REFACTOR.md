@@ -1264,3 +1264,23 @@ targets after the stop and two polls.
 ### Final test summary for this change
 
 Simulated tests: 38 run, 38 passed. Hardware tests: 0 run, 0 passed.
+
+## Deterministic motion deadline regression coverage (2026-10-26)
+
+Task: `20261026181024-758b-fix-test-findings`; finding `FND-20261025211159-e308-fix-audit-findings-batch-004`. This is a bounded test-seam addition, not a driver migration. The generated driver uses the normal portable serial transport, serialized handlers and delayed completion callbacks. Existing deadline defaults are retained; public properties and runtime policy are unchanged. Hardware testing is not performed (0 run / 0 passed); no physical mount or platform certification is claimed.
+
+Baseline: macOS arm64 host; existing simulator suites built with `make -C indigo_test build/integration/test_mount_temma_simulator build/integration/test_mount_nexstar_simulator`. Focused baseline command and result are recorded below. Previous documented gaps lack fast execution of the existing deadline branches.
+
+Atomic plan: (1) establish focused baseline; (2) guard the existing timeout macro with `#ifndef`, regenerate with the unchanged generator, and keep its production default; (3) compile a separate deadline-test executable from the same production driver with a one-second limit, exercise stalled protocol motion, require stop and ALERT, then recovery; (4) verify both deadline and ordinary suites and update coverage counts through the coordinator.
+
+Found defects: missing automated coverage of existing expiry/stop/error branches; no production runtime defect is asserted by this change. Implementation and verification are complete.
+
+Step results: (1) focused baseline `nexstar_goto_completion_follows_slew_status` passed 1/1 from `indigo_test/`; (2) the timeout guard and regenerated C are complete and regeneration is stable; (3) deadline tests pass 1/1, requiring the specific timeout message, transport stop, ALERT, unchanged stalled position and subsequent recovery; (4) final recorded ordinary and deadline suites pass 39/39 against the rebuilt current library. Negative controls with unshortened production limits fail at the expected ALERT wait (Temma 2/2 fail, NexStar 1/1 fail), confirming the regressions require genuine expiry.
+
+These diagnostic builds used the pre-existing `libindigo` artifact; the coordinator identified it as older than current source and rebuilt it before final recorded acceptance. Diagnostic and final evidence are distinguished in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+
+Current coverage adds one hardware-free park expiry scenario, for 39 cases. Ordinary production timeouts and existing preservation scenarios remain unchanged. NexStar GOTO timeout policy remains outside this finding and task.
+
+### Final test summary for this bounded coverage change
+
+`python3 tools/run_driver_test.py mount_nexstar` passed 39/39 against the rebuilt current library on macOS arm64 and wrote the README record and generated summary. Ordinary simulated tests: 38 run / 38 passed; deadline simulated tests: 1 run / 1 passed. Physical hardware tests: 0 run / 0 passed.
