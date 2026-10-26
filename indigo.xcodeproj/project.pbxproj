@@ -6003,6 +6003,10 @@
 		A057AA8EDAB3B5A82CF2F1B6 /* test_profile_selection.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_profile_selection.c; sourceTree = "<group>"; };
 		61D0437E0DBADA8CCC6CCAAF /* test_agent_imager_numerics.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_agent_imager_numerics.py; sourceTree = "<group>"; };
 		F1BCBFAA790FFD8921AF9A1E /* test_agent_imager_cleanup.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_agent_imager_cleanup.py; sourceTree = "<group>"; };
+		4636042D17D64843A843815C /* test_indigocat_corrections.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_indigocat_corrections.c; sourceTree = "<group>"; };
+		CB387AA06BFF4D638163D3C7 /* test_dslr_raw_init.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dslr_raw_init.c; sourceTree = "<group>"; };
+		36FF378D02C5475095BC7292 /* test_additional_instances.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_additional_instances.c; sourceTree = "<group>"; };
+		9ED98BDCAF6A4B2F9D10CC26 /* test_agent_guider_cleanup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_guider_cleanup.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -14409,6 +14413,8 @@
 				59FA7BF1301D386600A35CFB /* test_polynomial_fit.c */,
 				59FA7BE6301D35FD00A35CFB /* test_bus_property.c */,
 				59FA7BE7301D35FD00A35CFB /* test_raw_image.c */,
+				CB387AA06BFF4D638163D3C7 /* test_dslr_raw_init.c */,
+				4636042D17D64843A843815C /* test_indigocat_corrections.c */,
 				59FA7BE8301D35FD00A35CFB /* test_token.c */,
 				DF10000000000000000005 /* test_uni_io.c */,
 				C0DE20261025000000000E31 /* test_test_runner.c */,
@@ -14483,6 +14489,8 @@
 				5907ACD0301E7C9C0009AA99 /* test_aux_wbprov3_simulator.c */,
 				5907ACD3301E7DC60009AA99 /* test_aux_wcv4ec_simulator.c */,
 				59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */,
+				9ED98BDCAF6A4B2F9D10CC26 /* test_agent_guider_cleanup.c */,
+				36FF378D02C5475095BC7292 /* test_additional_instances.c */,
 				C0DE20260926D0AB00000001 /* test_detach_abort.c */,
 				8F4EA6F415E6514CA9C5EDC2 /* test_server_websocket.c */,
 				C0DE20261006D0AB00000001 /* test_server_driver_stress.c */,

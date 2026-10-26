@@ -4,7 +4,7 @@
   "severity": "low",
   "summary": "Recomputing at a new date adds the prior degree result into the series accumulator before division again, introducing tiny history-dependent numerical error. Next: reset longitude/obliquity accumulators inside recompute and verify changing-date vs fresh-state consistency; no broad astronomical accuracy claim.",
   "evidence": "indigo_libs/indigocat/indigocat_nutation.c:183-219.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -12,8 +12,18 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "framework-formats-review.md",
       "revision": null
+    },
+    {
+      "id": "20261026172255-587a-fix-selected-audit-findings",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026172255-587a-fix-selected-audit-findings/verification.md; independent quality/security reports and recorded regressions. Scoped production correction verified against baseline and candidate.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-034"
 }

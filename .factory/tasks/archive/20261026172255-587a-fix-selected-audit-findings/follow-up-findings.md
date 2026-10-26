@@ -1,0 +1,5 @@
+# Baseline editor follow-up
+
+The full editor suite was not clean before this task. Existing findings 60d4-004 (unsupported polaralign) and 60d4-005 (missing device id catalog) remain open and unchanged. The requested 60d4-006 mapping defect is repaired and targeted tests pass.
+
+An additional pre-existing catalog omission is confirmed by editor-baseline.log and editor-final.log: ParserTests.test_template_code_blocks_match_generator_contexts fails because the SDK code catalog lacks discover. indigo_tools/indigo_generator.c:1019 accepts parse_code_block("discover", &sdk->discover), but indigo_tools/template.driver:82-110 does not catalog that block. The editor builds its available code blocks from that template; users cannot add this supported SDK discovery block through the editor's structural actions. Severity low, category quality, confidence high, nonblocking to the nine scoped repairs. No generator or template change is made here. Follow-up: add the supported block to the authoritative template/editor catalog and verify the contract test, preserving generator behavior and DSL input. Canonical ID: FND-20261026172255-587a-fix-selected-audit-findings-001.

@@ -1,0 +1,148 @@
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_indigocat_corrections unit/test_indigocat_corrections.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib /private/tmp/indigo-selected-audit-fixes/build/lib/libindigocat.a -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_dslr_raw_init unit/test_dslr_raw_init.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread -lraw -lstdc++
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_additional_instances integration/test_additional_instances.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread -lusb-1.0 
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_agent_guider_cleanup integration/test_agent_guider_cleanup.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread -lindigocat
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o build/unit/test_indigocat_corrections_sanitize unit/test_indigocat_corrections.c -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-selected-audit-fixes/build/lib -arch arm64 -fsanitize=address,undefined /private/tmp/indigo-selected-audit-fixes/build/lib/libindigo.a /private/tmp/indigo-selected-audit-fixes/build/lib/libjpeg.a /private/tmp/indigo-selected-audit-fixes/build/lib/libtiff.a /private/tmp/indigo-selected-audit-fixes/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib /private/tmp/indigo-selected-audit-fixes/build/lib/libindigocat.a
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o build/unit/test_dslr_raw_init_sanitize unit/test_dslr_raw_init.c -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-selected-audit-fixes/build/lib -arch arm64 -fsanitize=address,undefined /private/tmp/indigo-selected-audit-fixes/build/lib/libindigo.a /private/tmp/indigo-selected-audit-fixes/build/lib/libjpeg.a /private/tmp/indigo-selected-audit-fixes/build/lib/libtiff.a /private/tmp/indigo-selected-audit-fixes/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o build/integration/test_additional_instances_sanitize integration/test_additional_instances.c -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-selected-audit-fixes/build/lib -arch arm64 -fsanitize=address,undefined /private/tmp/indigo-selected-audit-fixes/build/lib/libindigo.a /private/tmp/indigo-selected-audit-fixes/build/lib/libjpeg.a /private/tmp/indigo-selected-audit-fixes/build/lib/libtiff.a /private/tmp/indigo-selected-audit-fixes/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib
+In file included from integration/test_additional_instances.c:42:
+integration/../../indigo_libs/indigo_driver.c:1516:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1516 |                         sprintf(name, PROFILE_NAME_ITEM_NAME, i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+In file included from integration/test_additional_instances.c:42:
+integration/../../indigo_libs/indigo_driver.c:1517:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1517 |                         sprintf(label, "Name #%d", i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+In file included from integration/test_additional_instances.c:42:
+integration/../../indigo_libs/indigo_driver.c:1518:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1518 |                         sprintf(value, "Profile #%d", i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+In file included from integration/test_additional_instances.c:42:
+integration/../../indigo_libs/indigo_driver.c:1528:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1528 |                         sprintf(name, PROFILE_ITEM_NAME, i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+In file included from integration/test_additional_instances.c:42:
+integration/../../indigo_libs/indigo_driver.c:1674:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1674 |                                 sprintf(name_item->text.value, "Profile #%d", i);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o build/integration/test_agent_guider_cleanup_sanitize integration/test_agent_guider_cleanup.c -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-selected-audit-fixes/build/lib -arch arm64 -fsanitize=address,undefined /private/tmp/indigo-selected-audit-fixes/build/lib/libindigo.a /private/tmp/indigo-selected-audit-fixes/build/lib/libjpeg.a /private/tmp/indigo-selected-audit-fixes/build/lib/libtiff.a /private/tmp/indigo-selected-audit-fixes/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib /private/tmp/indigo-selected-audit-fixes/build/lib/libindigocat.a
+In file included from integration/test_agent_guider_cleanup.c:53:
+integration/../../indigo_drivers/agent_guider/indigo_agent_guider.c:2702:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2702 |                         sprintf(name, i ? "%s_%d" : "%s", AGENT_GUIDER_SELECTION_X_ITEM_NAME, i + 1);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+In file included from integration/test_agent_guider_cleanup.c:53:
+integration/../../indigo_drivers/agent_guider/indigo_agent_guider.c:2703:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2703 |                         sprintf(label, i ? "Selection #%d X (px)" : "Selection X (px)", i + 1);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+In file included from integration/test_agent_guider_cleanup.c:53:
+integration/../../indigo_drivers/agent_guider/indigo_agent_guider.c:2705:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2705 |                         sprintf(name, i ? "%s_%d" : "%s", AGENT_GUIDER_SELECTION_Y_ITEM_NAME, i + 1);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+In file included from integration/test_agent_guider_cleanup.c:53:
+integration/../../indigo_drivers/agent_guider/indigo_agent_guider.c:2706:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2706 |                         sprintf(label, i ? "Selection #%d Y (px)" : "Selection Y (px)", i + 1);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+build/unit/test_indigocat_corrections
+5 warnings generated.
+Running indigocat correction regressions
+  PASS nutation_does_not_retain_previous_date_accumulators
+  PASS sun_aberration_uses_degrees_at_reference_epochs
+indigocat correction regressions: all tests passed
+build/unit/test_dslr_raw_init
+18:32:13.743999 Application: libraw_init failed: insufficient memory
+18:32:13.744435 Application: libraw_init failed: insufficient memory
+18:32:13.744625 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+18:32:13.744764 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+Running LibRaw initialization regressions
+  PASS failed_init_returns_allocation_error_and_empty_image
+  PASS failed_info_init_returns_allocation_error_without_cleanup
+  PASS initialized_decoder_preserves_open_error_cleanup
+LibRaw initialization regressions: all tests passed
+build/integration/test_additional_instances
+Running Additional instance lifecycle
+  PASS one slave create enumerate remove recreate and connected guard
+  PASS two slaves preserve both bases and shared ownership
+Additional instance lifecycle: all tests passed
+build/integration/test_agent_guider_cleanup
+Running Guider Agent reset property lifecycle
+  PASS five attach detach cycles release each MKGP reset allocation
+Guider Agent reset property lifecycle: all tests passed
+4 warnings generated.
+UBSAN_OPTIONS=halt_on_error=1 build/unit/test_indigocat_corrections_sanitize
+Running indigocat correction regressions
+  PASS nutation_does_not_retain_previous_date_accumulators
+  PASS sun_aberration_uses_degrees_at_reference_epochs
+indigocat correction regressions: all tests passed
+UBSAN_OPTIONS=halt_on_error=1 build/unit/test_dslr_raw_init_sanitize
+18:32:18.621875 Application: libraw_init failed: insufficient memory
+18:32:18.622854 Application: libraw_init failed: insufficient memory
+18:32:18.623175 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+18:32:18.623458 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+Running LibRaw initialization regressions
+  PASS failed_init_returns_allocation_error_and_empty_image
+  PASS failed_info_init_returns_allocation_error_without_cleanup
+  PASS initialized_decoder_preserves_open_error_cleanup
+LibRaw initialization regressions: all tests passed
+UBSAN_OPTIONS=halt_on_error=1 build/integration/test_additional_instances_sanitize
+Running Additional instance lifecycle
+  PASS one slave create enumerate remove recreate and connected guard
+  PASS two slaves preserve both bases and shared ownership
+Additional instance lifecycle: all tests passed
+UBSAN_OPTIONS=halt_on_error=1 build/integration/test_agent_guider_cleanup_sanitize
+Running Guider Agent reset property lifecycle
+  PASS five attach detach cycles release each MKGP reset allocation
+Guider Agent reset property lifecycle: all tests passed

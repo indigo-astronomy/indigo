@@ -1,0 +1,4 @@
+Running indigocat correction regressions
+  PASS nutation_does_not_retain_previous_date_accumulators
+  PASS sun_aberration_uses_degrees_at_reference_epochs
+indigocat correction regressions: all tests passed

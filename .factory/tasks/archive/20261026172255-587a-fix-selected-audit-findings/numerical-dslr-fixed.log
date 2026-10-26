@@ -1,0 +1,9 @@
+18:27:32.744056 Application: libraw_init failed: insufficient memory
+18:27:32.744697 Application: libraw_init failed: insufficient memory
+18:27:32.744973 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+18:27:32.745213 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+Running LibRaw initialization regressions
+  PASS failed_init_returns_allocation_error_and_empty_image
+  PASS failed_info_init_returns_allocation_error_without_cleanup
+  PASS initialized_decoder_preserves_open_error_cleanup
+LibRaw initialization regressions: all tests passed

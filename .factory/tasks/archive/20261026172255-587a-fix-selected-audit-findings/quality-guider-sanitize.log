@@ -1,0 +1,3 @@
+Running Guider Agent reset property lifecycle
+  PASS five attach detach cycles release each MKGP reset allocation
+Guider Agent reset property lifecycle: all tests passed

@@ -43,6 +43,33 @@
 #include "../test_runner.h"
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+// Occupying a loopback UDP port exercises discovery cleanup without receiving traffic.
+static void passive_discovery_bind_failure_closes_socket(void) {
+	int occupied = socket(AF_INET, SOCK_DGRAM, 0);
+	ASSERT_TRUE(occupied >= 0);
+	struct sockaddr_in address = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK) };
+	ASSERT_EQ_INT(0, bind(occupied, (struct sockaddr *)&address, sizeof(address)));
+	socklen_t length = sizeof(address);
+	ASSERT_EQ_INT(0, getsockname(occupied, (struct sockaddr *)&address, &length));
+	bool all_closed = true;
+	bool all_failed = true;
+	for (int i = 0; i < 16; i++) {
+		int next = dup(occupied);
+		ASSERT_TRUE(next >= 0);
+		close(next);
+		all_failed &= !indigo_perform_passive_discovery(ntohs(address.sin_port), 1, NULL, 0, NULL, 0);
+		errno = 0;
+		bool closed = fcntl(next, F_GETFD) == -1 && errno == EBADF;
+		all_closed &= closed;
+		if (!closed) {
+			close(next);
+		}
+	}
+	close(occupied);
+	ASSERT_TRUE(all_failed);
+	ASSERT_TRUE(all_closed);
+}
+
 static const char *serial_exclusive_test_port;
 
 static void serial_port_open_is_exclusive(void) {
@@ -735,6 +762,7 @@ int main(void) {
 		{ "read_section_accepts_null_terminator_list", read_section_accepts_null_terminator_list },
 		{ "read_section_still_ignores_and_terminates", read_section_still_ignores_and_terminates },
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		{ "passive_discovery_bind_failure_closes_socket", passive_discovery_bind_failure_closes_socket },
 		{ "serial_open_reports_open_error", serial_open_reports_open_error },
 		{ "serial_open_reports_configuration_error", serial_open_reports_configuration_error },
 		{ "serial_open_reports_not_a_serial_port", serial_open_reports_not_a_serial_port },

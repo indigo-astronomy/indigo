@@ -1865,7 +1865,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 					additional_slave_device->device_context = NULL;
 					additional_slave_device->private_data = private_data;
 					additional_slave_device->master_device = additional_device;
-					additional_device->base_device = slave_device;
+					additional_slave_device->base_device = slave_device;
 					indigo_attach_device(additional_slave_device);
 					((indigo_device_context *)slave_device->device_context)->additional_device_instances[i] = additional_slave_device;
 				}

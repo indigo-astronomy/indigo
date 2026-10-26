@@ -1067,8 +1067,8 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 					break;
 				}
 			}
-			close(udp_socket);
 		}
+		close(udp_socket);
 	}
 #elif defined(INDIGO_WINDOWS)
 	SOCKET udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -1111,8 +1111,8 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 					break;
 				}
 			}
-			closesocket(udp_socket);
 		}
+		closesocket(udp_socket);
 	}
 #else
 #pragma message ("TODO: indigo_perform_pasive_discovery()")

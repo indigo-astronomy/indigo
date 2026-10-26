@@ -5,15 +5,25 @@
   "blocking": false,
   "evidence": "indigo_tools/driver_editor/source_map.py:110-150; indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver:898-906; editor-fresh-generator-tests.log",
   "summary": "Mapping uses device kind for generated-function prefixes and misses explicit logical-device identifiers used by the generated CCD simulator. Corpus test finds an empty generated range for inherited CCD_EXPOSURE. Next: coordinator assigns device-identity-aware mapping and tests that select all CCD logical devices; do not alter generator output merely for highlighting.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "tasks": [
     {
       "id": "20261023065605-60d4-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261026172255-587a-fix-selected-audit-findings",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026172255-587a-fix-selected-audit-findings/verification.md; independent quality/security reports and recorded regressions. Scoped production correction verified against baseline and candidate.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023065605-60d4-repository-audit-006"
 }

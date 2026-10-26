@@ -141,6 +141,31 @@ static void bayer_channel_equalization_balances_simple_mono8_frame(void) {
 	ASSERT_EQ_INT(25, data[3]);
 }
 
+static void bayer_channel_equalization_preserves_small_frame_parities(void) {
+	const uint16_t levels[][4] = { { 10, 20, 30, 40 }, { 240, 244, 248, 252 }, { 65000, 65100, 65200, 65300 } };
+	for (int sample = 0; sample < 3; sample++) {
+		uint8_t data8[16];
+		uint16_t data16[16];
+		int expected = (levels[sample][0] + levels[sample][1] + levels[sample][2] + levels[sample][3]) / 4;
+		for (int y = 0; y < 4; y++) {
+			for (int x = 0; x < 4; x++) {
+				data16[y * 4 + x] = levels[sample][(y % 2) * 2 + x % 2];
+				data8[y * 4 + x] = (uint8_t)data16[y * 4 + x];
+			}
+		}
+		ASSERT_EQ_INT(INDIGO_OK, indigo_equalize_bayer_channels(INDIGO_RAW_MONO16, data16, 4, 4));
+		for (int i = 0; i < 16; i++) {
+			ASSERT_NEAR(expected, data16[i], 1);
+		}
+		if (sample < 2) {
+			ASSERT_EQ_INT(INDIGO_OK, indigo_equalize_bayer_channels(INDIGO_RAW_MONO8, data8, 4, 4));
+			for (int i = 0; i < 16; i++) {
+				ASSERT_NEAR(expected, data8[i], 1);
+			}
+		}
+	}
+}
+
 static void saturation_mask_marks_saturated_feature(void) {
 	uint8_t data[25];
 	uint8_t mask[25];
@@ -434,6 +459,7 @@ int main(void) {
 		{ "raw_without_bayer_extension_is_not_bayered", raw_without_bayer_extension_is_not_bayered },
 		{ "color_raw_is_not_treated_as_bayered", color_raw_is_not_treated_as_bayered },
 		{ "bayer_channel_equalization_balances_simple_mono8_frame", bayer_channel_equalization_balances_simple_mono8_frame },
+		{ "bayer_channel_equalization_preserves_small_frame_parities", bayer_channel_equalization_preserves_small_frame_parities },
 		{ "saturation_mask_marks_saturated_feature", saturation_mask_marks_saturated_feature },
 		{ "contrast_for_constant_frame_is_zero_and_not_saturated", contrast_for_constant_frame_is_zero_and_not_saturated },
 		{ "star_exclusion_removes_only_the_rectangle", star_exclusion_removes_only_the_rectangle },

@@ -1,0 +1,19 @@
+{
+  "title": "Editor SDK code catalog omits the generator-supported discover block",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261026172255-587a-fix-selected-audit-findings",
+      "report": "follow-up-findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Baseline editor catalog omits SDK discover although the generator accepts it, so editor structural actions cannot add the block. Next: scoped template/catalog correction and contract-test retest; no generator change required. Pre-existing before this task, not part of the nine requested repairs.",
+  "evidence": "indigo_tools/indigo_generator.c:1019; indigo_tools/template.driver SDK block; editor-baseline.log and editor-final.log ParserTests.test_template_code_blocks_match_generator_contexts.",
+  "resolution": null,
+  "id": "FND-20261026172255-587a-fix-selected-audit-findings-001"
+}

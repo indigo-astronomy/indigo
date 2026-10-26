@@ -1,0 +1,85 @@
+18:27:15.213031 Application: 0 <- // /tmp/indigo-uni-io-test.E6fibv opened
+18:27:15.213977 Application: 0 -> ab#
+18:27:15.213990 Application: 0 <- // Closed
+18:27:15.214268 Application: 1 <- // /tmp/indigo-uni-io-test.DNMo3T opened
+18:27:15.214280 Application: 1 -> abcd
+18:27:15.214288 Application: 1 <- // Closed
+18:27:15.214489 Application: 2 <- // /tmp/indigo-uni-io-test.0I2LtY opened
+18:27:15.214501 Application: 2 -> ab
+18:27:15.214508 Application: 2 <- // Closed
+18:27:15.214650 Application: Failed to bind passive discovery socket
+18:27:15.214697 Application: Failed to bind passive discovery socket
+18:27:15.214723 Application: Failed to bind passive discovery socket
+18:27:15.214753 Application: Failed to bind passive discovery socket
+18:27:15.214776 Application: Failed to bind passive discovery socket
+18:27:15.214800 Application: Failed to bind passive discovery socket
+18:27:15.214820 Application: Failed to bind passive discovery socket
+18:27:15.214843 Application: Failed to bind passive discovery socket
+18:27:15.214865 Application: Failed to bind passive discovery socket
+18:27:15.214890 Application: Failed to bind passive discovery socket
+18:27:15.214912 Application: Failed to bind passive discovery socket
+18:27:15.214934 Application: Failed to bind passive discovery socket
+18:27:15.214958 Application: Failed to bind passive discovery socket
+18:27:15.214979 Application: Failed to bind passive discovery socket
+18:27:15.215000 Application: Failed to bind passive discovery socket
+18:27:15.215021 Application: Failed to bind passive discovery socket
+unit/test_uni_io.c:70: assertion failed: all_closed
+18:27:15.215097 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+18:27:15.215108 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+18:27:15.215117 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+18:27:15.215123 Application: Failed to open /unused (Invalid argument)
+18:27:15.215258 Application: Failed to exclusively open /tmp/indigo-uni-io-nonserial.BirOxY (Inappropriate ioctl for device)
+18:27:15.222368 Application: 3 <- // /dev/ttys002 opened
+18:27:15.222387 Application: 3 <- // Closed
+18:27:15.223354 Application: 4 <- // /dev/ttys002 opened
+18:27:15.223371 Application: 4 <- // Closed
+18:27:15.223562 Application: 5 <- // /dev/ttys002 opened
+18:27:15.223578 Application: 5 <- // Closed
+18:27:15.223631 Application: 0 <- // Closed
+18:27:15.225319 Application: 6 <- // /dev/ttys002 opened
+18:27:15.530471 Application: 6 -> x
+18:27:15.530736 Application: 6 <- // Closed
+18:27:15.532499 Application: 7 <- // /dev/ttys002 opened
+18:27:16.037641 Application: 7 -> // timeout
+18:27:16.037922 Application: 7 <- // Closed
+18:27:17.667452 Application: Invalid discovery target 'not an address'
+18:27:17.667914 Application: 8 <- // TCP socket connected to '127.0.0.1:53089'
+18:27:17.667969 Application: 8 <- // Closed
+18:27:17.668060 Application: Can't connect TCP socket for '127.0.0.1:53091' (Connection refused)
+18:27:17.668601 Application: 9 <- // /dev/ttys002 opened
+18:27:17.722004 Application: 9 <- // Failed to write (Input/output error)
+18:27:17.722056 Application: 9 <- // Closed
+18:27:17.722306 Application: 10 <- // TCP socket connected to '127.0.0.1:53093'
+18:27:17.777355 Application: 10 -> abc
+18:27:17.832417 Application: 10 <- // Connection closed
+18:27:17.832536 Application: 10 <- // Closed
+Running indigo_uni_io unit tests
+  PASS standard_stream_handles_have_file_descriptors
+  PASS compress_rejects_output_buffer_too_small
+  PASS compress_incompressible_payload_round_trips
+  PASS read_section_accepts_null_ignore_list
+  PASS read_section_accepts_null_terminator_list
+  PASS read_section_still_ignores_and_terminates
+  FAIL passive_discovery_bind_failure_closes_socket
+  PASS serial_open_reports_open_error
+  PASS serial_open_reports_configuration_error
+  PASS serial_open_reports_not_a_serial_port
+  PASS serial_open_clears_error_on_success
+  PASS serial_port_reopens_after_close
+  PASS hid_close_leaves_aliased_descriptor_open
+  PASS legacy_printf_sends_output_longer_than_its_buffer
+  PASS legacy_printf_sends_short_output_unchanged
+  PASS wait_for_data_continues_after_signal
+  PASS wait_for_data_keeps_timeout_after_signal
+  PASS discover_collects_all_replies
+  PASS discover_repeats_request_for_each_poll
+  PASS discover_stops_when_callback_returns_false
+  PASS discover_without_responder_times_out
+  PASS discover_reaches_loopback_responder
+  PASS discover_rejects_invalid_arguments
+  PASS connect_with_timeout_succeeds
+  PASS connect_with_timeout_reports_refused_connection
+  PASS connect_with_timeout_is_bounded
+  PASS connection_lost_after_serial_failure
+  PASS connection_lost_after_peer_close
+indigo_uni_io unit tests: 1 test(s) failed

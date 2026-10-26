@@ -146,6 +146,10 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 	outout_image->data = NULL;
 	clock_t start = clock();
 	raw_data = libraw_init(0);
+	if (raw_data == NULL) {
+		indigo_error("libraw_init failed: insufficient memory");
+		return LIBRAW_UNSUFFICIENT_MEMORY;
+	}
 	/* These work fine for astro - change with caution */
 	/* Linear 16-bit output. */
 	raw_data->params.output_bps = 16;
@@ -222,6 +226,10 @@ int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw
 	}
 	clock_t start = clock();
 	raw_data = libraw_init(0);
+	if (raw_data == NULL) {
+		indigo_error("libraw_init failed: insufficient memory");
+		return LIBRAW_UNSUFFICIENT_MEMORY;
+	}
 	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
 	if (rc != LIBRAW_SUCCESS) {
 		indigo_error("[rc:%d] libraw_open_buffer failed: '%s'", rc, libraw_strerror(rc));

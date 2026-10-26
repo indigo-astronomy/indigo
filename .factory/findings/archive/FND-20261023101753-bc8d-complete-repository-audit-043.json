@@ -2,7 +2,7 @@
   "title": "Additional slave instances assign their base pointer to the master",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "core-functional-review.md",
       "revision": null
+    },
+    {
+      "id": "20261026172255-587a-fix-selected-audit-findings",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Additional-instance creation at indigo_driver.c:1830-1865 sets additional_device->base_device to slave_device instead of setting additional_slave_device. This corrupts cloned master/slave identity. Next: set the cloned slave base, preserve master base and cover one-master/one-slave create/enumerate/remove/recreate with private-data ownership assertions. Source-confirmed, no device lifecycle executed.",
   "evidence": "indigo_libs/indigo_driver.c:1847,1863; core-functional-review.md C-08.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026172255-587a-fix-selected-audit-findings/verification.md; independent quality/security reports and recorded regressions. Scoped production correction verified against baseline and candidate.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-043"
 }

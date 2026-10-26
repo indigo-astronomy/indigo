@@ -1,0 +1,28 @@
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -c ../indigo_libs/indigo_raw_utils.c -o build/unit/raw_utils_sanitize.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -o build/unit/test_raw_image_sanitize unit/test_raw_image.c build/unit/raw_utils_sanitize.o -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-selected-audit-fixes/build/lib -arch arm64 -fsanitize=address,undefined /private/tmp/indigo-selected-audit-fixes/build/lib/libindigo.a /private/tmp/indigo-selected-audit-fixes/build/lib/libjpeg.a /private/tmp/indigo-selected-audit-fixes/build/lib/libtiff.a /private/tmp/indigo-selected-audit-fixes/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib
+UBSAN_OPTIONS=halt_on_error=1 build/unit/test_raw_image_sanitize
+Running raw image unit tests
+  PASS raw_validation_accepts_complete_formats_and_metadata
+  PASS raw_validation_rejects_incomplete_and_unrepresentable_shapes
+  PASS selection_rejects_incomplete_rois
+  PASS selection_rejects_invalid_geometry
+  PASS selection_rejects_nonfinite_or_unrepresentable_centers
+  PASS selection_rejects_missing_inputs
+  PASS selection_accepts_complete_edge_rois
+  PASS psf_high_contrast_mono16_border_uses_finite_variance
+  PASS psf_fractional_border_variance_is_preserved
+  PASS selection_interior_star_preserves_measurements
+  PASS raw_header_type_values_are_stable
+  PASS mono_raw_with_bayer_extension_is_detected
+  PASS raw_without_bayer_extension_is_not_bayered
+  PASS color_raw_is_not_treated_as_bayered
+  PASS bayer_channel_equalization_balances_simple_mono8_frame
+  PASS bayer_channel_equalization_preserves_small_frame_parities
+  PASS saturation_mask_marks_saturated_feature
+  PASS contrast_for_constant_frame_is_zero_and_not_saturated
+  PASS star_exclusion_removes_only_the_rectangle
+  PASS psf_map_uses_only_measured_stars
+  PASS psf_map_without_stars_is_empty
+SKIP heap accounting is not available on this platform
+  PASS bahtinov_error_releases_binarized_frame
+raw image unit tests: all tests passed
