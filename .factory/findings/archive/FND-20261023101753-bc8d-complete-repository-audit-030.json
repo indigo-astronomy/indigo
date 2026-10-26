@@ -4,7 +4,7 @@
   "severity": "medium",
   "summary": "Real recording logic with synthetic complete tagged results and process exit1 returns aggregate failure but emits device1/1 OK. Next: incorporate command exit failure into recorded device outcomes, or retain explicit aggregate failure without falsely certifying devices; regress tagged failures and partial records.",
   "evidence": "tools/run_driver_test.py:436,455; root-evidence/per-device-result.json and per-device-repro.py.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -12,8 +12,18 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: Per-device OK requires successful process exits; complete/partial/untagged/normal subprocess result regressions pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-030"
 }

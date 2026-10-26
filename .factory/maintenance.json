@@ -147,6 +147,14 @@
       "authority": "\u00c1no, odlo\u017ei\u0165 audit iba pre t\u00fato zmenu; potom zost\u00e1va splatn\u00fd",
       "checkpoint": "After this change, before next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
+    },
+    "test_findings_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-26",
+      "task": "20261026181024-758b-fix-test-findings",
+      "scope": "Repair automated tests, CI and result-recording findings only; shell compliance excluded",
+      "checkpoint": "After this repair, before unrelated work or release",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

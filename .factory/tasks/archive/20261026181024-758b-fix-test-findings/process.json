@@ -1,0 +1,423 @@
+{
+  "version": 2,
+  "task": "20261026181024-758b-fix-test-findings",
+  "scope": [
+    ".factory/completions/20261026181024-758b-fix-test-findings.json",
+    ".factory/findings/active/FND-000028.json",
+    ".factory/findings/active/FND-000029.json",
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-003.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-030.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-040.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-043.json",
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-001.json",
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-002.json",
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-003.json",
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-004.json",
+    ".factory/findings/active/FND-20261026181024-758b-fix-test-findings-001.json",
+    ".factory/findings/archive/FND-000028.json",
+    ".factory/findings/archive/FND-000029.json",
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-003.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-030.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-040.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-043.json",
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-001.json",
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-002.json",
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-003.json",
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-004.json",
+    ".factory/findings/archive/FND-20261026181024-758b-fix-test-findings-001.json",
+    ".factory/maintenance.json",
+    ".factory/project.md",
+    ".factory/roles/documenter.md",
+    ".factory/roles/test-designer.md",
+    ".factory/routines/task-archive.md",
+    ".travis.yml",
+    "MIGRATION_STATUS.md",
+    "README.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/DRIVER_TESTING_BASICS.md",
+    "indigo_drivers/ccd_playerone/README.md",
+    "indigo_drivers/ccd_playerone/REFACTOR.md",
+    "indigo_drivers/focuser_optec/README.md",
+    "indigo_drivers/focuser_optec/REFACTOR.md",
+    "indigo_drivers/mount_ioptron/README.md",
+    "indigo_drivers/mount_ioptron/REFACTOR.md",
+    "indigo_drivers/mount_nexstar/REFACTOR.md",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.c",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver",
+    "indigo_drivers/mount_simulator/README.md",
+    "indigo_drivers/mount_simulator/REFACTOR.md",
+    "indigo_drivers/mount_temma/README.md",
+    "indigo_drivers/mount_temma/REFACTOR.md",
+    "indigo_drivers/mount_temma/indigo_mount_temma.c",
+    "indigo_drivers/mount_temma/indigo_mount_temma.driver",
+    "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c",
+    "indigo_drivers/rotator_lunatico/README.md",
+    "indigo_drivers/rotator_lunatico/REFACTOR.md",
+    "indigo_test/AGENTS.md",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_ccd_playerone_sdk.c",
+    "indigo_test/integration/test_focuser_optec_simulator.c",
+    "indigo_test/integration/test_mount_ioptron_simulator.c",
+    "indigo_test/integration/test_mount_nexstar_simulator.c",
+    "indigo_test/integration/test_mount_simulator.c",
+    "indigo_test/integration/test_mount_temma_simulator.c",
+    "indigo_test/unit/test_driver_test_recording.py",
+    "tools/run_driver_test.py"
+  ],
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/findings.py",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/decision_index.py",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_*.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py",
+        "--security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-buildsystem"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-driver-test-recording"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md",
+    "data-model": "security.md",
+    "ci-deployment": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261026181024-758b-fix-test-findings.json": [
+      "100644",
+      "blob",
+      "b755fe7792f38281c97e75d8bcdcce44208812a3"
+    ],
+    ".factory/findings/active/FND-000028.json": null,
+    ".factory/findings/active/FND-000029.json": null,
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-003.json": null,
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-030.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-040.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-043.json": null,
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-001.json": null,
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-002.json": null,
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-003.json": null,
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-004.json": null,
+    ".factory/findings/archive/FND-000028.json": [
+      "100644",
+      "blob",
+      "e38ee83034c5ccc314b7a7fc362df4c2d54308e3"
+    ],
+    ".factory/findings/archive/FND-000029.json": [
+      "100644",
+      "blob",
+      "4b6c087e4f09e5abd1a5f91ff5775765a86bdc20"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-003.json": [
+      "100644",
+      "blob",
+      "750efb492da9d376280ea6a4bca4cbc28ddcd451"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-030.json": [
+      "100644",
+      "blob",
+      "cbec8114f58fdd25122564d2ac6aa0f5f60a441f"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-040.json": [
+      "100644",
+      "blob",
+      "6989a04148f1126d1c1458e18a0cc4a14c53ff59"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-043.json": [
+      "100644",
+      "blob",
+      "7706df3c54a9c7c54a72b8d4ef3f0d78c84c86e5"
+    ],
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-001.json": [
+      "100644",
+      "blob",
+      "76c285f6c8ec3e42149bec86924b6aecdeb2f553"
+    ],
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-002.json": [
+      "100644",
+      "blob",
+      "170f1f01cbe4db448c04de7c80447eda3ea0213b"
+    ],
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-003.json": [
+      "100644",
+      "blob",
+      "70e017898223ba080ba6d9c35851be2183a467c0"
+    ],
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-004.json": [
+      "100644",
+      "blob",
+      "f048908f95f4f37557c4c24dc62f414120160c1a"
+    ],
+    ".factory/findings/archive/FND-20261026181024-758b-fix-test-findings-001.json": [
+      "100644",
+      "blob",
+      "99504018b5cfeeef240fefab4b1ed87446650112"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "768306197b2213a41c6e4c1b9a7c7734415c9c47"
+    ],
+    ".factory/roles/documenter.md": [
+      "100644",
+      "blob",
+      "d733b4ceaeceab0919784de4218cdccd8f6967d8"
+    ],
+    ".factory/roles/test-designer.md": [
+      "100644",
+      "blob",
+      "b9d3f15dd262754eef5d42d09f76309fd600919d"
+    ],
+    ".factory/routines/task-archive.md": [
+      "100644",
+      "blob",
+      "65efb30e0c14d8caad7db25783292b62a55c5222"
+    ],
+    ".travis.yml": null,
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "1321067fad697db3e9fa99dbb9513db20f0c436d"
+    ],
+    "README.md": [
+      "100644",
+      "blob",
+      "ce659f140ac805437af555ecb3fc515256d9815a"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "932953c16079190262d075c9e54f1a9e397449ef"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "50288c444068a921b2e2c61fcff20234509ed15a"
+    ],
+    "indigo_docs/DRIVER_TESTING_BASICS.md": [
+      "100644",
+      "blob",
+      "1a2860fbeb431d737271ca3d352ebb237bf5ad79"
+    ],
+    "indigo_drivers/ccd_playerone/README.md": [
+      "100644",
+      "blob",
+      "027b90eb3fe0b776e8f6eb3372355d5e936dab63"
+    ],
+    "indigo_drivers/ccd_playerone/REFACTOR.md": [
+      "100644",
+      "blob",
+      "5d5f3bbcd02c575d294e7cd21c92df12264a23fd"
+    ],
+    "indigo_drivers/focuser_optec/README.md": [
+      "100644",
+      "blob",
+      "ca41db65a6e32daf89921d08ae5e895a31c648c5"
+    ],
+    "indigo_drivers/focuser_optec/REFACTOR.md": [
+      "100644",
+      "blob",
+      "ed7fd3227958b4734cfebe50ad32e5e8f9f4d82b"
+    ],
+    "indigo_drivers/mount_ioptron/README.md": [
+      "100644",
+      "blob",
+      "cadde18d244fbf544d5c77d78073264c641bd6cf"
+    ],
+    "indigo_drivers/mount_ioptron/REFACTOR.md": [
+      "100644",
+      "blob",
+      "2167d257add264c0f9bd05180ebf4cabf6051876"
+    ],
+    "indigo_drivers/mount_nexstar/REFACTOR.md": [
+      "100644",
+      "blob",
+      "52836ee1f1823e3533af8b5a5589a3f19bb45baa"
+    ],
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.c": [
+      "100644",
+      "blob",
+      "0a87521a841fb16081a40406f1ec72781194f7dc"
+    ],
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver": [
+      "100644",
+      "blob",
+      "4834895122726a6b29a6e27378cb81f545fb61df"
+    ],
+    "indigo_drivers/mount_simulator/README.md": [
+      "100644",
+      "blob",
+      "bfc4537e2f304391305b5a38c5e363bceaaca824"
+    ],
+    "indigo_drivers/mount_simulator/REFACTOR.md": [
+      "100644",
+      "blob",
+      "55b1b943da9723f42b57da94ab8e24bc9c0a01a9"
+    ],
+    "indigo_drivers/mount_temma/README.md": [
+      "100644",
+      "blob",
+      "32aae1e1791b781e1055c6123b7d74594f3c8ab5"
+    ],
+    "indigo_drivers/mount_temma/REFACTOR.md": [
+      "100644",
+      "blob",
+      "1b9f902138e7006c5d02a2d37f90e3586e5da6e2"
+    ],
+    "indigo_drivers/mount_temma/indigo_mount_temma.c": [
+      "100644",
+      "blob",
+      "577b702e2421562a6430f322016a2faf3c2512d3"
+    ],
+    "indigo_drivers/mount_temma/indigo_mount_temma.driver": [
+      "100644",
+      "blob",
+      "2882a30ca364acffb87a462c473c93cc028d2350"
+    ],
+    "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c": [
+      "100644",
+      "blob",
+      "14ded1a29c7eaba859da65f6b9d7c37f4c7eff81"
+    ],
+    "indigo_drivers/rotator_lunatico/README.md": [
+      "100644",
+      "blob",
+      "4a6e1fcf1c1cffd491bfa089992477d54913c2b6"
+    ],
+    "indigo_drivers/rotator_lunatico/REFACTOR.md": [
+      "100644",
+      "blob",
+      "4f22f4501552d95974bf20a76952d0dfa34bab37"
+    ],
+    "indigo_test/AGENTS.md": [
+      "100644",
+      "blob",
+      "33b0d1be9f270f99f43c5c0b05822dca12008c3c"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "5887c0c58c37ce47232e6c9ad0408a12086c3edf"
+    ],
+    "indigo_test/integration/test_ccd_playerone_sdk.c": [
+      "100644",
+      "blob",
+      "428b6e18fff2a639dff31ad351fd1afb39800f33"
+    ],
+    "indigo_test/integration/test_focuser_optec_simulator.c": [
+      "100644",
+      "blob",
+      "47d443f96fa7dad4bee71fccbe1dc65ce4e3eae2"
+    ],
+    "indigo_test/integration/test_mount_ioptron_simulator.c": [
+      "100644",
+      "blob",
+      "905fbd2e4611c90b26c759a6b749d55bf168c0ee"
+    ],
+    "indigo_test/integration/test_mount_nexstar_simulator.c": [
+      "100644",
+      "blob",
+      "0a3855e97211a42813b779c468152784eb9e4eb7"
+    ],
+    "indigo_test/integration/test_mount_simulator.c": [
+      "100644",
+      "blob",
+      "d44839a8d3316d51de11ff14a8f91514bbcdd7a7"
+    ],
+    "indigo_test/integration/test_mount_temma_simulator.c": [
+      "100644",
+      "blob",
+      "e3cd9d5f1e8c9be42590c3451b7ad7491ee39811"
+    ],
+    "indigo_test/unit/test_driver_test_recording.py": [
+      "100644",
+      "blob",
+      "0ee9b369e4e4fd07fbf9d9e0ea603e70c0144c99"
+    ],
+    "tools/run_driver_test.py": [
+      "100755",
+      "blob",
+      "56a995ae94f00145fa9dce4116a4d2fd47b87397"
+    ]
+  }
+}

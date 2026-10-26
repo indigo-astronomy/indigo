@@ -4,7 +4,7 @@
 Read and follow the root AGENTS.md and applicable nested rules. Write all documents in English. This file must be explicitly loaded for the assignment.
 
 ## Inputs
-Read specification.md, plan.md, existing tests and fixtures, and tests/AGENTS.md. Review current behavior to establish a baseline.
+Read specification.md, plan.md, existing tests and fixtures, and indigo_test/AGENTS.md. Review current behavior to establish a baseline.
 
 ## Write scope
 Write test-plan.md, assigned tests and synthetic fixtures, and handoff.md. Do not change production code or acceptance criteria.

@@ -1,0 +1,29 @@
+{
+  "title": "New Temma deadline test sampled its recovery revision after sending the request",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "quality-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Independent quality review of this task's intermediate new regression found that recovery could reach OK before the revision snapshot, causing a false wait for an unchanged publication. Capture the revision before sending recovery. This issue was introduced and corrected during this task; final source already has the correction. Next: retain passing corrected deadline evidence and archive the verified fix.",
+  "evidence": "quality-review.md Q1; indigo_test/integration/test_mount_temma_simulator.c temma_motion_deadline recovery block; corrected two-case deadline run passes.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: Move the Temma recovery revision snapshot before the request; independent reinspection, corrected deadline 2/2 and final full suite pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261026181024-758b-fix-test-findings-001"
+}

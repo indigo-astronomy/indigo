@@ -2,7 +2,7 @@
   "title": "mount_simulator mount_abort_allows_fresh_goto fails intermittently",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261025211159-e308-fix-audit-findings-batch",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "mount_simulator case mount_abort_allows_fresh_goto fails intermittently at test_mount_simulator.c:582 ('RA unchanged after abort') and once at :591; 1 of 4 filtered runs on master e7cbb62a6, 2 of 5 before and 2 of 3 after the MULTI_POINT change in this task, and in the full candidate run. Timing-dependent assertion or abort race. Next: scoped task to make the case deterministic or fix the abort race.",
   "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md Findings and Baseline sections; quality-review.md",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: Mount abort test waits fresh completed publications and actual motion; exact stopped-position and recovery assertions retained, focused/full suites pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261025211159-e308-fix-audit-findings-batch-002"
 }

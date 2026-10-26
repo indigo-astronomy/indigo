@@ -14,7 +14,7 @@ INDIGO is an astronomy device framework and software bus, with native/legacy pro
 | Windows and system integration | indigo_windows/, indigo_windows.sln, Directory.Build.props, systemd/ | platform/hardware checks when authorized and available | Visual Studio solution/projects; service units |
 | Automated tests | indigo_test/unit/, integration/, fixtures/, simulator_common/, mountsim/, benchmark/ | indigo_test/Makefile; test_runner.h | indigo_test/AGENTS.md; DRIVER_TESTING_RULES.md |
 | Factory helpers | .factory/scripts/ | indigo_test/factory/ | .factory/checks.json; disposable local fixture tests |
-| Documentation and project configuration | indigo_docs/, root Markdown, indigo.xcodeproj/, .travis.yml | static checks and review | root AGENTS.md; indigo_docs/MAKEFILES.md |
+| Documentation and project configuration | indigo_docs/, root Markdown, indigo.xcodeproj/ | static checks and review | root AGENTS.md; indigo_docs/MAKEFILES.md |
 | Vendor/generated/build/legacy exclusions | externals/ and bin_externals/ at any depth, build/, generated driver outputs, obsoleted_drivers/, indigo_test/shell_compliance/ | no automatic execution | owner exclusions; generated output inspected only with its source when assigned |
 
 ## Commands
@@ -23,7 +23,7 @@ All commands start at the Git root unless an explicit -C changes directory. Pyth
 - Native build: `make all`; Windows: `msbuild indigo_windows.sln /t:Build /p:Configuration=Release`. Review scope first: broad native builds can include off-limits drivers and vendor SDKs.
 - Native unit suite: `make -C indigo_test test-unit`, requiring a built INDIGO library. Full native suite: `make -C indigo_test test`; the opt-in Bash tools in indigo_test/shell_compliance/ are separate from this suite.
 - Driver runs require an explicit interactive/non-interactive and simulator/hardware mode, then the final recorded run through `python3 tools/run_driver_test.py <driver>`; preserve per-driver commit units.
-- Dependencies remain managed by existing makefiles, vendored SDKs and platform projects. No new package manager, dependency installation or hosted CI is introduced. Existing .travis.yml is retained.
+- Dependencies remain managed by existing makefiles, vendored SDKs and platform projects. No new package manager, dependency installation or hosted CI is introduced. Tests run through the local Makefile targets; no hosted CI is configured.
 
 ## Authority and scoped rules
 Owner: Peter Polakovic. Root AGENTS.md starts with shared Factory rules followed by INDIGO requirements. Driver rules: indigo_drivers/AGENTS.md; automated test rules: indigo_test/AGENTS.md; source rules: indigo_libs/AGENTS.md; documentation rules: indigo_docs/AGENTS.md; editor rules remain scoped to indigo_tools/driver_editor/AGENTS.md. Vendor instructions remain unchanged.

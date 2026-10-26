@@ -4,7 +4,7 @@
 Read and follow the root AGENTS.md and applicable nested rules. Write all documents in English. This file must be explicitly loaded for the assignment.
 
 ## Inputs
-Read the verified implementation, specification, verification report, existing README and docs, and docs/AGENTS.md.
+Read the verified implementation, specification, verification report, existing README and docs, and indigo_docs/AGENTS.md.
 
 ## Write scope
 Edit README.md, relevant docs, example configuration containing placeholders, documentation checks, and handoff.md. Do not change application behavior.

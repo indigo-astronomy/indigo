@@ -5511,7 +5511,6 @@
 		9DC7830221A6FCC7009859FD /* indigo_system_ascol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_ascol.h; sourceTree = "<group>"; };
 		9DC7830321A6FDB6009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DC7830621A7072B009859FD /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		9DC7830921AC565B009859FD /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; usesTabs = 0; };
 		9DCB036622E9D8D600A7A2E5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DCBF26527E9CC6C00746580 /* indigo_fits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_fits.h; sourceTree = "<group>"; };
 		9DD01BE6298A63A50044FB3B /* indigo_build.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_build.c; sourceTree = "<group>"; };
@@ -6007,6 +6006,7 @@
 		CB387AA06BFF4D638163D3C7 /* test_dslr_raw_init.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dslr_raw_init.c; sourceTree = "<group>"; };
 		36FF378D02C5475095BC7292 /* test_additional_instances.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_additional_instances.c; sourceTree = "<group>"; };
 		9ED98BDCAF6A4B2F9D10CC26 /* test_agent_guider_cleanup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_guider_cleanup.c; sourceTree = "<group>"; };
+		CA2B0F73C6A84C3DB07A918E /* test_driver_test_recording.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_driver_test_recording.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -7175,7 +7175,6 @@
 				59FA7C09301DCBE600A35CFB /* AGENTS.md */,
 				59FA7C0A301DCCAE00A35CFB /* CLAUDE.md */,
 				59E4ADBB3060448A002B1629 /* TEST_SUMMARY.md */,
-				9DC7830921AC565B009859FD /* .travis.yml */,
 				5996615922CF55E800330652 /* .editorconfig */,
 				5936A993299C0D1F00C3095A /* uncrustify.cfg */,
 				5912C80723D2447400A48B75 /* indigo_docs */,
@@ -14395,6 +14394,7 @@
 				A057AA8EDAB3B5A82CF2F1B6 /* test_profile_selection.c */,
 				58D21354F48205219CDA34FB /* test_core_text_bounds.c */,
 				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
+				CA2B0F73C6A84C3DB07A918E /* test_driver_test_recording.py */,
 				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,
 				D953B0583D568EBDF4A6B59C /* test_imager_download.js */,
 				A3C51E7F0B2D49E6812F4D10 /* test_indigo_js_formatting.js */,

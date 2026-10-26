@@ -62,7 +62,8 @@ All source files and headers under `indigo_test/`, including new files, must use
 Run `make all` from the repository root first if `build/lib/libindigo` or the required simulator driver archives are missing.
 
 - `make -C indigo_test test` runs all automated unit and integration tests.
-- `make -C indigo_test test-unit` runs unit tests only.
+- `make -C indigo_test test-unit` runs native unit tests only.
+- `make -C indigo_test test-driver-test-recording` runs isolated Python regressions for driver result recording; the full `test` target includes it.
 - `make -C indigo_test test-integration` runs bus and simulator-driver integration tests only.
 - `make -C indigo_test test-server-leaks` (opt-in, several minutes, needs Valgrind) runs `indigo_server` with the simulator drivers under Valgrind memcheck, exercises every device `LEAK_CYCLES` times and reports the leaks by allocating INDIGO function; it fails on definitely or indirectly lost memory. Compare one cycle with several to tell a leak per operation from a single one.
 - `make -C indigo_test test-imager-download` runs the browser download regression with Node.js 18+ and its built-in test runner; it needs no native build. The full `test` target includes this check.
@@ -109,7 +110,7 @@ Records from forked children land in the same file.
   `tools/run_driver_test.py` records one line per tagged device instead of one
   per run: the type is the model of the device from its `device` record (the
   device name without one), the counts are that device's own cases, and the line
-  is OK only when all of them passed. Devices of the same model share a line. A
+  is OK only when all of them passed and every test process exited successfully. Devices of the same model share a line. A
   run without tags is recorded exactly as before.
 - A hardware suite reads the port or URL of its device with `hw_port("<SUITE>_HW_PORT")`
   from the same header, never with `getenv()` alone. It falls back to `INDIGO_TEST_PORT`, which

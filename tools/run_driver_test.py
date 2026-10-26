@@ -34,8 +34,8 @@
 # type is the model of the device (from its 'device' record, the device name
 # without one; --type replaces it), the counts are the device's own cases (tagged
 # cases planned, their pass records passed), and the line is OK only when all of
-# them passed. Devices of the same model share one line. A run without tags is
-# recorded exactly as before.
+# them passed and every test process exited successfully. Devices of the same
+# model share one line. A run without tags is recorded exactly as before.
 #
 # Every test writes its results into the file named by INDIGO_TEST_RESULTS (see
 # indigo_test/AGENTS.md), so the recorded counts do not depend on the text a
@@ -102,11 +102,15 @@ run executes 'make test-<driver>-hw' and is recorded under the model of the
 device the suite connected to. A hot-plug run adds the unplug and replug case
 and is recorded under the model followed by ' (hot-plug)'.
 
+--dry-run previews only the final README.md and TEST_SUMMARY.md records.
+Builds and tests still execute, create temporary/build files and, with --hw,
+communicate with hardware.
+
 examples:
   run the simulator tests of a driver and record them
     tools/run_driver_test.py focuser_dsd
 
-  see what would be recorded, without touching any file
+  preview the final records; builds and tests still run and may create files
     tools/run_driver_test.py mount_lx200 --dry-run
 
   run the hardware suite, telling it which port or camera to use; anything
@@ -452,7 +456,7 @@ def main():
 			device_type = args.type or model
 			if hot_plug and not device_type.endswith(HOT_PLUG_SUFFIX):
 				device_type += HOT_PLUG_SUFFIX
-			device_ok = device_planned > 0 and device_passed == device_planned
+			device_ok = not failures and device_planned > 0 and device_passed == device_planned
 			print("%s: %s %d/%d %s" % (driver, device_type, device_planned, device_passed, "OK" if device_ok else "Failed"))
 			lines.append("%s %s %s %s %s %d/%d %s" % (timestamp, driver_version(driver_dir, driver), host_os(), host_architecture(), device_type, device_planned, device_passed, "OK" if device_ok else "Failed"))
 		for line in lines:

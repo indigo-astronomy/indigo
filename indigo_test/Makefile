@@ -167,12 +167,14 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_mount_lx200_simulator \
 	$(INTEGRATION_BUILD)/test_mount_asi_simulator \
 	$(INTEGRATION_BUILD)/test_mount_nexstar_simulator \
+	$(INTEGRATION_BUILD)/test_mount_nexstar_deadline \
 	$(INTEGRATION_BUILD)/test_mount_nexstaraux_simulator \
 	$(INTEGRATION_BUILD)/test_mount_pmc8_simulator \
 	$(INTEGRATION_BUILD)/test_mount_rainbow_simulator \
 	$(INTEGRATION_BUILD)/test_mount_simulator \
 	$(INTEGRATION_BUILD)/test_mount_starbook_simulator \
 	$(INTEGRATION_BUILD)/test_mount_temma_simulator \
+	$(INTEGRATION_BUILD)/test_mount_temma_deadline \
 	$(INTEGRATION_BUILD)/test_polaralign_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_optec_simulator \
@@ -325,7 +327,12 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+test: test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+
+# Driver recording regressions use isolated synthetic processes.
+.PHONY: test-driver-test-recording
+test-driver-test-recording:
+	python3 -B unit/test_driver_test_recording.py
 
 # Browser script regression; requires Node.js with the built-in test runner.
 .PHONY: test-mount-manual-motion
@@ -969,6 +976,9 @@ test-mount-lx200-tcp: $(INTEGRATION_BUILD)/test_mount_lx200_simulator $(INTEGRAT
 $(INTEGRATION_BUILD)/mount_nexstar_simulator: ../indigo_drivers/mount_nexstar/mount_nexstar_simulator/mount_nexstar_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
+$(INTEGRATION_BUILD)/test_mount_nexstar_deadline: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DINDIGO_TEST_MOTION_DEADLINE -DNEXSTAR_PARK_TIMEOUT=1 -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o $@ $< ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c $(TEST_LDFLAGS) ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat
+
 $(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
 
@@ -1065,6 +1075,9 @@ $(TEST_BUILD)/hardware/test_system_alpaca_hw: hardware/test_system_alpaca_hw.c h
 
 $(INTEGRATION_BUILD)/mount_temma_simulator: ../indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
+
+$(INTEGRATION_BUILD)/test_mount_temma_deadline: integration/test_mount_temma_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_temma_simulator ../indigo_drivers/mount_temma/indigo_mount_temma.c ../indigo_drivers/mount_temma/indigo_mount_temma.driver | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DINDIGO_TEST_MOTION_DEADLINE -DTEMMA_SLEW_TIMEOUT=1 -o $@ $< ../indigo_drivers/mount_temma/indigo_mount_temma.c $(TEST_LDFLAGS) -lindigocat
 
 $(INTEGRATION_BUILD)/test_mount_temma_simulator: integration/test_mount_temma_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_temma_simulator $(BUILD_DRIVERS)/indigo_mount_temma.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_TEMMA_SIMULATOR_TEST_LDFLAGS)

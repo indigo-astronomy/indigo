@@ -2,7 +2,7 @@
   "title": "Temma and NexStar motion deadline branches have no regression",
   "category": "quality",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261025211159-e308-fix-audit-findings-batch",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "FND-20261023101753-bc8d-complete-repository-audit-024 added TEMMA_SLEW_TIMEOUT (600 s, GOTO and park, indigo_mount_temma.driver) and NEXSTAR_PARK_TIMEOUT (300 s, indigo_mount_nexstar.driver) without a test, because the simulators cannot shorten the deadline. Next: add an #ifndef override used by the test build (as wheel_asi/wheel_playerone do) and cover expiry, stop and ALERT.",
   "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md Findings and Baseline sections; quality-review.md",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: Temma GOTO/park and NexStar park deadline branches have real stop/ALERT/recovery regressions; default-limit negative controls establish expiry sensitivity.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261025211159-e308-fix-audit-findings-batch-004"
 }

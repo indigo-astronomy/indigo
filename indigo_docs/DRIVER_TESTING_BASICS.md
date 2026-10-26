@@ -236,7 +236,7 @@ The automated suite is POSIX only. It uses `fork()`, pseudo terminals, `nftw()` 
 
 ### Continuous integration
 
-The repository has no active CI test job. There is no `.github/workflows`. The legacy `.travis.yml` builds on Linux, macOS and Windows and calls `indigo_test/test_suite.sh --driver-test`, but that script does not exist in the repository, so the Travis test step is stale. Run the suite locally, or on the hardware host as described in *Driving the Hardware Test Host Over SSH* in [indigo_test/AGENTS.md](../indigo_test/AGENTS.md).
+The repository has no active CI test job. There is no `.github/workflows`. Run the suite locally, or on the hardware host as described in *Driving the Hardware Test Host Over SSH* in [indigo_test/AGENTS.md](../indigo_test/AGENTS.md).
 
 ---
 
@@ -396,7 +396,7 @@ How the generator itself works is in [DRIVER_GENERATOR_BASICS.md](DRIVER_GENERAT
 
 * **Client-detach motion release is exercised on two mount drivers only.** [`test_detach_abort`](#client-detach-motion-release) detaches motion owners on `mount_simulator`, `mount_lx200` (serial simulator) and through `agent_mount`. The other eight generated mount drivers are covered for this path only by compilation and by their own suites, which never detach the owner of a running motion. See [issue 10 in DRIVER_GENERATOR_BASICS.md](DRIVER_GENERATOR_BASICS.md#ki-10).
 * **The simulator test cache tracks one device.** Tests that need to observe two logical devices at once must run separate lifecycles or keep their own cache.
-* **No CI.** `.travis.yml` refers to a non-existent `indigo_test/test_suite.sh`, and no workflow runs `make -C indigo_test test`.
+* **No CI.** No hosted workflow runs `make -C indigo_test test`.
 * **No Windows tests.** The suite depends on POSIX facilities, and nothing exercises drivers on Windows automatically.
 * **Sanitizer coverage is selective and partly arm64-specific.** Only drivers with explicit `_sanitize`/`_asan` rules get it, and several of those rules force `-arch arm64`. Leak checking is limited to the opt-in `test-server-leaks` (Valgrind on `indigo_server` with the simulator drivers); the sanitize builds run with `detect_leaks=0`.
 * **Inconsistent diagnostics switches.** Log level and case filters differ between suites (`INDIGO_TEST_CASE_FILTER`, `INDIGO_TEST_FILTER`, driver-specific `*_TEST_FILTER`, `INDIGO_TEST_DEBUG`, ad hoc `*_DEBUG`).

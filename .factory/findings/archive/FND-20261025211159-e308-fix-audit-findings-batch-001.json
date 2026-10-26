@@ -2,7 +2,7 @@
   "title": "focuser_optec descriptor_cleanup integration case fails on master",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261025211159-e308-fix-audit-findings-batch",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "Integration case descriptor_cleanup in indigo_test/integration/test_focuser_optec_simulator.c:762 fails (open_descriptors() != before) on master e7cbb62a6 in 3 of 3 filtered runs and on the task candidate. Either the driver/simulator leaks a descriptor across the case or the test counts an unrelated descriptor. Next: scoped focuser_optec task to identify the leaked descriptor and fix the driver or the test contract.",
   "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md Findings and Baseline sections; quality-review.md",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: Optec initializes the process-owned USB monitor before exact repeated lifecycle descriptor checks; focused and full suites pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261025211159-e308-fix-audit-findings-batch-001"
 }

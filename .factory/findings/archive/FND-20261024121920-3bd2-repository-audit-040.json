@@ -2,7 +2,7 @@
   "title": "Driver test dry-run documentation promises no file changes",
   "category": "quality",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "tools/run_driver_test.py:109 promises no file changes, while dry-run suppresses only final README/summary records. Build, temporary files and requested simulator/hardware tests still execute. Correct the epilog to describe record preview; keep current execution semantics. Source-confirmed; no driver run performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (ROOT-1). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-040; root-closure-report.md alias ROOT-1; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: Dry-run help explicitly describes builds/tests/temporary-file/hardware side effects and previews only final record writes.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-040"
 }

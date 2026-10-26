@@ -5,15 +5,25 @@
   "blocking": false,
   "evidence": ".travis.yml:54,56; static-inventory-checks.json",
   "summary": "CI invokes indigo_test/test_suite.sh, which is absent, and changes into indigo_windows before invoking a solution that now lives at the repository root. Those commands fail even when compilation otherwise succeeds. Next: coordinator assigns CI command repair to current portable test and solution entry points; validate path resolution without installing dependencies or probing hosted CI.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "tasks": [
     {
       "id": "20261023065605-60d4-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: Owner retired Travis; configuration, badge, Xcode reference and maintained documentation references removed. Historical evidence and generic manual build helpers retained.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023065605-60d4-repository-audit-003"
 }

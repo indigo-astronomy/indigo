@@ -2,7 +2,7 @@
   "title": "mount_ioptron manual motion cases failed once in a full run",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261025211159-e308-fix-audit-findings-batch",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261026181024-758b-fix-test-findings",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "In one full run of mount_ioptron on candidate 9cab0070f, ioptron_manual_motion_8407/0100/0200/0205/0300 failed at test_mount_ioptron_simulator.c:1469 (RA did not change within the wait). A filtered rerun (6/6) and a second full run (137/137) passed. Not reproduced; possibly load-dependent wait. Next: repeat the full suite to characterize, then widen or rework the wait if the driver is not at fault.",
   "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md Findings and Baseline sections; quality-review.md",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026181024-758b-fix-test-findings/findings.md; verification.md: RA movement and stability are signed angular differences; deterministic midnight-crossing setup and actual reverse-motion checks pass all dialects/full suite.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261025211159-e308-fix-audit-findings-batch-003"
 }
