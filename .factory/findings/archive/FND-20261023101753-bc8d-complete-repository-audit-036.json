@@ -1,0 +1,29 @@
+{
+  "title": "Partial SESSION_FEATURES update copies another client's setting",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "`indigo_libs/indigo_session.c:51-67` stores feature values in one shared property. Enumeration writes both fields from the enumerating client, but a change copies only named request items into that shared property and then copies **both** resulting values into the requesting client. For example A has FORCE_ITEM_UPDATES=true; B enumerates with both flags false; A sends only FORCE_PROPERTY_UPDATES=true. A's unmentioned FORCE_ITEM_UPDATES is reset to B's false value. Partial named-item updates are the normal bus contract, and these flags explicitly belong to the requesting client. Remediation: seed the shared response values from the requesting  Full evidence: C-02. Remediation: seed the shared response values from the requesting client under appropriate ownership before applying a partial update, or derive each client field independently from present request items; publish only to that client. Unit regression interleaves two clients' enumeration and one-item updates. No cross-client runtime test was run here.",
+  "evidence": "core-functional-review.md section C-02; exact source and ordinary functional proof retained there.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "core-functional-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: 59c2eac71: SESSION_FEATURES seeded from the requesting client; session_feature_change_keeps_unnamed_feature_of_its_client.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-036"
+}

@@ -1,0 +1,29 @@
+{
+  "title": "Legacy formatted writes use the untruncated length of a fixed buffer",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_io.c:481-490: legacy indigo_printf formats into INDIGO_BUFFER_SIZE but passes vsnprintf's would-have-written length to indigo_write. Output longer than the buffer reads beyond its allocation rather than sending only produced bytes. The supported public helper differs from the correctly grown unified formatter. Next: Reject formatting errors and either grow/reformat or return a length-limit failure; exercise a format beyond the initial buffer in a synthetic local sink.",
+  "evidence": "indigo_io.c:481-490: legacy indigo_printf formats into INDIGO_BUFFER_SIZE but passes vsnprintf's would-have-written length to indigo_write. Output longer than the buffer reads beyond its allocation rather than sending only produced bytes. The supported public helper differs from the correctly grown unified formatter.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: 417f06e0b: legacy indigo_printf rejects format errors and reformats long output; legacy_printf_* regressions.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-016"
+}

@@ -47,7 +47,7 @@ void indigocat_sun_equatorial_coords(double JD, equatorial_coords_s * position) 
 	sol.L += nutation.longitude;
 
 	/* aberration */
-	aberration = (20.4898 / (360 * 60 * 60)) / sol.R;
+	aberration = (20.4898 / (60 * 60)) / sol.R;
 	sol.L -= aberration;
 
 	/* transform to equatorial */

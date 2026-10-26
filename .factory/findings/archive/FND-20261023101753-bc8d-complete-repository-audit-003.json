@@ -1,0 +1,29 @@
+{
+  "title": "HID close falls through into descriptor cleanup",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_uni_io.c:2389-2409: POSIX HID close calls hid_close(copy->hid_device), then continues through socket operations and close(copy->fd). indigo_uni_handle declares fd/hid_device in the same union, so these operations use pointer bits as a descriptor. Usually EBADF; a matching descriptor can be closed spuriously. Current wheel_atik/wheel_sx open via indigo_uni_open_hid. Next: Make HID cleanup mutually exclusive from fd/socket cleanup. Verify synthetic tagged-handle dispatch preserves an unrelated descriptor. Correction to early reviewer message: the aliased fd is not necessarily zero; the public union layout disproves that early detail.",
+  "evidence": "indigo_uni_io.c:2389-2409: POSIX HID close calls hid_close(copy->hid_device), then continues through socket operations and close(copy->fd). indigo_uni_handle declares fd/hid_device in the same union, so these operations use pointer bits as a descriptor. Usually EBADF; a matching descriptor can be closed spuriously. Current wheel_atik/wheel_sx open via indigo_uni_open_hid.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: 417f06e0b: POSIX HID close exclusive from fd/socket cleanup; hid_close_leaves_aliased_descriptor_open.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-003"
+}

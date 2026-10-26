@@ -34,6 +34,13 @@ def compact(lines):
 			ranges.append(dict(startLine=line, endLine=line))
 	return ranges
 
+def property_handler(device, prop):
+	dtype = device['kind']
+	identity = attributes(device).get('id', dtype)
+	base = prop['name'].lower()
+	prefix = '' if identity == dtype and base.startswith(dtype) else identity + '_'
+	return attributes(prop).get('handler', prefix + base + '_handler')
+
 def build_mapping(root, source):
 	nodes = list(walk(root))
 	by_id = {node['id']: node for node in nodes}
@@ -72,7 +79,7 @@ def build_mapping(root, source):
 		while parent in by_id:
 			ancestor = by_id[parent]
 			if ancestor['kind'] in DEVICES:
-				parts.insert(0, ancestor['kind'])
+				parts.insert(0, attributes(ancestor).get('id', ancestor['kind']))
 			elif ancestor['kind'] in PROPERTIES:
 				parts.insert(0, ancestor['name'].upper())
 			elif ancestor['kind'] == 'sdk':
@@ -109,11 +116,14 @@ def build_mapping(root, source):
 	devices = [node for node in root['children'] if node['kind'] in DEVICES]
 	for device in devices:
 		dtype = device['kind']
+		identity = attributes(device).get('id', dtype)
+		device_functions = {identity + suffix for suffix in ('_attach', '_detach', '_enumerate_properties', '_change_property', '_connection_handler', '_timer_callback')}
+		device_functions.update(property_handler(device, prop) for prop in device['children'] if prop['kind'] in PROPERTIES)
 		for first, last, name in functions:
-			if name in {dtype + suffix for suffix in ('_attach', '_detach', '_enumerate_properties', '_change_property', '_connection_handler', '_timer_callback')}:
+			if name in device_functions:
 				mapped[device['id']].update(range(first, last + 1))
 		for number, tokens in tokens_by_line.items():
-			if number not in handwritten and tokens & {dtype, dtype.upper() + '_DEVICE_NAME', dtype + '_template', 'indigo_' + dtype + '_driver'}:
+			if number not in handwritten and tokens & {identity, identity.upper() + '_DEVICE_NAME', identity + '_template', 'indigo_' + dtype + '_driver'}:
 				mapped[device['id']].add(number)
 		for prop in device['children']:
 			if prop['kind'] not in PROPERTIES:
@@ -122,7 +132,7 @@ def build_mapping(root, source):
 			base = prop['name'].upper()
 			handle = attrs.get('handle', base + '_PROPERTY')
 			pointer = attrs.get('pointer', base.lower() + '_property')
-			handler = attrs.get('handler', ('' if base.lower().startswith(dtype) else dtype + '_') + base.lower() + '_handler')
+			handler = property_handler(device, prop)
 			names = {handle, pointer, base + '_PROPERTY_NAME', handler}
 			for item in prop['children']:
 				if item['kind'] != 'item':
@@ -132,14 +142,14 @@ def build_mapping(root, source):
 				names.update(item_names)
 				for number, tokens in tokens_by_line.items():
 					context = function_at.get(number, '')
-					if number not in handwritten and (not context or context.startswith(dtype + '_') or context == handler) and tokens & item_names:
+					if number not in handwritten and (not context or context in device_functions or context == handler) and tokens & item_names:
 						mapped[item['id']].add(number)
 			for first, last, name in functions:
 				if name == handler:
 					mapped[prop['id']].update(range(first, last + 1))
 			for number, tokens in tokens_by_line.items():
 				context = function_at.get(number, '')
-				if number in handwritten or (context and not context.startswith(dtype + '_') and context != handler):
+				if number in handwritten or (context and context not in device_functions and context != handler):
 					continue
 				if not tokens & names:
 					continue

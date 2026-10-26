@@ -2570,6 +2570,25 @@ cleanup:
 	io_close(&fixture);
 }
 
+// HC8406 pulses end only with the :Q<d># stop the finalizer sends. A stop that cannot be sent, here because the
+// controller is gone, leaves the axis moving, so the pulse ends with ALERT instead of OK.
+static void ioptron_guider_failed_hc8406_stop_alerts(void) {
+	io_fixture fixture = { 0 };
+	external_serial_simulator *simulator = &fixture.simulator;
+	SERIAL_CHECK_TRUE(io_open_guider(&fixture, "8406", NULL));
+	uint_fast64_t completed = atomic_load(guide_completed + 1);
+	uint_fast64_t alerted = atomic_load(guide_alerted + 1);
+	SERIAL_CHECK_TRUE(guide(GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 1000, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(simulator, "Mn", 0));
+	stop_external_serial_simulator(simulator);
+	SERIAL_CHECK_TRUE(wait_guide_alerted(1, alerted));
+	SERIAL_CHECK_TRUE(atomic_load(guide_completed + 1) == completed);
+	SERIAL_CHECK_TRUE(wait_for_connection_lost());
+	fixture.guider = false;
+cleanup:
+	io_close(&fixture);
+}
+
 // The guide rate is one controller setting: a change through the mount shows on the guider and the other
 // way round.
 static void ioptron_guide_rate_shared_by_mount_and_guider(void) {
@@ -2975,6 +2994,7 @@ int main(int argc, char **argv) {
 		{ "ioptron_guider_altaz_mount_rejects_pulses", ioptron_guider_altaz_mount_rejects_pulses },
 		{ "ioptron_guider_disconnect_cancels_pulse_and_reconnects", ioptron_guider_disconnect_cancels_pulse_and_reconnects },
 		{ "ioptron_guider_disconnect_stops_hc8406_pulse", ioptron_guider_disconnect_stops_hc8406_pulse },
+		{ "ioptron_guider_failed_hc8406_stop_alerts", ioptron_guider_failed_hc8406_stop_alerts },
 		{ "ioptron_guide_rate_shared_by_mount_and_guider", ioptron_guide_rate_shared_by_mount_and_guider },
 		{ "ioptron_motion_released_when_client_detaches", ioptron_motion_released_when_client_detaches },
 		{ "ioptron_shutdown_refused_while_connected", ioptron_shutdown_refused_while_connected },

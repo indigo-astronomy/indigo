@@ -31,16 +31,45 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <zlib.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <errno.h>
 #endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
+#include <indigo/indigo_io.h>
 
 #include "../test_runner.h"
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+// Occupying a loopback UDP port exercises discovery cleanup without receiving traffic.
+static void passive_discovery_bind_failure_closes_socket(void) {
+	int occupied = socket(AF_INET, SOCK_DGRAM, 0);
+	ASSERT_TRUE(occupied >= 0);
+	struct sockaddr_in address = { .sin_family = AF_INET, .sin_addr.s_addr = htonl(INADDR_LOOPBACK) };
+	ASSERT_EQ_INT(0, bind(occupied, (struct sockaddr *)&address, sizeof(address)));
+	socklen_t length = sizeof(address);
+	ASSERT_EQ_INT(0, getsockname(occupied, (struct sockaddr *)&address, &length));
+	bool all_closed = true;
+	bool all_failed = true;
+	for (int i = 0; i < 16; i++) {
+		int next = dup(occupied);
+		ASSERT_TRUE(next >= 0);
+		close(next);
+		all_failed &= !indigo_perform_passive_discovery(ntohs(address.sin_port), 1, NULL, 0, NULL, 0);
+		errno = 0;
+		bool closed = fcntl(next, F_GETFD) == -1 && errno == EBADF;
+		all_closed &= closed;
+		if (!closed) {
+			close(next);
+		}
+	}
+	close(occupied);
+	ASSERT_TRUE(all_failed);
+	ASSERT_TRUE(all_closed);
+}
+
 static const char *serial_exclusive_test_port;
 
 static void serial_port_open_is_exclusive(void) {
@@ -574,18 +603,174 @@ static void standard_stream_handles_have_file_descriptors(void) {
 	}
 }
 
+// Deterministic incompressible bytes: deflate stores them, so the gzip stream is larger than the input.
+static void fill_incompressible(char *buffer, unsigned size) {
+	unsigned state = 0x12345678;
+	for (unsigned i = 0; i < size; i++) {
+		state = state * 1103515245 + 12345;
+		buffer[i] = (char)(state >> 24);
+	}
+}
+
+static bool gunzip_matches(const unsigned char *stream, unsigned stream_size, const char *expected, unsigned expected_size) {
+	unsigned char *output = malloc(expected_size + 1);
+	z_stream inflater = { 0 };
+	if (output == NULL || inflateInit2(&inflater, MAX_WBITS + 16) != Z_OK) {
+		free(output);
+		return false;
+	}
+	inflater.next_in = (Bytef *)stream;
+	inflater.avail_in = stream_size;
+	inflater.next_out = output;
+	inflater.avail_out = expected_size + 1;
+	int result = inflate(&inflater, Z_FINISH);
+	bool matches = result == Z_STREAM_END && inflater.avail_in == 0 && inflater.total_out == expected_size && memcmp(output, expected, expected_size) == 0;
+	inflateEnd(&inflater);
+	free(output);
+	return matches;
+}
+
+static void compress_rejects_output_buffer_too_small(void) {
+	char input[32];
+	unsigned char output[32];
+	for (int i = 0; i < 32; i++) {
+		input[i] = (char)i;
+	}
+	unsigned size = sizeof(output);
+	indigo_uni_compress("image", input, sizeof(input), output, &size);
+	ASSERT_EQ_INT(0, size);
+	char large[70000];
+	fill_incompressible(large, sizeof(large));
+	unsigned char *large_output = malloc(sizeof(large));
+	ASSERT_TRUE(large_output != NULL);
+	size = sizeof(large);
+	indigo_uni_compress("image", large, sizeof(large), large_output, &size);
+	ASSERT_EQ_INT(0, size);
+	free(large_output);
+}
+
+static void compress_incompressible_payload_round_trips(void) {
+	unsigned sizes[] = { 1, 32, 16384, 70000, 300000 };
+	for (int i = 0; i < (int)(sizeof(sizes) / sizeof(sizes[0])); i++) {
+		unsigned input_size = sizes[i];
+		char *input = malloc(input_size);
+		// the capacity used by the HTTP BLOB download
+		unsigned capacity = input_size + input_size / 1000 + 64;
+		unsigned char *output = malloc(capacity);
+		ASSERT_TRUE(input != NULL && output != NULL);
+		fill_incompressible(input, input_size);
+		unsigned size = capacity;
+		indigo_uni_compress("image", input, input_size, output, &size);
+		ASSERT_TRUE(size > 0);
+		ASSERT_TRUE(size <= capacity);
+		ASSERT_TRUE(gunzip_matches(output, size, input, input_size));
+		free(input);
+		free(output);
+	}
+}
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+// hid_device shares a union with fd: a HID handle without a device aliases descriptor 0, which the close of the
+// HID handle went on to shut down and close
+static void hid_close_leaves_aliased_descriptor_open(void) {
+	int saved = dup(0);
+	int null_fd = open("/dev/null", O_RDONLY);
+	ASSERT_TRUE(null_fd >= 0);
+	ASSERT_TRUE(dup2(null_fd, 0) == 0);
+	close(null_fd);
+	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+	memset(handle, 0, sizeof(*handle));
+	handle->type = INDIGO_HID_HANDLE;
+	handle->hid_device = NULL;
+	int aliased_fd = handle->fd;
+	indigo_uni_close(&handle);
+	bool still_open = fcntl(0, F_GETFD) != -1;
+	if (saved >= 0) {
+		dup2(saved, 0);
+		close(saved);
+	} else {
+		close(0);
+	}
+	ASSERT_EQ_INT(0, aliased_fd);
+	ASSERT_TRUE(handle == NULL);
+	ASSERT_TRUE(still_open);
+}
+
+static int open_unlinked_temporary_file(void) {
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s/indigo_test_printf.XXXXXX", getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp");
+	int fd = mkstemp(path);
+	if (fd >= 0) {
+		unlink(path);
+	}
+	return fd;
+}
+
+// The legacy formatter passed the full vsnprintf() length to indigo_write() even when the output did not fit its
+// buffer, so it sent bytes from beyond the buffer instead of the end of the output
+static void legacy_printf_sends_output_longer_than_its_buffer(void) {
+	int fd = open_unlinked_temporary_file();
+	ASSERT_TRUE(fd >= 0);
+	size_t size = INDIGO_BUFFER_SIZE + 100;
+	char *text = malloc(size + 1);
+	char *read_back = malloc(size + 16);
+	bool ok = text != NULL && read_back != NULL;
+	if (ok) {
+		for (size_t i = 0; i < size; i++) {
+			text[i] = 'a' + (char)(i % 26);
+		}
+		text[size] = '\0';
+		ok = indigo_printf(fd, "%s|%d", text, 42);
+	}
+	long total = 0;
+	if (ok) {
+		lseek(fd, 0, SEEK_SET);
+		long count;
+		while ((count = read(fd, read_back + total, size + 16 - total)) > 0) {
+			total += count;
+		}
+	}
+	bool same = ok && total == (long)size + 3 && !memcmp(read_back, text, size) && !memcmp(read_back + size, "|42", 3);
+	close(fd);
+	free(text);
+	free(read_back);
+	ASSERT_TRUE(ok);
+	ASSERT_EQ_INT((int)size + 3, (int)total);
+	ASSERT_TRUE(same);
+}
+
+static void legacy_printf_sends_short_output_unchanged(void) {
+	int fd = open_unlinked_temporary_file();
+	ASSERT_TRUE(fd >= 0);
+	bool ok = indigo_printf(fd, ":%s%03d#", "GR", 7) && indigo_printf(fd, "plain");
+	char buffer[32] = { 0 };
+	lseek(fd, 0, SEEK_SET);
+	long count = read(fd, buffer, sizeof(buffer) - 1);
+	close(fd);
+	ASSERT_TRUE(ok);
+	ASSERT_EQ_INT(12, (int)count);
+	ASSERT_STREQ(":GR007#plain", buffer);
+}
+#endif
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "standard_stream_handles_have_file_descriptors", standard_stream_handles_have_file_descriptors },
+		{ "compress_rejects_output_buffer_too_small", compress_rejects_output_buffer_too_small },
+		{ "compress_incompressible_payload_round_trips", compress_incompressible_payload_round_trips },
 		{ "read_section_accepts_null_ignore_list", read_section_accepts_null_ignore_list },
 		{ "read_section_accepts_null_terminator_list", read_section_accepts_null_terminator_list },
 		{ "read_section_still_ignores_and_terminates", read_section_still_ignores_and_terminates },
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		{ "passive_discovery_bind_failure_closes_socket", passive_discovery_bind_failure_closes_socket },
 		{ "serial_open_reports_open_error", serial_open_reports_open_error },
 		{ "serial_open_reports_configuration_error", serial_open_reports_configuration_error },
 		{ "serial_open_reports_not_a_serial_port", serial_open_reports_not_a_serial_port },
 		{ "serial_open_clears_error_on_success", serial_open_clears_error_on_success },
 		{ "serial_port_reopens_after_close", serial_port_reopens_after_close },
+		{ "hid_close_leaves_aliased_descriptor_open", hid_close_leaves_aliased_descriptor_open },
+		{ "legacy_printf_sends_output_longer_than_its_buffer", legacy_printf_sends_output_longer_than_its_buffer },
+		{ "legacy_printf_sends_short_output_unchanged", legacy_printf_sends_short_output_unchanged },
 #endif
 		{ "wait_for_data_continues_after_signal", wait_for_data_continues_after_signal },
 		{ "wait_for_data_keeps_timeout_after_signal", wait_for_data_keeps_timeout_after_signal },

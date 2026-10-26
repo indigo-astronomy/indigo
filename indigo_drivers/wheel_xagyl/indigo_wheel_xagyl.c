@@ -32,11 +32,19 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_wheel_xagyl"
 #define DRIVER_LABEL         "Xagyl Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Xagyl Filter Wheel"
 #define PRIVATE_DATA         ((xagyl_private_data *)device->private_data)
+
+//+ define
+
+// The wheel turns between any two of its slots in a few seconds; 20 s bounds a move generously
+// while a wheel that keeps reporting another slot is still stopped.
+#define XAGYL_MOVE_TIMEOUT   20.0
+
+//- define
 
 #pragma mark - Private data definition
 
@@ -44,6 +52,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
 	int slot;
+	double move_deadline;
 	//- data
 } xagyl_private_data;
 
@@ -74,12 +83,18 @@ static bool xagyl_open(indigo_device *device, const char **error_message) {
 				if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1) > 0) {
 					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
 					if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
-						indigo_update_property(device, INFO_PROPERTY, NULL);
-						WHEEL_SLOT_ITEM->number.min = 1;
-						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
-						if (xagyl_query(device)) {
-							WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->slot;
-							return true;
+						// The slot properties cannot hold more items than they were allocated with.
+						if (PRIVATE_DATA->slot < 1 || PRIVATE_DATA->slot > WHEEL_SLOT_NAME_PROPERTY->allocated_count || PRIVATE_DATA->slot > WHEEL_SLOT_OFFSET_PROPERTY->allocated_count) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid filter count %d", PRIVATE_DATA->slot);
+							*error_message = "The wheel reports an invalid filter count";
+						} else {
+							indigo_update_property(device, INFO_PROPERTY, NULL);
+							WHEEL_SLOT_ITEM->number.min = 1;
+							WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
+							if (xagyl_query(device)) {
+								WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->slot;
+								return true;
+							}
 						}
 					}
 				}
@@ -107,11 +122,14 @@ static void xagyl_close(indigo_device *device) {
 
 static void wheel_move_finalizer(indigo_device *device) {
 	if (xagyl_query(device)) {
-		if (PRIVATE_DATA->slot != WHEEL_SLOT_ITEM->number.target) {
+		if (PRIVATE_DATA->slot == WHEEL_SLOT_ITEM->number.target) {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
+			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+		} else if (indigo_monotonic_time() < PRIVATE_DATA->move_deadline) {
 			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		} else {
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, "Filter wheel did not reach slot %d in %.0f s", (int)WHEEL_SLOT_ITEM->number.target, XAGYL_MOVE_TIMEOUT);
 		}
 	} else {
 		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -164,6 +182,7 @@ static void wheel_slot_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else  if (xagyl_goto(device, slot)) {
 		WHEEL_SLOT_ITEM->number.value = 0;
+		PRIVATE_DATA->move_deadline = indigo_monotonic_time() + XAGYL_MOVE_TIMEOUT;
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 	} else {
 		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);

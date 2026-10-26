@@ -48,6 +48,31 @@
 // longest key that fits next to the 36-byte GUID and the NUL in the server's 256-byte buffer
 #define LONGEST_ACCEPTED_KEY	219
 
+// Exercise unsigned byte assembly in complete SHA-1 blocks and the final partial block.
+extern void sha1(unsigned char hash[20], const void *data, size_t size);
+
+static void sha1_binary_blocks_and_tail(void) {
+	unsigned char data[127];
+	for (size_t i = 0; i < sizeof(data); i++) {
+		data[i] = (unsigned char)(0x80 + i);
+	}
+	// Expected digests were independently generated with Python hashlib.sha1.
+	const struct { size_t size; const char *hex; } vectors[] = {
+		{ 64, "9c7aa2b11f270998a63b1b1795cff3890a4eb56f" },
+		{ 65, "66bead7b6368ad41c72bf351dbc28969b6169a21" },
+		{ 127, "8238481a2447ff5439059b1da7746c12aa0028ad" },
+	};
+	for (size_t i = 0; i < sizeof(vectors) / sizeof(vectors[0]); i++) {
+		unsigned char digest[20];
+		char hex[41];
+		sha1(digest, data, vectors[i].size);
+		for (size_t j = 0; j < sizeof(digest); j++) {
+			snprintf(hex + 2 * j, 3, "%02x", digest[j]);
+		}
+		ASSERT_STREQ(vectors[i].hex, hex);
+	}
+}
+
 static atomic_int server_client_count;
 static atomic_bool server_listening;
 static atomic_bool server_finished;
@@ -216,6 +241,7 @@ int main(void) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "sha1_binary_blocks_and_tail", sha1_binary_blocks_and_tail },
 		{ "rfc6455_sample_key_upgrades_with_derived_accept", rfc6455_sample_key_upgrades_with_derived_accept },
 		{ "longest_fitting_key_still_upgrades", longest_fitting_key_still_upgrades },
 		{ "key_one_byte_too_long_is_refused", key_one_byte_too_long_is_refused },

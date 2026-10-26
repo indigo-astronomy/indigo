@@ -23,7 +23,7 @@ driver lakeside {
 	label = "LakesideAstro Focuser";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	serial;
 	include {
 		#include <ctype.h>
@@ -220,6 +220,13 @@ driver lakeside {
 			if (position != PRIVATE_DATA->last_position) {
 				PRIVATE_DATA->last_position = position;
 				PRIVATE_DATA->stalled = 0;
+			} else if (++PRIVATE_DATA->stalled >= 40) {
+				// A motor that keeps reporting the same position without DONE has stalled as well.
+				lakeside_command(device, false, "CH#");
+				PRIVATE_DATA->active = false;
+				PRIVATE_DATA->uncertain = true;
+				lakeside_motion_state(device, INDIGO_ALERT_STATE);
+				return;
 			}
 			lakeside_motion_state(device, INDIGO_BUSY_STATE);
 			indigo_execute_handler(device, motion_finalizer);

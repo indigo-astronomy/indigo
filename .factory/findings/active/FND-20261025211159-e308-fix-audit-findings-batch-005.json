@@ -1,0 +1,19 @@
+{
+  "title": "Lakeside stall bound assumes a report cadence",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "focuser_lakeside now ends a move with CH# and ALERT after 40 consecutive identical P<n> reports without DONE (indigo_focuser_lakeside.driver:223-229). The real controller report cadence during slow motion or backlash takeup is not established, so a healthy slow move might be stopped. Next: confirm on hardware or bound the stall by monotonic time instead of report count.",
+  "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md Findings and Baseline sections; quality-review.md",
+  "resolution": null,
+  "id": "FND-20261025211159-e308-fix-audit-findings-batch-005"
+}

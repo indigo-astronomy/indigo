@@ -671,6 +671,32 @@ static void slot_workflows(void) {
 	ASSERT_NEAR(2, slot_value(0), 0);
 }
 
+// The test build shortens PW_MOVE_TIMEOUT to 3 s. An ordinary move that keeps reporting
+// PW_ERROR_IS_MOVING ends ALERT after the deadline with the last measured slot, polling stops, and
+// the next move is accepted.
+static void endless_move_ends_at_the_deadline(void) {
+	ASSERT_TRUE(connect_wheel(0, true));
+	ASSERT_NEAR(1, slot_value(0), 0);
+	double started = indigo_monotonic_time();
+	ASSERT_TRUE(set_slot(0, 3));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 1));
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	double elapsed = indigo_monotonic_time() - started;
+	printf("endless move ended ALERT after %.1f s\n", elapsed);
+	ASSERT_TRUE(elapsed >= 2.5);
+	ASSERT_NEAR(1, slot_value(0), 0);
+	int reads = atomic_load(&wheels[0].reads);
+	indigo_usleep(1200000);
+	ASSERT_EQ_INT(reads, atomic_load(&wheels[0].reads));
+	atomic_store(&wheels[0].position, 2);
+	atomic_store(&wheels[0].moving, false);
+	ASSERT_TRUE(set_slot(0, 3));
+	ASSERT_TRUE(wait_count(&wheels[0].moves, 2));
+	atomic_store(&wheels[0].moving, false);
+	ASSERT_TRUE(wait_state(0, WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_NEAR(3, slot_value(0), 0);
+}
+
 static void reset_workflows(void) {
 	ASSERT_TRUE(connect_wheel(0, true));
 	ASSERT_TRUE(set_switch(0, RESET_PROPERTY, "RESET", false));
@@ -946,6 +972,7 @@ int main(void) {
 		{ "slot metadata capacity and filter-name boundaries", slot_metadata_and_limits },
 		{ "initial positioning, timeout and reconnect", initial_positioning },
 		{ "slot boundaries, BUSY guard and SDK failures", slot_workflows },
+		{ "endless ordinary move ends at the deadline", endless_move_ends_at_the_deadline },
 		{ "reset no-op, busy rejection, failure and disconnect", reset_workflows },
 		{ "suffix boundaries, failures, reconnect and replug", suffix_workflows },
 		{ "five wheels, reversed enumeration, capacity and unplug", hotplug_and_identity },

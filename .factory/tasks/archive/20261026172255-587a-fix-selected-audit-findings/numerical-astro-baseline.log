@@ -1,0 +1,6 @@
+indigo_test/unit/test_indigocat_corrections.c:36: expected -0.00386754090585, got -0.00386754103019, tolerance 1e-14
+indigo_test/unit/test_indigocat_corrections.c:54: expected 281.277735697, got 281.283988784, tolerance 1e-10
+Running indigocat correction regressions
+  FAIL nutation_does_not_retain_previous_date_accumulators
+  FAIL sun_aberration_uses_degrees_at_reference_epochs
+indigocat correction regressions: 2 test(s) failed

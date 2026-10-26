@@ -1727,6 +1727,43 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// A park whose axis reports its speed but never moves is stopped (ESPt3) and fails within the time
+// the distance allows, the mount left unparked with the real position; the next park succeeds.
+static void pmc8_mount_fails_a_stalled_park(void) {
+	external_serial_simulator simulator = { 0 };
+	bool parked = true;
+
+	SERIAL_CHECK_TRUE(start_mount_at_site(&simulator, NULL));
+	SERIAL_CHECK_TRUE(sync_to(-5, 80));
+	SERIAL_CHECK_TRUE(axis_fault(&simulator, "@stall", 1));
+	int stops = event_count(&simulator, "ESPt300000!");
+	double requested = indigo_monotonic_time();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	// One hour of hour angle and ten degrees of declination allow about 8 s of travel plus 10 s.
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, 35));
+	double abandoned = indigo_monotonic_time() - requested;
+	printf("    the stalled park was abandoned after %.1f s\n", abandoned);
+	SERIAL_CHECK_TRUE(abandoned > 15 && abandoned < 25);
+	SERIAL_CHECK_EQ_INT(stops + 1, event_count(&simulator, "ESPt300000!"));
+	SERIAL_CHECK_TRUE(cached_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, &parked));
+	SERIAL_CHECK_TRUE(!parked);
+	SERIAL_CHECK_TRUE(fresh_coordinates());
+	SERIAL_CHECK_TRUE(fabs(cached_number(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 80) < 0.001);
+	SERIAL_CHECK_TRUE(axis_fault(&simulator, "@normal", 1));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, pmc8_mount.device_name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_BUSY_STATE, 5));
+	SERIAL_CHECK_TRUE(wait_for_state_within(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE, 30));
+	SERIAL_CHECK_TRUE(cached_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, &parked));
+	SERIAL_CHECK_TRUE(parked);
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&pmc8_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 // Tracking: every rate on the wire in the units of the model, the direction of the drive by the
 // hemisphere, RA drifting with the sky while the drive is off and holding while it runs, and a GOTO
 // resuming the selected rate.
@@ -2192,6 +2229,7 @@ int main(void) {
 		{ "pmc8_mount_aborts_a_running_slew", pmc8_mount_aborts_a_running_slew },
 		{ "pmc8_mount_parks_and_unparks", pmc8_mount_parks_and_unparks },
 		{ "pmc8_mount_aborts_a_park", pmc8_mount_aborts_a_park },
+		{ "pmc8_mount_fails_a_stalled_park", pmc8_mount_fails_a_stalled_park },
 		{ "pmc8_mount_moves_in_the_requested_directions", pmc8_mount_moves_in_the_requested_directions },
 		{ "pmc8_mount_keeps_its_position_across_a_controller_reboot", pmc8_mount_keeps_its_position_across_a_controller_reboot },
 		{ "pmc8_guider_guides_in_the_requested_directions", pmc8_guider_guides_in_the_requested_directions },

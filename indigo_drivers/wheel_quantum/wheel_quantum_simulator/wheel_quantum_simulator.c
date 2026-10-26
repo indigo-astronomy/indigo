@@ -42,6 +42,7 @@ typedef struct {
 	const char *ready_file;
 	const char *serial_number;
 	int slots;
+	bool stuck;
 } simulator_options;
 
 static simulator_options options = {
@@ -49,18 +50,20 @@ static simulator_options options = {
 	.trace = true,
 	.ready_file = NULL,
 	.serial_number = "123456",
-	.slots = 7
+	.slots = 7,
+	.stuck = false
 };
 
 static const char *simulator_name = "wheel_quantum";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
 static int current_filter = 0;
+static bool stuck_move_pending = false;
 
 // ----------------------------------------------------------------- runtime
 
 static void usage(const char *name) {
-	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--serial <text>] [--slots <count>]\n", name);
+	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--serial <text>] [--slots <count>] [--stuck]\n", name);
 }
 
 static bool parse_int(const char *text, int min, int max, int *value) {
@@ -86,6 +89,8 @@ static bool parse_args(int argc, char *argv[]) {
 			options.ready_file = argv[++i];
 		} else if (!strcmp(argv[i], "--serial") && i + 1 < argc) {
 			options.serial_number = argv[++i];
+		} else if (!strcmp(argv[i], "--stuck")) {
+			options.stuck = true;
 		} else if (!strcmp(argv[i], "--slots") && i + 1 < argc) {
 			if (!parse_int(argv[++i], 1, 10, &options.slots)) {
 				return false;
@@ -120,6 +125,11 @@ static bool move_to_filter(int fd, int target_filter) {
 	if (target_filter < 0 || target_filter >= options.slots) {
 		return write_position(fd);
 	}
+	if (options.stuck && current_filter != target_filter) {
+		// A jammed wheel keeps streaming its unchanged position and never reaches the target.
+		stuck_move_pending = true;
+		return write_position(fd);
+	}
 	while (current_filter != target_filter) {
 		if (!write_position(fd)) {
 			return false;
@@ -136,6 +146,7 @@ static bool move_to_filter(int fd, int target_filter) {
 static bool dispatch_command(int fd, const char *command) {
 	char response[64];
 	serial_simulator_trace_line(options.trace, ">", command);
+	stuck_move_pending = false;
 
 	if (!strcmp(command, "SN")) {
 		snprintf(response, sizeof(response), "SN%s\n", options.serial_number);
@@ -190,6 +201,7 @@ static int read_command(int fd, char *command, size_t command_size) {
 int main(int argc, char *argv[]) {
 	char port[128];
 	char command[64];
+	int stuck_ticks = 0;
 
 	if (!parse_args(argc, argv)) {
 		usage(argv[0]);
@@ -222,6 +234,12 @@ int main(int argc, char *argv[]) {
 		}
 		if (read_result == 0) {
 			usleep(1000);
+			if (stuck_move_pending && ++stuck_ticks >= 100) {
+				stuck_ticks = 0;
+				if (!write_position(serial_fd)) {
+					break;
+				}
+			}
 			continue;
 		}
 		if (!dispatch_command(serial_fd, command)) {

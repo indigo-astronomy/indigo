@@ -1,0 +1,29 @@
+{
+  "title": "Falcon direction setter accepts failed/mismatched acknowledgements",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "`rotator_falcon/indigo_rotator_falcon.driver:222` tests `!falcon_command(...) && !strncmp(response, \"FN:\", 3)`. A transport-successful reply `ERR` makes the first operand false and never sets ALERT. A failed command with a different/empty reply also makes the prefix operand false. The generated prologue therefore publishes the requested reversal OK even when its acknowledgement is invalid or absent. `driver-b-evidence/falcon-direction-truth-table.json` records the exact Boolean truth table, not a hardware test. Remediation: require transport success AND valid acknowledgement (failure OR invalid prefix), preserve/read back prior direction on failure, and regress success/refusal/timeout/stale reply combinations. Keep changes in the .driver and regenerate without changing generator semantics.",
+  "evidence": "driver-b-review.md section B-06; exact current source paths and contract evidence in that section.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-b-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: rotator_falcon 4ac99e0ec (v13): transport success and exact FN: echo required, flag restored on failure; refused_direction_change_keeps_the_flag; 14/14.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-028"
+}

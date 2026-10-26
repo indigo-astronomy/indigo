@@ -26,7 +26,7 @@ driver upb {
 	label = "PegasusAstro Ultimate Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 38;
+	version = 39;
 	serial {
 		pattern {
 			product = "UPB";
@@ -47,6 +47,7 @@ driver upb {
 		bool usb_ports[6];
 		bool hub;
 		bool automatic_dew;
+		bool focuser_moving;
 	}
 	code {
 		static void focuser_position_handler(indigo_device *device);
@@ -1246,12 +1247,20 @@ driver upb {
 			}
 			if (upb_command(device, "SI")) {
 				if (PRIVATE_DATA->response[0] == '0') {
-					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-						update = true;
+					// A BUSY request whose handler has not sent its move yet is queued behind this poll, the
+					// handler publishes it; only a move the box was given or reported ends here.
+					indigo_property_state position_state = FOCUSER_POSITION_PROPERTY->state;
+					bool pending = !PRIVATE_DATA->focuser_moving && (position_state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE);
+					if (!pending) {
+						PRIVATE_DATA->focuser_moving = false;
+						if (position_state != INDIGO_OK_STATE) {
+							FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+							FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+							update = true;
+						}
 					}
 				} else {
+					PRIVATE_DATA->focuser_moving = true;
 					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1266,12 +1275,14 @@ driver upb {
 			indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 		}
 		on_connect {
+			PRIVATE_DATA->focuser_moving = false;
 			if (upb_command(device, "SA")) {
 				char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				if (token) { // Stepper position
 					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atol(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Motor is running
+					PRIVATE_DATA->focuser_moving = *token == '1';
 					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Motor Invert
@@ -1344,6 +1355,7 @@ driver upb {
 					}
 				}
 				if (upb_command(device, "SG:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1))) {
+					PRIVATE_DATA->focuser_moving = true;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				} else {
@@ -1386,6 +1398,7 @@ driver upb {
 					}
 					FOCUSER_POSITION_ITEM->number.target = position;
 					if (upb_command(device, "SM:%d", position)) {
+						PRIVATE_DATA->focuser_moving = true;
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					} else {
@@ -1406,14 +1419,14 @@ driver upb {
 					indigo_cancel_pending_handler(device, focuser_position_handler);
 					indigo_cancel_pending_handler(device, focuser_steps_handler);
 					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-					if (upb_command(device, "SH")) {
-						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-						indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-					} else {
+					if (!upb_command(device, "SH")) {
 						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
+					// The cancelled request may never have reached the box, so the poll would leave it BUSY forever.
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				}
 			}
 		}

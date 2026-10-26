@@ -20,7 +20,10 @@
 
 #include <math.h>
 
+#include <time.h>
+
 #include <indigo/indigo_align.h>
+#include <indigo/indigocat/indigocat_precession.h>
 
 #include "../test_runner.h"
 
@@ -162,8 +165,63 @@ static void polar_alignment_recalculation_follows_the_polar_error(void) {
 	}
 }
 
+/* Longitude runs clockwise from the x axis, the inverse of indigo_spherical_to_cartesian(). */
+static void cartesian_axes_convert_to_their_own_direction(void) {
+	const double cases[][5] = {
+		{ 1, 0, 0, 0, 0 },
+		{ -1, 0, 0, M_PI, 0 },
+		{ 0, 1, 0, 3 * M_PI / 2, 0 },
+		{ 0, -1, 0, M_PI / 2, 0 },
+		{ 0, 0, 1, 0, M_PI / 2 },
+		{ 0, 0, -1, 0, -M_PI / 2 },
+		{ -0.5, 0, 0.8660254037844386, M_PI, M_PI / 3 },
+		{ -0.5, 0, -0.8660254037844386, M_PI, -M_PI / 3 },
+		/* rounding can push a unit vector slightly past length 1, where acos(z) returned NaN */
+		{ 1e-9, 0, 1 + 1e-15, 0, M_PI / 2 - 1e-9 },
+		{ 1e-9, 0, -1 - 1e-15, 0, -M_PI / 2 + 1e-9 }
+	};
+	for (int i = 0; i < (int)(sizeof(cases) / sizeof(cases[0])); i++) {
+		indigo_cartesian_point_t cpoint = { cases[i][0], cases[i][1], cases[i][2] };
+		indigo_spherical_point_t spoint = indigo_cartesian_to_spherical(&cpoint);
+		ASSERT_NEAR(cases[i][3], spoint.a, 1e-12);
+		ASSERT_NEAR(cases[i][4], spoint.d, 1e-12);
+		ASSERT_NEAR(1, spoint.r, 0);
+	}
+}
+
+static void cartesian_conversion_round_trips_spherical_points(void) {
+	const double points[][2] = { { 0, 0 }, { M_PI, 0 }, { M_PI / 2, 0 }, { 3 * M_PI / 2, 0 }, { M_PI, 1.2 }, { M_PI, -1.2 }, { 0.3, -0.7 }, { 4.0, 1.5 } };
+	for (int i = 0; i < (int)(sizeof(points) / sizeof(points[0])); i++) {
+		indigo_spherical_point_t position = { points[i][0], points[i][1], 1 };
+		indigo_cartesian_point_t cpoint = indigo_spherical_to_cartesian(&position);
+		indigo_spherical_point_t back = indigo_cartesian_to_spherical(&cpoint);
+		ASSERT_NEAR(0, indigo_gc_distance_spherical(&position, &back), 1e-7);
+		ASSERT_NEAR(points[i][1], back.d, 1e-12);
+	}
+}
+
+/* The proper motion was applied only when both of its components were nonzero. */
+static void proper_motion_in_one_axis_is_applied(void) {
+	const double ra0 = 6, dec0 = 20;
+	const double motions[][2] = { { 100000, 0 }, { 0, 100000 }, { 100000, -50000 }, { 0, 0 } };
+	for (int i = 0; i < (int)(sizeof(motions) / sizeof(motions[0])); i++) {
+		double now = 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
+		equatorial_coords_s coordinates = { ra0 * 15 * DEG2RAD, dec0 * DEG2RAD };
+		coordinates = indigocat_apply_proper_motion(&coordinates, motions[i][0], motions[i][1], 2000.0, now);
+		coordinates = indigocat_precess(&coordinates, 2000.0, now);
+		double ra = ra0, dec = dec0;
+		indigocat_j2k_to_jnow_pm(&ra, &dec, motions[i][0], motions[i][1]);
+		/* a second between the two computations moves the position by far less than this */
+		ASSERT_NEAR(coordinates.ra * RAD2DEG / 15, ra, 1e-6);
+		ASSERT_NEAR(coordinates.dec * RAD2DEG, dec, 1e-5);
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "cartesian_axes_convert_to_their_own_direction", cartesian_axes_convert_to_their_own_direction },
+		{ "cartesian_conversion_round_trips_spherical_points", cartesian_conversion_round_trips_spherical_points },
+		{ "proper_motion_in_one_axis_is_applied", proper_motion_in_one_axis_is_applied },
 		{ "polar_error_correction_inverts_its_application", polar_error_correction_inverts_its_application },
 		{ "polar_alignment_recalculation_follows_the_polar_error", polar_alignment_recalculation_follows_the_polar_error },
 		{ "parallactic_angle_matches_reference_values", parallactic_angle_matches_reference_values },

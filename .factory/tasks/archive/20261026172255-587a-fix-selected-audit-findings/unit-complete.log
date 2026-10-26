@@ -1,0 +1,829 @@
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_system_alpaca_json unit/test_system_alpaca_json.c /private/tmp/indigo-selected-audit-fixes/build/drivers/indigo_system_alpaca.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_raw_image unit/test_raw_image.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_raw_to_fits unit/test_raw_to_fits.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_recording_io unit/test_recording_io.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DIOServiceMatching=usb_test_IOServiceMatching -DIOServiceGetMatchingServices=usb_test_IOServiceGetMatchingServices -DIOIteratorNext=usb_test_IOIteratorNext -DIOObjectRelease=usb_test_IOObjectRelease -DIORegistryEntryCreateIterator=usb_test_IORegistryEntryCreateIterator -DIORegistryEntryCreateCFProperty=usb_test_IORegistryEntryCreateCFProperty -DCFRelease=usb_test_CFRelease -c ../indigo_libs/indigo_usbserial_utils.c -o build/unit/usbserial_enumeration_macos.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include unit/test_service_discovery.c -o build/unit/test_service_discovery -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_usbserial_enumeration_macos unit/test_usbserial_enumeration_macos.c build/unit/usbserial_enumeration_macos.o -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-selected-audit-fixes/build/lib -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib -lindigo -lm -lpthread
+Running build/unit/test_indigocat_corrections
+Running indigocat correction regressions
+  PASS nutation_does_not_retain_previous_date_accumulators
+  PASS sun_aberration_uses_degrees_at_reference_epochs
+indigocat correction regressions: all tests passed
+Running build/unit/test_dslr_raw_init
+18:33:52.978666 Application: libraw_init failed: insufficient memory
+18:33:52.979019 Application: libraw_init failed: insufficient memory
+18:33:52.979353 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+18:33:52.979363 Application: [rc:-1] libraw_open_buffer failed: 'Unspecified error'
+Running LibRaw initialization regressions
+  PASS failed_init_returns_allocation_error_and_empty_image
+  PASS failed_info_init_returns_allocation_error_without_cleanup
+  PASS initialized_decoder_preserves_open_error_cleanup
+LibRaw initialization regressions: all tests passed
+Running build/unit/test_test_runner
+unit/test_test_runner.c:27: expected 1, got 1.2, tolerance 0.1
+unit/test_test_runner.c:27: expected -1, got 1, tolerance 1.5
+unit/test_test_runner.c:27: expected 1e+308, got -1e+308, tolerance 1e+300
+unit/test_test_runner.c:27: expected 1, got nan, tolerance 0.1
+unit/test_test_runner.c:27: expected nan, got 1, tolerance 0.1
+unit/test_test_runner.c:27: expected nan, got nan, tolerance 0.1
+unit/test_test_runner.c:27: expected 1, got 1, tolerance nan
+unit/test_test_runner.c:27: expected 1, got inf, tolerance 0.1
+unit/test_test_runner.c:27: expected 1, got -inf, tolerance 0.1
+unit/test_test_runner.c:27: expected inf, got 1, tolerance 0.1
+unit/test_test_runner.c:27: expected inf, got -inf, tolerance 0.1
+unit/test_test_runner.c:27: expected inf, got nan, tolerance 0.1
+unit/test_test_runner.c:27: expected 1, got 1, tolerance inf
+unit/test_test_runner.c:27: expected 1, got 1e+300, tolerance inf
+unit/test_test_runner.c:27: expected 1, got 1, tolerance -0.1
+Running Test runner assertions
+  PASS assert_near_accepts_finite_values_within_tolerance
+  PASS assert_near_rejects_finite_values_outside_tolerance
+  PASS assert_near_rejects_nan_operands
+  PASS assert_near_rejects_unmatched_infinities
+  PASS assert_near_rejects_invalid_tolerance
+Test runner assertions: all tests passed
+Running build/unit/test_mount_alignment_load
+18:33:54.163699 Application: indigo_mount_driver[mount_read_alignment_points:464]: Invalid saved alignment points for Audit Alignment Test
+18:33:54.164755 Application: indigo_mount_driver[mount_read_alignment_points:464]: Invalid saved alignment points for Audit Alignment Test
+18:33:54.164896 Application: indigo_mount_driver[mount_read_alignment_points:464]: Invalid saved alignment points for Audit Alignment Test
+18:33:54.165022 Application: indigo_mount_driver[mount_read_alignment_points:464]: Invalid saved alignment points for Audit Alignment Test
+18:33:54.165142 Application: indigo_mount_driver[mount_read_alignment_points:464]: Invalid saved alignment points for Audit Alignment Test
+18:33:54.165264 Application: indigo_mount_driver[mount_read_alignment_points:464]: Invalid saved alignment points for Audit Alignment Test
+18:33:54.165387 Application: indigo_mount_driver[mount_read_alignment_points:464]: Invalid saved alignment points for Audit Alignment Test
+Running Alignment file load
+  PASS alignment_load_commits_complete_files_and_preserves_state_on_rejection
+  PASS multi_point_translations_pass_coordinates_through
+Alignment file load: all tests passed
+Running build/unit/test_profile_selection
+Running Profile selection
+  PASS selection_tracks_saved_profile
+Profile selection: all tests passed
+Running build/unit/test_rgb48
+Running RGB48 endian conversion
+  PASS rgb48_swaps_all_channels
+RGB48 endian conversion: all tests passed
+Running build/unit/test_image_math
+Running Image math regressions
+  PASS stretch_identity_and_limits
+  PASS stretch_white_balance_ties_and_black
+  PASS polar_alignment_symmetric_and_singular
+  PASS contrast_empty_mask_and_valid_samples
+  PASS donuts_rejects_unsupported_regions
+  PASS debayer_uses_only_in_bounds_neighbours
+Image math regressions: all tests passed
+Running build/unit/test_core_text_bounds
+18:33:55.918143 Application: Proxy property name is too long: nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn
+Running Core text bounds
+  PASS service_and_adapter_names_reserve_capacity
+  PASS formatted_text_and_snoop_values_are_literal
+  PASS unique_names_reject_unrepresentable_suffixes
+  PASS filter_proxy_identifiers_are_bounded
+Core text bounds: all tests passed
+Running build/unit/test_align_math
+Running align math unit tests
+  PASS cartesian_axes_convert_to_their_own_direction
+  PASS cartesian_conversion_round_trips_spherical_points
+  PASS proper_motion_in_one_axis_is_applied
+  PASS polar_error_correction_inverts_its_application
+  PASS polar_alignment_recalculation_follows_the_polar_error
+  PASS parallactic_angle_matches_reference_values
+  PASS parallactic_angle_is_zero_on_the_meridian
+  PASS derotation_rate_equals_parallactic_angle_rate
+  PASS derotation_rate_matches_reference_values
+  PASS derotation_rate_vanishes_due_east_and_west
+  PASS derotation_rate_grows_towards_the_zenith
+align math unit tests: all tests passed
+Running build/unit/test_aux_math
+Running aux math unit tests
+  PASS dewpoint_matches_magnus_reference_values
+  PASS sky_bortle_thresholds_are_stable
+aux math unit tests: all tests passed
+Running build/unit/test_base64
+Running base64 unit tests
+  PASS known_vectors_encode_correctly
+  PASS encoded_data_decodes_back_to_original
+  PASS newline_tolerant_decoder_handles_embedded_newline
+base64 unit tests: all tests passed
+Running build/unit/test_bus_helpers
+Running bus helper unit tests
+  PASS slave_query_stores_at_most_max_devices
+  PASS session_feature_change_keeps_unnamed_feature_of_its_client
+  PASS numeric_zero_exponents_and_format_status
+  PASS refusal_of_an_idle_property_publishes_alert
+  PASS refusal_of_a_busy_property_is_only_a_message
+  PASS numeric_string_helpers_parse_and_format_values
+  PASS sexagesimal_helpers_parse_and_format_values
+  PASS sexagesimal_rounding_follows_format
+  PASS sexagesimal_buffers_are_bounded_and_independent
+  PASS sexagesimal_caller_buffers_support_concurrent_calls
+  PASS pixel_scale_and_local_service_helpers_are_deterministic
+  PASS switch_helpers_find_and_update_items
+  PASS copy_values_and_targets_clamp_numbers
+  PASS message_properties_survive_bus_restarts
+bus helper unit tests: all tests passed
+Running build/unit/test_bus_property
+Running bus property unit tests
+  PASS properties_are_initialized_for_all_vector_types
+  PASS property_matching_works_for_all_vector_types
+  PASS copied_properties_are_independent_for_all_vector_types
+  PASS reused_copy_preserves_destination_capacity
+  PASS reused_copy_keeps_larger_destination_reserve
+  PASS reused_text_copy_replaces_owned_values
+  PASS property_copy_into_itself_preserves_text
+  PASS property_copy_replaces_text_with_other_vector_types
+  PASS reused_blob_copy_keeps_borrowed_payload
+  PASS resized_properties_preserve_items_for_all_vector_types
+  PASS numeric_copy_ignores_nonfinite_inputs
+  PASS numeric_copy_still_clamps_finite_inputs
+  PASS switch_target_follows_init_and_copy
+  PASS switch_target_survives_a_poll_overwriting_the_value
+  PASS switch_targets_are_applied_after_a_poll_overwrote_the_values
+  PASS switch_target_keeps_unnamed_items_for_any_of_many
+  PASS switch_target_is_not_written_for_read_only_or_empty_requests
+bus property unit tests: all tests passed
+Running build/unit/test_dome_azimuth
+Running dome azimuth unit tests
+  PASS map24_wraps_hours_into_day_range
+  PASS azimuth_distance_uses_shortest_arc
+  PASS dome_azimuth_solution_stays_in_valid_range
+  ha=-6.0 north=78.6839 south=101.3161 mirrored=101.3161
+  ha=-4.5 north=96.3501 south=83.6499 mirrored=83.6499
+  ha=-3.0 north=122.4723 south=57.5277 mirrored=57.5277
+  ha=-1.5 north=171.9663 south=8.0337 mirrored=8.0337
+  ha=+0.0 north=162.9068 south=17.0932 mirrored=17.0932
+  ha=+1.5 north=216.4701 south=323.5299 mirrored=323.5299
+  ha=+3.0 north=246.6142 south=293.3858 mirrored=293.3858
+  ha=+4.5 north=264.3772 south=275.6228 mirrored=275.6228
+  ha=+6.0 north=278.1976 south=261.8024 mirrored=261.8024
+  PASS dome_azimuth_mirrors_pivot_offsets_across_the_equator
+  182160 cases, worst disagreement 0.000000000 deg
+  PASS dome_azimuth_matches_the_vector_model
+  ha=-11.5 east=  21.325 west= 355.039
+  ha=-11.0 east=  29.040 west=   3.435
+  ha=-10.5 east=  36.341 west=  11.766
+  ha=-10.0 east=  43.208 west=  19.881
+  ha= -9.5 east=  49.655 west=  27.665
+  ha= -9.0 east=  55.722 west=  35.044
+  ha= -8.5 east=  61.463 west=  41.990
+  ha= -8.0 east=  66.942 west=  48.512
+  ha= -7.5 east=  72.230 west=  54.644
+  ha= -7.0 east=  77.400 west=  60.440
+  ha= -6.5 east=  82.530 west=  65.961
+  ha= -6.0 east=  87.707 west=  87.707
+  ha= -5.5 east=  76.464 west=  93.028
+  ha= -5.0 east=  81.596 west=  98.604
+  ha= -4.5 east=  86.757 west= 104.574
+  ha= -4.0 east=  92.044 west= 111.106
+  ha= -3.5 east=  97.565 west= 118.409
+  ha= -3.0 east= 103.451 west= 126.734
+  ha= -2.5 east= 109.867 west= 136.355
+  ha= -2.0 east= 117.012 west= 147.503
+  ha= -1.5 east= 125.130 west= 160.212
+  ha= -1.0 east= 134.496 west= 174.132
+  ha= -0.5 east= 145.355 west= 188.460
+  ha= +0.0 east= 157.792 west= 202.208
+  ha= +0.5 east= 171.540 west= 214.645
+  ha= +1.0 east= 185.868 west= 225.504
+  ha= +1.5 east= 199.788 west= 234.870
+  ha= +2.0 east= 212.497 west= 242.988
+  ha= +2.5 east= 223.645 west= 250.133
+  ha= +3.0 east= 233.266 west= 256.549
+  ha= +3.5 east= 241.591 west= 262.435
+  ha= +4.0 east= 248.894 west= 267.956
+  ha= +4.5 east= 255.426 west= 273.243
+  ha= +5.0 east= 261.396 west= 278.404
+  ha= +5.5 east= 266.972 west= 283.536
+  ha= +6.0 east= 272.293 west= 272.293
+  ha= +6.5 east= 294.039 west= 277.470
+  ha= +7.0 east= 299.560 west= 282.600
+  ha= +7.5 east= 305.356 west= 287.770
+  ha= +8.0 east= 311.488 west= 293.058
+  ha= +8.5 east= 318.010 west= 298.537
+  ha= +9.0 east= 324.956 west= 304.278
+  ha= +9.5 east= 332.335 west= 310.345
+  ha=+10.0 east= 340.119 west= 316.792
+  ha=+10.5 east= 348.234 west= 323.659
+  ha=+11.0 east= 356.565 west= 330.960
+  ha=+11.5 east=   4.961 west= 338.675
+  PASS dome_azimuth_keeps_the_ota_on_the_reported_side
+  before=200.3733 after=201.5907 guessed=159.6267
+  PASS dome_azimuth_follows_reported_side_of_pier_past_the_meridian
+  ha=-11.5 unknown=  17.741 matches EAST
+  ha=-11.0 unknown=  25.085 matches EAST
+  ha=-10.5 unknown=  32.104 matches EAST
+  ha=-10.0 unknown=  38.762 matches EAST
+  ha= -9.5 unknown=  45.058 matches EAST
+  ha= -9.0 unknown=  51.011 matches EAST
+  ha= -8.5 unknown=  56.658 matches EAST
+  ha= -8.0 unknown=  62.049 matches EAST
+  ha= -7.5 unknown=  67.241 matches EAST
+  ha= -7.0 unknown=  72.297 matches EAST
+  ha= -6.5 unknown=  77.288 matches EAST
+  ha= -6.0 unknown=  82.289 matches EAST
+  ha= -5.5 unknown=  87.391 matches WEST
+  ha= -5.0 unknown=  92.701 matches WEST
+  ha= -4.5 unknown=  98.350 matches WEST
+  ha= -4.0 unknown= 104.510 matches WEST
+  ha= -3.5 unknown= 111.407 matches WEST
+  ha= -3.0 unknown= 119.338 matches WEST
+  ha= -2.5 unknown= 128.685 matches WEST
+  ha= -2.0 unknown= 139.874 matches WEST
+  ha= -1.5 unknown= 153.225 matches WEST
+  ha= -1.0 unknown= 168.598 matches WEST
+  ha= -0.5 unknown= 185.034 matches WEST
+  ha= +0.0 unknown= 159.017 matches EAST
+  ha= +0.5 unknown= 174.966 matches EAST
+  ha= +1.0 unknown= 191.402 matches EAST
+  ha= +1.5 unknown= 206.775 matches EAST
+  ha= +2.0 unknown= 220.126 matches EAST
+  ha= +2.5 unknown= 231.315 matches EAST
+  ha= +3.0 unknown= 240.662 matches EAST
+  ha= +3.5 unknown= 248.593 matches EAST
+  ha= +4.0 unknown= 255.490 matches EAST
+  ha= +4.5 unknown= 261.650 matches EAST
+  ha= +5.0 unknown= 267.299 matches EAST
+  ha= +5.5 unknown= 272.609 matches EAST
+  ha= +6.0 unknown= 277.711 matches EAST
+  ha= +6.5 unknown= 282.712 matches WEST
+  ha= +7.0 unknown= 287.703 matches WEST
+  ha= +7.5 unknown= 292.759 matches WEST
+  ha= +8.0 unknown= 297.951 matches WEST
+  ha= +8.5 unknown= 303.342 matches WEST
+  ha= +9.0 unknown= 308.989 matches WEST
+  ha= +9.5 unknown= 314.942 matches WEST
+  ha=+10.0 unknown= 321.238 matches WEST
+  ha=+10.5 unknown= 327.896 matches WEST
+  ha=+11.0 unknown= 334.915 matches WEST
+  ha=+11.5 unknown= 342.259 matches WEST
+  PASS dome_azimuth_agrees_with_counterweight_down_for_a_normal_mount
+dome azimuth unit tests: all tests passed
+Running build/unit/test_driver_loader
+18:33:59.983473 Application: Driver xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx can't be loaded (name too long)
+18:33:59.984906 Application: Driver xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx can't be loaded (name too long)
+18:33:59.987764 Application: Can't load indigo_test_loader_missing() (dlsym(0x665e64e0, indigo_test_loader_missing): symbol not found)
+18:33:59.989203 Application: Can't load indigo_test_loader_missing() (dlsym(0x665e64e0, indigo_test_loader_missing): symbol not found)
+18:33:59.989896 Application: [add_driver:214] Max driver count reached
+18:33:59.990224 Application: [indigo_connect_server_id:538] Max server count reached
+Running driver loader unit tests
+  PASS long_path_without_extension_loads_driver
+  PASS long_path_with_extension_loads_driver
+  PASS name_longer_than_path_limit_is_rejected
+  PASS too_long_entry_point_name_is_rejected
+  PASS missing_entry_point_is_reported_and_driver_still_loads
+  PASS driver_registry_refuses_entry_past_capacity
+  PASS server_registry_refuses_entry_past_capacity
+driver loader unit tests: all tests passed
+Running build/unit/test_md5
+Running md5 unit tests
+  PASS known_md5_vectors_match
+  PASS partial_md5_uses_requested_prefix_length
+  PASS file_partial_md5_hashes_file_prefix
+md5 unit tests: all tests passed
+Running build/unit/test_polynomial_fit
+Running polynomial fit unit tests
+  PASS polynomial_value_and_derivative_are_correct
+  PASS polynomial_extremum_and_minimum_are_correct_for_quadratic
+  PASS polynomial_fit_recovers_exact_line
+  PASS polynomial_string_contains_terms
+polynomial fit unit tests: all tests passed
+Running build/unit/test_protocol_json
+Running JSON protocol unit tests
+  PASS json_parser_preserves_escaped_text
+  PASS json_escape_handles_special_characters
+  PASS json_adapter_serializes_define_update_delete_and_blob_url
+  PASS json_adapter_escapes_device_and_item_names
+  PASS json_adapter_serializes_whole_long_text_value
+  PASS json_parser_routes_number_and_switch_fixtures
+  PASS json_parser_ignores_malformed_fixture_without_change
+JSON protocol unit tests: all tests passed
+Running build/unit/test_protocol_xml
+Running XML protocol unit tests
+  PASS xml_escape_handles_special_characters
+  PASS xml_adapter_serializes_define_update_delete_and_blob_url
+  PASS xml_adapter_serializes_whole_long_text_value
+  PASS xml_adapter_round_trips_item_names_with_quotes
+  PASS xml_client_adapter_serializes_requests
+  PASS xml_parser_routes_change_and_enable_blob_fixtures
+  PASS xml_client_adapter_parses_remote_property_events
+  PASS xml_client_adapter_switches_protocol_with_a_named_request
+  PASS xml_parser_ignores_malformed_fixture_without_change
+XML protocol unit tests: all tests passed
+Running build/unit/test_protocol_security
+18:34:03.399071 Application: XML Parser: syntax error
+18:34:03.408521 Application: XML Parser: syntax error
+18:34:03.501081 Application: JSON Parser: syntax error
+18:34:14.634899 Application: JSON Parser: syntax error
+18:34:14.665239 Application: XML Parser: syntax error
+18:34:14.667517 Application: XML Parser: syntax error
+18:34:14.667875 Application: XML Parser: syntax error
+18:34:14.668129 Application: XML Parser: syntax error
+18:34:14.668396 Application: XML Parser: syntax error
+18:34:14.668562 Application: XML Parser: syntax error
+18:34:14.668731 Application: XML Parser: syntax error
+18:34:14.668985 Application: XML Parser: syntax error
+18:34:14.669249 Application: XML Parser: syntax error
+18:34:14.669525 Application: XML Parser: syntax error
+18:34:14.669678 Application: XML Parser: syntax error
+18:34:14.669917 Application: XML Parser: syntax error
+18:34:14.670147 Application: XML Parser: syntax error
+18:34:14.670305 Application: XML Parser: syntax error
+18:34:14.670463 Application: XML Parser: syntax error
+18:34:14.670700 Application: XML Parser: syntax error
+18:34:14.670939 Application: XML Parser: syntax error
+18:34:14.671183 Application: XML Parser: syntax error
+18:34:14.671411 Application: XML Parser: syntax error
+18:34:14.671672 Application: XML Parser: syntax error
+18:34:14.676650 Application: XML Parser: syntax error
+18:34:14.676887 Application: XML Parser: syntax error
+18:34:14.677050 Application: XML Parser: syntax error
+18:34:14.677303 Application: XML Parser: syntax error
+18:34:14.677898 Application: XML Parser: syntax error
+18:34:14.678055 Application: XML Parser: syntax error
+18:34:14.947652 Application: JSON Parser: syntax error
+18:34:14.948540 Application: JSON Parser: syntax error
+18:34:14.948778 Application: JSON Parser: syntax error
+18:34:15.213679 Application: JSON Parser: syntax error
+18:34:15.303267 Application: JSON Parser: syntax error
+18:34:15.390552 Application: JSON Parser: syntax error
+18:34:15.475518 Application: JSON Parser: syntax error
+Running Protocol security
+  PASS XML upload staging one shot
+  PASS request item limits
+  PASS request text budgets and reset
+  PASS JSON repeated items rejected
+  PASS cached RO BLOB retirement
+  PASS xml_attribute_boundaries
+  PASS xml_name_boundaries
+  PASS xml_entity_boundaries
+  PASS xml_wrong_direction
+  PASS xml_blob_owned_items_and_padding
+  PASS xml_blob_empty_after_nonempty
+  PASS xml_blob_rejects_mismatch_and_malformed
+  PASS xml_blob_crosses_input_buffers
+  PASS xml_messages_are_literal
+  PASS json_token_boundaries
+  PASS json_number_and_logical_boundaries
+  PASS websocket_frames
+  PASS websocket_controls
+Protocol security: all tests passed
+Running build/unit/test_transport_cache_security
+Running transport cache security
+  PASS retired upload is unregistered
+  PASS retained bytes survive release
+  PASS all permission classes retire
+  PASS resize and shrink cache lifetime
+  PASS pending published retired budget
+  PASS RO upload preserves snapshot
+  PASS permission publication revokes staging
+  PASS uploaded staging consumed once
+  PASS empty upload and replacement
+  PASS concurrent retirement and lookup
+transport cache security: all tests passed
+Running build/unit/test_timer
+18:34:18.370071 Application: Attempt to reschedule timer without reference!
+18:34:18.458637 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.498089 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.537563 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.577039 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.615969 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.690988 Application: Attempt to reschedule timer without reference!
+18:34:18.717944 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.756980 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.795132 Application: Attempt to reschedule timer without reference!
+18:34:18.820660 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.860124 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.899290 Application: Attempt to reschedule timer without reference!
+18:34:18.926212 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:18.965300 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.004744 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.040384 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.079787 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.119243 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.158691 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.198142 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.237621 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.277084 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.316546 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.355996 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.395131 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.434581 Application: Attempt to reschedule timer without reference!
+18:34:19.461520 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.537603 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.577057 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.615961 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:19.653464 Application: Attempt to reschedule timer without reference!
+18:34:19.664049 Application: Attempt to set timer with non-NULL reference
+18:34:21.666494 Application: Attempt to cancel timer with outdated reference!
+18:34:21.921540 Application: timer #229 - attempt to cancel timer with outdated reference!
+18:34:21.921560 Application: timer #229 - attempt to reschedule timer with outdated reference!
+Running timer unit tests
+  PASS queue_drain_waits_for_running_pending_and_followup_tasks
+  PASS queue_drain_wakes_all_waiters_when_pending_tasks_are_removed
+  PASS delay_to_time_handles_zero_and_orders_positive_delays
+  PASS delay_to_time_normalizes_larger_fractional_delays
+  PASS negative_delay_runs_promptly_and_uses_normalized_time
+  PASS zero_delay_timer_runs_promptly_and_clears_reference
+  PASS nonzero_delay_timer_does_not_fire_before_deadline
+  PASS set_timer_runs_callback_and_clears_reference
+  PASS set_timer_with_data_passes_user_data
+  PASS set_timer_with_data_passes_null_user_data
+  PASS set_timer_with_mutex_runs_callback_while_mutex_is_locked
+  PASS cancel_timer_prevents_pending_callback
+  PASS cancel_timer_sync_prevents_pending_callback_and_returns_true
+  PASS cancel_timer_sync_without_reference_returns_false
+  PASS cancel_timer_sync_waits_for_running_callback
+  PASS cancel_timer_returns_false_for_running_callback_without_waiting
+  PASS completing_callback_does_not_clear_newer_timer_reference
+  PASS cancel_timer_sync_from_own_callback_does_not_deadlock
+  PASS timer_scheduler_restarts_after_fork_during_callback
+  PASS fork_discards_inherited_timer_references_and_device_links
+  PASS reschedule_timer_changes_delay_and_callback
+  PASS reschedule_pending_data_timer_to_plain_callback_discards_payload
+  PASS self_reschedule_data_timer_to_plain_callback_discards_payload
+  PASS reschedule_pending_timer_to_earlier_deadline_wakes_scheduler
+  PASS reschedule_pending_timer_to_later_deadline_prevents_old_deadline
+  PASS reschedule_timer_from_callback_repeats_until_complete
+  PASS self_reschedule_can_switch_to_different_callback
+  PASS reschedule_without_reference_fails
+  PASS cancel_racing_repeated_reschedule_leaves_one_logical_outcome
+  PASS reschedule_racing_natural_completion_never_leaves_stuck_reference
+  PASS set_timer_with_non_null_reference_fails_cleanly
+  PASS set_timer_can_reuse_reference_after_immediate_completion
+  PASS cancel_timer_twice_is_harmless
+  PASS cancel_timer_sync_twice_is_harmless
+  PASS cancel_timer_sync_with_stale_reference_returns_false
+  PASS stale_timer_handle_does_not_cancel_or_reschedule_newer_timer
+  PASS canceling_timer_blocked_on_user_mutex_does_not_block_scheduler
+  PASS cancel_many_pending_timers_out_of_deadline_order
+  PASS timers_for_same_device_run_in_parallel_by_default
+  PASS timers_with_same_mutex_are_serialized
+  PASS device_timer_is_linked_until_completion_and_unlinked_afterward
+  PASS canceling_device_timer_unlinks_it_from_device_list
+  PASS null_device_timer_is_not_linked_to_unrelated_device_list
+  PASS cancel_all_timers_for_device_prevents_callbacks
+  PASS cancel_all_timers_leaves_other_devices_untouched
+  PASS cancel_all_timers_waits_for_running_callback_and_cancels_pending
+  PASS cancel_all_timers_handles_concurrent_timer_completion
+  PASS cancel_all_timers_ignores_new_timers_created_by_running_callback
+  PASS cancel_all_timers_on_empty_device_is_harmless
+  PASS raw_timers_keep_separate_master_and_slave_device_list_ownership
+  PASS cancel_all_timers_from_timer_callback_does_not_deadlock
+  PASS queue_create_starts_worker_and_reports_ready
+  PASS queue_asap_task_runs_promptly
+  PASS queue_supports_large_sdk_stack_frame
+  PASS queue_delayed_task_does_not_run_before_due_time
+  PASS queue_executes_runnable_tasks_by_priority
+  PASS abort_dispatch_overtakes_ready_normal_and_time_tasks
+  PASS queue_executes_negative_priority_tasks_by_priority
+  PASS queue_future_high_priority_task_does_not_block_due_low_priority_task
+  PASS queue_add_initializes_data_as_null_and_uses_plain_callback
+  PASS queue_add_with_data_passes_exact_data_pointer
+  PASS queue_add_null_queue_is_harmless
+  PASS queue_set_handler_max_run_time_without_running_handler_returns_false
+  PASS queue_running_handler_can_set_own_max_run_time
+  PASS queue_pending_task_limit_is_per_queue_configurable_and_reported_once
+  PASS queue_task_with_mutex_runs_while_mutex_is_held
+  PASS queue_callbacks_are_serialized_for_one_queue
+  PASS queue_inserting_earlier_task_wakes_worker
+  PASS queue_delayed_tasks_inserted_randomly_run_in_due_ti18:34:27.568132 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.568158 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.568168 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.568179 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.568188 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.569066 Application: Attempt to reschedule timer without reference!
+18:34:27.600733 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.603325 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.603346 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.603435 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.603446 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.603457 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.609647 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.609668 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.609790 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.612275 Application: Attempt to reschedule timer without reference!
+18:34:27.619741 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.619756 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.619762 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.619768 Application: Attempt to reschedule timer without reference or canceled timer!
+18:34:27.624023 Application: Attempt to reschedule timer without reference!
+18:34:27.627156 Application: Attempt to reschedule timer without reference or canceled timer!
+me_order
+  PASS queue_repeated_asap_insertion_from_producers_does_not_lose_tasks
+  PASS queue_callback_can_enqueue_followup_without_deadlock
+  PASS queue_callback_can_enqueue_delayed_followup
+  PASS queue_remove_waits_for_matching_running_task
+  PASS queue_remove_does_not_wait_for_nonmatching_running_task
+  PASS queue_remove_from_worker_does_not_deadlock
+  PASS queue_remove_null_queue_is_harmless
+  PASS queue_delete_empty_queue_clears_reference
+  PASS queue_delete_waits_for_running_task_and_clears_reference
+  PASS queue_delete_discards_pending_delayed_tasks
+  PASS queue_remove_deletes_matching_scheduled_tasks
+  PASS queue_remove_device_null_removes_all_tasks_for_device
+  PASS queue_remove_null_device_removes_callback_across_devices
+  PASS queue_remove_null_filters_removes_all_pending_tasks
+  PASS queue_delete_from_worker_does_not_deadlock
+  PASS randomized_timer_churn_survives_many_operations
+  PASS shared_timer_slot_churn_survives_competing_producers
+  PASS timer_storm_runs_all_callbacks_and_clears_references
+  PASS cancellation_storm_cancels_delayed_timers_from_threads
+  PASS mixed_device_list_storm_survives_random_cancel_all
+  PASS randomized_queue_churn_survives_producers_and_removal
+timer unit tests: all tests passed
+Running build/unit/test_token
+Running token unit tests
+  PASS string_to_token_accepts_hex_and_rejects_invalid_input
+  PASS device_tokens_can_be_added_updated_and_removed
+  PASS device_or_master_token_falls_back_to_master
+token unit tests: all tests passed
+Running build/unit/test_uni_io
+18:34:29.449399 Application: 0 <- // /tmp/indigo-uni-io-test.dbhBYT opened
+18:34:29.449692 Application: 0 -> ab#
+18:34:29.449697 Application: 0 <- // Closed
+18:34:29.449853 Application: 1 <- // /tmp/indigo-uni-io-test.S5djUi opened
+18:34:29.449863 Application: 1 -> abcd
+18:34:29.449868 Application: 1 <- // Closed
+18:34:29.449986 Application: 2 <- // /tmp/indigo-uni-io-test.PypHSK opened
+18:34:29.450002 Application: 2 -> ab
+18:34:29.450008 Application: 2 <- // Closed
+18:34:29.450103 Application: Failed to bind passive discovery socket
+18:34:29.450128 Application: Failed to bind passive discovery socket
+18:34:29.450153 Application: Failed to bind passive discovery socket
+18:34:29.450168 Application: Failed to bind passive discovery socket
+18:34:29.450183 Application: Failed to bind passive discovery socket
+18:34:29.450196 Application: Failed to bind passive discovery socket
+18:34:29.450209 Application: Failed to bind passive discovery socket
+18:34:29.450223 Application: Failed to bind passive discovery socket
+18:34:29.450235 Application: Failed to bind passive discovery socket
+18:34:29.450248 Application: Failed to bind passive discovery socket
+18:34:29.450262 Application: Failed to bind passive discovery socket
+18:34:29.450275 Application: Failed to bind passive discovery socket
+18:34:29.450288 Application: Failed to bind passive discovery socket
+18:34:29.450303 Application: Failed to bind passive discovery socket
+18:34:29.450318 Application: Failed to bind passive discovery socket
+18:34:29.450335 Application: Failed to bind passive discovery socket
+18:34:29.450359 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+18:34:29.450364 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+18:34:29.450368 Application: Failed to open /dev/indigo-test-nonexistent-serial (No such file or directory)
+18:34:29.450371 Application: Failed to open /unused (Invalid argument)
+18:34:29.450442 Application: Failed to exclusively open /tmp/indigo-uni-io-nonserial.KaKQCB (Inappropriate ioctl for device)
+18:34:29.451155 Application: 3 <- // /dev/ttys002 opened
+18:34:29.451166 Application: 3 <- // Closed
+18:34:29.451653 Application: 4 <- // /dev/ttys002 opened
+18:34:29.451663 Application: 4 <- // Closed
+18:34:29.451857 Application: 5 <- // /dev/ttys002 opened
+18:34:29.451882 Application: 5 <- // Closed
+18:34:29.451909 Application: 0 <- // Closed
+18:34:29.453355 Application: 6 <- // /dev/ttys002 opened
+18:34:29.756525 Application: 6 -> x
+18:34:29.756567 Application: 6 <- // Closed
+18:34:29.757328 Application: 7 <- // /dev/ttys002 opened
+18:34:30.262350 Application: 7 -> // timeout
+18:34:30.262389 Application: 7 <- // Closed
+18:34:31.891060 Application: Invalid discovery target 'not an address'
+18:34:31.891374 Application: 8 <- // TCP socket connected to '127.0.0.1:53685'
+18:34:31.891409 Application: 8 <- // Closed
+18:34:31.891473 Application: Can't connect TCP socket for '127.0.0.1:53687' (Connection refused)
+18:34:31.891831 Application: 9 <- // /dev/ttys002 opened
+18:34:31.943199 Application: 9 <- // Failed to write (Input/output error)
+18:34:31.943236 Application: 9 <- // Closed
+18:34:31.943503 Application: 10 <- // TCP socket connected to '127.0.0.1:53689'
+18:34:31.998186 Application: 10 -> abc
+18:34:32.053241 Application: 10 <- // Connection closed
+18:34:32.053335 Application: 10 <- // Closed
+Running indigo_uni_io unit tests
+  PASS standard_stream_handles_have_file_descriptors
+  PASS compress_rejects_output_buffer_too_small
+  PASS compress_incompressible_payload_round_trips
+  PASS read_section_accepts_null_ignore_list
+  PASS read_section_accepts_null_terminator_list
+  PASS read_section_still_ignores_and_terminates
+  PASS passive_discovery_bind_failure_closes_socket
+  PASS serial_open_reports_open_error
+  PASS serial_open_reports_configuration_error
+  PASS serial_open_reports_not_a_serial_port
+  PASS serial_open_clears_error_on_success
+  PASS serial_port_reopens_after_close
+  PASS hid_close_leaves_aliased_descriptor_open
+  PASS legacy_printf_sends_output_longer_than_its_buffer
+  PASS legacy_printf_sends_short_output_unchanged
+  PASS wait_for_data_continues_after_signal
+  PASS wait_for_data_keeps_timeout_after_signal
+  PASS discover_collects_all_replies
+  PASS discover_repeats_request_for_each_poll
+  PASS discover_stops_when_callback_returns_false
+  PASS discover_without_responder_times_out
+  PASS discover_reaches_loopback_responder
+  PASS discover_rejects_invalid_arguments
+  PASS connect_with_timeout_succeeds
+  PASS connect_with_timeout_reports_refused_connection
+  PASS connect_with_timeout_is_bounded
+  PASS connection_lost_after_serial_failure
+  PASS connection_lost_after_peer_close
+indigo_uni_io unit tests: all tests passed
+Running build/unit/test_network_url
+18:34:32.469421 Application: Can't connect TCP socket for 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1234' (Operation not permitted)
+18:34:32.469844 Application: Can't connect TCP socket for 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:1234' (Operation not permitted)
+18:34:32.469855 Application: Can't connect TCP socket for 'localhost:1' (Operation not permitted)
+18:34:32.469860 Application: Can't connect UDP socket for '127.0.0.1:65535' (Operation not permitted)
+18:34:32.469864 Application: Can't connect TCP socket for 'device-name.local:80' (Operation not permitted)
+18:34:32.469869 Application: Can't connect UDP socket for 'device_name:1234' (Operation not permitted)
+18:34:32.469874 Application: Can't connect TCP socket for 'localhost:1234' (Operation not permitted)
+18:34:32.469877 Application: Can't connect UDP socket for 'localhost:65535' (Operation not permitted)
+Running network_url
+  PASS hostname_boundaries
+  PASS rejects_malformed_authorities
+  PASS preserves_protocol_and_ports
+network_url: all tests passed
+Running build/unit/test_primalucelib
+18:34:33.052090 Application: test_primalucelib[primalucelib_check_credentials:729]: The SSID has more than 32 characters
+18:34:33.052365 Application: test_primalucelib[primalucelib_check_credentials:729]: The password has more than 63 characters
+18:34:33.565104 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+18:34:33.565195 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: bad value
+18:34:33.565272 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: unknown key
+18:34:33.565330 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: again
+18:34:44.174861 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.378097 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.378133 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.378146 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.378159 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:45.289560 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+18:34:45.289674 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+18:34:45.391742 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+18:34:45.493600 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+18:34:45.800103 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: no ARCO
+18:34:46.714822 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: no panel
+18:34:46.816949 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:46.817139 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:46.817347 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+18:34:47.021759 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:47.021866 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:47.022126 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+18:34:47.022222 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:47.730621 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+18:34:48.337658 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:48.440100 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+18:34:48.541836 Application: test_primalucelib[primalucelib_check_credentials:729]: The access point password needs at least 8 characters
+18:34:48.541859 Application: test_primalucelib[primalucelib_check_credentials:729]: The access point needs an SSID
+18:34:48.541864 Application: test_primalucelib[primalucelib_check_credentials:729]: The password has more than 63 characters
+18:34:48.541868 Application: test_primalucelib[primalucelib_check_credentials:729]: The SSID has more than 32 characters
+18:34:48.643118 Application: test_primalucelib[primalucelib_open:149]: Malformed URL 'http://'
+Running PrimaLuce Lab protocol library
+  PASS WiFi credentials are escaped
+  PASS WiFi credentials fit or send nothing
+  PASS golden requests match the original driver
+  PASS reply values are found by path
+  PASS reply keys require full names
+  PASS diagnostic lines are skipped
+  PASS refusals fail with their reason
+  PASS garbage is an answer but not a reply
+  PASS silence marks the link failed
+  PASS a duplicate reply is discarded
+  PASS a late reply is skipped
+  PASS SESTO SENSO 3 log line before LOGLEVEL
+  PASS only stale replies fail the request
+  PASS a restarting link refuses requests until probed
+  PASS debug text before a reply is skipped
+  PASS field errors refuse calibration requests
+  PASS moves return their acknowledgement
+  PASS focuser stop falls back to a decelerated stop
+  PASS settings need done
+  PASS stored positions guard their values
+  PASS positions and angles need their field
+  PASS environment needs the external probe field
+  PASS restart waits for the controller
+  PASS SESTO SENSO 3 extras
+  PASS flat panel commands
+  PASS flat panel state, presets and settings
+  PASS cover commands
+  PASS cover motion, presets and refusals
+  PASS lookups stay within a full token array
+  PASS LAN mode restarts only on a change
+  PASS WiFi modes select the LAN mode first
+  PASS WiFi status shows where the controller is
+  PASS WiFi credentials are checked before sending
+  PASS models are recognized by prefix
+  PASS HTTP URLs are split into host and port
+  PASS HTTP links open without contact
+PrimaLuce Lab protocol library: all tests passed
+Running build/unit/test_system_alpaca_json
+Running system_alpaca JSON parser unit tests
+  PASS parses_scalar_documents_of_every_type
+  PASS parses_nested_containers
+  PASS parses_empty_containers
+  PASS tolerates_whitespace_around_every_token
+  PASS parses_integers
+  PASS get_int_accepts_integral_doubles_only
+  PASS parses_doubles
+  PASS rejects_malformed_numbers
+  PASS parses_very_long_number_tokens
+  PASS unescapes_strings
+  PASS keeps_valid_utf8_and_replaces_invalid_bytes
+  PASS rejects_malformed_strings
+  PASS rejects_invalid_surrogates
+  PASS tolerates_leading_byte_order_mark_only
+  PASS rejects_malformed_documents
+  PASS reports_error_message_and_offset
+  PASS every_truncated_prefix_fails_cleanly
+  PASS enforces_depth_limit
+  PASS survives_hostile_nesting
+  PASS enforces_size_limit
+  PASS parses_largest_document_made_of_shortest_values
+  PASS parses_numbers_independently_of_locale
+  PASS looks_up_members_with_and_without_case
+  PASS getters_do_not_coerce_types
+  PASS accessors_tolerate_null_values
+  PASS iterates_arrays_and_objects
+  PASS parses_apiversions_fixture
+  PASS parses_description_fixture
+  PASS parses_configureddevices_fixture
+  PASS parses_value_envelope_fixture
+  PASS parses_error_envelope_fixture
+  PASS parses_devicestate_fixture
+  PASS parses_imagearray_fixtures_into_dom
+  PASS fixtures_fail_cleanly_at_every_prefix
+  PASS image_scans_rank2_fixture
+  PASS image_scans_rank3_fixture
+  PASS image_accepts_members_in_any_order
+  PASS image_handles_missing_and_mistyped_members
+  PASS image_reports_error_envelope_without_value
+  PASS image_truncates_long_error_message_at_character_boundary
+  PASS image_converts_doubles
+  PASS image_checks_int32_range
+  PASS image_rejects_ragged_arrays
+  PASS image_rejects_wrong_rank
+  PASS image_rejects_malformed_envelopes
+  PASS image_fails_cleanly_at_every_prefix
+  PASS image_respects_caller_buffer
+  INFO image_scans_large_generated_array: 2000 x 1500, 17.5 MB of JSON scanned in 0.029 s (607 MB/s)
+  PASS image_scans_large_generated_array
+system_alpaca JSON parser unit tests: all tests passed
+Running build/unit/test_raw_image
+Running raw image unit tests
+  PASS raw_validation_accepts_complete_formats_and_metadata
+  PASS raw_validation_rejects_incomplete_and_unrepresentable_shapes
+  PASS selection_rejects_incomplete_rois
+  PASS selection_rejects_invalid_geometry
+  PASS selection_rejects_nonfinite_or_unrepresentable_centers
+  PASS selection_rejects_missing_inputs
+  PASS selection_accepts_complete_edge_rois
+  PASS psf_high_contrast_mono16_border_uses_finite_variance
+  PASS psf_fractional_border_variance_is_preserved
+  PASS selection_interior_star_preserves_measurements
+  PASS raw_header_type_values_are_stable
+  PASS mono_raw_with_bayer_extension_is_detected
+  PASS raw_without_bayer_extension_is_not_bayered
+  PASS color_raw_is_not_treated_as_bayered
+  PASS bayer_channel_equalization_balances_simple_mono8_frame
+  PASS bayer_channel_equalization_preserves_small_frame_parities
+  PASS saturation_mask_marks_saturated_feature
+  PASS contrast_for_constant_frame_is_zero_and_not_saturated
+  PASS star_exclusion_removes_only_the_rectangle
+  PASS psf_map_uses_only_measured_stars
+  PASS psf_map_without_stars_is_empty
+  PASS bahtinov_error_releases_binarized_frame
+raw image unit tests: all tests passed
+Running build/unit/test_raw_to_fits
+Running RAW to FITS unit tests
+  PASS exact_card_capacity_and_padding_are_preserved
+  PASS combined_metadata_and_keyword_types_are_preserved
+  PASS short_headers_are_rejected
+  PASS invalid_arguments_and_dimensions_preserve_output
+  PASS all_component_payloads_are_required
+  PASS pixel_formats_remain_correct
+  PASS unaligned_input_is_supported
+  PASS header_record_boundaries_preserve_pixels
+  PASS embedded_rgb_metadata_follows_full_payload
+  PASS embedded_metadata_can_span_records
+  PASS malformed_and_oversized_cards_are_rejected
+RAW to FITS unit tests: all tests passed
+Running build/unit/test_recording_io
+18:34:53.420841 Application: 1 <- // Failed to seek (Illegal seek)
+18:34:53.421380 Application: 4 <- // Failed to seek (Illegal seek)
+Running AVI and SER recording I/O
+  PASS ser_frame_write_failure_is_not_counted
+  PASS ser_close_seek_failure_is_reported
+  PASS ser_complete_recording_counts_frames
+  PASS avi_frame_write_failure_is_not_counted
+  PASS avi_close_seek_failure_is_reported
+  PASS avi_complete_recording_grows_offsets_table
+AVI and SER recording I/O: all tests passed
+Running build/unit/test_usbserial_enumeration_macos
+Running macOS USB serial enumeration
+  PASS all_endpoints_preserve_metadata_and_order
+  PASS capacity_one_stops_before_another_endpoint
+  PASS exact_capacity_does_not_acquire_next_usb_device
+  PASS nonpositive_capacity_does_not_acquire_resources
+  PASS hubs_missing_paths_and_failed_iterators_release_resources
+  PASS discovery_setup_failures_have_no_owned_resources
+macOS USB serial enumeration: all tests passed
+Running build/unit/test_service_discovery
+18:34:54.436108 Application: Service resolution failed for Requested service (-65537)
+18:34:54.436507 Application: Failed to start resolver thread for Requested service
+18:34:54.436512 Application: Failed to resolve Requested service (-65537)
+18:34:54.436516 Application: Service browser callback failed (-65537)
+Running Service discovery callbacks
+  PASS resolver_context_lifecycle
+  PASS browse_errors_ignore_undefined_fields
+Service discovery callbacks: all tests passed

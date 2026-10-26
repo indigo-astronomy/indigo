@@ -460,24 +460,26 @@ function processDeleteProperty(property) {
 }
 
 function dtos(value) {
+	// the sign is kept apart from the degrees, -0.5 has zero whole degrees and must still print as -0:30:00
+	var sign = value < 0 ? '-' : '';
 	var d = Math.abs(value);
 	var m = 60.0 * (d - Math.floor(d));
 	var s = 60.0 * (m - Math.floor(m));
-	if (value < 0)
-		d = -d;
 	d = d | 0;
 	m = m | 0;
 	s = s | 0;
-	return d.toString() + ':' + (m < 10 ? 0 + m.toString() : m.toString()) + ':' + (s < 10 ? 0 + s.toString() : s.toString())
+	return sign + d.toString() + ':' + (m < 10 ? 0 + m.toString() : m.toString()) + ':' + (s < 10 ? 0 + s.toString() : s.toString())
 }
 
 function stod(str) {
+	// the sign comes from the text, parseInt('-0') is -0 and does not compare below zero
+	var negative = str.trim().charAt(0) == '-';
 	var strs = str.split(':');
 	var d = 0;
 	var m = 0;
 	var s = 0;
 	if (strs.length > 0) {
-		d = parseInt(strs[0]);
+		d = Math.abs(parseInt(strs[0]));
 	}
 	if (strs.length > 1) {
 		m = parseInt(strs[1]);
@@ -485,9 +487,8 @@ function stod(str) {
 	if (strs.length > 2) {
 		s = parseInt(strs[2]);
 	}
-	if (d < 0)
-		return d - m / 60.0 - s / 3600.0;
-	return d + m / 60.0 + s / 3600.0;
+	var value = d + m / 60.0 + s / 3600.0;
+	return negative ? -value : value;
 }
 
 function timestamp() {
@@ -505,5 +506,6 @@ function timestamp() {
 	'T' + pad(d.getHours()) +
 	':' + pad(d.getMinutes()) +
 	':' + pad(d.getSeconds()) +
-	(o >= 0 ? '-' + pad(o / 60) : '+' + pad(-o / 60)) + '00';
+	// %z style offset, whole hours and remaining minutes, e.g. +0530 for UTC+05:30
+	(o >= 0 ? '-' : '+') + pad(Math.floor(Math.abs(o) / 60)) + pad(Math.abs(o) % 60);
 }

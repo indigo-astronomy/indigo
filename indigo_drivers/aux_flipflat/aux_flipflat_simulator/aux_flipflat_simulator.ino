@@ -86,7 +86,7 @@ void loop() {
   if (Serial.available()) {
     char buffer[32];
     memset(buffer, 0, sizeof(buffer));
-    Serial.readBytesUntil('\r', buffer, sizeof(buffer));
+    Serial.readBytesUntil('\r', buffer, sizeof(buffer) - 1); // the last byte stays NUL
     if (!strcmp(buffer, ">POOO")) {
       Serial.print("*P" DEVICE "OOO\n");
     } else if (!strcmp(buffer, ">OOOO")) {

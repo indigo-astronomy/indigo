@@ -42,13 +42,17 @@ typedef struct {
 	bool trace;
 	const char *ready_file;
 	int slots;
+	int count_byte;
+	bool stuck;
 } simulator_options;
 
 static simulator_options options = {
 	.headless = false,
 	.trace = true,
 	.ready_file = NULL,
-	.slots = 5
+	.slots = 5,
+	.count_byte = -1,
+	.stuck = false
 };
 
 static const char *simulator_name = "wheel_trutek";
@@ -60,7 +64,7 @@ static int target_filter = 1;
 // ----------------------------------------------------------------- runtime
 
 static void usage(const char *name) {
-	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--slots <count>]\n", name);
+	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--slots <count>] [--count-byte <0-255>] [--stuck]\n", name);
 }
 
 static bool parse_int(const char *text, int min, int max, int *value) {
@@ -84,8 +88,15 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--ready-file") && i + 1 < argc) {
 			options.ready_file = argv[++i];
+		} else if (!strcmp(argv[i], "--stuck")) {
+			options.stuck = true;
 		} else if (!strcmp(argv[i], "--slots") && i + 1 < argc) {
 			if (!parse_int(argv[++i], 1, 9, &options.slots)) {
+				return false;
+			}
+		} else if (!strcmp(argv[i], "--count-byte") && i + 1 < argc) {
+			// A raw filter count byte for malformed-reply tests; the wheel keeps --slots slots.
+			if (!parse_int(argv[++i], 0, 255, &options.count_byte)) {
 				return false;
 			}
 		} else {
@@ -115,6 +126,10 @@ static void trace_frame(const char *prefix, const uint8_t frame[4]) {
 }
 
 static void advance_filter(void) {
+	if (options.stuck) {
+		// A jammed wheel keeps reporting that it is moving and never reaches the target.
+		return;
+	}
 	if (current_filter < target_filter) {
 		current_filter++;
 	} else if (current_filter > target_filter) {
@@ -152,7 +167,7 @@ static bool dispatch_command(int fd, const uint8_t frame[4]) {
 			break;
 		case 0x03:
 			current_filter = target_filter = 1;
-			if (!write_frame(fd, 0x83, (uint8_t)(0x30 + options.slots))) {
+			if (!write_frame(fd, 0x83, options.count_byte >= 0 ? (uint8_t)options.count_byte : (uint8_t)(0x30 + options.slots))) {
 				return false;
 			}
 			break;

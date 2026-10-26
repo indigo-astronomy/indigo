@@ -1,0 +1,4 @@
+Running Additional instance lifecycle
+  PASS one slave create enumerate remove recreate and connected guard
+  PASS two slaves preserve both bases and shared ownership
+Additional instance lifecycle: all tests passed

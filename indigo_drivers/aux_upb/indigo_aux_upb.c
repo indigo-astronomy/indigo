@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000026
+#define DRIVER_VERSION       0x03000027
 #define DRIVER_NAME          "indigo_aux_upb"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox"
@@ -192,6 +192,7 @@ typedef struct {
 	bool usb_ports[6];
 	bool hub;
 	bool automatic_dew;
+	bool focuser_moving;
 	//- data
 } upb_private_data;
 
@@ -1379,12 +1380,20 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	if (upb_command(device, "SI")) {
 		if (PRIVATE_DATA->response[0] == '0') {
-			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				update = true;
+			// A BUSY request whose handler has not sent its move yet is queued behind this poll, the
+			// handler publishes it; only a move the box was given or reported ends here.
+			indigo_property_state position_state = FOCUSER_POSITION_PROPERTY->state;
+			bool pending = !PRIVATE_DATA->focuser_moving && (position_state == INDIGO_BUSY_STATE || FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE);
+			if (!pending) {
+				PRIVATE_DATA->focuser_moving = false;
+				if (position_state != INDIGO_OK_STATE) {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					update = true;
+				}
 			}
 		} else {
+			PRIVATE_DATA->focuser_moving = true;
 			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1412,12 +1421,14 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ focuser.on_connect
+			PRIVATE_DATA->focuser_moving = false;
 			if (upb_command(device, "SA")) {
 				char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				if (token) { // Stepper position
 					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atol(token);
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Motor is running
+					PRIVATE_DATA->focuser_moving = *token == '1';
 					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				}
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Motor Invert
@@ -1525,6 +1536,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		}
 	}
 	if (upb_command(device, "SG:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1))) {
+		PRIVATE_DATA->focuser_moving = true;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
@@ -1549,6 +1561,7 @@ static void focuser_position_handler(indigo_device *device) {
 		}
 		FOCUSER_POSITION_ITEM->number.target = position;
 		if (upb_command(device, "SM:%d", position)) {
+			PRIVATE_DATA->focuser_moving = true;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -1572,14 +1585,14 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 		indigo_cancel_pending_handler(device, focuser_position_handler);
 		indigo_cancel_pending_handler(device, focuser_steps_handler);
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		if (upb_command(device, "SH")) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		} else {
+		if (!upb_command(device, "SH")) {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		// The cancelled request may never have reached the box, so the poll would leave it BUSY forever.
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	}
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);

@@ -46,7 +46,7 @@ void loop() {
       case 'N':
         dec += steps;
         if (dec > limit) {
-          dec == limit;
+          dec = limit;
           Serial.write("L");
         } else {
           Serial.write("G");
@@ -55,7 +55,7 @@ void loop() {
       case 'S':
         dec -= steps;
         if (dec < -limit) {
-          dec == -limit;
+          dec = -limit;
           Serial.write("L");
         } else {
           Serial.write("G");
@@ -64,7 +64,7 @@ void loop() {
       case 'T':
         ra += steps;
         if (ra > limit) {
-          ra == limit;
+          ra = limit;
           Serial.write("L");
         } else {
           Serial.write("G");
@@ -73,7 +73,7 @@ void loop() {
       case 'W':
         ra -= steps;
         if (ra < -limit) {
-          ra == limit;
+          ra = -limit;
           Serial.write("L");
         } else {
           Serial.write("G");

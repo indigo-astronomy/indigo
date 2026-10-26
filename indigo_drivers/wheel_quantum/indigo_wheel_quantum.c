@@ -32,16 +32,27 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_wheel_quantum"
 #define DRIVER_LABEL         "Brightstar Quantum Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Quantum Filter Wheel"
 #define PRIVATE_DATA         ((quantum_private_data *)device->private_data)
 
+//+ define
+
+// A seven slot wheel passes every slot in a few seconds; 20 s bounds a whole move generously
+// while a controller streaming valid P replies that never reach the target is still stopped.
+#define QUANTUM_MOVE_TIMEOUT 20.0
+
+//- define
+
 #pragma mark - Private data definition
 
 typedef struct {
 	indigo_uni_handle *handle;
+	//+ data
+	double move_deadline;
+	//- data
 } quantum_private_data;
 
 #pragma mark - Low level code
@@ -50,8 +61,9 @@ typedef struct {
 
 static bool quantum_goto(indigo_device *device, int slot) {
 	int current;
+	double deadline = indigo_monotonic_time() + QUANTUM_MOVE_TIMEOUT;
 	if (indigo_uni_printf(PRIVATE_DATA->handle, "G%d\r\n", slot - 1) > 0) {
-		while (indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &current) == 1) {
+		while (indigo_monotonic_time() < deadline && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &current) == 1) {
 			if (slot == current + 1) {
 				return true;
 			}
@@ -80,6 +92,25 @@ static void quantum_close(indigo_device *device) {
 }
 
 //- code
+
+//+ wheel.code
+
+static void wheel_slot_finalizer(indigo_device *device) {
+	int current;
+	if (indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &current) != 1) {
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
+	} else if (current + 1 == (int)WHEEL_SLOT_ITEM->number.target) {
+		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target;
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else if (indigo_monotonic_time() >= PRIVATE_DATA->move_deadline) {
+		WHEEL_SLOT_ITEM->number.value = current + 1;
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, "Filter wheel did not reach slot %d in %.0f s", (int)WHEEL_SLOT_ITEM->number.target, QUANTUM_MOVE_TIMEOUT);
+	} else {
+		indigo_execute_handler(device, wheel_slot_finalizer);
+	}
+}
+
+//- wheel.code
 
 #pragma mark - High level code (wheel)
 
@@ -127,17 +158,15 @@ static void wheel_connection_handler(indigo_device *device) {
 
 static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
-	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 	WHEEL_SLOT_ITEM->number.value = 0;
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-	if (quantum_goto(device, (int)WHEEL_SLOT_ITEM->number.target)) {
-		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target;
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_BUSY_STATE, NULL);
+	PRIVATE_DATA->move_deadline = indigo_monotonic_time() + QUANTUM_MOVE_TIMEOUT;
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "G%d\r\n", (int)WHEEL_SLOT_ITEM->number.target - 1) > 0) {
+		indigo_execute_handler(device, wheel_slot_finalizer);
 	} else {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	//- wheel.WHEEL_SLOT.on_change
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (wheel)

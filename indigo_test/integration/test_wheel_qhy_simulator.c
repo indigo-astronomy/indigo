@@ -292,6 +292,59 @@ cleanup:
 	stop_external_serial_simulator(&second);
 }
 
+// MXP answers the filter count as one hexadecimal-like character; a count the 16 allocated slot
+// items cannot hold must refuse the connection before any slot property is published.
+static void assert_count_char_is_refused(const char *count_char) {
+	const char *arguments[] = { "--model", "cfw3", "--count-char", count_char, NULL };
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, WHEEL_QHY_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&qhy_wheel));
+	online = true;
+	enumerate_simulator_device();
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_wheel.device_name, X_MODEL_PROPERTY_NAME, X_MODEL_3_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state(X_MODEL_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!connect_serial_device(&qhy_wheel, simulator.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(!has_defined_property(WHEEL_SLOT_NAME_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property(WHEEL_SLOT_OFFSET_PROPERTY_NAME));
+cleanup:
+	if (online) {
+		if (context.connected) {
+			disconnect_serial_device(&qhy_wheel);
+		}
+		tear_down_serial_driver(&qhy_wheel);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void qhy_cfw3_malformed_filter_count_is_refused(void) {
+	// 0 filters, 17 filters ('H'), 35 filters ('Z') and a negative count ('!').
+	assert_count_char_is_refused("0");
+	assert_count_char_is_refused("H");
+	assert_count_char_is_refused("Z");
+	assert_count_char_is_refused("!");
+}
+
+static void qhy_cfw3_largest_allocated_filter_count_is_accepted(void) {
+	// 'G' reports 16 filters, all the slot items allocated.
+	const char *arguments[] = { "--model", "cfw3", "--count-char", "G", NULL };
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, WHEEL_QHY_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_qhy_serial_driver(simulator.port, X_MODEL_3_ITEM_NAME));
+	indigo_property *names = find_cached_property(WHEEL_SLOT_NAME_PROPERTY_NAME);
+	indigo_property *offsets = find_cached_property(WHEEL_SLOT_OFFSET_PROPERTY_NAME);
+	indigo_property *slot = find_cached_property(WHEEL_SLOT_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(names != NULL && names->count == 16);
+	SERIAL_CHECK_TRUE(offsets != NULL && offsets->count == 16);
+	SERIAL_CHECK_TRUE(slot != NULL && fabs(slot->items[0].number.max - 16) < .001);
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&qhy_wheel);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "qhy_cfw1_wheel_passes_serial_compliance_checks", qhy_cfw1_wheel_passes_serial_compliance_checks },
@@ -299,7 +352,9 @@ int main(void) {
 		{ "qhy_cfw3_wheel_passes_serial_compliance_checks", qhy_cfw3_wheel_passes_serial_compliance_checks },
 		{ "qhy_model_request_survives_the_cfw3_fallback", qhy_model_request_survives_the_cfw3_fallback },
 		{ "qhy_cfw2_move_right_after_connect_waits_for_its_own_echo", qhy_cfw2_move_right_after_connect_waits_for_its_own_echo },
-		{ "qhy_cfw3_connect_takes_the_reported_slot", qhy_cfw3_connect_takes_the_reported_slot }
+		{ "qhy_cfw3_connect_takes_the_reported_slot", qhy_cfw3_connect_takes_the_reported_slot },
+		{ "qhy_cfw3_malformed_filter_count_is_refused", qhy_cfw3_malformed_filter_count_is_refused },
+		{ "qhy_cfw3_largest_allocated_filter_count_is_accepted", qhy_cfw3_largest_allocated_filter_count_is_accepted }
 	};
 	return indigo_run_tests("QHY CFW wheel serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

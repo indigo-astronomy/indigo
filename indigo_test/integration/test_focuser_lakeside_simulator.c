@@ -701,6 +701,24 @@ cleanup:
 	driver_stop();
 }
 
+// A motor that keeps reporting the same P<n> without DONE is stalled as well: the move is stopped with CH and ends
+// ALERT within the stall bound, keeping the requested target.
+static void frozen_motion(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(fault("CO500", "frozen"));
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
+	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(commands("CH") > 0);
+	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
+	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 33268);
+	SERIAL_CHECK_TRUE(switch_change(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 10, INDIGO_OK_STATE));
+cleanup:
+	driver_stop();
+}
+
 static void motion_reply_failure(void) {
 	SERIAL_CHECK_TRUE(driver_start());
 	SERIAL_CHECK_TRUE(fault(!strcmp(current_profile, "completion_failure") ? "DONE" : "progress", "malformed"));
@@ -926,7 +944,7 @@ int main(void) {
 		{ "poll_position_overlong", poll_failure, "position_overlong" }, { "poll_temperature_malformed", poll_failure, "temperature" },
 		{ "backlash_failure", control_failure, "backlash_failure" }, { "compensation_failure", control_failure, "compensation_failure" },
 		{ "slope_failure", control_failure, "slope_failure" }, { "external_state", external_state, "normal" },
-		{ "stalled_motion", stalled_motion, "normal" }, { "motion_progress_skipped", motion_reply_failure, "progress_failure" },
+		{ "stalled_motion", stalled_motion, "normal" }, { "frozen_motion", frozen_motion, "normal" }, { "motion_progress_skipped", motion_reply_failure, "progress_failure" },
 		{ "completion_failure", motion_reply_failure, "completion_failure" }, { "stop_failure", stop_failure, "normal" },
 		{ "start_transport_loss", start_transport_loss, "normal" }, { "controls_during_motion", controls_during_motion, "normal" },
 		{ "disconnect_motion", disconnect_motion, "normal" }, { "reconnect", reconnect, "normal" },

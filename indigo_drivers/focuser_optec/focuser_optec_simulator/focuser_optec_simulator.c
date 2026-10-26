@@ -33,6 +33,9 @@ static double temperature = 24.5, sleep_temperature, telemetry_time, automatic_t
 static serial_motion motion;
 // profile "blocking": the '*' reply to FI/FO is sent when the move ends and input is ignored meanwhile
 static bool reply_pending;
+// fault "reporting" (profile "blocking"): the move repeats ER=2 reports and never sends its '*'
+static bool reporting;
+static double report_time;
 static controller_mode mode = FREE_MODE, sleep_previous_mode = AUTO_A_MODE;
 static int sleep_position, automatic_position;
 
@@ -245,6 +248,11 @@ static bool dispatch(const char *command) {
 		if (!strcmp(action, "stall")) {
 			stalled = true;
 			action[0] = 0;
+		} else if (!strcmp(action, "reporting") && !strcmp(profile, "blocking")) {
+			stalled = true;
+			reporting = reply_pending = true;
+			report_time = serial_motion_time();
+			return write_reply("ER=2", "");
 		} else {
 			stalled = false;
 			serial_motion_start(&motion, target, 200);
@@ -344,7 +352,11 @@ int main(int argc, char **argv) {
 	size_t used = 0;
 	while (running) {
 		update_motion();
-		if (reply_pending && motion.duration <= 0) {
+		if (reporting && serial_motion_time() - report_time >= 0.02) {
+			write_reply("ER=2", "");
+			report_time = serial_motion_time();
+		}
+		if (reply_pending && !reporting && motion.duration <= 0) {
 			reply_pending = false;
 			write_reply("*", "");
 		}

@@ -1382,6 +1382,10 @@ static void unload_handler(indigo_device *device, void *data) {
 				result = indigo_remove_driver(&indigo_available_drivers[i]);
 			} else {
 				result = indigo_available_drivers[i].driver(INDIGO_DRIVER_SHUTDOWN, NULL);
+				// a static driver stays registered, DRIVERS enable must initialize it again
+				if (result == INDIGO_OK) {
+					indigo_available_drivers[i].initialized = false;
+				}
 			}
 			if (result == INDIGO_OK) {
 				for (int j = 0; j < SERVER_DRIVERS_PROPERTY->count; j++) {

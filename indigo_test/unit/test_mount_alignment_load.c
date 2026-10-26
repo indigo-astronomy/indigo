@@ -68,12 +68,41 @@ static void alignment_load_commits_complete_files_and_preserves_state_on_rejecti
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+// MULTI_POINT has no model: its translations returned INDIGO_OK without writing the result, so callers used whatever
+// their output variables held, now they pass the coordinates through like CONTROLLER
+static void multi_point_translations_pass_coordinates_through(void) {
+	indigo_device storage = { .name = "Audit Multi Point Test" };
+	indigo_device *device = &storage;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_mount_attach(device, "audit-test", 1));
+	indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM, true);
+	bool selected = MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value && !MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
+	// a stored alignment point does not change the result either
+	bool loaded = write_alignment(device, "1\n1 5.5 -20 5.4 -19.5 12 0\n") && mount_read_alignment_points(device);
+	double ra[4] = { -1, -1, -1, -1 }, dec[4] = { -1, -1, -1, -1 };
+	indigo_result results[4];
+	results[0] = indigo_translated_to_raw(device, 5.25, -12.5, ra + 0, dec + 0);
+	results[1] = indigo_translated_to_raw_with_lst(device, 11.0, 5.25, -12.5, MOUNT_SIDE_EAST, ra + 1, dec + 1);
+	results[2] = indigo_raw_to_translated(device, 5.25, -12.5, ra + 2, dec + 2);
+	results[3] = indigo_raw_to_translated_with_lst(device, 11.0, 5.25, -12.5, MOUNT_SIDE_WEST, ra + 3, dec + 3);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_mount_detach(device));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+	ASSERT_TRUE(selected);
+	ASSERT_TRUE(loaded);
+	for (int i = 0; i < 4; i++) {
+		ASSERT_EQ_INT(INDIGO_OK, results[i]);
+		ASSERT_NEAR(5.25, ra[i], 1e-12);
+		ASSERT_NEAR(-12.5, dec[i], 1e-12);
+	}
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
-		{ "alignment_load_commits_complete_files_and_preserves_state_on_rejection", alignment_load_commits_complete_files_and_preserves_state_on_rejection }
+		{ "alignment_load_commits_complete_files_and_preserves_state_on_rejection", alignment_load_commits_complete_files_and_preserves_state_on_rejection },
+		{ "multi_point_translations_pass_coordinates_through", multi_point_translations_pass_coordinates_through }
 	};
 	int result = indigo_run_tests("Alignment file load", tests, sizeof(tests) / sizeof(*tests));
 	indigo_test_remove_private_home();

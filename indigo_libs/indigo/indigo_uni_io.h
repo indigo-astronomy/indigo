@@ -413,6 +413,7 @@ INDIGO_EXTERN char *indigo_uni_getcwd();
 INDIGO_EXTERN int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const char *));
 
 /** Compress with gzip.
+ On return out_size is the size of the complete gzip stream, or 0 when compression failed or the stream does not fit out_size bytes.
  */
 
 INDIGO_EXTERN void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);

@@ -22,16 +22,23 @@ driver quantum {
 	label = "Brightstar Quantum Filter Wheel";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 7;
+	version = 8;
 	serial;
 	// include { }
-	// define { }
-	// data { }
+	define {
+		// A seven slot wheel passes every slot in a few seconds; 20 s bounds a whole move generously
+		// while a controller streaming valid P replies that never reach the target is still stopped.
+		#define QUANTUM_MOVE_TIMEOUT 20.0
+	}
+	data {
+		double move_deadline;
+	}
 	code {
 		static bool quantum_goto(indigo_device *device, int slot) {
 			int current;
+			double deadline = indigo_monotonic_time() + QUANTUM_MOVE_TIMEOUT;
 			if (indigo_uni_printf(PRIVATE_DATA->handle, "G%d\r\n", slot - 1) > 0) {
-				while (indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &current) == 1) {
+				while (indigo_monotonic_time() < deadline && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &current) == 1) {
 					if (slot == current + 1) {
 						return true;
 					}
@@ -64,7 +71,22 @@ driver quantum {
 	wheel {
 		name = "Quantum Filter Wheel";
 		additional_instances = true;
-		// code { }
+		code {
+			static void wheel_slot_finalizer(indigo_device *device) {
+				int current;
+				if (indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &current) != 1) {
+					INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				} else if (current + 1 == (int)WHEEL_SLOT_ITEM->number.target) {
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target;
+					INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+				} else if (indigo_monotonic_time() >= PRIVATE_DATA->move_deadline) {
+					WHEEL_SLOT_ITEM->number.value = current + 1;
+					INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, "Filter wheel did not reach slot %d in %.0f s", (int)WHEEL_SLOT_ITEM->number.target, QUANTUM_MOVE_TIMEOUT);
+				} else {
+					indigo_execute_handler(device, wheel_slot_finalizer);
+				}
+			}
+		}
 		// on_timer { }
 		on_connect {
 			if (quantum_goto(device, 1)) {
@@ -76,14 +98,13 @@ driver quantum {
 		// on_detach { }
 		inherited WHEEL_SLOT {
 			on_change {
-				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 				WHEEL_SLOT_ITEM->number.value = 0;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-				if (quantum_goto(device, (int)WHEEL_SLOT_ITEM->number.target)) {
-					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target;
-					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_BUSY_STATE, NULL);
+				PRIVATE_DATA->move_deadline = indigo_monotonic_time() + QUANTUM_MOVE_TIMEOUT;
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "G%d\r\n", (int)WHEEL_SLOT_ITEM->number.target - 1) > 0) {
+					indigo_execute_handler(device, wheel_slot_finalizer);
 				} else {
-					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				}
 			}
 			on_attach {

@@ -1,0 +1,9 @@
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-selected-audit-fixes/indigo_libs -I/private/tmp/indigo-selected-audit-fixes/indigo_drivers -I/private/tmp/indigo-selected-audit-fixes/indigo_mac_drivers -I/private/tmp/indigo-selected-audit-fixes/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o build/integration/test_server_websocket_sanitize integration/test_server_websocket.c ../indigo_libs/indigo_server_tcp.c -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-selected-audit-fixes/build/lib -arch arm64 -fsanitize=address,undefined /private/tmp/indigo-selected-audit-fixes/build/lib/libindigo.a /private/tmp/indigo-selected-audit-fixes/build/lib/libjpeg.a /private/tmp/indigo-selected-audit-fixes/build/lib/libtiff.a /private/tmp/indigo-selected-audit-fixes/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-selected-audit-fixes/build/lib
+build/integration/test_server_websocket_sanitize
+Running server WebSocket handshake integration tests
+  PASS sha1_binary_blocks_and_tail
+  PASS rfc6455_sample_key_upgrades_with_derived_accept
+  PASS longest_fitting_key_still_upgrades
+  PASS key_one_byte_too_long_is_refused
+  PASS over_long_key_is_refused_and_server_keeps_serving
+server WebSocket handshake integration tests: all tests passed

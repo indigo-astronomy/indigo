@@ -902,7 +902,7 @@ INDIGO_EXTERN indigo_result indigo_device_connect(indigo_client *client, char *d
  */
 INDIGO_EXTERN indigo_result indigo_device_disconnect(indigo_client *client, char *device);
 
-/** Query slave devices of given master device.
+/** Query slave devices of given master device, store at most max of them in slaves and return their count.
  */
 INDIGO_EXTERN int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int max);
 

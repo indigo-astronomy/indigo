@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000031
+#define DRIVER_VERSION       0x03000032
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -59,6 +59,9 @@
 #define h2d(h)               (h * 15.0)
 #define d2h(d)               (d / 15.0)
 #define REFRESH_SECONDS      (0.5)
+// A NexStar slews across the whole sky in a few minutes at its fastest rate; 300 s bounds a park
+// whose goto never reports completion.
+#define NEXSTAR_PARK_TIMEOUT (300)
 #define GPS_DEVICE_NAME      "Mount Nexstar (gps)"
 #define NEXSTAR_AVX_MODEL_ID 20
 #define NEXSTAR_CGX_MODEL_ID 23
@@ -105,6 +108,7 @@ typedef struct {
 	int model_id;
 	bool parked;
 	bool park_in_progress;
+	double park_deadline;
 	int slew_rate;
 	int st4_ra_rate, st4_dec_rate;
 	int vendor_id;
@@ -877,9 +881,19 @@ static void mount_park_finalizer(indigo_device *device) {
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return;
 	}
-	if (in_progress) {
+	if (in_progress && indigo_monotonic_time() < PRIVATE_DATA->park_deadline) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_execute_handler_in(device, REFRESH_SECONDS, mount_park_finalizer);
+		return;
+	}
+	if (in_progress) {
+		// The goto never ended: stop it, the mount stays unparked where it is.
+		nexstar_abort_motion(device);
+		PRIVATE_DATA->parked = false;
+		PRIVATE_DATA->park_in_progress = false;
+		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Park did not finish in time");
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -1277,6 +1291,7 @@ static void mount_park_handler(indigo_device *device) {
 		int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, ha, dec);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res == RC_OK) {
+			PRIVATE_DATA->park_deadline = indigo_monotonic_time() + NEXSTAR_PARK_TIMEOUT;
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			indigo_execute_handler_in(device, 2, mount_park_finalizer);

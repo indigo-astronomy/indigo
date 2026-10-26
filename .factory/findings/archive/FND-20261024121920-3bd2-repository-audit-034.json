@@ -1,0 +1,29 @@
+{
+  "title": "Guider detach leaks its Multi Kernel GP reset property",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261024121920-3bd2-repository-audit",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261026172255-587a-fix-selected-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Category functional; severity low; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_drivers/agent_guider/indigo_agent_guider.c:2782-2786,:3267-3305. AGENT_GUIDER_RESET_MKGP_PROPERTY is allocated and exposed, but agent_device_detach releases RESET_PPEC and all the other custom property allocations while omitting RESET_MKGP. The macro points to the independent agent_reset_mkgp_property field, not an alias of RESET_PPEC. Repeated agent instances/load/unload leak one property per instance. Whole-agent source allocation/release pairing found this sole custom uppercase-property mismatch. Release this property alongside RESET_PPEC after stopping callbacks. Verify repeated attach/detach allocation accounting. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-6). No fix or risk acceptance claimed.",
+  "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-034; driver-fm-report.md alias FM-6; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026172255-587a-fix-selected-audit-findings/verification.md; independent quality/security reports and recorded regressions. Existing code fix c7c82c514f83538e7624ae12dc286bfd40d78a17 independently verified by five allocation/release cycles.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261024121920-3bd2-repository-audit-034"
+}

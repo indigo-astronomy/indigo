@@ -88,7 +88,7 @@ typedef enum {
 	ptp_property_sony_AFTrackingSensitivity = 0xD255,
 	ptp_property_sony_D256 = 0xD256,
 	ptp_property_sony_D259 = 0xD259,
-	ptp_property_sony_D25A = 0xD25A,
+	ptp_property_sony_PriorityMode = 0xD25A,
 	ptp_property_sony_D25B = 0xD25B,
 	ptp_property_sony_ZoomSetting = 0xD25F,
 	ptp_property_sony_D260 = 0xD260,
@@ -149,9 +149,10 @@ typedef struct {
 	int shot_retries;
 	double shot_deadline;
 	double liveview_deadline;
-	bool shot_pending;
 	int stale_objects;
-	double shot_expires, stale_until;
+	double stale_until;
+	int64_t spent_memory;
+	double spent_at;
 	int steps;
 	uint32_t api_version;
 	bool needs_pre_capture_delay;

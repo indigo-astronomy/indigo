@@ -33,7 +33,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 							0x0300003C
+#define DRIVER_VERSION 							0x0300003D
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -420,6 +420,8 @@ typedef struct {
 	bool write_unconfirmed;
 	// Vendor overrides of the write confirmation window and rewrite period, 0 for the defaults.
 	double property_verify_timeout, property_rewrite_delay;
+	// Until when a shot pressed by the driver may still deliver its image, also after a reconnect.
+	double pending_shot_until;
 	int64_t property_requested[PTP_MAX_ELEMENTS];
 	double property_written[PTP_MAX_ELEMENTS];
 	double property_deadline[PTP_MAX_ELEMENTS];

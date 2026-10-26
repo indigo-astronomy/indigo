@@ -1067,8 +1067,8 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 					break;
 				}
 			}
-			close(udp_socket);
 		}
+		close(udp_socket);
 	}
 #elif defined(INDIGO_WINDOWS)
 	SOCKET udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -1111,8 +1111,8 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 					break;
 				}
 			}
-			closesocket(udp_socket);
 		}
+		closesocket(udp_socket);
 	}
 #else
 #pragma message ("TODO: indigo_perform_pasive_discovery()")
@@ -2465,24 +2465,27 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		*handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #if !defined(INDIGO_CLIENT)
+		// hid_device shares the union with fd, so a HID handle must not reach the descriptor cleanup below
 		if (copy->type == INDIGO_HID_HANDLE ) {
 			hid_close((hid_device *)copy->hid_device);
 		} else
 #endif
-		if (copy->type == INDIGO_COM_HANDLE) {
-			// Release the exclusive claim of the open: a Linux pseudo-terminal keeps TIOCEXCL after its
-			// last descriptor is closed while the other end stays open, and refuses the next open with EBUSY.
-			ioctl(copy->fd, TIOCNXCL);
+		{
+			if (copy->type == INDIGO_COM_HANDLE) {
+				// Release the exclusive claim of the open: a Linux pseudo-terminal keeps TIOCEXCL after its
+				// last descriptor is closed while the other end stays open, and refuses the next open with EBUSY.
+				ioctl(copy->fd, TIOCNXCL);
+			}
+			if (copy->type != INDIGO_FILE_HANDLE) {
+				// Set linger option to avoid TIME_WAIT state
+				struct linger ling;
+				ling.l_onoff = 1;
+				ling.l_linger = 1;
+				setsockopt(copy->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+				shutdown(copy->fd, SHUT_RDWR);
+			}
+			close(copy->fd);
 		}
-		if (copy->type != INDIGO_FILE_HANDLE) {
-			// Set linger option to avoid TIME_WAIT state
-			struct linger ling;
-			ling.l_onoff = 1;
-			ling.l_linger = 1;
-			setsockopt(copy->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
-			shutdown(copy->fd, SHUT_RDWR);
-		}
-		close(copy->fd);
 #elif defined(INDIGO_WINDOWS)
 #if !defined(INDIGO_CLIENT)
 		if (copy->type == INDIGO_HID_HANDLE ) {
@@ -2765,16 +2768,18 @@ void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned
 	header.comment = Z_NULL;
 	header.extra = Z_NULL;
 	int r = deflateInit2(&defstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 9, Z_DEFAULT_STRATEGY);
-	if (r == Z_OK) {
-		r = deflateSetHeader(&defstream, &header);
+	if (r != Z_OK) {
+		*out_size = 0;
+		return;
 	}
-	if (r >= 0) {
+	r = deflateSetHeader(&defstream, &header);
+	if (r == Z_OK) {
 		r = deflate(&defstream, Z_FINISH);
 	}
-	if (r >= 0) {
-		r = deflateEnd(&defstream);
-	}
-	if (r >= 0) {
+	// only Z_STREAM_END means the whole gzip stream fits the output buffer, anything else is an incomplete stream
+	bool complete = r == Z_STREAM_END;
+	r = deflateEnd(&defstream);
+	if (complete && r == Z_OK) {
 		*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
 	} else {
 		*out_size = 0;

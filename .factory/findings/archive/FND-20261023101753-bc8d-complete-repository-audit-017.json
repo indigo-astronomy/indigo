@@ -1,0 +1,29 @@
+{
+  "title": "FBC duration handlers block queued operations",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "Serialized handler sleeps for the requested duration up to 30 seconds, delaying disconnect and other queued requests. Next: delayed finalizers and fake-serial interruption tests.",
+  "evidence": "indigo_drivers/aux_fbc/indigo_aux_fbc.driver:131-148,162-179",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "driver-a-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: aux_fbc 16e17f90d (v11): impulse/exposure finalizers with monotonic deadline; 13/13.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-017"
+}

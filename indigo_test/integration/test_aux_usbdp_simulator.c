@@ -22,6 +22,8 @@
 
 #include <stdatomic.h>
 
+#include <fcntl.h>
+
 #include "serial_simulator_test_common.h"
 
 #ifndef AUX_USBDP_SIMULATOR_EXECUTABLE
@@ -576,6 +578,36 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// Descriptors open in this process, where the driver runs.
+static int open_descriptor_count(void) {
+	int count = 0;
+	for (int fd = 0; fd < 1024; fd++) {
+		if (fcntl(fd, F_GETFD) != -1) {
+			count++;
+		}
+	}
+	return count;
+}
+
+// A failed identification closes the port it opened, so a refused attempt leaves no descriptor behind and the
+// next attempt identifies the controller on a fresh handle.
+static void failed_identity_releases_the_port(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--model", "v2", "--fault-once", "SWHOIS", "silent", NULL };
+	SERIAL_CHECK_TRUE(start_usbdp(&simulator, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&usbdp_case));
+	int before = open_descriptor_count();
+	SERIAL_CHECK_TRUE(!connect_serial_device(&usbdp_case, simulator.port));
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_EQ_INT(before, open_descriptor_count());
+	SERIAL_CHECK_TRUE(connect_serial_device(&usbdp_case, simulator.port));
+	disconnect_serial_device(&usbdp_case);
+	SERIAL_CHECK_EQ_INT(before, open_descriptor_count());
+cleanup:
+	tear_down_serial_driver(&usbdp_case);
+	stop_external_serial_simulator(&simulator);
+}
+
 static void vanished_port_is_refused(void) {
 	external_serial_simulator simulator = { 0 };
 	const char *arguments[] = { "--model", "v2", NULL };
@@ -703,6 +735,7 @@ int main(void) {
 		{ "b07_requests_copied_before_the_publication_are_published_by_their_handlers", b07_requests_copied_before_the_publication_are_published_by_their_handlers },
 		{ "unknown_identity_is_refused", unknown_identity_is_refused },
 		{ "silent_identity_is_refused", silent_identity_is_refused },
+		{ "failed_identity_releases_the_port", failed_identity_releases_the_port },
 		{ "vanished_port_is_refused", vanished_port_is_refused },
 		{ "malformed_status_frame_is_ignored", malformed_status_frame_is_ignored },
 		{ "d16_sensor_2_change_alone_is_published", d16_sensor_2_change_alone_is_published },

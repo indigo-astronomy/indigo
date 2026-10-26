@@ -1,0 +1,25 @@
+test_serial_patterns_parent_union_and_no_output (test_editor.MappingTests) ... ok
+test_repeated_code_blocks_report_shared_mapping (test_editor.MappingTests) ... ok
+test_preview_matches_normal_generator_working_directory (test_editor.MappingTests) ... ok
+test_property_lifecycle_and_detach_marker (test_editor.MappingTests) ... ok
+test_duplicate_property_names_are_scoped_and_references_excluded (test_editor.MappingTests) ... ok
+test_explicit_ccd_identities_scope_lifecycle_properties_and_markers (test_editor.MappingTests) ... ok
+test_all_ccd_simulator_logical_devices_map_exposure (test_editor.MappingTests) ... ok
+test_actual_timeout_reaps_process_and_removes_workspace (test_editor.EditorTests) ... ok
+test_add_rename_generate_remove_nodes (test_editor.EditorTests) ... ok
+test_code_block_add_edit_generate_remove (test_editor.EditorTests) ... ok
+test_cpp_preview_publish_and_conflict_with_existing_c (test_editor.EditorTests) ... ok
+test_disk_conflict_and_failed_atomic_save (test_editor.EditorTests) ... ok
+test_edit_during_generation_discards_old_result (test_editor.EditorTests) ... ok
+test_edits_stay_in_memory_and_save_round_trip (test_editor.EditorTests) ... ok
+test_failed_generation_retains_last_preview_and_recovers (test_editor.EditorTests) ... ok
+test_generation_isolated_publish_and_reopen (test_editor.EditorTests) ... ok
+test_incomplete_repository_is_reported (test_editor.EditorTests) ... ok
+test_missing_generator_timeout_and_failed_output (test_editor.EditorTests) ... ok
+test_publish_conflict_and_rollback (test_editor.EditorTests) ... ok
+test_stale_revision_and_invalid_edit_leave_state_untouched (test_editor.EditorTests) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 0.415s
+
+OK

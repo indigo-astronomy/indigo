@@ -470,13 +470,18 @@ indigo_spherical_point_t indigo_cartesian_to_spherical(const indigo_cartesian_po
 	indigo_spherical_point_t spoint = {0, M_PI / 2.0 , 1};
 
 	if (cpoint->y == 0.0 && cpoint->x == 0.0) {
-		/* Zenith */
+		/* Zenith or nadir, the longitude is undefined */
+		if (cpoint->z < 0) {
+			spoint.d = -M_PI / 2.0;
+		}
 		return spoint;
 	}
 
-	spoint.a = (cpoint->y == 0) ? 0.0 : -atan2(cpoint->y, cpoint->x);
+	/* atan2() places every quadrant, including the negative x axis */
+	spoint.a = -atan2(cpoint->y, cpoint->x);
 	if (spoint.a < 0) spoint.a += TWO_PI;
-	spoint.d = (M_PI / 2.0) - acos(cpoint->z);
+	/* unlike acos(z), this stays defined when rounding pushes the length of a unit vector past 1 */
+	spoint.d = atan2(cpoint->z, hypot(cpoint->x, cpoint->y));
 	return spoint;
 }
 

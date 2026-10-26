@@ -52,6 +52,7 @@ typedef struct {
 	int slots;
 	int slot;
 	int move_time;
+	int count_char;
 } simulator_options;
 
 static simulator_options options = {
@@ -62,7 +63,8 @@ static simulator_options options = {
 	.model = QHY_MODEL_CFW3,
 	.slots = 7,
 	.slot = 1,
-	.move_time = 0
+	.move_time = 0,
+	.count_char = -1
 };
 
 static const char *simulator_name = "wheel_qhy";
@@ -73,7 +75,7 @@ static int current_filter = 0;
 // ----------------------------------------------------------------- runtime
 
 static void usage(const char *name) {
-	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--model cfw1|cfw2|cfw3] [--firmware <text>] [--slots <count>] [--slot <start slot>] [--move-time <ms>]\n", name);
+	fprintf(stderr, "Usage: %s [--headless] [--ready-file <path>] [--trace] [--no-trace] [--model cfw1|cfw2|cfw3] [--firmware <text>] [--slots <count>] [--slot <start slot>] [--move-time <ms>] [--count-char <character>]\n", name);
 }
 
 static bool parse_model(const char *text, qhy_model *model) {
@@ -131,6 +133,13 @@ static bool parse_args(int argc, char *argv[]) {
 			if (!parse_int(argv[++i], 0, 10000, &options.move_time)) {
 				return false;
 			}
+		} else if (!strcmp(argv[i], "--count-char") && i + 1 < argc) {
+			// A raw MXP reply character for malformed-reply tests; the wheel keeps --slots slots.
+			const char *text = argv[++i];
+			if (strlen(text) != 1) {
+				return false;
+			}
+			options.count_char = (unsigned char)text[0];
 		} else {
 			return false;
 		}
@@ -192,7 +201,7 @@ static bool dispatch_command(int fd, const char *command, size_t length) {
 		return write_response(fd, options.firmware, strlen(options.firmware));
 	}
 	if (options.model == QHY_MODEL_CFW3 && length == 3 && !memcmp(command, "MXP", 3)) {
-		char response = filter_to_hex(options.slots);
+		char response = options.count_char >= 0 ? (char)options.count_char : filter_to_hex(options.slots);
 		return write_response(fd, &response, 1);
 	}
 	if (length == 1) {

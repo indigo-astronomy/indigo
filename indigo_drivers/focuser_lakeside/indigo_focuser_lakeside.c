@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_focuser_lakeside"
 #define DRIVER_LABEL         "LakesideAstro Focuser"
 #define FOCUSER_DEVICE_NAME  "LakesideAstro Focuser"
@@ -260,6 +260,13 @@ static void motion_finalizer(indigo_device *device) {
 	if (position != PRIVATE_DATA->last_position) {
 		PRIVATE_DATA->last_position = position;
 		PRIVATE_DATA->stalled = 0;
+	} else if (++PRIVATE_DATA->stalled >= 40) {
+		// A motor that keeps reporting the same position without DONE has stalled as well.
+		lakeside_command(device, false, "CH#");
+		PRIVATE_DATA->active = false;
+		PRIVATE_DATA->uncertain = true;
+		lakeside_motion_state(device, INDIGO_ALERT_STATE);
+		return;
 	}
 	lakeside_motion_state(device, INDIGO_BUSY_STATE);
 	indigo_execute_handler(device, motion_finalizer);

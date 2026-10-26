@@ -1,0 +1,34 @@
+{
+  "title": "Image writers accept failed or short I/O as a successful save",
+  "category": "functional",
+  "severity": "medium",
+  "summary": "indigo_avi.c:50-79, 338-344; indigo_ser.c:96-133: bool helpers consume long-valued indigo_uni_write/seek directly. -1 is true, so disk/seek failure can be reported as success, frame count advanced and corrupt/truncated recording accepted. AVI additionally assigns realloc directly without checking at lines 328-332, risking NULL dereference/loss of offset allocation. Next: Compare writes with exact requested size and seeks with >= 0; keep temporary realloc and advance counts only after complete write. Inject ordinary write/seek/allocation failures and verify false/cleanup. CCD local-save branches use !indigo_uni_write even though -1/positive short counts indicate failure, leaving IMAGE_FILE OK and incomplete files. Include both CCD branches and DSLR save callers in exact-byte/error cleanup regressions.",
+  "evidence": "indigo_avi.c:50-79, 338-344; indigo_ser.c:96-133: bool helpers consume long-valued indigo_uni_write/seek directly. -1 is true, so disk/seek failure can be reported as success, frame count advanced and corrupt/truncated recording accepted. AVI additionally assigns realloc directly without checking at lines 328-332, risking NULL dereference/loss of offset allocation.; indigo_libs/indigo_ccd_driver.c:2367,2487; core-functional-review.md C-07.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "core-functional-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: 116286712, 4de1a6440: exact AVI/SER writes and seeks, checked realloc; CCD/DSLR local saves ALERT and remove incomplete files; test_recording_io, failed_local_save_publishes_alert.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-004"
+}

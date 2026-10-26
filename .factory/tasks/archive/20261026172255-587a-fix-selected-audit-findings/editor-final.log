@@ -1,0 +1,88 @@
+test_actual_timeout_reaps_process_and_removes_workspace (test_editor.EditorTests) ... ok
+test_add_rename_generate_remove_nodes (test_editor.EditorTests) ... ok
+test_code_block_add_edit_generate_remove (test_editor.EditorTests) ... ok
+test_cpp_preview_publish_and_conflict_with_existing_c (test_editor.EditorTests) ... ok
+test_disk_conflict_and_failed_atomic_save (test_editor.EditorTests) ... ok
+test_edit_during_generation_discards_old_result (test_editor.EditorTests) ... ok
+test_edits_stay_in_memory_and_save_round_trip (test_editor.EditorTests) ... ok
+test_failed_generation_retains_last_preview_and_recovers (test_editor.EditorTests) ... ok
+test_generation_isolated_publish_and_reopen (test_editor.EditorTests) ... ok
+test_incomplete_repository_is_reported (test_editor.EditorTests) ... ok
+test_missing_generator_timeout_and_failed_output (test_editor.EditorTests) ... ok
+test_publish_conflict_and_rollback (test_editor.EditorTests) ... ok
+test_stale_revision_and_invalid_edit_leave_state_untouched (test_editor.EditorTests) ... ok
+test_assets_state_and_traversal (test_editor.HTTPTests) ... ok
+test_open_driver_listing_empty_session_and_conflicts (test_editor.HTTPTests) ... ok
+test_origin_token_host_and_revision (test_editor.HTTPTests) ... ok
+test_all_ccd_simulator_logical_devices_map_exposure (test_editor.MappingTests) ... ok
+test_all_real_drivers_generate_without_modification (test_editor.MappingTests) ... test_duplicate_property_names_are_scoped_and_references_excluded (test_editor.MappingTests) ... ok
+test_explicit_ccd_identities_scope_lifecycle_properties_and_markers (test_editor.MappingTests) ... ok
+test_preview_matches_normal_generator_working_directory (test_editor.MappingTests) ... ok
+test_property_lifecycle_and_detach_marker (test_editor.MappingTests) ... ok
+test_repeated_code_blocks_report_shared_mapping (test_editor.MappingTests) ... ok
+test_serial_patterns_parent_union_and_no_output (test_editor.MappingTests) ... ok
+test_add_multiple_patterns_and_remove_one (test_editor.ParserTests) ... ok
+test_continued_line_comment_does_not_close_code_block (test_editor.ParserTests) ... ok
+test_delete_attribute_preserves_neighbors_and_can_be_added_again (test_editor.ParserTests) ... ok
+test_invalid_structure_reports_position (test_editor.ParserTests) ... ok
+test_lossless_attribute_and_code_edit_with_unicode_crlf (test_editor.ParserTests) ... ok
+test_repository_corpus_and_template (test_editor.ParserTests) ... ok
+test_shorthand_and_repeated_nodes (test_editor.ParserTests) ... ok
+test_strings_comments_nested_expressions_and_code (test_editor.ParserTests) ... ok
+test_structural_contexts_shorthand_and_preservation (test_editor.ParserTests) ... ok
+test_template_catalog_includes_all_attributes_and_current_extensions (test_editor.ParserTests) ... ok
+test_template_code_blocks_match_generator_contexts (test_editor.ParserTests) ... FAIL
+test_template_matches_generator_attribute_contexts (test_editor.ParserTests) ... FAIL
+test_unknown_content_preserved_and_source_edits (test_editor.ParserTests) ... ok
+
+======================================================================
+ERROR: test_all_real_drivers_generate_without_modification (test_editor.MappingTests) (file='indigo_polaralign_mlastro.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/test_editor.py", line 575, in test_all_real_drivers_generate_without_modification
+    outputs, _ = generate(source, path.name, root, GENERATOR, ROOT, 15)
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+ERROR: test_all_real_drivers_generate_without_modification (test_editor.MappingTests) (file='indigo_polaralign_simulator.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/test_editor.py", line 575, in test_all_real_drivers_generate_without_modification
+    outputs, _ = generate(source, path.name, root, GENERATOR, ROOT, 15)
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+FAIL: test_template_code_blocks_match_generator_contexts (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/test_editor.py", line 236, in test_template_code_blocks_match_generator_contexts
+    self.assertEqual(set(catalog[context]), set(re.findall(r'parse_code_block\("([^"]+)"', body)))
+AssertionError: Items in the second set but not the first:
+'discover'
+
+======================================================================
+FAIL: test_template_matches_generator_attribute_contexts (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/test_editor.py", line 216, in test_template_matches_generator_attribute_contexts
+    self.assertEqual({name: entry['type'] for name, entry in catalog[context].items()}, accepted('parse_' + context + '_block'))
+AssertionError: {'attach_if': 'expression', 'name_value': '[91 chars]ion'} != {'id': 'identifier', 'attach_if': 'expressi[111 chars]ean'}
+  {'additional_instances': 'boolean',
+   'attach_if': 'expression',
++  'id': 'identifier',
+   'interface': 'expression',
+   'name': 'expression',
+   'name_value': 'expression'}
+
+----------------------------------------------------------------------
+Ran 37 tests in 7.041s
+
+FAILED (failures=2, errors=2)

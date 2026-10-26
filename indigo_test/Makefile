@@ -32,6 +32,9 @@ BENCHMARKS = \
 	$(BENCHMARK_BUILD)/bench_mount_simulator_timing \
 	$(BENCHMARK_BUILD)/bench_mount_nexstar_guider_timing
 UNIT_TESTS = \
+	$(UNIT_BUILD)/test_indigocat_corrections \
+	$(UNIT_BUILD)/test_dslr_raw_init \
+	$(UNIT_BUILD)/test_test_runner \
 	$(UNIT_BUILD)/test_mount_alignment_load \
 	$(UNIT_BUILD)/test_profile_selection \
 	$(UNIT_BUILD)/test_rgb48 \
@@ -57,12 +60,15 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_primalucelib \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image \
-	$(UNIT_BUILD)/test_raw_to_fits
+	$(UNIT_BUILD)/test_raw_to_fits \
+	$(UNIT_BUILD)/test_recording_io
 ifeq ($(OS_DETECTED),Darwin)
 UNIT_TESTS += $(UNIT_BUILD)/test_usbserial_enumeration_macos $(UNIT_BUILD)/test_service_discovery
 endif
 
-INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_cleanup \
+INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
+	$(INTEGRATION_BUILD)/test_agent_guider_cleanup \
+	$(INTEGRATION_BUILD)/test_agent_imager_cleanup \
 	$(INTEGRATION_BUILD)/test_agent_imager_numerics \
 	$(INTEGRATION_BUILD)/test_ccd_file_names \
 	$(INTEGRATION_BUILD)/test_aux_simulator \
@@ -135,6 +141,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_agent_imager_cleanup \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_detach_abort \
 	$(INTEGRATION_BUILD)/test_server_websocket \
+	$(INTEGRATION_BUILD)/test_server_static_driver \
 	$(INTEGRATION_BUILD)/test_ccd_countdown \
 	$(INTEGRATION_BUILD)/test_agent_imager \
 	$(INTEGRATION_BUILD)/test_agent_guider \
@@ -318,7 +325,7 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-unit test-integration test-buildsystem test-imager-download test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+test: test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
 
 # Browser script regression; requires Node.js with the built-in test runner.
 .PHONY: test-mount-manual-motion
@@ -328,6 +335,10 @@ test-mount-manual-motion:
 .PHONY: test-imager-download
 test-imager-download:
 	node --test unit/test_imager_download.js
+
+.PHONY: test-indigo-js-formatting
+test-indigo-js-formatting:
+	node --test unit/test_indigo_js_formatting.js
 
 .PHONY: test-tool-input-safety
 test-tool-input-safety: $(BUILD_LIB)/libindigo_client.a
@@ -386,6 +397,9 @@ check-lib:
 		exit 1; \
 	}
 
+$(BUILD_BIN)/indigo_server:
+	@printf "Missing $@. Run 'make all' from the repository root first.\n"; exit 1
+
 $(UNIT_BUILD):
 	mkdir -p $@
 
@@ -422,7 +436,10 @@ $(UNIT_BUILD)/test_token: unit/test_token.c test_runner.h | $(UNIT_BUILD)
 $(UNIT_BUILD)/test_raw_to_fits: unit/test_raw_to_fits.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
-$(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h | $(UNIT_BUILD)
+$(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_recording_io: unit/test_recording_io.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 # Instrument the production RAW helpers as a separate object, before the static library.
@@ -444,8 +461,8 @@ $(UNIT_BUILD)/test_base64: unit/test_base64.c test_runner.h | $(UNIT_BUILD)
 $(UNIT_BUILD)/test_md5: unit/test_md5.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
-$(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h | $(UNIT_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+$(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lz
 
 # Static PrimaLuce Lab protocol library, linked by the PrimaLuce drivers and their tests.
 PRIMALUCELIB = $(BUILD_LIB)/libprimalucelib.a
@@ -464,6 +481,9 @@ $(UNIT_BUILD)/test_aux_math: unit/test_aux_math.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_align_math: unit/test_align_math.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lindigocat
+
+$(UNIT_BUILD)/test_test_runner: unit/test_test_runner.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_polynomial_fit: unit/test_polynomial_fit.c test_runner.h | $(UNIT_BUILD)
@@ -490,7 +510,16 @@ $(INTEGRATION_BUILD)/test_bus_lifecycle: integration/test_bus_lifecycle.c test_r
 SERVER_WEBSOCKET_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 SERVER_WEBSOCKET_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
-$(INTEGRATION_BUILD)/test_server_websocket: integration/test_server_websocket.c test_runner.h | $(INTEGRATION_BUILD)
+# Compiles indigo_server.c into the test to drive its UNLOAD and DRIVERS handlers with a stub static driver. The
+# server source embeds the generated control panel resources, which make all builds with build/bin/indigo_server.
+$(INTEGRATION_BUILD)/test_server_static_driver: integration/test_server_static_driver.c ../indigo_server/indigo_server.c test_runner.h | $(BUILD_BIN)/indigo_server $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -Wno-unused-function -Wno-return-type -o $@ $< $(TEST_LDFLAGS) -lindigocat -lz
+
+.PHONY: test-server-static-driver
+test-server-static-driver: check-lib $(INTEGRATION_BUILD)/test_server_static_driver
+	$(INTEGRATION_BUILD)/test_server_static_driver
+
+$(INTEGRATION_BUILD)/test_server_websocket: integration/test_server_websocket.c test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_server_websocket_sanitize: integration/test_server_websocket.c ../indigo_libs/indigo_server_tcp.c test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
@@ -1354,7 +1383,7 @@ test-focuser-astroasis-sdk-sanitize: $(INTEGRATION_BUILD)/test_focuser_astroasis
 	ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_focuser_astroasis_sdk_sanitize
 
 EFW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include
-EFW_SDK_TEST_REPLACEMENTS = -Dlibusb_hotplug_register_callback_sim=efw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=efw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=efw_test_usb_start -Dindigo_attach_device=efw_test_attach -Dindigo_detach_device=efw_test_detach -Dlibusb_hotplug_register_callback=efw_test_usb_register -Dlibusb_hotplug_deregister_callback=efw_test_usb_deregister -Dlibusb_ref_device=efw_test_usb_ref -Dlibusb_unref_device=efw_test_usb_unref -Dlibusb_get_device_descriptor=efw_test_usb_descriptor
+EFW_SDK_TEST_REPLACEMENTS = -DEFW_MOVE_TIMEOUT=3.0 -DEFW_CALIBRATION_TIMEOUT=4.0 -Dlibusb_hotplug_register_callback_sim=efw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=efw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=efw_test_usb_start -Dindigo_attach_device=efw_test_attach -Dindigo_detach_device=efw_test_detach -Dlibusb_hotplug_register_callback=efw_test_usb_register -Dlibusb_hotplug_deregister_callback=efw_test_usb_deregister -Dlibusb_ref_device=efw_test_usb_ref -Dlibusb_unref_device=efw_test_usb_unref -Dlibusb_get_device_descriptor=efw_test_usb_descriptor
 
 $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o: ../indigo_drivers/wheel_asi/indigo_wheel_asi.c ../indigo_drivers/wheel_asi/indigo_wheel_asi.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $(EFW_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -1363,7 +1392,7 @@ $(INTEGRATION_BUILD)/test_wheel_asi_sdk: integration/test_wheel_asi_sdk.c integr
 	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
 
 PW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_playerone/bin_externals/libPlayerOnePW/include
-PW_SDK_TEST_REPLACEMENTS = -Dindigo_execute_handler_in=pw_test_poll -Dlibusb_hotplug_register_callback_sim=pw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=pw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=pw_test_usb_start -Dindigo_attach_device=pw_test_attach -Dindigo_detach_device=pw_test_detach -Dlibusb_hotplug_register_callback=pw_test_usb_register -Dlibusb_hotplug_deregister_callback=pw_test_usb_deregister -Dlibusb_ref_device=pw_test_usb_ref -Dlibusb_unref_device=pw_test_usb_unref -Dlibusb_get_device_descriptor=pw_test_usb_descriptor
+PW_SDK_TEST_REPLACEMENTS = -DPW_MOVE_TIMEOUT=3.0 -Dindigo_execute_handler_in=pw_test_poll -Dlibusb_hotplug_register_callback_sim=pw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=pw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=pw_test_usb_start -Dindigo_attach_device=pw_test_attach -Dindigo_detach_device=pw_test_detach -Dlibusb_hotplug_register_callback=pw_test_usb_register -Dlibusb_hotplug_deregister_callback=pw_test_usb_deregister -Dlibusb_ref_device=pw_test_usb_ref -Dlibusb_unref_device=pw_test_usb_unref -Dlibusb_get_device_descriptor=pw_test_usb_descriptor
 
 $(INTEGRATION_BUILD)/wheel_playerone_sdk_driver.o: ../indigo_drivers/wheel_playerone/indigo_wheel_playerone.c ../indigo_drivers/wheel_playerone/indigo_wheel_playerone.h Makefile | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(PW_SDK_TEST_INCLUDE) $(PW_SDK_TEST_REPLACEMENTS) -c $< -o $@
@@ -2704,7 +2733,7 @@ $(INTEGRATION_BUILD)/ccd_ptp_sdk_ccd_framework.o: ../indigo_libs/indigo_ccd_driv
 	$(CC) $(TEST_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_ptp_sdk_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=2 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c $< -o $@
+	$(CC) $(TEST_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_ptp_sdk: integration/test_ccd_ptp_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(PTP_SDK_TEST_OBJECTS) | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -DPTP_STOP_RETRY_LIMIT=5 $< $(PTP_SDK_TEST_OBJECTS) -o $@ $(TOUPTEK_SDK_TEST_LDFLAGS)
@@ -2721,7 +2750,7 @@ $(INTEGRATION_BUILD)/ccd_ptp_sanitize_ccd_framework.o: ../indigo_libs/indigo_ccd
 	$(CC) $(PTP_SANITIZE_CFLAGS) -c $< -o $@
 
 $(INTEGRATION_BUILD)/ccd_ptp_sanitize_%.o: ../indigo_drivers/ccd_ptp/%.c $(wildcard ../indigo_drivers/ccd_ptp/*.h) Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(PTP_SANITIZE_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=2 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c $< -o $@
+	$(CC) $(PTP_SANITIZE_CFLAGS) $(PTP_SDK_TEST_REPLACEMENTS) -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c $< -o $@
 
 $(INTEGRATION_BUILD)/test_ccd_ptp_sdk_sanitize: integration/test_ccd_ptp_sdk.c integration/ccd_test_noise.h integration/simulator_test_common.h test_runner.h $(PTP_SANITIZE_OBJECTS) | $(INTEGRATION_BUILD)
 	$(CC) $(PTP_SANITIZE_CFLAGS) -DPTP_STOP_RETRY_LIMIT=5 $< $(PTP_SANITIZE_OBJECTS) -o $@ $(PTP_SANITIZE_LDFLAGS)
@@ -3555,7 +3584,7 @@ $(SECURITY_BUILD)/test_transport_cache_security: unit/test_transport_cache_secur
 	$(CC) $(SECURITY_CFLAGS) -o $@ $< $(SECURITY_OBJECTS) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
 
 $(SECURITY_BUILD)/indigo_server_tcp_http.o: ../indigo_libs/indigo_server_tcp.c ../indigo_libs/indigo/indigo_bus.h Makefile | $(SECURITY_BUILD)
-	$(CC) $(SECURITY_CFLAGS) -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -c $< -o $@
+	$(CC) $(SECURITY_CFLAGS) -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -Dindigo_uni_compress=http_test_compress -c $< -o $@
 
 $(SECURITY_BUILD)/indigo_uni_io_http.o: ../indigo_libs/indigo_uni_io.c Makefile | $(SECURITY_BUILD)
 	$(CC) $(SECURITY_CFLAGS) -Dindigo_async=http_test_async -c $< -o $@
@@ -3639,3 +3668,41 @@ $(INTEGRATION_BUILD)/test_agent_alpaca_mapping: integration/test_agent_alpaca_ma
 .PHONY: test-agent-alpaca-mapping
 test-agent-alpaca-mapping: check-lib $(INTEGRATION_BUILD)/test_agent_alpaca_mapping
 	$(INTEGRATION_BUILD)/test_agent_alpaca_mapping
+
+# Focused regressions for lifecycle ownership and image/astronomy helpers.
+$(UNIT_BUILD)/test_indigocat_corrections: unit/test_indigocat_corrections.c test_runner.h ../indigo_libs/indigocat/indigocat_nutation.c ../indigo_libs/indigocat/indigocat_sun.c $(BUILD_LIB)/libindigocat.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(LDFLAGS) $(BUILD_LIB)/libindigocat.a -lm -lpthread
+
+$(UNIT_BUILD)/test_indigocat_corrections_sanitize: unit/test_indigocat_corrections.c test_runner.h ../indigo_libs/indigocat/indigocat_nutation.c ../indigo_libs/indigocat/indigocat_sun.c $(BUILD_LIB)/libindigocat.a | $(UNIT_BUILD)
+	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) -o $@ $< $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS) $(BUILD_LIB)/libindigocat.a
+
+$(UNIT_BUILD)/test_dslr_raw_init: unit/test_dslr_raw_init.c test_runner.h ../indigo_libs/indigo_dslr_raw.c $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libraw.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lraw -lstdc++
+
+$(UNIT_BUILD)/test_dslr_raw_init_sanitize: unit/test_dslr_raw_init.c test_runner.h ../indigo_libs/indigo_dslr_raw.c $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libraw.a | $(UNIT_BUILD)
+	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) -o $@ $< $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_additional_instances: integration/test_additional_instances.c test_runner.h ../indigo_libs/indigo_driver.c $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FRAMEWORK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_additional_instances_sanitize: integration/test_additional_instances.c test_runner.h ../indigo_libs/indigo_driver.c $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
+	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) -o $@ $< $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_agent_guider_cleanup: integration/test_agent_guider_cleanup.c test_runner.h ../indigo_drivers/agent_guider/indigo_agent_guider.c $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lindigocat
+
+$(INTEGRATION_BUILD)/test_agent_guider_cleanup_sanitize: integration/test_agent_guider_cleanup.c test_runner.h ../indigo_drivers/agent_guider/indigo_agent_guider.c $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) -o $@ $< $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS) $(BUILD_LIB)/libindigocat.a
+
+.PHONY: test-audit-fixes test-audit-fixes-sanitize
+test-audit-fixes: check-lib $(UNIT_BUILD)/test_indigocat_corrections $(UNIT_BUILD)/test_dslr_raw_init $(INTEGRATION_BUILD)/test_additional_instances $(INTEGRATION_BUILD)/test_agent_guider_cleanup
+	$(UNIT_BUILD)/test_indigocat_corrections
+	$(UNIT_BUILD)/test_dslr_raw_init
+	$(INTEGRATION_BUILD)/test_additional_instances
+	$(INTEGRATION_BUILD)/test_agent_guider_cleanup
+
+test-audit-fixes-sanitize: check-lib $(UNIT_BUILD)/test_indigocat_corrections_sanitize $(UNIT_BUILD)/test_dslr_raw_init_sanitize $(INTEGRATION_BUILD)/test_additional_instances_sanitize $(INTEGRATION_BUILD)/test_agent_guider_cleanup_sanitize
+	UBSAN_OPTIONS=halt_on_error=1 $(UNIT_BUILD)/test_indigocat_corrections_sanitize
+	UBSAN_OPTIONS=halt_on_error=1 $(UNIT_BUILD)/test_dslr_raw_init_sanitize
+	UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_additional_instances_sanitize
+	UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_agent_guider_cleanup_sanitize

@@ -59,6 +59,9 @@ static indigo_result session_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result session_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && indigo_property_match_changeable(SESSION_FEATURES_PROPERTY, property)) {
+		// the property is shared by all clients, so a request naming only some items applies them to the values of the requesting client
+		SESSION_FORCE_PROPERTY_UPDATES_ITEM->sw.value = client->force_property_updates;
+		SESSION_FORCE_ITEM_UPDATES_ITEM->sw.value = client->force_item_updates;
 		indigo_property_copy_values(SESSION_FEATURES_PROPERTY, property, false);
 		client->force_property_updates = SESSION_FORCE_PROPERTY_UPDATES_ITEM->sw.value;
 		client->force_item_updates = SESSION_FORCE_ITEM_UPDATES_ITEM->sw.value;

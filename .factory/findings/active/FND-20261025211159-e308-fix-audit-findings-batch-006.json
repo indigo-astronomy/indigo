@@ -1,0 +1,19 @@
+{
+  "title": "NexStar GOTO completion has no overall deadline",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "mount_nexstar GOTO completion in the timer still has no overall deadline; only park was bounded for FND-20261023101753-bc8d-complete-repository-audit-024, and an existing test asserts a stalled GOTO stays BUSY. Next: decide the GOTO timeout contract, add a deadline with abort and ALERT, and update the test.",
+  "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md Findings and Baseline sections; quality-review.md",
+  "resolution": null,
+  "id": "FND-20261025211159-e308-fix-audit-findings-batch-006"
+}

@@ -433,8 +433,11 @@ static int dsicmd_get_exposure_time_left(dsi_camera_t *dsi) {
 }
 
 static int dsicmd_start_exposure(dsi_camera_t *dsi) {
-	dsi->imaging_state = DSI_IMAGE_EXPOSING;
-	return dsicmd_command_1(dsi, TRIGGER);
+	int result = dsicmd_command_1(dsi, TRIGGER);
+	if (result >= 0) {
+		dsi->imaging_state = DSI_IMAGE_EXPOSING;
+	}
+	return result;
 }
 
 static int dsicmd_abort_exposure(dsi_camera_t *dsi) {
@@ -1163,8 +1166,12 @@ int dsicmd_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
 	int res = 0;
 	if (dsi->is_binnable) {
 		res = dsicmd_command_1(dsi, GET_EXP_MODE);
-		res = dsicmd_command_2(dsi, SET_EXP_MODE, bin);
-		res = dsicmd_command_2(dsi, SET_ROW_COUNT_ODD, read_height_odd);
+		if (res >= 0) {
+			res = dsicmd_command_2(dsi, SET_EXP_MODE, bin);
+		}
+		if (res >= 0) {
+			res = dsicmd_command_2(dsi, SET_ROW_COUNT_ODD, read_height_odd);
+		}
 	}
 	return res;
 }
@@ -1402,6 +1409,8 @@ int dsi_get_verbose(dsi_camera_t *dsi) {
 
 int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 	int gain, offset;
+	// A setup or trigger command that fails stops the sequence, the camera is not exposing then.
+	bool failed = false;
 	int exposure_ticks = (int)(10000 * exptime);
 	gain = (int)(63 * dsi->amp_gain_pct / 100.0);
 	/* FIXME: What is the mapping?
@@ -1421,41 +1430,41 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 		offset = (int)(255 * offset / 50.0);
 	}
 	if (dsi->is_binnable) {
-		dsicmd_set_binning(dsi, dsi->bin_mode);
+		failed = dsicmd_set_binning(dsi, dsi->bin_mode) < 0;
 	}
 	if (dsi->is_interlaced) {
-		dsicmd_set_gain(dsi, 0);
-		dsicmd_set_offset(dsi, 0);
-		dsicmd_set_exposure_time(dsi, exposure_ticks);
+		failed = failed || dsicmd_set_gain(dsi, 0) < 0;
+		failed = failed || dsicmd_set_offset(dsi, 0) < 0;
+		failed = failed || dsicmd_set_exposure_time(dsi, exposure_ticks) < 0;
 		if (exposure_ticks < 10000) {
-			dsicmd_set_readout_speed(dsi, DSI_READOUT_SPEED_HIGH);
-			dsicmd_set_readout_delay(dsi, 3);
-			dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_DUAL);
+			failed = failed || dsicmd_set_readout_speed(dsi, DSI_READOUT_SPEED_HIGH) < 0;
+			failed = failed || dsicmd_set_readout_delay(dsi, 3) < 0;
+			failed = failed || dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_DUAL) < 0;
 			dsicmd_get_readout_mode(dsi);
-			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON);
+			failed = failed || dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON) < 0;
 		} else {
-			dsicmd_set_readout_speed(dsi, DSI_READOUT_SPEED_LOW);
-			dsicmd_set_readout_delay(dsi, 5);
-			dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_SINGLE);
+			failed = failed || dsicmd_set_readout_speed(dsi, DSI_READOUT_SPEED_LOW) < 0;
+			failed = failed || dsicmd_set_readout_delay(dsi, 5) < 0;
+			failed = failed || dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_SINGLE) < 0;
 			dsicmd_get_readout_mode(dsi);
-			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_AUTO);
+			failed = failed || dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_AUTO) < 0;
 		}
-		dsicmd_set_gain(dsi, gain);
-		dsicmd_set_offset(dsi, offset);
+		failed = failed || dsicmd_set_gain(dsi, gain) < 0;
+		failed = failed || dsicmd_set_offset(dsi, offset) < 0;
 	} else { /* Non interlaced - DSI III */
-		dsicmd_set_gain(dsi, gain);
-		dsicmd_set_offset(dsi, offset);
-		dsicmd_set_exposure_time(dsi, exposure_ticks);
-		dsicmd_set_readout_speed(dsi, DSI_READOUT_SPEED_HIGH);
-		dsicmd_set_readout_delay(dsi, 4);
+		failed = failed || dsicmd_set_gain(dsi, gain) < 0;
+		failed = failed || dsicmd_set_offset(dsi, offset) < 0;
+		failed = failed || dsicmd_set_exposure_time(dsi, exposure_ticks) < 0;
+		failed = failed || dsicmd_set_readout_speed(dsi, DSI_READOUT_SPEED_HIGH) < 0;
+		failed = failed || dsicmd_set_readout_delay(dsi, 4) < 0;
 		if (exposure_ticks < 10000) {
-			dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_DUAL);
+			failed = failed || dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_DUAL) < 0;
 			dsicmd_get_readout_mode(dsi);
-			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON);
+			failed = failed || dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON) < 0;
 		} else {
-			dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_SINGLE);
+			failed = failed || dsicmd_set_readout_mode(dsi, DSI_READOUT_MODE_SINGLE) < 0;
 			dsicmd_get_readout_mode(dsi);
-			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_OFF);
+			failed = failed || dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_OFF) < 0;
 		}
 		//FIXME! should take vdd_mode in to account
 		//if ((dsi->vdd_mode) || (dsi->exposure_time < VDD_TRH)) {
@@ -1464,11 +1473,14 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 		//	dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_OFF);
 		//}
 	}
-	dsicmd_set_flush_mode(dsi, DSI_FLUSH_MODE_CONT);
+	failed = failed || dsicmd_set_flush_mode(dsi, DSI_FLUSH_MODE_CONT) < 0;
 	dsicmd_get_readout_mode(dsi);
 	dsicmd_get_exposure_time(dsi);
-	dsicmd_start_exposure(dsi);
-	dsi->imaging_state = DSI_IMAGE_EXPOSING;
+	failed = failed || dsicmd_start_exposure(dsi) < 0;
+	if (failed) {
+		dsi->imaging_state = DSI_IMAGE_IDLE;
+		return EIO;
+	}
 	return 0;
 }
 
@@ -1541,13 +1553,13 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, bool noblock) {
 	if (dsi->is_interlaced) {
 		read_size_even = dsi->read_bpp * read_width * read_height_even;
 		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_even, read_size_even, &actual_length, 3 * dsi->read_image_timeout);
-		if (status < 0) {
+		if (status < 0 || actual_length != read_size_even) {
 			dsi->imaging_state = DSI_IMAGE_IDLE;
 			return EIO;
 		}
 		read_size_odd = dsi->read_bpp * read_width * read_height_odd;
 		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length, 3 * dsi->read_image_timeout);
-		if (status < 0) {
+		if (status < 0 || actual_length != read_size_odd) {
 			dsi->imaging_state = DSI_IMAGE_IDLE;
 			return EIO;
 		}
@@ -1558,7 +1570,7 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, bool noblock) {
 		}
 		read_size_odd = dsi->read_bpp * read_width * read_height_odd;
 		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length, 3 * dsi->read_image_timeout);
-		if (status < 0) {
+		if (status < 0 || actual_length != read_size_odd) {
 			dsi->imaging_state = DSI_IMAGE_IDLE;
 			return EIO;
 		}

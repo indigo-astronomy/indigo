@@ -519,6 +519,52 @@ class MappingTests(unittest.TestCase):
 		self.assertIn('WHEEL owner', second)
 		self.assertNotIn('USE(X_SAME_PROPERTY)', first)
 
+	def test_explicit_ccd_identities_scope_lifecycle_properties_and_markers(self):
+		source = '''driver multi { label = "Multi"; author = "Test"; copyright = "Test"; version = 1;
+		ccd { id = ccd; on_attach { /* IMAGER attach */ } inherited CCD_EXPOSURE { on_change { /* IMAGER exposure */ } } }
+		ccd { id = ccd_guide; on_attach { /* GUIDE attach */ } inherited CCD_EXPOSURE { on_change { /* GUIDE exposure */ } } }
+		}'''
+		root = parse(source)
+		outputs, _ = generate(source, 'multi.driver', root, GENERATOR, ROOT, 10)
+		text = outputs['indigo_ccd_multi.c'].decode()
+		mapping = build_mapping(root, text)
+		for device, identity, label, other in zip(root['children'], ('ccd', 'ccd_guide'), ('IMAGER', 'GUIDE'), ('GUIDE', 'IMAGER')):
+			with self.subTest(device=identity):
+				selected = selected_text(mapping, device['id'], text)
+				self.assertIn('static indigo_result ' + identity + '_attach(', selected)
+				self.assertIn('static indigo_device ' + identity + '_template', selected)
+				self.assertIn(identity.upper() + '_DEVICE_NAME', selected)
+				self.assertNotIn('static indigo_result ' + ('ccd_guide' if identity == 'ccd' else 'ccd') + '_attach(', selected)
+				attach = named(device, 'on_attach')
+				self.assertIn(label + ' attach', selected_text(mapping, attach['id'], text))
+				prop = named(device, 'CCD_EXPOSURE')
+				selected = selected_text(mapping, prop['id'], text)
+				handler = ('ccd_exposure_handler' if identity == 'ccd' else identity + '_ccd_exposure_handler')
+				self.assertIn(handler, selected)
+				self.assertIn(label + ' exposure', selected)
+				self.assertNotIn(other + ' exposure', selected)
+				other_handler = ('ccd_guide_ccd_exposure_handler' if identity == 'ccd' else 'ccd_exposure_handler')
+				self.assertNotIn('static void ' + other_handler + '(', selected)
+				self.assertNotIn('INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, ' + other_handler + ')', selected)
+				self.assertIn('INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, ' + handler + ')', selected)
+
+	def test_all_ccd_simulator_logical_devices_map_exposure(self):
+		path = ROOT / 'indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver'
+		source = path.read_text()
+		root = parse(source)
+		outputs, _ = generate(source, path.name, root, GENERATOR, ROOT, 10)
+		text = outputs['indigo_ccd_simulator.c'].decode()
+		mapping = build_mapping(root, text)
+		devices = [node for node in root['children'] if node['kind'] == 'ccd']
+		self.assertEqual(len(devices), 5)
+		for device in devices:
+			identity = attributes(device)['id']
+			with self.subTest(device=identity):
+				prop = named(device, 'CCD_EXPOSURE')
+				selected = selected_text(mapping, prop['id'], text)
+				self.assertIn(identity + '_ccd_exposure_handler', selected)
+				self.assertIn('CCD_EXPOSURE_PROPERTY', selected)
+
 	def test_all_real_drivers_generate_without_modification(self):
 		generator_hash = hashlib.sha256(GENERATOR.read_bytes()).hexdigest()
 		for path in sorted((ROOT / 'indigo_drivers').rglob('*.driver')):

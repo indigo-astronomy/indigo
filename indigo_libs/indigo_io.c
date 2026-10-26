@@ -511,8 +511,30 @@ bool indigo_printf(int handle, const char *format, ...) {
 		va_start(args, format);
 		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
 		va_end(args);
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s", handle, buffer));
-		bool result = indigo_write(handle, buffer, length);
+		if (length < 0) {
+			INDIGO_ERROR(indigo_error("%d <- // Invalid format '%s'", handle, format));
+			indigo_free_large_buffer(buffer);
+			return false;
+		}
+		char *output = buffer;
+		if (length >= INDIGO_BUFFER_SIZE) {
+			// vsnprintf() returned the length of the complete output, format it again into a buffer that fits
+			output = indigo_safe_malloc((size_t)length + 1);
+			va_start(args, format);
+			int reformatted = vsnprintf(output, (size_t)length + 1, format, args);
+			va_end(args);
+			if (reformatted != length) {
+				INDIGO_ERROR(indigo_error("%d <- // Invalid format '%s'", handle, format));
+				indigo_safe_free(output);
+				indigo_free_large_buffer(buffer);
+				return false;
+			}
+		}
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s", handle, output));
+		bool result = indigo_write(handle, output, length);
+		if (output != buffer) {
+			indigo_safe_free(output);
+		}
 		indigo_free_large_buffer(buffer);
 		return result;
 	} else {

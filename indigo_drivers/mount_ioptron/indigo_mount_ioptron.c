@@ -34,7 +34,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000042
+#define DRIVER_VERSION       0x03000043
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -1795,21 +1795,27 @@ static void ioptron_update_mount_state(indigo_device *device) {
 //+ guider.code
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
-	if (PRIVATE_DATA->protocol == HC_8406) {
-		ioptron_no_reply_command(device, ":Qn#");
-	}
+	// HC8406 pulses are arrow motion that only this stop ends, a failed stop leaves the axis moving.
+	bool stopped = PRIVATE_DATA->protocol != HC_8406 || ioptron_no_reply_command(device, ":Qn#");
 	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+	if (stopped) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_ALERT_STATE, "Failed to stop the guide pulse");
+	}
 }
 
 static void guider_guide_ra_finalizer(indigo_device *device) {
-	if (PRIVATE_DATA->protocol == HC_8406) {
-		ioptron_no_reply_command(device, ":Qe#");
-	}
+	// HC8406 pulses are arrow motion that only this stop ends, a failed stop leaves the axis moving.
+	bool stopped = PRIVATE_DATA->protocol != HC_8406 || ioptron_no_reply_command(device, ":Qe#");
 	// Only the values, the target of a pulse requested while this one ends is read by its handler.
 	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	if (stopped) {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else {
+		INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_ALERT_STATE, "Failed to stop the guide pulse");
+	}
 }
 
 //- guider.code
@@ -2563,11 +2569,12 @@ static void guider_connection_handler(indigo_device *device) {
 		indigo_cancel_pending_handlers(device);
 		//+ guider.on_disconnect
 		// HC8406 pulses are arrow motion stopped by the finalizer, which the disconnect has just cancelled.
+		// An axis whose stop failed (ALERT) is stopped again instead of being left in unconfirmed motion.
 		if (PRIVATE_DATA->protocol == HC_8406) {
-			if (GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (GUIDER_GUIDE_DEC_PROPERTY->state != INDIGO_OK_STATE) {
 				ioptron_no_reply_command(device, ":Qn#");
 			}
-			if (GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (GUIDER_GUIDE_RA_PROPERTY->state != INDIGO_OK_STATE) {
 				ioptron_no_reply_command(device, ":Qe#");
 			}
 		}

@@ -183,6 +183,7 @@ void indigocat_get_nutation(double JD, nutation_s *nutation) {
 	if (fabsl(JD - c_JD) > LN_NUTATION_EPOCH_THRESHOLD) {
 		/* set the new epoch */
 		c_JD = JD;
+		c_longitude = c_obliquity = 0.0;
 
 		/* get julian ephemeris day */
 		JDE = indigocat_jd_to_jde(JD);

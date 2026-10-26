@@ -26,11 +26,17 @@ driver flipflat {
 	label = "Alnitak Astrosystems FlipFlat";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2026 CloudMakers, s. r. o.";
-	version = 12;
+	version = 13;
 	serial;
+	define {
+		// The cover is given 30 s to report open or closed, as the INDI driver does.
+		#define COVER_TIMEOUT	30
+		#define COVER_POLL	1
+	}
 	data {
 		int type;
 		char response[16];
+		double cover_deadline;
 	}
 	code {
 		static bool flipflat_command(indigo_device *device, char *command, ...) {
@@ -111,6 +117,24 @@ driver flipflat {
 		name = "FlipFlat";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
+		code {
+			static void aux_cover_finalizer(indigo_device *device) {
+				if (flipflat_command(device, ">SOOO")) {
+					int type, q, r, s;
+					if (sscanf(PRIVATE_DATA->response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
+						if ((AUX_COVER_OPEN_ITEM->sw.value && s == 2) || (AUX_COVER_CLOSE_ITEM->sw.value && s == 1)) {
+							INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_OK_STATE, NULL);
+							return;
+						}
+					}
+				}
+				if (indigo_monotonic_time() < PRIVATE_DATA->cover_deadline) {
+					indigo_execute_handler_in(device, COVER_POLL, aux_cover_finalizer);
+				} else {
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_ALERT_STATE, "The cover did not reach its position in time");
+				}
+			}
+		}
 		on_connect {
 			// The status carries both the cover and the light, so it is read for a dust cover without light too.
 			if (!AUX_LIGHT_SWITCH_PROPERTY->hidden || !AUX_COVER_PROPERTY->hidden) {
@@ -150,23 +174,11 @@ driver flipflat {
 			label = "Cover";
 			on_change {
 				if (flipflat_command(device, ">%cOOO", AUX_COVER_OPEN_ITEM->sw.value ? 'O' : 'C')) {
+					PRIVATE_DATA->cover_deadline = indigo_monotonic_time() + COVER_TIMEOUT;
 					INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
-					// The cover is given 30 s to report open or closed, as the INDI driver does.
-					for (int i = 0; i < 30; i++) {
-						indigo_sleep(1);
-						if (flipflat_command(device, ">SOOO")) {
-							int type, q, r, s;
-							if (sscanf(PRIVATE_DATA->response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
-								if ((AUX_COVER_OPEN_ITEM->sw.value && s == 2) || (AUX_COVER_CLOSE_ITEM->sw.value && s == 1)) {
-									AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
-									break;
-								}
-							}
-						}
-					}
+					indigo_execute_handler_in(device, COVER_POLL, aux_cover_finalizer);
 				} else {
-					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_ALERT_STATE, NULL);
 				}
 			}
 			item AUX_COVER_OPEN {

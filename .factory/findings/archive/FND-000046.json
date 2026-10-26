@@ -1,0 +1,29 @@
+{
+  "id": "FND-000046",
+  "title": "SERVER-002: the bundled SHA-1 in indigo_server_tcp.c shifts int values into the sign bit, undefined behavior reported by UBSan on every WebSocket handshake",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021203703-ee3d-fix-websocket-key-overflow",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261026172255-587a-fix-selected-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "sha1() promotes unsigned char bytes and the 0x80 padding constant to int and shifts them left by 24 (indigo_server_tcp.c sha1 block loop, tail loop and padding line), which is undefined behavior in C for values >= 0x80. UBSan reports 'left shift of 128 by 24 places cannot be represented in type int' during every handshake in test-server-websocket-sanitize, before and after the FND-000045 fix. Compilers currently produce the expected hash, so there is no observed functional failure. Next action: a scoped fix casting the shifted operands to unsigned, verified by the WebSocket sanitize test running without UBSan reports.",
+  "evidence": "indigo_libs/indigo_server_tcp.c sha1() (base 48dc893 line 658, line 675 after the task 004 change); UBSan output recorded in 20261021203703-ee3d-fix-websocket-key-overflow/verification.md",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026172255-587a-fix-selected-audit-findings/verification.md; independent quality/security reports and recorded regressions. Scoped production correction verified against baseline and candidate.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

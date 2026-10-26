@@ -1,0 +1,29 @@
+{
+  "title": "DSI transport failures can be reported as successful acquisition",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "helper-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261025211159-e308-fix-audit-findings-batch",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "dsi_start_exposure discards setup/start command failures and marks exposing success. dsi_read_image checks transfer status but not actual image byte count, allowing short successful planes to decode retained/partial contents. Next: propagate setup/start failures, commit exposing state only after accepted start, enforce exact expected plane lengths and add fake transport failed-start/short-frame regressions. Source-only, no device execution.",
+  "evidence": "indigo_drivers/ccd_dsi/libdsi.c:1403-1473,1504-1574; helper-review.md H01.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261025211159-e308-fix-audit-findings-batch/verification.md and group-reports.md: ccd_dsi 316e75b16 (v19): libdsi propagates setup/trigger failures and requires exact plane lengths; compile and inspection only, no fake/hardware run.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-044"
+}

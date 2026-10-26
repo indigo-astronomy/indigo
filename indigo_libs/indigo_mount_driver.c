@@ -1206,7 +1206,8 @@ static indigo_alignment_point* indigo_find_nearest_alignment_point(indigo_device
 
 //  Called to transform an observed position into a position for mount
 indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double dec, double *raw_ra, double *raw_dec) {
-	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+	// MULTI_POINT has no model yet, it passes the coordinates through like NEAREST_POINT without a usable point
+	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value || MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 		*raw_ra = ra;
 		*raw_dec = dec;
 		return INDIGO_OK;
@@ -1219,17 +1220,13 @@ indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double 
 		}
 		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 		return indigo_translated_to_raw_with_lst(device, lst, ra, dec, side_of_pier, raw_ra, raw_dec);
-	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-
-		// TBD Rumen
-
-		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
 }
 
 indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double lst, double ra, double dec, int side_of_pier, double *raw_ra, double *raw_dec) {
-	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+	// MULTI_POINT has no model yet, it passes the coordinates through like NEAREST_POINT without a usable point
+	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value || MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 		*raw_ra = ra;
 		*raw_dec = dec;
 		return INDIGO_OK;
@@ -1274,18 +1271,14 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 			*raw_dec = dec;
 		}
 		return INDIGO_OK;
-	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-
-		// TBD Rumen
-
-		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
 }
 
 //  Called to transform from position reported by mount to observed position
 indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec) {
-	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+	// MULTI_POINT has no model yet, it passes the coordinates through like NEAREST_POINT without a usable point
+	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value || MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 		*ra = raw_ra;
 		*dec = raw_dec;
 		return INDIGO_OK;
@@ -1298,18 +1291,14 @@ indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, dou
 		}
 		int side_of_pier = (ha >= 0.0) ? MOUNT_SIDE_EAST : MOUNT_SIDE_WEST;
 		return indigo_raw_to_translated_with_lst(device, lst, raw_ra, raw_dec, side_of_pier, ra, dec);
-	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-
-		// TBD Rumen
-
-		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
 }
 
 //  Called to transform from position reported by mount to observed position
 indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double lst, double raw_ra, double raw_dec, int side_of_pier, double *ra, double *dec) {
-	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value) {
+	// MULTI_POINT has no model yet, it passes the coordinates through like NEAREST_POINT without a usable point
+	if (MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value || MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
 		*ra = raw_ra;
 		*dec = raw_dec;
 		return INDIGO_OK;
@@ -1353,11 +1342,6 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 			*ra = raw_ra;
 			*dec = raw_dec;
 		}
-		return INDIGO_OK;
-	} else if (MOUNT_ALIGNMENT_MODE_MULTI_POINT_ITEM->sw.value) {
-
-		// TBD Rumen
-
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;

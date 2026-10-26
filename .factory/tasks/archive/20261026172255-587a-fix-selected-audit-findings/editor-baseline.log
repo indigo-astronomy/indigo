@@ -1,0 +1,89 @@
+test_actual_timeout_reaps_process_and_removes_workspace (baseline_editor.EditorTests) ... ok
+test_add_rename_generate_remove_nodes (baseline_editor.EditorTests) ... ok
+test_code_block_add_edit_generate_remove (baseline_editor.EditorTests) ... ok
+test_cpp_preview_publish_and_conflict_with_existing_c (baseline_editor.EditorTests) ... ok
+test_disk_conflict_and_failed_atomic_save (baseline_editor.EditorTests) ... ok
+test_edit_during_generation_discards_old_result (baseline_editor.EditorTests) ... ok
+test_edits_stay_in_memory_and_save_round_trip (baseline_editor.EditorTests) ... ok
+test_failed_generation_retains_last_preview_and_recovers (baseline_editor.EditorTests) ... ok
+test_generation_isolated_publish_and_reopen (baseline_editor.EditorTests) ... ok
+test_incomplete_repository_is_reported (baseline_editor.EditorTests) ... ok
+test_missing_generator_timeout_and_failed_output (baseline_editor.EditorTests) ... ok
+test_publish_conflict_and_rollback (baseline_editor.EditorTests) ... ok
+test_stale_revision_and_invalid_edit_leave_state_untouched (baseline_editor.EditorTests) ... ok
+test_assets_state_and_traversal (baseline_editor.HTTPTests) ... ok
+test_open_driver_listing_empty_session_and_conflicts (baseline_editor.HTTPTests) ... ok
+test_origin_token_host_and_revision (baseline_editor.HTTPTests) ... ok
+test_all_real_drivers_generate_without_modification (baseline_editor.MappingTests) ... test_duplicate_property_names_are_scoped_and_references_excluded (baseline_editor.MappingTests) ... ok
+test_preview_matches_normal_generator_working_directory (baseline_editor.MappingTests) ... ok
+test_property_lifecycle_and_detach_marker (baseline_editor.MappingTests) ... ok
+test_repeated_code_blocks_report_shared_mapping (baseline_editor.MappingTests) ... ok
+test_serial_patterns_parent_union_and_no_output (baseline_editor.MappingTests) ... ok
+test_add_multiple_patterns_and_remove_one (baseline_editor.ParserTests) ... ok
+test_continued_line_comment_does_not_close_code_block (baseline_editor.ParserTests) ... ok
+test_delete_attribute_preserves_neighbors_and_can_be_added_again (baseline_editor.ParserTests) ... ok
+test_invalid_structure_reports_position (baseline_editor.ParserTests) ... ok
+test_lossless_attribute_and_code_edit_with_unicode_crlf (baseline_editor.ParserTests) ... ok
+test_repository_corpus_and_template (baseline_editor.ParserTests) ... ok
+test_shorthand_and_repeated_nodes (baseline_editor.ParserTests) ... ok
+test_strings_comments_nested_expressions_and_code (baseline_editor.ParserTests) ... ok
+test_structural_contexts_shorthand_and_preservation (baseline_editor.ParserTests) ... ok
+test_template_catalog_includes_all_attributes_and_current_extensions (baseline_editor.ParserTests) ... ok
+test_template_code_blocks_match_generator_contexts (baseline_editor.ParserTests) ... FAIL
+test_template_matches_generator_attribute_contexts (baseline_editor.ParserTests) ... FAIL
+test_unknown_content_preserved_and_source_edits (baseline_editor.ParserTests) ... ok
+
+======================================================================
+ERROR: test_all_real_drivers_generate_without_modification (baseline_editor.MappingTests) (file='indigo_polaralign_mlastro.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "baseline_test_editor.py", line 529, in test_all_real_drivers_generate_without_modification
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+ERROR: test_all_real_drivers_generate_without_modification (baseline_editor.MappingTests) (file='indigo_polaralign_simulator.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "baseline_test_editor.py", line 529, in test_all_real_drivers_generate_without_modification
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/private/tmp/indigo-selected-audit-fixes/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+FAIL: test_all_real_drivers_generate_without_modification (baseline_editor.MappingTests) (file='indigo_ccd_simulator.driver')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "baseline_test_editor.py", line 538, in test_all_real_drivers_generate_without_modification
+AssertionError: [] is not true : /driver:simulator:1/ccd:1/inherited:CCD_EXPOSURE:1
+
+======================================================================
+FAIL: test_template_code_blocks_match_generator_contexts (baseline_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "baseline_test_editor.py", line 236, in test_template_code_blocks_match_generator_contexts
+AssertionError: Items in the second set but not the first:
+'discover'
+
+======================================================================
+FAIL: test_template_matches_generator_attribute_contexts (baseline_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "baseline_test_editor.py", line 216, in test_template_matches_generator_attribute_contexts
+AssertionError: {'attach_if': 'expression', 'name_value': '[91 chars]ion'} != {'id': 'identifier', 'attach_if': 'expressi[111 chars]ean'}
+  {'additional_instances': 'boolean',
+   'attach_if': 'expression',
++  'id': 'identifier',
+   'interface': 'expression',
+   'name': 'expression',
+   'name_value': 'expression'}
+
+----------------------------------------------------------------------
+Ran 35 tests in 7.032s
+
+FAILED (failures=3, errors=2)

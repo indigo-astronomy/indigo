@@ -100,10 +100,10 @@ indigo_result indigo_equalize_bayer_channels(indigo_raw_type raw_type, void *dat
 	int y_step = (int)(height / sqrt(SAMPLES)) & ~1; // Ensure it's even
 
 	if (x_step == 0) {
-		x_step = 1;
+		x_step = 2;
 	}
 	if (y_step == 0) {
-		y_step = 1;
+		y_step = 2;
 	}
 	if (raw_type == INDIGO_RAW_MONO16) {
 		uint16_t* data16 = (uint16_t*)data;
@@ -3078,7 +3078,7 @@ indigo_result indigo_find_stars_precise_clipped(indigo_raw_type raw_type, const 
 			indigo_debug("%s: NOT INCLUDED star #%d (%lf, %lf)", __FUNCTION__, i+1, star_list[i].x, star_list[i].y);
 			continue;
 		}
-		if (clip_excluded && ((exclude_left < star_list[i].x && star_list[i].x < exclude_right) || (exclude_top < star_list[i].y && star_list[i].y < exclude_bottom))) {
+		if (clip_excluded && exclude_left < star_list[i].x && star_list[i].x < exclude_right && exclude_top < star_list[i].y && star_list[i].y < exclude_bottom) {
 			indigo_debug("%s: EXCLUDED star #%d (%lf, %lf)", __FUNCTION__, i+1, star_list[i].x, star_list[i].y);
 			continue;
 		}
@@ -3146,8 +3146,10 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 		if (star->oversaturated || star->close_to_other) {
 			continue;
 		}
-		double star_fwhm, star_hfd, star_peak;
-		indigo_selection_psf(image_raw_type, image_data, star->x, star->y, radius, image_width, image_height, &star_fwhm, &star_hfd, &star_peak);
+		double star_fwhm = 0, star_hfd = 0, star_peak = 0;
+		if (indigo_selection_psf(image_raw_type, image_data, star->x, star->y, radius, image_width, image_height, &star_fwhm, &star_hfd, &star_peak) != INDIGO_OK) {
+			continue;
+		}
 		star->x /= map_scale; // scale to map coordimates
 		star->y /= map_scale;
 		switch (map_type) {
@@ -3198,7 +3200,7 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 		for (int i = 0; i < map_width; i++) {
 			double avg = 0;
 			int count = 0;
-			for (int k = first_star; k <= last_star; k++) {
+			for (int k = first_star; k < last_star; k++) {
 				indigo_star_detection *star = stars + k;
 				double distance_x = i - star->x + 0.5;
 				double distance_y = j - star->y + 0.5;
@@ -3223,6 +3225,9 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 			}
 		}
 	}
+	if (max_psf < min_psf) {
+		min_psf = max_psf = 0;
+	}
 	if (psf_min) {
 		*psf_min = min_psf;
 	}
@@ -3239,7 +3244,7 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 			int iii = pixel_size * ii;
 			double avg = psfs[ii];
 			if (avg > 0) {
-				int value = (int)(31 * round((avg - min_psf) / psf_scale));
+				int value = psf_scale > 0 ? (int)(31 * round((avg - min_psf) / psf_scale)) : 0;
 				if (map_type == peak) {
 					map_data[iii] = 255 - value;
 					map_data[iii + 1] = value;
@@ -3549,6 +3554,7 @@ double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const i
 	indigo_skeletonize(mono, width, height);
 	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
 	hough_transform(mono, width, height, hough);
+	indigo_safe_free(mono);
 	double rhos[MAX_LINES] = { 0.0 };
 	double thetas[MAX_LINES] = { 0.0 };
 	for (int line = 0; line < MAX_LINES; line++) {

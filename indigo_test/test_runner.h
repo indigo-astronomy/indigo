@@ -82,11 +82,24 @@ static const char *indigo_current_test_name = NULL;
 	} \
 } while (0)
 
+// A NaN compares false with everything, so the plain distance test let a NaN result pass. The
+// tolerance must be finite and not negative; expected and actual must be finite, except that an
+// infinite expected value is matched exactly by an infinite actual value of the same sign.
 #define ASSERT_NEAR(expected, actual, tolerance) do { \
 	double indigo_assert_expected = (expected); \
 	double indigo_assert_actual = (actual); \
 	double indigo_assert_tolerance = (tolerance); \
-	if (fabs(indigo_assert_expected - indigo_assert_actual) > indigo_assert_tolerance) { \
+	bool indigo_assert_near; \
+	if (!isfinite(indigo_assert_tolerance) || indigo_assert_tolerance < 0) { \
+		indigo_assert_near = false; \
+	} else if (isinf(indigo_assert_expected) && isinf(indigo_assert_actual)) { \
+		indigo_assert_near = indigo_assert_expected == indigo_assert_actual; \
+	} else if (!isfinite(indigo_assert_expected) || !isfinite(indigo_assert_actual)) { \
+		indigo_assert_near = false; \
+	} else { \
+		indigo_assert_near = fabs(indigo_assert_expected - indigo_assert_actual) <= indigo_assert_tolerance; \
+	} \
+	if (!indigo_assert_near) { \
 		fprintf(stderr, "%s:%d: expected %.12g, got %.12g, tolerance %.12g\n", __FILE__, __LINE__, indigo_assert_expected, indigo_assert_actual, indigo_assert_tolerance); \
 		indigo_test_failures++; \
 		return; \

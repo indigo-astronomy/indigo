@@ -1,0 +1,29 @@
+{
+  "title": "Solar aberration converts arcseconds to degrees incorrectly",
+  "category": "functional",
+  "severity": "low",
+  "summary": "indigocat_sun.c:50: aberration constant 20.4898 arcseconds is divided by 360*60*60 before subtracting from sol.L in degrees. That makes correction 360 times too small (approximately 20 arcseconds lost near 1 AU). Solar accessor consumes this result. Next: Convert arcseconds to degrees with 60*60 only; verify degree/radian/arcsecond units and a known reference epoch.",
+  "evidence": "indigocat_sun.c:50: aberration constant 20.4898 arcseconds is divided by 360*60*60 before subtracting from sol.L in degrees. That makes correction 360 times too small (approximately 20 arcseconds lost near 1 AU). Solar accessor consumes this result.",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261023101753-bc8d-complete-repository-audit",
+      "report": "framework-formats-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261026172255-587a-fix-selected-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026172255-587a-fix-selected-audit-findings/verification.md; independent quality/security reports and recorded regressions. Scoped production correction verified against baseline and candidate.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023101753-bc8d-complete-repository-audit-015"
+}
