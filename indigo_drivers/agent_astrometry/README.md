@@ -49,4 +49,4 @@ NB: C.W. is Clockwise, C.C.W. is Counterclockwise.
 ## Testing
 
 - 2026-10-01 15:27 2.0.0.27 mac arm64 simulator 68/68 OK
-- 2026-10-26 20:06 2.0.0.33 linux x64 simulator 87/87 OK
+- 2026-10-26 20:55 2.0.0.34 linux x64 simulator 87/87 OK

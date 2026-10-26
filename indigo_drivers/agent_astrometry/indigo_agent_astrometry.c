@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000021
+#define DRIVER_VERSION 0x02000022
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -446,6 +446,8 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			line = NULL;
 		}
 	}
+	// getline() allocates a buffer also for the call that reports the end of the output
+	free(line);
 	fclose(output);
 	int status = 0;
 	pid_t waited;

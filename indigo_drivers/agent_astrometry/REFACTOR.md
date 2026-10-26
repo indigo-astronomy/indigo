@@ -152,3 +152,10 @@ Valgrind on the new cases shows a pre-existing 120-byte loss per solver command 
 
 Recorded run: `2026-10-26 20:06 2.0.0.33 linux x64 simulator 87/87 OK` (54 fake-tool cases, 10 of them new, and the 33
 real-solver cases).
+
+## Solver output buffer freed (2.0.0.34, 2026-10-26, task 20261026185516-13cf-astrometry-getline-leak)
+
+`execute_command()` freed each line read from the solver but not the buffer `getline()` allocates for the call that
+reports the end of the output: 120 bytes per image2xy/solve-field command, three per solve (FND-20261026155455-61b6-platesolver-solve-filter-001). It is freed
+after the loop; valgrind on `solve with filter` reports no definite loss any more. Recorded run:
+`2026-10-26 20:55 2.0.0.34 linux x64 simulator 87/87 OK`.

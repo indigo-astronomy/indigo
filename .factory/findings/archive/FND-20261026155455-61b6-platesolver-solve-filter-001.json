@@ -2,7 +2,7 @@
   "title": "indigo_agent_astrometry: execute_command() leaks the getline() buffer allocated at end of output (120 bytes per solver command)",
   "category": "quality",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261026155455-61b6-platesolver-solve-filter",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261026185516-13cf-astrometry-getline-leak",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "In execute_command() the loop frees the line after every getline() call, but getline() allocates a new buffer for the final call that returns -1 at end of output, and that buffer is never freed (no free(line) after the loop). Valgrind on build/integration/test_agent_astrometry \"solve with filter\" reports 120 bytes definitely lost per image2xy/solve-field command (three per solve). Pre-existing, not caused by the solve-filter change; outside its scope. Proposed fix: free(line) after the while loop.",
   "evidence": "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:435-448; valgrind run recorded in .factory/tasks/20261026155455-61b6-platesolver-solve-filter/verification.md",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261026185516-13cf-astrometry-getline-leak verification.md: free(line) after the getline() loop in execute_command(); valgrind on solve with filter reports no definite loss; recorded run 87/87.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261026155455-61b6-platesolver-solve-filter-001"
 }
