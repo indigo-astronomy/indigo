@@ -1,0 +1,134 @@
+{
+  "version": 2,
+  "task": "20261026212631-884a-complete-pentax",
+  "scope": [
+    ".factory/maintenance.json",
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-*.json",
+    "indigo_drivers/ccd_pentax/*",
+    "indigo_test/integration/test_ccd_pentax_usb.c",
+    "indigo_test/hardware/test_ccd_pentax_hw.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/PROPERTIES.md",
+    "TEST_SUMMARY.md"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_pentax",
+        "--hw",
+        "--type",
+        "PENTAX K-m"
+      ],
+      "result": "fail",
+      "evidence": "hardware-access.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-001.json": [
+      "100644",
+      "blob",
+      "dae033740060521473831b88daa0fe1d837c4033"
+    ],
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-002.json": [
+      "100644",
+      "blob",
+      "20ac5a23cc3778e4790004d6dd218f4a235c52c1"
+    ],
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-003.json": [
+      "100644",
+      "blob",
+      "80c434838ff990c2a51edfce28fef64018cd20ab"
+    ],
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-004.json": [
+      "100644",
+      "blob",
+      "f89573636f1f8eb40ecccf99e85ca9518f6f12ac"
+    ],
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-005.json": [
+      "100644",
+      "blob",
+      "7556cf3741ec5636a3898337ca8b273a852feafa"
+    ],
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-006.json": [
+      "100644",
+      "blob",
+      "bd83cc0343054d7e957b4721535b553b17c669bf"
+    ],
+    ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-007.json": [
+      "100644",
+      "blob",
+      "2057d7a693dbeacd52e3ac67482f01c1b26526ef"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "5dbe194195fe957d840a8b940280f7f4be2118c2"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "b26980df5c6b4d44d77310297180e21340d4a66a"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "ff27957bd35dd521ed7e6602d4a3df700d075c03"
+    ],
+    "indigo_drivers/ccd_pentax/README.md": [
+      "100644",
+      "blob",
+      "dd1be30d279528563abf356fd12d90d2af5c2c9b"
+    ],
+    "indigo_drivers/ccd_pentax/REFACTOR.md": [
+      "100644",
+      "blob",
+      "198758aa13a8b65c9416c8c7fe541bac564c50c3"
+    ],
+    "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c": [
+      "100644",
+      "blob",
+      "ab1b7f5a1994031233d604e600e0407dddea2dd0"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "b78daec8a19ff0ebf69c3bad2bac7bacd4e45dd0"
+    ],
+    "indigo_test/hardware/test_ccd_pentax_hw.c": [
+      "100644",
+      "blob",
+      "5676c40c4bf07c9f250b3077e451935ef0d98a1a"
+    ],
+    "indigo_test/integration/test_ccd_pentax_usb.c": [
+      "100644",
+      "blob",
+      "e0ad77c067a1c9e06cbfe4d5e938ad4e6f4c3a59"
+    ]
+  }
+}

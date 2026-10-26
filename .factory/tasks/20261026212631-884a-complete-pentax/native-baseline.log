@@ -1,0 +1,12 @@
+Definition:
+Sources:    indigo_ccd_pentax.c indigo_ccd_pentax_main.c
+Archive:    indigo_ccd_pentax.a
+SO library: indigo_ccd_pentax.dylib
+indigo_ccd_pentax.o
+Executable: indigo_ccd_pentax
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem<task-root>/indigo_libs -I<task-root>/indigo_drivers -I<task-root>/indigo_mac_drivers -I<task-root>/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_ccd_pentax.o indigo_ccd_pentax.c
+/usr/bin/libtool -static -o <task-root>/build/drivers/indigo_ccd_pentax.a indigo_ccd_pentax.o
+/usr/bin/clang -shared -o <task-root>/build/drivers/indigo_ccd_pentax.dylib -Wl,-force_load <task-root>/build/drivers/indigo_ccd_pentax.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L<task-root>/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem<task-root>/indigo_libs -I<task-root>/indigo_drivers -I<task-root>/indigo_mac_drivers -I<task-root>/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_ccd_pentax_main.o indigo_ccd_pentax_main.c
+/usr/bin/clang -o <task-root>/build/drivers/indigo_ccd_pentax indigo_ccd_pentax_main.o <task-root>/build/drivers/indigo_ccd_pentax.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L<task-root>/build/lib -lusb-1.0

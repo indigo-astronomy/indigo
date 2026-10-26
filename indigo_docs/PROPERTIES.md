@@ -971,7 +971,9 @@ Source: `indigo_drivers/ccd_mi/indigo_ccd_mi.driver`.
 
 Driver-specific use of existing properties: `DSLR_APERTURE`, `DSLR_ISO`, `DSLR_PROGRAM`, `DSLR_SHUTTER`.
 
-`DSLR_PROGRAM`, `DSLR_APERTURE` and `DSLR_SHUTTER` are read-only and report the camera settings polled every 3 s; `DSLR_ISO` is read-write.
+For K-m and K-2000, `DSLR_PROGRAM`, `DSLR_APERTURE`, `DSLR_SHUTTER` and `DSLR_ISO` accept camera settings. Other models retain read-only program/aperture/shutter monitoring and existing ISO support. Status is polled every 3 s while idle.
+
+K-m/K-2000 expose `CCD_EXPOSURE` and `CCD_ABORT_EXPOSURE` with native JPEG/PEF/DNG output through the standard DSLR image pipeline. Exposure temporarily uses manual or bulb mode and restores the original program/shutter settings. Abort closes a held bulb shutter; timed captures have no documented mechanical cancel, so their new RAM frame is discarded without publication. Existing RAM buffers and SD-card images are preserved. Streaming remains hidden. Capture on other models is hidden until their protocol layouts are verified.
 
 Source: `indigo_drivers/ccd_pentax/indigo_ccd_pentax.c`.
 

@@ -3734,7 +3734,15 @@ test-audit-fixes-sanitize: check-lib $(UNIT_BUILD)/test_indigocat_corrections_sa
 PENTAX_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 PENTAX_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(FRAMEWORK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
 $(INTEGRATION_BUILD)/test_ccd_pentax_usb: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS) -ljpeg
 
 $(INTEGRATION_BUILD)/test_ccd_pentax_usb_sanitize: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(PENTAX_SANITIZE_CFLAGS) $< -o $@ $(PENTAX_SANITIZE_LDFLAGS)
+	$(CC) $(PENTAX_SANITIZE_CFLAGS) $< -o $@ $(PENTAX_SANITIZE_LDFLAGS) -ljpeg
+
+# Pentax hardware acceptance remains opt-in and uses one short battery-conscious session.
+.PHONY: test-ccd-pentax-hw
+test-ccd-pentax-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_pentax_hw
+	$(TEST_BUILD)/hardware/test_ccd_pentax_hw --run
+
+$(TEST_BUILD)/hardware/test_ccd_pentax_hw: hardware/test_ccd_pentax_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_ccd_pentax.a | $(TEST_BUILD)/hardware
+	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_pentax.a -o $@ $(FRAMEWORK_TEST_LDFLAGS) -ljpeg -lraw -lstdc++

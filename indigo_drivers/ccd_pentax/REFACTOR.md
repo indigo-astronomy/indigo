@@ -34,3 +34,26 @@ Tests target open/rollback, readiness/error/timeout, response and transfer bound
 
 Simulated tests run/passed: 17/17 in the repaired normal suite; 17/17 under AddressSanitizer and UndefinedBehaviorSanitizer. The final recorded `python3 tools/run_driver_test.py ccd_pentax` run passed 17/17 and wrote the 3.0.0.2 mac arm64 fake SDK record plus TEST_SUMMARY.md. Production universal build passed. Source/header dependencies are registered in the Makefile; test and REFACTOR are in Xcode navigator groups. LeakSanitizer is unavailable on this macOS host; explicit allocation/free ownership assertions cover the repaired leak. Seven compiler warnings concern existing sprintf deprecations; no broad formatting/API cleanup is included.
 Hardware tests run/passed: 0/0 (not requested).
+
+## Completion task 20261026212631-884a-complete-pentax
+
+The original source exposed ISO writes and monitoring but no public exposure, image download or abort path. Native and original17 fake regressions passed before changes. The available K-m was discovered; physical connection failed at USB claim before camera settings or exposures.
+
+Implemented for K-m/K-2000: checked connection rollback, program/aperture/shutter/ISO readback, timed and bulb exposure, shared monotonic countdown, queued bounded readout, new-buffer selection, JPEG/PEF/DNG transfer, abort/recovery, temporary-setting restoration, retained native BLOB ownership and paired USB detach/claim/release/reattach. Other models retain monitoring and existing ISO support; unverified capture is hidden. No generator migration or copied copyleft code.
+
+### Steps and evidence
+
+1. Complete: protocol/license research, original native/fake baseline and short physical baseline attempt. Task research.md and tethering-research.md identify sources and limitations.
+2. Complete in software: lifecycle, controls and asynchronous capture/abort/transfer. Findings001–007 in the task findings.md were repaired and verified. USB cleanup intentionally adds explicit release/reattach compared with the original successful trace, preserving vendor command ordering while fixing failed-claim ownership.
+3. Complete: production fake USB and public-bus fixtures, native hardware harness, Xcode registration and property reference. Fake31/31 and ASan/UBSan31/31 pass; configured Factory190/190, check/security and Xcode syntax pass. No VM entitlement added.
+4. Blocked: physical acceptance. Ordinary, standard-USB-entitled, older-libusb and UID0 variants fail claim(-99). No physical image, timing, settings restoration or native RAW compatibility passed. The hardware runner records1/0 Failed. The system Mass Storage binding was restored after privileged diagnostics. A persistent ChatGPT USB user client/exclusive-access warning is a candidate conflict, not proven sole cause. Docker Linux runs but sees only virtual hubs, no K-m or imported USB/IP device. See task verification.md, hardware-access.md and docker.md.
+
+The owner requested non-interactive tests with short grouped camera use because batteries are limited, and no physical USB unplug. No SD-card deletion, firmware change or unfiltered USB-sharing service was performed. Preserve settings/card/old RAM data. A standalone terminal test after releasing competing USB ownership, or a real Linux USB host, remains necessary before completion. No merge/push or completed-task archival is implied by this checkpoint.
+
+### Current acceptance coverage
+
+Fake tests exercise production helpers and public connection/exposure/upload/abort requests with real queues/timers. They cover retained BLOB data after completion/abort, busy timing and repeated countdown, refused/malformed readback, bounded segments/transfers, active upload-mode recovery and explicit USB cleanup failures. Hardware class acceptance, real JPEG/PEF/DNG data, physical pulse timing, other models, multiple devices, Linux/Windows runtime and physical hotplug remain unverified. This is not full driver certification.
+
+### Completion test summary
+
+Latest simulated run:31 tests run,31 passed. Sanitized run:31 run,31 passed (ASan/UBSan; LeakSanitizer unavailable on macOS). Final requested hardware group:1 planned,0 passed, blocked before exposure. Docker physical driver tests:0 run/0 passed because camera is not exposed to the VM. Task remains unfinished.

@@ -1,0 +1,24 @@
++ make -C <task-root>/indigo_drivers/ccd_pentax -f ../../Makefile.drv all
+Definition:
+Sources:    indigo_ccd_pentax.c indigo_ccd_pentax_main.c
+Archive:    indigo_ccd_pentax.a
+SO library: indigo_ccd_pentax.dylib
+indigo_ccd_pentax.o
+Executable: indigo_ccd_pentax
+
++ make test-ccd-pentax-hw
+build/hardware/test_ccd_pentax_hw --run
+Running ccd_pentax hardware
+Discovered PENTAX K-m
+22:59:04.476687 Application: indigo_ccd_pentax[pentax_open:1004]: libusb_claim_interface: Other error (-99)
+Pentax connection failed
+hardware/test_ccd_pentax_hw.c:273: false
+  FAIL K-m short grouped hardware acceptance
+ccd_pentax hardware: 1 test(s) failed
+make: *** [test-ccd-pentax-hw] Error 1
+143 driver(s) written to <task-root>/TEST_SUMMARY.md
+
+FAILED: test-ccd-pentax-hw
+ccd_pentax: 1/0 Failed
+recorded in indigo_drivers/ccd_pentax/README.md:
+2026-10-26 22:59 3.0.0.3 mac arm64 PENTAX K-m 1/0 Failed

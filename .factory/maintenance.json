@@ -187,6 +187,14 @@
       "scope": "Repair the four active Pentax findings and verify with non-interactive fake USB tests",
       "checkpoint": "After this repair, before unrelated work or release; audit remains due",
       "resets_checkpoint": false
+    },
+    "pentax_completion_deferral": {
+      "approved_by": "Peter Polakovic, explicit async chat reply",
+      "date": "2026-10-26",
+      "task": "20261026212631-884a-complete-pentax",
+      "scope": "Complete Pentax driver using open-source protocol references and non-interactive fake USB/hardware verification",
+      "checkpoint": "After this task, before unrelated work/release; audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

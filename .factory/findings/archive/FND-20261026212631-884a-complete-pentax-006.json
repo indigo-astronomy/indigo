@@ -1,0 +1,24 @@
+{
+  "title": "Completed or aborted capture can disable later countdowns",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261026212631-884a-complete-pentax",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Successful starts now resume the shared countdown. Public countdown progress after completion and abort/restart passes. Next: retain verified repair disposition and physical-test limitations.",
+  "evidence": "20261026212631-884a-complete-pentax/findings.md; verification.md; security.md; quality-review.md",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026212631-884a-complete-pentax/findings.md; verification.md and 31-case normal/ASan/UBSan logs; independent scoped security/quality reports. Physical acceptance remains blocked.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261026212631-884a-complete-pentax-006"
+}

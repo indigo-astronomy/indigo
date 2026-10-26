@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261026212631-884a-complete-pentax",
+  "phase": "verification",
+  "status": "blocked",
+  "assigned_role": "coordinator",
+  "next_action": "Resolve exclusive USB ownership or provide an actual Linux USB host/USB-IP export, then run the grouped K-m hardware test and refresh affected checks/reviews.",
+  "blocker": "Physical K-m interface claim fails on macOS even at UID0; Docker Linux cannot see physical USB without a host export. Hardware acceptance remains unverified."
+}

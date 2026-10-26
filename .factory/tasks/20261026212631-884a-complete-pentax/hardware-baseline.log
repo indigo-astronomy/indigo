@@ -1,0 +1,7 @@
+Running ccd_pentax hardware
+Discovered PENTAX K-m
+22:31:18.372987 Application: indigo_ccd_pentax[pentax_open:871]: libusb_claim_interface: Other error (-99)
+Pentax connection failed; not invoking legacy failed-session cleanup.
+hardware/test_ccd_pentax_hw.c:185: false
+  FAIL K-m short grouped hardware acceptance
+ccd_pentax hardware: 1 test(s) failed

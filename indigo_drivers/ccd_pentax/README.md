@@ -66,4 +66,5 @@ Driver is developed and tested with:
 
 ## Testing
 
-- 2026-10-26 22:13 3.0.0.2 mac arm64 fake SDK 17/17 OK
+- 2026-10-26 22:59 3.0.0.3 mac arm64 PENTAX K-m 1/0 Failed
+- 2026-10-26 23:14 3.0.0.3 mac arm64 fake SDK 31/31 OK

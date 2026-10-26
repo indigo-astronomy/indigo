@@ -20,6 +20,8 @@
 
 // Test the production transport and decoders with deterministic USB replies.
 #include "../test_runner.h"
+#include <jpeglib.h>
+#include <stdatomic.h>
 #include <indigo/indigo_usb_utils.h>
 #include <indigo_drivers/ccd_pentax/indigo_ccd_pentax.h>
 static int fake_open(libusb_device *, libusb_device_handle **);
@@ -27,6 +29,9 @@ static void fake_close(libusb_device_handle *);
 static int fake_auto(libusb_device_handle *, int);
 static int fake_kernel(libusb_device_handle *, int);
 static int fake_claim(libusb_device_handle *, int);
+static int fake_detach_kernel(libusb_device_handle *, int);
+static int fake_attach_kernel(libusb_device_handle *, int);
+static int fake_release(libusb_device_handle *, int);
 static int fake_control(libusb_device_handle *, uint8_t, uint8_t, uint16_t, uint16_t, unsigned char *, uint16_t, unsigned int);
 static int fake_bulk(libusb_device_handle *, unsigned char, unsigned char *, int, int *, unsigned int);
 static int fake_clear(libusb_device_handle *, unsigned char);
@@ -47,6 +52,9 @@ static void fake_free(void *);
 #define libusb_set_auto_detach_kernel_driver fake_auto
 #define libusb_kernel_driver_active fake_kernel
 #define libusb_claim_interface fake_claim
+#define libusb_detach_kernel_driver fake_detach_kernel
+#define libusb_attach_kernel_driver fake_attach_kernel
+#define libusb_release_interface fake_release
 #define libusb_control_transfer fake_control
 #define libusb_bulk_transfer fake_bulk
 #define libusb_clear_halt fake_clear
@@ -64,7 +72,26 @@ static void fake_free(void *);
 #define free fake_free
 #include "../../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c"
 #undef free
+#undef indigo_attach_device
+#undef indigo_detach_device
+#undef indigo_monotonic_time
 
+static bool camera_protocol, bus_attached, handle_live;
+static uint8_t command_group, command_code;
+static uint32_t arguments[4], camera_iso, camera_program, camera_num, camera_den;
+static uint32_t camera_mask, segment_index, download_address, download_size;
+static int camera_error_group, camera_error_command, shutter_calls, bulb_starts, bulb_stops, buffer_deletes;
+static atomic_int download_calls;
+static atomic_bool download_gate, download_release;
+static unsigned jpeg_width = 32, jpeg_height = 24;
+static bool never_ready, invalid_segment, oversized_segment, fail_image_download, refuse_controls;
+static uint32_t camera_quality;
+static bool refuse_shutter;
+static int auto_detach_enabled;
+static unsigned char *native_jpeg;
+static unsigned long native_jpeg_size;
+static unsigned command_calls[32][32];
+static int kernel_active, detach_error, claim_error, kernel_detaches, kernel_attaches, interface_releases, interface_claims;
 static int token, stage, open_error, invalid_calls, close_calls;
 static int polls, busy_polls, busy_mode, short_stage, error_stage, pipe_stage, bad_csw;
 static int read_calls, detach_calls, unref_calls, private_frees, free_before_detach;
@@ -87,6 +114,28 @@ static void event(char value) {
 }
 
 static void reset_usb(void) {
+	kernel_active = detach_error = claim_error = kernel_detaches = kernel_attaches = interface_releases = interface_claims = 0;
+	camera_protocol = bus_attached = false;
+	handle_live = true;
+	command_group = command_code = 0;
+	memset(arguments, 0, sizeof(arguments));
+	memset(command_calls, 0, sizeof(command_calls));
+	camera_iso = 400;
+	camera_program = 8;
+	camera_num = 1;
+	camera_den = 10;
+	camera_mask = segment_index = download_address = download_size = 0;
+	camera_error_group = camera_error_command = -1;
+	shutter_calls = bulb_starts = bulb_stops = buffer_deletes = 0;
+	atomic_store(&download_calls, 0);
+	atomic_store(&download_gate, false);
+	atomic_store(&download_release, false);
+	jpeg_width = 32;
+	jpeg_height = 24;
+	never_ready = invalid_segment = oversized_segment = fail_image_download = refuse_controls = false;
+	camera_quality = 0;
+	refuse_shutter = false;
+	auto_detach_enabled = -1;
 	stage = open_error = invalid_calls = close_calls = 0;
 	polls = busy_polls = busy_mode = short_stage = error_stage = pipe_stage = bad_csw = 0;
 	read_calls = detach_calls = unref_calls = private_frees = free_before_detach = 0;
@@ -101,7 +150,7 @@ static void reset_usb(void) {
 }
 
 static int check_handle(libusb_device_handle *handle) {
-	if ((void *)handle != &token) {
+	if ((void *)handle != &token || !handle_live) {
 		invalid_calls++;
 		return LIBUSB_ERROR_NO_DEVICE;
 	}
@@ -115,17 +164,19 @@ static int fake_open(libusb_device *dev, libusb_device_handle **handle) {
 		return LIBUSB_ERROR_ACCESS;
 	}
 	*handle = (libusb_device_handle *)&token;
+	handle_live = true;
 	return 0;
 }
 
 static void fake_close(libusb_device_handle *handle) {
 	check_handle(handle);
 	close_calls++;
+	handle_live = false;
 	event('X');
 }
 
 static int fake_auto(libusb_device_handle *handle, int enabled) {
-	(void)enabled;
+	auto_detach_enabled = enabled;
 	event('A');
 	return check_handle(handle);
 }
@@ -133,12 +184,34 @@ static int fake_auto(libusb_device_handle *handle, int enabled) {
 static int fake_kernel(libusb_device_handle *handle, int interface) {
 	(void)interface;
 	event('K');
-	return check_handle(handle);
+	return check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : kernel_active;
 }
 
 static int fake_claim(libusb_device_handle *handle, int interface) {
 	(void)interface;
 	event('C');
+	interface_claims++;
+	return check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : claim_error;
+}
+
+static int fake_detach_kernel(libusb_device_handle *handle, int interface) {
+	(void)interface;
+	kernel_detaches++;
+	event('T');
+	return check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : detach_error;
+}
+
+static int fake_attach_kernel(libusb_device_handle *handle, int interface) {
+	(void)interface;
+	kernel_attaches++;
+	event('R');
+	return check_handle(handle);
+}
+
+static int fake_release(libusb_device_handle *handle, int interface) {
+	(void)interface;
+	interface_releases++;
+	event('U');
 	return check_handle(handle);
 }
 
@@ -162,6 +235,100 @@ static int fake_clear(libusb_device_handle *handle, unsigned char ep) {
 	return check_handle(handle);
 }
 
+static void camera_command(uint8_t group, uint8_t command) {
+	command_group = group;
+	command_code = command;
+	if (group < 32 && command < 32) {
+		command_calls[group][command]++;
+	}
+	if (group == 0x10 && command == 0x05 && arguments[0] == 2) {
+		shutter_calls++;
+		for (unsigned i = 0; i < 10; i++) {
+			if (!(camera_mask & (1U << i))) {
+				camera_mask |= 1U << i;
+				break;
+			}
+		}
+	} else if (group == 0x10 && command == 0x0d) {
+		if (arguments[0]) {
+			bulb_starts++;
+		} else {
+			bulb_stops++;
+		}
+	} else if (group == 0x18 && command == 0x01) {
+		if (!refuse_controls) {
+			camera_program = arguments[1] == 7 ? 9 : arguments[1] == 6 ? 8 : arguments[1];
+		}
+	} else if (group == 0x18 && command == 0x16) {
+		camera_num = refuse_shutter ? 0 : arguments[0];
+		camera_den = refuse_shutter ? 0 : arguments[1];
+	} else if (group == 0x18 && command == 0x15) {
+		camera_iso = arguments[0];
+	} else if (group == 0x02 && command == 0x01) {
+		segment_index = 0;
+	} else if (group == 0x04 && command == 0x01) {
+		segment_index++;
+	} else if (group == 0x06 && command == 0x00) {
+		download_address = arguments[0];
+		download_size = arguments[1];
+	} else if (group == 0x02 && command == 0x03) {
+		camera_mask &= ~(1U << arguments[0]);
+		buffer_deletes++;
+	}
+}
+
+static uint32_t camera_response_length(void) {
+	if (command_group == 0 && command_code == 4) {
+		return 4;
+	}
+	if (command_group == 0 && command_code == 8) {
+		return 412;
+	}
+	if (command_group == 1 && command_code == 1) {
+		return 4;
+	}
+	if (command_group == 2 && command_code == 0) {
+		return 8;
+	}
+	if (command_group == 4 && command_code == 0) {
+		return 16;
+	}
+	return 4;
+}
+
+static void camera_response(unsigned char *data, int length) {
+	memset(data, 0, length);
+	if (command_group == 0 && command_code == 4) {
+		set_uint32_be(0x00012d73, data);
+	} else if (command_group == 1 && command_code == 1) {
+		data[0] = 1;
+		data[1] = 2;
+	} else if (command_group == 0 && command_code == 8 && length >= 412) {
+		data[0x1a] = (camera_mask >> 8) & 0xff;
+		data[0x1b] = camera_mask & 0xff;
+		set_uint32_be(camera_num, data + 0x30);
+		set_uint32_be(camera_den, data + 0x34);
+		set_uint32_be(56, data + 0x38);
+		set_uint32_be(10, data + 0x3c);
+		set_uint32_be(camera_iso, data + 0x64);
+		set_uint32_be(0, data + 0x7c);
+		set_uint32_be(0, data + 0x80);
+		set_uint32_be(camera_quality, data + 0x84);
+		set_uint32_be(0, data + 0x88);
+		set_uint32_be(camera_program, data + 0xb0);
+		set_uint32_be(35, data + 0x140);
+		set_uint32_be(10, data + 0x144);
+		set_uint32_be(56, data + 0x148);
+		set_uint32_be(10, data + 0x14c);
+	} else if (command_group == 2 && command_code == 0 && length >= 8) {
+		set_uint32_be(camera_mask, data);
+	} else if (command_group == 4 && command_code == 0 && length >= 16) {
+		set_uint32_be(invalid_segment ? 99 : segment_index ? 2 : 3, data + 4);
+		set_uint32_be(0x1000, data + 8);
+		set_uint32_be(oversized_segment ? UINT32_MAX : native_jpeg_size, data + 12);
+	}
+}
+
 static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned char *data, int n, int *actual, unsigned int timeout) {
 	(void)ep;
 	(void)timeout;
@@ -177,22 +344,50 @@ static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned ch
 		command_block_wrapper *cbw = (command_block_wrapper *)data;
 		current_tag = cbw->dCBWTag;
 		memcpy(current_cdb, cbw->CBWCB, 16);
+		if (camera_protocol && current_cdb[1] == 0x24 && cbw->dCBWDataTransferLength == 0) {
+			camera_command(current_cdb[2], current_cdb[3]);
+		}
 		stage = cbw->dCBWDataTransferLength ? 1 : 2;
 		event('B');
 	} else if (stage == 1) {
 		stage = 2;
 		event('D');
-		memset(data, 0, n);
-		if (current_cdb[1] == 0x26) {
+		if (camera_protocol && current_cdb[1] == 0x4f) {
+			unsigned offset = current_cdb[2] | (current_cdb[3] << 8);
+			if (n == 4 && offset < sizeof(arguments)) {
+				arguments[offset / 4] = get_uint32_be(data);
+			}
+		} else if (camera_protocol && current_cdb[1] == 0x49) {
+			read_calls++;
+			camera_response(data, n);
+		} else if (camera_protocol && current_cdb[1] == 0x24 && current_cdb[2] == 6 && current_cdb[3] == 2) {
+			atomic_fetch_add(&download_calls, 1);
+			if (atomic_load(&download_gate)) {
+				double end = indigo_monotonic_time() + 2;
+				while (!atomic_load(&download_release) && indigo_monotonic_time() < end) {
+					indigo_usleep(1000);
+				}
+			}
+			if (fail_image_download || download_address < 0x1000 || download_address - 0x1000 + n > native_jpeg_size || n != download_size) {
+				return LIBUSB_ERROR_IO;
+			}
+			memcpy(data, native_jpeg + download_address - 0x1000, n);
+		} else if (current_cdb[1] == 0x26) {
+			memset(data, 0, n);
 			polls++;
-			clock_now += 0.1;
-			if (polls > 100) {
+			if (!camera_protocol) {
+				clock_now += 0.1;
+			}
+			if (!camera_protocol && polls > 100) {
 				stage = 0;
 				return LIBUSB_ERROR_NO_DEVICE;
 			}
-			set_uint32_le(advertised_length, data);
+			set_uint32_le(camera_protocol ? camera_response_length() : advertised_length, data);
 			data[6] = polls <= busy_polls && busy_mode == 1 ? 0 : 1;
 			data[7] = polls <= busy_polls && busy_mode == 2 ? 1 : 0;
+			if (camera_protocol && never_ready) {
+				data[6] = 0;
+			}
 			if (busy_mode == 3) {
 				data[7] = 0x42;
 			}
@@ -202,6 +397,9 @@ static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned ch
 		}
 	} else {
 		command_status_wrapper reply = { { 'U', 'S', 'B', 'S' }, current_tag, 0, 0 };
+		if (camera_protocol && command_group == camera_error_group && command_code == camera_error_command) {
+			reply.bCSWStatus = 1;
+		}
 		if (bad_csw == 1) {
 			reply.dCSWSignature[0] = 'X';
 		}
@@ -220,15 +418,22 @@ static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned ch
 }
 
 static double fake_time(void) {
-	return clock_now;
+	return camera_protocol ? indigo_monotonic_time() : clock_now;
 }
 
 static int fake_sleep(useconds_t n) {
+	if (camera_protocol) {
+		indigo_usleep(n);
+		return 0;
+	}
 	clock_now += n / 1000000.0;
 	return 0;
 }
 
 static indigo_result fake_detach(indigo_device *device) {
+	if (bus_attached) {
+		return indigo_detach_device(device);
+	}
 	detach_calls++;
 	if (device->private_data != tracked_private) {
 		free_before_detach++;
@@ -293,6 +498,9 @@ static indigo_result fake_path(libusb_device *dev, char *path) {
 }
 
 static indigo_result fake_attach(indigo_device *device) {
+	if (bus_attached) {
+		return indigo_attach_device(device);
+	}
 	attach_calls++;
 	tracked_private = device->private_data;
 	memcpy(attached_name, device->name, sizeof(attached_name));
@@ -577,7 +785,537 @@ static void test_hotplug_descriptor_names(void) {
 	}
 }
 
+
+static void make_native_jpeg(void) {
+	if (native_jpeg) {
+		free(native_jpeg);
+		native_jpeg = NULL;
+	}
+	struct jpeg_compress_struct encoder;
+	struct jpeg_error_mgr error;
+	encoder.err = jpeg_std_error(&error);
+	jpeg_create_compress(&encoder);
+	jpeg_mem_dest(&encoder, &native_jpeg, &native_jpeg_size);
+	encoder.image_width = jpeg_width;
+	encoder.image_height = jpeg_height;
+	encoder.input_components = 1;
+	encoder.in_color_space = JCS_GRAYSCALE;
+	jpeg_set_defaults(&encoder);
+	jpeg_set_quality(&encoder, 85, TRUE);
+	jpeg_start_compress(&encoder, TRUE);
+	uint32_t random = 0x643a198d;
+	while (encoder.next_scanline < encoder.image_height) {
+		JSAMPLE row[512];
+		for (unsigned i = 0; i < jpeg_width; i++) {
+			random = random * 1664525U + 1013904223U;
+			row[i] = random >> 24;
+		}
+		JSAMPROW rows[] = { row };
+		jpeg_write_scanlines(&encoder, rows, 1);
+	}
+	jpeg_finish_compress(&encoder);
+	jpeg_destroy_compress(&encoder);
+}
+
+static indigo_device *prepare_camera(bool properties) {
+	indigo_device *device = prepare(properties);
+	camera_protocol = true;
+	make_native_jpeg();
+	for (int i = 0; MODEL_INFO[i].identity; i++) {
+		if (MODEL_INFO[i].identity == 0x12d73) {
+			private_state.model = i;
+			private_state.identity = MODEL_INFO[i].identity;
+			private_state.flags = MODEL_INFO[i].flags;
+			break;
+		}
+	}
+	return device;
+}
+
+static void test_capture_buttons(void) {
+	indigo_device *device = prepare_camera(false);
+	ASSERT_EQ_INT(0, pentax_button(device, 0x05, 2));
+	ASSERT_EQ_INT(1, shutter_calls);
+	ASSERT_EQ_INT(0, pentax_button(device, 0x0d, 1));
+	ASSERT_EQ_INT(0, pentax_button(device, 0x0d, 0));
+	ASSERT_EQ_INT(1, bulb_starts);
+	ASSERT_EQ_INT(1, bulb_stops);
+	ASSERT_EQ_INT(0, pentax_set_program(device, 9));
+	ASSERT_EQ_INT(9, camera_program);
+	ASSERT_EQ_INT(0, pentax_set_program(device, 8));
+	ASSERT_EQ_INT(8, camera_program);
+}
+
+static void test_buffer_segments(void) {
+	indigo_device *device = prepare_camera(false);
+	uint32_t type = 0, address = 0, size = 0;
+	ASSERT_EQ_INT(0, pentax_select_buffer(device, 0, 4, 0));
+	ASSERT_EQ_INT(0, pentax_segment_info(device, &type, &address, &size));
+	ASSERT_EQ_INT(3, type);
+	ASSERT_EQ_INT(0x1000, address);
+	ASSERT_EQ_INT(native_jpeg_size, size);
+	ASSERT_EQ_INT(0, pentax_next_segment(device));
+	ASSERT_EQ_INT(0, pentax_segment_info(device, &type, &address, &size));
+	ASSERT_EQ_INT(2, type);
+	camera_mask = 1;
+	ASSERT_EQ_INT(0, pentax_delete_buffer(device, 0));
+	ASSERT_EQ_INT(0, camera_mask);
+	ASSERT_EQ_INT(1, buffer_deletes);
+}
+
+static void test_download_bytes_and_errors(void) {
+	indigo_device *device = prepare_camera(false);
+	uint8_t data[65536];
+	ASSERT_EQ_INT(0, pentax_download_block(device, 0x1000, native_jpeg_size, data));
+	ASSERT_TRUE(memcmp(data, native_jpeg, native_jpeg_size) == 0);
+	ASSERT_EQ_INT(1, download_calls);
+	fail_image_download = true;
+	ASSERT_TRUE(pentax_download_block(device, 0x1000, native_jpeg_size, data) != 0);
+	fail_image_download = false;
+	ASSERT_TRUE(pentax_download_block(device, 0x1000, 65537, data) != 0);
+}
+
+static void test_capture_state_metadata(void) {
+	indigo_device *device = prepare_camera(true);
+	camera_mask = 1;
+	camera_iso = 800;
+	camera_program = 9;
+	int result = pentax_get_full_state(device);
+	uint32_t mask = private_state.buffer_mask, iso = private_state.iso, program = private_state.program;
+	ccd_detach(device);
+	ASSERT_EQ_INT(0, result);
+	ASSERT_EQ_INT(1, mask);
+	ASSERT_EQ_INT(800, iso);
+	ASSERT_EQ_INT(9, program);
+}
+
+static pthread_mutex_t observation_mutex = PTHREAD_MUTEX_INITIALIZER;
+static unsigned observed_revision, observed_images, observed_bad_images;
+static const void *observed_blob;
+static long observed_blob_size;
+static char observed_file[INDIGO_VALUE_SIZE];
+static unsigned observed_program_revision;
+static indigo_property_state observed_program_state;
+static indigo_property_state observed_exposure;
+static bool observed_countdown_progress;
+static bool observed_connected;
+static unsigned connection_revision;
+static indigo_client capture_client;
+
+static indigo_result capture_observe_core(indigo_client *client, indigo_device *device, indigo_property *property, const char *message, bool update) {
+	(void)client;
+	(void)device;
+	(void)message;
+	if (strcmp(property->device, "Fake Pentax")) {
+		return INDIGO_OK;
+	}
+	pthread_mutex_lock(&observation_mutex);
+	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+		observed_exposure = property->state;
+		observed_revision++;
+		if (update && property->state == INDIGO_BUSY_STATE && property->count > 0 && property->items[0].number.value > 0 && property->items[0].number.value < property->items[0].number.target) {
+			observed_countdown_progress = true;
+		}
+	} else if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+		connection_revision++;
+		observed_connected = false;
+		for (int i = 0; i < property->count; i++) {
+			if (!strcmp(property->items[i].name, CONNECTION_CONNECTED_ITEM_NAME)) {
+				observed_connected = property->items[i].sw.value && property->state == INDIGO_OK_STATE;
+			}
+		}
+	} else if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->count > 0) {
+		snprintf(observed_file, sizeof(observed_file), "%s", property->items[0].text.value);
+	} else if (!strcmp(property->name, DSLR_PROGRAM_PROPERTY_NAME)) {
+		observed_program_state = property->state;
+		observed_program_revision++;
+	} else if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->count && property->items[0].blob.value) {
+		indigo_item *item = property->items;
+		observed_blob = item->blob.value;
+		observed_blob_size = item->blob.size;
+		observed_images += update;
+		observed_bad_images += item->blob.size != native_jpeg_size || memcmp(item->blob.value, native_jpeg, native_jpeg_size) != 0;
+	}
+	pthread_mutex_unlock(&observation_mutex);
+	return INDIGO_OK;
+}
+
+static indigo_result capture_define(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	return capture_observe_core(client, device, property, message, false);
+}
+
+static indigo_result capture_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	return capture_observe_core(client, device, property, message, true);
+}
+
+static bool retained_blob_valid(void) {
+	pthread_mutex_lock(&observation_mutex);
+	bool valid = observed_blob && observed_blob_size == native_jpeg_size && memcmp(observed_blob, native_jpeg, native_jpeg_size) == 0;
+	pthread_mutex_unlock(&observation_mutex);
+	return valid;
+}
+
+static indigo_client capture_client = {
+	.name = "Pentax fake camera client",
+	.version = INDIGO_VERSION_CURRENT,
+	.define_property = capture_define,
+	.update_property = capture_update
+};
+
+static bool capture_wait(indigo_property_state state, unsigned after, double seconds) {
+	double end = indigo_monotonic_time() + seconds;
+	while (indigo_monotonic_time() < end) {
+		pthread_mutex_lock(&observation_mutex);
+		bool ready = observed_revision > after && observed_exposure == state;
+		bool failed = observed_revision > after && observed_exposure == INDIGO_ALERT_STATE && state != INDIGO_ALERT_STATE;
+		pthread_mutex_unlock(&observation_mutex);
+		if (ready || failed) {
+			return ready;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static unsigned exposure_revision(void) {
+	pthread_mutex_lock(&observation_mutex);
+	unsigned result = observed_revision;
+	pthread_mutex_unlock(&observation_mutex);
+	return result;
+}
+
+static bool camera_attach_public(void) {
+	static indigo_device template = INDIGO_DEVICE_INITIALIZER("Fake Pentax", ccd_attach, ccd_enumerate_properties, ccd_change_property, NULL, ccd_detach);
+	prepare_camera(false);
+	test_device = template;
+	test_device.private_data = &private_state;
+	test_device.master_device = &test_device;
+	private_state.handle = NULL;
+	observed_revision = observed_images = observed_bad_images = connection_revision = observed_program_revision = 0;
+	observed_blob = NULL;
+	observed_blob_size = 0;
+	observed_file[0] = 0;
+	observed_exposure = INDIGO_IDLE_STATE;
+	observed_connected = false;
+	bus_attached = true;
+	if (indigo_attach_client(&capture_client) != INDIGO_OK || indigo_attach_device(&test_device) != INDIGO_OK) {
+		return false;
+	}
+	indigo_change_switch_property_1(&capture_client, test_device.name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	double end = indigo_monotonic_time() + 3;
+	while (indigo_monotonic_time() < end) {
+		pthread_mutex_lock(&observation_mutex);
+		bool ready = observed_connected;
+		pthread_mutex_unlock(&observation_mutex);
+		if (ready) {
+			indigo_change_switch_property_1(&capture_client, test_device.name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
+			indigo_change_switch_property_1(&capture_client, test_device.name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME, true);
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static void camera_detach_public(void) {
+	indigo_change_switch_property_1(&capture_client, test_device.name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	double end = indigo_monotonic_time() + 3;
+	while (indigo_monotonic_time() < end) {
+		pthread_mutex_lock(&observation_mutex);
+		bool connected = observed_connected;
+		pthread_mutex_unlock(&observation_mutex);
+		if (!connected) {
+			break;
+		}
+		indigo_usleep(10000);
+	}
+	indigo_detach_device(&test_device);
+	indigo_detach_client(&capture_client);
+	bus_attached = false;
+}
+
+static void test_public_timed_capture(void) {
+	bool attached = camera_attach_public();
+	bool completed = false;
+	if (attached) {
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05);
+		completed = capture_wait(INDIGO_OK_STATE, before, 5);
+		completed = retained_blob_valid() && completed;
+		indigo_enumerate_properties(&capture_client, &INDIGO_ALL_PROPERTIES);
+		completed = retained_blob_valid() && completed;
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && completed);
+	ASSERT_EQ_INT(1, shutter_calls);
+	ASSERT_EQ_INT(1, observed_images);
+	ASSERT_EQ_INT(0, observed_bad_images);
+	ASSERT_EQ_INT(1, buffer_deletes);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_public_bulb_abort_recovery(void) {
+	bool attached = camera_attach_public();
+	bool completed = false, aborted = false, recovered = false, countdown_progress = false;
+	if (attached) {
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1.1);
+		completed = capture_wait(INDIGO_OK_STATE, before, 5);
+		before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 2);
+		if (capture_wait(INDIGO_BUSY_STATE, before, 1)) {
+			indigo_usleep(50000);
+			before = exposure_revision();
+			indigo_change_switch_property_1(&capture_client, test_device.name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
+			aborted = capture_wait(INDIGO_ALERT_STATE, before, 2);
+			aborted = retained_blob_valid() && aborted;
+			indigo_enumerate_properties(&capture_client, &INDIGO_ALL_PROPERTIES);
+			aborted = retained_blob_valid() && aborted;
+		}
+		pthread_mutex_lock(&observation_mutex);
+		observed_countdown_progress = false;
+		pthread_mutex_unlock(&observation_mutex);
+		before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1.3);
+		recovered = capture_wait(INDIGO_OK_STATE, before, 5);
+		pthread_mutex_lock(&observation_mutex);
+		countdown_progress = observed_countdown_progress;
+		pthread_mutex_unlock(&observation_mutex);
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && completed && aborted && recovered && countdown_progress);
+	ASSERT_EQ_INT(2, observed_images);
+	ASSERT_EQ_INT(0, observed_bad_images);
+	ASSERT_EQ_INT(bulb_starts, bulb_stops);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_public_abort_during_download(void) {
+	bool attached = camera_attach_public();
+	bool aborted = false, recovered = false;
+	if (attached) {
+		jpeg_width = jpeg_height = 512;
+		make_native_jpeg();
+		atomic_store(&download_gate, true);
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05);
+		double end = indigo_monotonic_time() + 3;
+		while (!atomic_load(&download_calls) && indigo_monotonic_time() < end) {
+			indigo_usleep(1000);
+		}
+		if (atomic_load(&download_calls)) {
+			before = exposure_revision();
+			indigo_change_switch_property_1(&capture_client, test_device.name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
+			atomic_store(&download_release, true);
+			aborted = capture_wait(INDIGO_ALERT_STATE, before, 3);
+		}
+		atomic_store(&download_release, true);
+		atomic_store(&download_gate, false);
+		before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05);
+		recovered = capture_wait(INDIGO_OK_STATE, before, 5);
+	}
+	atomic_store(&download_release, true);
+	camera_detach_public();
+	ASSERT_TRUE(attached && aborted && recovered);
+	ASSERT_EQ_INT(1, observed_images);
+	ASSERT_EQ_INT(0, observed_bad_images);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_public_refused_program_readback(void) {
+	bool attached = camera_attach_public();
+	bool rejected = false;
+	if (attached) {
+		pthread_mutex_lock(&private_state.mutex);
+		refuse_controls = true;
+		pthread_mutex_unlock(&private_state.mutex);
+		pthread_mutex_lock(&observation_mutex);
+		unsigned before = observed_program_revision;
+		pthread_mutex_unlock(&observation_mutex);
+		indigo_change_switch_property_1(&capture_client, test_device.name, DSLR_PROGRAM_PROPERTY_NAME, "00000009", true);
+		double end = indigo_monotonic_time() + 2;
+		while (indigo_monotonic_time() < end) {
+			pthread_mutex_lock(&observation_mutex);
+			rejected = observed_program_revision > before && observed_program_state == INDIGO_ALERT_STATE;
+			pthread_mutex_unlock(&observation_mutex);
+			if (rejected) {
+				break;
+			}
+			indigo_usleep(10000);
+		}
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && rejected);
+	ASSERT_EQ_INT(8, camera_program);
+	ASSERT_EQ_INT(0, observed_images);
+}
+
+static void test_public_invalid_capture_metadata(void) {
+	bool attached = camera_attach_public();
+	bool bad_program = false, bad_shutter = false, bad_quality = false, recovered = false;
+	if (attached) {
+		pthread_mutex_lock(&private_state.mutex);
+		camera_program = UINT32_MAX;
+		pthread_mutex_unlock(&private_state.mutex);
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05);
+		bad_program = capture_wait(INDIGO_ALERT_STATE, before, 2);
+		int attempts = shutter_calls;
+		pthread_mutex_lock(&private_state.mutex);
+		camera_program = 8;
+		refuse_shutter = true;
+		pthread_mutex_unlock(&private_state.mutex);
+		before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05);
+		bad_shutter = capture_wait(INDIGO_ALERT_STATE, before, 3) && shutter_calls == 0;
+		pthread_mutex_lock(&private_state.mutex);
+		refuse_shutter = false;
+		camera_num = 1;
+		camera_den = 10;
+		camera_quality = UINT32_MAX;
+		pthread_mutex_unlock(&private_state.mutex);
+		before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05);
+		bad_quality = capture_wait(INDIGO_ALERT_STATE, before, 3) && attempts == 0;
+		pthread_mutex_lock(&private_state.mutex);
+		camera_quality = 0;
+		pthread_mutex_unlock(&private_state.mutex);
+		before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05);
+		recovered = capture_wait(INDIGO_OK_STATE, before, 5);
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && bad_program && bad_shutter && bad_quality && recovered);
+	ASSERT_EQ_INT(1, observed_images);
+	ASSERT_EQ_INT(0, observed_bad_images);
+}
+
+static void test_public_refused_capture_mode(void) {
+	bool attached = camera_attach_public();
+	bool refused = false;
+	if (attached) {
+		pthread_mutex_lock(&private_state.mutex);
+		refuse_controls = true;
+		pthread_mutex_unlock(&private_state.mutex);
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1.1);
+		refused = capture_wait(INDIGO_ALERT_STATE, before, 3);
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && refused);
+	ASSERT_EQ_INT(0, shutter_calls);
+	ASSERT_EQ_INT(0, bulb_starts);
+	ASSERT_EQ_INT(0, observed_images);
+	ASSERT_EQ_INT(8, camera_program);
+}
+
+static bool request_short_capture(indigo_property_state expected) {
+	unsigned before = exposure_revision();
+	return indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0.05) == INDIGO_OK && capture_wait(expected, before, 5);
+}
+
+static void test_public_upload_failure_cross_recovery(void) {
+	char directory[] = "/private/tmp/pentax-outputs-XXXXXX";
+	char blocker[512] = { 0 }, blocked_directory[512] = { 0 }, saved_path[INDIGO_VALUE_SIZE] = { 0 };
+	bool attached = camera_attach_public();
+	bool client_failed = false, local_recovered = false, local_failed = false, client_recovered = false;
+	if (attached && mkdtemp(directory)) {
+		pthread_mutex_lock(&private_state.mutex);
+		fail_image_download = true;
+		pthread_mutex_unlock(&private_state.mutex);
+		client_failed = request_short_capture(INDIGO_ALERT_STATE);
+		pthread_mutex_lock(&private_state.mutex);
+		fail_image_download = false;
+		pthread_mutex_unlock(&private_state.mutex);
+		indigo_change_text_property_1(&capture_client, test_device.name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_LOCAL_MODE_DIR_ITEM_NAME, directory);
+		indigo_change_text_property_1(&capture_client, test_device.name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, "pentax_test");
+		indigo_change_switch_property_1(&capture_client, test_device.name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_LOCAL_ITEM_NAME, true);
+		local_recovered = request_short_capture(INDIGO_OK_STATE);
+		pthread_mutex_lock(&observation_mutex);
+		snprintf(saved_path, sizeof(saved_path), "%s", observed_file);
+		pthread_mutex_unlock(&observation_mutex);
+		local_recovered = local_recovered && *saved_path && access(saved_path, R_OK) == 0;
+		snprintf(blocker, sizeof(blocker), "%s/block", directory);
+		snprintf(blocked_directory, sizeof(blocked_directory), "%s/block/subdir", directory);
+		FILE *file = fopen(blocker, "w");
+		if (file) {
+			fclose(file);
+			indigo_change_text_property_1(&capture_client, test_device.name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_LOCAL_MODE_DIR_ITEM_NAME, blocked_directory);
+			local_failed = request_short_capture(INDIGO_ALERT_STATE);
+		}
+		indigo_change_switch_property_1(&capture_client, test_device.name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
+		client_recovered = request_short_capture(INDIGO_OK_STATE);
+	}
+	camera_detach_public();
+	if (*saved_path) {
+		unlink(saved_path);
+	}
+	if (*blocker) {
+		unlink(blocker);
+	}
+	rmdir(directory);
+	ASSERT_TRUE(attached && client_failed && local_recovered && local_failed && client_recovered);
+	ASSERT_EQ_INT(1, observed_images);
+	ASSERT_EQ_INT(0, observed_bad_images);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_kernel_reattach_after_claim_failure(void) {
+	indigo_device *device = prepare(false);
+	private_state.handle = NULL;
+	kernel_active = 1;
+	claim_error = LIBUSB_ERROR_BUSY;
+	bool opened = pentax_open(device);
+	ASSERT_TRUE(!opened);
+	ASSERT_TRUE(private_state.handle == NULL);
+	ASSERT_EQ_INT(0, auto_detach_enabled);
+	ASSERT_EQ_INT(1, kernel_detaches);
+	ASSERT_EQ_INT(1, interface_claims);
+	ASSERT_EQ_INT(0, interface_releases);
+	ASSERT_EQ_INT(1, kernel_attaches);
+	ASSERT_EQ_INT(1, close_calls);
+	ASSERT_TRUE(strstr(trace, "CRX") != NULL);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_kernel_release_and_reattach_after_close(void) {
+	indigo_device *device = prepare(false);
+	private_state.handle = NULL;
+	kernel_active = 1;
+	bool opened = pentax_open(device);
+	if (opened) {
+		pentax_close(device);
+	}
+	ASSERT_TRUE(opened && private_state.handle == NULL);
+	ASSERT_EQ_INT(0, auto_detach_enabled);
+	ASSERT_EQ_INT(1, kernel_detaches);
+	ASSERT_EQ_INT(1, interface_claims);
+	ASSERT_EQ_INT(1, interface_releases);
+	ASSERT_EQ_INT(1, kernel_attaches);
+	ASSERT_EQ_INT(1, close_calls);
+	ASSERT_TRUE(strstr(trace, "URX") != NULL);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_kernel_detach_failure_avoids_claim(void) {
+	indigo_device *device = prepare(false);
+	private_state.handle = NULL;
+	kernel_active = 1;
+	detach_error = LIBUSB_ERROR_ACCESS;
+	bool opened = pentax_open(device);
+	ASSERT_TRUE(!opened && private_state.handle == NULL);
+	ASSERT_EQ_INT(1, kernel_detaches);
+	ASSERT_EQ_INT(0, interface_claims);
+	ASSERT_EQ_INT(0, interface_releases);
+	ASSERT_EQ_INT(0, kernel_attaches);
+	ASSERT_EQ_INT(1, close_calls);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
 int main(int argc, char **argv) {
+	setvbuf(stdout, NULL, _IONBF, 0);
+	alarm(30);
 	bool baseline = argc > 1 && strcmp(argv[1], "--baseline") == 0;
 	indigo_test_case tests[] = {
 		{ "successful open order", test_open_success },
@@ -596,10 +1334,26 @@ int main(int argc, char **argv) {
 		{ "all valid model layouts", test_all_valid_models },
 		{ "general state boundaries", test_general_state_bounds },
 		{ "CSW integrity", test_csw_integrity },
-		{ "hotplug descriptor names", test_hotplug_descriptor_names }
+		{ "hotplug descriptor names", test_hotplug_descriptor_names },
+		{ "capture button and program commands", test_capture_buttons },
+		{ "image buffer segment traversal", test_buffer_segments },
+		{ "download payload and transport errors", test_download_bytes_and_errors },
+		{ "capture state metadata", test_capture_state_metadata },
+		{ "public timed native capture", test_public_timed_capture },
+		{ "public bulb abort and recovery", test_public_bulb_abort_recovery },
+		{ "public abort during image download", test_public_abort_during_download },
+		{ "public refused program readback", test_public_refused_program_readback },
+		{ "public invalid capture metadata", test_public_invalid_capture_metadata },
+		{ "public refused exposure mode before trigger", test_public_refused_capture_mode },
+		{ "public upload output failure cross recovery", test_public_upload_failure_cross_recovery },
+		{ "USB claim failure reattaches kernel driver", test_kernel_reattach_after_claim_failure },
+		{ "USB close releases and reattaches kernel driver", test_kernel_release_and_reattach_after_close },
+		{ "USB detach failure avoids claim", test_kernel_detach_failure_avoids_claim }
 	};
 	indigo_start();
 	int result = indigo_run_tests("ccd_pentax_usb", tests, baseline ? 11 : (int)(sizeof(tests) / sizeof(*tests)));
 	indigo_stop();
+	free(native_jpeg);
+	alarm(0);
 	return result;
 }
