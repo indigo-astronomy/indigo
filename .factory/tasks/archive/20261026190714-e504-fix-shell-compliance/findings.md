@@ -29,4 +29,3 @@ Strict all-six normal fixtures require footer/exit0/zeroFAIL and missingBUSY con
 ## FND-20261026190714-e504-fix-shell-compliance-002
 
 Three numeric comparators use typed finite reads and constant AWK/data comparison; expression rejection and signed/scientific success controls pass.
-

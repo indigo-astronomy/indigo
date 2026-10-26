@@ -19,3 +19,7 @@ Codex desktop provides shell/file/Git and same-provider collaboration. Current c
 ## Retention and delivery
 
 One outcome-named task commit contains Bash, fixtures, docs, registry closures and archived evidence. No per-driver commit units apply because no driver changed. Archive completed execution, inspect rewritten links/completion, stage every assigned source and retained .txt output, bind exact reviewed identities in process.json, commit and verify immutable process/check/test/security gates on a clean candidate. Final SHA and post-commit results belong in the external delivery log, avoiding a self-referential bookkeeping commit. Preserve the task branch until owner-authorized integration; existing branches remain untouched.
+
+## Final evidence-format correction
+
+The staged-content whitespace check found a trailing diagnostic separator space in the retained baseline text and an extra final blank line in findings.md. Shell command chaining incorrectly continued to create the initial commit despite that failed check. A separate evidence-only correction preserves history under the owner prohibition on rewriting; runtime source/tests are unchanged. The original diagnostic bytes remain retained in the initial commit, while the current report normalizes only that trailing separator whitespace. Repeat the committed-range whitespace/process checks and configured checks on the corrected candidate before delivery.

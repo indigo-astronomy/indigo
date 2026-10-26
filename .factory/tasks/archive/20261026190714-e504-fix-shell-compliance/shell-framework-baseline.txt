@@ -65,7 +65,7 @@ FAIL: test_path_with_spaces_and_remote_argv (__main__.FrameworkContractTests)
 Traceback (most recent call last):
   File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 154, in test_path_with_spaces_and_remote_argv
     self.assertEqual(0, r.returncode, r.stderr)
-AssertionError: 0 != 127 : 
+AssertionError: 0 != 127 :
 
 ======================================================================
 FAIL: test_query_failure_cannot_become_numeric_zero_success (__main__.FrameworkContractTests) (call='test_get_value zero "$2.P.ITEM" 0 number')
