@@ -756,10 +756,14 @@ cleanup:
 }
 
 static void descriptor_cleanup(void) {
+	// Serial enumeration starts a process-lifetime USB monitor; its pipe is not owned by this driver.
+	indigo_start_usb_event_handler();
 	int before = open_descriptors();
-	SERIAL_CHECK_TRUE(driver_start());
-	driver_stop();
-	SERIAL_CHECK_TRUE(open_descriptors() == before);
+	for (int cycle = 0; cycle < 3; cycle++) {
+		SERIAL_CHECK_TRUE(driver_start());
+		driver_stop();
+		SERIAL_CHECK_TRUE(open_descriptors() == before);
+	}
 cleanup:
 	if (context.connected) {
 		driver_stop();
