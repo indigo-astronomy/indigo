@@ -1,0 +1,33 @@
+test_focuser_optec_simulator descriptor_cleanup repeat 1
+Running Optec
+  PASS descriptor_cleanup
+Optec: all tests passed
+Optec: 0 failing scenarios
+EXIT=0
+test_focuser_optec_simulator descriptor_cleanup repeat 2
+Running Optec
+  PASS descriptor_cleanup
+Optec: all tests passed
+Optec: 0 failing scenarios
+EXIT=0
+test_focuser_optec_simulator descriptor_cleanup repeat 3
+Running Optec
+  PASS descriptor_cleanup
+Optec: all tests passed
+Optec: 0 failing scenarios
+EXIT=0
+test_mount_simulator mount_abort_allows_fresh_goto repeat 1
+Running mount simulator integration tests
+  PASS mount_abort_allows_fresh_goto
+mount simulator integration tests: all tests passed
+EXIT=0
+test_mount_simulator mount_abort_allows_fresh_goto repeat 2
+Running mount simulator integration tests
+  PASS mount_abort_allows_fresh_goto
+mount simulator integration tests: all tests passed
+EXIT=0
+test_mount_simulator mount_abort_allows_fresh_goto repeat 3
+Running mount simulator integration tests
+  PASS mount_abort_allows_fresh_goto
+mount simulator integration tests: all tests passed
+EXIT=0

@@ -57,3 +57,7 @@ After acceptance, test-build cleanup, final archive/link review, registry valida
 ## Final documentation and registry checks
 
 After all final driver runs, `make -C indigo_test test-clean` exited 0 and removed test build artifacts; the isolated recorder target repeated 5/5 afterward. Final `./.factory/scripts/check` and `./.factory/scripts/security` exited 0 with 43 active and 170 archived valid findings. Generated TEST_SUMMARY.md matches its source README records; all MIGRATION_STATUS Comment cells match the base. Retired CI configuration and maintained README/docs/project/Xcode references are absent. Historical finding/task evidence remains preserved.
+
+## Committed-range evidence correction
+
+The initial committed process check reported one scope omission: the final NexStar README record was produced after the preliminary path inventory. This is corrected by adding the already-reviewed path and recapturing its content identity. Four small synthetic diagnostic logs referenced by the specialist report were also ignored by the generic *.log rule; explicitly stage them for retained evidence. This follow-up changes evidence only. No runtime source or test expectation changes; the earlier 393/393 driver and 392 native-unit results remain applicable. The final immutable process gate must pass before delivery.

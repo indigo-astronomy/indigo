@@ -1,0 +1,5 @@
+  MOUNT_EQUATORIAL_COORDINATES.RA did not change by 0.05 from 23.99 (now 3.36556)
+integration/test_mount_ioptron_simulator.c:1476: assertion failed: wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, 0.05)
+Running iOptron selected tests
+  FAIL ioptron_manual_motion_8407
+iOptron selected tests: 1 test(s) failed

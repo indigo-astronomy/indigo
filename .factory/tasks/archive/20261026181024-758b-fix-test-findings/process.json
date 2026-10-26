@@ -42,6 +42,7 @@
     "indigo_drivers/focuser_optec/REFACTOR.md",
     "indigo_drivers/mount_ioptron/README.md",
     "indigo_drivers/mount_ioptron/REFACTOR.md",
+    "indigo_drivers/mount_nexstar/README.md",
     "indigo_drivers/mount_nexstar/REFACTOR.md",
     "indigo_drivers/mount_nexstar/indigo_mount_nexstar.c",
     "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver",
@@ -308,6 +309,11 @@
       "100644",
       "blob",
       "2167d257add264c0f9bd05180ebf4cabf6051876"
+    ],
+    "indigo_drivers/mount_nexstar/README.md": [
+      "100644",
+      "blob",
+      "8d5a828af6bcb01e1034b8f3a1285b9844cd29fa"
     ],
     "indigo_drivers/mount_nexstar/REFACTOR.md": [
       "100644",

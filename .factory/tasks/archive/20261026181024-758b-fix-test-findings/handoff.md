@@ -2,7 +2,7 @@
 
 ## Current assignment and delivery
 
-Coordinator/root owns task branch `task/20261026181024-758b-fix-test-findings`; local master/base is `bab591d40bf21e6d3b9946ee909e65a1c16d36c9`. Implementation and verification are complete. Independent quality and security sign-off passed. Execution evidence is archived and seven verified driver commits are created. The final shared commit and committed-candidate checks remain. Integration, push and branch cleanup await separate owner authorization; no publication is claimed.
+Coordinator/root owns task branch `task/20261026181024-758b-fix-test-findings`; local master/base is `bab591d40bf21e6d3b9946ee909e65a1c16d36c9`. Implementation and verification are complete. Independent quality and security sign-off passed. Execution evidence is archived and seven verified driver commits are created. The shared commit exists; an evidence-only correction and final committed-candidate checks are the remaining delivery work. Integration, push and branch cleanup await separate owner authorization; no publication is claimed.
 
 All ten owner-selected findings and the additional in-task quality regression are verified fixed and archived individually. [Finding reconciliation](findings.md) maps repairs to acceptance; [verification](verification.md) owns commands, results and limits. Shell compliance and unrelated functional findings remain untouched.
 
@@ -28,6 +28,10 @@ Completed execution is archived before the final shared commit. Capture reviewed
 
 ## Execution closure
 
-All acceptance and independent quality/security gates pass; no unresolved task finding or accepted risk. Execution is complete and seven per-driver commits exist. The final shared commit, reviewed-content capture, committed-range checks and clean-candidate confirmation remain coordinator delivery steps. The recurring audit remains due under the explicit repair-only deferral.
+All acceptance and independent quality/security gates pass; no unresolved task finding or accepted risk. Execution is complete and seven per-driver commits exist. The shared commit exists. An evidence-only correction, refreshed content binding, committed-range checks and clean-candidate confirmation remain coordinator delivery steps. The recurring audit remains due under the explicit repair-only deferral.
 
 Existing non-task branches were inspected and preserved. The new task branch remains unmerged for owner-authorized integration; cleanup is pending that delivery, with no new unused temporary branch.
+
+## Committed-range evidence correction
+
+The first committed-range process check failed because the scope inventory was prepared before the final NexStar README record and omitted that already-reviewed path. Add its scope and exact content identity. Four small synthetic diagnostic logs were also preserved on disk but ignored by the global *.log pattern; explicitly retain those files in Git. A follow-up evidence-only commit is required under the owner prohibition on history rewriting. No runtime source or test expectation changed, and driver/unit results remain the same; refresh immutable process/check gates on the resulting candidate.

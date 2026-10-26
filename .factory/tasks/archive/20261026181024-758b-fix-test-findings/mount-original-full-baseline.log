@@ -1,0 +1,38 @@
+Running mount simulator integration tests
+    2000 ms north pulse replaced after 500 ms by a 600 ms north pulse finished in 1129 ms
+  PASS guider_pending_disconnect_and_replacement
+  PASS guider_axes_complete_independently
+    GUIDER_GUIDE_RA WEST pulse requested while the EAST pulse ended ran 313 ms
+    GUIDER_GUIDE_DEC SOUTH pulse requested while the NORTH pulse ended ran 310 ms
+  PASS guider_pulse_survives_previous_finalizer
+  PASS mount_tracking_request_survives_slew_end
+  PASS mount_tracking_request_survives_home_end
+  PASS mount_reconnect_publishes_device_state
+  PASS mount_disconnect_during_slew_park_and_home
+  PASS mount_state_lights_follow_slew_completion
+    hour angle 1.00251 h before and 0.50251 h after the sync with tracking off
+    hour angle 0.50251 h before and 0.25251 h after the manual motion east with tracking off
+    hour angle 0.252507 h before and 0.252785 h after a 2 s west pulse with tracking off, expected +0.000279 h
+  PASS mount_tracking_off_keeps_sync_motion_and_pulses
+    parked at hour angle 2.000000 h, park position 2 h
+    at home at hour angle -1.500000 h, home position -1.5 h
+  PASS mount_park_and_home_positions_and_abort
+  PASS mount_goto_during_guide_pulse
+  PASS mount_manual_motion_disconnect
+  PASS mount_goto_runs_on_queue_and_rejects_overlap
+  PASS mount_abort_allows_fresh_goto
+  PASS mount_alignment_model_is_frozen_during_slew
+  PASS mount_multi_point_alignment_passes_coordinates_through
+  PASS mount_park_home_and_parked_guards
+  PASS mount_manual_axes_reverse_and_abort
+  PASS mount_supports_all_rate_modes
+  PASS mount_shutdown_is_rejected_while_connected
+  PASS guider_shutdown_is_rejected_while_connected
+  PASS logical_devices_survive_both_connection_orders
+  PASS mount_shares_pointing_and_follows_guide_pulses
+  PASS driver_info_reports_simulator_metadata
+  PASS mount_exposes_expected_properties
+  PASS mount_passes_mount_compliance_checks
+  PASS mount_guider_exposes_expected_properties
+  PASS mount_guider_passes_guider_compliance_checks
+mount simulator integration tests: all tests passed

@@ -4,6 +4,6 @@
   "phase": "complete",
   "status": "complete",
   "assigned_role": "coordinator",
-  "next_action": "Commit verified per-driver and shared changes; integration/publication pending owner authorization",
+  "next_action": "Await owner-authorized integration/publication after externally confirmed committed-candidate gates; preserve task branch",
   "blocker": null
 }
