@@ -285,3 +285,9 @@ Atomic plan results:
 Evidence: `.factory/tasks/archive/20261024193016-8158-fix-lunatico-request-race/verification.md`. The finding is closed as fixed after complete verification. No property inventory update was required; MIGRATION_STATUS Comment columns are preserved. Integration/publication remain pending owner authorization.
 
 Final test summary for this repair: this export's full simulated tests 64 run, 64 passed; hardware 0 run, 0 passed. Combined final recorded suites 129/129; separate ASan 11/11. No physical-hardware validation claimed.
+
+## Current integration registration verification
+
+The maintained Makefile registers the serial suite by default and the UDP variant as an opt-in driver suite. The current final recorded hardware-free run passed 64/64 cases on macOS arm64; no production or test-source repair was needed to close the historical missing-registration finding. Detailed commands and artifact qualification: [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+
+Final test summary for this verification: simulator 64 run / 64 passed; physical hardware 0 run / 0 passed.
