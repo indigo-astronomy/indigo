@@ -65,6 +65,7 @@ typedef struct {
 	double dec;
 	bool motors_on;
 	bool slewing;
+	bool stalled;
 	char telescope_side;
 	unsigned correction_ra;
 	unsigned correction_dec;
@@ -123,7 +124,7 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 	printf("Test control: a line \"side E\" or \"side W\" in <ready-file>.control changes the side of the\n");
 	printf("mount the way the hand controller does, \"fault <cmd> <reply>\" and \"drop <cmd>\" arm a one-shot\n");
-	printf("reply override like the options above; the file is consumed when it is read.\n");
+	printf("reply override like the options above; stall/resume hold/release slew completion.\n");
 }
 
 static bool add_fault(const char *command, const char *reply) {
@@ -333,6 +334,9 @@ static void read_control(void) {
 		if (!strcmp(line, "side E") || !strcmp(line, "side W")) {
 			state.telescope_side = line[5];
 			serial_simulator_trace_line(options.trace, "control", line);
+		} else if (!strcmp(line, "stall") || !strcmp(line, "resume")) {
+			state.stalled = !strcmp(line, "stall");
+			serial_simulator_trace_line(options.trace, "control", line);
 		} else if (!strncmp(line, "fault ", 6)) {
 			char *command = line + 6;
 			char *reply = strchr(command, ' ');
@@ -351,7 +355,7 @@ static void read_control(void) {
 }
 
 static void update_slew(void) {
-	if (state.slewing && monotonic_time() >= state.slew_deadline) {
+	if (state.slewing && !state.stalled && monotonic_time() >= state.slew_deadline) {
 		state.ra = state.target_ra;
 		state.dec = state.target_dec;
 		state.slewing = false;

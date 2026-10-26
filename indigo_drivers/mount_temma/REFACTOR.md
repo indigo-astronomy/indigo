@@ -345,3 +345,23 @@ Portable suite: 28 cases, 23 on Linux. Final test summary for this change: simul
 Driver version 3.0.0.25. `MOUNT_GUIDE_RATE` was defined and writable but had no device effect: the driver has no handler for it, so a write falls through to the base mount handler, which only copies the value and publishes OK. No command reaches the controller; the old contract test wrote 55 and checked only the OK state, never the trace. Nothing reads the value: the guider pulses (`GUIDER_GUIDE_RA`/`GUIDER_GUIDE_DEC`) only set relay bits, and `GUIDER_RATE` stays hidden on the guider device. The controller's guide-pulse speed is `X_TEMMA_CORRECTION_SPEED` (`LA`/`LB`), which remains the only guide-rate control.
 
 The property is now hidden, so it is not defined. The contract in `integration/test_mount_temma_simulator.c` and `mountsim/test_mount_temma_mountsim.c` asserts that `MOUNT_GUIDE_RATE` is not defined and no longer writes it. Clients that read the standard property, for example the Alpaca bridge's guide-rate values, no longer find it on this mount.
+
+## Deterministic motion deadline regression coverage (2026-10-26)
+
+Task: `20261026181024-758b-fix-test-findings`; finding `FND-20261025211159-e308-fix-audit-findings-batch-004`. This is a bounded test-seam addition, not a driver migration. The generated driver uses the normal portable serial transport, serialized handlers and delayed completion callbacks. Existing deadline defaults are retained; public properties and runtime policy are unchanged. Hardware testing is not performed (0 run / 0 passed); no physical mount or platform certification is claimed.
+
+Baseline: macOS arm64 host; existing simulator suites built with `make -C indigo_test build/integration/test_mount_temma_simulator build/integration/test_mount_nexstar_simulator`. Focused baseline command and result are recorded below. Previous documented gaps lack fast execution of the existing deadline branches.
+
+Atomic plan: (1) establish focused baseline; (2) guard the existing timeout macro with `#ifndef`, regenerate with the unchanged generator, and keep its production default; (3) compile a separate deadline-test executable from the same production driver with a one-second limit, exercise stalled protocol motion, require stop and ALERT, then recovery; (4) verify both deadline and ordinary suites and update coverage counts through the coordinator.
+
+Found defects: missing automated coverage of existing expiry/stop/error branches; no production runtime defect is asserted by this change. Implementation and verification are complete.
+
+Step results: (1) focused baseline `temma_sync_goto_overlap_abort_and_recovery` passed 1/1 from `indigo_test/`; (2) the timeout guard and regenerated C are complete and regeneration is stable; (3) deadline tests pass 2/2, requiring the specific timeout message, transport stop, ALERT, unchanged stalled position and subsequent recovery; (4) final recorded ordinary and deadline suites pass 30/30 against the rebuilt current library. Negative controls with unshortened production limits fail at the expected ALERT wait (Temma 2/2 fail, NexStar 1/1 fail), confirming the regressions require genuine expiry.
+
+These diagnostic builds used the pre-existing `libindigo` artifact; the coordinator identified it as older than current source and rebuilt it before final recorded acceptance. Diagnostic and final evidence are distinguished in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+
+Current coverage adds two hardware-free expiry scenarios (GOTO and park), for 30 cases on macOS / 25 on Linux. Ordinary production timeouts and existing preservation scenarios remain unchanged. NexStar GOTO timeout policy remains outside this finding and task.
+
+### Final test summary for this bounded coverage change
+
+`python3 tools/run_driver_test.py mount_temma` passed 30/30 against the rebuilt current library on macOS arm64 and wrote the README record and generated summary. Ordinary simulated tests: 28 run / 28 passed; deadline simulated tests: 2 run / 2 passed. Physical hardware tests: 0 run / 0 passed.

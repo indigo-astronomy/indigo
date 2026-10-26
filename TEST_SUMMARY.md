@@ -384,7 +384,7 @@
 |  | 2026-10-23 21:14 | 3.0.0.21 | mac arm64 | AZGTi | 19 / 19 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:16 | 3.0.0.22 | linux x64 | simulator | 15 / 15 | ✅ OK |
-|  | 2026-10-04 19:34 | 3.0.0.25 | mac arm64 | simulator | 28 / 28 | ✅ OK |
+|  | 2026-10-26 19:41 | 3.0.0.27 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | polaralign_mlastro | 2026-09-24 22:28 | 3.0.0.3 | mac arm64 | MLAstro RPA firmware 1.8.1 (TTGO ESP32) | 18 / 14 | ❌ Failed |
 |  | 2026-09-27 05:29 | 3.0.0.6 | linux x64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-09-27 22:40 | 3.0.0.6 | mac arm64 | simulator | 29 / 29 | ✅ OK |

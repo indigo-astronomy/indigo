@@ -2119,12 +2119,79 @@ cleanup:
 	}
 }
 
+#ifdef INDIGO_TEST_MOTION_DEADLINE
+
+// A healthy status exchange that stays in progress must expire, stop once and leave the operation
+// ALERT. Releasing the stalled controller permits a fresh request in the same connection.
+static void temma_motion_deadline(bool park) {
+	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
+	char trace_path[PATH_MAX] = "";
+	install_capture();
+	const char *property = park ? MOUNT_PARK_PROPERTY_NAME : MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME;
+	SERIAL_CHECK_TRUE(create_trace_file(trace_path, sizeof(trace_path)));
+	const char *args[] = { "--trace-file", trace_path, NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_TEMMA_SIMULATOR_EXECUTABLE, args));
+	SERIAL_CHECK_TRUE(start_serial_driver(&temma_mount, simulator.port));
+	driver_started = true;
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "stall"));
+	int mark = trace_count(trace_path);
+	unsigned int revision = property_revision(property);
+	double requested = indigo_monotonic_time();
+	if (park) {
+		SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	} else {
+		SERIAL_CHECK_TRUE(change_coordinates_and_wait(9, 20, INDIGO_BUSY_STATE));
+	}
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(property, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(last_message_contains(park ? "Parking failed or timed out" : "Slew did not finish in time"));
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - requested >= 1);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - requested < 8);
+	SERIAL_CHECK_EQ_INT(1, trace_count_matching(trace_path, "PS", mark));
+	SERIAL_CHECK_TRUE(trace_count_matching(trace_path, "s", mark) >= 2);
+	SERIAL_CHECK_TRUE(!cached_switch_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME) - 6) < 0.01);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME) - 45) < 0.01);
+	SERIAL_CHECK_TRUE(simulator_control(&simulator, "resume"));
+	revision = property_revision(property);
+	if (park) {
+		SERIAL_CHECK_TRUE(change_switch_and_wait(&temma_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	} else {
+		SERIAL_CHECK_TRUE(change_coordinates_and_wait(9, 20, INDIGO_BUSY_STATE));
+	}
+	SERIAL_CHECK_TRUE(wait_for_property_state_after(property, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_EQ_INT(1, trace_count_matching(trace_path, "PS", mark));
+cleanup:
+	if (driver_started) {
+		stop_serial_driver(&temma_mount);
+	}
+	remove_capture();
+	stop_external_serial_simulator(&simulator);
+	if (*trace_path) {
+		unlink(trace_path);
+	}
+}
+
+static void temma_goto_deadline_stops_and_recovers(void) {
+	temma_motion_deadline(false);
+}
+
+static void temma_park_deadline_stops_and_recovers(void) {
+	temma_motion_deadline(true);
+}
+
+#endif
+
 int main(void) {
 	setvbuf(stdout, NULL, _IONBF, 0);
 	// A Linux PTY cannot carry the parity of Temma's 19200-8E1 port: the kernel drops PARENB and
 	// glibc's tcsetattr() then fails with EINVAL on every reopen of an already configured PTY.
 	// The cases that reconnect to the same simulator PTY are therefore not run on Linux.
 	const indigo_test_case tests[] = {
+#ifdef INDIGO_TEST_MOTION_DEADLINE
+		{ "temma_goto_deadline_stops_and_recovers", temma_goto_deadline_stops_and_recovers },
+		{ "temma_park_deadline_stops_and_recovers", temma_park_deadline_stops_and_recovers }
+#else
 #ifndef __linux__
 		{ "temma_park_abort_disconnect_and_read_failure", temma_park_abort_disconnect_and_read_failure },
 #endif
@@ -2161,6 +2228,7 @@ int main(void) {
 		{ "temma_site_changes_resend_latitude_and_sidereal_time", temma_site_changes_resend_latitude_and_sidereal_time },
 		{ "temma_goto_during_guide_pulse", temma_goto_during_guide_pulse },
 		{ "temma_motion_released_when_owner_detaches", temma_motion_released_when_owner_detaches }
+#endif
 	};
 	const char *filter = getenv("INDIGO_TEST_CASE");
 	if (filter != NULL) {

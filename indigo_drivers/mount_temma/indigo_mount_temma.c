@@ -58,7 +58,9 @@
 #define TEMMA_MOTION_DEC_SOUTH 0x10
 // A Temma slews half the sky in a few minutes; 600 s bounds any GOTO or park whose slew status
 // (s1) never clears.
+#ifndef TEMMA_SLEW_TIMEOUT
 #define TEMMA_SLEW_TIMEOUT   600
+#endif
 
 //- define
 
