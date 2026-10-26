@@ -592,3 +592,50 @@ reported OK:
 
 Simulated (fake SDK) tests run 52, passed 52 (Linux x64, `tools/run_driver_test.py ccd_playerone`).
 Hardware tests run 0.
+
+
+## Controlled cooler fault polling (2026-10-26)
+
+FND-000029 retains historical intermittent failures of `cooler_individual_failures`
+and `Guiding and abort during long exposure then reacquire` under full-suite load.
+Current baseline `bab591d40` on macOS arm64 passes each case in 10/10 standalone
+runs and the full fake SDK suite in 52/52 cases. The historical long-exposure
+failure was not reproduced in these baseline runs; production remains unchanged.
+The test now holds guide-off and abort-stop at SDK gates, checks the in-flight
+BUSY/exposing states, then drains the device queue after each operation before
+checking guide OK/off and abort exposure ALERT/abort OK. Fresh reacquisition
+also requires exposure OK after image delivery and queue drain. These causal
+completion checks preserve every original assertion and avoid depending on a
+transient latest-state sample. Fixture cleanup releases both gates.
+
+The cooler fault case previously raced a recurring 10 ms accelerated poll against
+fault injection and request completion. It now uses the existing test-only
+scheduling hook to hold recurring temperature rescheduling for this case, drains
+preceding requests with the device queue, executes the real temperature callback
+once per fault or recovery, and waits for a second queue barrier. Exactly one
+SDK temperature read proves that the callback ran. State/value publications that
+remain unchanged are suppressed by the bus, so the test checks the resulting
+state after callback completion rather than requiring an unnecessary fresh
+publication. The dedicated `temperature_polling_and_disconnect` and
+`slow_initialization_and_polling` cases retain recurring-poll coverage.
+
+All four read failures and three write failures still require ALERT, and every
+recovery still requires OK. The test-only scheduling flag resets during fixture
+cleanup. No production driver, generator input/output, public property or driver
+version changed. No hardware testing is planned for this test-only repair.
+
+After rebuilding the current framework library and relinking the final test
+source, both repaired cases pass 20/20 repeated runs each. Full source/command
+evidence and the initial-library limitation are recorded in task
+`20261026181024-758b-fix-test-findings/playerone-report.md`. The coordinator owns
+the final recorded 52-case full-suite run.
+
+Final targeted test summary: simulated tests run 40, passed 40 (20 cooler fault
+cases and 20 gated long-exposure cases, macOS arm64). Hardware tests run 0,
+passed 0.
+
+## Final recorded verification for test-finding repair
+
+`python3 tools/run_driver_test.py ccd_playerone` passed 52/52 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+
+Final test summary for this repair: simulator/fake SDK 52 run / 52 passed; physical hardware 0 run / 0 passed.

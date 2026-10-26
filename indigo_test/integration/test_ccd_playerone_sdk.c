@@ -101,8 +101,11 @@ typedef struct {
 
 static test_gate initialization_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
 static test_gate read_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+static test_gate guide_completion_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
+static test_gate abort_stop_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
 static test_gate queue_gate = { .mutex = PTHREAD_MUTEX_INITIALIZER, .condition = PTHREAD_COND_INITIALIZER };
 static atomic_int gate_timeouts, fail_queue, fast_poll, barriers;
+static atomic_bool manual_temperature_poll;
 static atomic_bool shutdown_work_pending;
 static atomic_int premature_shutdown_detach;
 static indigo_device *logical[CAMERAS * 2];
@@ -161,6 +164,9 @@ indigo_queue *poa_test_queue_create(indigo_device *device) {
 void poa_test_execute_in(indigo_device *device, double delay, indigo_timer_callback callback) {
 	if (delay == 5) {
 		temperature_handler = callback;
+		if (atomic_load(&manual_temperature_poll)) {
+			return;
+		}
 		if (atomic_load(&fast_poll)) {
 			delay = 0.01;
 		}
@@ -598,6 +604,9 @@ POAErrors POASetConfig(int id, POAConfig config, POAConfigValue value, POABool a
 	struct timespec entered;
 	clock_gettime(CLOCK_MONOTONIC, &entered);
 	mock_camera *c = camera(id);
+	if (config == POA_GUIDE_EAST && value.boolValue == POA_FALSE && c->config[config].boolValue == POA_TRUE) {
+		enter_gate(&guide_completion_gate);
+	}
 	if (config >= POA_GUIDE_NORTH && config <= POA_GUIDE_WEST) {
 		pthread_mutex_lock(&pulse_mutex);
 		pulse_measurement *m = &pulse_measurements[c - cameras][config - POA_GUIDE_NORTH];
@@ -710,6 +719,7 @@ POAErrors POAStartExposure(int id, POABool single) {
 
 POAErrors POAStopExposure(int id) {
 	sdk_call sdk_scope __attribute__((cleanup(sdk_leave))) = sdk_enter(id, true);
+	enter_gate(&abort_stop_gate);
 	atomic_fetch_add(&camera(id)->stops, 1);
 	atomic_store(&camera(id)->exposing, false);
 	return atomic_load(&camera(id)->stop_error);
@@ -942,21 +952,45 @@ static void short_readout_retry(void) {
 	ASSERT_EQ_INT(0, atomic_load(&short_waits));
 }
 
+static bool finish_device_queue(void) {
+	int barrier = atomic_load(&barriers) + 1;
+	indigo_execute_handler(logical[0], queue_barrier);
+	return wait_count(&barriers, barrier);
+}
+
 static void abort_long_exposure(void) {
 	ASSERT_TRUE(connect_device(0, true));
 	ASSERT_TRUE(connect_device(1, true));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 30));
 	ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+	arm_gate(&guide_completion_gate);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[1].name, "GUIDER_GUIDE_RA", "EAST", 20));
+	ASSERT_TRUE(wait_count(&guide_completion_gate.entered, 1));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(1, "GUIDER_GUIDE_RA"));
+	ASSERT_TRUE(atomic_load(&cameras[0].exposing));
+	ASSERT_EQ_INT(0, atomic_load(&blobs));
+	release_gate(&guide_completion_gate);
 	ASSERT_TRUE(wait_count(&pulse_writes, 5));
-	ASSERT_TRUE(wait_state(1, "GUIDER_GUIDE_RA", INDIGO_OK_STATE));
+	ASSERT_TRUE(finish_device_queue());
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(1, "GUIDER_GUIDE_RA"));
+	ASSERT_EQ_INT(POA_FALSE, cameras[0].config[POA_GUIDE_EAST].boolValue);
+	int stops = atomic_load(&cameras[0].stops);
+	arm_gate(&abort_stop_gate);
 	ASSERT_TRUE(set_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", true));
-	ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_ALERT_STATE));
-	ASSERT_TRUE(wait_state(0, "CCD_ABORT_EXPOSURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_count(&abort_stop_gate.entered, 1));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state(0, "CCD_EXPOSURE"));
+	ASSERT_TRUE(atomic_load(&cameras[0].exposing));
+	release_gate(&abort_stop_gate);
+	ASSERT_TRUE(wait_count(&cameras[0].stops, stops + 1));
+	ASSERT_TRUE(finish_device_queue());
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(0, "CCD_EXPOSURE"));
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_ABORT_EXPOSURE"));
 	ASSERT_EQ_INT(0, atomic_load(&blobs));
 	ASSERT_FALSE(atomic_load(&cameras[0].exposing));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_EXPOSURE", "EXPOSURE", 0.01));
 	ASSERT_TRUE(wait_count(&blobs, 1));
+	ASSERT_TRUE(finish_device_queue());
+	ASSERT_EQ_INT(INDIGO_OK_STATE, state(0, "CCD_EXPOSURE"));
 }
 
 static void failed_readout_recovers(void) {
@@ -1814,6 +1848,23 @@ static void sdk_discovery_identity_and_strings(void) {
 	ASSERT_TRUE(change_number(0, "CCD_EXPOSURE", "EXPOSURE", 0.01, INDIGO_OK_STATE));
 }
 
+static bool poll_temperature_state(const char *property, int expected) {
+	int barrier = atomic_load(&barriers) + 1;
+	indigo_execute_handler(logical[0], queue_barrier);
+	if (!wait_count(&barriers, barrier) || temperature_handler == NULL) {
+		return false;
+	}
+	int reads = atomic_load(&cameras[0].reads[POA_TEMPERATURE]);
+	indigo_execute_handler(logical[0], temperature_handler);
+	indigo_execute_handler(logical[0], queue_barrier);
+	if (!wait_count(&barriers, barrier + 1) || atomic_load(&cameras[0].reads[POA_TEMPERATURE]) != reads + 1) {
+		return false;
+	}
+	// An unchanged value/state is intentionally not republished by the bus. The queue
+	// barrier and SDK read prove this state belongs to the completed poll.
+	return state(0, property) == expected;
+}
+
 static void cooler_individual_failures(void) {
 	atomic_store(&cameras[0].visible, false);
 	usb_event(0, false);
@@ -1823,30 +1874,37 @@ static void cooler_individual_failures(void) {
 	atomic_store(&cameras[0].visible, true);
 	usb_event(0, true);
 	ASSERT_TRUE(wait_count(&attached, 2));
-	atomic_store(&fast_poll, 1);
+	// Run one real poll per injected fault, after preceding requests have left the queue.
+	// Recurring-poll timing remains covered by temperature_polling_and_disconnect.
+	atomic_store(&manual_temperature_poll, true);
 	ASSERT_TRUE(connect_device(0, true));
-	ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_OK_STATE));
+	ASSERT_TRUE(poll_temperature_state("CCD_TEMPERATURE", INDIGO_OK_STATE));
 	const POAConfig reads[] = { POA_TEMPERATURE, POA_COOLER, POA_COOLER_POWER, POA_TARGET_TEMP };
-	ASSERT_TRUE(change_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, "CCD_COOLER", "ON", true));
+	ASSERT_TRUE(poll_temperature_state("CCD_COOLER", INDIGO_OK_STATE));
 	for (int i = 0; i < ARRAY_SIZE(reads); i++) {
-		remember_request(observed[0].name, "CCD_TEMPERATURE");
 		atomic_store(&cameras[0].read_config_fail, reads[i] + 1);
-		ASSERT_TRUE(wait_state(0, "CCD_TEMPERATURE", INDIGO_ALERT_STATE));
+		ASSERT_TRUE(poll_temperature_state("CCD_TEMPERATURE", INDIGO_ALERT_STATE));
 		atomic_store(&cameras[0].read_config_fail, 0);
-		ASSERT_TRUE(change_number(0, "CCD_TEMPERATURE", "TEMPERATURE", 12.5, INDIGO_OK_STATE));
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_TEMPERATURE", "TEMPERATURE", 12.5));
+		ASSERT_TRUE(poll_temperature_state("CCD_TEMPERATURE", INDIGO_OK_STATE));
 	}
 	const POAConfig writes[] = { POA_COOLER, POA_FAN_POWER, POA_TARGET_TEMP };
 	for (int i = 0; i < ARRAY_SIZE(writes); i++) {
 		atomic_store(&cameras[0].write_config_fail, writes[i] + 1);
 		if (writes[i] == POA_TARGET_TEMP) {
-			ASSERT_TRUE(change_number(0, "CCD_TEMPERATURE", "TEMPERATURE", -10, INDIGO_ALERT_STATE));
+			ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_TEMPERATURE", "TEMPERATURE", -10));
+			ASSERT_TRUE(poll_temperature_state("CCD_TEMPERATURE", INDIGO_ALERT_STATE));
 		} else {
-			ASSERT_TRUE(change_switch(0, "CCD_COOLER", "OFF", INDIGO_ALERT_STATE));
+			ASSERT_TRUE(set_switch(0, "CCD_COOLER", "OFF", true));
+			ASSERT_TRUE(poll_temperature_state("CCD_COOLER", INDIGO_ALERT_STATE));
 		}
 		atomic_store(&cameras[0].write_config_fail, 0);
-		ASSERT_TRUE(change_switch(0, "CCD_COOLER", "ON", INDIGO_OK_STATE));
+		ASSERT_TRUE(set_switch(0, "CCD_COOLER", "ON", true));
+		ASSERT_TRUE(poll_temperature_state("CCD_COOLER", INDIGO_OK_STATE));
 	}
-	ASSERT_TRUE(change_switch(0, "CCD_COOLER", "OFF", INDIGO_OK_STATE));
+	ASSERT_TRUE(set_switch(0, "CCD_COOLER", "OFF", true));
+	ASSERT_TRUE(poll_temperature_state("CCD_COOLER", INDIGO_OK_STATE));
 }
 
 static void abort_setup_wait_and_removal(void) {
@@ -2170,9 +2228,12 @@ static bool begin_fixture(void) {
 static void end_fixture(void) {
 	release_gate(&initialization_gate);
 	release_gate(&read_gate);
+	release_gate(&guide_completion_gate);
+	release_gate(&abort_stop_gate);
 	release_gate(&queue_gate);
 	release_gate(&setup_gate);
 	atomic_store(&fast_poll, 0);
+	atomic_store(&manual_temperature_poll, false);
 	atomic_store(&fail_queue, 0);
 	atomic_store(&fail_register, 0);
 	atomic_store(&fail_descriptor, 0);
