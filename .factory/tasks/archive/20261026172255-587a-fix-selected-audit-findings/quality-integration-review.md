@@ -53,3 +53,9 @@ Inspected all nine requested closed finding records through their corresponding 
 Inspected new task finding 001: SDK discover catalog omission is low, open, nonblocking, coordinator-owned, and points to follow-up-findings.md with original/final editor baseline evidence. It is distinct from active 60d4-004 polaralign support and 60d4-005 device id catalog issues, which remain active. No generator/template repair is claimed. Independently reran `./.factory/scripts/findings check`: exit 0, 53 active/159 archived, task evidence checks passed; `git diff --check` also exits 0.
 
 Refresh verdict: pass for final coordinator metadata and documentation within this review scope. Final task archival/staged-content process evidence and committed-range checks remain coordinator delivery steps.
+
+## Post-commit evidence whitespace repair reinspection
+
+Independently inspected the corrective diff after task commit `9e8c4b2c0`. Exactly four retained log files change (`integrated-regressions.log`, `numerical-dslr-baseline.log`, `sha-baseline.log`, `unit-final.log`), plus a handoff paragraph documenting the accidental committed trailing whitespace and no-history-rewrite exception. Byte comparison against HEAD after removing only end-of-line spaces/tabs proves every substantive log byte is unchanged. No production source, test, build rule, command/result claim or finding disposition changes. The handoff correctly states four logs. `git diff --check` passes.
+
+Reinspection verdict: pass for the evidence-only correction. A second corrective commit preserves existing history; final combined-range whitespace/process validation remains a coordinator delivery gate. No functional rerun is required for trailing-whitespace-only retained output normalization.

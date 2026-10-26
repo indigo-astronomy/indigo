@@ -1,2 +1,2 @@
 indigo_test/unit/../../indigo_libs/indigo_dslr_raw.c:151:12: runtime error: member access within null pointer of type 'libraw_data_t'
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior indigo_test/unit/../../indigo_libs/indigo_dslr_raw.c:151:12 
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior indigo_test/unit/../../indigo_libs/indigo_dslr_raw.c:151:12
