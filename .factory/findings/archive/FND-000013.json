@@ -1,0 +1,29 @@
+{
+  "id": "FND-000013",
+  "title": "LIB-013: Concurrent enumeration can reach a device before attach initializes it",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261026202900-a1bb-fix-lib-013",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "LIB-013 repaired: indigo_attach_device retains the existing recursive bus mutex until the optional attach callback returns, then releases its registration hold before automatic CONFIG.LOAD. Concurrent enumeration cannot enter during the attach callback. The regression fails before the fix and passes after it; recursive publication and unlocked CONFIG dispatch are covered. Full rotator_lunatico and focuser_lunatico simulator suites pass.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_libs/REVIEW.md:38; historical locations: `indigo_bus.c:552` (`indigo_attach_device`); legacy status: Open",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026202900-a1bb-fix-lib-013 verification.md: pre-fix lifecycle failure; fixed lifecycle 5/5, additional instances 2/2, native unit 392 PASS records, rotator simulator 64/64 and focuser simulator 65/65.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

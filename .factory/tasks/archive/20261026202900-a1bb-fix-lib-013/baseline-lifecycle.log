@@ -1,0 +1,8 @@
+integration/test_bus_lifecycle.c:340: assertion failed: !(attach_context.premature_enumeration)
+Running bus lifecycle integration tests
+  PASS start_attach_enumerate_change_delete_and_stop_bus
+  PASS bus_reports_failures_for_invalid_lifecycle_calls
+  FAIL enumeration_waits_for_attach_initialization
+  PASS attach_can_publish_properties_recursively
+  PASS automatic_config_load_runs_without_bus_lock
+bus lifecycle integration tests: 1 test(s) failed

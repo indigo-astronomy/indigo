@@ -523,6 +523,8 @@ INDIGO_EXTERN void indigo_set_log_level(indigo_log_levels level);
 INDIGO_EXTERN indigo_log_levels indigo_get_log_level(void);
 
 /** Attach device to bus.
+ The attach() callback runs with the recursive bus mutex held, blocking concurrent bus requests.
+ It must not wait for another thread to use the bus. This function releases its registration lock before automatic CONFIG.LOAD.
  Return value of attach() callback function is assigned to last_result in device structure.
  */
 INDIGO_EXTERN indigo_result indigo_attach_device(indigo_device *device);

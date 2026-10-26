@@ -1,0 +1,22 @@
+[
+  {
+    "driver": "rotator_lunatico",
+    "command": [
+      "python3",
+      "tools/run_driver_test.py",
+      "rotator_lunatico"
+    ],
+    "exit": 0,
+    "seconds": 320.0
+  },
+  {
+    "driver": "focuser_lunatico",
+    "command": [
+      "python3",
+      "tools/run_driver_test.py",
+      "focuser_lunatico"
+    ],
+    "exit": 0,
+    "seconds": 299.61
+  }
+]

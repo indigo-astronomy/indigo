@@ -391,7 +391,7 @@
 | polaralign_simulator | 2026-09-27 22:42 | 3.0.0.5 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_asi | 2026-10-11 02:34 | 3.0.0.10 | mac arm64 | fake SDK | 11 / 11 | ✅ OK |
 | rotator_falcon | 2026-09-27 22:41 | 3.0.0.10 | mac arm64 | simulator | 13 / 13 | ✅ OK |
-| rotator_lunatico | 2026-10-26 19:18 | 3.0.0.20 | mac arm64 | simulator | 64 / 64 | ✅ OK |
+| rotator_lunatico | 2026-10-26 21:33 | 3.0.0.20 | mac arm64 | simulator | 64 / 64 | ✅ OK |
 | rotator_optec | 2026-10-09 22:42 | 3.0.0.6 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 |  | 2026-10-09 22:45 | 3.0.0.6 | linux arm64 | Pyxis Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |
 | rotator_simulator | 2026-10-10 10:34 | 3.0.0.9 | mac arm64 | simulator | 9 / 9 | ✅ OK |

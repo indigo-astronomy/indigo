@@ -1,0 +1,7 @@
+Running bus lifecycle integration tests
+  PASS start_attach_enumerate_change_delete_and_stop_bus
+  PASS bus_reports_failures_for_invalid_lifecycle_calls
+  PASS enumeration_waits_for_attach_initialization
+  PASS attach_can_publish_properties_recursively
+  PASS automatic_config_load_runs_without_bus_lock
+bus lifecycle integration tests: all tests passed

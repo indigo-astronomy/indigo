@@ -171,6 +171,14 @@
       "scope": "Repair and verify the six EXAMPLES findings only",
       "checkpoint": "After repairs, before unrelated work or release; audit remains due",
       "resets_checkpoint": false
+    },
+    "lib_013_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit async reply in this chat",
+      "date": "2026-10-26",
+      "task": "20261026202900-a1bb-fix-lib-013",
+      "scope": "Repair LIB-013 / FND-000013 with lock-through-attach and verify non-interactive simulators",
+      "checkpoint": "After this repair, before unrelated work or release; audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

@@ -1,0 +1,146 @@
+{
+  "version": 2,
+  "task": "20261026202900-a1bb-fix-lib-013",
+  "scope": [
+    "indigo_libs/indigo_bus.c",
+    "indigo_libs/indigo/indigo_bus.h",
+    "indigo_test/integration/test_bus_lifecycle.c",
+    "indigo_drivers/rotator_lunatico/README.md",
+    "indigo_drivers/focuser_lunatico/README.md",
+    "TEST_SUMMARY.md",
+    ".factory/maintenance.json",
+    ".factory/findings/active/FND-000013.json",
+    ".factory/findings/archive/FND-000013.json",
+    ".factory/completions/20261026202900-a1bb-fix-lib-013.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_bus_lifecycle"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_additional_instances"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "rotator_lunatico"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_lunatico"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-clean"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261026202900-a1bb-fix-lib-013.json": [
+      "100644",
+      "blob",
+      "ff1e12f599b6515126c55142ffe59afa21687267"
+    ],
+    ".factory/findings/active/FND-000013.json": null,
+    ".factory/findings/archive/FND-000013.json": [
+      "100644",
+      "blob",
+      "43ca682a14e9a32fbd4c243f708aa6d3ed9849da"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "6d473b24d48f76ac3406554a297773387d2ce73e"
+    ],
+    "indigo_drivers/focuser_lunatico/README.md": [
+      "100644",
+      "blob",
+      "49e1885808372f8ea870ec8c326d21e41da4f24c"
+    ],
+    "indigo_drivers/rotator_lunatico/README.md": [
+      "100644",
+      "blob",
+      "72ae14b49ba0e75f126aadac2c0391c6d4f290c0"
+    ],
+    "indigo_libs/indigo/indigo_bus.h": [
+      "100644",
+      "blob",
+      "da005f57cbbca727a2789b155a5ae9ea39b0d1e8"
+    ],
+    "indigo_libs/indigo_bus.c": [
+      "100644",
+      "blob",
+      "9c99165b4e710a33452c3ba920eb7c6790f550a5"
+    ],
+    "indigo_test/integration/test_bus_lifecycle.c": [
+      "100644",
+      "blob",
+      "d5ee15b2b36f1f7d6c538b4ddb363c29a4142eb9"
+    ]
+  }
+}

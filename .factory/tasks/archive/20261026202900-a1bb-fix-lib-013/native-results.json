@@ -1,0 +1,41 @@
+[
+  {
+    "label": "native-unit",
+    "command": [
+      "make",
+      "-C",
+      "indigo_test",
+      "test-unit"
+    ],
+    "exit": 0,
+    "seconds": 54.65
+  },
+  {
+    "label": "lifecycle-build",
+    "command": [
+      "make",
+      "-C",
+      "indigo_test",
+      "build/integration/test_bus_lifecycle",
+      "build/integration/test_additional_instances"
+    ],
+    "exit": 0,
+    "seconds": 0.73
+  },
+  {
+    "label": "lifecycle",
+    "command": [
+      "indigo_test/build/integration/test_bus_lifecycle"
+    ],
+    "exit": 0,
+    "seconds": 2.04
+  },
+  {
+    "label": "additional-instances",
+    "command": [
+      "indigo_test/build/integration/test_additional_instances"
+    ],
+    "exit": 0,
+    "seconds": 0.57
+  }
+]
