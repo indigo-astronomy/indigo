@@ -475,6 +475,9 @@ static double number_value(const char *property, const char *item) {
 static bool wait_number_change(const char *property, const char *item, double reference, double delta) {
 	for (int i = 0; i < 100; i++) {
 		double change = number_value(property, item) - reference;
+		if (!strcmp(property, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && !strcmp(item, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
+			change = remainder(change, 24);
+		}
 		if ((delta > 0 && change > delta) || (delta < 0 && change < delta)) {
 			return true;
 		}
@@ -489,7 +492,11 @@ static bool number_stays(const char *property, const char *item, double toleranc
 	double reference = number_value(property, item);
 	for (int elapsed = 0; elapsed < milliseconds; elapsed += 100) {
 		indigo_usleep(100000);
-		if (fabs(number_value(property, item) - reference) > tolerance) {
+		double change = number_value(property, item) - reference;
+		if (!strcmp(property, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) && !strcmp(item, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
+			change = remainder(change, 24);
+		}
+		if (fabs(change) > tolerance) {
 			fprintf(stderr, "  %s.%s moved from %g to %g\n", property, item, reference, number_value(property, item));
 			return false;
 		}
@@ -1449,7 +1456,10 @@ static void check_manual_motion(int index) {
 	io_fixture fixture = { 0 };
 	external_serial_simulator *simulator = &fixture.simulator;
 	SERIAL_CHECK_TRUE(io_open_mount(&fixture, d->protocol, NULL, TRACKING_ARGS));
-	indigo_usleep(1200000);
+	// Start near the RA wrap so east and west motion exercise both sides of midnight on every run.
+	SERIAL_CHECK_TRUE(io_number(&ioptron_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(io_sync(23.99, 20, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 23.99, 0.002));
 	// North at maximum rate moves the declination axis until the axis is stopped.
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true, INDIGO_OK_STATE));
 	double dec = DEC_VALUE();
@@ -1470,7 +1480,7 @@ static void check_manual_motion(int index) {
 	ra = RA_VALUE();
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, true, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_event(simulator, d->move_west, 0));
-	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra + 0.2, -0.05));
+	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, -0.05));
 	// Stopping one axis leaves the other axis moving.
 	dec = DEC_VALUE();
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, true, INDIGO_BUSY_STATE));
@@ -1479,7 +1489,7 @@ static void check_manual_motion(int index) {
 	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(MOUNT_MOTION_RA_PROPERTY_NAME)->state);
 	indigo_usleep(2500000);
 	ra = RA_VALUE();
-	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra + 0.2, -0.05));
+	SERIAL_CHECK_TRUE(wait_number_change(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, ra, -0.05));
 	stops = event_count(simulator, d->stop_ra);
 	SERIAL_CHECK_TRUE(io_switch(&ioptron_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, false, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_event(simulator, d->stop_ra, stops));
