@@ -6007,6 +6007,7 @@
 		36FF378D02C5475095BC7292 /* test_additional_instances.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_additional_instances.c; sourceTree = "<group>"; };
 		9ED98BDCAF6A4B2F9D10CC26 /* test_agent_guider_cleanup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_guider_cleanup.c; sourceTree = "<group>"; };
 		CA2B0F73C6A84C3DB07A918E /* test_driver_test_recording.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_driver_test_recording.py; sourceTree = "<group>"; };
+		E504D070AB6E4330A6609E41 /* test_shell_compliance.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_shell_compliance.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -14385,6 +14386,7 @@
 			children = (
 				580FA96D0F1CB38FD7ED8D50 /* test_omnisim_startup.py */,
 				AAB91F3090379976D9CB11B3 /* test_gps_compliance_script.py */,
+				E504D070AB6E4330A6609E41 /* test_shell_compliance.py */,
 				E8E0D5461DF019F65D73181A /* test_usbserial_enumeration_macos.c */,
 				908C6C80EAAC4D34DD01BF7E /* test_mount_manual_motion.js */,
 				F010E4E6B021CD2EDE6355FD /* test_image_math.c */,

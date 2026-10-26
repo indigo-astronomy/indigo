@@ -327,7 +327,7 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+test: test-shell-compliance-framework test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
 
 # Driver recording regressions use isolated synthetic processes.
 .PHONY: test-driver-test-recording
@@ -3643,6 +3643,10 @@ $(UNIT_BUILD)/usbserial_enumeration_macos.o: ../indigo_libs/indigo_usbserial_uti
 $(UNIT_BUILD)/test_usbserial_enumeration_macos: unit/test_usbserial_enumeration_macos.c test_runner.h $(UNIT_BUILD)/usbserial_enumeration_macos.o | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(UNIT_BUILD)/usbserial_enumeration_macos.o $(TEST_LDFLAGS)
 endif
+
+.PHONY: test-shell-compliance-framework
+test-shell-compliance-framework:
+	python3 -B unit/test_shell_compliance.py
 
 .PHONY: test-gps-compliance-script test-omnisim-startup
 test-gps-compliance-script:

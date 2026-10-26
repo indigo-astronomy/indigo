@@ -1,0 +1,29 @@
+{
+  "title": "Normal-entrypoint fixtures did not exercise all six successful completion paths",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261026190714-e504-fix-shell-compliance",
+      "report": "quality-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261026190714-e504-fix-shell-compliance",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Independent review found AO/guider normal fixtures lacked mandatory guide properties/ranges and normal assertions ignored exit status/footer; a missing-BUSY fixture also exited nonzero like the command-failure fixture. Strengthen fixtures and assert successful normal completion, then rerun all contracts. No runtime source defect is asserted by this finding.",
+  "evidence": "quality-review.md; current task intermediate source and independent synthetic control.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026190714-e504-fix-shell-compliance/findings.md; verification.md: Strict all-six normal fixtures require footer/exit0/zeroFAIL and missingBUSY control succeeds independently of command failure. Final33 passes.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261026190714-e504-fix-shell-compliance-001"
+}

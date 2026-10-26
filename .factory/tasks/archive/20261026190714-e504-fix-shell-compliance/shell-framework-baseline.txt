@@ -1,0 +1,140 @@
+FFFF.FF...FF
+======================================================================
+FAIL: test_exact_range_ignores_decoys (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 204, in test_exact_range_ignores_decoys
+    self.assertEqual([-2.5, 40], [float(x) for x in r.stdout.splitlines()])
+AssertionError: Lists differ: [-2.5, 40] != [900.0, -2.5, 999.0, 40.0]
+
+First differing element 0:
+-2.5
+900.0
+
+Second list contains 2 additional elements.
+First extra element 2:
+999.0
+
+- [-2.5, 40]
++ [900.0, -2.5, 999.0, 40.0]
+
+======================================================================
+FAIL: test_failed_property_query_is_not_an_optional_skip (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 246, in test_failed_property_query_is_not_an_optional_skip
+    self.assertEqual(1, r.returncode, r.stdout + r.stderr)
+AssertionError: 1 != 0 : [0;32m[PASS][0m failure
+
+
+======================================================================
+FAIL: test_failed_state_query_cannot_pass_matching_text (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 183, in test_failed_state_query_cannot_pass_matching_text
+    self.assertNotEqual(0, r.returncode)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_item_substring_is_not_presence (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 188, in test_item_substring_is_not_presence
+    self.assertNotEqual(0, self.bash('property_exists "$2.P" ITEM').returncode)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_nonzero_set_cannot_pass_matching_stdout_or_stderr (__main__.FrameworkContractTests) (stream='stdout')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 172, in test_nonzero_set_cannot_pass_matching_stdout_or_stderr
+    self.assertNotEqual(0, r.returncode)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_nonzero_set_cannot_pass_matching_stdout_or_stderr (__main__.FrameworkContractTests) (stream='stderr')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 172, in test_nonzero_set_cannot_pass_matching_stdout_or_stderr
+    self.assertNotEqual(0, r.returncode)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_path_with_spaces_and_remote_argv (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 154, in test_path_with_spaces_and_remote_argv
+    self.assertEqual(0, r.returncode, r.stderr)
+AssertionError: 0 != 127 : 
+
+======================================================================
+FAIL: test_query_failure_cannot_become_numeric_zero_success (__main__.FrameworkContractTests) (call='test_get_value zero "$2.P.ITEM" 0 number')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 239, in test_query_failure_cannot_become_numeric_zero_success
+    self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+AssertionError: 0 == 0 : [0;32m[PASS][0m zero
+
+
+======================================================================
+FAIL: test_query_failure_cannot_become_numeric_zero_success (__main__.FrameworkContractTests) (call='test_set_and_verify zero "$2.P.ITEM=0" "$2.P.ITEM" 0 1 number')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 239, in test_query_failure_cannot_become_numeric_zero_success
+    self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+AssertionError: 0 == 0 : [0;32m[PASS][0m zero
+
+
+======================================================================
+FAIL: test_query_failure_cannot_become_numeric_zero_success (__main__.FrameworkContractTests) (call='test_set_transition_smart zero "$2.P.ITEM=0" "$2.P.ITEM" 0 1 number')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 239, in test_query_failure_cannot_become_numeric_zero_success
+    self.assertNotEqual(0, r.returncode, r.stdout + r.stderr)
+AssertionError: 0 == 0 : [0;32m[PASS][0m zero
+
+
+======================================================================
+FAIL: test_range_rejects_trailing_junk_or_failed_tool (__main__.FrameworkContractTests) (suffix=' warning', code=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 211, in test_range_rejects_trailing_junk_or_failed_tool
+    self.assertNotEqual(0, self.bash('get_item_max "$2.P.ITEM"').returncode)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_range_rejects_trailing_junk_or_failed_tool (__main__.FrameworkContractTests) (suffix='', code=7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 211, in test_range_rejects_trailing_junk_or_failed_tool
+    self.assertNotEqual(0, self.bash('get_item_max "$2.P.ITEM"').returncode)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_remote_reset (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 164, in test_remote_reset
+    self.assertNotIn('-r', self.trace()[0]['argv'])
+AssertionError: '-r' unexpectedly found in ['get', '-w', 'ANY', '-r', 'first:7624', 'Fixture Device.P.ITEM']
+
+======================================================================
+FAIL: test_transition_rejects_another_property (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 221, in test_transition_rejects_another_property
+    self.assertNotEqual(0, r.returncode)
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_unrelated_property_is_not_presence (__main__.FrameworkContractTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 192, in test_unrelated_property_is_not_presence
+    self.assertNotEqual(0, self.bash('property_exists "$2.P"').returncode)
+AssertionError: 0 == 0
+
+----------------------------------------------------------------------
+Ran 15 tests in 8.864s
+
+FAILED (failures=15)

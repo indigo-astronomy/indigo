@@ -1,0 +1,286 @@
+{
+  "version": 2,
+  "task": "20261026190714-e504-fix-shell-compliance",
+  "scope": [
+    ".factory/completions/20261026190714-e504-fix-shell-compliance.json",
+    ".factory/findings/active/FND-000031.json",
+    ".factory/findings/active/FND-000032.json",
+    ".factory/findings/active/FND-000033.json",
+    ".factory/findings/active/FND-000034.json",
+    ".factory/findings/active/FND-000035.json",
+    ".factory/findings/active/FND-20261026190714-e504-fix-shell-compliance-001.json",
+    ".factory/findings/active/FND-20261026190714-e504-fix-shell-compliance-002.json",
+    ".factory/findings/archive/FND-000031.json",
+    ".factory/findings/archive/FND-000032.json",
+    ".factory/findings/archive/FND-000033.json",
+    ".factory/findings/archive/FND-000034.json",
+    ".factory/findings/archive/FND-000035.json",
+    ".factory/findings/archive/FND-20261026190714-e504-fix-shell-compliance-001.json",
+    ".factory/findings/archive/FND-20261026190714-e504-fix-shell-compliance-002.json",
+    ".factory/maintenance.json",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_test/Makefile",
+    "indigo_test/shell_compliance/INDIGO_TEST_FRAMEWORK.md",
+    "indigo_test/shell_compliance/ao_compliance.sh",
+    "indigo_test/shell_compliance/filter_wheel_compliance.sh",
+    "indigo_test/shell_compliance/focuser_compliance.sh",
+    "indigo_test/shell_compliance/gps_compliance.sh",
+    "indigo_test/shell_compliance/guider_compliance.sh",
+    "indigo_test/shell_compliance/indigo_test_framework.sh",
+    "indigo_test/shell_compliance/rotator_compliance.sh",
+    "indigo_test/unit/test_gps_compliance_script.py",
+    "indigo_test/unit/test_shell_compliance.py"
+  ],
+  "checks": [
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/findings.py",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/decision_index.py",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_*.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/scripts/validate_project.py",
+        "--security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_shell_compliance.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-gps-compliance-script"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "-n",
+        "indigo_test/shell_compliance/gps_compliance.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "-n",
+        "indigo_test/shell_compliance/indigo_test_framework.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "-n",
+        "indigo_test/shell_compliance/rotator_compliance.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "-n",
+        "indigo_test/shell_compliance/guider_compliance.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "-n",
+        "indigo_test/shell_compliance/ao_compliance.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "-n",
+        "indigo_test/shell_compliance/filter_wheel_compliance.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/bin/bash",
+        "-n",
+        "indigo_test/shell_compliance/focuser_compliance.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261026190714-e504-fix-shell-compliance.json": [
+      "100644",
+      "blob",
+      "39a65119c5feb592ff3b7e3f29f73e59fb393f97"
+    ],
+    ".factory/findings/active/FND-000031.json": null,
+    ".factory/findings/active/FND-000032.json": null,
+    ".factory/findings/active/FND-000033.json": null,
+    ".factory/findings/active/FND-000034.json": null,
+    ".factory/findings/active/FND-000035.json": null,
+    ".factory/findings/archive/FND-000031.json": [
+      "100644",
+      "blob",
+      "bed286d15dea885652995c35eddbe20658fe733e"
+    ],
+    ".factory/findings/archive/FND-000032.json": [
+      "100644",
+      "blob",
+      "46e47372c49b0fa26cc5be99c3c7f4e167a8c59c"
+    ],
+    ".factory/findings/archive/FND-000033.json": [
+      "100644",
+      "blob",
+      "d6d777286593ad5cc732eceb7fa87909cef06e41"
+    ],
+    ".factory/findings/archive/FND-000034.json": [
+      "100644",
+      "blob",
+      "a9944f43a3af2d30a8b46855c395adb109c43765"
+    ],
+    ".factory/findings/archive/FND-000035.json": [
+      "100644",
+      "blob",
+      "e41ccd6ccbbe8a719d17853f3f3bc7fccdd6fccb"
+    ],
+    ".factory/findings/archive/FND-20261026190714-e504-fix-shell-compliance-001.json": [
+      "100644",
+      "blob",
+      "4b6191ca3825198ba5dd6704a967a282cb9cb6b4"
+    ],
+    ".factory/findings/archive/FND-20261026190714-e504-fix-shell-compliance-002.json": [
+      "100644",
+      "blob",
+      "16aea92185fa02f07887d697d8938754970f1392"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "9a485e144498f28c6e394cc3383279e996305430"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "270b521d68c1be3c28010833cff5c6a3189ba5d7"
+    ],
+    "indigo_test/shell_compliance/INDIGO_TEST_FRAMEWORK.md": [
+      "100644",
+      "blob",
+      "3dedd6e1787519fc99c9b582aa602cce5badef8c"
+    ],
+    "indigo_test/shell_compliance/ao_compliance.sh": [
+      "100755",
+      "blob",
+      "1d7e2c2fc60f423ffa9ca595a4f31159cefcf0fd"
+    ],
+    "indigo_test/shell_compliance/filter_wheel_compliance.sh": [
+      "100755",
+      "blob",
+      "6ff0f531187c4a55b28f7227ddf981bb78fb1042"
+    ],
+    "indigo_test/shell_compliance/focuser_compliance.sh": [
+      "100755",
+      "blob",
+      "e123cc7a3f956ceaaa6a75b54c00ef3d7bf538b0"
+    ],
+    "indigo_test/shell_compliance/gps_compliance.sh": [
+      "100755",
+      "blob",
+      "2148f6aa2fda3f9b56f73c0352a11598691e954b"
+    ],
+    "indigo_test/shell_compliance/guider_compliance.sh": [
+      "100755",
+      "blob",
+      "38d264a2567bf32826b81e637bb0a49e4ef34bfb"
+    ],
+    "indigo_test/shell_compliance/indigo_test_framework.sh": [
+      "100755",
+      "blob",
+      "ce4b5decfb033dc425b27af95caefa1263072731"
+    ],
+    "indigo_test/shell_compliance/rotator_compliance.sh": [
+      "100755",
+      "blob",
+      "10a7bcc22b442e037a0e753d702fef3588680859"
+    ],
+    "indigo_test/unit/test_gps_compliance_script.py": [
+      "100644",
+      "blob",
+      "24d0e9909cc0996bf947b57b2e60ab5b467b4f62"
+    ],
+    "indigo_test/unit/test_shell_compliance.py": [
+      "100644",
+      "blob",
+      "c5b7c92d2a36e80e28c4da8f99593bbe5cb37365"
+    ]
+  }
+}

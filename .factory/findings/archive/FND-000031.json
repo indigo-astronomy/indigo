@@ -3,7 +3,7 @@
   "title": "TESTS-002: Framework commands expand `$INDIGO_PROP_TOOL` and `$REMOTE_SERVER` unquoted and usually pipe output through `grep` without `pipefail`",
   "category": "quality",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -11,9 +11,19 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261026190714-e504-fix-shell-compliance",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "TESTS-002: Framework commands expand `$INDIGO_PROP_TOOL` and `$REMOTE_SERVER` unquoted and usually pipe output through `grep` without `pipefail`. Tool paths containing spaces break, remote arguments cannot be represented safely as an argv array, and command failures can be hidden when `grep` matches text from stderr. Store remote options in an array, invoke `\"${INDIGO_PROP_TOOL}\"`, and capture command status before filtering output. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tests/REVIEW.md:30; historical locations: `indigo_test_framework.sh:104`, `indigo_test_framework.sh:170`, `indigo_test_framework.sh:239`, `indigo_test_framework.sh:396`, `indigo_test_framework.sh:479`, `indigo_test_framework.sh:507`, `indigo_test_framework.sh:576`, `indigo_test_framework.sh:726`, `indigo_test_framework.sh:754`, `indigo_test_framework.sh:790`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026190714-e504-fix-shell-compliance/findings.md; verification.md: Quoted executable/argv, status capture, safe required reads and finite data comparisons preserve failures. Wheel name handling has no eval.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

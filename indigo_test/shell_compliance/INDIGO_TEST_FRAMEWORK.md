@@ -26,6 +26,18 @@ Configure the remote INDIGO server to connect to.
 set_remote_server "192.168.1.100:7624"
 ```
 
+### Quoted tool invocation
+
+`INDIGO_PROP_TOOL` names one executable; paths containing spaces are supported. Call `run_prop_tool operation ...` for direct operations instead of expanding the executable or remote options yourself. The helper passes each argument unchanged, inserts the configured remote arguments after the operation and applies `INDIGO_PROP_TOOL_DELAY` when configured. `set_remote_server ""` clears previous remote arguments.
+
+```bash
+export INDIGO_PROP_TOOL="/path with spaces/indigo_prop_tool"
+set_remote_server "localhost:7624"
+run_prop_tool get -w ANY "Device Name.CONNECTION.CONNECTED"
+```
+
+A failed command remains a failure even if its output resembles a valid property update. Diagnostics are not parsed as property data. Framework checks capture the command status before selecting matching lines or normalizing values.
+
 ---
 
 ## Test Result Functions
@@ -35,8 +47,8 @@ Print a test result with color-coded output and update test counters.
 
 **Parameters:**
 - `test_name` - Name/description of the test
-- `result` - Test result: `"PASS"` or `"FAIL"`
-- `description` - (Optional) Reason for failure
+- `result` - Test result: `"PASS"`, `"FAIL"` or `"SKIP"`
+- `description` - (Optional) Reason for failure or skip
 
 **Example:**
 ```bash
@@ -45,14 +57,14 @@ print_test_result "Set value" "FAIL" "Timeout exceeded"
 ```
 
 #### `print_test_summary()`
-Print final test statistics (passed/failed counts).
+Print passed, failed and skipped counts. The total includes all three counters. A skipped optional property or unexercised scenario is not verified coverage.
 
 **Example:**
 ```bash
 print_test_summary
 # Output:
 # ========================================
-# Test Summary: 15 passed, 0 failed out of 15 tests
+# Test Summary: 15 passed, 0 failed, 0 skipped out of 15 tests
 # All tests passed!
 # ========================================
 ```
@@ -286,8 +298,9 @@ Run comprehensive connection test battery for any device type.
 - `timeout` - Timeout in seconds (default: `10`)
 
 **Returns:**
-- `0` if device was originally connected
-- `1` if device was originally disconnected
+- `1` if device was originally connected
+- `0` if device was originally disconnected
+- `3` if the initial connection query failed or returned an unknown state
 
 **Example:**
 ```bash
@@ -303,7 +316,21 @@ WAS_CONNECTED=$?
 5. Connects device with full verification
 6. Returns original state for restoration logic
 
-**Note:** This is a universal function that should be used by all device-specific compliance scripts to ensure consistent connection testing.
+**Note:** This function deliberately returns the original connection flag, not an overall test verdict. Use the counters for the script verdict and `preserve_connection_state`/`restore_connection_state` around the battery and device tests.
+
+#### `capture_property_value(destination, getter, query, [state])`
+
+Capture a required value in the parent shell and record a failed read before further device changes. The destination is a plain shell identifier; getters are limited to `get_item_value`, `get_item_number`, `get_item_min` and `get_item_max`. Array elements use a temporary scalar followed by an ordinary indexed assignment, compatible with Bash 3.2. Generic text can legitimately be empty; `get_item_number` validates finite numeric replies before arithmetic, and range helpers validate both bounds. Numeric-mode test comparisons use that typed reader and compare data directly, including scientific notation; reply text is never evaluated as a calculator program. A failed required read makes the entry point restore the connection, print its summary and exit nonzero.
+
+#### `preserve_connection_state(device_name, timeout)` and `restore_connection_state()`
+
+Call `preserve_connection_state` before the connection battery or any mutation. It reads a valid original `CONNECTED` value, exposes `WAS_CONNECTED` (`1` for ON, `0` for OFF), and installs cleanup for the entry point's EXIT, INT and TERM paths. If the initial state cannot be established, stop without changing the connection. The entry points own these traps; the framework does not install them merely by being sourced.
+
+Call `restore_connection_state` before printing the normal summary. It attempts to restore and verify the original state, and records a failure if restoration cannot be verified. Repeated cleanup is harmless after success. Exit cleanup preserves an existing failure or signal exit status and makes an otherwise successful exit fail when restoration fails. This restores the original connection state only; other properties changed during compliance testing are not rolled back.
+
+#### `test_abort_motion(test_name, set_query, motion_property, abort_query, timeout)`
+
+Start a distant valid move with a bounded synchronous wait for BUSY, then verify that it is still moving and issue abort immediately. There is no fixed pre-abort sleep and no background property-tool process to leave behind. The helper requires the normal abort transition and distinguishes failures from a motion which completed too quickly to exercise abort. The latter is reported as SKIP, not as verified abort coverage. Missing BUSY output, malformed states and command errors fail the check.
 
 #### `test_property_exists(test_name, property, [items])`
 Test if a property exists, optionally checking for specific items within the property.
@@ -406,7 +433,7 @@ longitude=$(get_item_value "GPS.GEOGRAPHIC_COORDINATES.LONGITUDE" "ANY")
 echo "Location: $latitude, $longitude"
 ```
 
-**Note:** This is the preferred way to retrieve property values in tests. It provides a cleaner interface than calling `$INDIGO_PROP_TOOL get` directly and ensures consistent usage across all test scripts.
+**Note:** This is the preferred way to retrieve property values. Check its exit status before comparing or normalizing the value; use `run_prop_tool` for direct commands.
 
 #### `get_item_min(property_item)`
 
@@ -589,10 +616,10 @@ This pattern prevents tests from attempting operations on devices that don't sup
 ### Test Counters
 - `TESTS_PASSED` - Number of tests passed
 - `TESTS_FAILED` - Number of tests failed
-- `TESTS_SKIPPED` - Number of tests skipped (property/item not present)
+- `TESTS_SKIPPED` - Number of tests skipped (optional property/item absent or scenario not exercised)
 
 ### Configuration
-- `REMOTE_SERVER` - Remote server argument for indigo_prop_tool (set via `set_remote_server()`)
+- `REMOTE_SERVER` - Bash array of remote server arguments for indigo_prop_tool (set via `set_remote_server()`; do not expand it as a scalar string)
 - `INDIGO_PROP_TOOL` - Path to indigo_prop_tool executable
 
 ---
@@ -608,17 +635,24 @@ source "indigo_test_framework.sh"
 # Configure
 set_remote_server "localhost:7624"
 
+# Preserve the original connection before any mutation.
+if ! preserve_connection_state "CCD Imager" 10; then
+    print_test_summary
+    exit 1
+fi
+
 # Run tests
-test_connect "CCD Imager" 10
+test_connection_battery "CCD Imager" 10
 test_set_and_verify "Set binning" \
     "CCD Imager.CCD_BINNING.HORIZONTAL=2" \
     "CCD Imager.CCD_BINNING.HORIZONTAL" \
     "2" 5 "number"
 
-test_disconnect "CCD Imager" 10
+restore_connection_state
 
-# Print results
+# Print results, then fail if any check or restoration failed.
 print_test_summary
+(( TESTS_FAILED == 0 ))
 ```
 
 ---
@@ -632,3 +666,12 @@ print_test_summary
   - Operations changing values: BUSY → OK
   - Instant operations: OK → OK
   - Failed operations: BUSY → ALERT or OK → ALERT
+
+
+## Exact property selection and skipped coverage
+
+Property and item names are compared literally, including spaces and regular-expression characters in device names. Item checks match complete item names rather than substrings. Range helpers request extended list output for the containing property, select the exact full item path and parse the numeric range at the end of that item line; unrelated items and diagnostic brackets cannot supply a range.
+
+`property_exists` returns `0` for the requested property/items, `1` for absence and `3` for a tool/query failure. Identifiable query failures are recorded as FAIL so an optional-property branch cannot silently turn a broken command into a green run. A missing optional property can be SKIP. A skipped case contributes to the total but does not establish the behavior it could not exercise.
+
+The live compliance scripts remain opt-in. `make -C indigo_test test-shell-compliance-framework` runs isolated synthetic Bash/CLI regressions and is included in the ordinary automated target; it does not connect to hardware. The existing GPS script regression remains available as `test-gps-compliance-script`.

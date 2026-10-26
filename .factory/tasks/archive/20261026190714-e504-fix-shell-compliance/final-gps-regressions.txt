@@ -1,0 +1,6 @@
+python3 -B unit/test_gps_compliance_script.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 34.789s
+
+OK

@@ -1,0 +1,29 @@
+{
+  "title": "Numeric comparison helpers interpreted raw reply text as bc input",
+  "category": "security",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261026190714-e504-fix-shell-compliance",
+      "report": "security.md",
+      "revision": null
+    },
+    {
+      "id": "20261026190714-e504-fix-shell-compliance",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Three numeric-mode helpers fetched raw get_item_value data and inserted it in bc expressions. Independent benign local control returned text1+1 and was falsely accepted as numeric2. Use finite typed numeric reads and data-only comparison; verify rejection in all three helpers without physical hardware or external probing.",
+  "evidence": "security.md; current task intermediate source and independent synthetic control.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026190714-e504-fix-shell-compliance/findings.md; verification.md: Three numeric comparators use typed finite reads and constant AWK/data comparison; expression rejection and signed/scientific success controls pass.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261026190714-e504-fix-shell-compliance-002"
+}

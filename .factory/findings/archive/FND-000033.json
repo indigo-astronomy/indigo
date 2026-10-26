@@ -3,7 +3,7 @@
   "title": "TESTS-004: Abort-motion tests assume a long-running move is still `BUSY` after a fixed two-second sleep",
   "category": "quality",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -11,9 +11,19 @@
       "id": "20261021193138-70b4-adopt-ai-factory",
       "report": "legacy-findings.md",
       "revision": null
+    },
+    {
+      "id": "20261026190714-e504-fix-shell-compliance",
+      "report": "findings.md",
+      "revision": null
     }
   ],
   "summary": "TESTS-004: Abort-motion tests assume a long-running move is still `BUSY` after a fixed two-second sleep. Fast devices can finish before abort is sent and fail the required `BUSY -> OK` abort transition even though the driver is valid; slow devices can also leave a background `indigo_prop_tool` process running in the rotator test. Use a generated long move known to remain busy, wait until the motion property reports `BUSY`, send abort immediately, and wait/reap any background helper process. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.",
   "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_tests/REVIEW.md:32; historical locations: `focuser_compliance.sh:199`, `focuser_compliance.sh:201`, `focuser_compliance.sh:206`, `rotator_compliance.sh:231`, `rotator_compliance.sh:233`, `rotator_compliance.sh:238`; legacy status: Open",
-  "resolution": null
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026190714-e504-fix-shell-compliance/findings.md; verification.md: Synchronous BUSY observation/immediate abort replaces fixed sleeps/background tools; fast completion is honest SKIP.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
 }

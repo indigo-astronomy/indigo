@@ -59,10 +59,12 @@ properties = state["properties"]
 if operation == "list":
 	if query in properties:
 		for item, value in properties[query].items():
-			print("GPS Fixture." + query + "." + item + "=" + value)
+			print("GPS Fixture." + query + "." + item + " = " + value)
 elif operation == "get":
 	property_name, item = query.rsplit(".", 1)
 	print(properties.get(property_name, {}).get(item, ""))
+elif operation == "get_state":
+	print("OK")
 elif operation == "set":
 	path, value = query.split("=", 1)
 	property_name, item = path.rsplit(".", 1)
@@ -70,17 +72,20 @@ elif operation == "set":
 	sets = state.setdefault("sets", {})
 	sets[path] = sets.get(path, 0) + 1
 	if path == state.get("fail_set") and sets[path] > state.get("fail_after", 0):
-		print("GPS Fixture." + property_name + " [ALERT]")
+		for key, current in items.items():
+			print("[ALERT]\tGPS Fixture." + property_name + "." + key + " = " + current)
 	elif property_name == "CONNECTION":
 		if items.get(item) != value:
 			items[item] = "ON"
 			items["DISCONNECTED" if item == "CONNECTED" else "CONNECTED"] = "OFF"
-			print("GPS Fixture.CONNECTION [BUSY]")
-			print("GPS Fixture.CONNECTION [OK]")
+			for status in ("BUSY", "OK"):
+				for key, current in items.items():
+					print("[" + status + "]\tGPS Fixture.CONNECTION." + key + " = " + current)
 	elif property_name == "GPS_ADVANCED":
 		items[item] = "ON"
 		items["DISABLED" if item == "ENABLED" else "ENABLED"] = "OFF"
-		print("GPS Fixture.GPS_ADVANCED [OK]")
+		for key, current in items.items():
+			print("[OK]\tGPS Fixture.GPS_ADVANCED." + key + " = " + current)
 	else:
 		raise AssertionError(query)
 	state_path.write_text(json.dumps(state))

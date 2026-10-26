@@ -1,0 +1,391 @@
+
+======================================================================
+FAIL: test_six_entrypoints_restore_after_normal_control_flow (__main__.EntryPointRestorationTests) (script='ao', initial='ON')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 334, in test_six_entrypoints_restore_after_normal_control_flow
+    self.assertEqual(connected, self.current()['properties']['CONNECTION']['CONNECTED'], r.stdout + r.stderr)
+AssertionError: 'ON' != 'OFF'
+- ON
++ OFF
+ : ========================================
+INDIGO AO Compliance Test
+Device: Fixture Device
+Server: fixture.invalid:0
+Driver: fixture v.1
+========================================
+
+--- Verifying Device Interface ---
+[0;32m[PASS][0m Device implements AO interface
+
+--- Connection Test Battery ---
+Device is connected
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+[0;32m[PASS][0m Connect device
+[0;32m[PASS][0m Verify CONNECTED=ON
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+
+--- Testing Mandatory Properties ---
+[0;31m[FAIL][0m Test AO_GUIDE_DEC property exists
+       [1;33mReason:[0m Property 'Fixture Device.AO_GUIDE_DEC' not found
+[0;31m[FAIL][0m Test AO_GUIDE_RA property exists
+       [1;33mReason:[0m Property 'Fixture Device.AO_GUIDE_RA' not found
+
+--- Test 1: AO RA Tests ---
+Error: Could not determine AO RA limits
+
+--- Test 2: AO DEC Tests ---
+Error: Could not determine AO DEC limits
+
+--- Test 5: Disconnect ---
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+
+
+========================================
+Test Summary: 17 passed, 2 failed, 0 skipped out of 19 tests
+[0;31mSome tests failed![0m
+========================================
+
+
+======================================================================
+FAIL: test_six_entrypoints_restore_after_normal_control_flow (__main__.EntryPointRestorationTests) (script='filter_wheel', initial='ON')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 334, in test_six_entrypoints_restore_after_normal_control_flow
+    self.assertEqual(connected, self.current()['properties']['CONNECTION']['CONNECTED'], r.stdout + r.stderr)
+AssertionError: 'ON' != 'OFF'
+- ON
++ OFF
+ : ========================================
+INDIGO Filter Wheel Compliance Test
+Device: Fixture Device
+Server: fixture.invalid:0
+Driver: fixture v.1
+========================================
+
+--- Verifying Device Interface ---
+[0;32m[PASS][0m Device implements WHEEL interface
+
+--- Connection Test Battery ---
+Device is connected
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+[0;32m[PASS][0m Connect device
+[0;32m[PASS][0m Verify CONNECTED=ON
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+
+--- Testing Mandatory properties ---
+[0;32m[PASS][0m Test WHEEL_SLOT property exists
+[0;32m[PASS][0m Test WHEEL_SLOT_NAME property exists
+[0;32m[PASS][0m Test WHEEL_SLOT_OFFSET property exists
+
+--- Filter Wheel Properties Tests ---
+Detected 1 filter slots
+
+--- Storing Original Values ---
+
+--- Filter Slot Name Tests ---
+[0;32m[PASS][0m Set slot 1 name to 'Filter_1'
+
+--- Filter Slot Offset Tests ---
+[0;32m[PASS][0m Set slot 1 offset to 1
+[0;32m[PASS][0m Set slot 1 offset to -1
+[0;32m[PASS][0m Set slot 1 offset to 0
+
+--- Filter Movement Tests ---
+[0;32m[PASS][0m Move to slot 1
+[0;32m[PASS][0m Verify at slot 1
+
+--- Boundary Tests ---
+Testing move beyond last slot (2)...
+[0;32m[PASS][0m Beyond last slot -> should be at slot 1
+Testing move below first slot (0)...
+[0;32m[PASS][0m Below first slot -> should be at slot 1
+
+--- Restore Initial State ---
+Restoring original slot names...
+Restoring original slot offsets...
+
+--- Final Disconnect Tests ---
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+
+
+========================================
+Test Summary: 28 passed, 0 failed, 0 skipped out of 28 tests
+[0;32mAll tests passed![0m
+========================================
+
+
+======================================================================
+FAIL: test_six_entrypoints_restore_after_normal_control_flow (__main__.EntryPointRestorationTests) (script='focuser', initial='ON')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 334, in test_six_entrypoints_restore_after_normal_control_flow
+    self.assertEqual(connected, self.current()['properties']['CONNECTION']['CONNECTED'], r.stdout + r.stderr)
+AssertionError: 'ON' != 'OFF'
+- ON
++ OFF
+ : ========================================
+INDIGO Focuser Compliance Test
+Device: Fixture Device
+Server: fixture.invalid:0
+Driver: fixture v.1
+========================================
+
+--- Verifying Device Interface ---
+[0;32m[PASS][0m Device implements FOCUSER interface
+
+--- Connection Test Battery ---
+Device is connected
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+[0;32m[PASS][0m Connect device
+[0;32m[PASS][0m Verify CONNECTED=ON
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+
+--- Testing Mandatory Properties ---
+[0;32m[PASS][0m Test FOCUSER_STEPS property exists
+[0;31m[FAIL][0m Test FOCUSER_DIRECTION property exists
+       [1;33mReason:[0m Property 'Fixture Device.FOCUSER_DIRECTION' not found
+[0;32m[PASS][0m Test FOCUSER_POSITION property exists
+[0;31m[FAIL][0m Test FOCUSER_ABORT_MOTION property exists
+       [1;33mReason:[0m Property 'Fixture Device.FOCUSER_ABORT_MOTION' not found
+[0;31m[FAIL][0m Test FOCUSER_ON_POSITION_SET property exists
+       [1;33mReason:[0m Property 'Fixture Device.FOCUSER_ON_POSITION_SET' not found
+
+--- Getting Focuser Range ---
+Focuser position range: 0 to 1000
+Max steps: 1000
+
+--- Storing Original Values ---
+Original position: 500
+
+--- Test 1: GOTO Position Test ---
+[0;90m[SKIP][0m Set GOTO mode
+       [0;90mReason:[0m Property Fixture Device.FOCUSER_ON_POSITION_SET does not exist
+Moving to position 200...
+[0;32m[PASS][0m Move to position 200
+[0;32m[PASS][0m Verify at position 200
+
+--- Test 2: Relative Move Tests ---
+Moving 150 steps inward...
+[0;90m[SKIP][0m Set direction to MOVE_INWARD
+       [0;90mReason:[0m Property Fixture Device.FOCUSER_DIRECTION does not exist
+[0;32m[PASS][0m Move 150 steps
+Position after inward move: 200.0
+Moving 150 steps outward...
+[0;90m[SKIP][0m Set direction to MOVE_OUTWARD
+       [0;90mReason:[0m Property Fixture Device.FOCUSER_DIRECTION does not exist
+[0;32m[PASS][0m Move 150 steps
+Position after outward move: 200.0
+[0;32m[PASS][0m In/Out moves returned near original
+
+--- Test 3: Abort Motion Test ---
+Moving to halfway position (500) then aborting...
+[0;90m[SKIP][0m Set GOTO mode for abort test
+       [0;90mReason:[0m Property Fixture Device.FOCUSER_ON_POSITION_SET does not exist
+Sending abort command...
+[0;90m[SKIP][0m Abort motion
+       [0;90mReason:[0m Property Fixture Device.FOCUSER_ABORT_MOTION does not exist
+[0;32m[PASS][0m Abort motion - STEPS state not BUSY
+[0;32m[PASS][0m Abort motion - POSITION state not BUSY
+
+--- Test 4: SYNC Mode Test ---
+[0;90m[SKIP][0m SYNC Mode Test
+       [0;90mReason:[0m Property FOCUSER_ON_POSITION_SET does not exist
+
+--- Test 5: Optional Properties ---
+
+--- Restore Initial State ---
+Restoring original position 500...
+[0;90m[SKIP][0m Set GOTO mode for restore
+       [0;90mReason:[0m Property Fixture Device.FOCUSER_ON_POSITION_SET does not exist
+[0;32m[PASS][0m Restore position 500
+
+--- Final Disconnect Tests ---
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+
+
+========================================
+Test Summary: 27 passed, 3 failed, 7 skipped out of 37 tests
+[0;31mSome tests failed![0m
+========================================
+
+
+======================================================================
+FAIL: test_six_entrypoints_restore_after_normal_control_flow (__main__.EntryPointRestorationTests) (script='guider', initial='ON')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 334, in test_six_entrypoints_restore_after_normal_control_flow
+    self.assertEqual(connected, self.current()['properties']['CONNECTION']['CONNECTED'], r.stdout + r.stderr)
+AssertionError: 'ON' != 'OFF'
+- ON
++ OFF
+ : ========================================
+INDIGO Guider Compliance Test
+Device: Fixture Device
+Server: fixture.invalid:0
+Driver: fixture v.1
+========================================
+
+--- Verifying Device Interface ---
+[0;32m[PASS][0m Device implements GUIDER interface
+
+--- Connection Test Battery ---
+Device is connected
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+[0;32m[PASS][0m Connect device
+[0;32m[PASS][0m Verify CONNECTED=ON
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+
+--- Testing Mandatory Properties ---
+[0;31m[FAIL][0m Test GUIDER_GUIDE_DEC property exists
+       [1;33mReason:[0m Property 'Fixture Device.GUIDER_GUIDE_DEC' not found
+[0;31m[FAIL][0m Test GUIDER_GUIDE_RA property exists
+       [1;33mReason:[0m Property 'Fixture Device.GUIDER_GUIDE_RA' not found
+
+--- Test 1: GUIDE RA Tests ---
+Error: Could not determine GUIDE RA limits
+
+--- Test 2: GUIDE DEC Tests ---
+Error: Could not determine GUIDE DEC limits
+
+--- Test 3: Optional GUIDER_RATE Property ---
+
+--- Test 3.1: Optional GUIDER_RATE.DEC_RATE Item ---
+[0;90m[SKIP][0m Optional item GUIDER_RATE.DEC_RATE does not exist
+
+--- Test 5: Disconnect ---
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+
+
+========================================
+Test Summary: 17 passed, 2 failed, 1 skipped out of 20 tests
+[0;31mSome tests failed![0m
+========================================
+
+
+======================================================================
+FAIL: test_six_entrypoints_restore_after_normal_control_flow (__main__.EntryPointRestorationTests) (script='rotator', initial='ON')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/unit/test_shell_compliance.py", line 334, in test_six_entrypoints_restore_after_normal_control_flow
+    self.assertEqual(connected, self.current()['properties']['CONNECTION']['CONNECTED'], r.stdout + r.stderr)
+AssertionError: 'ON' != 'OFF'
+- ON
++ OFF
+ : ========================================
+INDIGO Rotator Compliance Test
+Device: Fixture Device
+Server: fixture.invalid:0
+Driver: fixture v.1
+========================================
+
+--- Verifying Device Interface ---
+[0;32m[PASS][0m Device implements ROTATOR interface
+
+--- Connection Test Battery ---
+Device is connected
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+[0;32m[PASS][0m Connect device
+[0;32m[PASS][0m Verify CONNECTED=ON
+[0;32m[PASS][0m Connect when already connected (no updates expected)
+[0;32m[PASS][0m Verify still CONNECTED=ON
+
+--- Testing Mandatory Properties ---
+[0;32m[PASS][0m Test ROTATOR_POSITION property exists
+[0;31m[FAIL][0m Test ROTATOR_ABORT_MOTION property exists
+       [1;33mReason:[0m Property 'Fixture Device.ROTATOR_ABORT_MOTION' not found
+
+--- Getting Rotator Range ---
+Rotator position range: 0 to 360 degrees
+
+--- Storing Original Values ---
+Original position: 0 degrees
+
+--- Test 1: GOTO Position Test ---
+[0;90m[SKIP][0m GOTO Position Test
+       [0;90mReason:[0m Property ROTATOR_ON_POSITION_SET does not exist
+
+--- Test 2: Relative Move Test ---
+[0;90m[SKIP][0m Relative Move Test
+       [0;90mReason:[0m Property ROTATOR_RELATIVE_MOVE does not exist
+
+--- Test 3: Abort Motion Test ---
+[0;90m[SKIP][0m Abort Motion Test
+       [0;90mReason:[0m Property ROTATOR_ON_POSITION_SET does not exist
+
+--- Test 4: SYNC Mode Test ---
+[0;90m[SKIP][0m SYNC Mode Test
+       [0;90mReason:[0m Property ROTATOR_ON_POSITION_SET does not exist
+
+--- Test 5: Optional Properties ---
+
+--- Restore Initial State ---
+
+--- Final Disconnect Tests ---
+[0;32m[PASS][0m Disconnect device
+[0;32m[PASS][0m Verify DISCONNECTED=ON
+[0;32m[PASS][0m Verify CONNECTED=OFF
+[0;32m[PASS][0m Disconnect when already disconnected (no updates expected)
+[0;32m[PASS][0m Verify still DISCONNECTED=ON
+
+
+========================================
+Test Summary: 18 passed, 1 failed, 4 skipped out of 23 tests
+[0;31mSome tests failed![0m
+========================================
+
+
+----------------------------------------------------------------------
+Ran 1 test in 26.144s
+
+FAILED (failures=5)
