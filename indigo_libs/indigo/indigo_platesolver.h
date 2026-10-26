@@ -112,6 +112,11 @@ extern "C" {
 #define AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->exposure_settings_property)
 #define AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM		(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY->items+0)
 
+#define PLATESOLVER_FILTER_COUNT										24
+
+#define AGENT_PLATESOLVER_FILTER_PROPERTY								(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_property)
+#define AGENT_PLATESOLVER_FILTER_CURRENT_ITEM						(AGENT_PLATESOLVER_FILTER_PROPERTY->items+0)
+
 #define AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->polar_alignment_settings_property)
 #define AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM				(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+0)
 #define AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM		(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+1)
@@ -190,6 +195,7 @@ typedef struct {
 	indigo_property *ccd_preview_image_property;
 	indigo_property *ccd_jpeg_settings;
 	indigo_property *ccd_jpeg_stretch_presets;
+	indigo_property *filter_property;
 	void *preview_image;
 	unsigned long preview_image_size;
 	indigo_spherical_point_t eq_coordinates;
@@ -212,6 +218,11 @@ typedef struct {
 	indigo_property_state imager_pause_state;
 	indigo_property_state imager_capture_state;
 	indigo_property_state guider_process_state;
+	indigo_property_state imager_filter_state; ///< state of AGENT_WHEEL_FILTER of the related Imager Agent
+	int imager_filter_slot;                 ///< filter selected in AGENT_WHEEL_FILTER of the related Imager Agent (0 = none)
+	int filter_restore_slot;                ///< filter to return to after a solver exposure (0 = none)
+	bool filter_restore_requested;          ///< return to filter_restore_slot as soon as the wheel stops
+	pthread_mutex_t filter_mutex;           ///< guards the two fields above, never held across bus calls
 	void (*save_config)(indigo_device *);
 	bool (*solve)(indigo_device *, indigo_platesolver_task *task);
 	void (*abort)(indigo_device *);

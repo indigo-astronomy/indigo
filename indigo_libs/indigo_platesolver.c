@@ -284,11 +284,128 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 	return false;
 }
 
+static void return_to_filter(indigo_device *device) {
+	pthread_mutex_lock(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex);
+	int slot = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_slot;
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_slot = 0;
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_requested = false;
+	pthread_mutex_unlock(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex);
+	char *related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Imager Agent");
+	if (slot > 0 && slot < AGENT_PLATESOLVER_FILTER_PROPERTY->count && slot != INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_slot && related_agent_name != NULL) {
+		indigo_send_message(device, IDLE_PROPERTY, "Returning to filter '%s'", AGENT_PLATESOLVER_FILTER_PROPERTY->items[slot].label);
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_state = INDIGO_BUSY_STATE;
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_WHEEL_FILTER_PROPERTY_NAME, AGENT_PLATESOLVER_FILTER_PROPERTY->items[slot].name, true);
+	}
+}
+
+/* AGENT_PLATESOLVER_FILTER mirrors AGENT_WHEEL_FILTER of the related Imager Agent, preceded by CURRENT */
+static void mirror_filters(indigo_device *device, indigo_property *property) {
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_slot = 0;
+	for (int i = 0; i < property->count; i++) {
+		if (property->items[i].sw.value) {
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_slot = i + 1;
+			break;
+		}
+	}
+	pthread_mutex_lock(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex);
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_state = property->state;
+	bool return_now = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_requested && property->state != INDIGO_BUSY_STATE;
+	pthread_mutex_unlock(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex);
+	int count = property->count < PLATESOLVER_FILTER_COUNT ? property->count : PLATESOLVER_FILTER_COUNT;
+	bool changed = AGENT_PLATESOLVER_FILTER_PROPERTY->count != count + 1;
+	for (int i = 0; !changed && i < count; i++) {
+		changed = strcmp(AGENT_PLATESOLVER_FILTER_PROPERTY->items[i + 1].label, property->items[i].label) != 0;
+	}
+	if (changed) {
+		int selected = 0;
+		for (int i = 1; i < AGENT_PLATESOLVER_FILTER_PROPERTY->count; i++) {
+			if (AGENT_PLATESOLVER_FILTER_PROPERTY->items[i].sw.value) {
+				selected = i;
+				break;
+			}
+		}
+		indigo_delete_property(device, AGENT_PLATESOLVER_FILTER_PROPERTY, NULL);
+		AGENT_PLATESOLVER_FILTER_PROPERTY->count = count + 1;
+		for (int i = 0; i < count; i++) {
+			indigo_init_switch_item(AGENT_PLATESOLVER_FILTER_PROPERTY->items + i + 1, property->items[i].name, property->items[i].label, false);
+		}
+		indigo_set_switch(AGENT_PLATESOLVER_FILTER_PROPERTY, AGENT_PLATESOLVER_FILTER_PROPERTY->items + (selected <= count ? selected : 0), true);
+		indigo_define_property(device, AGENT_PLATESOLVER_FILTER_PROPERTY, NULL);
+	}
+	if (return_now) {
+		return_to_filter(device);
+	}
+}
+
+/* Waits up to 120s for the wheel to stop; false only if the process is aborted meanwhile */
+static bool wait_for_filter_wheel(indigo_device *device, bool abortable) {
+	for (int i = 0; i < 12000 && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_state == INDIGO_BUSY_STATE; i++) {
+		if (abortable && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
+			return false;
+		}
+		indigo_usleep(10000);
+	}
+	return true;
+}
+
+/* Selects the filter chosen in AGENT_PLATESOLVER_FILTER before a solver exposure and remembers the one to return to */
+static bool select_filter(indigo_device *device, char *related_agent_name) {
+	int slot = 0;
+	for (int i = 1; i < AGENT_PLATESOLVER_FILTER_PROPERTY->count; i++) {
+		if (AGENT_PLATESOLVER_FILTER_PROPERTY->items[i].sw.value) {
+			slot = i;
+			break;
+		}
+	}
+	if (slot == 0) {
+		return true;
+	}
+	// a return after the previous exposure may still move the wheel
+	if (!wait_for_filter_wheel(device, true)) {
+		return false;
+	}
+	if (slot == INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_slot) {
+		return true;
+	}
+	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_slot == 0) {
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_slot = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_slot;
+	}
+	indigo_send_message(device, IDLE_PROPERTY, "Selecting filter '%s'", AGENT_PLATESOLVER_FILTER_PROPERTY->items[slot].label);
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_state = INDIGO_BUSY_STATE;
+	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_WHEEL_FILTER_PROPERTY_NAME, AGENT_PLATESOLVER_FILTER_PROPERTY->items[slot].name, true);
+	if (!wait_for_filter_wheel(device, true)) {
+		return false;
+	}
+	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_state != INDIGO_OK_STATE || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_slot != slot) {
+		indigo_send_message(device, ALERT_PROPERTY, "Failed to select filter '%s'", AGENT_PLATESOLVER_FILTER_PROPERTY->items[slot].label);
+		return false;
+	}
+	return true;
+}
+
+/* Returns the wheel to the filter selected before the solver exposure without waiting: the wheel ignores a change
+   while it moves (an aborted selection), so the return is then sent by mirror_filters() when the wheel stops */
+static void restore_filter(indigo_device *device) {
+	pthread_mutex_lock(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex);
+	bool moving = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_filter_state == INDIGO_BUSY_STATE;
+	if (moving && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_slot > 0) {
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_restore_requested = true;
+	}
+	pthread_mutex_unlock(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex);
+	if (!moving) {
+		return_to_filter(device);
+	}
+}
+
 static bool start_exposure(indigo_device *device, double exposure) {
 	char *related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Imager Agent");
 	if (related_agent_name != NULL) {
 		if ((INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_process_state == INDIGO_BUSY_STATE && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_pause_state != INDIGO_BUSY_STATE) || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_BUSY_STATE) {
 			indigo_send_message(device, ALERT_PROPERTY, "Imager Agent is busy");
+			return false;
+		}
+		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && !select_filter(device, related_agent_name)) {
 			return false;
 		}
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state = INDIGO_IDLE_STATE;
@@ -454,6 +571,7 @@ static void pa_reference_target(indigo_device *device, double hour_angle, double
 }
 
 static void process_failed(indigo_device *device, char *message) {
+	restore_filter(device);
 	if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_IDLE;
@@ -483,6 +601,8 @@ static void factory_reset(indigo_device *device) {
 	indigo_reset_property(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
 	indigo_reset_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 	indigo_reset_property(device, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY);
+	indigo_set_switch(AGENT_PLATESOLVER_FILTER_PROPERTY, AGENT_PLATESOLVER_FILTER_CURRENT_ITEM, true);
+	indigo_update_property(device, AGENT_PLATESOLVER_FILTER_PROPERTY, NULL);
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 }
 
@@ -549,6 +669,8 @@ static void discard_task(indigo_platesolver_task *task) {
 
 static void solve(indigo_platesolver_task *task) {
 	indigo_device *device = task->device;
+	// the wheel returns to the previous filter while the frame is solved
+	restore_filter(device);
 	double recenter_ra = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value;
 	double recenter_dec = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value;
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = task_aborted(task);
@@ -880,6 +1002,13 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 60, 1, 1);
+		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_FILTER
+		AGENT_PLATESOLVER_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_FILTER_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Solver filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, PLATESOLVER_FILTER_COUNT + 1);
+		if (AGENT_PLATESOLVER_FILTER_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM, AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, "Current filter", true);
+		AGENT_PLATESOLVER_FILTER_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_SETTINGS property
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL) {
@@ -997,6 +1126,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		// the MOUNT_EPOCH default until the related mount reports its own
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_epoch = 2000;
 		pthread_mutex_init(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex, NULL);
+		pthread_mutex_init(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex, NULL);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -1011,6 +1141,7 @@ indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, ind
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_ABORT_PROCESS_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_FILTER_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY);
@@ -1120,6 +1251,12 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		indigo_update_property(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PLATESOLVER_FILTER_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_FILTER
+		indigo_property_copy_values(AGENT_PLATESOLVER_FILTER_PROPERTY, property, false);
+		AGENT_PLATESOLVER_FILTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_FILTER_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_PA_SETTINGS
 		indigo_property_copy_values(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property, false);
@@ -1226,6 +1363,17 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
 		}
+	} else if (indigo_property_match(FILTER_RELATED_AGENT_LIST_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FILTER_RELATED_AGENT_LIST
+		indigo_result result = indigo_filter_change_property(device, client, property);
+		if (indigo_filter_first_related_agent(device, "Imager Agent") == NULL && AGENT_PLATESOLVER_FILTER_PROPERTY->count > 1) {
+			// no filters without an Imager Agent, the list returns with the next one
+			indigo_delete_property(device, AGENT_PLATESOLVER_FILTER_PROPERTY, NULL);
+			AGENT_PLATESOLVER_FILTER_PROPERTY->count = 1;
+			indigo_set_switch(AGENT_PLATESOLVER_FILTER_PROPERTY, AGENT_PLATESOLVER_FILTER_CURRENT_ITEM, true);
+			indigo_define_property(device, AGENT_PLATESOLVER_FILTER_PROPERTY, NULL);
+		}
+		return result;
 	}
 	return indigo_filter_change_property(device, client, property);
 }
@@ -1240,6 +1388,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_FILTER_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PA_STATE_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY);
@@ -1253,6 +1402,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY);
 	indigo_safe_free(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image);
 	pthread_mutex_destroy(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex);
+	pthread_mutex_destroy(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->filter_mutex);
 	return indigo_filter_device_detach(device);
 }
 
@@ -1317,6 +1467,8 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->imager_pause_state = property->state;
 		} else if (!strcmp(property->name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME)) {
 			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->imager_capture_state = property->state;
+		} else if (!strcmp(property->name, AGENT_WHEEL_FILTER_PROPERTY_NAME)) {
+			mirror_filters(FILTER_CLIENT_CONTEXT->device, property);
 		}
 	}
 	related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Guider Agent");

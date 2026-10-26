@@ -1,0 +1,131 @@
+{
+  "version": 2,
+  "task": "20261026155455-61b6-platesolver-solve-filter",
+  "scope": [
+    "indigo_libs/indigo_platesolver.c",
+    "indigo_libs/indigo/indigo_platesolver.h",
+    "indigo_libs/indigo/indigo_names.h",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_drivers/agent_astrometry/*",
+    "indigo_drivers/agent_solver/indigo_agent_solver.c",
+    "indigo_test/integration/test_agent_astrometry.c",
+    "TEST_SUMMARY.md",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_astrometry"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-imager"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-astrometry-solver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261026155455-61b6-platesolver-solve-filter.json": [
+      "100644",
+      "blob",
+      "acfa44ceb2cafbe415099c8f9e024d4802f5793a"
+    ],
+    ".factory/findings/active/FND-20261026155455-61b6-platesolver-solve-filter-001.json": [
+      "100644",
+      "blob",
+      "757790b2bcf8dfdc4adf5959b020534332f6fe36"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "ad5acec6e58f32b59539aaf56bcb9e95622b8032"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "f0eac005290d24554aba3858225eae67f101c1a3"
+    ],
+    "indigo_drivers/agent_astrometry/README.md": [
+      "100644",
+      "blob",
+      "c2d508b02c660278465355b5d0212735c47a4349"
+    ],
+    "indigo_drivers/agent_astrometry/REFACTOR.md": [
+      "100644",
+      "blob",
+      "f3eb766db41a081402af7bfaf2ffa6eb874145fa"
+    ],
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "8ba7b759d2904052c10c39307bc74c44b4947ed8"
+    ],
+    "indigo_drivers/agent_solver/indigo_agent_solver.c": [
+      "100644",
+      "blob",
+      "92845ea41508da02a64e4ffce4e052120db66bde"
+    ],
+    "indigo_libs/indigo/indigo_names.h": [
+      "100644",
+      "blob",
+      "5df6412161e9e64bba03b0d6d8c188f9c0a65637"
+    ],
+    "indigo_libs/indigo/indigo_platesolver.h": [
+      "100644",
+      "blob",
+      "3fb4df6f158d4babb4c90e635c66aa988cb7dc7b"
+    ],
+    "indigo_libs/indigo_platesolver.c": [
+      "100644",
+      "blob",
+      "e37cbdc46a3b54a17496e477436458ecc1ea62c4"
+    ],
+    "indigo_test/integration/test_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "3d3c3c3d2721979f3f220186b342bef9fd7b1d41"
+    ]
+  }
+}

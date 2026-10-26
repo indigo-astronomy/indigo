@@ -1,0 +1,76 @@
+{
+  "version": 2,
+  "task": "20261026185516-13cf-astrometry-getline-leak",
+  "scope": [
+    "indigo_drivers/agent_astrometry/*",
+    "TEST_SUMMARY.md",
+    ".factory/tasks/*",
+    ".factory/completions/*",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_astrometry"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=cr-at-eol",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261026185516-13cf-astrometry-getline-leak.json": [
+      "100644",
+      "blob",
+      "9dab3ab90b9cbbd2418db28292e48729940602d1"
+    ],
+    ".factory/findings/active/FND-20261026155455-61b6-platesolver-solve-filter-001.json": null,
+    ".factory/findings/archive/FND-20261026155455-61b6-platesolver-solve-filter-001.json": [
+      "100644",
+      "blob",
+      "87b8229f355d697505f824c2015f76cf5ce74b49"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "ffc6540c85ad74d1b195dda6d608e5ca209cc99a"
+    ],
+    "indigo_drivers/agent_astrometry/README.md": [
+      "100644",
+      "blob",
+      "233c2c746d45a282b2d41f3707b89e4de2a24ab9"
+    ],
+    "indigo_drivers/agent_astrometry/REFACTOR.md": [
+      "100644",
+      "blob",
+      "df596993f5bc2bc88aa87514b47fa25274418301"
+    ],
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "b5fb22ebdabd09399da4c2089fff701b41502f8d"
+    ]
+  }
+}

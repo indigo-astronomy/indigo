@@ -34,3 +34,11 @@ AC-001: six-source build and double clean. AC-002: actual missing-library failur
 macOS native only. Linux pthread flags and Windows project dependencies statically reviewed; no Linux/Windows build or hardware certification. Factory checks cover workflow integrity. Full repository audit remains due under the six-fix deferral. Integration/publication pending owner authorization.
 
 Final simulator results: client exit 0; executable client exit 0 with five valid FITS; dynamic client exit 0 with five valid FITS; remote camera exit 0 with one valid FITS; remote mount exit 0 at RA 3.1416/Dec 2.7183; missing remote device exit 1 within deadline. Reproducible task-local script: [simulator_check.py](simulator_check.py).
+
+## Integration synchronization
+
+Owner authorized merge/push after the repair commit. Fetched target origin/master 4cc3b5cc1ef7abec92f441dbb3afe87c498d8412 was merged into task head eea566731 without conflicts. `git diff --exit-code eea566731 HEAD -- indigo_examples indigo_test/integration/test_examples.py indigo_docs/DEVELOPMENT.md` exited 0: repaired source and documentation unchanged. The automatic TEST_SUMMARY.md merge preserves both histories and receives reviewed content evidence in process.json. No existing test result was invented or rerun by changing that summary.
+
+On merged source, `./.factory/scripts/check` and `./.factory/scripts/security` passed; `make -C indigo_test test-examples` passed all ten in 19.820 seconds. Factory and final committed-range outcomes are recorded in the external delivery log after completion; the source/summary content remains unchanged while the unpublished merge commit receives this required synchronization evidence.
+
+Merged-source `./.factory/scripts/test` completed successfully: 190 tests in 120.410 seconds, exit 0. The extra merge-evidence update changes only these archived reports and process metadata; product sources and test definitions are unchanged.

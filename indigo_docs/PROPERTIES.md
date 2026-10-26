@@ -657,6 +657,7 @@ Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 | AGENT_ABORT_PROCESS | switch | no | ABORT | Abort active plate solving process. |
 | AGENT_PLATESOLVER_SOLVE_IMAGES | switch | no | ENABLED, DISABLED | Enable or disable solving incoming images. |
 | AGENT_PLATESOLVER_EXPOSURE | number | no | EXPOSURE | Exposure used by plate solver capture flows. |
+| AGENT_PLATESOLVER_FILTER | switch | no | CURRENT, dynamic filter slots | Filter for the frames the solver captures through the related Imager Agent: CURRENT (default) leaves the wheel alone, the other items mirror the slots of the Imager Agent's `AGENT_WHEEL_FILTER`. Each exposure of a process selects the filter and the wheel returns to the previous one when the frame arrives, on failure and on abort. |
 | AGENT_PLATESOLVER_PA_SETTINGS | number | no | EXPOSURE, HA_MOVE, COMPENSATE_REFRACTION | Polar-alignment settings. |
 | AGENT_PLATESOLVER_PA_STATE | number | yes | STATE, DEC_DRIFT_2, DEC_DRIFT_3, TARGET_RA, TARGET_DEC, CURRENT_RA, CURRENT_DEC, ALT_POLAR_ERROR, AZ_POLAR_ERROR, ALT_CORRECTION_UP, AZ_CORRECTION_CW, POLAR_ERROR, ACCURACY_WARNING | Polar-alignment state and correction values. |
 | AGENT_PLATESOLVER_GOTO_SETTINGS | number | no | RA, DEC | Target coordinates for solver-assisted goto. |

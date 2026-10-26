@@ -19,7 +19,8 @@
     ".factory/findings/active/FND-000012.json",
     ".factory/findings/archive/FND-000012.json",
     ".factory/findings/active/FND-20261023065605-60d4-repository-audit-008.json",
-    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-008.json"
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-008.json",
+    "TEST_SUMMARY.md"
   ],
   "checks": [
     {
@@ -115,6 +116,11 @@
       "100644",
       "blob",
       "255b19cb3c35a56fa4926fafac2bc43b35ba1a28"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "4384d02453feb5e7e18084409572952a2858b563"
     ],
     "indigo_docs/DEVELOPMENT.md": [
       "100644",
