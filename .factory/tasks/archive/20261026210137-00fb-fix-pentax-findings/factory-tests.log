@@ -1,0 +1,8 @@
+Working directory: <task-root>
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+..............................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 190 tests in 124.940s
+
+OK
+Configured test commands passed. Assess coverage separately.

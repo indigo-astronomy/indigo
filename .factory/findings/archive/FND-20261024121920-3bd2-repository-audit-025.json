@@ -2,7 +2,7 @@
   "title": "Pentax unplug frees a NULL local instead of the allocated private state",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261024121920-3bd2-repository-audit",
       "report": "findings.md",
       "revision": null
+    },
+    {
+      "id": "20261026210137-00fb-fix-pentax-findings",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Severity low; confidence high; resource ownership. indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:1138-1149 initializes private_data=NULL and never assigns it; after detaching/unref it frees that NULL and frees only the device. Allocation at1113 remains leaked on every unplug and driver shutdown routed through unplug. Minimal fix: capture device->private_data before detach and free that captured allocation exactly once; fake repeated attach/unplug ownership check. No matching active finding identified. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-10). No fix or risk acceptance claimed.",
   "evidence": "20261024121920-3bd2-repository-audit/findings.md: FND-20261024121920-3bd2-repository-audit-025; driver-ac-report.md alias AC-10; reviewed source 9d45bc8ccadaf0c3aab6c454c38429fec21d1699; source-only unless explicitly stated.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026210137-00fb-fix-pentax-findings/verification.md; independent quality-review.md and security.md; fake USB and ASan/UBSan 17/17; hardware not tested",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261024121920-3bd2-repository-audit-025"
 }

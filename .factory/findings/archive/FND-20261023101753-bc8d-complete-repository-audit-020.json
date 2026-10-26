@@ -4,7 +4,7 @@
   "severity": "medium",
   "summary": "libusb_open result is overwritten before checking and the handle is immediately used. Next: stop the failed attempt, reset handle and cover open failure with fake USB.",
   "evidence": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:823-828",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -12,8 +12,18 @@
       "id": "20261023101753-bc8d-complete-repository-audit",
       "report": "driver-a-review.md",
       "revision": null
+    },
+    {
+      "id": "20261026210137-00fb-fix-pentax-findings",
+      "report": "verification.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026210137-00fb-fix-pentax-findings/verification.md; independent quality-review.md and security.md; fake USB and ASan/UBSan 17/17; hardware not tested",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023101753-bc8d-complete-repository-audit-020"
 }

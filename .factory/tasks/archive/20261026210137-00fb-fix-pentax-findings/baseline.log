@@ -1,0 +1,26 @@
+22:05:11.603726 Application: indigo_ccd_pentax[pentax_open:830]: libusb_set_auto_detach_kernel_driver: No such device (it may have been disconnected) (-4)
+integration/test_ccd_pentax_usb.c:151: expected 0, got 2
+22:05:11.604783 Application: indigo_ccd_pentax[scsi_command:422]: 0xFF, No such device (it may have been disconnected) (-4)
+22:05:11.605306 Application: indigo_ccd_pentax[scsi_command:422]: 0xFF, No such device (it may have been disconnected) (-4)
+integration/test_ccd_pentax_usb.c:168: assertion failed: first_polls < 100 && second_polls < 100
+integration/test_ccd_pentax_usb.c:178: assertion failed: scsi_command(device, cdb, 6, 0x80, data, 8) != 0
+22:05:11.605687 Application: indigo_ccd_pentax[scsi_command:414]: 0xFF, Input/Output Error (-1)
+22:05:11.606009 Application: indigo_ccd_pentax[scsi_command:422]: 0xFF, Input/Output Error (-1)
+integration/test_ccd_pentax_usb.c:185: assertion failed: scsi_command(device, cdb, 6, 0x80, data, 8) != 0
+22:05:11.606330 Application: indigo_ccd_pentax[scsi_command:422]: 0xFF, Pipe error (-9)
+integration/test_ccd_pentax_usb.c:201: expected 1, got 0
+Running ccd_pentax_usb
+characterization open/close trace=OAKCLBDSBSBDSBDSBSBDSX
+  PASS successful open order
+characterization ready/delayed trace=BDSBDSBDSBDSBDSBDSBDSBDSBDS
+  PASS ready and delayed
+  PASS device errors
+  PASS identity and firmware endian
+  PASS valid full state
+  FAIL failed open retry
+  FAIL both readiness deadlines
+  FAIL short transfers
+  FAIL transfer errors
+  PASS retry exhaustion
+  FAIL unplug private ownership
+ccd_pentax_usb: 5 test(s) failed

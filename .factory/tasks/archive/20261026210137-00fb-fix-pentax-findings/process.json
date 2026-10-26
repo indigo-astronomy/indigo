@@ -1,0 +1,169 @@
+{
+  "version": 2,
+  "task": "20261026210137-00fb-fix-pentax-findings",
+  "scope": [
+    "indigo_drivers/ccd_pentax/*",
+    "indigo_test/integration/test_ccd_pentax_usb.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    "TEST_SUMMARY.md",
+    ".factory/maintenance.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-020.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-020.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-021.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-021.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-024.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-024.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-025.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-025.json",
+    ".factory/findings/active/FND-20261026210137-00fb-fix-pentax-findings-001.json",
+    ".factory/findings/archive/FND-20261026210137-00fb-fix-pentax-findings-001.json",
+    ".factory/completions/20261026210137-00fb-fix-pentax-findings.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_drivers/ccd_pentax",
+        "-f",
+        "../../Makefile.drv",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_pentax"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "build/integration/test_ccd_pentax_usb_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "ASAN_OPTIONS=detect_leaks=0",
+        "UBSAN_OPTIONS=halt_on_error=1",
+        "indigo_test/build/integration/test_ccd_pentax_usb_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261026210137-00fb-fix-pentax-findings.json": [
+      "100644",
+      "blob",
+      "791fb085a4e5ef79ad4dc7b7325987098942b414"
+    ],
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-020.json": null,
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-021.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-024.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-025.json": null,
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-020.json": [
+      "100644",
+      "blob",
+      "fee03f8406e3baaba005c4939e399be1478bcd2e"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-021.json": [
+      "100644",
+      "blob",
+      "d52a2ef8f172a2f0d95f1ebfad3bb807d9846724"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-024.json": [
+      "100644",
+      "blob",
+      "16ebcd9a0a682f25df3c16717fa41e093e4b9330"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-025.json": [
+      "100644",
+      "blob",
+      "68a1c35e4ccb3cb495fdaec1affeb1b1e6a02470"
+    ],
+    ".factory/findings/archive/FND-20261026210137-00fb-fix-pentax-findings-001.json": [
+      "100644",
+      "blob",
+      "2ece2005c6f21f29e548fd6621e61a80ee0b8b95"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "6a6661290fdc0ee51a52a991989de03853fee8de"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "ffce9cccc429fe634ff57c6d1addf560cc888f50"
+    ],
+    "indigo_drivers/ccd_pentax/README.md": [
+      "100644",
+      "blob",
+      "70e7313b5f0d0b2e29404a5d25c50847a9b3d411"
+    ],
+    "indigo_drivers/ccd_pentax/REFACTOR.md": [
+      "100644",
+      "blob",
+      "03790127f8c288a6d9d24cc4b7990036aa492d00"
+    ],
+    "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c": [
+      "100644",
+      "blob",
+      "a71dd8ab38a3afc1a8ad2bd84523e00e0fe65018"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "a678099c23b28c1b2ac22028a9220dec5e48044b"
+    ],
+    "indigo_test/integration/test_ccd_pentax_usb.c": [
+      "100644",
+      "blob",
+      "dd38ad6c4253b852dfa07b15ad216d080111a50e"
+    ]
+  }
+}

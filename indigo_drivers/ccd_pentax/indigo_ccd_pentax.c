@@ -1,4 +1,4 @@
-// Copyright (c) 2024-2025 CloudMakers, s. r. o.
+// Copyright (c) 2024-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // Code is based on OpenPENTAX library
@@ -26,7 +26,7 @@
  \file indigo_ccd_pentax.c
  */
 
-#define DRIVER_VERSION 0x03000001
+#define DRIVER_VERSION 0x03000002
 #define DRIVER_NAME "indigo_ccd_pentax"
 
 #include <stdlib.h>
@@ -52,6 +52,9 @@
 #define PRIVATE_DATA        ((pentax_private_data *)device->private_data)
 
 // -------------------------------------------------------------------------------- SCSI-over-USB implementation
+
+#define PENTAX_READY_TIMEOUT 5.0
+#define PENTAX_RESPONSE_CAPACITY UINT16_MAX
 
 #define RETRY_MAX										5
 #define TIMEOUT											1000
@@ -251,6 +254,7 @@ typedef struct {
 	uint8_t endpoint_in;
 	uint8_t endpoint_out;
 	uint32_t tag;
+	uint8_t buffer[PENTAX_RESPONSE_CAPACITY];
 	uint32_t identity;
 	int model;
 	uint32_t flags;
@@ -343,11 +347,11 @@ static uint8_t *set_uint32(indigo_device *device, uint32_t value, uint8_t *buffe
 }
 
 static uint32_t get_uint32_le(uint8_t *buffer) {
-	return (buffer[3] << 24) | (buffer[2] << 16) | (buffer[1] << 8) | buffer[0];
+	return ((uint32_t)buffer[3] << 24) | ((uint32_t)buffer[2] << 16) | ((uint32_t)buffer[1] << 8) | buffer[0];
 }
 
 static uint32_t get_uint32_be(uint8_t *buffer) {
-	return (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
+	return ((uint32_t)buffer[0] << 24) | ((uint32_t)buffer[1] << 16) | ((uint32_t)buffer[2] << 8) | buffer[3];
 }
 
 static uint32_t get_uint32(indigo_device *device, uint8_t *buffer) {
@@ -398,8 +402,9 @@ static const char *to_hex(uint8_t *bytes, uint32_t count) {
 
 static uint8_t scsi_command(indigo_device *device, uint8_t *cdb, int cdb_len, uint8_t flags, uint8_t *data, uint32_t data_length) {
 	command_block_wrapper cbw = { { 'U', 'S', 'B', 'C' }, PRIVATE_DATA->tag++, data_length, flags, PRIVATE_DATA->lun, cdb_len, 0 };
-	command_status_wrapper csw;
+	command_status_wrapper csw = { 0 };
 	int size = 0;
+	bool sent = false, received = false, data_complete = true;
 	memcpy(cbw.CBWCB, cdb, cdb_len);
 	for (int i = 0; i < RETRY_MAX; i++) {
 		int res = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->endpoint_out, (unsigned char*)&cbw, 31, &size, TIMEOUT);
@@ -407,19 +412,24 @@ static uint8_t scsi_command(indigo_device *device, uint8_t *cdb, int cdb_len, ui
 			libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->endpoint_out);
 			continue;
 		}
-		if (res == LIBUSB_SUCCESS) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d CDB bytes written: %s", cdb_len, to_hex(cdb, cdb_len));
-			break;
+		if (res != LIBUSB_SUCCESS || size != 31) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Incomplete CBW: %s (%d), %d bytes", libusb_strerror((enum libusb_error)res), res, size);
+			return 0xFF;
 		}
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "0xFF, %s (%d)", libusb_strerror((enum libusb_error)res), res);
+		sent = true;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d CDB bytes written: %s", cdb_len, to_hex(cdb, cdb_len));
+		break;
+	}
+	if (!sent) {
 		return 0xFF;
 	}
 	if (data != NULL && data_length > 0) {
 		int res = libusb_bulk_transfer(PRIVATE_DATA->handle, (flags & 0x80) == 0 ? PRIVATE_DATA->endpoint_out : PRIVATE_DATA->endpoint_in, data, data_length, &size, TIMEOUT);
-		if (res == LIBUSB_SUCCESS) {
+		data_complete = res == LIBUSB_SUCCESS && size == data_length;
+		if (data_complete) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d bytes %s: %s", size, (flags & 0x80) == 0 ? "written" : "read", to_hex(data, size));
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "0xFF, %s (%d)", libusb_strerror((enum libusb_error)res), res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Incomplete data: %s (%d), %d/%u bytes", libusb_strerror((enum libusb_error)res), res, size, data_length);
 		}
 	}
 	for (int i = 0; i < RETRY_MAX; i++) {
@@ -428,21 +438,18 @@ static uint8_t scsi_command(indigo_device *device, uint8_t *cdb, int cdb_len, ui
 			libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->endpoint_in);
 			continue;
 		}
-		if (res != LIBUSB_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "0xFF, %s (%d)", libusb_strerror((enum libusb_error)res), res);
+		if (res != LIBUSB_SUCCESS || size != 13) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Incomplete CSW: %s (%d), %d bytes", libusb_strerror((enum libusb_error)res), res, size);
 			return 0xFF;
 		}
+		received = true;
 		break;
 	}
-	if (size != 13) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "0xFF, invalid CSW read size");
+	if (!received || !data_complete || memcmp(csw.dCSWSignature, "USBS", 4) || csw.dCSWTag != cbw.dCBWTag || csw.dCSWDataResidue != 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "0xFF, incomplete transfer or invalid CSW");
 		return 0xFF;
 	}
-	if (csw.dCSWTag != cbw.dCBWTag) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "0xFF, mismatched tags");
-		return 0xFF;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%02x)", csw.bCSWStatus ? "Failure" : "OK",  csw.bCSWStatus);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%02x)", csw.bCSWStatus ? "Failure" : "OK", csw.bCSWStatus);
 	return csw.bCSWStatus;
 }
 
@@ -457,15 +464,16 @@ uint8_t pentax_status(indigo_device *device, uint32_t *length) {
 	uint8_t cdb[16] = { 0xf0, 0x26, 0, 0, 0, 0 };
 	uint8_t buffer[8] = { 0 };
 	int repeat = 0;
+	double deadline = indigo_monotonic_time() + PENTAX_READY_TIMEOUT;
 	if (length) {
-		while (true) {
+		while (indigo_monotonic_time() < deadline) {
 			uint8_t result = scsi_command(device, cdb, 6, 0x80, buffer, sizeof(buffer));
 			if (result == 0) {
 				if (buffer[7] != 0) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failure (%02x), s0 = %02x, s1 = %02x", buffer[7], buffer[6], buffer[7]);
 					return buffer[7];
 				} else if (buffer[6] == 0x01) {
-					*length = buffer[0] | (buffer[1] << 8) | (buffer[2] << 16) | (buffer[3] << 24);
+					*length = get_uint32_le(buffer);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OK (00) repeat %d, %d bytes to read, s0 = %02x, s1 = %02x", repeat, *length, buffer[6], buffer[7]);
 					return 0;
 				}
@@ -477,7 +485,7 @@ uint8_t pentax_status(indigo_device *device, uint32_t *length) {
 			}
 		}
 	} else {
-		while (true) {
+		while (indigo_monotonic_time() < deadline) {
 			uint8_t result = scsi_command(device, cdb, 6, 0x80, buffer, sizeof(buffer));
 			if (result == 0) {
 				if (buffer[7] == 0) {
@@ -497,6 +505,8 @@ uint8_t pentax_status(indigo_device *device, uint32_t *length) {
 			}
 		}
 	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera readiness timed out");
+	return 0xFF;
 }
 
 uint8_t pentax_read(indigo_device *device, uint8_t *buffer, uint16_t length, uint16_t offset) {
@@ -508,6 +518,18 @@ uint8_t pentax_read(indigo_device *device, uint8_t *buffer, uint16_t length, uin
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%02x)", result ? "Failure" : "OK", result);
 	}
 	return result;
+}
+
+static uint8_t pentax_response(indigo_device *device, uint32_t minimum, uint32_t *length) {
+	uint8_t result = pentax_status(device, length);
+	if (result != 0) {
+		return result;
+	}
+	if (*length < minimum || *length > sizeof(PRIVATE_DATA->buffer)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid response length %u (expected %u..%zu)", *length, minimum, sizeof(PRIVATE_DATA->buffer));
+		return 0xFF;
+	}
+	return pentax_read(device, PRIVATE_DATA->buffer, (uint16_t)*length, 0);
 }
 
 uint8_t pentax_parameter(indigo_device *device, uint8_t *buffer, uint16_t length, uint16_t offset) {
@@ -552,27 +574,25 @@ uint8_t pentax_get_identity(indigo_device *device) {
 	uint32_t length;
 	uint8_t result = pentax_command(device, 0x00, 0x04, 0);
 	if (result == 0) {
-		result = pentax_status(device, &length);
+		result = pentax_response(device, 4, &length);
 		if (result == 0) {
-			uint8_t buffer[length];
-			result = pentax_read(device, buffer, length, 0);
-			if (result == 0) {
-				uint32_t le_identity = get_uint32_le(buffer);
-				uint32_t be_identity = get_uint32_be(buffer);
-				for (int i = 0; i < MODEL_INFO[i].identity; i++) {
-					if (MODEL_INFO[i].identity == be_identity || MODEL_INFO[i].identity == le_identity) {
-						PRIVATE_DATA->identity = MODEL_INFO[i].identity == be_identity ? be_identity : le_identity;
-						PRIVATE_DATA->model = i;
-						PRIVATE_DATA->flags = MODEL_INFO[i].flags;
-						sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "PENTAX %s (%08x)", MODEL_INFO[i].name, PRIVATE_DATA->identity);
-						CCD_INFO_WIDTH_ITEM->number.value = CCD_INFO_WIDTH_ITEM->number.min = CCD_INFO_WIDTH_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.min = CCD_FRAME_WIDTH_ITEM->number.max =MODEL_INFO[i].width;
-						CCD_INFO_HEIGHT_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.min = CCD_INFO_HEIGHT_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.min = CCD_FRAME_HEIGHT_ITEM->number.max = MODEL_INFO[i].height;
-						CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_SIZE_ITEM->number.min = CCD_INFO_PIXEL_SIZE_ITEM->number.max = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.min = CCD_INFO_PIXEL_WIDTH_ITEM->number.max = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.min = CCD_INFO_PIXEL_HEIGHT_ITEM->number.max = MODEL_INFO[i].pixel_size;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OK (00), %06x, %08x, '%s'", PRIVATE_DATA->identity, PRIVATE_DATA->flags, PRIVATE_DATA->name);
-						return 0;
-					}
+			uint8_t *buffer = PRIVATE_DATA->buffer;
+			uint32_t le_identity = get_uint32_le(buffer);
+			uint32_t be_identity = get_uint32_be(buffer);
+			for (int i = 0; MODEL_INFO[i].identity != 0; i++) {
+				if (MODEL_INFO[i].identity == be_identity || MODEL_INFO[i].identity == le_identity) {
+					PRIVATE_DATA->identity = MODEL_INFO[i].identity == be_identity ? be_identity : le_identity;
+					PRIVATE_DATA->model = i;
+					PRIVATE_DATA->flags = MODEL_INFO[i].flags;
+					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "PENTAX %s (%08x)", MODEL_INFO[i].name, PRIVATE_DATA->identity);
+					CCD_INFO_WIDTH_ITEM->number.value = CCD_INFO_WIDTH_ITEM->number.min = CCD_INFO_WIDTH_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.min = CCD_FRAME_WIDTH_ITEM->number.max =MODEL_INFO[i].width;
+					CCD_INFO_HEIGHT_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.min = CCD_INFO_HEIGHT_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.min = CCD_FRAME_HEIGHT_ITEM->number.max = MODEL_INFO[i].height;
+					CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_SIZE_ITEM->number.min = CCD_INFO_PIXEL_SIZE_ITEM->number.max = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.min = CCD_INFO_PIXEL_WIDTH_ITEM->number.max = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.min = CCD_INFO_PIXEL_HEIGHT_ITEM->number.max = MODEL_INFO[i].pixel_size;
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OK (00), %06x, %08x, '%s'", PRIVATE_DATA->identity, PRIVATE_DATA->flags, PRIVATE_DATA->name);
+					return 0;
 				}
 			}
+			result = 0xFF;
 		}
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failure (%02x)", result);
@@ -583,19 +603,16 @@ uint8_t pentax_get_firmware(indigo_device *device) {
 	uint32_t length;
 	uint8_t result = pentax_command(device, 0x01, 0x01, 0);
 	if (result == 0) {
-		result = pentax_status(device, &length);
+		result = pentax_response(device, 4, &length);
 		if (result == 0) {
-			uint8_t buffer[length];
-			result = pentax_read(device, buffer, length, 0);
-			if (result == 0) {
-				if (PRIVATE_DATA->flags & PENTAX_LITTLE_ENDIAN) {
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d.%d", buffer[3], buffer[2], buffer[1], buffer[0]);
-				} else {
-					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
-				}
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OK (00), %d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
-				return result;
+			uint8_t *buffer = PRIVATE_DATA->buffer;
+			if (PRIVATE_DATA->flags & PENTAX_LITTLE_ENDIAN) {
+				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d.%d", buffer[3], buffer[2], buffer[1], buffer[0]);
+			} else {
+				sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
 			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OK (00), %d.%d.%d.%d", buffer[0], buffer[1], buffer[2], buffer[3]);
+			return result;
 		}
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failure (%02x)", result);
@@ -606,10 +623,9 @@ uint8_t pentax_get_state(indigo_device *device) {
 	uint32_t length;
 	uint8_t result = pentax_command(device, 0x00, 0x01, 0);
 	if (result == 0) {
-		result = pentax_status(device, &length);
+		result = pentax_response(device, 1, &length);
 		if (result == 0) {
-			uint8_t buffer[length];
-			result = pentax_read(device, buffer, length, 0);
+			uint8_t *buffer = PRIVATE_DATA->buffer;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%02x), %s", result ? "Failure" : "OK", result, to_hex(buffer, length));
 			return result;
 		}
@@ -620,102 +636,106 @@ uint8_t pentax_get_state(indigo_device *device) {
 
 uint8_t pentax_get_full_state(indigo_device *device) {
 	uint32_t length;
+	uint32_t minimum = 0;
+	const uint32_t sizes[] = { 4, 8, 8, 4, 16 };
+	for (int i = PENTAX_EXPOSURE_MODE; i <= PENTAX_LENS_APERTURE; i++) {
+		uint32_t end = MODEL_INFO[PRIVATE_DATA->model].status[i] + sizes[i];
+		if (end > minimum) {
+			minimum = end;
+		}
+	}
 	uint8_t result = pentax_command(device, 0x00, 0x08, 0);
 	if (result == 0) {
-		result = pentax_status(device, &length);
+		result = pentax_response(device, minimum, &length);
 		if (result == 0) {
-			uint8_t buffer[length];
-			result = pentax_read(device, buffer, length, 0);
+			uint8_t *buffer = PRIVATE_DATA->buffer;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%02x), %s", result ? "Failure" : "OK", result, to_hex(buffer, length));
-			if (result == 0) {
-				uint16_t state;
-				uint32_t value1, value2, value3;
-				char *name;
-				state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_EXPOSURE_MODE];
-				uint32_t exposure_mode = get_uint32(device, buffer + state);
-				name = uint32_to_hex(exposure_mode == PENTAX_EXPOSURE_MODE_B ? PENTAX_EXPOSURE_MODE_M : exposure_mode);
-				for (int i = 0; i < DSLR_PROGRAM_PROPERTY->count; i++) {
-					indigo_item *item = DSLR_PROGRAM_PROPERTY->items + i;
+			uint16_t state;
+			uint32_t value1, value2, value3;
+			char *name;
+			state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_EXPOSURE_MODE];
+			uint32_t exposure_mode = get_uint32(device, buffer + state);
+			name = uint32_to_hex(exposure_mode == PENTAX_EXPOSURE_MODE_B ? PENTAX_EXPOSURE_MODE_M : exposure_mode);
+			for (int i = 0; i < DSLR_PROGRAM_PROPERTY->count; i++) {
+				indigo_item *item = DSLR_PROGRAM_PROPERTY->items + i;
+				if (!strcmp(item->name, name)) {
+					if (!item->sw.value) {
+						indigo_set_switch(DSLR_PROGRAM_PROPERTY, item, true);
+						indigo_update_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+					}
+				}
+			}
+			state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_LENS_APERTURE];
+			value1 = (get_uint32(device, buffer + state) << 16) | get_uint32(device, buffer + state + 4);
+			value2 = (get_uint32(device, buffer + state + 8) << 16) | get_uint32(device, buffer + state + 12);
+			state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_APERTURE];
+			value3 = (get_uint32(device, buffer + state) << 16) | get_uint32(device, buffer + state + 4);
+			if (PRIVATE_DATA->min_aperture != value1 || PRIVATE_DATA->max_aperture != value2) {
+				PRIVATE_DATA->min_aperture = value1;
+				PRIVATE_DATA->max_aperture = value2;
+				indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
+				bool show = false;
+				int count = 0;
+				for (int i = 0; aperture_list[i].label; i++) {
+					if (aperture_list[i].value == PRIVATE_DATA->min_aperture) {
+						show = true;
+					}
+					if (show) {
+						indigo_init_switch_item(DSLR_APERTURE_PROPERTY->items + count, uint32_to_hex(aperture_list[i].value), aperture_list[i].label, aperture_list[i].value == value3);
+						count++;
+					}
+					if (aperture_list[i].value == PRIVATE_DATA->max_aperture) {
+						show = false;
+					}
+				}
+				DSLR_APERTURE_PROPERTY->count = count;
+				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
+			} else {
+				name = uint32_to_hex(value3);
+				for (int i = 0; i < DSLR_APERTURE_PROPERTY->count; i++) {
+					indigo_item *item = DSLR_APERTURE_PROPERTY->items + i;
 					if (!strcmp(item->name, name)) {
 						if (!item->sw.value) {
-							indigo_set_switch(DSLR_PROGRAM_PROPERTY, item, true);
-							indigo_update_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+							indigo_set_switch(DSLR_APERTURE_PROPERTY, item, true);
+							indigo_update_property(device, DSLR_APERTURE_PROPERTY, NULL);
 						}
 					}
 				}
-				state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_LENS_APERTURE];
+			}
+			if (exposure_mode == PENTAX_EXPOSURE_MODE_B) {
+				indigo_item *item = DSLR_SHUTTER_PROPERTY->items;
+				if (!item->sw.value) {
+					indigo_set_switch(DSLR_SHUTTER_PROPERTY, item, true);
+					indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+				}
+			} else {
+				state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_SHUTTER];
 				value1 = (get_uint32(device, buffer + state) << 16) | get_uint32(device, buffer + state + 4);
-				value2 = (get_uint32(device, buffer + state + 8) << 16) | get_uint32(device, buffer + state + 12);
-				state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_APERTURE];
-				value3 = (get_uint32(device, buffer + state) << 16) | get_uint32(device, buffer + state + 4);
-				if (PRIVATE_DATA->min_aperture != value1 || PRIVATE_DATA->max_aperture != value2) {
-					PRIVATE_DATA->min_aperture = value1;
-					PRIVATE_DATA->max_aperture = value2;
-					indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
-					bool show = false;
-					int count = 0;
-					for (int i = 0; aperture_list[i].label; i++) {
-						if (aperture_list[i].value == PRIVATE_DATA->min_aperture) {
-							show = true;
-						}
-						if (show) {
-							indigo_init_switch_item(DSLR_APERTURE_PROPERTY->items + count, uint32_to_hex(aperture_list[i].value), aperture_list[i].label, aperture_list[i].value == value3);
-							count++;
-						}
-						if (aperture_list[i].value == PRIVATE_DATA->max_aperture) {
-							show = false;
-						}
-					}
-					DSLR_APERTURE_PROPERTY->count = count;
-					indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-				} else {
-					name = uint32_to_hex(value3);
-					for (int i = 0; i < DSLR_APERTURE_PROPERTY->count; i++) {
-						indigo_item *item = DSLR_APERTURE_PROPERTY->items + i;
-						if (!strcmp(item->name, name)) {
-							if (!item->sw.value) {
-								indigo_set_switch(DSLR_APERTURE_PROPERTY, item, true);
-								indigo_update_property(device, DSLR_APERTURE_PROPERTY, NULL);
-							}
+				name = uint32_to_hex(value1);
+				for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
+					indigo_item *item = DSLR_SHUTTER_PROPERTY->items + i;
+					if (!strcmp(item->name, name)) {
+						if (!item->sw.value) {
+							indigo_set_switch(DSLR_SHUTTER_PROPERTY, item, true);
+							indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 						}
 					}
 				}
-				if (exposure_mode == PENTAX_EXPOSURE_MODE_B) {
-					indigo_item *item = DSLR_SHUTTER_PROPERTY->items;
-					if (!item->sw.value) {
-						indigo_set_switch(DSLR_SHUTTER_PROPERTY, item, true);
-						indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-					}
-				} else {
-					state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_SHUTTER];
-					value1 = (get_uint32(device, buffer + state) << 16) | get_uint32(device, buffer + state + 4);
-					name = uint32_to_hex(value1);
-					for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
-						indigo_item *item = DSLR_SHUTTER_PROPERTY->items + i;
-						if (!strcmp(item->name, name)) {
-							if (!item->sw.value) {
-								indigo_set_switch(DSLR_SHUTTER_PROPERTY, item, true);
-								indigo_update_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-							}
+			}
+			state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_ISO];
+			value1 = get_uint32(device, buffer + state);
+			PRIVATE_DATA->iso = value1;
+			if (DSLR_ISO_PROPERTY->state != INDIGO_BUSY_STATE) {
+				name = uint32_to_hex(value1);
+				for (int i = 0; i < DSLR_ISO_PROPERTY->count; i++) {
+					indigo_item *item = DSLR_ISO_PROPERTY->items + i;
+					if (!strcmp(item->name, name)) {
+						if (!item->sw.value) {
+							indigo_set_switch(DSLR_ISO_PROPERTY, item, true);
+							indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
 						}
 					}
 				}
-				state = MODEL_INFO[PRIVATE_DATA->model].status[PENTAX_ISO];
-				value1 = get_uint32(device, buffer + state);
-				PRIVATE_DATA->iso = value1;
-				if (DSLR_ISO_PROPERTY->state != INDIGO_BUSY_STATE) {
-					name = uint32_to_hex(value1);
-					for (int i = 0; i < DSLR_ISO_PROPERTY->count; i++) {
-						indigo_item *item = DSLR_ISO_PROPERTY->items + i;
-						if (!strcmp(item->name, name)) {
-							if (!item->sw.value) {
-								indigo_set_switch(DSLR_ISO_PROPERTY, item, true);
-								indigo_update_property(device, DSLR_ISO_PROPERTY, NULL);
-							}
-						}
-					}
-				}
-
 			}
 			return result;
 		}
@@ -823,7 +843,13 @@ uint8_t pentax_set_iso(indigo_device *device, uint32_t iso, uint32_t min_iso, ui
 static bool pentax_open(indigo_device *device) {
 	int rc = 0;
 	libusb_device *dev = PRIVATE_DATA->dev;
+	PRIVATE_DATA->handle = NULL;
 	rc = libusb_open(dev, &PRIVATE_DATA->handle);
+	if (rc != LIBUSB_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_open: %s (%d)", libusb_strerror((enum libusb_error)rc), rc);
+		PRIVATE_DATA->handle = NULL;
+		return false;
+	}
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
 	rc = libusb_set_auto_detach_kernel_driver(handle, 1);
 	if (rc != LIBUSB_SUCCESS) {
@@ -868,6 +894,7 @@ static bool pentax_open(indigo_device *device) {
 static void pentax_close(indigo_device *device) {
 	pentax_set_mode(device, 0);
 	libusb_close(PRIVATE_DATA->handle);
+	PRIVATE_DATA->handle = NULL;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close");
 }
 
@@ -1076,14 +1103,24 @@ static void process_plug_event(libusb_device *dev) {
 	pthread_mutex_lock(&device_mutex);
 	int rc = libusb_get_device_descriptor(dev, &descriptor);
 	if (rc == LIBUSB_SUCCESS && (descriptor.idVendor == PENTAX_VENDOR_ID || descriptor.idVendor == SAMSUNG_VENDOR_ID)) {
-		unsigned char vendor[32], product[32];
+		unsigned char vendor[32] = "PENTAX", product[32] = "Camera";
 		rc = libusb_open(dev, &handle);
 		if (rc == LIBUSB_SUCCESS) {
 			if (descriptor.iManufacturer) {
-				libusb_get_string_descriptor_ascii(handle, descriptor.iManufacturer, vendor, sizeof(vendor));
+				rc = libusb_get_string_descriptor_ascii(handle, descriptor.iManufacturer, vendor, sizeof(vendor) - 1);
+				if (rc > 0 && rc < sizeof(vendor)) {
+					vendor[rc] = 0;
+				} else {
+					strcpy((char *)vendor, "PENTAX");
+				}
 			}
 			if (descriptor.iProduct) {
-				libusb_get_string_descriptor_ascii(handle, descriptor.iProduct, product, sizeof(product));
+				rc = libusb_get_string_descriptor_ascii(handle, descriptor.iProduct, product, sizeof(product) - 1);
+				if (rc > 0 && rc < sizeof(product)) {
+					product[rc] = 0;
+				} else {
+					strcpy((char *)product, "Camera");
+				}
 			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "detected %s %s (0x%04x, 0x%04x)", vendor, product, descriptor.idVendor, descriptor.idProduct);
 			rc = libusb_get_config_descriptor(dev, 0, &config);
@@ -1137,11 +1174,11 @@ static void process_plug_event(libusb_device *dev) {
 
 static void process_unplug_event(libusb_device *dev) {
 	pthread_mutex_lock(&device_mutex);
-	pentax_private_data *private_data = NULL;
 	for (int j = 0; j < MAX_DEVICES; j++) {
 		if (devices[j] != NULL) {
 			indigo_device *device = devices[j];
 			if (PRIVATE_DATA->dev == dev) {
+				pentax_private_data *private_data = PRIVATE_DATA;
 				indigo_detach_device(device);
 				libusb_unref_device(dev);
 				free(private_data);

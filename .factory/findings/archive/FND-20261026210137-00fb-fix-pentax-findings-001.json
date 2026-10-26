@@ -1,0 +1,29 @@
+{
+  "title": "Pentax hotplug uses uninitialized USB manufacturer/product strings",
+  "category": "security",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261026210137-00fb-fix-pentax-findings",
+      "report": "security.md",
+      "revision": null
+    },
+    {
+      "id": "20261026210137-00fb-fix-pentax-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Missing string descriptor indexes or failed ASCII reads left uninitialized vendor/product arrays used by %s during USB hotplug. Repair initialized fallbacks, reserve NUL, validate returned string length; verify fake missing/failed/full-length strings before closure.",
+  "evidence": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c process_plug_event; independent security reviewer, source-confirmed before repair.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026210137-00fb-fix-pentax-findings/verification.md; independent quality-review.md and security.md; fake USB and ASan/UBSan 17/17; hardware not tested",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261026210137-00fb-fix-pentax-findings-001"
+}

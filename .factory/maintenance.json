@@ -179,6 +179,14 @@
       "scope": "Repair LIB-013 / FND-000013 with lock-through-attach and verify non-interactive simulators",
       "checkpoint": "After this repair, before unrelated work or release; audit remains due",
       "resets_checkpoint": false
+    },
+    "pentax_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit async chat reply",
+      "date": "2026-10-26",
+      "task": "20261026210137-00fb-fix-pentax-findings",
+      "scope": "Repair the four active Pentax findings and verify with non-interactive fake USB tests",
+      "checkpoint": "After this repair, before unrelated work or release; audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

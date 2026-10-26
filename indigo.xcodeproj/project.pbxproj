@@ -6008,6 +6008,8 @@
 		9ED98BDCAF6A4B2F9D10CC26 /* test_agent_guider_cleanup.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_guider_cleanup.c; sourceTree = "<group>"; };
 		CA2B0F73C6A84C3DB07A918E /* test_driver_test_recording.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_driver_test_recording.py; sourceTree = "<group>"; };
 		E504D070AB6E4330A6609E41 /* test_shell_compliance.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_shell_compliance.py; sourceTree = "<group>"; };
+		B36CE412750741D495370F18 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		AF82C981A2394703A6F65B83 /* test_ccd_pentax_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_pentax_usb.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -7675,6 +7677,7 @@
 			isa = PBXGroup;
 			children = (
 				595A8E512C9479E600E7998C /* README.md */,
+				B36CE412750741D495370F18 /* REFACTOR.md */,
 				595A8E4E2C9479E600E7998C /* indigo_ccd_pentax.h */,
 				595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */,
 				595A8E4B2C9479E600E7998C /* indigo_ccd_pentax_main.c */,
@@ -14519,6 +14522,7 @@
 				C0DE20260911000800000001 /* test_ccd_rising_sdk.c */,
 				59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */,
 				C0DE20260913000610000001 /* test_ccd_ssag_usb.c */,
+				AF82C981A2394703A6F65B83 /* test_ccd_pentax_usb.c */,
 				C0DE20260911000900000001 /* test_ccd_ssg_sdk.c */,
 				C0DE20260911000A00000001 /* test_ccd_svb2_sdk.c */,
 				C0DE20260916000100000001 /* test_ccd_svb_sdk.c */,

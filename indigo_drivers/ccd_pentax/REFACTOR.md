@@ -1,0 +1,36 @@
+# Pentax bounded transport repair
+
+## Scope and baseline audit
+
+This is a scoped repair of four audit findings, not a generated-driver migration. The hand-written C driver uses libusb mass-storage SCSI commands, camera-specific readiness and model-state offsets, a per-device mutex, a periodic state timer and USB hotplug allocation/detach. No generator input exists. Existing DSLR properties and valid protocol sequences must remain unchanged. The driver is under development; exposure/image capture and complete camera compatibility are outside this repair.
+
+The model table supplies endian flags and state offsets. USB response lengths are untrusted. The current code uses unchecked open, infinite readiness loops, response-sized stack arrays, incomplete-transfer acceptance and a NULL unplug free. These are the four assigned audit findings. No manufacturer protocol documents are bundled; synthetic fixtures characterize the repository protocol, not physical camera compliance.
+
+Baseline environment: macOS arm64 host, universal arm64/x86_64 driver build. From the isolated task root, `make -C indigo_drivers/ccd_pentax -f ../../Makefile.drv all` passes using copied local build/include and build/lib prerequisites and an ignored worktree-local Makefile.inc. The first attempt failed because the fresh worktree lacked build/drivers; after creating build directories it passed. No prior Pentax automated suite exists. Before production edits, the new fake USB suite built successfully and ran in --baseline mode: 11 cases, 6 passed and 5 expected regression failures. Valid open/close order, ready/delayed responses, camera errors, endian identity/firmware, full-state decode and retry exhaustion were preserved. The original successful open/close trace is OAKCLBDSBSBDSBDSBSBDSX; ready/delayed trace is BDSBDSBDSBDSBDSBDSBDSBDSBDS. Letters denote Open, Auto-detach, Kernel query, Claim, LUN, command Block, Data, Status, close X. Failures demonstrate open misuse, both infinite readiness modes, short/error transfer acceptance and unplug private-state leakage. Dangerous tiny/huge decode inputs are excluded from the original baseline; they will be exercised after repair. See the task baseline.log for exact output.
+
+Hardware decision: no hardware testing; owner explicitly approved non-interactive fake USB on 2026-10-26. Hardware tests run/passed: 0/0. Linux, Windows, physical hotplug and real camera latency remain unverified.
+
+## Atomic plan
+
+1. Complete: capture successful original-driver transactions and safe dedicated defect reproductions with fake USB and fake time; record commands/results with task evidence.
+2. Complete: transactional open, finite monotonic readiness, private bounded response storage, exact transfers and decode extents, corrected unplug ownership; increment version.
+3. Complete: repeat regressions and sanitizers, build production, final recorded runner, register new test and this document in Xcode, inspect final diff.
+4. Complete (execution/reviews; delivery pending): independent quality/security review, finding repair verification; coordinator retains final finding archival/process/commit evidence in the task record. No merge or push authorized.
+
+## Found defects
+
+- FND-20261023101753-bc8d-complete-repository-audit-020: unchecked libusb_open can pass an invalid handle to USB functions. Fixed by immediate checked return and NULL handle; regression: failed open retry (reproduced before repair).
+- FND-20261023101753-bc8d-complete-repository-audit-021: readiness can occupy connection/status work indefinitely. Fixed by a five-second monotonic polling deadline in both modes; regression: both readiness deadlines (reproduced before repair). Individual synchronous USB transfers retain their bounded transport timeout/retry budget, so wall-clock return can exceed five seconds by one in-flight SCSI transaction.
+- FND-20261024121920-3bd2-repository-audit-024: camera length drives allocation/narrowing and fixed-offset decode; partial transfers are accepted. Fixed by a reusable 65,535-byte private buffer (the 16-bit read protocol maximum), minimum identity/firmware lengths, all-model state extents, exact CBW/data/CSW transfers and CSW signature/tag/residue checks. High-byte shifts use unsigned arithmetic. Regressions: short transfers and transfer errors (reproduced before repair), response boundaries, general state boundaries, all model state bounds/layouts and CSW integrity.
+- FND-20261024121920-3bd2-repository-audit-025: unplug frees a NULL local and leaks private state. Fixed by capturing private state before detach and freeing it after detach/unref; regression: unplug private ownership (reproduced before repair; repeated removal and detach-clears-pointer fixture).
+
+- FND-20261026210137-00fb-fix-pentax-findings-001: independent security review found uninitialized or unterminated manufacturer/product strings used during hotplug. Source-confirmed, not reproduced on the original driver. Fixed with initialized PENTAX/Camera fallbacks, reserved NUL and validated string counts; hotplug descriptor names regression passes for absent, failed and maximum non-NUL replies with balanced attach/removal.
+
+## Coverage and limitations
+
+Tests target open/rollback, readiness/error/timeout, response and transfer boundaries, model endian/state decode and unplug ownership. Full CCD class exposure, streaming, image data, public bus concurrency, real timers, complete hotplug enumeration and all physical models are outside this narrow helper/lifecycle regression scope; this repair makes no full-driver certification claim. No guider interface is exposed, so pulse timing is inapplicable.
+
+## Final test summary
+
+Simulated tests run/passed: 17/17 in the repaired normal suite; 17/17 under AddressSanitizer and UndefinedBehaviorSanitizer. The final recorded `python3 tools/run_driver_test.py ccd_pentax` run passed 17/17 and wrote the 3.0.0.2 mac arm64 fake SDK record plus TEST_SUMMARY.md. Production universal build passed. Source/header dependencies are registered in the Makefile; test and REFACTOR are in Xcode navigator groups. LeakSanitizer is unavailable on this macOS host; explicit allocation/free ownership assertions cover the repaired leak. Seven compiler warnings concern existing sprintf deprecations; no broad formatting/API cleanup is included.
+Hardware tests run/passed: 0/0 (not requested).

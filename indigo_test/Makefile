@@ -122,6 +122,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_ccd_ptp_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_sx_usb \
 	$(INTEGRATION_BUILD)/test_ccd_ssag_usb \
+	$(INTEGRATION_BUILD)/test_ccd_pentax_usb \
 	$(INTEGRATION_BUILD)/test_wheel_astroasis_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_touptek_sdk \
 	$(INTEGRATION_BUILD)/test_ccd_altair_sdk \
@@ -3728,3 +3729,12 @@ test-audit-fixes-sanitize: check-lib $(UNIT_BUILD)/test_indigocat_corrections_sa
 	UBSAN_OPTIONS=halt_on_error=1 $(UNIT_BUILD)/test_dslr_raw_init_sanitize
 	UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_additional_instances_sanitize
 	UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_agent_guider_cleanup_sanitize
+
+# Pentax transport tests compile the production implementation with fake USB/time.
+PENTAX_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+PENTAX_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(FRAMEWORK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
+$(INTEGRATION_BUILD)/test_ccd_pentax_usb: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_ccd_pentax_usb_sanitize: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(PENTAX_SANITIZE_CFLAGS) $< -o $@ $(PENTAX_SANITIZE_LDFLAGS)

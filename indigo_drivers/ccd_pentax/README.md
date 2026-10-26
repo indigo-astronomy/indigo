@@ -63,3 +63,7 @@ On macOS there is a conflict between the driver and USB Mass Storage Device driv
 
 Driver is developed and tested with:
 * Pentax K-m
+
+## Testing
+
+- 2026-10-26 22:13 3.0.0.2 mac arm64 fake SDK 17/17 OK
