@@ -1,0 +1,29 @@
+{
+  "id": "FND-000009",
+  "title": "EXAMPLES-002: `driver` is uninitialized when `indigo_load_driver()` fails, but `indigo_remove_driver(driver)` is still called",
+  "category": "quality",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261026195459-b244-fix-examples-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "EXAMPLES-002: `driver` is uninitialized when `indigo_load_driver()` fails, but `indigo_remove_driver(driver)` is still called. A missing simulator driver or load error can therefore pass an indeterminate pointer into the driver manager. Initialize `driver = NULL` and call `indigo_remove_driver()` only after a successful load. Fixed: Initialize driver entry; remove only after successful load, disconnect before unload, and propagate load/unload failures.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_examples/REVIEW.md:33; historical locations: `dynamic_driver_client.c:162`, `dynamic_driver_client.c:164`, `dynamic_driver_client.c:169`; legacy status: Open",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026195459-b244-fix-examples-findings/verification.md; independent quality-review.md and security.md. Initialize driver entry; remove only after successful load, disconnect before unload, and propagate load/unload failures.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

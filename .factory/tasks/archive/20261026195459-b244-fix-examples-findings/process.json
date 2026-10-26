@@ -1,0 +1,185 @@
+{
+  "version": 2,
+  "task": "20261026195459-b244-fix-examples-findings",
+  "scope": [
+    "indigo_examples/*",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_examples.py",
+    "indigo_docs/DEVELOPMENT.md",
+    ".factory/maintenance.json",
+    ".factory/completions/20261026195459-b244-fix-examples-findings.json",
+    ".factory/findings/active/FND-000008.json",
+    ".factory/findings/archive/FND-000008.json",
+    ".factory/findings/active/FND-000009.json",
+    ".factory/findings/archive/FND-000009.json",
+    ".factory/findings/active/FND-000010.json",
+    ".factory/findings/archive/FND-000010.json",
+    ".factory/findings/active/FND-000011.json",
+    ".factory/findings/archive/FND-000011.json",
+    ".factory/findings/active/FND-000012.json",
+    ".factory/findings/archive/FND-000012.json",
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-008.json",
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-008.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_examples",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-examples"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/tasks/20261026195459-b244-fix-examples-findings/simulator_check.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261026195459-b244-fix-examples-findings.json": [
+      "100644",
+      "blob",
+      "e7e773a4ec08c0a75dd3a4c940c1f2d85ea479d1"
+    ],
+    ".factory/findings/active/FND-000008.json": null,
+    ".factory/findings/active/FND-000009.json": null,
+    ".factory/findings/active/FND-000010.json": null,
+    ".factory/findings/active/FND-000011.json": null,
+    ".factory/findings/active/FND-000012.json": null,
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-008.json": null,
+    ".factory/findings/archive/FND-000008.json": [
+      "100644",
+      "blob",
+      "17350ffaccd43f79d003aa6d7a8539c8395d99db"
+    ],
+    ".factory/findings/archive/FND-000009.json": [
+      "100644",
+      "blob",
+      "bc185d069eb6fcba341ea25b500c03b51042a88d"
+    ],
+    ".factory/findings/archive/FND-000010.json": [
+      "100644",
+      "blob",
+      "b07e9a6899febc595b0af7d7f4301bdf9d12996c"
+    ],
+    ".factory/findings/archive/FND-000011.json": [
+      "100644",
+      "blob",
+      "15fb37dca61c973a76eb0d331b6d3e6226163a40"
+    ],
+    ".factory/findings/archive/FND-000012.json": [
+      "100644",
+      "blob",
+      "e002b0afe74090010f8fb443e128d2d9460f2aeb"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-008.json": [
+      "100644",
+      "blob",
+      "255b19cb3c35a56fa4926fafac2bc43b35ba1a28"
+    ],
+    "indigo_docs/DEVELOPMENT.md": [
+      "100644",
+      "blob",
+      "9ddb3b921abe2116e72716525168e35eebae3d0b"
+    ],
+    "indigo_examples/Makefile": [
+      "100644",
+      "blob",
+      "6db4cbe662bff20cbc0f181e57e672ef3d7abdcc"
+    ],
+    "indigo_examples/client.c": [
+      "100644",
+      "blob",
+      "43711c4e6878d962fa666845117bb1895f13f49f"
+    ],
+    "indigo_examples/dynamic_driver_client.c": [
+      "100644",
+      "blob",
+      "ad2318f354e5dd4662bc00df06333ad818764d90"
+    ],
+    "indigo_examples/example_image.h": [
+      "100644",
+      "blob",
+      "dbfb52c4e5fb8afd9f526125d664b23119269840"
+    ],
+    "indigo_examples/example_process.h": [
+      "100644",
+      "blob",
+      "fbc8305b86a05fbb00a9ac63cc1e6fc9e89150c5"
+    ],
+    "indigo_examples/example_remote.h": [
+      "100644",
+      "blob",
+      "80998f9cb97f081ea5ca9dae40e0728ac6236742"
+    ],
+    "indigo_examples/executable_driver_client.c": [
+      "100644",
+      "blob",
+      "66ed49863fc2df60bb5e3c9aca286cbcbeeb781b"
+    ],
+    "indigo_examples/remote_server_client.c": [
+      "100644",
+      "blob",
+      "a30019c6242dffe4e5a72489ace31f1e55230e7d"
+    ],
+    "indigo_examples/remote_server_client.vcxproj": [
+      "100644",
+      "blob",
+      "21df406a7b3771fe91ac22a7cbfbd548569b16cb"
+    ],
+    "indigo_examples/remote_server_client_mount.c": [
+      "100644",
+      "blob",
+      "060ddb8150e559e6e0eb9c8c7f7dcb886fed20b3"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "2a8f7f3e2ac52f1d9b493c145d64ccbfa9757c98"
+    ],
+    "indigo_test/integration/test_examples.py": [
+      "100644",
+      "blob",
+      "6f2657e8a88a3ce757d798da6405bca5c66fccfa"
+    ]
+  }
+}

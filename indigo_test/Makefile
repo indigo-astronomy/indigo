@@ -327,7 +327,12 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-shell-compliance-framework test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+test: test-examples test-shell-compliance-framework test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+
+# Client example regressions use isolated files, processes and loopback connections.
+.PHONY: test-examples
+test-examples:
+	python3 -B integration/test_examples.py
 
 # Driver recording regressions use isolated synthetic processes.
 .PHONY: test-driver-test-recording

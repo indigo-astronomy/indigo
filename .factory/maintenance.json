@@ -89,7 +89,7 @@
       "date": "2026-10-23",
       "task": "20261023181250-5c67-fix-raw-fits-bounds",
       "scope": "Repair FND-20261023101753-bc8d-complete-repository-audit-005 alongside authorized repairs 039/026/006 before due audit; owner permits readiness-based integration order",
-      "authority": "Owner answered \u00c1no, odlo\u017ei\u0165 aj pre 005 to explicit extension question",
+      "authority": "Owner answered Áno, odložiť aj pre 005 to explicit extension question",
       "checkpoint": "After authorized repairs 039/026/006/005, before unrelated work or release",
       "resets_checkpoint": false
     },
@@ -144,7 +144,7 @@
       "date": "2026-10-25",
       "task": "20261025182421-7a16-exclude-factory-from-xcode",
       "scope": "Only remove .factory Xcode references and lifecycle synchronization in this adopter policy task",
-      "authority": "\u00c1no, odlo\u017ei\u0165 audit iba pre t\u00fato zmenu; potom zost\u00e1va splatn\u00fd",
+      "authority": "Áno, odložiť audit iba pre túto zmenu; potom zostáva splatný",
       "checkpoint": "After this change, before next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
     },
@@ -162,6 +162,14 @@
       "task": "20261026190714-e504-fix-shell-compliance",
       "scope": "Repair shell compliance findings FND-000031 through FND-000035 only",
       "checkpoint": "After these repairs, before unrelated work or release",
+      "resets_checkpoint": false
+    },
+    "examples_fix_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-26",
+      "task": "20261026195459-b244-fix-examples-findings",
+      "scope": "Repair and verify the six EXAMPLES findings only",
+      "checkpoint": "After repairs, before unrelated work or release; audit remains due",
       "resets_checkpoint": false
     }
   },

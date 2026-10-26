@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
+#include "example_image.h"
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_names.h>
@@ -30,7 +32,13 @@
 
 #define CCD_SIMULATOR "CCD Imager Simulator"
 
-static bool connected = false;
+static atomic_bool connected = false;
+static atomic_bool config_ready = false;
+static atomic_bool capture_started = false;
+static bool exposure_done = false;
+static bool image_received = false;
+static atomic_bool finished = false;
+static atomic_bool failed = false;
 static int count = 5;
 
 
@@ -44,10 +52,31 @@ static void start_exposure(indigo_device *device, indigo_client *client, indigo_
 	indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 }
 
-static void set_image_format(indigo_device *device, indigo_client *client, indigo_property *property) {
-	static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
+static void prepare_capture(indigo_device *device, indigo_client *client, indigo_property *property) {
+	static const char *upload_items[] = { CCD_UPLOAD_MODE_CLIENT_ITEM_NAME };
+	static const char *format_items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
 	static const bool values[] = { true };
-	indigo_change_switch_property(client, CCD_SIMULATOR, CCD_IMAGE_FORMAT_PROPERTY_NAME, 1, items, values);
+	indigo_change_switch_property(client, CCD_SIMULATOR, CCD_UPLOAD_MODE_PROPERTY_NAME, 1, upload_items, values);
+	indigo_change_switch_property(client, CCD_SIMULATOR, CCD_IMAGE_FORMAT_PROPERTY_NAME, 1, format_items, values);
+	start_exposure(device, client, property);
+}
+
+static void start_capture_if_ready(indigo_device *device, indigo_client *client) {
+	if (connected && config_ready && !atomic_exchange(&capture_started, true)) {
+		indigo_handle_property_async(prepare_capture, device, client, NULL);
+	}
+}
+
+static void next_exposure(indigo_device *device, indigo_client *client) {
+	if (exposure_done && image_received) {
+		exposure_done = false;
+		image_received = false;
+		if (--count > 0) {
+			indigo_handle_property_async(start_exposure, device, client, NULL);
+		} else {
+			indigo_device_disconnect(client, CCD_SIMULATOR);
+		}
+	}
 }
 
 static indigo_result client_attach(indigo_client *client) {
@@ -59,25 +88,23 @@ static indigo_result client_attach(indigo_client *client) {
 static indigo_result client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
+	/* SAVE-only CONFIG means there is no stored configuration to restore. */
+	if (!strcmp(property->name, CONFIG_PROPERTY_NAME) && indigo_get_item(property, CONFIG_LOAD_ITEM_NAME) == NULL) {
+		config_ready = true;
+		start_capture_if_ready(device, client);
+	}
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			connected = true;
 			indigo_log("already connected...");
-			indigo_handle_property_async(start_exposure, device, client, NULL);
+			start_capture_if_ready(device, client);
 		} else {
 			indigo_device_connect(client, CCD_SIMULATOR);
 			return INDIGO_OK;
 		}
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
-		if (device->version >= INDIGO_VERSION_2_0)
-			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
-		else
-			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
-	}
-	if (!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
-		static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
-		indigo_handle_property_async(set_image_format, device, client, NULL);
+		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
 	}
 	return INDIGO_OK;
 }
@@ -86,39 +113,47 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 	if (strcmp(property->device, CCD_SIMULATOR))
 		return INDIGO_OK;
 
+	/* Automatic configuration restore can override upload mode after connection. */
+	if (!strcmp(property->name, CONFIG_PROPERTY_NAME)) {
+		config_ready = property->state == INDIGO_OK_STATE || property->state == INDIGO_ALERT_STATE;
+		start_capture_if_ready(device, client);
+	}
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			if (!connected) {
 				connected = true;
 				indigo_log("connected...");
-				indigo_handle_property_async(start_exposure, device, client, NULL);
+				start_capture_if_ready(device, client);
 			}
 		} else {
 			if (connected) {
 				indigo_log("disconnected...");
 				connected = false;
+				if (count > 0) {
+					failed = true;
+				}
+				finished = true;
 			}
 		}
 		return INDIGO_OK;
 	}
-	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
-		/* URL blob transfer is available only in client - server setup.
-		   This will never be called in case of a client loading a driver. */
-		if (*property->items[0].blob.url && indigo_populate_http_blob_item(&property->items[0]))
-			indigo_log("image URL received (%s, %d bytes)...", property->items[0].blob.url, property->items[0].blob.size);
-
-		if (property->items[0].blob.value) {
-			char name[32];
-			sprintf(name, "img_%02d.fits", count);
-			FILE *f = fopen(name, "wb");
-			fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
-			fclose(f);
-			indigo_log("image saved to %s...", name);
-			/* In case we have URL BLOB transfer we need to release the blob ourselves */
-			if (*property->items[0].blob.url) {
-				free(property->items[0].blob.value);
-				property->items[0].blob.value = NULL;
-			}
+	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && count > 0) {
+		indigo_item *image = &property->items[0];
+		bool populated = !*image->blob.url || indigo_populate_http_blob_item(image);
+		char name[32];
+		snprintf(name, sizeof(name), "img_%02d.fits", count);
+		bool saved = populated && image->blob.value && image->blob.size > 0 && example_save_image(name, image->blob.value, image->blob.size);
+		if (*image->blob.url) {
+			free(image->blob.value);
+			image->blob.value = NULL;
+		}
+		if (!saved) {
+			indigo_error("Image capture could not be saved");
+			failed = true;
+			indigo_device_disconnect(client, CCD_SIMULATOR);
+		} else {
+			image_received = true;
+			next_exposure(device, client);
 		}
 	}
 	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
@@ -126,11 +161,8 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			indigo_log("exposure %gs...", property->items[0].number.value);
 		} else if (property->state == INDIGO_OK_STATE) {
 			indigo_log("exposure done...");
-			if (--count > 0) {
-				indigo_handle_property_async(start_exposure, device, client, NULL);
-			} else {
-				indigo_device_disconnect(client, CCD_SIMULATOR);
-			}
+			exposure_done = true;
+			next_exposure(device, client);
 		}
 		return INDIGO_OK;
 	}
@@ -159,15 +191,32 @@ int main(int argc, const char * argv[]) {
 	indigo_set_log_level(INDIGO_LOG_INFO);
 	indigo_start();
 
-	indigo_driver_entry *driver;
+	indigo_driver_entry *driver = NULL;
+	int result = EXIT_FAILURE;
 	indigo_attach_client(&client);
 	if (indigo_load_driver("indigo_ccd_simulator", true, &driver) == INDIGO_OK) {
-		while (count > 0) {
+		for (int remaining = 120; !finished && remaining > 0; remaining--) {
 			indigo_sleep(1);
 		}
+		if (!finished) {
+			indigo_error("Timed out waiting for simulator capture");
+		} else if (!failed) {
+			result = EXIT_SUCCESS;
+		}
+		if (connected) {
+			indigo_device_disconnect(&client, CCD_SIMULATOR);
+			for (int remaining = 50; connected && remaining > 0; remaining--) {
+				indigo_usleep(100000);
+			}
+		}
+		if (indigo_remove_driver(driver) != INDIGO_OK) {
+			indigo_error("Cannot unload simulator driver");
+			result = EXIT_FAILURE;
+		}
+	} else {
+		indigo_error("Cannot load indigo_ccd_simulator");
 	}
-	indigo_remove_driver(driver);
 	indigo_detach_client(&client);
 	indigo_stop();
-	return 0;
+	return result;
 }

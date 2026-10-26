@@ -29,11 +29,15 @@
 #include <fcntl.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_names.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_client_xml.h>
+#include "example_process.h"
 
-static int device_pid;
+static atomic_bool operation_finished = false;
+static atomic_bool operation_failed = false;
 static bool connected = false;
+static bool image_received = false;
 
 #define CCD_SIMULATOR "CCD Imager Simulator @ indigo_ccd_simulator"
 
@@ -49,6 +53,9 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		indigo_device_connect(client, property->device);
 		return INDIGO_OK;
+	}
+	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
 	}
 	return INDIGO_OK;
 }
@@ -68,8 +75,9 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 		} else {
 			if (connected) {
 				indigo_log("disconnected...");
-				indigo_stop();
 				connected = false;
+				atomic_store(&operation_failed, !image_received);
+				atomic_store(&operation_finished, true);
 			}
 		}
 		return INDIGO_OK;
@@ -83,6 +91,7 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 		return INDIGO_OK;
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
+		image_received = property->count > 0 && property->items[0].blob.value != NULL;
 		indigo_log("image received (%d bytes)...", property->items[0].blob.size);
 		indigo_device_disconnect(client, property->device);
 	}
@@ -92,8 +101,6 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 
 static indigo_result client_detach(indigo_client *client) {
 	indigo_log("detached from INDI bus...");
-	kill(device_pid, SIGKILL);
-	exit(0);
 	return INDIGO_OK;
 }
 
@@ -110,28 +117,10 @@ static indigo_client client = {
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	int input[2], output[2];
-	if (pipe(input) < 0 || pipe(output) < 0) {
-		indigo_log("Can't create local pipe for device (%s)", strerror(errno));
-		return 0;
+	if (argc > 2) {
+		fprintf(stderr, "Usage: %s [driver-executable]\n", argv[0]);
+		return EXIT_FAILURE;
 	}
-	device_pid = fork();
-	if (device_pid == 0) {
-		close(0);
-		dup2(output[0], 0);
-		close(1);
-		dup2(input[1], 1);
-		execl("../build/drivers/indigo_ccd_simulator", "indigo_ccd_simulator", NULL);
-	} else {
-		close(input[1]);
-		close(output[0]);
-		indigo_set_log_level(INDIGO_LOG_INFO);
-		indigo_start();
-		indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", input[0], output[1]);
-		indigo_attach_device(protocol_adapter);
-		indigo_attach_client(&client);
-		indigo_xml_parse(protocol_adapter, &client);
-		indigo_stop();
-	}
-	return 0;
+	indigo_set_log_level(INDIGO_LOG_INFO);
+	return example_run_process(&client, argc == 2 ? argv[1] : "../build/drivers/indigo_ccd_simulator", &operation_finished, &operation_failed);
 }

@@ -1,0 +1,29 @@
+{
+  "title": "Checked-in client examples do not compile against current public headers",
+  "category": "functional",
+  "severity": "medium",
+  "blocking": false,
+  "evidence": "indigo_examples/remote_server_client_mount.c:177; indigo_examples/client.c:49-85,130; analyzer-results.json",
+  "summary": "The mount example, included by the examples all target, calls indigo_connect_server with four arguments although the header requires five. The older client.c also lacks standard-name declarations and passes integer descriptors to an adapter requiring indigo_uni_handle pointers. Exact compiler diagnostics are retained; this is distinct from FND-000010 unbounded connection handling. Fixed: Migrate client to current public headers and uni-handle adapter API; pass the fifth connect argument and include every example in the build.",
+  "status": "closed",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261026195459-b244-fix-examples-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026195459-b244-fix-examples-findings/verification.md; independent quality-review.md and security.md. Migrate client to current public headers and uni-handle adapter API; pass the fifth connect argument and include every example in the build.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023065605-60d4-repository-audit-008"
+}

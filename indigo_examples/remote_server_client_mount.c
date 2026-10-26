@@ -27,13 +27,17 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_client.h>
 
-#define MOUNT_SIMULATOR "Mount Simulator @ indigosky"
+#define MOUNT_SIMULATOR remote_device
+
+static char remote_device[INDIGO_NAME_SIZE];
+#include "example_remote.h"
 
 #define RA   3.1416 /* in decimal hours */
 #define DEC  2.7183 /* in degrees */
 
 static bool connected = false;
-bool finished = false;
+static bool slew_completed = false;
+static bool failed = false;
 
 static void slew_mount(indigo_client *client, double ra, double dec) {
 	static const char * items[] = {
@@ -117,7 +121,10 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			if (connected) {
 				indigo_log("disconnected...");
 				connected = false;
-				finished = true;
+				if (!slew_completed) {
+					failed = true;
+				}
+				example_finish();
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
@@ -136,13 +143,16 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			}
 		} else if (property->state == INDIGO_ALERT_STATE) {
 			indigo_error("slew failed");
+			failed = true;
 			indigo_device_disconnect(client, MOUNT_SIMULATOR);
 		} else {
 			double ra = 0, dec = 0;
 			if (get_mount_coordinates(property, &ra, &dec)) {
 				indigo_log("slew finished: RA = %f, Dec = %f", ra, dec);
+				slew_completed = true;
 			} else {
 				indigo_error("slew finished, but coordinates can not be read!");
+				failed = true;
 			}
 			indigo_device_disconnect(client, MOUNT_SIMULATOR);
 		}
@@ -165,21 +175,42 @@ static indigo_client client = {
 	client_detach
 };
 
-int main(int argc, const char * argv[]) {
+int main(int argc, const char *argv[]) {
+	const char *host, *service;
+	int timeout, port;
+	if (!example_remote_options(argc, argv, &host, &service, remote_device, "Mount Simulator", &timeout, &port)) {
+		fprintf(stderr, "Usage: %s [host [service [device [timeout_seconds [port]]]]]\n", argv[0]);
+		return EXIT_FAILURE;
+	}
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-
 	indigo_set_log_level(INDIGO_LOG_INFO);
 	indigo_start();
-
-	indigo_server_entry *server;
+	indigo_server_entry *server = NULL;
+	int result = EXIT_FAILURE;
 	indigo_attach_client(&client);
-	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
-	while (!finished) {
-		indigo_usleep(ONE_SECOND_DELAY);
+	if (indigo_connect_server(service, host, port, &server, NULL) == INDIGO_OK) {
+		for (int remaining = timeout; !example_is_finished() && remaining > 0; remaining--) {
+			indigo_sleep(1);
+		}
+		if (!example_is_finished()) {
+			indigo_error("Timed out waiting for %s on %s:%d", remote_device, host, port);
+		} else if (!failed) {
+			result = EXIT_SUCCESS;
+		}
+		indigo_disconnect_server(server);
+		/* The server API owns a detached parser thread; let it release its adapter before stopping the bus. */
+		for (int remaining = 100; server->thread_started && remaining > 0; remaining--) {
+			indigo_usleep(100000);
+		}
+		if (server->thread_started) {
+			indigo_error("Server shutdown timed out");
+			return EXIT_FAILURE;
+		}
+	} else {
+		indigo_error("Cannot start server connection to %s:%d", host, port);
 	}
-	indigo_disconnect_server(server);
 	indigo_detach_client(&client);
 	indigo_stop();
-	return 0;
+	return result;
 }

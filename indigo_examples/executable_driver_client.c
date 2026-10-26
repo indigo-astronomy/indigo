@@ -31,12 +31,31 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_client_xml.h>
+#include "example_process.h"
+#include "example_image.h"
 
 #define CCD_SIMULATOR "CCD Imager Simulator @ indigo_ccd_simulator"
 
-static int device_pid;
+static atomic_bool operation_finished = false;
+static atomic_bool operation_failed = false;
+static bool exposure_done = false;
+static bool image_received = false;
 static bool connected = false;
 static int count = 5;
+
+static void next_exposure(indigo_client *client) {
+	if (exposure_done && image_received) {
+		exposure_done = false;
+		image_received = false;
+		if (--count > 0) {
+			static const char *items[] = { CCD_EXPOSURE_ITEM_NAME };
+			static double values[] = { 3.0 };
+			indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+		} else {
+			indigo_device_disconnect(client, CCD_SIMULATOR);
+		}
+	}
+}
 
 static indigo_result client_attach(indigo_client *client) {
 	indigo_log("attached to INDIGO bus...");
@@ -60,10 +79,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 		}
 	}
 	if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
-		if (device->version >= INDIGO_VERSION_2_0)
-			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
-		else
-			indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
+		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_ALSO);
 	}
 	if (!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
 		static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
@@ -88,8 +104,9 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 		} else {
 			if (connected) {
 				indigo_log("disconnected...");
-				indigo_stop();
 				connected = false;
+				atomic_store(&operation_failed, count > 0);
+				atomic_store(&operation_finished, true);
 			}
 		}
 		return INDIGO_OK;
@@ -103,14 +120,19 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 		if (property->items[0].blob.value) {
 			char name[32];
 			sprintf(name, "img_%02d.fits", count);
-			FILE *f = fopen(name, "wb");
-			fwrite(property->items[0].blob.value, property->items[0].blob.size, 1, f);
-			fclose(f);
-			indigo_log("image saved to %s...", name);
+			bool saved = example_save_image(name, property->items[0].blob.value, property->items[0].blob.size);
+			if (!saved) {
+				atomic_store(&operation_failed, true);
+				atomic_store(&operation_finished, true);
+			}
 			/* In case we have URL BLOB transfer we need to release the blob ourselves */
 			if (*property->items[0].blob.url) {
 				free(property->items[0].blob.value);
 				property->items[0].blob.value = NULL;
+			}
+			if (saved) {
+				image_received = true;
+				next_exposure(client);
 			}
 		}
 	}
@@ -119,11 +141,8 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			indigo_log("exposure %gs...", property->items[0].number.value);
 		} else if (property->state == INDIGO_OK_STATE) {
 			indigo_log("exposure done...");
-			if (--count > 0) {
-				indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
-			} else {
-				indigo_device_disconnect(client, CCD_SIMULATOR);
-			}
+			exposure_done = true;
+			next_exposure(client);
 		}
 		return INDIGO_OK;
 	}
@@ -132,8 +151,6 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 
 static indigo_result client_detach(indigo_client *client) {
 	indigo_log("detached from INDIGO bus...");
-	kill(device_pid, SIGKILL);
-	exit(0);
 	return INDIGO_OK;
 }
 
@@ -150,34 +167,10 @@ static indigo_client client = {
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	int input[2], output[2];
-	if (pipe(input) < 0 || pipe(output) < 0) {
-		indigo_log("Can't create local pipe for device (%s)", strerror(errno));
-		return 0;
+	if (argc > 2) {
+		fprintf(stderr, "Usage: %s [driver-executable]\n", argv[0]);
+		return EXIT_FAILURE;
 	}
-	device_pid = fork();
-	if (device_pid == 0) {
-		close(0);
-		dup2(output[0], 0);
-		close(1);
-		dup2(input[1], 1);
-		execl("../build/drivers/indigo_ccd_simulator", "indigo_ccd_simulator", NULL);
-	} else {
-		close(input[1]);
-		close(output[0]);
-		indigo_set_log_level(INDIGO_LOG_INFO);
-		indigo_start();
-		indigo_uni_handle *in = indigo_uni_create_file_handle(input[0], INDIGO_LOG_TRACE);
-		indigo_uni_handle *out = indigo_uni_create_file_handle(output[1], INDIGO_LOG_TRACE);
-		indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", in, out);
-		indigo_attach_device(protocol_adapter);
-		indigo_attach_client(&client);
-		indigo_xml_parse(protocol_adapter, &client);
-		indigo_detach_device(protocol_adapter);
-		indigo_release_xml_client_adapter(protocol_adapter);
-		indigo_uni_close(&in);
-		indigo_uni_close(&out);
-		indigo_stop();
-	}
-	return 0;
+	indigo_set_log_level(INDIGO_LOG_INFO);
+	return example_run_process(&client, argc == 2 ? argv[1] : "../build/drivers/indigo_ccd_simulator", &operation_finished, &operation_failed);
 }

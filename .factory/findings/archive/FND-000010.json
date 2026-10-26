@@ -1,0 +1,29 @@
+{
+  "id": "FND-000010",
+  "title": "EXAMPLES-003: The remote examples hard-code service/device names and never check whether `indigo_connect_server()` succeeded before waiting forever and later disconnecting `server`",
+  "category": "quality",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261021193138-70b4-adopt-ai-factory",
+      "report": "legacy-findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261026195459-b244-fix-examples-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "EXAMPLES-003: The remote examples hard-code service/device names and never check whether `indigo_connect_server()` succeeded before waiting forever and later disconnecting `server`. If the target host is unavailable or has a different service name, the sample can hang indefinitely and then use an invalid server pointer. Accept host/service parameters or document the default clearly, check the connect result, initialize `server = NULL`, and use a bounded wait with a clear failure exit. Fixed: Accept host/service/device/deadline/port, check setup result, bound operation and shutdown waits, and reject premature completion.",
+  "evidence": "eba315b7041b1a19f64a1ad7864dc1a6c0019ea8:indigo_examples/REVIEW.md:34; historical locations: `remote_server_client.c:31`, `remote_server_client.c:163`, `remote_server_client.c:164`, `remote_server_client.c:167`, `remote_server_client_mount.c:30`, `remote_server_client_mount.c:177`, `remote_server_client_mount.c:178`, `remote_server_client_mount.c:181`; legacy status: Open",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261026195459-b244-fix-examples-findings/verification.md; independent quality-review.md and security.md. Accept host/service/device/deadline/port, check setup result, bound operation and shutdown waits, and reject premature completion.",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

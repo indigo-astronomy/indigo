@@ -8,33 +8,36 @@ ifeq ($(OS),Windows_NT)
 else
 	OS_DETECTED = $(shell uname -s)
 	ifeq ($(OS_DETECTED),Darwin)
-		CFLAGS = $(DEBUG_BUILD) -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_libs -std=gnu11 -DINDIGO_MACOS
-		LDFLAGS = -L$(BUILD_LIB) -lindigo
+		CFLAGS = $(DEBUG_BUILD) -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_libs -std=gnu11 -DINDIGO_MACOS -pthread
+		LDFLAGS = -L$(BUILD_LIB) -lindigo -pthread
 	endif
 	ifeq ($(OS_DETECTED),Linux)
-		CFLAGS = $(DEBUG_BUILD) -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_libs -std=gnu11 -DINDIGO_LINUX
-		LDFLAGS = -L$(BUILD_LIB) -lindigo
+		CFLAGS = $(DEBUG_BUILD) -O3 -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_libs -std=gnu11 -DINDIGO_LINUX -pthread
+		LDFLAGS = -L$(BUILD_LIB) -lindigo -pthread
 	endif
 endif
 
-all: executable_driver_client dynamic_driver_client remote_server_client remote_server_client_mount servce_discovery
+all: client executable_driver_client dynamic_driver_client remote_server_client remote_server_client_mount service_discovery
 
-executable_driver_client: executable_driver_client.c
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+client: client.c example_process.h
+	$(CC) -o $@ client.c $(CFLAGS) $(LDFLAGS)
 
-dynamic_driver_client: dynamic_driver_client.c
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+executable_driver_client: executable_driver_client.c example_process.h example_image.h
+	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
-remote_server_client: remote_server_client.c
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+dynamic_driver_client: dynamic_driver_client.c example_image.h
+	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
-remote_server_client_mount: remote_server_client_mount.c
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+remote_server_client: remote_server_client.c example_image.h example_remote.h
+	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
-servce_discovery: service_discovery.c
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+remote_server_client_mount: remote_server_client_mount.c example_remote.h
+	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
 
-.PHONY: clean
+service_discovery: service_discovery.c
+	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)
+
+.PHONY: all clean
 
 clean:
-	rm executable_driver_client dynamic_driver_client remote_server_client service_discovery
+	rm -f client executable_driver_client dynamic_driver_client remote_server_client remote_server_client_mount service_discovery servce_discovery

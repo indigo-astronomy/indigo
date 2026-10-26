@@ -40,6 +40,30 @@ An open source examples of client API usage are the following pieces of code:
 
 [PixInsight INDIGO client project - under development](https://github.com/PixInsight/PCL/tree/master/src/modules/processes/contrib/kkretzschmar/INDIClient)
 
+### Building and running the client examples
+
+Build the INDIGO library and simulator drivers first, then run `make -C indigo_examples all`. This builds `client`, `executable_driver_client`, `dynamic_driver_client`, `remote_server_client`, `remote_server_client_mount` and `service_discovery`. `make -C indigo_examples clean` removes these outputs and can be run repeatedly.
+
+Run the local examples from `indigo_examples/`. `client` takes one simulator image; `executable_driver_client` saves five FITS images. Both accept an optional driver executable path and otherwise use `../build/drivers/indigo_ccd_simulator`. `dynamic_driver_client` loads `indigo_ccd_simulator` from the normal dynamic-driver search path, waits for automatic configuration restoration, then selects client upload and FITS before saving five images. Local operations have a 120-second deadline. Image files are written to the current directory; open, write or close failures make the example fail.
+
+The remote examples accept positional arguments:
+
+```text
+remote_server_client [host [service [device [timeout_seconds [port]]]]]
+remote_server_client_mount [host [service [device [timeout_seconds [port]]]]]
+```
+
+Defaults are `localhost`, service alias `example`, 120 seconds and port 7624. The default device names are `CCD Imager Simulator @ example` and `Mount Simulator @ example`; a different service alias changes the default suffix. Pass a full device name when selecting another device. The camera example saves one FITS image; the mount example unparks and slews to RA 3.1416 hours, Dec 2.7183 degrees, then disconnects. Use simulator devices to try these examples safely.
+
+For a local server with both simulators loaded:
+
+```sh
+./remote_server_client 127.0.0.1 example
+./remote_server_client_mount 127.0.0.1 example
+```
+
+Failed setup, incomplete operations and image-save failures return a nonzero exit code. A remote operation deadline is followed by up to ten seconds for server-thread cleanup. Executable examples terminate and reap their driver during normal shutdown, using forced termination only if it ignores the graceful signal. Run the hardware-free example regressions with `make -C indigo_test test-examples`; they need the built INDIGO library, a C compiler and loopback networking.
+
 ## Driver API
 
 Structures, helper functions and macros for a driver code are defined in *indigo_driver.h* and *indigo_XXX_driver.h*. For examples of different device drivers see [indigo_drivers](https://github.com/indigo-astronomy/indigo/tree/master/indigo_drivers).
