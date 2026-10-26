@@ -61,7 +61,7 @@ static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_client observer;
 static indigo_device imager_device;
 static indigo_device mount_device;
-static indigo_property *imager_properties[5];
+static indigo_property *imager_properties[6];
 static indigo_property *mount_properties[7];
 static double mount_targets[8][2];
 static atomic_int mount_target_count;
@@ -78,6 +78,12 @@ static atomic_bool fail_imager_capture;
 static atomic_bool hold_imager_capture;
 static atomic_bool fail_mount_start;
 static atomic_bool hold_mount_start;
+static atomic_bool fail_filter_change;
+static atomic_bool hold_filter_change;
+static atomic_int filter_overlaps;
+static char wheel_events[256];
+static int wcs_state_at_filter[16];
+static int filter_requests;
 static bool running;
 static bool peers_attached;
 
@@ -351,6 +357,45 @@ static indigo_result peer_enumerate(indigo_device *device, indigo_client *client
 
 static unsigned char peer_fits[2880];
 
+/* The peer records the wheel and capture requests in their order: "F<slot> " for a filter change, "C " for a capture */
+static void log_wheel_event(const char *event) {
+	pthread_mutex_lock(&cache_mutex);
+	if (strlen(wheel_events) + strlen(event) < sizeof(wheel_events)) {
+		strcat(wheel_events, event);
+	}
+	pthread_mutex_unlock(&cache_mutex);
+}
+
+static bool wheel_events_are(const char *expected) {
+	pthread_mutex_lock(&cache_mutex);
+	bool result = !strcmp(wheel_events, expected);
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
+static bool wait_wheel_events(const char *expected) {
+	for (int i = 0; i < 5000; i++) {
+		if (wheel_events_are(expected)) {
+			// nothing else may follow
+			indigo_usleep(300000);
+			if (wheel_events_are(expected)) {
+				return true;
+			}
+			break;
+		}
+		indigo_usleep(1000);
+	}
+	pthread_mutex_lock(&cache_mutex);
+	fprintf(stderr, "Wheel events '%s', expected '%s'\n", wheel_events, expected);
+	pthread_mutex_unlock(&cache_mutex);
+	return false;
+}
+
+static void finish_filter(indigo_device *device) {
+	imager_properties[5]->state = INDIGO_OK_STATE;
+	indigo_update_property(device, imager_properties[5], NULL);
+}
+
 static void finish_capture(indigo_device *device) {
 	imager_properties[4]->state = INDIGO_OK_STATE;
 	imager_properties[4]->items[0].blob.value = peer_fits;
@@ -371,7 +416,33 @@ static void finish_mount(indigo_device *device) {
 
 static indigo_result peer_change(indigo_device *device, indigo_client *client, indigo_property *request) {
 	if (device == &imager_device) {
-		if (!strcmp(request->name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME)) {
+		if (!strcmp(request->name, AGENT_WHEEL_FILTER_PROPERTY_NAME)) {
+			char event[16] = "";
+			for (int i = 0; i < request->count; i++) {
+				if (request->items[i].sw.value) {
+					snprintf(event, sizeof(event), "F%s ", request->items[i].name);
+				}
+			}
+			log_wheel_event(event);
+			if (filter_requests < (int)ARRAY_SIZE(wcs_state_at_filter)) {
+				wcs_state_at_filter[filter_requests++] = property_state(AGENT_PLATESOLVER_WCS_PROPERTY_NAME);
+			}
+			if (imager_properties[5]->state == INDIGO_BUSY_STATE) {
+				atomic_fetch_add(&filter_overlaps, 1);
+			}
+			if (atomic_load(&fail_filter_change)) {
+				imager_properties[5]->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, imager_properties[5], NULL);
+				return INDIGO_OK;
+			}
+			indigo_property_copy_values(imager_properties[5], request, false);
+			imager_properties[5]->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, imager_properties[5], NULL);
+			if (!atomic_load(&hold_filter_change)) {
+				indigo_set_timer(device, 0.05, finish_filter, NULL);
+			}
+		} else if (!strcmp(request->name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME)) {
+			log_wheel_event("C ");
 			atomic_fetch_add(&imager_capture_requests, 1);
 			indigo_property_copy_values(imager_properties[1], request, false);
 			if (atomic_load(&fail_imager_capture)) {
@@ -454,6 +525,10 @@ static void init_peers(void) {
 	indigo_init_switch_item(imager_properties[3]->items, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort", false);
 	imager_properties[4] = indigo_init_blob_property(NULL, IMAGER, CCD_IMAGE_PROPERTY_NAME, "Camera", "Image", INDIGO_OK_STATE, 1);
 	indigo_init_blob_item(imager_properties[4]->items, CCD_IMAGE_ITEM_NAME, "Image");
+	imager_properties[5] = indigo_init_switch_property(NULL, IMAGER, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Agent", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	indigo_init_switch_item(imager_properties[5]->items, "1", "Lum", true);
+	indigo_init_switch_item(imager_properties[5]->items + 1, "2", "Red", false);
+	indigo_init_switch_item(imager_properties[5]->items + 2, "3", "Ha", false);
 	init_info(mount_properties, MOUNT);
 	mount_properties[1] = indigo_init_number_property(NULL, MOUNT, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, "Mount", "Coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 	indigo_init_number_item(mount_properties[1]->items, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, "RA", 0, 24, 0, 5);
@@ -1513,6 +1588,231 @@ static void shutdown_during_solve(void) {
 	running = false;
 }
 
+static bool filter_list_is(const char *selected, int count, bool report) {
+	indigo_property *property = snapshot(AGENT, AGENT_PLATESOLVER_FILTER_PROPERTY_NAME);
+	const char *on = "";
+	for (int i = 0; property && i < property->count; i++) {
+		if (property->items[i].sw.value) {
+			on = property->items[i].name;
+			break;
+		}
+	}
+	bool result = property && property->count == count && !strcmp(on, selected);
+	if (!result && report) {
+		fprintf(stderr, "AGENT_PLATESOLVER_FILTER has %d items with '%s' selected, expected %d with '%s'\n", property ? property->count : -1, on, count, selected);
+	}
+	indigo_release_property(property);
+	return result;
+}
+
+static bool wait_filter_list(const char *selected, int count) {
+	for (int i = 0; i < 5000; i++) {
+		if (filter_list_is(selected, count, false)) {
+			return true;
+		}
+		indigo_usleep(1000);
+	}
+	return filter_list_is(selected, count, true);
+}
+
+static bool select_solver_filter(const char *name) {
+	unsigned before = revision(AGENT_PLATESOLVER_FILTER_PROPERTY_NAME);
+	REQUIRE(indigo_change_switch_property_1(&observer, AGENT, AGENT_PLATESOLVER_FILTER_PROPERTY_NAME, name, true) == INDIGO_OK);
+	REQUIRE(wait_state_after(AGENT_PLATESOLVER_FILTER_PROPERTY_NAME, before, INDIGO_OK_STATE));
+	return true;
+}
+
+static bool run_process(const char *operation, indigo_property_state expected) {
+	unsigned before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	REQUIRE(indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, operation, true) == INDIGO_OK);
+	if (!wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, expected)) {
+		fprintf(stderr, "%s", messages);
+		REQUIRE(false);
+	}
+	return true;
+}
+
+static bool wheel_is_on(const char *slot) {
+	for (int i = 0; i < 5000; i++) {
+		indigo_property *wheel = snapshot(IMAGER, AGENT_WHEEL_FILTER_PROPERTY_NAME);
+		indigo_item *selected = item(wheel, slot);
+		bool ready = wheel && wheel->state == INDIGO_OK_STATE && selected && selected->sw.value;
+		indigo_release_property(wheel);
+		if (ready) {
+			return true;
+		}
+		indigo_usleep(1000);
+	}
+	fprintf(stderr, "The wheel is not on slot %s\n", slot);
+	return false;
+}
+
+static void filter_list_mirrored(void) {
+	ASSERT_TRUE(filter_list_is(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 1, true));
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	indigo_property *property = snapshot(AGENT, AGENT_PLATESOLVER_FILTER_PROPERTY_NAME);
+	const char *names[] = { AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, "1", "2", "3" };
+	const char *labels[] = { "Current filter", "Lum", "Red", "Ha" };
+	for (unsigned i = 0; i < ARRAY_SIZE(names); i++) {
+		ASSERT_STREQ(names[i], property->items[i].name);
+		ASSERT_STREQ(labels[i], property->items[i].label);
+	}
+	ASSERT_EQ_INT(INDIGO_ONE_OF_MANY_RULE, property->rule);
+	indigo_release_property(property);
+}
+
+static void solve_with_filter(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "solve_1s", 1);
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(select_solver_filter("3"));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 C F1 "));
+	ASSERT_TRUE(wheel_is_on("1"));
+	// the wheel returned while the frame was solved, not after
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, wcs_state_at_filter[1]);
+	ASSERT_TRUE(has_message("Selecting filter 'Ha'"));
+	ASSERT_TRUE(has_message("Returning to filter 'Lum'"));
+	ASSERT_EQ_INT(0, atomic_load(&filter_overlaps));
+	ASSERT_TRUE(filter_list_is("3", 4, true));
+}
+
+static void current_or_same_filter_keeps_wheel(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_wheel_events("C "));
+	ASSERT_TRUE(select_solver_filter("1"));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_wheel_events("C C "));
+}
+
+static void capture_failure_restores_filter(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(select_solver_filter("3"));
+	atomic_store(&fail_imager_capture, true);
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 C F1 "));
+	ASSERT_TRUE(wheel_is_on("1"));
+}
+
+static void solve_failure_restores_filter_once(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "no_solution", 1);
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(select_solver_filter("3"));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 C F1 "));
+	ASSERT_TRUE(wheel_is_on("1"));
+}
+
+static void filter_change_failure(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(select_solver_filter("3"));
+	atomic_store(&fail_filter_change, true);
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(has_message("Failed to select filter 'Ha'"));
+	// no capture, and the wheel stayed on the previous filter, so there is nothing to return to
+	ASSERT_TRUE(wait_wheel_events("F3 "));
+	ASSERT_EQ_INT(0, atomic_load(&imager_capture_requests));
+	atomic_store(&fail_filter_change, false);
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 F3 C F1 "));
+}
+
+static void abort_restores_filter_once(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(select_solver_filter("3"));
+	atomic_store(&hold_imager_capture, true);
+	unsigned before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, true));
+	for (int i = 0; i < 5000 && !has_message("Capture started"); i++) {
+		indigo_usleep(1000);
+	}
+	ASSERT_TRUE(has_message("Capture started"));
+	abort_process();
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 C F1 "));
+	ASSERT_TRUE(wheel_is_on("1"));
+	atomic_store(&hold_imager_capture, false);
+}
+
+static void abort_during_filter_change(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(select_solver_filter("3"));
+	atomic_store(&hold_filter_change, true);
+	unsigned before = revision(AGENT_START_PROCESS_PROPERTY_NAME);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, true));
+	for (int i = 0; i < 5000 && !has_message("Selecting filter 'Ha'"); i++) {
+		indigo_usleep(1000);
+	}
+	ASSERT_TRUE(has_message("Selecting filter 'Ha'"));
+	abort_process();
+	ASSERT_TRUE(wait_state_after(AGENT_START_PROCESS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// the return waits until the wheel has finished the selection
+	indigo_usleep(300000);
+	ASSERT_TRUE(wheel_events_are("F3 "));
+	atomic_store(&hold_filter_change, false);
+	finish_filter(&imager_device);
+	ASSERT_TRUE(wait_wheel_events("F3 F1 "));
+	ASSERT_TRUE(wheel_is_on("1"));
+	ASSERT_EQ_INT(0, atomic_load(&filter_overlaps));
+	ASSERT_EQ_INT(0, atomic_load(&imager_capture_requests));
+}
+
+static void polar_alignment_switches_per_exposure(void) {
+	setenv("ASTROMETRY_FAKE_MODE", "polar", 1);
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(select_related(MOUNT));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&observer, AGENT, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, 0));
+	ASSERT_TRUE(select_solver_filter("3"));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 C F1 F3 C F1 F3 C F1 "));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 C F1 F3 C F1 F3 C F1 F3 C F1 "));
+	ASSERT_EQ_INT(0, atomic_load(&filter_overlaps));
+	ASSERT_TRUE(wheel_is_on("1"));
+}
+
+static void redefine_peer_wheel(const char **labels, int count, int selected) {
+	indigo_delete_property(&imager_device, imager_properties[5], NULL);
+	imager_properties[5]->count = count;
+	for (int i = 0; i < count; i++) {
+		INDIGO_COPY_VALUE(imager_properties[5]->items[i].label, labels[i]);
+		imager_properties[5]->items[i].sw.value = i == selected;
+	}
+	indigo_define_property(&imager_device, imager_properties[5], NULL);
+}
+
+static void filter_list_follows_imager(void) {
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 4));
+	ASSERT_TRUE(select_solver_filter("3"));
+	// renamed slots: the selected slot stays, its label follows
+	const char *renamed[] = { "Ha", "Lum", "Red" };
+	redefine_peer_wheel(renamed, 3, 1);
+	ASSERT_TRUE(wait_filter_list("3", 4));
+	indigo_property *property = snapshot(AGENT, AGENT_PLATESOLVER_FILTER_PROPERTY_NAME);
+	ASSERT_STREQ("Red", property->items[3].label);
+	indigo_release_property(property);
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_wheel_events("F3 C F2 "));
+	// fewer slots: the selected one is gone, so the current filter is used
+	redefine_peer_wheel(renamed, 2, 0);
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 3));
+	// no filters without a related Imager Agent, they return with it
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&observer, AGENT, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, IMAGER, false));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 1));
+	ASSERT_TRUE(select_related(IMAGER));
+	ASSERT_TRUE(wait_filter_list(AGENT_PLATESOLVER_FILTER_CURRENT_ITEM_NAME, 3));
+}
+
 static const indigo_test_case tests[] = {
 	{ "schema and metadata", schema_and_metadata },
 	{ "settings synchronization and reset", settings_and_reset },
@@ -1540,6 +1840,16 @@ static const indigo_test_case tests[] = {
 	{ "precise GOTO", precise_goto },
 	{ "polar alignment failures", polar_alignment_failures },
 	{ "polar alignment and recalculation", polar_alignment_and_recalculation },
+	{ "solver filter list mirrored", filter_list_mirrored },
+	{ "solve with filter", solve_with_filter },
+	{ "current or same filter keeps wheel", current_or_same_filter_keeps_wheel },
+	{ "capture failure restores filter", capture_failure_restores_filter },
+	{ "solve failure restores filter once", solve_failure_restores_filter_once },
+	{ "filter change failure", filter_change_failure },
+	{ "abort restores filter once", abort_restores_filter_once },
+	{ "abort during filter change", abort_during_filter_change },
+	{ "polar alignment switches filter per exposure", polar_alignment_switches_per_exposure },
+	{ "filter list follows Imager Agent", filter_list_follows_imager },
 	{ "polar alignment targets J2000 mount", polar_alignment_targets_j2000_mount },
 	{ "polar alignment targets JNow mount", polar_alignment_targets_jnow_mount },
 	{ "sync center and goto in mount epoch", sync_center_and_goto_in_mount_epoch },

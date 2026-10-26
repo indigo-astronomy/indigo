@@ -126,3 +126,29 @@ with "Polar alignment reference positions do not define a valid alignment". The 
 The fake solver's new `polar` mode reports the field 20° lower in RA for each reference, as the sky does when the mount
 turns by 20° of hour angle, and the third one again while the mount stays there for the recalculation. The three cases
 select it. No driver change. Recorded run: `2026-10-25 19:09 2.0.0.32 linux x64 simulator 77/77 OK`.
+
+## Solve with a selected filter (2.0.0.33, 2026-10-26, task 20261026155455-61b6-platesolver-solve-filter)
+
+The shared plate-solver library (`indigo_libs/indigo_platesolver.c`, also used by `agent_solver` 3.0.0.3) exposes
+`AGENT_PLATESOLVER_FILTER`: `CURRENT` "Current filter" (default, leaves the wheel alone) followed by the slots of the
+related Imager Agent's `AGENT_WHEEL_FILTER` (same item names and labels). Every exposure a process requests from the
+Imager Agent (solve, sync, center, precise GOTO, each polar alignment reference and the recalculation) first selects the
+filter and waits for the wheel (120 s, abortable); the wheel returns to the previous filter when the solving of the
+frame starts, and on capture failure, solve failure and abort, once. Wheel drivers ignore a slot change while they move,
+so a return requested during a selection (abort) is sent when the wheel reports that it stopped. Passive solving
+(`AGENT_PLATESOLVER_SOLVE_IMAGES`), uploaded images and the Guider Agent fallback do not touch the wheel. The choice is
+the slot; it is not saved in the configuration and falls back to `CURRENT` when the slot disappears.
+
+Tests (fake Imager Agent with `AGENT_WHEEL_FILTER` and an ordered log of filter changes and captures): `solver filter
+list mirrored`, `solve with filter` (`F3 C F1`, the return while WCS is BUSY), `current or same filter keeps wheel`,
+`capture failure restores filter`, `solve failure restores filter once`, `filter change failure`, `abort restores
+filter once`, `abort during filter change`, `polar alignment switches filter per exposure` (four times `F3 C F1`, no
+overlapping wheel requests), `filter list follows Imager Agent` (renamed and fewer slots, Imager Agent unrelated and
+related again). Without the returns eight of them fail. `agent_solver` has no automated suite; it runs the same
+library code.
+
+Valgrind on the new cases shows a pre-existing 120-byte loss per solver command in `execute_command()`
+(FND-20261026155455-61b6-platesolver-solve-filter-001), not fixed here.
+
+Recorded run: `2026-10-26 20:06 2.0.0.33 linux x64 simulator 87/87 OK` (54 fake-tool cases, 10 of them new, and the 33
+real-solver cases).
