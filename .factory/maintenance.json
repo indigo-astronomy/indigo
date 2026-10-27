@@ -204,6 +204,15 @@
       "authority": "Áno, odložiť audit pre túto úlohu; audit ostáva splatný po nej, pred ďalšou nesúvisiacou prácou alebo releasom.",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
+    },
+    "solver_retro_evidence_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-27",
+      "task": "20261027195534-4608-solver-retro-evidence",
+      "scope": "Record the AI Factory evidence of the published commit a1e7f53d0 (solver noise filter and input formats) only; evidence-only housekeeping task",
+      "authority": "Yes, defer the full repository audit for task 20261027195534-4608-solver-retro-evidence only; the audit remains due after it, before the next unrelated work or release.",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

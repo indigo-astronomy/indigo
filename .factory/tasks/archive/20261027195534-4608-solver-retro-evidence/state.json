@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261027195534-4608-solver-retro-evidence",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive, single commit, committed-range process check; integration on owner instruction.",
+  "blocker": null
+}
