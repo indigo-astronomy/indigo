@@ -80,7 +80,9 @@
       "evidence": "verification.md"
     }
   ],
-  "risk_reviews": {},
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
   "reviews": [],
   "reviewed_content": {
     ".factory/completions/20261027203747-a8d5-archive-refactor-notes.json": [
