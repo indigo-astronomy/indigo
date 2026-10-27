@@ -3642,6 +3642,7 @@ static int darwin_attach_kernel_driver (struct libusb_device_handle *dev_handle,
 static int darwin_capture_claim_interface(struct libusb_device_handle *dev_handle, uint8_t iface) REQUIRES(dev_handle->lock) {
   struct darwin_cached_device *dpriv = DARWIN_CACHED_DEVICE(dev_handle->dev);
   int ret;
+  bool detached = false;
   if (dev_handle->auto_detach_kernel_driver && darwin_kernel_driver_active(dev_handle, iface)) {
     /* the core holds dev_handle->lock around this backend call, so take only
        dpriv->lock here (the darwin_detach_kernel_driver entry point would
@@ -3649,12 +3650,23 @@ static int darwin_capture_claim_interface(struct libusb_device_handle *dev_handl
     usbi_mutex_lock(&dpriv->lock);
     ret = darwin_detach_kernel_driver_locked (dev_handle, iface);
     usbi_mutex_unlock(&dpriv->lock);
+    detached = ret == LIBUSB_SUCCESS;
     if (ret != LIBUSB_SUCCESS) {
       usbi_info (usbi_handle_ctx (dev_handle), "failed to auto-detach the kernel driver for this device, ret=%d", ret);
     }
   }
 
-  return darwin_claim_interface (dev_handle, iface);
+  ret = darwin_claim_interface (dev_handle, iface);
+  if (ret != LIBUSB_SUCCESS && detached) {
+    /* A failed claim is not released by close; undo only this call's capture. */
+    usbi_mutex_lock(&dpriv->lock);
+    int attach_ret = darwin_attach_kernel_driver_locked (dev_handle, iface);
+    usbi_mutex_unlock(&dpriv->lock);
+    if (attach_ret != LIBUSB_SUCCESS) {
+      usbi_err (usbi_handle_ctx (dev_handle), "failed to restore kernel driver after claim failure, ret=%d", attach_ret);
+    }
+  }
+  return ret;
 }
 
 static int darwin_capture_release_interface(struct libusb_device_handle *dev_handle, uint8_t iface) REQUIRES(dev_handle->lock) {

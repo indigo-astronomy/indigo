@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "active_task": "20261026223438-4f82-pentax-terminal-validation",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive reviewed owner-authorized software delivery, commit evidence, validate committed range, fast-forward master, push origin/master and delete only completed task branch.",
+  "blocker": null,
+  "deferred_hardware_validation": {
+    "status": "pending_owner_notified_test",
+    "owner_authority": "Peter Polakovic: prior explicit hardware-validation deferral, then camera-asleep offline repair and 2026-10-27 instruction urob commit, merge, push after unverified hardware limitation was reported.",
+    "evidence": "delivery-decision.md",
+    "last_hardware_result": "3.0.0.3: canonical harness1 planned/0 passed and direct sudo-server diagnostic failed claim(-99). No3.0.0.4 hardware attempt."
+  }
+}

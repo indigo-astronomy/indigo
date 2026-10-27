@@ -1,0 +1,219 @@
++ make check-lib build/integration/test_ccd_pentax_usb
+mkdir -p build/integration
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include integration/test_ccd_pentax_usb.c -o build/integration/test_ccd_pentax_usb -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib -lindigo -lm -lpthread -lusb-1.0  -ljpeg
++ ./build/integration/test_ccd_pentax_usb
+Running ccd_pentax_usb
+characterization open/close trace=OAKCLBDSBSBDSBDSBSBDSUX
+  PASS successful open order
+characterization ready/delayed trace=BDSBDSBDSBDSBDSBDSBDSBDSBDS
+  PASS ready and delayed
+  PASS device errors
+  PASS identity and firmware endian
+  PASS valid full state
+23:36:07.446668 Application: indigo_ccd_pentax[pentax_open:1010]: libusb_open: Access denied (insufficient permissions) (-3)
+  PASS failed open retry
+23:36:07.447432 Application: indigo_ccd_pentax[pentax_status:522]: Camera readiness timed out
+23:36:07.447481 Application: indigo_ccd_pentax[pentax_status:522]: Camera readiness timed out
+  PASS both readiness deadlines
+23:36:07.447556 Application: indigo_ccd_pentax[scsi_command:430]: Incomplete CBW: Success (0), 30 bytes
+23:36:07.447568 Application: indigo_ccd_pentax[scsi_command:446]: Incomplete data: Success (0), 7/8 bytes
+23:36:07.447578 Application: indigo_ccd_pentax[scsi_command:456]: Incomplete CSW: Success (0), 12 bytes
+  PASS short transfers
+23:36:07.447635 Application: indigo_ccd_pentax[scsi_command:430]: Incomplete CBW: Input/Output Error (-1), 31 bytes
+23:36:07.447645 Application: indigo_ccd_pentax[scsi_command:446]: Incomplete data: Input/Output Error (-1), 8/8 bytes
+23:36:07.447655 Application: indigo_ccd_pentax[scsi_command:456]: Incomplete CSW: Input/Output Error (-1), 13 bytes
+  PASS transfer errors
+  PASS retry exhaustion
+  PASS unplug private ownership
+23:36:07.447892 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 0 (expected 4..65535)
+23:36:07.447903 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 0 (expected 4..65535)
+23:36:07.447983 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 1 (expected 4..65535)
+23:36:07.447993 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 1 (expected 4..65535)
+23:36:07.448070 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 3 (expected 4..65535)
+23:36:07.448080 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 3 (expected 4..65535)
+23:36:07.448157 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 65536 (expected 4..65535)
+23:36:07.448166 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 65536 (expected 4..65535)
+23:36:07.448242 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 4294967295 (expected 4..65535)
+23:36:07.448251 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 4294967295 (expected 4..65535)
+  PASS response boundaries
+23:36:07.448368 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.448445 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.448521 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.448597 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.448674 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.448762 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 175 (expected 316..65535)
+23:36:07.448839 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 316..65535)
+23:36:07.448915 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 51 (expected 316..65535)
+23:36:07.448991 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 99 (expected 316..65535)
+23:36:07.449066 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 315 (expected 316..65535)
+23:36:07.449140 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 175 (expected 336..65535)
+23:36:07.449215 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 336..65535)
+23:36:07.449289 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 51 (expected 336..65535)
+23:36:07.449363 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 99 (expected 336..65535)
+23:36:07.449438 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 335 (expected 336..65535)
+23:36:07.449512 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.449587 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.449661 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.449735 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.449809 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.449883 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 344..65535)
+23:36:07.449957 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 344..65535)
+23:36:07.450031 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 344..65535)
+23:36:07.450105 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 344..65535)
+23:36:07.450180 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 343 (expected 344..65535)
+23:36:07.450254 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 344..65535)
+23:36:07.450328 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 344..65535)
+23:36:07.450403 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 344..65535)
+23:36:07.450477 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 344..65535)
+23:36:07.450551 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 343 (expected 344..65535)
+23:36:07.450625 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 179 (expected 336..65535)
+23:36:07.450700 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 63 (expected 336..65535)
+23:36:07.450774 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 55 (expected 336..65535)
+23:36:07.450849 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 103 (expected 336..65535)
+23:36:07.450923 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 335 (expected 336..65535)
+23:36:07.450998 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.451072 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.451137 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.451202 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.451267 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.451337 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.451402 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.451466 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.451531 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.451595 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.451660 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.451728 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.451802 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.451868 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.451932 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.451997 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.452061 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.452125 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.452190 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.452255 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.452319 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.452387 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.452451 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.452515 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.452579 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.452643 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.452708 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.452772 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.452836 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.452900 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.452965 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.453029 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.453097 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.453167 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.453234 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.453299 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.453363 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.453428 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.453492 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.453560 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.453625 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.453690 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.453754 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.453819 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.453883 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.453947 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.454011 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.454075 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.454139 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.454204 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.454269 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 344..65535)
+23:36:07.454334 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 344..65535)
+23:36:07.454401 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 344..65535)
+23:36:07.454465 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 344..65535)
+23:36:07.454529 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 343 (expected 344..65535)
+23:36:07.454594 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.454658 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.454722 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.454785 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.454849 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.454913 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.454979 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.455043 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.455107 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.455171 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.455235 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 179 (expected 336..65535)
+23:36:07.455299 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 63 (expected 336..65535)
+23:36:07.455363 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 55 (expected 336..65535)
+23:36:07.455427 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 103 (expected 336..65535)
+23:36:07.455491 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 335 (expected 336..65535)
+23:36:07.455554 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.455618 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.455682 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.455746 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.455820 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.455884 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.455947 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.456011 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.456075 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.456139 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.456203 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.456267 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.456331 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.456395 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.456461 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.456525 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.456591 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.456656 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.456720 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.456784 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.456848 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 175 (expected 316..65535)
+23:36:07.456912 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 316..65535)
+23:36:07.456973 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 51 (expected 316..65535)
+23:36:07.457035 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 99 (expected 316..65535)
+23:36:07.457092 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 315 (expected 316..65535)
+23:36:07.457149 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 340..65535)
+23:36:07.457206 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 340..65535)
+23:36:07.457264 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 340..65535)
+23:36:07.457328 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 340..65535)
+23:36:07.457386 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 339 (expected 340..65535)
+23:36:07.457443 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 175 (expected 332..65535)
+23:36:07.457500 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 332..65535)
+23:36:07.457558 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 51 (expected 332..65535)
+23:36:07.457615 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 99 (expected 332..65535)
+23:36:07.457672 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 331 (expected 332..65535)
+23:36:07.457729 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 175 (expected 336..65535)
+23:36:07.457786 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 336..65535)
+23:36:07.457843 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 51 (expected 336..65535)
+23:36:07.457907 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 99 (expected 336..65535)
+23:36:07.457964 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 335 (expected 336..65535)
+23:36:07.458021 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 183 (expected 344..65535)
+23:36:07.458078 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 67 (expected 344..65535)
+23:36:07.458135 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 59 (expected 344..65535)
+23:36:07.458193 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 107 (expected 344..65535)
+23:36:07.458249 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 343 (expected 344..65535)
+  PASS all model state bounds
+  PASS all valid model layouts
+23:36:07.460677 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 0 (expected 1..65535)
+23:36:07.460683 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 0 (expected 340..65535)
+23:36:07.460690 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 65536 (expected 1..65535)
+23:36:07.460695 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 65536 (expected 340..65535)
+23:36:07.460702 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 4294967295 (expected 1..65535)
+23:36:07.460707 Application: indigo_ccd_pentax[pentax_response:543]: Invalid response length 4294967295 (expected 340..65535)
+  PASS general state boundaries
+  PASS CSW integrity
+  PASS hotplug descriptor names
+  PASS capture button and program commands
+  PASS image buffer segment traversal
+23:36:07.566734 Application: indigo_ccd_pentax[scsi_command:446]: Incomplete data: Input/Output Error (-1), 0/846 bytes
+  PASS download payload and transport errors
+  PASS capture state metadata
+  PASS public timed native capture
+  PASS public bulb abort and recovery
+  PASS public abort during image download
+  PASS public refused program readback
+  PASS public invalid capture metadata
+  PASS public refused exposure mode before trigger
+23:36:12.028205 Application: indigo_ccd_pentax[scsi_command:446]: Incomplete data: Input/Output Error (-1), 0/846 bytes
+  PASS public upload output failure cross recovery
+23:36:12.857929 Application: indigo_ccd_pentax[pentax_open:1039]: libusb_claim_interface: Resource busy (-6)
+  PASS USB claim failure reattaches kernel driver
+  PASS USB close releases and reattaches kernel driver
+  PASS USB detach failure avoids claim
+ccd_pentax_usb: all tests passed
+
+ccd_pentax: 31/31 OK

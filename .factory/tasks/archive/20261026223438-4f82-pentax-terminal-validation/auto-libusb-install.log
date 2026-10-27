@@ -1,0 +1,8 @@
+  GEN      regen-version-describe
+../build-aux/gen-describe.sh: warning: source is neither a git checkout nor a release tarball;
+  emitting LIBUSB_DESCRIBE="Unknown source (v1.0.30)"
+ .././install-sh -c -d '/Users/polakovic/Development/indigo/build/lib'
+ /bin/sh ../libtool   --mode=install /usr/bin/install -c   libusb-1.0.la '/Users/polakovic/Development/indigo/build/lib'
+libtool: install: /usr/bin/install -c .libs/libusb-1.0.0.dylib /Users/polakovic/Development/indigo/build/lib/libusb-1.0.0.dylib
+libtool: install: (cd /Users/polakovic/Development/indigo/build/lib && { ln -s -f libusb-1.0.0.dylib libusb-1.0.dylib || { rm -f libusb-1.0.dylib && ln -s libusb-1.0.0.dylib libusb-1.0.dylib; }; })
+libtool: install: /usr/bin/install -c .libs/libusb-1.0.lai /Users/polakovic/Development/indigo/build/lib/libusb-1.0.la

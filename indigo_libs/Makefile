@@ -179,7 +179,7 @@ libusb: $(LIBUSB)
 # symbol to NULL at run time. Without ac_cv_func_pipe2=no libusb calls that null
 # pointer from usbi_create_event() and every libusb based driver crashes in
 # libusb_init().
-$(BUILD_LIB)/libusb-1.0.dylib:
+$(BUILD_LIB)/libusb-1.0.dylib: externals/libusb/libusb/os/darwin_usb.c
 	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libusb; autoreconf -fiv; ./configure --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) --enable-shared=yes --enable-static=no CFLAGS="$(CFLAGS)" --with-pic ac_cv_func_pipe2=no; make; make install
 
 #---------------------------------------------------------------------

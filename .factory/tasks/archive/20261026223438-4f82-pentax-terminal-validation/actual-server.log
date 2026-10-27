@@ -1,0 +1,11 @@
+23:42:00.080741 indigo_server: INDIGO server 3.0-9 macOS/arm64 built on 2026-10-26T23:25:54+01:00 64e965d7f
+23:42:00.081245 indigo_server: Driver indigo_ccd_pentax 3.0.0.3 loaded
+23:42:00.081252 indigo_server: Registered USB hotplug callback 1 for ffffffff:ffffffff
+23:42:00.081255 indigo_server: indigo_ccd_pentax[indigo_ccd_pentax:1764]: libusb_hotplug_register_callback ->  OK
+23:42:00.117210 indigo_server: Server attached
+23:42:00.117740 indigo_server: Service registered as M3
+23:42:03.085883 indigo_server: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 0a17:00ce
+23:42:03.091238 indigo_server: indigo_ccd_pentax[process_plug_event:1665]: detected PENTAX K-m (0x0a17, 0x00ce)
+23:42:03.092189 indigo_server: indigo_ccd_pentax: 'PENTAX K-m' attached
+23:42:27.216110 indigo_server: indigo_ccd_pentax[pentax_open:1039]: libusb_claim_interface: Other error (-99)
+23:42:27.348662 indigo_server: Handler queue task for 'Queue PENTAX K-m' took 0.169s, longer than 0.100s limit

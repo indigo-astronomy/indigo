@@ -57,3 +57,27 @@ Fake tests exercise production helpers and public connection/exposure/upload/abo
 ### Completion test summary
 
 Latest simulated run:31 tests run,31 passed. Sanitized run:31 run,31 passed (ASan/UBSan; LeakSanitizer unavailable on macOS). Final requested hardware group:1 planned,0 passed, blocked before exposure. Docker physical driver tests:0 run/0 passed because camera is not exposed to the VM. Software delivery closes under the explicit owner-approved physical-validation deferral; physical acceptance remains unfinished.
+
+## USB initialization follow-up 20261026223438-4f82-pentax-terminal-validation
+
+Baseline: the owner supplied a successful 2.0.0.0 server log (identity 012d73, firmware 1.11.1.8, 412-byte status). Current 3.0.0.3 failed USB claim with -99 both in the hardware harness and the exact sudo server command, with UID 0 verified. The current fake USB suite passed31/31. No physical capture acceptance passed.
+
+The original source enables libusb automatic detach before claim; the completion change disables it and explicitly detaches before claim. Darwin uses the same capture helper for both, but automatic detach retains the handle lock through claim and rechecks the kernel binding. The source difference is confirmed; its causal connection to physical -99 remains unproven.
+
+Owner instruction: compare and repair USB initialization while leaving the camera asleep. No further camera access is authorized during this offline repair. Keep all previous failure records.
+
+Plan (before production changes):
+1. In progress: reproduce automatic-detach claim-failure ownership in the fake backend using the actual Darwin wrapper, not a duplicate implementation; preserve original successful open ordering.
+2. Pending: restore the driver's original automatic-detach acquisition, keep checked open/LUN and bounded protocol protections, increment version. Since libusb owns auto-capture, fix its Darwin auto-claim rollback in the owning backend rather than guessing ownership from IORegistry. This narrowly necessary library change supports the requested USB initialization repair; no ABI changes or other vendor code are in scope.
+3. Pending: verify no double detach/attach, failed-detach ownership, failed-claim rollback, normal release, and camera-free capture regressions; run sanitizers and rebuild actual dylibs. Compare the normalized original open/claim order.
+4. Pending: independent quality/security review and evidence. Physical verification remains pending owner wake confirmation. Do not claim -99 fixed from fake tests.
+
+### Offline repair outcome
+
+The automatic-detach acquisition order OAKCL is restored in3.0.0.4. libusb owns automatic successful release; the driver does not detach/reattach a second time. Normal release verifies a previously present system binding, and claim/cleanup failures block immediate retry. The narrowly scoped Darwin backend fix uses successful capture ownership to undo a failed claim exactly once. Its missing rollback was reproduced before the change using the actual production wrapper and is tracked as FND-20261026223438-4f82-pentax-terminal-validation-001. No changes to public API/ABI, other driver sources or USB entitlements.
+
+Plan steps1–3 complete in software: baseline regression captured, original ordering restored, production driver/library built;36/36 normal and36/36 ASan/UBSan tests passed. Failed-detach/no-binding paths never attach an unowned capture; failed raw claim restores owned capture; release and suppressed-reattach failures block retry. Step4 quality and security reviews passed for the software diff. Quality review also found and verified the corrected libusb source dependency (FND-20261026223438-4f82-pentax-terminal-validation-002). Physical -99 root cause remains unconfirmed.
+
+### Latest repair test summary
+
+Simulated tests:36 run/36 passed; sanitized:36 run/36 passed. Physical tests during this offline repair:0 run/0 passed. Earlier3.0.0.3 hardware acceptance remains1 planned/0 passed, plus the failed direct-server diagnostic. The owner asked to keep the camera asleep. Linux/Windows runtime, real device binding restoration, and current physical capture remain unverified.

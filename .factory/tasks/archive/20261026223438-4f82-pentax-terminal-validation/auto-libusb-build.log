@@ -1,0 +1,12 @@
+/Applications/Xcode.app/Contents/Developer/usr/bin/make  all-recursive
+Making all in libusb
+  GEN      regen-version-describe
+../build-aux/gen-describe.sh: warning: source is neither a git checkout nor a release tarball;
+  emitting LIBUSB_DESCRIBE="Unknown source (v1.0.30)"
+/Applications/Xcode.app/Contents/Developer/usr/bin/make  all-am
+  GEN      regen-version-describe
+../build-aux/gen-describe.sh: warning: source is neither a git checkout nor a release tarball;
+  emitting LIBUSB_DESCRIBE="Unknown source (v1.0.30)"
+  CC       os/darwin_usb.lo
+  CC       core.lo
+  CCLD     libusb-1.0.la

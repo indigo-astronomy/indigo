@@ -1,0 +1,4 @@
+Running ccd_pentax_usb
+integration/test_ccd_pentax_usb.c:1381: expected 1, got 0
+  FAIL Darwin auto claim failure rolls back capture
+ccd_pentax_usb: 1 test(s) failed

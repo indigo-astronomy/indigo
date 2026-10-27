@@ -88,6 +88,7 @@ static bool never_ready, invalid_segment, oversized_segment, fail_image_download
 static uint32_t camera_quality;
 static bool refuse_shutter;
 static int auto_detach_enabled;
+static int backend_capture_count, backend_lock_depth, attach_error, release_error;
 static unsigned char *native_jpeg;
 static unsigned long native_jpeg_size;
 static unsigned command_calls[32][32];
@@ -136,6 +137,7 @@ static void reset_usb(void) {
 	camera_quality = 0;
 	refuse_shutter = false;
 	auto_detach_enabled = -1;
+	backend_capture_count = backend_lock_depth = attach_error = release_error = 0;
 	stage = open_error = invalid_calls = close_calls = 0;
 	polls = busy_polls = busy_mode = short_stage = error_stage = pipe_stage = bad_csw = 0;
 	read_calls = detach_calls = unref_calls = private_frees = free_before_detach = 0;
@@ -187,32 +189,99 @@ static int fake_kernel(libusb_device_handle *handle, int interface) {
 	return check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : kernel_active;
 }
 
+/* Compile the real Darwin auto-claim wrapper with deterministic backend calls.
+ * This covers capture ownership without IOKit or physical USB access. */
+struct pentax_backend_device { int lock; };
+struct pentax_backend_handle {
+	struct pentax_backend_device *dev;
+	int auto_detach_kernel_driver;
+};
+static struct pentax_backend_device backend_device;
+static struct pentax_backend_handle backend_handle;
+static int darwin_kernel_driver_active(struct pentax_backend_handle *handle, uint8_t interface) {
+	(void)handle; (void)interface;
+	return kernel_active;
+}
+static int darwin_detach_kernel_driver_locked(struct pentax_backend_handle *handle, uint8_t interface) {
+	(void)handle;
+	int rc = fake_detach_kernel((libusb_device_handle *)&token, interface);
+	if (rc == LIBUSB_SUCCESS) {
+		backend_capture_count++;
+	}
+	return rc;
+}
+static int darwin_attach_kernel_driver_locked(struct pentax_backend_handle *handle, uint8_t interface) {
+	(void)handle;
+	backend_capture_count--;
+	return fake_attach_kernel((libusb_device_handle *)&token, interface);
+}
+static int darwin_claim_interface(struct pentax_backend_handle *handle, uint8_t interface) {
+	(void)handle; (void)interface;
+	return claim_error;
+}
+#define libusb_device_handle pentax_backend_handle
+#define darwin_cached_device pentax_backend_device
+#define DARWIN_CACHED_DEVICE(dev) (dev)
+#define REQUIRES(...)
+#define usbi_mutex_lock(lock) ((void)(lock), (void)++backend_lock_depth)
+#define usbi_mutex_unlock(lock) ((void)(lock), (void)--backend_lock_depth)
+#define usbi_handle_ctx(handle) ((void *)(handle))
+#define usbi_info(...) ((void)0)
+#define usbi_err(...) ((void)0)
+#include "pentax_darwin_claim.inc"
+#undef usbi_err
+#undef usbi_info
+#undef usbi_handle_ctx
+#undef usbi_mutex_unlock
+#undef usbi_mutex_lock
+#undef REQUIRES
+#undef DARWIN_CACHED_DEVICE
+#undef darwin_cached_device
+#undef libusb_device_handle
+
 static int fake_claim(libusb_device_handle *handle, int interface) {
-	(void)interface;
 	event('C');
 	interface_claims++;
-	return check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : claim_error;
+	if (check_handle(handle)) {
+		return LIBUSB_ERROR_NO_DEVICE;
+	}
+	backend_handle.dev = &backend_device;
+	backend_handle.auto_detach_kernel_driver = auto_detach_enabled == 1;
+	return darwin_capture_claim_interface(&backend_handle, interface);
 }
 
 static int fake_detach_kernel(libusb_device_handle *handle, int interface) {
 	(void)interface;
 	kernel_detaches++;
 	event('T');
-	return check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : detach_error;
+	int rc = check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : detach_error;
+	if (rc == LIBUSB_SUCCESS) {
+		kernel_active = 0;
+	}
+	return rc;
 }
 
 static int fake_attach_kernel(libusb_device_handle *handle, int interface) {
 	(void)interface;
 	kernel_attaches++;
 	event('R');
-	return check_handle(handle);
+	int rc = check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : attach_error;
+	if (rc == LIBUSB_SUCCESS) {
+		kernel_active = 1;
+	}
+	return rc;
 }
 
 static int fake_release(libusb_device_handle *handle, int interface) {
 	(void)interface;
 	interface_releases++;
 	event('U');
-	return check_handle(handle);
+	int rc = check_handle(handle) ? LIBUSB_ERROR_NO_DEVICE : release_error;
+	if (rc == LIBUSB_SUCCESS && auto_detach_enabled == 1 && backend_capture_count > 0) {
+		/* Darwin release reports success even when automatic reattachment fails. */
+		(void)darwin_attach_kernel_driver_locked(&backend_handle, interface);
+	}
+	return rc;
 }
 
 static int fake_control(libusb_device_handle *handle, uint8_t rt, uint8_t rq, uint16_t v, uint16_t ix, unsigned char *data, uint16_t n, unsigned int timeout) {
@@ -1269,13 +1338,19 @@ static void test_kernel_reattach_after_claim_failure(void) {
 	bool opened = pentax_open(device);
 	ASSERT_TRUE(!opened);
 	ASSERT_TRUE(private_state.handle == NULL);
-	ASSERT_EQ_INT(0, auto_detach_enabled);
+	ASSERT_EQ_INT(1, auto_detach_enabled);
 	ASSERT_EQ_INT(1, kernel_detaches);
 	ASSERT_EQ_INT(1, interface_claims);
 	ASSERT_EQ_INT(0, interface_releases);
 	ASSERT_EQ_INT(1, kernel_attaches);
 	ASSERT_EQ_INT(1, close_calls);
-	ASSERT_TRUE(strstr(trace, "CRX") != NULL);
+	ASSERT_TRUE(strstr(trace, "CTRX") != NULL);
+	ASSERT_TRUE(private_state.usb_cleanup_failed);
+	claim_error = 0;
+	ASSERT_TRUE(!pentax_open(device));
+	ASSERT_EQ_INT(1, interface_claims);
+	ASSERT_EQ_INT(1, kernel_attaches);
+	ASSERT_EQ_INT(0, backend_capture_count);
 	ASSERT_EQ_INT(0, invalid_calls);
 }
 
@@ -1288,28 +1363,98 @@ static void test_kernel_release_and_reattach_after_close(void) {
 		pentax_close(device);
 	}
 	ASSERT_TRUE(opened && private_state.handle == NULL);
-	ASSERT_EQ_INT(0, auto_detach_enabled);
+	ASSERT_EQ_INT(1, auto_detach_enabled);
 	ASSERT_EQ_INT(1, kernel_detaches);
 	ASSERT_EQ_INT(1, interface_claims);
 	ASSERT_EQ_INT(1, interface_releases);
 	ASSERT_EQ_INT(1, kernel_attaches);
 	ASSERT_EQ_INT(1, close_calls);
-	ASSERT_TRUE(strstr(trace, "URX") != NULL);
+	ASSERT_TRUE(strstr(trace, "URKX") != NULL);
 	ASSERT_EQ_INT(0, invalid_calls);
 }
 
-static void test_kernel_detach_failure_avoids_claim(void) {
+static void test_kernel_detach_failure_no_unowned_restore(void) {
 	indigo_device *device = prepare(false);
 	private_state.handle = NULL;
 	kernel_active = 1;
 	detach_error = LIBUSB_ERROR_ACCESS;
+	claim_error = LIBUSB_ERROR_BUSY;
 	bool opened = pentax_open(device);
 	ASSERT_TRUE(!opened && private_state.handle == NULL);
 	ASSERT_EQ_INT(1, kernel_detaches);
-	ASSERT_EQ_INT(0, interface_claims);
+	ASSERT_EQ_INT(1, interface_claims);
 	ASSERT_EQ_INT(0, interface_releases);
 	ASSERT_EQ_INT(0, kernel_attaches);
 	ASSERT_EQ_INT(1, close_calls);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_darwin_auto_claim_failure_rollback(void) {
+	reset_usb();
+	backend_handle.dev = &backend_device;
+	backend_handle.auto_detach_kernel_driver = 1;
+	kernel_active = 1;
+	claim_error = LIBUSB_ERROR_BUSY;
+	int result = darwin_capture_claim_interface(&backend_handle, 0);
+	ASSERT_EQ_INT(LIBUSB_ERROR_BUSY, result);
+	ASSERT_EQ_INT(1, kernel_detaches);
+	ASSERT_EQ_INT(1, kernel_attaches);
+	ASSERT_EQ_INT(0, backend_capture_count);
+	ASSERT_EQ_INT(0, backend_lock_depth);
+}
+static void test_darwin_auto_claim_without_kernel_binding(void) {
+	reset_usb();
+	backend_handle.dev = &backend_device;
+	backend_handle.auto_detach_kernel_driver = 1;
+	claim_error = LIBUSB_ERROR_BUSY;
+	int result = darwin_capture_claim_interface(&backend_handle, 0);
+	ASSERT_EQ_INT(LIBUSB_ERROR_BUSY, result);
+	ASSERT_EQ_INT(0, kernel_detaches);
+	ASSERT_EQ_INT(0, kernel_attaches);
+	ASSERT_EQ_INT(0, backend_capture_count);
+	ASSERT_EQ_INT(0, backend_lock_depth);
+}
+static void test_darwin_auto_claim_success_keeps_capture(void) {
+	reset_usb();
+	backend_handle.dev = &backend_device;
+	backend_handle.auto_detach_kernel_driver = 1;
+	kernel_active = 1;
+	int result = darwin_capture_claim_interface(&backend_handle, 0);
+	ASSERT_EQ_INT(LIBUSB_SUCCESS, result);
+	ASSERT_EQ_INT(1, kernel_detaches);
+	ASSERT_EQ_INT(0, kernel_attaches);
+	ASSERT_EQ_INT(1, backend_capture_count);
+	ASSERT_EQ_INT(0, backend_lock_depth);
+}
+
+static void test_usb_release_failure_blocks_retry(void) {
+	indigo_device *device = prepare(false);
+	private_state.handle = NULL;
+	kernel_active = 1;
+	ASSERT_TRUE(pentax_open(device));
+	release_error = LIBUSB_ERROR_IO;
+	pentax_close(device);
+	ASSERT_TRUE(private_state.handle == NULL && private_state.usb_cleanup_failed);
+	ASSERT_EQ_INT(1, interface_releases);
+	ASSERT_EQ_INT(0, kernel_attaches);
+	ASSERT_TRUE(!pentax_open(device));
+	ASSERT_EQ_INT(1, interface_claims);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+static void test_usb_suppressed_reattach_failure_blocks_retry(void) {
+	indigo_device *device = prepare(false);
+	private_state.handle = NULL;
+	kernel_active = 1;
+	ASSERT_TRUE(pentax_open(device));
+	attach_error = LIBUSB_ERROR_IO;
+	pentax_close(device);
+	ASSERT_TRUE(private_state.handle == NULL && private_state.usb_cleanup_failed);
+	ASSERT_EQ_INT(1, interface_releases);
+	ASSERT_EQ_INT(1, kernel_attaches);
+	ASSERT_EQ_INT(0, backend_capture_count);
+	ASSERT_TRUE(!pentax_open(device));
+	ASSERT_EQ_INT(1, interface_claims);
+	ASSERT_EQ_INT(1, kernel_attaches);
 	ASSERT_EQ_INT(0, invalid_calls);
 }
 
@@ -1348,7 +1493,12 @@ int main(int argc, char **argv) {
 		{ "public upload output failure cross recovery", test_public_upload_failure_cross_recovery },
 		{ "USB claim failure reattaches kernel driver", test_kernel_reattach_after_claim_failure },
 		{ "USB close releases and reattaches kernel driver", test_kernel_release_and_reattach_after_close },
-		{ "USB detach failure avoids claim", test_kernel_detach_failure_avoids_claim }
+		{ "USB detach failure does not restore unowned capture", test_kernel_detach_failure_no_unowned_restore },
+		{ "Darwin auto claim failure rolls back capture", test_darwin_auto_claim_failure_rollback },
+		{ "Darwin auto claim without kernel binding", test_darwin_auto_claim_without_kernel_binding },
+		{ "Darwin auto claim success retains capture", test_darwin_auto_claim_success_keeps_capture },
+		{ "USB release failure blocks retry", test_usb_release_failure_blocks_retry },
+		{ "USB suppressed reattach failure blocks retry", test_usb_suppressed_reattach_failure_blocks_retry }
 	};
 	indigo_start();
 	int result = indigo_run_tests("ccd_pentax_usb", tests, baseline ? 11 : (int)(sizeof(tests) / sizeof(*tests)));

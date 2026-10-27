@@ -158,8 +158,8 @@
 |  | 2026-10-02 20:56 | 3.0.0.39 | mac arm64 | MI G0-0300 | 1 / 1 | ✅ OK |
 | ccd_ogma | 2026-09-27 21:40 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_omegonpro | 2026-09-27 21:42 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
-| ccd_pentax | 2026-10-26 22:59 | 3.0.0.3 | mac arm64 | PENTAX K-m | 1 / 0 | ❌ Failed |
-|  | 2026-10-26 23:14 | 3.0.0.3 | mac arm64 | fake SDK | 31 / 31 | ✅ OK |
+| ccd_pentax | 2026-10-26 23:38 | 3.0.0.3 | mac arm64 | PENTAX K-m | 1 / 0 | ❌ Failed |
+|  | 2026-10-26 23:51 | 3.0.0.4 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_playerone | 2026-09-21 21:23 | 3.0.0.26 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
 |  | 2026-09-24 09:09 | 3.0.0.28 | linux arm64 | fake SDK | 50 / 50 | ✅ OK |
 |  | 2026-09-24 09:11 | 3.0.0.28 | linux arm64 | Mars-C II | 27 / 27 | ✅ OK |

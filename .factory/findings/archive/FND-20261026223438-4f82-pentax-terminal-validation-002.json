@@ -1,0 +1,24 @@
+{
+  "title": "Local Darwin libusb target ignores patched backend source",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261026223438-4f82-pentax-terminal-validation",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Missing source prerequisites allow an existing normal build to keep the old libusb backend required by the restored auto-detach path.",
+  "evidence": "quality-review.md and verification.md; forced-newer source dry-run now selects rebuild/install.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task verification.md, quality-review.md and security.md; 36/36 fake USB and ASan/UBSan tests, baseline rollback failure reproduced, normal build dependency dry-run verified. Physical device restoration remains unverified.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261026223438-4f82-pentax-terminal-validation-002"
+}

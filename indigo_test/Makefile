@@ -3731,13 +3731,18 @@ test-audit-fixes-sanitize: check-lib $(UNIT_BUILD)/test_indigocat_corrections_sa
 	UBSAN_OPTIONS=halt_on_error=1 $(INTEGRATION_BUILD)/test_agent_guider_cleanup_sanitize
 
 # Pentax transport tests compile the production implementation with fake USB/time.
+PENTAX_DARWIN_SOURCE = ../indigo_libs/externals/libusb/libusb/os/darwin_usb.c
+PENTAX_DARWIN_CLAIM = $(INTEGRATION_BUILD)/pentax_darwin_claim.inc
+$(PENTAX_DARWIN_CLAIM): $(PENTAX_DARWIN_SOURCE) Makefile | $(INTEGRATION_BUILD)
+	python3 -c 'from pathlib import Path; s = Path("$(PENTAX_DARWIN_SOURCE)").read_text(); start = s.index("static int darwin_capture_claim_interface("); end = s.index("\nstatic int darwin_capture_release_interface(", start); Path("$@").write_text(s[start:end])'
+
 PENTAX_SANITIZE_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
 PENTAX_SANITIZE_LDFLAGS = $(filter-out -arch arm64 x86_64,$(FRAMEWORK_TEST_LDFLAGS)) $(SANITIZE_ARCH) -fsanitize=address,undefined
-$(INTEGRATION_BUILD)/test_ccd_pentax_usb: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS) -ljpeg
+$(INTEGRATION_BUILD)/test_ccd_pentax_usb: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile $(PENTAX_DARWIN_CLAIM) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -I$(INTEGRATION_BUILD) $< -o $@ $(FRAMEWORK_TEST_LDFLAGS) -ljpeg
 
-$(INTEGRATION_BUILD)/test_ccd_pentax_usb_sanitize: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile | $(INTEGRATION_BUILD)
-	$(CC) $(PENTAX_SANITIZE_CFLAGS) $< -o $@ $(PENTAX_SANITIZE_LDFLAGS) -ljpeg
+$(INTEGRATION_BUILD)/test_ccd_pentax_usb_sanitize: integration/test_ccd_pentax_usb.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.c ../indigo_drivers/ccd_pentax/indigo_ccd_pentax.h test_runner.h Makefile $(PENTAX_DARWIN_CLAIM) | $(INTEGRATION_BUILD)
+	$(CC) $(PENTAX_SANITIZE_CFLAGS) -I$(INTEGRATION_BUILD) $< -o $@ $(PENTAX_SANITIZE_LDFLAGS) -ljpeg
 
 # Pentax hardware acceptance remains opt-in and uses one short battery-conscious session.
 .PHONY: test-ccd-pentax-hw

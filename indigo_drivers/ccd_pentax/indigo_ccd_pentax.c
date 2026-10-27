@@ -26,7 +26,7 @@
  \file indigo_ccd_pentax.c
  */
 
-#define DRIVER_VERSION 0x03000003
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME "indigo_ccd_pentax"
 
 #include <stdlib.h>
@@ -252,7 +252,7 @@ static struct {
 typedef struct {
 	libusb_device *dev;
 	libusb_device_handle *handle;
-	bool interface_claimed, kernel_detached, usb_cleanup_failed;
+	bool interface_claimed, kernel_was_active, usb_cleanup_failed;
 	uint8_t lun;
 	uint8_t endpoint_in;
 	uint8_t endpoint_out;
@@ -982,24 +982,26 @@ static void pentax_release_usb(indigo_device *device) {
 	if (PRIVATE_DATA->interface_claimed) {
 		int rc = libusb_release_interface(handle, 0);
 		if (rc != LIBUSB_SUCCESS && rc != LIBUSB_ERROR_NO_DEVICE) {
+			PRIVATE_DATA->usb_cleanup_failed = true;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_release_interface: %s (%d)", libusb_strerror((enum libusb_error)rc), rc);
+		} else if (rc == LIBUSB_SUCCESS && PRIVATE_DATA->kernel_was_active) {
+			/* libusb can report release success even if automatic reattachment failed. */
+			int active = libusb_kernel_driver_active(handle, 0);
+			if (active != 1 && active != LIBUSB_ERROR_NO_DEVICE) {
+				PRIVATE_DATA->usb_cleanup_failed = true;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "System USB driver restoration could not be confirmed (%d)", active);
+			}
 		}
 		PRIVATE_DATA->interface_claimed = false;
 	}
-	if (PRIVATE_DATA->kernel_detached) {
-		int rc = libusb_attach_kernel_driver(handle, 0);
-		PRIVATE_DATA->usb_cleanup_failed = rc != LIBUSB_SUCCESS && rc != LIBUSB_ERROR_NO_DEVICE;
-		if (PRIVATE_DATA->usb_cleanup_failed) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to restore system USB driver: %s (%d)", libusb_strerror((enum libusb_error)rc), rc);
-		}
-		PRIVATE_DATA->kernel_detached = false;
-	}
+	PRIVATE_DATA->kernel_was_active = false;
 	libusb_close(handle);
 	PRIVATE_DATA->handle = NULL;
 }
 
 static bool pentax_open(indigo_device *device) {
 	if (PRIVATE_DATA->usb_cleanup_failed) {
+		indigo_send_message(device, ALERT_PROPERTY, "Restart the driver after a USB claim or cleanup failure");
 		return false;
 	}
 	int rc = 0;
@@ -1012,22 +1014,18 @@ static bool pentax_open(indigo_device *device) {
 		return false;
 	}
 	libusb_device_handle *handle = PRIVATE_DATA->handle;
-	rc = libusb_set_auto_detach_kernel_driver(handle, 0);
-	if (rc != LIBUSB_SUCCESS && rc != LIBUSB_ERROR_NOT_SUPPORTED) {
+	rc = libusb_set_auto_detach_kernel_driver(handle, 1);
+	if (rc != LIBUSB_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_set_auto_detach_kernel_driver: %s (%d)", libusb_strerror((enum libusb_error)rc), rc);
 		pentax_release_usb(device);
 		return false;
 	}
 	rc = libusb_kernel_driver_active(handle, 0);
+	PRIVATE_DATA->kernel_was_active = rc == 1;
 	if (rc == 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Kernel driver not used");
 	} else if (rc == 1) {
-		rc = libusb_detach_kernel_driver(handle, 0);
-		if (rc != LIBUSB_SUCCESS) {
-			pentax_release_usb(device);
-			return false;
-		}
-		PRIVATE_DATA->kernel_detached = true;
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Kernel driver used");
 	} else if (rc == LIBUSB_ERROR_NOT_SUPPORTED) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Kernel driver not supported");
 	} else if (rc < 0) {
@@ -1037,8 +1035,10 @@ static bool pentax_open(indigo_device *device) {
 	rc = libusb_claim_interface(handle, 0);
 	if (rc != LIBUSB_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_claim_interface: %s (%d)", libusb_strerror((enum libusb_error)rc), rc);
+		/* The public claim result does not expose automatic rollback failures. */
+		PRIVATE_DATA->usb_cleanup_failed = true;
 		pentax_release_usb(device);
-		indigo_send_message(device, ALERT_PROPERTY, "Failed to claim camera USB interface; check other applications and system USB access");
+		indigo_send_message(device, ALERT_PROPERTY, "Failed to claim camera USB interface; check USB access and restart the driver before retrying");
 		return false;
 	}
 	PRIVATE_DATA->interface_claimed = true;
