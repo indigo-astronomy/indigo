@@ -29,7 +29,7 @@ OPTIONAL_POLICY_DOCS = (
     ".factory/routines/concurrent-tasks.md",
     ".factory/routines/task-archive.md",
     ".factory/routines/process-checks.md", ".factory/process-policy.json",
-    "docs/decisions/README.md",
+    "indigo_docs/decisions/README.md",
     ".factory/routines/template-updates.md", ".factory/template-lock.json",
 )
 REQUIRED_TASK_DOCS = ("brief.md", "specification.md", "plan.md", "handoff.md")

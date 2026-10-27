@@ -51,4 +51,4 @@ Execution state is per task (.factory/tasks/<id>/state.json); .factory/state.jso
 Xcode projects must not reference .factory or any descendant through groups, folder/file references or build membership. Factory lifecycle changes must not modify project.pbxproj. Application build/source objects and the actual Factory records stay independent.
 
 ## Documentation
-New project documents are English. Keep current facts here, task execution evidence under tasks/, canonical findings under findings/, and durable Factory decisions under docs/decisions/. Product/developer documentation remains under indigo_docs/. No template project task history or findings archive is imported.
+New project documents are English. Keep current facts here, task execution evidence under tasks/, canonical findings under findings/, and durable Factory decisions under indigo_docs/decisions/. Product/developer documentation remains under indigo_docs/. This project has no docs/ directory: indigo_docs/ takes its place everywhere, including template paths that mention docs/. No template project task history or findings archive is imported.

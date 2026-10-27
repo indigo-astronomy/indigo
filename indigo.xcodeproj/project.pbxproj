@@ -5946,6 +5946,7 @@
 		D2D6E33C60E4FE67E85DA347 /* test_driver_loader_fixture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_driver_loader_fixture.c; sourceTree = "<group>"; };
 		D35C489943CE4AA80F095E70 /* test_decision_index.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_decision_index.py; sourceTree = "<group>"; };
 		D56DA963063B2BAA9C4134BE /* ADR-002-factory-record-upgrade.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-002-factory-record-upgrade.md"; sourceTree = "<group>"; };
+		D56DA963063B2BAA9C4134BF /* ADR-003-exclude-factory-from-xcode.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-003-exclude-factory-from-xcode.md"; sourceTree = "<group>"; };
 		D7CE00EAEFC3F94DA3E0BDAB /* test_ftdi_build.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_ftdi_build.py; sourceTree = "<group>"; };
 		DCCFA6E358C148A8B5E8ED16 /* rpio_sysfs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rpio_sysfs.h; sourceTree = "<group>"; };
 		DF10000000000000000001 /* dragonfly_shared.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dragonfly_shared.h; sourceTree = "<group>"; };
@@ -6203,16 +6204,9 @@
 				5AB94EEA95AE9510EE9282B0 /* README.md */,
 				1FFB7311819711838181A2E5 /* template.md */,
 				D56DA963063B2BAA9C4134BE /* ADR-002-factory-record-upgrade.md */,
+				D56DA963063B2BAA9C4134BF /* ADR-003-exclude-factory-from-xcode.md */,
 			);
 			path = decisions;
-			sourceTree = "<group>";
-		};
-		362BE974085CCDDF6B2DE0F4 /* docs */ = {
-			isa = PBXGroup;
-			children = (
-				0A7925AB3B3F5D199EABF708 /* decisions */,
-			);
-			path = docs;
 			sourceTree = "<group>";
 		};
 		514C82BA37D5A234281ECD52 /* buildsystem */ = {
@@ -6497,6 +6491,7 @@
 				594C6FBC24DF2900000E4BF0 /* INDIGO_SERVER_AND_DRIVERS_GUIDE.md */,
 				594C6FBB24DF2900000E4BF0 /* MAKEFILES.md */,
 				594C6FBF24DF2901000E4BF0 /* PROPERTY_MANIPULATION.md */,
+				0A7925AB3B3F5D199EABF708 /* decisions */,
 				5912C80D23D2447400A48B75 /* DEVELOPMENT.md */,
 				5912C80E23D2447400A48B75 /* PROTOCOLS.md */,
 				5912C80A23D2447400A48B75 /* PROPERTIES.md */,
@@ -7184,7 +7179,6 @@
 			isa = PBXGroup;
 			children = (
 				401929CFE799410C811A4C99 /* GEMINI.md */,
-				362BE974085CCDDF6B2DE0F4 /* docs */,
 				59D381C91D96A4E800E87393 /* Makefile */,
 				59F3D85E21BC074400800970 /* Makefile.inc */,
 				59D967ED21A2AF770069A64C /* Makefile.drvs */,

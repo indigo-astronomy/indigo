@@ -79,7 +79,7 @@
     "CLAUDE.md": "CLAUDE.md",
     "GEMINI.md": "GEMINI.md",
     "docs/AGENTS.md": "indigo_docs/AGENTS.md",
-    "docs/decisions/template.md": "docs/decisions/template.md",
+    "docs/decisions/template.md": "indigo_docs/decisions/template.md",
     "src/AGENTS.md": "indigo_libs/AGENTS.md",
     "tests/AGENTS.md": "indigo_test/AGENTS.md",
     "tests/unit/test_concurrent_tasks.py": "indigo_test/factory/test_concurrent_tasks.py",
