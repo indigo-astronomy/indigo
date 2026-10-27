@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000005
+#define DRIVER_VERSION 0x03000007
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -387,30 +387,19 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 	indigo_solver_quad *image_quads = NULL;
 	indigo_solver_quad_match *quad_matches = NULL;
 	indigo_solver_star_match *star_matches = NULL;
-	// 1. only INDIGO RAW images are solved natively
-	uint32_t signature = 0;
-	if (task->size >= (long)sizeof(signature)) {
-		memcpy(&signature, task->image, sizeof(signature));
-	}
-	if (signature != INDIGO_RAW_MONO8 && signature != INDIGO_RAW_MONO16 && signature != INDIGO_RAW_RGB24 && signature != INDIGO_RAW_RGB48) {
-		message = "Only INDIGO RAW images are supported";
+	// 1. the input image as RAW MONO16: INDIGO RAW as it is, FITS, JPEG and camera raw files converted
+	image = indigo_solver_load_image(task->image, task->size, &message);
+	if (image == NULL) {
 		goto cleanup;
 	}
-	if (task->size < (long)sizeof(indigo_raw_header)) {
-		message = "Truncated RAW image";
-		goto cleanup;
-	}
-	image = indigo_safe_malloc_copy(task->size, task->image);
 	int full_width = image->width;
 	int full_height = image->height;
 	int bin = (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
 	if (bin < 1) {
 		bin = 1;
 	}
-	if (bin > 1 && signature == INDIGO_RAW_MONO16) {
+	if (bin > 1) {
 		indigo_solver_bin_image(image, bin);
-	} else {
-		bin = 1;
 	}
 	int width = image->width;
 	int height = image->height;

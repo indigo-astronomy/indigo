@@ -22,14 +22,15 @@
 // related Imager Agent (or Guider Agent) capturing with the CCD simulators.
 //
 // Set 1, CCD Imager Simulator: the fixed Rosetta nebula frame (1600 x 1200, 8.44"/px) solved at full
-// resolution, downsampled by the agent, as a sub-frame, in JNow, with each index alone, with a wrong
-// scale hint and repeatedly. Camera binning is not covered: the simulator bins by taking every second
+// resolution, captured as FITS and as JPEG, downsampled by the agent, as a sub-frame, in JNow, with each
+// index alone, with a wrong scale hint and repeatedly. Camera binning is not covered: the simulator bins by taking every second
 // pixel instead of summing, which turns the stars into single pixel spikes no centroid can place.
 //
 // Set 2, CCD Guider Simulator: the catalogue star field (4° over the frame height) rendered for 120
 // different combinations of SIMULATION_SETUP (RA, Dec, rotation, side of pier, frame size, magnitude
 // limit, epoch, noise, gradient, hot pixels, columns and rows), each solved and compared with what the
-// simulator rendered; a few of them through the Guider Agent instead of the Imager Agent.
+// simulator rendered; a few of them through the Guider Agent instead of the Imager Agent, a few captured
+// as FITS instead of RAW.
 //
 // Opt-in: the 2° and 5° indexes (354 MB and 174 MB) are needed in the persistent cache
 // $INDIGO_CACHE_BASE/solver, by default ~/.indigo/solver of the real home. An index missing there is
@@ -83,7 +84,7 @@
 #define SCALE_TOLERANCE 0.02
 #define ANGLE_TOLERANCE 0.2
 
-typedef enum { ROSETTA, SWEEP, SWEEP_GUIDER_AGENT } case_kind;
+typedef enum { ROSETTA, SWEEP, SWEEP_FITS, SWEEP_GUIDER_AGENT } case_kind;
 
 typedef struct {
 	double ra, dec, rotation, magnitude, noise, gradient;
@@ -413,9 +414,9 @@ static bool setup(void) {
 		REQUIRE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, IMAGER_CAMERA, true, INDIGO_OK_STATE, 20));
 		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
 		REQUIRE(relate(SOLVER, IMAGER));
-	} else if (current_kind == SWEEP) {
+	} else if (current_kind == SWEEP || current_kind == SWEEP_FITS) {
 		REQUIRE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, GUIDER_CAMERA, true, INDIGO_OK_STATE, 20));
-		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
+		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, current_kind == SWEEP_FITS ? CCD_IMAGE_FORMAT_FITS_ITEM_NAME : CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
 		REQUIRE(relate(SOLVER, IMAGER));
 	} else {
 		REQUIRE(change_switch_and_wait(GUIDER, FILTER_CCD_LIST_PROPERTY_NAME, GUIDER_CAMERA, true, INDIGO_OK_STATE, 20));
@@ -455,6 +456,19 @@ static void rosetta_full_resolution(void) {
 	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
 	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE, ROSETTA_ANGLE, ROSETTA_WIDTH, ROSETTA_HEIGHT, 2000));
 	ASSERT_TRUE(wcs(AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 2 || wcs(AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
+}
+
+// The frame captured as FITS and as JPEG by the Imager Agent is converted by the solver and solved like the RAW one
+static void rosetta_fits(void) {
+	ASSERT_TRUE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, true, INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
+	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE, ROSETTA_ANGLE, ROSETTA_WIDTH, ROSETTA_HEIGHT, 2000));
+}
+
+static void rosetta_jpeg(void) {
+	ASSERT_TRUE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME, true, INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
+	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE, ROSETTA_ANGLE, ROSETTA_WIDTH, ROSETTA_HEIGHT, 2000));
 }
 
 static void rosetta_downsampled(void) {
@@ -525,6 +539,7 @@ static const int hot[][3] = { { 0, 0, 0 }, { 50, 0, 0 }, { 200, 600, 800 }, { 50
 
 #define SWEEP_COUNT 120
 #define GUIDER_AGENT_EVERY 20
+#define FITS_EVERY 15
 
 // INDIGO_SOLVER_SETUP="ra,dec,rotation,pier,width,height,magnitude,epoch,noise,gradient,hotpixels,hotcol,hotrow"
 // replaces the first combination, to reproduce one setup by hand with the case filter "guider 001"
@@ -560,6 +575,8 @@ static void sweep_case(void) {
 
 static indigo_test_case rosetta_tests[] = {
 	{ "rosetta full resolution", rosetta_full_resolution },
+	{ "rosetta fits", rosetta_fits },
+	{ "rosetta jpeg", rosetta_jpeg },
 	{ "rosetta downsampled", rosetta_downsampled },
 	{ "rosetta subframe", rosetta_subframe },
 	{ "rosetta jnow", rosetta_jnow },
@@ -583,11 +600,12 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < SWEEP_COUNT; i++) {
 		sweep_combination c = combination(i);
 		bool guider_agent = (i % GUIDER_AGENT_EVERY) == GUIDER_AGENT_EVERY - 1;
+		bool fits = !guider_agent && (i % FITS_EVERY) == FITS_EVERY / 2;
 		int n = (int)ARRAY_SIZE(rosetta_tests) + i;
-		snprintf(names[n], sizeof(names[n]), "guider %03d RA %.2f h Dec %+.1f rot %g pier %d %dx%d mag %.1f epoch %d noise %g grad %g hot %d/%d/%d%s", i + 1, c.ra, c.dec, c.rotation, c.pier, c.width, c.height, c.magnitude, c.epoch, c.noise, c.gradient, c.hotpixels, c.hotcol, c.hotrow, guider_agent ? " via guider agent" : "");
+		snprintf(names[n], sizeof(names[n]), "guider %03d RA %.2f h Dec %+.1f rot %g pier %d %dx%d mag %.1f epoch %d noise %g grad %g hot %d/%d/%d%s", i + 1, c.ra, c.dec, c.rotation, c.pier, c.width, c.height, c.magnitude, c.epoch, c.noise, c.gradient, c.hotpixels, c.hotcol, c.hotrow, guider_agent ? " via guider agent" : fits ? " as fits" : "");
 		tests[n].name = names[n];
 		tests[n].function = sweep_case;
-		kinds[n] = guider_agent ? SWEEP_GUIDER_AGENT : SWEEP;
+		kinds[n] = guider_agent ? SWEEP_GUIDER_AGENT : fits ? SWEEP_FITS : SWEEP;
 	}
 	int selected = 0;
 	for (int i = 0; i < count; i++) {

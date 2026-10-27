@@ -34,14 +34,22 @@
 
 #define INDIGO_SOLVER_INDEX_FOV_COUNT	5
 
-/** Field of view of the available index scales in degrees, ascending.
+/** Quad scales of the available indexes in degrees, ascending; an index of scale n° holds quads of 0.1 n° to 0.8 n°,
+ not a field of view.
  */
 extern const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT];
 
+/** Any supported input image as a newly allocated INDIGO RAW MONO16 image: INDIGO RAW (MONO16 as it is, MONO8 spread
+ over 16 bits, RGB24/RGB48 averaged to mono), FITS (BITPIX 8, 16, 32, -32, -64 with BZERO/BSCALE, NAXIS 2 or 3 with the
+ planes averaged), JPEG (components averaged) and camera raw files read by libraw; NULL with the reason in message.
+ */
+extern indigo_raw_header *indigo_solver_load_image(const void *data, long size, const char **message);
 /** Averages bin x bin pixels in place; only INDIGO_RAW_MONO16 images are binned, others are left untouched.
  */
 extern void indigo_solver_bin_image(indigo_raw_header *image, int bin);
-/** Detects stars in the image, returns their count.
+/** Detects stars in the image, returns their count. Mono frames are detected on a filtered copy: hot pixels,
+ columns and rows replaced by their surroundings and a gaussian blur matched to the star images applied, so faint
+ stars stand out of the pixel noise; other frame types are detected as they are.
  */
 extern int indigo_solver_image_stars(indigo_raw_header *image, indigo_solver_star *stars, int max_star_count);
 /** Picks the index for the expected image size on the sky (radians) among the given FOVs: the largest FOV not above

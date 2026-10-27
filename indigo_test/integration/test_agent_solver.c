@@ -33,7 +33,10 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#include <jpeglib.h>
+
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_fits.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_platesolver.h>
 #include <indigo_drivers/agent_solver/indigo_agent_solver.h>
@@ -438,15 +441,184 @@ static void solve_without_selected_index_fails(void) {
 	ASSERT_TRUE(message_seen("No index files are selected"));
 }
 
-// Other image formats are refused instead of being misread as RAW
+// The solution of the rendered frame, whatever format it arrived in
+static bool solution_matches_rendered_frame(void) {
+	REQUIRE(state(AGENT_PLATESOLVER_WCS_PROPERTY_NAME) == INDIGO_OK_STATE);
+	double ra = number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_RA_ITEM_NAME) * 15 * DEG_TO_RAD;
+	double dec = number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_DEC_ITEM_NAME) * DEG_TO_RAD;
+	REQUIRE(indigo_angular_distance(ra, dec, image_ra, image_dec) < 10 * ARCSEC_TO_RAD);
+	double scale = number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_SCALE_ITEM_NAME);
+	REQUIRE(fabs(scale / (IMAGE_SCALE * RAD_TO_DEG) - 1) < 0.003);
+	REQUIRE(fabs(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_WIDTH_ITEM_NAME) - IMAGE_WIDTH * scale) < 1e-6);
+	REQUIRE(fabs(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_HEIGHT_ITEM_NAME) - IMAGE_HEIGHT * scale) < 1e-6);
+	REQUIRE(fabs(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_ANGLE_ITEM_NAME) - IMAGE_ANGLE * RAD_TO_DEG) < 0.2);
+	REQUIRE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_PARITY_ITEM_NAME) == -1);
+	return true;
+}
+
+static bool prepare_full_resolution(void) {
+	REQUIRE(select_use_index());
+	REQUIRE(indigo_change_number_property_1(&observer, SOLVER, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_EPOCH_ITEM_NAME, 2000) == INDIGO_OK);
+	REQUIRE(indigo_change_number_property_1(&observer, SOLVER, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM_NAME, 1) == INDIGO_OK);
+	return true;
+}
+
+// A FITS upload written by the INDIGO FITS writer (BITPIX 16, BZERO 32768) is solved like the RAW frame
+static void solve_fits_image(void) {
+	ASSERT_TRUE(prepare_full_resolution());
+	long size;
+	indigo_raw_header *image = render_image(&size);
+	ASSERT_TRUE(image != NULL);
+	char *fits = NULL;
+	int fits_size = 0;
+	ASSERT_TRUE(indigo_raw_to_fits((char *)image, (int)size, &fits, &fits_size, NULL) == INDIGO_OK);
+	free(image);
+	bool sent = solve_image(fits, fits_size, ".fits");
+	free(fits);
+	ASSERT_TRUE(sent);
+	ASSERT_TRUE(solution_matches_rendered_frame());
+}
+
+// A floating point FITS (BITPIX -32, values in electrons scaled far beyond 16 bits) is mapped onto 16 bits and solved
+static void solve_float_fits_image(void) {
+	ASSERT_TRUE(prepare_full_resolution());
+	long size;
+	indigo_raw_header *image = render_image(&size);
+	ASSERT_TRUE(image != NULL);
+	long pixels = IMAGE_WIDTH * IMAGE_HEIGHT;
+	long fits_size = ((2880 + pixels * 4 + 2879) / 2880) * 2880;
+	char *fits = malloc(fits_size);
+	memset(fits, ' ', fits_size);
+	const char *cards[] = { "SIMPLE  =                    T", "BITPIX  =                  -32", "NAXIS   =                    2", "NAXIS1  =", "NAXIS2  =", "BZERO   =                  0.0", "BSCALE  =                  1.0", "END" };
+	for (int i = 0; i < 8; i++) {
+		char card[81];
+		if (i == 3) {
+			snprintf(card, sizeof(card), "NAXIS1  = %20d", IMAGE_WIDTH);
+		} else if (i == 4) {
+			snprintf(card, sizeof(card), "NAXIS2  = %20d", IMAGE_HEIGHT);
+		} else {
+			snprintf(card, sizeof(card), "%s", cards[i]);
+		}
+		memcpy(fits + i * 80, card, strlen(card));
+	}
+	uint16_t *in = (uint16_t *)(image + 1);
+	uint8_t *out = (uint8_t *)fits + 2880;
+	for (long i = 0; i < pixels; i++) {
+		float value = in[i] * 12.5f - 1000;
+		uint32_t bits;
+		memcpy(&bits, &value, sizeof(bits));
+		out[4 * i] = bits >> 24;
+		out[4 * i + 1] = bits >> 16;
+		out[4 * i + 2] = bits >> 8;
+		out[4 * i + 3] = bits;
+	}
+	free(image);
+	bool sent = solve_image(fits, fits_size, ".fits");
+	free(fits);
+	ASSERT_TRUE(sent);
+	ASSERT_TRUE(solution_matches_rendered_frame());
+}
+
+// An 8 bit mono RAW and a 16 bit RGB RAW are converted to 16 bit mono and solved
+static void solve_mono8_raw_image(void) {
+	ASSERT_TRUE(prepare_full_resolution());
+	long size;
+	indigo_raw_header *image = render_image(&size);
+	ASSERT_TRUE(image != NULL);
+	long pixels = IMAGE_WIDTH * IMAGE_HEIGHT;
+	indigo_raw_header *mono8 = calloc(1, sizeof(indigo_raw_header) + pixels);
+	*mono8 = *image;
+	mono8->signature = INDIGO_RAW_MONO8;
+	for (long i = 0; i < pixels; i++) {
+		((uint8_t *)(mono8 + 1))[i] = ((uint16_t *)(image + 1))[i] >> 8;
+	}
+	free(image);
+	bool sent = solve_image(mono8, sizeof(indigo_raw_header) + pixels, ".raw");
+	free(mono8);
+	ASSERT_TRUE(sent);
+	ASSERT_TRUE(solution_matches_rendered_frame());
+}
+
+static void solve_rgb48_raw_image(void) {
+	ASSERT_TRUE(prepare_full_resolution());
+	long size;
+	indigo_raw_header *image = render_image(&size);
+	ASSERT_TRUE(image != NULL);
+	long pixels = IMAGE_WIDTH * IMAGE_HEIGHT;
+	indigo_raw_header *rgb = calloc(1, sizeof(indigo_raw_header) + pixels * 6);
+	*rgb = *image;
+	rgb->signature = INDIGO_RAW_RGB48;
+	uint16_t *in = (uint16_t *)(image + 1), *out = (uint16_t *)(rgb + 1);
+	for (long i = 0; i < pixels; i++) {
+		out[3 * i] = in[i] / 2;
+		out[3 * i + 1] = in[i];
+		out[3 * i + 2] = in[i] - in[i] / 2;
+	}
+	free(image);
+	bool sent = solve_image(rgb, sizeof(indigo_raw_header) + pixels * 6, ".raw");
+	free(rgb);
+	ASSERT_TRUE(sent);
+	ASSERT_TRUE(solution_matches_rendered_frame());
+}
+
+// A JPEG upload (8 bit grayscale, quality 90) is decoded and solved
+static void solve_jpeg_image(void) {
+	ASSERT_TRUE(prepare_full_resolution());
+	long size;
+	indigo_raw_header *image = render_image(&size);
+	ASSERT_TRUE(image != NULL);
+	uint8_t *gray = malloc(IMAGE_WIDTH * IMAGE_HEIGHT);
+	for (long i = 0; i < IMAGE_WIDTH * IMAGE_HEIGHT; i++) {
+		gray[i] = ((uint16_t *)(image + 1))[i] >> 8;
+	}
+	free(image);
+	struct jpeg_compress_struct cinfo;
+	struct jpeg_error_mgr jerr;
+	unsigned char *jpeg = NULL;
+	unsigned long jpeg_size = 0;
+	cinfo.err = jpeg_std_error(&jerr);
+	jpeg_create_compress(&cinfo);
+	jpeg_mem_dest(&cinfo, &jpeg, &jpeg_size);
+	cinfo.image_width = IMAGE_WIDTH;
+	cinfo.image_height = IMAGE_HEIGHT;
+	cinfo.input_components = 1;
+	cinfo.in_color_space = JCS_GRAYSCALE;
+	jpeg_set_defaults(&cinfo);
+	jpeg_set_quality(&cinfo, 90, TRUE);
+	jpeg_start_compress(&cinfo, TRUE);
+	while (cinfo.next_scanline < cinfo.image_height) {
+		JSAMPROW row = gray + (size_t)cinfo.next_scanline * IMAGE_WIDTH;
+		jpeg_write_scanlines(&cinfo, &row, 1);
+	}
+	jpeg_finish_compress(&cinfo);
+	jpeg_destroy_compress(&cinfo);
+	free(gray);
+	bool sent = solve_image(jpeg, (long)jpeg_size, ".jpeg");
+	free(jpeg);
+	ASSERT_TRUE(sent);
+	ASSERT_TRUE(solution_matches_rendered_frame());
+}
+
+// Data in no known format is refused, a FITS shorter than its header says is refused
 static void unsupported_image_rejected(void) {
 	ASSERT_TRUE(select_use_index());
-	char fits[2880];
+	char garbage[4096];
+	for (int i = 0; i < (int)sizeof(garbage); i++) {
+		garbage[i] = (char)(frand() * 256);
+	}
+	garbage[0] = 'X';
+	ASSERT_TRUE(solve_image(garbage, sizeof(garbage), ".bin"));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	ASSERT_TRUE(message_seen("Unsupported image format"));
+	char fits[2880 * 2];
 	memset(fits, ' ', sizeof(fits));
-	memcpy(fits, "SIMPLE  =                    T", 30);
+	const char *cards[] = { "SIMPLE  =                    T", "BITPIX  =                   16", "NAXIS   =                    2", "NAXIS1  =                  100", "NAXIS2  =                  100", "END" };
+	for (int i = 0; i < 6; i++) {
+		memcpy(fits + i * 80, cards[i], strlen(cards[i]));
+	}
 	ASSERT_TRUE(solve_image(fits, sizeof(fits), ".fits"));
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, state(AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
-	ASSERT_TRUE(message_seen("Only INDIGO RAW images are supported"));
+	ASSERT_TRUE(message_seen("Truncated FITS image"));
 }
 
 // Clearing an installed index deletes its file and withdraws it from the usable set
@@ -463,6 +635,11 @@ static indigo_test_case tests[] = {
 	{ "solve_raw_image", solve_raw_image },
 	{ "solve_downsampled_image", solve_downsampled_image },
 	{ "solve_without_selected_index_fails", solve_without_selected_index_fails },
+	{ "solve_fits_image", solve_fits_image },
+	{ "solve_float_fits_image", solve_float_fits_image },
+	{ "solve_mono8_raw_image", solve_mono8_raw_image },
+	{ "solve_rgb48_raw_image", solve_rgb48_raw_image },
+	{ "solve_jpeg_image", solve_jpeg_image },
 	{ "unsupported_image_rejected", unsupported_image_rejected },
 	{ "deselecting_index_removes_file", deselecting_index_removes_file },
 };
