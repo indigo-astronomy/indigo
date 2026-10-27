@@ -44,8 +44,8 @@ Use shared checks without additional human approval gates.
 
 class DecisionIndexTests(unittest.TestCase):
     def test_canonical_metadata_links_and_archive_exclusion(self):
-        files = {'docs/decisions/ADR-001-autonomy.md': TEXT,
-                 'docs/decisions/template.md': 'TODO',
+        files = {'indigo_docs/decisions/ADR-001-autonomy.md': TEXT,
+                 'indigo_docs/decisions/template.md': 'TODO',
                  '.factory/tasks/archive/old/ADR-002.md': 'not an input'}
         output = index.render(reversed(list(files)), files.__getitem__)
         self.assertIn('[ADR-001: Preserve autonomy &#124; across hosts](ADR-001-autonomy.md)', output)
@@ -57,11 +57,11 @@ class DecisionIndexTests(unittest.TestCase):
                      TEXT.replace('ADR-001:', 'ADR-002:'), TEXT.replace('- Decision owner: Project owner', ''),
                      TEXT + '\n- Status: accepted\n'):
             with self.subTest(text=text), self.assertRaises(ValueError):
-                index.render(['docs/decisions/ADR-001-x.md'], lambda _: text)
+                index.render(['indigo_docs/decisions/ADR-001-x.md'], lambda _: text)
         with self.assertRaises(ValueError):
-            index.render(['docs/decisions/ADR-001-a.md', 'docs/decisions/ADR-001-b.md'], lambda _: TEXT)
+            index.render(['indigo_docs/decisions/ADR-001-a.md', 'indigo_docs/decisions/ADR-001-b.md'], lambda _: TEXT)
         with self.assertRaises(ValueError):
-            index.render(['docs/decisions/ADR-bad.md'], lambda _: TEXT)
+            index.render(['indigo_docs/decisions/ADR-bad.md'], lambda _: TEXT)
 
     def test_cli_stale_check_and_symlink_do_not_write(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -69,7 +69,7 @@ class DecisionIndexTests(unittest.TestCase):
             (root / '.factory/scripts').mkdir(parents=True)
             script = root / '.factory/scripts/decision_index.py'
             script.write_bytes(SCRIPT.read_bytes())
-            directory = root / 'docs/decisions'
+            directory = root / 'indigo_docs/decisions'
             directory.mkdir(parents=True)
             adr = directory / 'ADR-001-autonomy.md'
             adr.write_text(TEXT)

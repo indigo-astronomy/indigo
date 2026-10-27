@@ -2,12 +2,12 @@
 
 ## Decision navigation
 
-The canonical long-lived decisions remain ADRs in `docs/decisions/`, using `template.md` metadata. Name records
+The canonical long-lived decisions remain ADRs in `indigo_docs/decisions/`, using `template.md` metadata. Name records
 `ADR-NNN-short-title.md`; the heading ID must match, IDs must be unique, and status is `proposed`, `accepted` or
 `superseded`. Date is an ISO calendar date; owner and related task are explicit. Keep operational notes in task
 handoffs; promote durable choices to ADRs with a link to their source evidence. No approval is inferred from metadata.
 
-Run `python3 .factory/scripts/decision_index.py` after ADR changes. It generates `docs/decisions/README.md` with links,
+Run `python3 .factory/scripts/decision_index.py` after ADR changes. It generates `indigo_docs/decisions/README.md` with links,
 status, date, owner and related task, in numeric ID order. `--check` writes nothing and exits 1 for stale/missing output.
 Only immediate ADR files are read; templates and task/findings archives are never mined. Invalid metadata,
 symlink input/output or inputs over 1 MiB return 2 before writing. The index is navigation, never a second authority.

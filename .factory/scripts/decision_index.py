@@ -8,9 +8,9 @@ import sys
 from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[2]
-INDEX = 'docs/decisions/README.md'
+INDEX = 'indigo_docs/decisions/README.md'
 LIMIT = 1024 * 1024
-ADR = re.compile(r'docs/decisions/(ADR-[0-9]+)(?:-[A-Za-z0-9_-]+)?\.md')
+ADR = re.compile(r'indigo_docs/decisions/(ADR-[0-9]+)(?:-[A-Za-z0-9_-]+)?\.md')
 
 
 def cell(value):
@@ -22,7 +22,7 @@ def render(names, read):
     for name in sorted(names):
         match = ADR.fullmatch(name)
         if not match:
-            if name.startswith('docs/decisions/ADR-') and name.endswith('.md') and name.count('/') == 2:
+            if name.startswith('indigo_docs/decisions/ADR-') and name.endswith('.md') and name.count('/') == 2:
                 raise ValueError('invalid ADR filename: ' + name)
             continue
         text = read(name)
@@ -79,9 +79,9 @@ def main():
     parser.add_argument('--check', action='store_true', help='fail on missing/stale index, write nothing')
     args = parser.parse_args()
     try:
-        directory = ROOT / 'docs/decisions'
-        if directory.is_symlink() or not directory.is_dir() or (ROOT / 'docs').is_symlink():
-            raise ValueError('docs/decisions must be a real directory')
+        directory = ROOT / 'indigo_docs/decisions'
+        if directory.is_symlink() or not directory.is_dir() or (ROOT / 'indigo_docs').is_symlink():
+            raise ValueError('indigo_docs/decisions must be a real directory')
         names = [p.relative_to(ROOT).as_posix() for p in directory.iterdir()]
         expected = render(names, local_read)
         output = ROOT / INDEX

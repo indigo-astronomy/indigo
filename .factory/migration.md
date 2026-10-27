@@ -46,7 +46,7 @@ Record:
 Populate the repository-map table in .factory/project.md with concise current paths, evidence references and material unknowns. Keep the full discovery inventory, inspected/excluded paths and command results in the adoption task's migration report. Do not create empty src/ or tests/ directories when the project uses other paths. Attach applicable source/test rules to actual directories or merge them into existing scoped instructions; preserve their existing semantics. A template role's path examples must be updated to match the discovered layout.
 
 ## 4. Prepare the integration plan and collision table
-Use the migration-report template. For every target path record whether it exists, the proposed action, preserved requirements, validation, and rollback. Prioritize collisions in AGENTS.md, README.md, .gitignore, .factory/scripts/, docs/, and .factory/. Inventory the project's own scripts/ separately and preserve its commands.
+Use the migration-report template. For every target path record whether it exists, the proposed action, preserved requirements, validation, and rollback. Prioritize collisions in AGENTS.md, README.md, .gitignore, .factory/scripts/, indigo_docs/, and .factory/. Inventory the project's own scripts/ separately and preserve its commands.
 
 - Never copy the template wholesale into an existing repository or copy its .git directory, remote, task history, or active workflow state.
 - Retain the target's existing Git history, branch, remotes, README, licenses, and application layout.

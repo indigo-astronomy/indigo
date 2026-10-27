@@ -212,7 +212,7 @@ class ContextExportTests(unittest.TestCase):
 
     def test_portable_process_context_includes_only_selected_evidence(self):
         self.write('.factory/routines/process-checks.md', 'PORTABLE_PROCESS_GUIDANCE\n')
-        self.write('docs/decisions/README.md', 'DECISION_NAVIGATION\n')
+        self.write('indigo_docs/decisions/README.md', 'DECISION_NAVIGATION\n')
         self.write('.factory/process-policy.json', '{"marker":"BASELINE_POLICY"}\n')
         self.write('.factory/tasks/001-demo/process.json', '{"marker":"SELECTED_EVIDENCE"}\n')
         self.write('.factory/tasks/archive/old/process.json', 'ARCHIVED_EVIDENCE_SENTINEL\n')

@@ -2,7 +2,7 @@
 
 Use this protocol in any coding assistant or model host. The repository files are the durable project state; a provider's private memory or conversation is not the authoritative handoff.
 
-Read docs/decisions/README.md when present and follow relevant canonical ADR links before reopening a durable decision. For delivery, load [process-checks.md](routines/process-checks.md); inspect the applicable risk policy and task process evidence. These checks preserve existing owner authorization and autonomous routine implementation.
+Read indigo_docs/decisions/README.md when present and follow relevant canonical ADR links before reopening a durable decision. For delivery, load [process-checks.md](routines/process-checks.md); inspect the applicable risk policy and task process evidence. These checks preserve existing owner authorization and autonomous routine implementation.
 
 Follow AGENTS.md's persistent-context rule: read the current project snapshot and active task, and load linked historical evidence only when needed. Record this session's reports and history in the task, not shared procedures or project.md.
 

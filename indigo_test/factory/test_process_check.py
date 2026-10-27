@@ -50,7 +50,7 @@ class ProcessCheckTests(unittest.TestCase):
         self.base = self.commit()
         self.task = '001-example'
         self.directory = '.factory/tasks/' + self.task
-        self.data = {'version': 1, 'task': self.task, 'reviewed_revision': self.base, 'scope': ['app.py', '.factory/**', 'docs/decisions/**'],
+        self.data = {'version': 1, 'task': self.task, 'reviewed_revision': self.base, 'scope': ['app.py', '.factory/**', 'indigo_docs/decisions/**'],
                      'checks': [{'command': ['python3', '-m', 'unittest'], 'result': 'pass', 'evidence': 'verification.md'}],
                      'risk_reviews': {}}
         for name in process.DOCS:
@@ -89,7 +89,7 @@ class ProcessCheckTests(unittest.TestCase):
             self.assertEqual(self.check()['errors'], [])
         # Neither dirty evidence nor untracked ADRs may influence a committed result.
         self.put(self.directory + '/verification.md', 'Verdict: fail\n')
-        self.put('docs/decisions/ADR-001-x.md', 'malformed untracked decision')
+        self.put('indigo_docs/decisions/ADR-001-x.md', 'malformed untracked decision')
         result = self.check()
         self.assertEqual(result['errors'], [])
         self.assertEqual(result['head'], head)
