@@ -58,4 +58,4 @@ These instructions apply to future development of the local INDIGO `.driver` edi
 - Keep editor tests hardware-free. They may use temporary `.driver` copies, temporary output directories and temporary loopback HTTP servers.
 - Do not edit real driver definitions or checked-in generated outputs from tests.
 - Generator-dependent tests must skip cleanly when the generator executable is unavailable.
-- Record future implementation results, validation notes and remaining editor limitations in the editor's `REFACTOR.md`, not in this `AGENTS.md`.
+- Record future implementation results, validation notes and remaining editor limitations in the evidence of the Factory task performing the work, not in this `AGENTS.md`.

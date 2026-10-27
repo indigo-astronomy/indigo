@@ -13,6 +13,5 @@
   <ItemGroup><ClInclude Include="indigo_focuser_wemacro.h"><Filter>Header Files\indigo</Filter></ClInclude></ItemGroup>
   <ItemGroup>
     <None Include="indigo_focuser_wemacro.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>

@@ -213,6 +213,15 @@
       "authority": "Yes, defer the full repository audit for task 20261027195534-4608-solver-retro-evidence only; the audit remains due after it, before the next unrelated work or release.",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
+    },
+    "refactor_notes_archive_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-27",
+      "task": "20261027203747-a8d5-archive-refactor-notes",
+      "scope": "Archive all REFACTOR.md files into the task record, remove the REFACTOR.md rules and references, and reduce the eight affected driver README.md files to the fixed user-facing structure only",
+      "authority": "pokracuj podla odporucani (recommendation 6: defer the full repository audit for this task; the audit is performed right after it)",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

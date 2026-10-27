@@ -173,7 +173,6 @@
   <ItemGroup>
     <None Include="indigo_rotator_lunatico.driver" />
     <None Include="shared\dragonfly_shared.c" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

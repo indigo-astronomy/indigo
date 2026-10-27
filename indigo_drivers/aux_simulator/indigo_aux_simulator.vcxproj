@@ -172,7 +172,6 @@
   <ItemGroup>
     <None Include="indigo_aux_simulator.driver" />
     <None Include="README.md" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

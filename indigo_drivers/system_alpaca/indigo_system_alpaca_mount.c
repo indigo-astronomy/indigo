@@ -60,7 +60,7 @@
  Only a slew makes MOUNT_EQUATORIAL_COORDINATES BUSY; a park, an unpark, a search for home and a pier flip keep MOUNT_PARK,
  MOUNT_HOME or MOUNT_SIDE_OF_PIER BUSY and leave the coordinates alone (an unpark does not move the telescope at all). A slew and
  a pier flip are complete when Slewing is false. A park and a search for home are complete when AtPark / AtHome is true (the
- completion members of the standard, 2.7 of REFACTOR.md), whatever Slewing says: some telescopes report Slewing false and AtPark
+ completion members of the standard, 2.7 of .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md), whatever Slewing says: some telescopes report Slewing false and AtPark
  false for a moment after Park, or report Slewing false while they park. They fail when the telescope stalls: it neither slews
  nor moves (Altitude / Azimuth of the polling change by less than MOUNT_PROGRESS) and is not at the goal for MOUNT_STALL_TIME
  in a row. An unpark is complete when AtPark is false and Slewing is false, and fails the same way. Should the telescope reach

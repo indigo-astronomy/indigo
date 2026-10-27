@@ -358,7 +358,7 @@ Found defects: missing automated coverage of existing expiry/stop/error branches
 
 Step results: (1) focused baseline `temma_sync_goto_overlap_abort_and_recovery` passed 1/1 from `indigo_test/`; (2) the timeout guard and regenerated C are complete and regeneration is stable; (3) deadline tests pass 2/2, requiring the specific timeout message, transport stop, ALERT, unchanged stalled position and subsequent recovery; (4) final recorded ordinary and deadline suites pass 30/30 against the rebuilt current library. Negative controls with unshortened production limits fail at the expected ALERT wait (Temma 2/2 fail, NexStar 1/1 fail), confirming the regressions require genuine expiry.
 
-These diagnostic builds used the pre-existing `libindigo` artifact; the coordinator identified it as older than current source and rebuilt it before final recorded acceptance. Diagnostic and final evidence are distinguished in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+These diagnostic builds used the pre-existing `libindigo` artifact; the coordinator identified it as older than current source and rebuilt it before final recorded acceptance. Diagnostic and final evidence are distinguished in [task verification](../../20261026181024-758b-fix-test-findings/verification.md).
 
 Current coverage adds two hardware-free expiry scenarios (GOTO and park), for 30 cases on macOS / 25 on Linux. Ordinary production timeouts and existing preservation scenarios remain unchanged. NexStar GOTO timeout policy remains outside this finding and task.
 

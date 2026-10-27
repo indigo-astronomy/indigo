@@ -714,7 +714,7 @@ cleanup:
 	return;
 }
 
-// REFACTOR.md 7.10: a telescope that is parked gets the unpark and the goto in a row, as the mount agent sends them; the goto waits
+// .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 7.10: a telescope that is parked gets the unpark and the goto in a row, as the mount agent sends them; the goto waits
 // for the unpark and the telescope arrives at the target on the first slew.
 static void hw_mount_first_slew_from_park(hw_device *device) {
 	static const char *items[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };

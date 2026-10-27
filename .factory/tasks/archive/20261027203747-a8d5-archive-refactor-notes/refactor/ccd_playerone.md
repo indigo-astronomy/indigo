@@ -636,6 +636,6 @@ passed 0.
 
 ## Final recorded verification for test-finding repair
 
-`python3 tools/run_driver_test.py ccd_playerone` passed 52/52 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+`python3 tools/run_driver_test.py ccd_playerone` passed 52/52 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../20261026181024-758b-fix-test-findings/verification.md).
 
 Final test summary for this repair: simulator/fake SDK 52 run / 52 passed; physical hardware 0 run / 0 passed.

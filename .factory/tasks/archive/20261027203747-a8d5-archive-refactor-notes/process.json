@@ -1,0 +1,689 @@
+{
+  "version": 2,
+  "task": "20261027203747-a8d5-archive-refactor-notes",
+  "scope": [
+    "AGENTS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/*",
+    "indigo_drivers/*",
+    "indigo_linux_drivers/*",
+    "indigo_mac_drivers/*",
+    "indigo_server/*",
+    "indigo_test/*",
+    "indigo_tools/driver_editor/AGENTS.md",
+    "tools/alpaca_omnisim_conformu.py",
+    ".factory/project.md",
+    ".factory/maintenance.json",
+    ".factory/completions/20261027203747-a8d5-archive-refactor-notes.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_drivers/system_alpaca",
+        "-f",
+        "../../Makefile.drv",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "build/integration/test_system_alpaca_omnisim"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-m",
+        "py_compile",
+        "tools/alpaca_omnisim_conformu.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "plutil",
+        "-lint",
+        "indigo.xcodeproj/project.pbxproj"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261027203747-a8d5-archive-refactor-notes.json": [
+      "100644",
+      "blob",
+      "9a619f4a084c003887bec9c06127e88832db7ef3"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "6a52a0354257501413ae24461fdb67ea912b3fc4"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "f356ef6357344495af7192acb66ceca4a3452e7a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "d5699244f74ce90c1b6993820eb492d45911985e"
+    ],
+    "indigo_docs/DRIVER_GENERATOR_BASICS.md": [
+      "100644",
+      "blob",
+      "29a60bf24301c61ed4fd39bd185737f207fc528a"
+    ],
+    "indigo_docs/DRIVER_TESTING_BASICS.md": [
+      "100644",
+      "blob",
+      "b258f2eb44f73bcd7571af8be0e1a8cde6419a1f"
+    ],
+    "indigo_docs/SERIAL_DEVICE_SIMULATORS.md": [
+      "100644",
+      "blob",
+      "c39f885c4585647a2fb68314b26d535e72c9fb14"
+    ],
+    "indigo_drivers/AGENTS.md": [
+      "100644",
+      "blob",
+      "0638a36213d4ab2a7e2370964e524df54a03ee50"
+    ],
+    "indigo_drivers/agent_alpaca/REFACTOR.md": null,
+    "indigo_drivers/agent_astrometry/REFACTOR.md": null,
+    "indigo_drivers/agent_guider/REFACTOR.md": null,
+    "indigo_drivers/agent_imager/REFACTOR.md": null,
+    "indigo_drivers/agent_mount/REFACTOR.md": null,
+    "indigo_drivers/agent_scripting/REFACTOR.md": null,
+    "indigo_drivers/agent_solver/REFACTOR.md": null,
+    "indigo_drivers/ao_sx/REFACTOR.md": null,
+    "indigo_drivers/aux_alto/REFACTOR.md": null,
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c": [
+      "100644",
+      "blob",
+      "38067bbc16f0b34d6b9f6566abf36be9904c823f"
+    ],
+    "indigo_drivers/aux_arteskyflat/REFACTOR.md": null,
+    "indigo_drivers/aux_cloudwatcher/REFACTOR.md": null,
+    "indigo_drivers/aux_dragonfly/REFACTOR.md": null,
+    "indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.vcxproj": [
+      "100644",
+      "blob",
+      "9a1f64df872d16f28ec02dd9f13e03ecff772961"
+    ],
+    "indigo_drivers/aux_dsusb/REFACTOR.md": null,
+    "indigo_drivers/aux_geoptikflat/REFACTOR.md": null,
+    "indigo_drivers/aux_giotto/REFACTOR.md": null,
+    "indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c": [
+      "100644",
+      "blob",
+      "8a0692922f7ac0b1d64a8ee17e6ec013a7d0f94f"
+    ],
+    "indigo_drivers/aux_joystick/REFACTOR.md": null,
+    "indigo_drivers/aux_mgbox/README.md": [
+      "100644",
+      "blob",
+      "69ae4e217f5b7dddaf6edad3b7a375f2085179e5"
+    ],
+    "indigo_drivers/aux_mgbox/REFACTOR.md": null,
+    "indigo_drivers/aux_mgbox/indigo_aux_mgbox.vcxproj": [
+      "100644",
+      "blob",
+      "7cf85fa261f24e94fe6981e18b4cb09ca6996f13"
+    ],
+    "indigo_drivers/aux_mgbox/indigo_aux_mgbox.vcxproj.filters": [
+      "100644",
+      "blob",
+      "5958f3a0dc6d87e63ff492a92454f1abe38a1643"
+    ],
+    "indigo_drivers/aux_ppb/REFACTOR.md": null,
+    "indigo_drivers/aux_rts/REFACTOR.md": null,
+    "indigo_drivers/aux_simulator/README.md": [
+      "100644",
+      "blob",
+      "7349510da30566718e4999af7bee5cb685c953f7"
+    ],
+    "indigo_drivers/aux_simulator/REFACTOR.md": null,
+    "indigo_drivers/aux_simulator/indigo_aux_simulator.vcxproj": [
+      "100644",
+      "blob",
+      "87494f999f453d325f03feffd139057b1d3738b8"
+    ],
+    "indigo_drivers/aux_skyalert/REFACTOR.md": null,
+    "indigo_drivers/aux_sqm/REFACTOR.md": null,
+    "indigo_drivers/aux_uch/REFACTOR.md": null,
+    "indigo_drivers/aux_upb/REFACTOR.md": null,
+    "indigo_drivers/aux_upb3/REFACTOR.md": null,
+    "indigo_drivers/aux_usbdp/REFACTOR.md": null,
+    "indigo_drivers/aux_wcv4ec/REFACTOR.md": null,
+    "indigo_drivers/ccd_asi/REFACTOR.md": null,
+    "indigo_drivers/ccd_atik/README.md": [
+      "100644",
+      "blob",
+      "92660141226cbd0ed272d832e178f5827f2e1276"
+    ],
+    "indigo_drivers/ccd_atik/REFACTOR.md": null,
+    "indigo_drivers/ccd_dsi/REFACTOR.md": null,
+    "indigo_drivers/ccd_fli/REFACTOR.md": null,
+    "indigo_drivers/ccd_iidc/REFACTOR.md": null,
+    "indigo_drivers/ccd_mi/REFACTOR.md": null,
+    "indigo_drivers/ccd_pentax/REFACTOR.md": null,
+    "indigo_drivers/ccd_playerone/README.md": [
+      "100644",
+      "blob",
+      "e540a87f904c715bf3847300cb7af24c4a223975"
+    ],
+    "indigo_drivers/ccd_playerone/REFACTOR.md": null,
+    "indigo_drivers/ccd_ptp/REFACTOR.md": null,
+    "indigo_drivers/ccd_qhy/REFACTOR.md": null,
+    "indigo_drivers/ccd_qhy2/REFACTOR.md": null,
+    "indigo_drivers/ccd_qsi/REFACTOR.md": null,
+    "indigo_drivers/ccd_sbig/REFACTOR.md": null,
+    "indigo_drivers/ccd_simulator/REFACTOR.md": null,
+    "indigo_drivers/ccd_ssag/REFACTOR.md": null,
+    "indigo_drivers/ccd_svb/REFACTOR.md": null,
+    "indigo_drivers/ccd_sx/REFACTOR.md": null,
+    "indigo_drivers/ccd_touptek/REFACTOR.md": null,
+    "indigo_drivers/ccd_uvc/REFACTOR.md": null,
+    "indigo_drivers/dome_baader/REFACTOR.md": null,
+    "indigo_drivers/dome_baader/indigo_dome_baader.vcxproj": [
+      "100644",
+      "blob",
+      "8cbbf856142f9624cb6e6b9e22e9040e5323de04"
+    ],
+    "indigo_drivers/dome_beaver/REFACTOR.md": null,
+    "indigo_drivers/dome_beaver/indigo_dome_beaver.vcxproj": [
+      "100644",
+      "blob",
+      "69e5048d52412c6c1bb87965d58fb9cf359a308b"
+    ],
+    "indigo_drivers/dome_dragonfly/REFACTOR.md": null,
+    "indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.vcxproj": [
+      "100644",
+      "blob",
+      "393abcb0607802213995989cfc96705789127d60"
+    ],
+    "indigo_drivers/dome_nexdome/REFACTOR.md": null,
+    "indigo_drivers/dome_nexdome/indigo_dome_nexdome.vcxproj": [
+      "100644",
+      "blob",
+      "29f100461ce6a787251c1f3026e493571730ebc7"
+    ],
+    "indigo_drivers/dome_nexdome3/REFACTOR.md": null,
+    "indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.vcxproj": [
+      "100644",
+      "blob",
+      "12f6d90ce8c9bd2de5cd044a424521e7c7f319b0"
+    ],
+    "indigo_drivers/dome_simulator/REFACTOR.md": null,
+    "indigo_drivers/dome_skyroof/REFACTOR.md": null,
+    "indigo_drivers/dome_talon6ror/REFACTOR.md": null,
+    "indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.vcxproj": [
+      "100644",
+      "blob",
+      "6fd183c5324f7efd696fb18e8d84656d63c0c8a8"
+    ],
+    "indigo_drivers/focuser_asi/REFACTOR.md": null,
+    "indigo_drivers/focuser_askar/REFACTOR.md": null,
+    "indigo_drivers/focuser_astroasis/REFACTOR.md": null,
+    "indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.vcxproj": [
+      "100644",
+      "blob",
+      "2b53f924466534e945ffd17651bae3116e973086"
+    ],
+    "indigo_drivers/focuser_astromechanics/REFACTOR.md": null,
+    "indigo_drivers/focuser_dmfc/REFACTOR.md": null,
+    "indigo_drivers/focuser_dsd/REFACTOR.md": null,
+    "indigo_drivers/focuser_dsd/indigo_focuser_dsd.vcxproj": [
+      "100644",
+      "blob",
+      "b94a9236d22858165b37c9a749c2eb17751fac76"
+    ],
+    "indigo_drivers/focuser_efa/README.md": [
+      "100644",
+      "blob",
+      "7eb19bdbab93e5fce2229a83adbc5b1e8b64e098"
+    ],
+    "indigo_drivers/focuser_efa/REFACTOR.md": null,
+    "indigo_drivers/focuser_efa/indigo_focuser_efa.vcxproj": [
+      "100644",
+      "blob",
+      "d753b27196398a6b0fcdcf74d01214182f5a9fd6"
+    ],
+    "indigo_drivers/focuser_efa/indigo_focuser_efa.vcxproj.filters": [
+      "100644",
+      "blob",
+      "ed6843bc7479959c9475bcac05d6fb22f72cca87"
+    ],
+    "indigo_drivers/focuser_fc3/REFACTOR.md": null,
+    "indigo_drivers/focuser_fcusb/REFACTOR.md": null,
+    "indigo_drivers/focuser_fli/REFACTOR.md": null,
+    "indigo_drivers/focuser_focusdreampro/REFACTOR.md": null,
+    "indigo_drivers/focuser_ioptron/README.md": [
+      "100644",
+      "blob",
+      "ccc2f2a94f28e0cd53e6506eb3f6eee572cf3c10"
+    ],
+    "indigo_drivers/focuser_ioptron/REFACTOR.md": null,
+    "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.vcxproj": [
+      "100644",
+      "blob",
+      "e9c4263437a517229cf6d843aa00c4cf68578aa2"
+    ],
+    "indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.vcxproj.filters": [
+      "100644",
+      "blob",
+      "d2bb4c9ebe18c5b7efb45ab112475c61c3c48cb8"
+    ],
+    "indigo_drivers/focuser_lacerta/README.md": [
+      "100644",
+      "blob",
+      "8bbb383ff30858cdcb89ea15ffd01455de6e2d4d"
+    ],
+    "indigo_drivers/focuser_lacerta/REFACTOR.md": null,
+    "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.vcxproj": [
+      "100644",
+      "blob",
+      "32193f6f226434c639a79b0af39ead7d7028c695"
+    ],
+    "indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.vcxproj.filters": [
+      "100644",
+      "blob",
+      "f13bcf33a639374404ef49e847fcdf1cae8bc86a"
+    ],
+    "indigo_drivers/focuser_lakeside/REFACTOR.md": null,
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.vcxproj": [
+      "100644",
+      "blob",
+      "1f86d0309b43d885b33c71e4dd02c23121fcb264"
+    ],
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.vcxproj.filters": [
+      "100644",
+      "blob",
+      "5eed7de87076e47b47b65bc4d1a93c2bf2f6f1cd"
+    ],
+    "indigo_drivers/focuser_lunatico/REFACTOR.md": null,
+    "indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.vcxproj": [
+      "100644",
+      "blob",
+      "313e121d8b2aa8d312595d6443a12755dd8153d9"
+    ],
+    "indigo_drivers/focuser_mjkzz/REFACTOR.md": null,
+    "indigo_drivers/focuser_moonlite/REFACTOR.md": null,
+    "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.vcxproj": [
+      "100644",
+      "blob",
+      "d982bf2d2de05a4a61455dd2fd13f711731bb337"
+    ],
+    "indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.vcxproj.filters": [
+      "100644",
+      "blob",
+      "0c789f32033a6e340c54677286ef91c24049c376"
+    ],
+    "indigo_drivers/focuser_mypro2/REFACTOR.md": null,
+    "indigo_drivers/focuser_nfocus/REFACTOR.md": null,
+    "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.vcxproj": [
+      "100644",
+      "blob",
+      "7921e96969238a57b8957a29170cd8d6a224709b"
+    ],
+    "indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.vcxproj.filters": [
+      "100644",
+      "blob",
+      "d46630c719bb81fe9c78b0e0b42b397425341097"
+    ],
+    "indigo_drivers/focuser_nstep/REFACTOR.md": null,
+    "indigo_drivers/focuser_nstep/indigo_focuser_nstep.vcxproj": [
+      "100644",
+      "blob",
+      "5d6e71a42ba341ffc4da54d08ff2835dee994b19"
+    ],
+    "indigo_drivers/focuser_nstep/indigo_focuser_nstep.vcxproj.filters": [
+      "100644",
+      "blob",
+      "001fdc1c61fb18287572c3a0f724069b6693db1e"
+    ],
+    "indigo_drivers/focuser_optec/REFACTOR.md": null,
+    "indigo_drivers/focuser_optec/indigo_focuser_optec.vcxproj": [
+      "100644",
+      "blob",
+      "ab4147f270df8aa0efa10d510dcb317f0b5d3c56"
+    ],
+    "indigo_drivers/focuser_optec/indigo_focuser_optec.vcxproj.filters": [
+      "100644",
+      "blob",
+      "912894da6267a5bfa34d9e5b1afa075135244a9b"
+    ],
+    "indigo_drivers/focuser_optecfl/REFACTOR.md": null,
+    "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.vcxproj": [
+      "100644",
+      "blob",
+      "7b8dcaaeed898bcfb70c00ffbd0b2e2185c0f895"
+    ],
+    "indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.vcxproj.filters": [
+      "100644",
+      "blob",
+      "70fefc8440f8810ab38188622e23ac66d70c34d0"
+    ],
+    "indigo_drivers/focuser_primaluce/REFACTOR.md": null,
+    "indigo_drivers/focuser_prodigy/README.md": [
+      "100644",
+      "blob",
+      "57fe7790ecc8056e2b6582f6237c726a57ced6b9"
+    ],
+    "indigo_drivers/focuser_prodigy/REFACTOR.md": null,
+    "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.vcxproj": [
+      "100644",
+      "blob",
+      "d326cbdd60953c5358dcc2c29d901df4853ff75c"
+    ],
+    "indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.vcxproj.filters": [
+      "100644",
+      "blob",
+      "dd89489d1075c1e913804f452643fb677834ca98"
+    ],
+    "indigo_drivers/focuser_qhy/REFACTOR.md": null,
+    "indigo_drivers/focuser_qhy/indigo_focuser_qhy.vcxproj": [
+      "100644",
+      "blob",
+      "dc5837eb5970311e40ee9c9aa349f0b19ea968ba"
+    ],
+    "indigo_drivers/focuser_qhy/indigo_focuser_qhy.vcxproj.filters": [
+      "100644",
+      "blob",
+      "9af3cc85895dee816be080fcb70b06651476bad1"
+    ],
+    "indigo_drivers/focuser_robofocus/REFACTOR.md": null,
+    "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.vcxproj": [
+      "100644",
+      "blob",
+      "4309ebe0c61d30919b3a73180c7b5d44998e9458"
+    ],
+    "indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.vcxproj.filters": [
+      "100644",
+      "blob",
+      "f25b1f3c4e1e4bf97702d815d30a0b11e735a220"
+    ],
+    "indigo_drivers/focuser_steeldrive2/REFACTOR.md": null,
+    "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.vcxproj": [
+      "100644",
+      "blob",
+      "54b32914699be75ca670049009616c82c45b5812"
+    ],
+    "indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.vcxproj.filters": [
+      "100644",
+      "blob",
+      "17db37a00b61b450a8535b907961129405d633dd"
+    ],
+    "indigo_drivers/focuser_usbv3/REFACTOR.md": null,
+    "indigo_drivers/focuser_wemacro/REFACTOR.md": null,
+    "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.vcxproj": [
+      "100644",
+      "blob",
+      "de53aa213bb2186aec8e98791e9cb1f04d11afce"
+    ],
+    "indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.vcxproj.filters": [
+      "100644",
+      "blob",
+      "e357a206346b8c95d95abb4c045c087bcba5e567"
+    ],
+    "indigo_drivers/gps_gpsd/REFACTOR.md": null,
+    "indigo_drivers/gps_nmea/REFACTOR.md": null,
+    "indigo_drivers/gps_simulator/REFACTOR.md": null,
+    "indigo_drivers/guider_asi/REFACTOR.md": null,
+    "indigo_drivers/guider_cgusbst4/REFACTOR.md": null,
+    "indigo_drivers/guider_cgusbst4/guider_cgusbst4_simulator/guider_cgusbst4_simulator.c": [
+      "100644",
+      "blob",
+      "456273914739ce6cd69bf209363a696234238bf9"
+    ],
+    "indigo_drivers/guider_gpusb/REFACTOR.md": null,
+    "indigo_drivers/mount_asi/REFACTOR.md": null,
+    "indigo_drivers/mount_ioptron/REFACTOR.md": null,
+    "indigo_drivers/mount_lx200/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "149b05e6af4fce06c972b46c005c05f616df4cfd"
+    ],
+    "indigo_drivers/mount_lx200/REFACTOR.md": null,
+    "indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c": [
+      "100644",
+      "blob",
+      "d410c448a7cd879affdf520d9e2e286389665d06"
+    ],
+    "indigo_drivers/mount_nexstar/REFACTOR.md": null,
+    "indigo_drivers/mount_nexstaraux/REFACTOR.md": null,
+    "indigo_drivers/mount_pmc8/REFACTOR.md": null,
+    "indigo_drivers/mount_rainbow/REFACTOR.md": null,
+    "indigo_drivers/mount_simulator/REFACTOR.md": null,
+    "indigo_drivers/mount_starbook/REFACTOR.md": null,
+    "indigo_drivers/mount_synscan/REFACTOR.md": null,
+    "indigo_drivers/mount_temma/REFACTOR.md": null,
+    "indigo_drivers/polaralign_mlastro/REFACTOR.md": null,
+    "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.vcxproj": [
+      "100644",
+      "blob",
+      "74ab7420a13ff2f1cbef4b435628755fc8dc0047"
+    ],
+    "indigo_drivers/polaralign_mlastro/indigo_polaralign_mlastro.vcxproj.filters": [
+      "100644",
+      "blob",
+      "27d4d031cb4c369f5793403fecfa47a2b4e6aba7"
+    ],
+    "indigo_drivers/polaralign_simulator/REFACTOR.md": null,
+    "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.vcxproj": [
+      "100644",
+      "blob",
+      "718f8ad22b72ed67e22b0801b7e65173ea528b01"
+    ],
+    "indigo_drivers/polaralign_simulator/indigo_polaralign_simulator.vcxproj.filters": [
+      "100644",
+      "blob",
+      "73780b225915273c633610355c84705824d4e3e7"
+    ],
+    "indigo_drivers/rotator_asi/REFACTOR.md": null,
+    "indigo_drivers/rotator_falcon/REFACTOR.md": null,
+    "indigo_drivers/rotator_lunatico/REFACTOR.md": null,
+    "indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.vcxproj": [
+      "100644",
+      "blob",
+      "1051920a63293e4185d0c1fa47ee41f11d99f421"
+    ],
+    "indigo_drivers/rotator_optec/REFACTOR.md": null,
+    "indigo_drivers/rotator_optec/indigo_rotator_optec.vcxproj": [
+      "100644",
+      "blob",
+      "67a2623a6d84256fd91465dc6b49c49701e4e896"
+    ],
+    "indigo_drivers/rotator_wa/REFACTOR.md": null,
+    "indigo_drivers/rotator_wa/indigo_rotator_wa.vcxproj": [
+      "100644",
+      "blob",
+      "6b151946f4a22fd8e3a91c342403a2a2caa236ea"
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "a4a83bf6bb8b8597cb8586c0253cc5a4fcb02159"
+    ],
+    "indigo_drivers/system_alpaca/REFACTOR.md": null,
+    "indigo_drivers/system_alpaca/indigo_system_alpaca.c": [
+      "100644",
+      "blob",
+      "c8879dc4fc08672614fd0035f8a1dfea81518442"
+    ],
+    "indigo_drivers/system_alpaca/indigo_system_alpaca_mount.c": [
+      "100644",
+      "blob",
+      "ad39ee73fc89fb652cf5d57e30289717a32b9a75"
+    ],
+    "indigo_drivers/system_alpaca/indigo_system_alpaca_transport.c": [
+      "100644",
+      "blob",
+      "e9b07afc14b2e6af7f5bcb8cef066b10aafc16a8"
+    ],
+    "indigo_drivers/wheel_asi/REFACTOR.md": null,
+    "indigo_drivers/wheel_astroasis/REFACTOR.md": null,
+    "indigo_drivers/wheel_atik/REFACTOR.md": null,
+    "indigo_drivers/wheel_fli/REFACTOR.md": null,
+    "indigo_drivers/wheel_indigo/REFACTOR.md": null,
+    "indigo_drivers/wheel_mi/REFACTOR.md": null,
+    "indigo_drivers/wheel_playerone/REFACTOR.md": null,
+    "indigo_drivers/wheel_sx/REFACTOR.md": null,
+    "indigo_linux_drivers/aux_asiair/REFACTOR.md": null,
+    "indigo_linux_drivers/aux_rpio/REFACTOR.md": null,
+    "indigo_linux_drivers/ccd_libcamera/REFACTOR.md": null,
+    "indigo_mac_drivers/ccd_atik2/REFACTOR.md": null,
+    "indigo_server/REFACTOR.md": null,
+    "indigo_server/resource/REFACTOR.md": null,
+    "indigo_test/AGENTS.md": [
+      "100644",
+      "blob",
+      "8825779120065b106f8d074cfb2641584cc1fcf3"
+    ],
+    "indigo_test/DRIVER_TESTING_RULES.md": [
+      "100644",
+      "blob",
+      "f2927c4fdc2063adc719b65e724aa068fff310a4"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "7e6c0b53bab97e6f993b717e058b2820b7475140"
+    ],
+    "indigo_test/hardware/test_ao_sx_hw.c": [
+      "100644",
+      "blob",
+      "f41b2c0964bf4f38c8d79dab38de51ab587361ed"
+    ],
+    "indigo_test/hardware/test_ccd_hotplug_hw.c": [
+      "100644",
+      "blob",
+      "a37a0243bbf06a6fa173cf8c3fd0f612bd5dc956"
+    ],
+    "indigo_test/hardware/test_ccd_touptek_hw.c": [
+      "100644",
+      "blob",
+      "e5c24fc10736be95e0aa5e68da9489a4f12139d4"
+    ],
+    "indigo_test/hardware/test_guider_gpusb_hw.c": [
+      "100644",
+      "blob",
+      "3c78f2068aab4c0fa23a3c43dadd66168bf76a0a"
+    ],
+    "indigo_test/hardware/test_system_alpaca_hw.c": [
+      "100644",
+      "blob",
+      "aba53091cc1d7918113c54cc350fef59a7ddd88c"
+    ],
+    "indigo_test/integration/lunatico_test_common.h": [
+      "100644",
+      "blob",
+      "65d190b2932a6de6964bb3a34dc3dc27ab2a55a8"
+    ],
+    "indigo_test/integration/system_alpaca/ccd_cases.h": [
+      "100644",
+      "blob",
+      "d3a0daa3906c31917dd4699772fd054147fa0694"
+    ],
+    "indigo_test/integration/system_alpaca/core_cases.h": [
+      "100644",
+      "blob",
+      "d940179089f0250c8e0e927d6e5d5d2205d4cb1a"
+    ],
+    "indigo_test/integration/system_alpaca/omnisim_test_common.h": [
+      "100644",
+      "blob",
+      "70081589d406d7ea42608f576ffb7d00bfe10042"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "f07ea8224b83e50af999dcfeeae68e568176c132"
+    ],
+    "indigo_test/integration/test_aux_dsusb_sdk.c": [
+      "100644",
+      "blob",
+      "8ecf3681ebebf109470de1059256cf850f0c1f35"
+    ],
+    "indigo_test/integration/test_aux_giotto_simulator.c": [
+      "100644",
+      "blob",
+      "c23a21d892d1f833231b73807507de544af1f79d"
+    ],
+    "indigo_test/integration/test_dome_dragonfly_simulator.c": [
+      "100644",
+      "blob",
+      "011df5bc42674c3a6c4bc6f362e1ae21938bdfb7"
+    ],
+    "indigo_test/integration/test_focuser_focusdreampro_simulator.c": [
+      "100644",
+      "blob",
+      "90c9c28229af13c56630cb7d3cc559afccf175c1"
+    ],
+    "indigo_test/integration/test_guider_gpusb_sdk.c": [
+      "100644",
+      "blob",
+      "deb3eb38201ee66270c00f674684708d655eccbb"
+    ],
+    "indigo_test/integration/test_mount_lx200_simulator.c": [
+      "100644",
+      "blob",
+      "a9031f8e74819ae1c53451c3a22c9a9d33dfc63b"
+    ],
+    "indigo_test/integration/test_rotator_wa_simulator.c": [
+      "100644",
+      "blob",
+      "5459a6b178745a24dc13728102b799b89c5c3c1f"
+    ],
+    "indigo_test/integration/test_system_alpaca_omnisim.c": [
+      "100644",
+      "blob",
+      "798cdc849862d188a504e8879aaf04101c02efb9"
+    ],
+    "indigo_tools/driver_editor/AGENTS.md": [
+      "100644",
+      "blob",
+      "d20dbd59e4773abaf956539a60e5d1c40cb98aca"
+    ],
+    "tools/alpaca_omnisim_conformu.py": [
+      "100644",
+      "blob",
+      "9a51f99010d20e7d334f64aa08d54021cc4d5d2e"
+    ]
+  }
+}

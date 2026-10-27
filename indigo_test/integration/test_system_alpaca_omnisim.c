@@ -20,7 +20,7 @@
 
 // OmniSim tier of the system_alpaca driver: every Alpaca device type of ASCOM OmniSim (ASCOM Alpaca Simulators), an Alpaca
 // server written independently of this driver and of system_alpaca_simulator, driven through the in-process driver on real time.
-// Opt-in (make -C indigo_test test-system-alpaca-omnisim); OmniSim is never downloaded, see REFACTOR.md 4.1 of the driver.
+// Opt-in (make -C indigo_test test-system-alpaca-omnisim); OmniSim is never downloaded, see .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 4.1.
 // Without an OmniSim executable the tier reports that it was not run and exits 0 without recording a plan.
 //
 // The facts about OmniSim 0.5.0 the cases rely on were read from the running instance on 2026-10-03; each case states them.
@@ -467,7 +467,7 @@ static void omnisim_mount_park_home_tracking(void) {
 	SA_CHECK(omni_set_switch(sa_device, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, MOUNT_CASE_TIMEOUT) == INDIGO_OK_STATE);
 	SA_CHECK(omni_bool("telescope", "athome"));
 	// Platform 7 disconnect is asynchronous in OmniSim (Connecting is true for about a second): CONNECTION stays BUSY until Connecting
-	// is false (REFACTOR.md 2.4, 2.7), so when the device is reported disconnected the telescope is neither connected nor connecting,
+	// is false (.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 2.4, 2.7), so when the device is reported disconnected the telescope is neither connected nor connecting,
 	// and a connect right after it ends connected and working
 	double started = indigo_monotonic_time();
 	SA_CHECK(sa_disconnect(sa_device));
@@ -1216,7 +1216,7 @@ int main(void) {
 	int run = 0, passed = 0, failed = 0;
 	setvbuf(stdout, NULL, _IOLBF, 0);
 	if (!omni_find()) {
-		printf("%s: NOT RUN, no OmniSim executable (INDIGO_TEST_OMNISIM, or " SYSTEM_ALPACA_OMNISIM_DIR "/*/" OMNI_EXECUTABLE_NAME "; install it as REFACTOR.md 4.1 of system_alpaca says). No case was planned, nothing passed.\n", SUITE_NAME);
+		printf("%s: NOT RUN, no OmniSim executable (INDIGO_TEST_OMNISIM, or " SYSTEM_ALPACA_OMNISIM_DIR "/*/" OMNI_EXECUTABLE_NAME "; install it as .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 4.1 says). No case was planned, nothing passed.\n", SUITE_NAME);
 		return 0;
 	}
 	if (!indigo_test_use_private_home()) {

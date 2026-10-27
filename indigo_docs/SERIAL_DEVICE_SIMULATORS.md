@@ -356,7 +356,7 @@ The nonblocking reader must never treat `EAGAIN`, `EWOULDBLOCK`, or `EIO` as fat
 
 ## Build and Test Integration
 
-A refactored simulator is not complete until it is wired into the automated test build. The simulator source lives beside the `.ino` under `indigo_drivers/`, but its build target, its integration test, and the `Makefile` targets that link them live in `indigo_test/`. See the "Wiring a Host-Side Serial Simulator Into the Test Build" and "Serial Simulator Integration Test Skeleton" sections of `indigo_test/AGENTS.md` for the exact `Makefile` edits (including when `-pthread` is required) and the integration-test template. After adding the test, update the relevant driver's `REFACTOR.md` with the simulator coverage, remaining gaps and validation results.
+A refactored simulator is not complete until it is wired into the automated test build. The simulator source lives beside the `.ino` under `indigo_drivers/`, but its build target, its integration test, and the `Makefile` targets that link them live in `indigo_test/`. See the "Wiring a Host-Side Serial Simulator Into the Test Build" and "Serial Simulator Integration Test Skeleton" sections of `indigo_test/AGENTS.md` for the exact `Makefile` edits (including when `-pthread` is required) and the integration-test template. After adding the test, record in the task's `verification.md` the simulator coverage, remaining gaps and validation results.
 
 ## Out of Scope
 

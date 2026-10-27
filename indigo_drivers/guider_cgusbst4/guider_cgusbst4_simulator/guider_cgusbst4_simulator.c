@@ -2,7 +2,7 @@
 // All rights reserved.
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-// Protocol evidence: ../REFACTOR.md. Numeric acceptance and silent letter rejection were
+// Protocol evidence: .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/guider_cgusbst4.md. Numeric acceptance and silent letter rejection were
 // independently observed via a NYX-101 ST4 connection on 2026-10-24.
 // Default PHD2 dialect uses numeric directions; --profile indigo is a synthetic legacy dialect.
 // Behaviour checked against a physical CG-USB-ST4 on 2026-09-21: the adapter answers the 0x06

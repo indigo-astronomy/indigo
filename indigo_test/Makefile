@@ -1061,7 +1061,7 @@ benchmark-system-alpaca-guide: $(INTEGRATION_BUILD)/test_system_alpaca_simulator
 	SYSTEM_ALPACA_TEST_TIMING=1 INDIGO_TEST_JOBS=1 INDIGO_TEST_CASE_FILTER=guider_timing ./$(INTEGRATION_BUILD)/test_system_alpaca_simulator
 
 # Opt-in OmniSim tier: the system_alpaca driver against ASCOM OmniSim (ASCOM Alpaca Simulators) on real time. OmniSim is installed by
-# hand into omnisim/ next to the INDIGO working tree (system_alpaca REFACTOR.md 4.1) or named by INDIGO_TEST_OMNISIM; nothing is downloaded
+# hand into omnisim/ next to the INDIGO working tree (.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 4.1) or named by INDIGO_TEST_OMNISIM; nothing is downloaded
 # here, and without it the test reports the tier as not run. Not in INTEGRATION_TESTS or OPT_IN_DRIVER_TESTS on purpose, so the
 # ordinary recorded run of the driver never depends on OmniSim.
 SYSTEM_ALPACA_OMNISIM_TEST_CFLAGS = $(TEST_CFLAGS) -DSYSTEM_ALPACA_OMNISIM_DIR='"$(abspath ../../omnisim)"'

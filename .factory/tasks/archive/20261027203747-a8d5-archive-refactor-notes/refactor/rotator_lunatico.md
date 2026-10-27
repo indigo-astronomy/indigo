@@ -288,6 +288,6 @@ Final test summary for this repair: this export's full simulated tests 64 run, 6
 
 ## Current integration registration verification
 
-The maintained Makefile registers the serial suite by default and the UDP variant as an opt-in driver suite. The current final recorded hardware-free run passed 64/64 cases on macOS arm64; no production or test-source repair was needed to close the historical missing-registration finding. Detailed commands and artifact qualification: [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+The maintained Makefile registers the serial suite by default and the UDP variant as an opt-in driver suite. The current final recorded hardware-free run passed 64/64 cases on macOS arm64; no production or test-source repair was needed to close the historical missing-registration finding. Detailed commands and artifact qualification: [task verification](../../20261026181024-758b-fix-test-findings/verification.md).
 
 Final test summary for this verification: simulator 64 run / 64 passed; physical hardware 0 run / 0 passed.

@@ -56,7 +56,7 @@ as `:SgDDD*MM#` (0 to 359, positive to the west) unless the cell says otherwise.
 * `TeenAstro Command Index.webloc`: TeenAstro LX200 command list.
 * `aGotino Command Index.webloc`: the LX200 command parser of the aGotino sketch.
 * Avalon Instruments StarGO user manual, version 4.1.4.
-* `indigo_mount_lx200.driver` (driver source) and `REFACTOR.md` in this folder: what the driver
+* `indigo_mount_lx200.driver` (driver source) and the archived refactoring notes `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md`: what the driver
   sends, and the replies recorded from the controllers the driver was run against. StarGO2 and
   ESP32Go have no protocol document here and are described from these alone.
 

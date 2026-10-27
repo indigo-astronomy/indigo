@@ -31,7 +31,7 @@
 // indigo_drivers/AGENTS.override.md. The relay edges are written inside the driver, so the only
 // endpoints a client can observe are the request and the completion of the public property: this
 // is software completion timing of the real USB command path, not an electrical measurement of
-// the relay output. See indigo_drivers/guider_gpusb/REFACTOR.md.
+// the relay output. See .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/guider_gpusb.md.
 //
 // Physical hot-plug is not part of this test; it is driven by the faked libusb boundary of
 // indigo_test/integration/test_guider_gpusb_sdk.c.

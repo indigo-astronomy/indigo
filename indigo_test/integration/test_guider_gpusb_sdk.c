@@ -514,7 +514,7 @@ cleanup:
 // a physically working GPUSB into ALERT on every pulse. The driver asks the
 // library once at open whether it can report a success at all and stops
 // trusting a failure from a build that cannot. The evidence is recorded in
-// indigo_drivers/guider_gpusb/REFACTOR.md.
+// .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/guider_gpusb.md.
 static void library_never_reports_success(void) {
 	SERIAL_CHECK_TRUE(driver_up());
 	atomic_store(&report_failure_always, 1);

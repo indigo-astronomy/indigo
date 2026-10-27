@@ -55,7 +55,6 @@ indigo_drivers/<type>_<name>/
     indigo_<type>_<name>.h          generated, checked in
     indigo_<type>_<name>_main.c     generated standalone executable wrapper, checked in
     README.md                       driver documentation and the ## Testing record
-    REFACTOR.md                     audit, plan, coverage and evidence (see AGENTS.override.md)
     <type>_<name>_simulator/        host-side protocol simulator, if the driver has one
     *.rules, bin_externals/, ...    optional udev rules, vendor SDK, firmware
 ```

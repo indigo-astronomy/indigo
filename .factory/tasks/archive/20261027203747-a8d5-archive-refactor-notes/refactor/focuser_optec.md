@@ -286,10 +286,10 @@ It was run against the sketch on an ESP32-S3.
 
 `descriptor_cleanup` initializes the shared USB event handler before measuring descriptors. Serial-port enumeration starts this process-lifetime libusb monitor on first driver attachment; its pipe remains open after an individual driver's shutdown and is not a leaked focuser connection. The test still compares exact descriptor counts across the entire driver INIT/connect/disconnect/SHUTDOWN lifecycle, now repeated three times, so a retained driver descriptor or growth on reconnect fails the case. No production behavior or driver version changed. Physical hardware was not used for this test-only repair.
 
-Focused simulated validation: three runs passed, covering nine complete lifecycles. Final current-library/full-suite results are retained in [task evidence](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/flaky-simulators-report.md) and the task verification evidence. Hardware tests: 0 run, 0 passed for this repair.
+Focused simulated validation: three runs passed, covering nine complete lifecycles. Final current-library/full-suite results are retained in [task evidence](../../20261026181024-758b-fix-test-findings/flaky-simulators-report.md) and the task verification evidence. Hardware tests: 0 run, 0 passed for this repair.
 
 ## Final recorded verification for test-finding repair
 
-`python3 tools/run_driver_test.py focuser_optec` passed 43/43 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+`python3 tools/run_driver_test.py focuser_optec` passed 43/43 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../20261026181024-758b-fix-test-findings/verification.md).
 
 Final test summary for this repair: simulator/fake SDK 43 run / 43 passed; physical hardware 0 run / 0 passed.

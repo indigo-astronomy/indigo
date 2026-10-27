@@ -325,12 +325,12 @@ Simulated tests: 27 run, 27 passed. Hardware tests: 0 run, 0 passed.
 
 `mount_abort_allows_fresh_goto` waits for fresh SYNC, GOTO and abort completion publications. It also requires actual coordinate movement before sending abort, because accepting a request publishes BUSY before its queued handler begins the slew. This prevents sampling an old state or treating a queued request as an already moving mount. The existing exact stopped-position equality, preserved target, fresh GOTO and idle-abort assertions remain in force. Unchanged coordinates may suppress later publications, so stable position is still observed over an interval rather than requiring a redundant callback.
 
-Six filtered original-case runs passed during diagnosis; that does not disprove the previously recorded intermittent failure. Final repaired repetitions and full-suite results are retained in [task evidence](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/flaky-simulators-report.md). No production behavior, driver version or case count changed. Hardware tests: 0 run, 0 passed for this repair.
+Six filtered original-case runs passed during diagnosis; that does not disprove the previously recorded intermittent failure. Final repaired repetitions and full-suite results are retained in [task evidence](../../20261026181024-758b-fix-test-findings/flaky-simulators-report.md). No production behavior, driver version or case count changed. Hardware tests: 0 run, 0 passed for this repair.
 
 Focused simulated validation after rebuilding libindigo: 3 runs, 3 passed. Hardware tests: 0 run, 0 passed for this repair.
 
 ## Final recorded verification for test-finding repair
 
-`python3 tools/run_driver_test.py mount_simulator` passed 28/28 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+`python3 tools/run_driver_test.py mount_simulator` passed 28/28 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../20261026181024-758b-fix-test-findings/verification.md).
 
 Final test summary for this repair: simulator/fake SDK 28 run / 28 passed; physical hardware 0 run / 0 passed.

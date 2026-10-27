@@ -175,6 +175,5 @@
   </ImportGroup>
   <ItemGroup>
     <None Include="indigo_focuser_lacerta.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>

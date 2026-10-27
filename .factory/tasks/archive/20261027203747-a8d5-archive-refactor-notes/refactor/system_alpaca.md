@@ -962,7 +962,7 @@ The user reported that with a Pegasus NYX-101 the first slew through the mount a
 
 All were originally found **by source audit only**. Under decision D8 they were fixed on 2026-09-24 and verified:
 
-- **AGENT-1..3** were reproduced and fixed. The full record is in [`../agent_alpaca/REFACTOR.md`](../agent_alpaca/REFACTOR.md), which also lists ten further defects that the ConformU baseline found (AGENT-4..13).
+- **AGENT-1..3** were reproduced and fixed. The full record is in [`../agent_alpaca/REFACTOR.md`](agent_alpaca.md), which also lists ten further defects that the ConformU baseline found (AGENT-4..13).
 - **LIB-1** is fixed by `indigo_uni_open_client_socket_with_timeout()`.
 - **LIB-2** is fixed by the portable `indigo_uni_discover()`. `focuser_askar` now uses it (version 3.0.0.7), and its platform-specific code is removed.
 - **Regression tests:** 8 new cases in `indigo_test/unit/test_uni_io.c`, all passing. The `focuser_askar` simulator suite passes 10/10 on Linux x64.

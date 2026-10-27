@@ -54,7 +54,6 @@
   <ItemGroup><ClInclude Include="indigo_focuser_wemacro.h" /></ItemGroup>
   <ItemGroup>
     <None Include="indigo_focuser_wemacro.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj"><Project>{aa10be9e-6416-4f58-b821-2d0e479eb81b}</Project></ProjectReference>

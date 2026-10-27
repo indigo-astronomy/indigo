@@ -1,32 +1,34 @@
-# PegasusAstro Prodigy Microfocuser
+# PegasusAstro Prodigy Microfocuser driver
 
-Supports the Prodigy focuser and its two power outlets and two USB ports through one serial connection, 19200 baud, 8N1. The protocol reference is the bundled `ProdigyMF-Serial-Command-Table.pdf` (firmware 1.4 and later).
+http://www.pegasusastro.com
 
-## Connection
+## Supported devices
 
-Run `indigo_server indigo_focuser_prodigy`. Set the port on **Pegasus Prodigy Focuser**, including when using only **Pegasus Prodigy Powerbox**. Either logical device can connect first; both share one handle and queue. Disconnecting one preserves the other's connection. Additional independent pairs can be configured through the focuser's additional instances property.
+* PegasusAstro Prodigy Microfocuser (firmware 1.4 and later), including its two power outlets and two USB ports
 
-## Focuser
+**Pegasus Prodigy Focuser** and **Pegasus Prodigy Powerbox** are present on startup and share one serial connection. Additional independent pairs can be configured through the focuser's additional instances property. No hot-plug support.
 
-Absolute GOTO, relative movement, coordinate SYNC, abort, speed, backlash, temperature and encoder-zero park are supported. Relative inward uses a positive device offset, matching the legacy driver; confirm physical direction on hardware. Reverse is fixed normal; automatic compensation is unsupported and hidden.
+## Supported platforms
 
-Measured position remains separate from the requested target. Both software limits are enforced and update motion ranges (default -999999 to 999999). Limits do not program a hardware endpoint. Speed is read from the controller at connection and after changes. Settings require valid command acknowledgements; failed temperature reads retain the last valid value and report ALERT.
-
-`X_FOCUSER_PARK.PARK` starts motion to the zero encoder and stays BUSY until readback confirms zero and idle. It is rejected if zero is outside the configured software limits or another motion is pending. Motion and park use queued finalizers; 100 unchanged movement polls trigger a stop attempt and ALERT. After uncertain movement, use abort to confirm stopped position before another move. Physical park/encoder behavior needs hardware validation.
-
-## Powerbox
-
-`AUX_POWER_OUTLET` and `AUX_USB_PORT` control both channels independently. Writes validate command acknowledgements and read back the four boolean states with `D`, including partial-write failure. `AUX_OUTLET_NAMES` remains available before connection; labels are persistent.
-
-`X_AUX_REBOOT.REBOOT` sends the no-reply reboot command, then checks identity and port state before reporting completion. It uses at most ten delayed attempts and is rejected during movement or uncertain motion. Actual firmware reboot timing requires hardware verification. The powerbox advertises the powerbox interface; temperature belongs to the focuser.
-
-## Development and validation
-
-`indigo_focuser_prodigy.driver` is authoritative; regenerate C/header/main with `indigo_generator`. The host simulator uses shared `serial_motion`, supports headless/ready-file/trace operation and isolated test profiles. Coverage, intermediate results, reproduction commands and hardware/platform gaps are in `REFACTOR.md` and `../../indigo_test/CHANGES.md`. Windows project integration is included; execution on Windows/Linux remains unverified.
+This driver is platform independent.
 
 ## License
 
 INDIGO Astronomy open-source license.
+
+## Use
+
+indigo_server indigo_focuser_prodigy
+
+## Status: Under development
+
+## Notes
+
+Set the port on **Pegasus Prodigy Focuser**, including when using only **Pegasus Prodigy Powerbox**; the device communicates at 19200 baud, 8N1. Either logical device can connect first, and disconnecting one preserves the other's connection.
+
+Focuser: absolute GOTO, relative movement, coordinate SYNC, abort, speed, backlash, temperature and encoder-zero park are supported. Reverse is fixed normal; automatic compensation is not supported. Both software limits are enforced (default -999999 to 999999); they do not program a hardware endpoint. `X_FOCUSER_PARK.PARK` moves to the zero encoder position and stays BUSY until the focuser stops there; it is rejected if zero is outside the configured software limits or another motion is pending. 100 unchanged movement polls trigger a stop attempt and ALERT. After uncertain movement, use abort to confirm the stopped position before another move.
+
+Powerbox: `AUX_POWER_OUTLET` and `AUX_USB_PORT` control both channels independently. `AUX_OUTLET_NAMES` is available before connection and the labels are persistent. `X_AUX_REBOOT.REBOOT` reboots the controller and reports completion once the device answers again; it is rejected during movement.
 
 ## Testing
 

@@ -35,6 +35,5 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="indigo_polaralign_simulator.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>

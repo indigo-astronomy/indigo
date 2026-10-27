@@ -175,6 +175,5 @@
   </ImportGroup>
   <ItemGroup>
     <None Include="indigo_aux_mgbox.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>

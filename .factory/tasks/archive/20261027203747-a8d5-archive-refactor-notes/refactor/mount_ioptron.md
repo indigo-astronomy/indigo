@@ -1052,12 +1052,12 @@ and MountSim (`ioptron_park_home_options`) tests assert that the unprefixed name
 
 The six dialect variants of `ioptron_manual_motion_*` now synchronize to 23.99h before starting motion. This exercises the 24h-to-0h boundary on every run instead of relying on the current sidereal time. Movement and stability comparisons use the signed angular difference for RA and ordinary subtraction for other values. Westward motion must move from the actual starting readback; the previous artificial +0.2h reference could satisfy its negative threshold before motion.
 
-The near-wrap scenario fails with the original linear movement helper despite correct eastward motion and passes with the angular comparison. Exact commands and final validation are retained in [task evidence](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/flaky-simulators-report.md). This test-only repair changes no production driver behavior or version and adds no cases. Hardware tests: 0 run, 0 passed for this repair.
+The near-wrap scenario fails with the original linear movement helper despite correct eastward motion and passes with the angular comparison. Exact commands and final validation are retained in [task evidence](../../20261026181024-758b-fix-test-findings/flaky-simulators-report.md). This test-only repair changes no production driver behavior or version and adds no cases. Hardware tests: 0 run, 0 passed for this repair.
 
 Focused simulated validation after rebuilding libindigo: 6 dialect cases run, 6 passed. Hardware tests: 0 run, 0 passed for this repair.
 
 ## Final recorded verification for test-finding repair
 
-`python3 tools/run_driver_test.py mount_ioptron` passed 137/137 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../.factory/tasks/archive/20261026181024-758b-fix-test-findings/verification.md).
+`python3 tools/run_driver_test.py mount_ioptron` passed 137/137 on macOS arm64 against the rebuilt current INDIGO library. The script wrote the README test record and regenerated the shared summary. Exact commands, baseline qualifications and review evidence are retained in [task verification](../../20261026181024-758b-fix-test-findings/verification.md).
 
 Final test summary for this repair: simulator/fake SDK 137 run / 137 passed; physical hardware 0 run / 0 passed.

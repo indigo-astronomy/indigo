@@ -175,6 +175,5 @@
   </ImportGroup>
   <ItemGroup>
     <None Include="indigo_focuser_robofocus.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>

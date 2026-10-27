@@ -437,7 +437,7 @@ static void alpaca_copy_excerpt(char *target, size_t size, const alpaca_http_buf
 
 // Send one request and receive the HTTP response. The caller holds the lock of the channel.
 //
-// Retry policy (REFACTOR.md 2.3 and 7.1):
+// Retry policy (.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 2.3 and 7.1):
 // - The HTTP client itself replaces a kept-alive socket that went stale and sends a replayable request once more when a reused socket fails
 //   before the first byte of the response.
 // - On top of that the request is sent a second time, 100 ms later, after a socket error: always when the connection was refused (nothing was sent),

@@ -9,13 +9,13 @@ Each command below says how it is known:
 
 - **HW**: verified with `indigo_focuser_primaluce` on a SESTO SENSO 2 (application firmware
   03.05.08, web firmware 03.03.00), over USB and over WiFi. Evidence:
-  `indigo_drivers/focuser_primaluce/REFACTOR.md`.
+  `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/focuser_primaluce.md`.
 - **HW (SESTO SENSO 3)**: verified on a SESTO SENSO 3 with an ARCO (application firmware 1.0.9, web
-  03.06.01) over USB, tasks 011 to 013. Evidence: `indigo_drivers/focuser_primaluce/REFACTOR.md`.
+  03.06.01) over USB, tasks 011 to 013. Evidence: `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/focuser_primaluce.md`.
 - **HW (GIOTTO)**: verified on a GIOTTO (application firmware 1.03.09, web 1.1) over USB. Evidence:
-  `indigo_drivers/aux_giotto/REFACTOR.md`.
+  `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_giotto.md`.
 - **HW (ALTO1)**: verified on an ALTO1 (application firmware 1.03.11, web 1.01) over USB. Evidence:
-  `indigo_drivers/aux_alto/REFACTOR.md`.
+  `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_alto.md`.
 - **DOC**: described in the PrimaLuce Lab "Communication Protocol" v4.0 (05 Dec 2022, ESATTO,
   SESTOSENSO2 and ARCO models) and not used by `indigo_focuser_primaluce`.
 - **SIM**: used by `indigo_focuser_primaluce` and covered by its simulator, but not observed on
@@ -264,7 +264,7 @@ Full-state keys used by the focuser driver (**HW**):
 
 Sources: the PrimaLuce Lab "GIOTTO Communication Protocol" v2.1 (20 Feb 2023) and a GIOTTO with application
 firmware 1.03.09, web 1.1, probed on 2026-10-24 (**HW (GIOTTO)**; transcript summary in
-`indigo_drivers/aux_giotto/REFACTOR.md`). Used by `indigo_aux_giotto`.
+`.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_giotto.md`). Used by `indigo_aux_giotto`.
 
 | Purpose | Request | Reply | Known |
 | --- | --- | --- | --- |
@@ -291,7 +291,7 @@ firmware 1.03.09, web 1.1, probed on 2026-10-24 (**HW (GIOTTO)**; transcript sum
 ## ALTO cover
 
 Sources: no PrimaLuce document; the INDI `alto.cpp` and an ALTO1 with application firmware 1.03.11, web 1.01, probed
-on 2026-10-24 (**HW (ALTO1)**; summary in `indigo_drivers/aux_alto/REFACTOR.md`). Used by `indigo_aux_alto`.
+on 2026-10-24 (**HW (ALTO1)**; summary in `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_alto.md`). Used by `indigo_aux_alto`.
 
 | Purpose | Request | Reply | Known |
 | --- | --- | --- | --- |

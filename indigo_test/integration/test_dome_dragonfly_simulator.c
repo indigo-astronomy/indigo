@@ -36,7 +36,7 @@
 // The two driver specific properties were named LA_DOME_SETTINGS and
 // LA_DOME_BUTTON_FUNCTION before the generator migration; the X_ prefix is
 // mandatory for driver specific properties. Item names are unchanged. See
-// indigo_drivers/dome_dragonfly/REFACTOR.md.
+// .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/dome_dragonfly.md.
 #define X_DOME_SETTINGS_NAME "X_DOME_SETTINGS"
 #define X_DOME_BUTTON_FUNCTION_NAME "X_DOME_BUTTON_FUNCTION"
 

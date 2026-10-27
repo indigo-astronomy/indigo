@@ -166,7 +166,7 @@ The test build rule of the `mount_temma_simulator` was also missing `-lm` (link 
 
 ## 8. Test logs
 
-[`conformu/`](conformu) holds one file per device: the detailed log ConformU writes for `conformu conformance`, the one with an `OK`, `INFO` or `ISSUE` result on every line, named `<device type>_<INDIGO device>.log` with every run of other characters in the device name replaced by `_`. Nothing else is kept: no `alpacaprotocol` log, no JSON result file and no console output. The logs are those of the final run of section 11.5.
+[`conformu/`](../../../../../indigo_drivers/agent_alpaca/conformu) holds one file per device: the detailed log ConformU writes for `conformu conformance`, the one with an `OK`, `INFO` or `ISSUE` result on every line, named `<device type>_<INDIGO device>.log` with every run of other characters in the device name replaced by `_`. Nothing else is kept: no `alpacaprotocol` log, no JSON result file and no console output. The logs are those of the final run of section 11.5.
 
 The repository ignores `*.log`; `.gitignore` has an exception for `indigo_drivers/agent_alpaca/conformu/**/*.log`.
 
@@ -368,7 +368,7 @@ Simulated tests: 2512 run, 2512 passed: 1550 on the native simulators of section
 
 ## Server security repair: retained BLOB reader
 
-Task: [server security repair](../../.factory/tasks/archive/20261023121227-a609-fix-server-security-high/brief.md). This bounded API-consumer adaptation addresses the shared cache lifetime finding FND-20261023112118-8e5e-server-security-audit-004; it is not a driver migration. The hand-written bridge retains its existing public properties, raw image conversion, HTTP response formats and platform support. No generated sources or SDKs are involved. Existing raw payload-shape and device-list concurrency findings remain separately tracked and are not claimed fixed.
+Task: [server security repair](../../20261023121227-a609-fix-server-security-high/brief.md). This bounded API-consumer adaptation addresses the shared cache lifetime finding FND-20261023112118-8e5e-server-security-audit-004; it is not a driver migration. The hand-written bridge retains its existing public properties, raw image conversion, HTTP response formats and platform support. No generated sources or SDKs are involved. Existing raw payload-shape and device-list concurrency findings remain separately tracked and are not claimed fixed.
 
 Baseline (2026-10-23, macOS arm64): `make -C indigo_drivers/agent_alpaca -f ../../Makefile.drv` passed. A source-current linked `test_agent_alpaca_cache.c` fixture using a 2×2 synthetic MONO8 image passed the original column-order JSON/transaction contract (1/1). Exact build/run details are retained in task verification evidence. No existing agent-specific executable suite was found; ConformU historical evidence above is not rerun evidence. Hardware testing is not planned: the changed boundary is an in-process cache lifetime, exercised with synthetic data and local files. Linux/Windows runtime checks are unavailable here.
 
@@ -394,7 +394,7 @@ Found defect: source-audit-confirmed callback/client/code lifetime mismatch; no 
 
 Final test summary for this repair: repaired simulated/cache tests run 1, passed 1; shared transport fixture tests run 15, passed 15; physical hardware tests run 0, passed 0. The first transport execution could not bind its isolated fixture socket in the sandbox; the permitted fixture rerun passed. Exact compiler commands are retained by the task coordinator; this does not claim full Alpaca/ConformU or hardware validation.
 
-Final combined candidate recorded run: `python3 tools/run_driver_test.py agent_alpaca` passed 1/1, recording 3.0.0.16 on mac arm64 in README Testing and TEST_SUMMARY. Parent combined HTTP sanitizer fixture passed 15/15. These repeat the same synthetic scope; hardware remains 0/0 and full shutdown-concurrency/ConformU/cross-platform execution remains unverified. Retained task evidence: [.factory verification](../../.factory/tasks/archive/20261024135437-8e0c-fix-property-copy/verification.md).
+Final combined candidate recorded run: `python3 tools/run_driver_test.py agent_alpaca` passed 1/1, recording 3.0.0.16 on mac arm64 in README Testing and TEST_SUMMARY. Parent combined HTTP sanitizer fixture passed 15/15. These repeat the same synthetic scope; hardware remains 0/0 and full shutdown-concurrency/ConformU/cross-platform execution remains unverified. Retained task evidence: [.factory verification](../../20261024135437-8e0c-fix-property-copy/verification.md).
 
 ## Bounded RAW and Bayer mapping repair (2026-10-24)
 

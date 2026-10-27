@@ -155,7 +155,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="indigo_polaralign_simulator.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

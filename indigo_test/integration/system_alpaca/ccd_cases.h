@@ -353,7 +353,7 @@ static bool ccd_take_failing(double duration, const char *text) {
 	return ccd_images() == images && sa_state(sa_device, CCD_IMAGE_PROPERTY_NAME) == INDIGO_ALERT_STATE && sa_number(sa_device, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME) == 0;
 }
 
-// Value the test pattern of the simulator has at pixel x, y of the image, restated from REFACTOR.md 6.1.
+// Value the test pattern of the simulator has at pixel x, y of the image, restated from .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 6.1.
 static unsigned ccd_expected(const ccd_pattern *pattern, int x, int y, int plane) {
 	unsigned sensor_x = (unsigned)((pattern->start_x + x) * pattern->bin_x);
 	unsigned sensor_y = (unsigned)((pattern->start_y + y) * pattern->bin_y);

@@ -173,7 +173,6 @@
   <ItemGroup>
     <None Include="indigo_dome_dragonfly.driver" />
     <None Include="..\aux_dragonfly\shared\dragonfly_shared.c" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
