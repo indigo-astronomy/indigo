@@ -53,7 +53,9 @@
       "evidence": "verification.md"
     }
   ],
-  "risk_reviews": {},
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
   "reviews": [],
   "reviewed_content": {
     ".factory/completions/20261027192244-16bd-solver-hints-input-diagnostics.json": [

@@ -27,6 +27,11 @@ luminance weighting and a message.
 `./.factory/scripts/security` (`validate_project.py --security`): see verification.md for the exact result. No
 dependency or secret scanners are configured for this project beyond that check.
 
+## Diff risk signal
+The baseline risk policy flags `MIGRATION_STATUS.md` as a data-model path because of its name. The change is one
+cell of the driver status table (automated test count 141 to 149); it is documentation, no schema, migration or
+stored data is involved. Reviewed, no risk.
+
 ## Findings
 None.
 
