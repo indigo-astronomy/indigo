@@ -1,0 +1,19 @@
+{
+  "title": "Solver margin on the 800 x 600 Rosetta field is a few consistent matches",
+  "category": "functional",
+  "severity": "low",
+  "status": "deferred",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261027140318-5859-fix-simulator-binning",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The native quad solver solves the 2 x 2 binned Rosetta frame of the CCD Imager Simulator (800 x 600, 16.87\"/px) with 6 of 23 consistent matches when the camera averages the bin block, and the agent's own downsampling of the unbinned frame with 7 of 32, but a summed and clamped frame of the same field (106 detected stars instead of 71 or 96) fails deterministically with 5 of 57 and 5 of 53 consistent matches. The brightest star per cell selection and the vote threshold leave little margin at this field size. Not separated whether the clamped cores or the extra faint detections break it. Next: feed the solver core the summed frame offline and tune the star selection or the consistency threshold with a regression in test_agent_solver_core.",
+  "evidence": "verification.md of task 20261027140318-5859-fix-simulator-binning (debug runs of test_agent_solver_simulator 'rosetta camera binned' with the summed and the averaged driver); indigo_drivers/agent_solver/indigo_solver.c indigo_solver_compute_center()",
+  "resolution": null,
+  "id": "FND-20261027140318-5859-fix-simulator-binning-002"
+}

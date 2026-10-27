@@ -106,12 +106,18 @@ Defects found by the sets, fixed in this task:
   integration test expects parity −1 for its sky-as-seen synthetic frame, the indexer passes −1 (unchanged
   projection). Version 3.0.0.5.
 
-Not a solver defect, excluded from the sets: the CCD simulator bins the imager frame by taking every second pixel
-instead of summing, which turns the stars into single pixel spikes whose codes do not match (the agent's own 2 x 2
-downsampling, which averages, solves). IMAGE_NOISE_VAR at or above the amplitude of magnitude 8 stars (600 and
-1000 ADU) buries most of the rendered field and is likewise not a valid input; the sweep uses 100 to 400.
+Not a solver defect, excluded from the sets at first: the CCD simulator binned the imager frame by taking every second
+pixel instead of summing, which turned the stars into single pixel spikes whose codes do not match (the agent's own
+2 x 2 downsampling, which averages, solves). Task 20261027140318-5859-fix-simulator-binning made the simulator average
+the bin block (`indigo_ccd_simulator` version 45) and the `rosetta camera binned` case is back in set 1: the 2 x 2
+binned frame solves to the same centre at 16.87"/px per binned pixel over 800 x 600 pixels, with 6 of 23 consistent
+matches; a summed and clamped frame of the same field did not solve (5 of 57), see
+FND-20261027140318-5859-fix-simulator-binning-002 for the thin margin. IMAGE_NOISE_VAR at or
+above the amplitude of magnitude 8 stars (600 and 1000 ADU) buries most of the rendered field and is likewise not a
+valid input; the sweep uses 100 to 400.
 
 ## Final test summary
 
-Simulated (hardware-free) tests: 143 run, 143 passed (9 unit, 6 agent integration, 128 simulator integration:
-8 Rosetta cases and 120 guider setups). Hardware tests: 0 run, 0 passed.
+Simulated (hardware-free) tests: 144 run, 144 passed (9 unit, 6 agent integration, 129 simulator integration:
+9 Rosetta cases and 120 guider setups; the Rosetta set with the camera binned case re-run in task
+20261027140318-5859-fix-simulator-binning, the recorded run of this driver predates it). Hardware tests: 0 run, 0 passed.

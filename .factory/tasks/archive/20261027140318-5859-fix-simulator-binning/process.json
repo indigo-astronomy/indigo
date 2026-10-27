@@ -1,0 +1,138 @@
+{
+  "version": 2,
+  "task": "20261027140318-5859-fix-simulator-binning",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo_drivers/ccd_simulator/README.md",
+    "indigo_drivers/ccd_simulator/REFACTOR.md",
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver",
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.c",
+    "indigo_drivers/agent_solver/REFACTOR.md",
+    "indigo_test/integration/test_ccd_simulator.c",
+    "indigo_test/integration/test_agent_solver_simulator.c",
+    ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-*.json",
+    ".factory/completions/20261027140318-5859-fix-simulator-binning.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_simulator"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_solver_simulator",
+        "rosetta"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_imager"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_guider"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_astrometry"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md",
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261027140318-5859-fix-simulator-binning.json": [
+      "100644",
+      "blob",
+      "da18c6f73b7888afaea45df419490611fe261111"
+    ],
+    ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-001.json": [
+      "100644",
+      "blob",
+      "bb55d3a358b629e6e911ce2d0692fd898adbfc08"
+    ],
+    ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-002.json": [
+      "100644",
+      "blob",
+      "e94edddc12d31b5b4f0932b8a14e2a63f0417b28"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "97cefe9f2cddd9be83763dc11558445d6b15a0ea"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "5b5aae70469679b611f22c40a23fe74e51738d6b"
+    ],
+    "indigo_drivers/agent_solver/REFACTOR.md": [
+      "100644",
+      "blob",
+      "769b56bc9dde8646e7ae6f2af2f17ec7ece89c42"
+    ],
+    "indigo_drivers/ccd_simulator/README.md": [
+      "100644",
+      "blob",
+      "1ba16a02ed00f650bf5d232aeacb56bf3d0be0ea"
+    ],
+    "indigo_drivers/ccd_simulator/REFACTOR.md": [
+      "100644",
+      "blob",
+      "71882003a21cda8cd9ad68affcde76485bc5673a"
+    ],
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.c": [
+      "100644",
+      "blob",
+      "e3c5a05d48c4fa13e411a5abb46941d29b53cfd5"
+    ],
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver": [
+      "100644",
+      "blob",
+      "ce85c0e2b63d07a2a0303115eb9fd9d6676f7e2c"
+    ],
+    "indigo_test/integration/test_agent_solver_simulator.c": [
+      "100644",
+      "blob",
+      "6b1e4af18cf8deb9d0c5411eecd865249828a0fb"
+    ],
+    "indigo_test/integration/test_ccd_simulator.c": [
+      "100644",
+      "blob",
+      "18dc6a07ce79dda3528d2cdd76a9c669c4ab2df0"
+    ]
+  }
+}

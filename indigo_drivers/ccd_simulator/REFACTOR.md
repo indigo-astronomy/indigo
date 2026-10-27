@@ -316,3 +316,55 @@ time of the run, so the case failed when it took the west side: the star moved b
 opposite direction (FND-20261025152706-abbf-fix-server-leaks-002). The case now reads the side from the simulated mount
 state after the slew and checks the shifts for it. No driver change. Recorded run:
 `2026-10-25 19:48 3.0.0.43 linux x64 simulator 26/26 OK` (the mount was on the west side).
+
+## Camera binning averages the bin block (2026-10-27, task 20261027140318-5859-fix-simulator-binning)
+
+Version 44 to 45.
+
+Symptom: a 2 x 2 binned Rosetta frame of `CCD Imager Simulator` did not solve in the Solver Agent, while the agent's
+own 2 x 2 downsampling of the unbinned frame did (task 20261027131225-a980-solver-simulator-tests had to leave camera
+binning out of its Rosetta set). The guider camera's binned stars were found by source audit, not by a failing consumer.
+
+Root cause: `create_frame()` binned the imager by taking every `horizontal_bin`-th / `vertical_bin`-th pixel of the
+fixed image, so a 2 x 2 binned star kept one sample of its core and lost the rest; the stars became single pixel spikes
+whose quad codes no centroid can place. The guider camera divided the star centres by the bin but rendered the same
+`exp(-(x² + y²) / 4)` profile in binned pixels, so a binned star was as wide in binned pixels as an unbinned one in
+unbinned pixels. A real camera bins the whole block, summing the charge in hardware or averaging in software.
+
+Fix: an imager pixel is the mean of its `horizontal_bin` x `vertical_bin` block of the fixed image (integer part), as
+the agent's downsampling computes it; a guider star is rendered with the profile evaluated in unbinned pixels,
+`(centre - pixel) * bin`, with the unbinned amplitude, so the shape is the unbinned one scaled down and the frame keeps
+its range at every binning. CCD_FRAME geometry, gain, offset, gamma, blur, noise, hot pixels, the gradient and the
+eclipse mode (already rendered in unbinned coordinates) are unchanged.
+
+Sum rejected by measurement: a first version summed the block, clamped at 65535 like a saturated well (60 of the
+480 000 2 x 2 blocks of the 16-bit image exceed it, the cores of the brightest stars), and the guider amplitude was
+multiplied by the block size. That frame did not solve either, deterministically in three runs: the detector found
+106 stars (96 on the agent's averaged frame), the solver matched 57 stars by votes but only 5 of them consistently
+(`no consistent set of matches found (5 of 57)`, 5 of 53 with the 5° index). The averaged frame of the camera gives
+71 detected stars and solves with 6 of 23 consistent matches, the agent's own downsampling with 7 of 32. Whether the
+clamped cores or the additional faint detections break the summed frame was not separated; the thin margin of the
+solver on this 800 x 600 field is registered as FND-20261027140318-5859-fix-simulator-binning-002 for the solver.
+
+Regression tests in `integration/test_ccd_simulator.c`:
+
+- `simulator_imager_binning_averages_the_bin_block`: the 128 x 96 region at (616, 880), which holds the brightest
+  star of the image, captured at binning 1, 2 and 4; every pixel equals the integer mean of its block of the fixed
+  image plus the 0 to 127 ADU frame noise, and the 3 blocks (2 x 2) and 2 blocks (4 x 4) whose sum exceeds 65535 are
+  averaged, not clamped. The old driver fails it for every block (one sample instead of the mean).
+- `simulator_guider_binning_scales_the_star_profile`: Orion at rotation 0 without noise (range 1) and gradient; the
+  brightest unsaturated star peak away from the edges (magnitude 5, amplitude 7800 ADU) unbinned and 2 x 2 binned:
+  centroid 265.15, 884.44 and 132.60, 442.17, root mean square radius 2.00 px and 1.00 px, flux 97 945 and
+  24 489 ADU (a quarter). The old driver fails it with a radius ratio of 1.
+- `test_agent_solver_simulator "rosetta camera binned"` (opt-in, `agent_solver`) solves the 2 x 2 binned frame
+  through the Imager Agent to the same centre, 16.87"/px per binned pixel over 800 x 600 pixels.
+
+Found by source audit next to the change, out of scope and registered as
+FND-20261027140318-5859-fix-simulator-binning-001 (low, deferred): the hot pixel loop tests `y > frame_height` where
+`y >= frame_height` is meant.
+
+Validation on macOS arm64 (Darwin 27, Apple clang): recorded run `python3 tools/run_driver_test.py ccd_simulator`
+28/28 (`2026-10-27 15:19 3.0.0.45 mac arm64 simulator 28/28 OK`); `test_agent_solver_simulator rosetta` 9/9 with
+`rosetta camera binned` at RA 6.52689 h Dec 5.0933° angle 179.11° 16.873"/px, centre error 6.1"; `test_agent_imager`
+39/39, `test_agent_guider` 95/95, `test_agent_astrometry` 54/54 against the rebuilt driver. Hardware 0 run / 0 passed.
+Linux and Windows not run.

@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261027140318-5859-fix-simulator-binning",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner review; integration into master by fast-forward on the owner's instruction.",
+  "blocker": null
+}

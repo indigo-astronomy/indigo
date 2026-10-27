@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 44;
+	version = 45;
 	multi_device_support = true;
 	include {
 		#include <limits.h>
@@ -474,10 +474,18 @@ driver simulator {
 				bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
 		
 				if (device == PRIVATE_DATA->imager && light_frame) {
+					// a binned pixel is the mean of its bin block, as a camera binning in software does, so the stars keep their profile and the frame its range
 					for (int j = 0; j < frame_height; j++) {
 						int jj = (frame_top + j) * vertical_bin;
 						for (int i = 0; i < frame_width; i++) {
-							raw[j * frame_width + i] = indigo_ccd_simulator_raw_image[jj * IMAGER_WIDTH + (frame_left + i) * horizontal_bin];
+							int ii = (frame_left + i) * horizontal_bin;
+							unsigned sum = 0;
+							for (int bj = 0; bj < vertical_bin; bj++) {
+								for (int bi = 0; bi < horizontal_bin; bi++) {
+									sum += indigo_ccd_simulator_raw_image[(jj + bj) * IMAGER_WIDTH + ii + bi];
+								}
+							}
+							raw[j * frame_width + i] = (uint16_t)(sum / (horizontal_bin * vertical_bin));
 						}
 					}
 				} else if (device == PRIVATE_DATA->guider_camera) {
@@ -539,15 +547,16 @@ driver simulator {
 									continue;
 								}
 								int yw = y * frame_width;
-								double yy = center_y - y;
+								// the profile is rendered in unbinned pixels, so a binned star is the unbinned one scaled down, like the imager's mean of the bin block
+								double yy = (center_y - y) * vertical_bin;
 								for (int x = xMax - 16 / horizontal_bin; x <= xMax; x++) {
 									if (x < 0 || x >= frame_width) {
 										continue;
 									}
-								double xx = center_x - x;
-								double v = a * exp(-(xx * xx / 4 + yy * yy / 4));
-								double value = raw[yw + x] + v;
-								raw[yw + x] = value > 65535 ? 65535 : (uint16_t)value;
+									double xx = (center_x - x) * horizontal_bin;
+									double v = a * exp(-(xx * xx / 4 + yy * yy / 4));
+									double value = raw[yw + x] + v;
+									raw[yw + x] = value > 65535 ? 65535 : (uint16_t)value;
 								}
 							}
 						}
