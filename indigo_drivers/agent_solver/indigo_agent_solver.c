@@ -59,7 +59,7 @@
 #define AGENT_SOLVER_INDEX_PROPERTY_NAME	"X_AGENT_SOLVER_INDEX"
 
 // Tycho-2 quad indexes built by indigo_solver_indexer are downloaded from here as tyc2-<fov>deg.isix
-#define AGENT_SOLVER_INDEX_URL						"https://github.com/indigo-astronomy/indigo/releases/download/solver-indexes-v1"
+#define AGENT_SOLVER_INDEX_URL						"https://github.com/indigo-astronomy/indigo/releases/download/index_release_v1"
 #define AGENT_SOLVER_INDEX_ITEM_PREFIX		"TYC2_"
 
 #define MAX_IMAGE_STAR_COUNT							500

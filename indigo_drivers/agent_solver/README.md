@@ -37,7 +37,7 @@ The indexes `tyc2-<fov>deg.isix` are built from the Tycho-2 catalogue for fields
 
 The files are kept outside the repository in `$INDIGO_CACHE_BASE/solver`, or in `~/.indigo/solver` when
 `INDIGO_CACHE_BASE` is not set. They are managed with the `X_AGENT_SOLVER_INDEX` property: selecting an item downloads
-the file from the `solver-indexes-v1` release of the INDIGO repository on GitHub and verifies it, clearing it deletes the
+the file from the `index_release_v1` release of the INDIGO repository on GitHub and verifies it, clearing it deletes the
 file. Installed indexes are offered in `AGENT_PLATESOLVER_USE_INDEX` and
 at least one of them must be selected to solve. Choose an index whose field of view is close to 1.5 x the size of the
 frame; when the pixel scale is known, the index fitting the field size is tried first, then the other selected ones.
