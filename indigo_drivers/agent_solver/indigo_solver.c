@@ -34,6 +34,7 @@
 
 #include <jpeglib.h>
 
+#include <indigo/indigo_timer.h>
 #include <indigo/indigo_dslr_raw.h>
 
 #include "indigo_solver_utils.h"
@@ -168,7 +169,13 @@ static bool fits_card_value(const char *card, const char *keyword, double *value
 	return end != buffer;
 }
 
-static float *fits_values(const void *data, long size, int *width, int *height, float *min, float *max, const char **message) {
+// Luminance weight of a colour channel of a three channel image, 1 for every channel of any other channel count
+static float channel_weight(int channel, int channels) {
+	static const float weights[3] = { 0.299f, 0.587f, 0.114f };
+	return channels == 3 ? weights[channel] : 1.0f / channels;
+}
+
+static float *fits_values(const void *data, long size, int *width, int *height, float *min, float *max, bool *bayered, const char **message) {
 	const char *fits = (const char *)data;
 	double bitpix = 0, naxis = 0, naxis1 = 0, naxis2 = 0, naxis3 = 1, bzero = 0, bscale = 1;
 	long offset = 0;
@@ -183,6 +190,8 @@ static float *fits_values(const void *data, long size, int *width, int *height, 
 			double value;
 			if (strncmp(card, "END     ", 8) == 0) {
 				end = true;
+			} else if (strncmp(card, "BAYERPAT", 8) == 0) {
+				*bayered = true;
 			} else if (fits_card_value(card, "BITPIX", &value)) {
 				bitpix = value;
 			} else if (fits_card_value(card, "NAXIS", &value)) {
@@ -217,6 +226,7 @@ static float *fits_values(const void *data, long size, int *width, int *height, 
 	float *values = indigo_safe_malloc(pixels * sizeof(float));
 	const uint8_t *p = (const uint8_t *)fits + offset;
 	for (int plane = 0; plane < planes; plane++) {
+		float weight = channel_weight(plane, planes);
 		for (size_t i = 0; i < pixels; i++, p += bytes) {
 			double value;
 			switch ((int)bitpix) {
@@ -251,12 +261,11 @@ static float *fits_values(const void *data, long size, int *width, int *height, 
 			if (!isfinite(value)) {
 				value = 0;
 			}
-			values[i] = plane == 0 ? (float)value : values[i] + (float)value;
+			values[i] = plane == 0 ? (float)value * weight : values[i] + (float)value * weight;
 		}
 	}
-	*min = *max = values[0] / planes;
+	*min = *max = values[0];
 	for (size_t i = 0; i < pixels; i++) {
-		values[i] /= planes;
 		*min = values[i] < *min ? values[i] : *min;
 		*max = values[i] > *max ? values[i] : *max;
 	}
@@ -320,11 +329,11 @@ static indigo_raw_header *jpeg_image(const void *data, long size, const char **m
 		JSAMPROW rows[1] = { row };
 		jpeg_read_scanlines(&cinfo.pub, rows, 1);
 		for (int x = 0; x < width; x++) {
-			int sum = 0;
+			float sum = 0;
 			for (int c = 0; c < components; c++) {
-				sum += row[x * components + c];
+				sum += row[x * components + c] * channel_weight(c, components);
 			}
-			out[(size_t)y * width + x] = (uint16_t)(sum * 257 / components);
+			out[(size_t)y * width + x] = (uint16_t)(sum * 257 + 0.5f);
 		}
 	}
 	jpeg_finish_decompress(&cinfo.pub);
@@ -354,12 +363,12 @@ static indigo_raw_header *dslr_image(const void *data, long size, const char **m
 	} else if (output.bits == 16 && output.colors == 3 && output.size >= pixels * 3 * sizeof(uint16_t)) {
 		const uint16_t *in = output.data;
 		for (size_t i = 0; i < pixels; i++) {
-			out[i] = (uint16_t)((in[3 * i] + in[3 * i + 1] + in[3 * i + 2]) / 3);
+			out[i] = (uint16_t)(in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3) + 0.5f);
 		}
 	} else if (output.bits == 8 && output.colors == 3 && output.size >= pixels * 3) {
 		const uint8_t *in = output.data;
 		for (size_t i = 0; i < pixels; i++) {
-			out[i] = (uint16_t)((in[3 * i] + in[3 * i + 1] + in[3 * i + 2]) * 257 / 3);
+			out[i] = (uint16_t)((in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3)) * 257 + 0.5f);
 		}
 	} else {
 		free(output.data);
@@ -372,8 +381,20 @@ static indigo_raw_header *dslr_image(const void *data, long size, const char **m
 	return image;
 }
 
-indigo_raw_header *indigo_solver_load_image(const void *data, long size, const char **message) {
+// A RAW mono frame of a colour camera carries "BAYERPAT='RGGB'" in the text appended after its pixels
+static bool raw_bayer_keyword(const char *extension, size_t length) {
+	static const char keyword[] = "BAYERPAT";
+	for (size_t i = 0; i + sizeof(keyword) - 1 <= length; i++) {
+		if (memcmp(extension + i, keyword, sizeof(keyword) - 1) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+indigo_raw_header *indigo_solver_load_image(const void *data, long size, bool *bayered, const char **message) {
 	uint32_t signature = 0;
+	*bayered = false;
 	if (size >= (long)sizeof(signature)) {
 		memcpy(&signature, data, sizeof(signature));
 	}
@@ -384,11 +405,15 @@ indigo_raw_header *indigo_solver_load_image(const void *data, long size, const c
 			*message = "Truncated RAW image";
 			return NULL;
 		}
+		size_t pixels = (size_t)header->width * header->height;
+		size_t data_size = sizeof(indigo_raw_header) + pixels * bytes;
+		if (bytes <= 2) {
+			*bayered = raw_bayer_keyword((const char *)data + data_size, size - data_size);
+		}
 		if (signature == INDIGO_RAW_MONO16) {
-			return indigo_safe_malloc_copy(sizeof(indigo_raw_header) + (size_t)header->width * header->height * sizeof(uint16_t), (void *)data);
+			return indigo_safe_malloc_copy(data_size, (void *)data);
 		}
 		indigo_raw_header *image = mono16_image(header->width, header->height);
-		size_t pixels = (size_t)header->width * header->height;
 		uint16_t *out = (uint16_t *)(image + 1);
 		if (signature == INDIGO_RAW_MONO8) {
 			const uint8_t *in = (const uint8_t *)(header + 1);
@@ -398,12 +423,12 @@ indigo_raw_header *indigo_solver_load_image(const void *data, long size, const c
 		} else if (signature == INDIGO_RAW_RGB24) {
 			const uint8_t *in = (const uint8_t *)(header + 1);
 			for (size_t i = 0; i < pixels; i++) {
-				out[i] = (uint16_t)((in[3 * i] + in[3 * i + 1] + in[3 * i + 2]) * 257 / 3);
+				out[i] = (uint16_t)((in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3)) * 257 + 0.5f);
 			}
 		} else {
 			const uint16_t *in = (const uint16_t *)(header + 1);
 			for (size_t i = 0; i < pixels; i++) {
-				out[i] = (uint16_t)((in[3 * i] + in[3 * i + 1] + in[3 * i + 2]) / 3);
+				out[i] = (uint16_t)(in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3) + 0.5f);
 			}
 		}
 		return image;
@@ -411,7 +436,7 @@ indigo_raw_header *indigo_solver_load_image(const void *data, long size, const c
 	if (size >= 9 && strncmp((const char *)data, "SIMPLE  =", 9) == 0) {
 		int width, height;
 		float min, max;
-		float *values = fits_values(data, size, &width, &height, &min, &max, message);
+		float *values = fits_values(data, size, &width, &height, &min, &max, bayered, message);
 		if (values == NULL) {
 			return NULL;
 		}
@@ -797,6 +822,55 @@ exit:
 	return count;
 }
 
+int indigo_solver_filter_quads(indigo_solver_quad *quads, int quad_count, float ra, float dec, float radius, indigo_solver_quad **filtered) {
+	int count = 0;
+	*filtered = NULL;
+	for (int pass = 0; pass < 2; pass++) {
+		count = 0;
+		for (int i = 0; i < quad_count; i++) {
+			indigo_solver_quad *quad = quads + i;
+			bool inside = true;
+			for (int k = 0; k < 4 && inside; k++) {
+				inside = indigo_angular_distance(ra, dec, quad->stars[k]->ra, quad->stars[k]->dec) <= radius;
+			}
+			if (inside) {
+				if (pass) {
+					(*filtered)[count] = *quad;
+				}
+				count++;
+			}
+		}
+		if (count == 0) {
+			break;
+		}
+		if (pass == 0) {
+			*filtered = indigo_safe_malloc(count * sizeof(indigo_solver_quad));
+		}
+	}
+	indigo_debug("%s: %d of %d catalog quads within %.2f° of RA %.3f° Dec %.3f°", __FUNCTION__, count, quad_count, radius * RAD_TO_DEG, ra * RAD_TO_DEG, dec * RAD_TO_DEG);
+	return count;
+}
+
+// Checked every LIMITS_CHECK_INTERVAL iterations of the matching loops
+#define LIMITS_CHECK_INTERVAL 4096
+
+static bool limits_exceeded(indigo_solver_limits *limits) {
+	if (limits == NULL) {
+		return false;
+	}
+	if (limits->exceeded) {
+		return true;
+	}
+	if (limits->abort != NULL && *limits->abort) {
+		limits->exceeded = true;
+		limits->reason = "Aborted";
+	} else if (limits->deadline > 0 && indigo_monotonic_time() > limits->deadline) {
+		limits->exceeded = true;
+		limits->reason = "CPU time limit exceeded";
+	}
+	return limits->exceeded;
+}
+
 static inline int bucket_key(int hx3, int hy3) {
 	return hx3 * BUCKET_SIDE + hy3;
 }
@@ -817,8 +891,11 @@ static uint32_t *build_buckets(indigo_solver_quad *catalog_quads, int catalog_qu
 	return starts;
 }
 
-int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, indigo_solver_quad *catalog_quads, int catalog_quad_count, indigo_solver_quad_match *matches, int max_match_count) {
+int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, indigo_solver_quad *catalog_quads, int catalog_quad_count, indigo_solver_quad_match *matches, int max_match_count, indigo_solver_limits *limits) {
 	int count_by_hash = 0, count_by_scale = 0;
+	if (limits_exceeded(limits)) {
+		return 0;
+	}
 	for (int i = 1; i < catalog_quad_count; i++) {
 		if (catalog_quads[i - 1].hash > catalog_quads[i].hash) {
 			indigo_debug("%s: catalog quads are not sorted by hash, sorting", __FUNCTION__);
@@ -829,6 +906,10 @@ int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_co
 	uint32_t *starts = build_buckets(catalog_quads, catalog_quad_count);
 	const int t = INDIGO_SOLVER_HASH_TOLERANCE;
 	for (int i = 0; i < image_quad_count; i++) {
+		if (i % LIMITS_CHECK_INTERVAL == 0 && limits_exceeded(limits)) {
+			indigo_safe_free(starts);
+			return 0;
+		}
 		indigo_solver_quad *image_quad = image_quads + i;
 		int hx3, hy3, hx4, hy4;
 		indigo_solver_quad_hash_components(image_quad->hash, &hx3, &hy3, &hx4, &hy4);
@@ -869,6 +950,9 @@ exit:
 	float best_scale = 0;
 	int best_votes = 0;
 	for (int i = 0; i < count_by_hash; i++) {
+		if (i % (LIMITS_CHECK_INTERVAL / 64) == 0 && limits_exceeded(limits)) {
+			return 0;
+		}
 		indigo_solver_quad_match *qmi = matches + i;
 		for (int j = i + 1; j < count_by_hash; j++) {
 			indigo_solver_quad_match *qmj = matches + j;
@@ -907,10 +991,13 @@ exit:
 	return count_by_scale;
 }
 
-int indigo_solver_match_stars(indigo_solver_quad_match *quad_matches, int quad_match_count, indigo_solver_star_match *star_matches, int max_star_match_count) {
+int indigo_solver_match_stars(indigo_solver_quad_match *quad_matches, int quad_match_count, indigo_solver_star_match *star_matches, int max_star_match_count, indigo_solver_limits *limits) {
 	int count = 0, accepted = 0;
 	// 1) Accumulate votes per (image star, catalog star) correspondence
 	for (int i = 0; i < quad_match_count; i++) {
+		if (i % LIMITS_CHECK_INTERVAL == 0 && limits_exceeded(limits)) {
+			return 0;
+		}
 		indigo_solver_quad_match *quad_match = quad_matches + i;
 		for (int j = 0; j < 4; j++) {
 			indigo_solver_star *image_star = quad_match->image_quad->stars[j];
@@ -1038,7 +1125,7 @@ static int grow_fit(const fit_data *d, bool *inlier, affine_fit *fit) {
 	return fit_affine(d, inlier, fit) ? fit->n : 0;
 }
 
-bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_count, int width, int height, float *ra_center, float *dec_center, float *rotation, float *scale, int *parity) {
+bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_count, int width, int height, float *ra_center, float *dec_center, float *rotation, float *scale, int *parity, int *matched, float *rms) {
 	if (match_count < 3) {
 		return false;
 	}
@@ -1149,6 +1236,12 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 	*scale = best_fit.pixel;
 	if (parity != NULL) {
 		*parity = mirrored;
+	}
+	if (matched != NULL) {
+		*matched = best_n;
+	}
+	if (rms != NULL) {
+		*rms = best_fit.rms;
 	}
 	// 6. RA/Dec of the image centre: Δx = Δy = 0 maps to (a0, b0) on the tangent plane
 	indigo_tangent_to_radec(ref_ra, ref_dec, best_fit.a0, best_fit.b0, ra_center, dec_center);

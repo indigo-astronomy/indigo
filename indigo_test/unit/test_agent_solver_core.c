@@ -30,6 +30,7 @@
 #include <math.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_timer.h>
 
 #include "indigo_drivers/agent_solver/indigo_solver.h"
 #include "../test_runner.h"
@@ -334,14 +335,18 @@ static void solve_synthetic_image(synthetic_catalog *c, float ra_center, float d
 	ASSERT_TRUE(quad_count > 0);
 	int max_matches = 200000;
 	indigo_solver_quad_match *quad_matches = malloc(max_matches * sizeof(indigo_solver_quad_match));
-	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_matches);
+	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_matches, NULL);
 	ASSERT_TRUE(quad_match_count > 0);
 	indigo_solver_star_match star_matches[1000];
-	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000);
+	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000, NULL);
 	ASSERT_TRUE(star_match_count >= 4);
 	float ra, dec, rotation, pixel;
 	int parity;
-	ASSERT_TRUE(indigo_solver_compute_center(star_matches, star_match_count, IMAGE_WIDTH, IMAGE_HEIGHT, &ra, &dec, &rotation, &pixel, &parity));
+	int matched = 0;
+	float rms = 0;
+	ASSERT_TRUE(indigo_solver_compute_center(star_matches, star_match_count, IMAGE_WIDTH, IMAGE_HEIGHT, &ra, &dec, &rotation, &pixel, &parity, &matched, &rms));
+	ASSERT_TRUE(matched >= 6);
+	ASSERT_TRUE(rms < 3 * pixel);
 	ASSERT_TRUE(indigo_angular_distance(ra, dec, ra_center, dec_center) < 5 * ARCSEC_TO_RAD);
 	ASSERT_TRUE(fabs(pixel / scale - 1) < 0.002);
 	ASSERT_EQ_INT(parity_in, parity);
@@ -393,12 +398,12 @@ static void test_solve_rejects_unrelated_field(void) {
 	int used = 0;
 	int quad_count = indigo_solver_build_image_quads(image_stars, 20, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_WIDTH / 10, &used, image_quads, max_quads);
 	indigo_solver_quad_match *quad_matches = malloc(max_quads * sizeof(indigo_solver_quad_match));
-	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads);
+	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, NULL);
 	indigo_solver_star_match star_matches[1000];
-	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000);
+	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000, NULL);
 	float ra, dec, rotation, pixel;
 	int parity;
-	bool solved = indigo_solver_compute_center(star_matches, star_match_count, IMAGE_WIDTH, IMAGE_HEIGHT, &ra, &dec, &rotation, &pixel, &parity);
+	bool solved = indigo_solver_compute_center(star_matches, star_match_count, IMAGE_WIDTH, IMAGE_HEIGHT, &ra, &dec, &rotation, &pixel, &parity, NULL, NULL);
 	if (solved) {
 		// a chance fit of a few random matches is possible, it must not reproduce the catalog
 		int reprojected = 0;
@@ -410,6 +415,67 @@ static void test_solve_rejects_unrelated_field(void) {
 		}
 		ASSERT_TRUE(reprojected < 8);
 	}
+	free(quad_matches);
+	free(image_quads);
+	free(c->quads);
+	free(c);
+}
+
+// A deadline in the past and an abort flag stop the matching loops at once with the limit named; the cone filter
+// keeps the quads around the field and none far away
+static void test_match_respects_limits_and_cone(void) {
+	synthetic_catalog *c = malloc(sizeof(synthetic_catalog));
+	build_synthetic_catalog(c);
+	indigo_solver_star image_stars[CATALOG_STAR_COUNT];
+	int star_count = 0;
+	for (int i = 0; i < CATALOG_STAR_COUNT; i++) {
+		float x, y;
+		if (indigo_radec_to_xy(c->ra0, c->dec0, 0.3f, 8 * ARCSEC_TO_RAD, IMAGE_WIDTH, IMAGE_HEIGHT, -1, c->catalog[i].ra, c->catalog[i].dec, &x, &y) && x >= 0 && x < IMAGE_WIDTH && y >= 0 && y < IMAGE_HEIGHT) {
+			memset(image_stars + star_count, 0, sizeof(indigo_solver_star));
+			image_stars[star_count].x = x;
+			image_stars[star_count].y = y;
+			image_stars[star_count].magnitude = frand();
+			star_count++;
+		}
+	}
+	int max_quads = 200000;
+	indigo_solver_quad *image_quads = malloc(max_quads * sizeof(indigo_solver_quad));
+	int used = 0;
+	int quad_count = indigo_solver_build_image_quads(image_stars, star_count, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_WIDTH / 10, &used, image_quads, max_quads);
+	indigo_solver_quad_match *quad_matches = malloc(max_quads * sizeof(indigo_solver_quad_match));
+	indigo_solver_limits limits = { 0 };
+	limits.deadline = indigo_monotonic_time() - 1;
+	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, &limits));
+	ASSERT_TRUE(limits.exceeded);
+	ASSERT_TRUE(strcmp(limits.reason, "CPU time limit exceeded") == 0);
+	volatile bool abort = true;
+	memset(&limits, 0, sizeof(limits));
+	limits.abort = &abort;
+	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, &limits));
+	ASSERT_TRUE(limits.exceeded);
+	ASSERT_TRUE(strcmp(limits.reason, "Aborted") == 0);
+	indigo_solver_star_match star_matches[1000];
+	ASSERT_EQ_INT(0, indigo_solver_match_stars(quad_matches, 1, star_matches, 1000, &limits));
+	// a far deadline and a clear flag let the field solve
+	memset(&limits, 0, sizeof(limits));
+	limits.deadline = indigo_monotonic_time() + 60;
+	abort = false;
+	limits.abort = &abort;
+	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, &limits);
+	ASSERT_TRUE(quad_match_count > 0);
+	ASSERT_FALSE(limits.exceeded);
+	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000, &limits);
+	ASSERT_TRUE(star_match_count >= 6);
+	// the cone around the field keeps its quads, a cone 30 degrees away keeps none
+	indigo_solver_quad *cone = NULL;
+	int cone_count = indigo_solver_filter_quads(c->quads, c->quad_count, c->ra0, c->dec0, 3 * DEG_TO_RAD, &cone);
+	ASSERT_TRUE(cone_count > 0 && cone_count <= c->quad_count);
+	for (int i = 1; i < cone_count; i++) {
+		ASSERT_TRUE(cone[i - 1].hash <= cone[i].hash);
+	}
+	free(cone);
+	ASSERT_EQ_INT(0, indigo_solver_filter_quads(c->quads, c->quad_count, c->ra0 + 30 * DEG_TO_RAD, c->dec0, 3 * DEG_TO_RAD, &cone));
+	ASSERT_TRUE(cone == NULL);
 	free(quad_matches);
 	free(image_quads);
 	free(c->quads);
@@ -510,6 +576,7 @@ int main(void) {
 		{ "solve_synthetic_mirrored_field", test_solve_synthetic_mirrored_field },
 		{ "solve_rejects_unrelated_field", test_solve_rejects_unrelated_field },
 		{ "image_stars_noisy_frame", test_image_stars_noisy_frame },
+		{ "match_respects_limits_and_cone", test_match_respects_limits_and_cone },
 	};
 	return indigo_run_tests("test_agent_solver_core", cases, sizeof(cases) / sizeof(cases[0]));
 }

@@ -65,7 +65,7 @@ All defects were found in the ported code by the new tests; none existed in this
 
 ## Scenario mapping
 
-- Unit (`test_agent_solver_core`): noisy frame with defects detected and cleaned; tangent plane round trip and far hemisphere rejection; hash component packing and
+- Unit (`test_agent_solver_core`): limits and cone filter; noisy frame with defects detected and cleaned; tangent plane round trip and far hemisphere rejection; hash component packing and
   clamping; quad code invariance under translation, rotation, scale and mirroring; canonical code first among
   variants and code bounds; index file round trip, truncated file, bad magic, bad version, dangling star reference,
   unsorted input; index selection by field size and presence; synthetic field solve, mirrored field solve, unrelated
@@ -159,9 +159,44 @@ keeps stars down to sigma 0.5 px and still removes saturated hot pixels, columns
 Simulator coverage (`test_agent_solver_simulator`): the Rosetta frame captured by the Imager Agent as FITS and as
 JPEG, and every fifteenth guider setup captured as FITS, solved like the RAW captures.
 
+## Hints, limits, inputs and diagnostics (task 20261027192244-16bd-solver-hints-input-diagnostics)
+
+Version 3.0.0.8 uses the shared hints the way the Astrometry agent does where the native solver can:
+
+- RADIUS/RA/DEC: `indigo_solver_filter_quads()` keeps the hash ordered catalogue quads whose four stars lie within
+  the radius plus the field extent (half the diagonal from the pixel scale, or the index scale when the scale is
+  unknown) of the hint, converted from the hints epoch to J2000. A field outside the cone leaves no quads and fails
+  with "No solution found". In the sweep a 3° hint keeps 9 000 to 19 000 of 6 to 12 million quads.
+- PARITY: a solution of the other parity is rejected and the search continues; when nothing else is found the
+  message is "Solution has the wrong parity". The quad codes are parity invariant (canonical flip), so the hint
+  cannot prune the candidate search; recorded as a limitation.
+- DEPTH: progressive stages over the brightest stars (the DEPTH hint then all, or 40, 100, all); each stage builds
+  its own image quads and matches; the Rosetta frame solves in the first stage with 40 stars.
+- CPU_LIMIT and abort: `indigo_solver_limits` carries a monotonic deadline and the agent's abort flag into
+  `indigo_solver_match_quads()` (hash and voting loops) and `indigo_solver_match_stars()`, checked every 4096
+  iterations (64 in the quadratic voting loop); the solve fails with "CPU time limit exceeded" or "Aborted".
+- Index order: with a known scale the fitting index first, then the other selected ones ordered by the ratio of
+  their scale to the field size; the loaded index stays cached between solves (debug message "already loaded").
+- Bayer: `indigo_solver_load_image()` reports a BAYERPAT appendix of a RAW frame or a BAYERPAT card of a FITS; the
+  agent bins at least 2 x 2 (odd factors raised) before detection, the WCS stays in unbinned pixels.
+- Colour: RAW RGB24/RGB48, three plane FITS, RGB JPEG and libraw colour output are reduced with the luminance
+  weights 0.299 R + 0.587 G + 0.114 B instead of the average.
+- Message: `indigo_solver_compute_center()` returns the inliers and the residual; the agent reports
+  "Solved: N of M stars matched, rms X.XX"".
+
+Tests: unit `match_respects_limits_and_cone` (deadline in the past and abort flag stop the matching with the
+reason, a far deadline solves, the cone keeps the field's quads in hash order and none 30° away); agent
+`solve_with_position_hint` (J2000 and JNow hints), `wrong_position_hint_fails`, `parity_hint_rejects_mirror`,
+`solve_with_depth_hint`, `bayer_raw_is_binned`, `bayer_fits_is_binned`, `solve_rgb_fits_image`,
+`solve_colour_jpeg_image` and the message assertion in `solve_raw_image`; simulator: every twenty-fifth guider
+setup solved with a 3° position hint one degree off the rendered centre in the hints epoch (JNow setups report
+the solution in JNow and are compared after conversion). Not covered: a CPU-limit integration case (not
+deterministic on a fast host), libraw colour (no fixture), a simulator Bayer capture (only the file simulator
+attaches BAYERPAT).
+
 ## Final test summary
 
-Simulated (hardware-free) tests: 151 run, 151 passed (10 unit, 11 agent integration, 130 simulator integration:
-10 Rosetta cases and 120 guider setups, 8 of them as FITS and 6 through the Guider Agent). Hardware tests: 0 run,
-0 passed. Recorded by `tools/run_driver_test.py agent_solver` on 2026-10-27 as 141/141 (agent and simulator
-integration).
+Simulated (hardware-free) tests: 160 run, 160 passed (11 unit, 19 agent integration, 130 simulator integration:
+10 Rosetta cases and 120 guider setups, 8 of them as FITS, 3 with a position hint and 6 through the Guider Agent).
+Hardware tests: 0 run, 0 passed. Recorded by `tools/run_driver_test.py agent_solver` on 2026-10-27 as 149/149
+(agent and simulator integration).

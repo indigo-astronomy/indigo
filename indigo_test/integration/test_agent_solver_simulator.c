@@ -30,7 +30,7 @@
 // different combinations of SIMULATION_SETUP (RA, Dec, rotation, side of pier, frame size, magnitude
 // limit, epoch, noise, gradient, hot pixels, columns and rows), each solved and compared with what the
 // simulator rendered; a few of them through the Guider Agent instead of the Imager Agent, a few captured
-// as FITS instead of RAW.
+// as FITS instead of RAW, a few with a position hint in the hints epoch.
 //
 // Opt-in: the 2° and 5° indexes (354 MB and 174 MB) are needed in the persistent cache
 // $INDIGO_CACHE_BASE/solver, by default ~/.indigo/solver of the real home. An index missing there is
@@ -84,7 +84,7 @@
 #define SCALE_TOLERANCE 0.02
 #define ANGLE_TOLERANCE 0.2
 
-typedef enum { ROSETTA, SWEEP, SWEEP_FITS, SWEEP_GUIDER_AGENT } case_kind;
+typedef enum { ROSETTA, SWEEP, SWEEP_FITS, SWEEP_HINT, SWEEP_GUIDER_AGENT } case_kind;
 
 typedef struct {
 	double ra, dec, rotation, magnitude, noise, gradient;
@@ -414,7 +414,7 @@ static bool setup(void) {
 		REQUIRE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, IMAGER_CAMERA, true, INDIGO_OK_STATE, 20));
 		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
 		REQUIRE(relate(SOLVER, IMAGER));
-	} else if (current_kind == SWEEP || current_kind == SWEEP_FITS) {
+	} else if (current_kind == SWEEP || current_kind == SWEEP_FITS || current_kind == SWEEP_HINT) {
 		REQUIRE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, GUIDER_CAMERA, true, INDIGO_OK_STATE, 20));
 		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, current_kind == SWEEP_FITS ? CCD_IMAGE_FORMAT_FITS_ITEM_NAME : CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
 		REQUIRE(relate(SOLVER, IMAGER));
@@ -540,6 +540,7 @@ static const int hot[][3] = { { 0, 0, 0 }, { 50, 0, 0 }, { 200, 600, 800 }, { 50
 #define SWEEP_COUNT 120
 #define GUIDER_AGENT_EVERY 20
 #define FITS_EVERY 15
+#define HINT_EVERY 25
 
 // INDIGO_SOLVER_SETUP="ra,dec,rotation,pier,width,height,magnitude,epoch,noise,gradient,hotpixels,hotcol,hotrow"
 // replaces the first combination, to reproduce one setup by hand with the case filter "guider 001"
@@ -569,8 +570,26 @@ static void sweep_case(void) {
 	double ra, dec, angle;
 	ASSERT_TRUE(render_combination(&current));
 	rendered_field(&current, &ra, &dec, &angle);
+	if (current_kind == SWEEP_HINT) {
+		// the position hint in the hints epoch (JNow for a JNow setup), 1 degree off the rendered centre
+		const char *items[] = { AGENT_PLATESOLVER_HINTS_EPOCH_ITEM_NAME, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME, AGENT_PLATESOLVER_HINTS_RA_ITEM_NAME, AGENT_PLATESOLVER_HINTS_DEC_ITEM_NAME };
+		double values[] = { current.epoch, 3, current.ra + 1.0 / 15, current.dec > 80 ? current.dec - 1 : current.dec + 1 };
+		ASSERT_TRUE(change_numbers(SOLVER, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, 4, items, values));
+	}
 	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
-	ASSERT_TRUE(solution_matches(ra, dec, GUIDER_FOV / current.height, angle, current.width, current.height, 2000));
+	if (current_kind == SWEEP_HINT && current.epoch == 0) {
+		// the solution follows the hints epoch: convert it to J2000 for the comparison
+		double wcs_ra = wcs(AGENT_PLATESOLVER_WCS_RA_ITEM_NAME), wcs_dec = wcs(AGENT_PLATESOLVER_WCS_DEC_ITEM_NAME);
+		ASSERT_TRUE(wcs(AGENT_PLATESOLVER_WCS_EPOCH_ITEM_NAME) == 0);
+		indigo_jnow_to_j2k(&wcs_ra, &wcs_dec);
+		printf("  solution converted from JNow: RA %.5f h Dec %.4f°, centre error %.1f\"\n", wcs_ra, wcs_dec, distance(wcs_ra, wcs_dec, ra, dec) * 3600);
+		ASSERT_TRUE(distance(wcs_ra, wcs_dec, ra, dec) < CENTER_TOLERANCE);
+		ASSERT_TRUE(fabs(wcs(AGENT_PLATESOLVER_WCS_SCALE_ITEM_NAME) / (GUIDER_FOV / current.height) - 1) < SCALE_TOLERANCE);
+		// in JNow the angle refers to JNow north, the rendered rotation without the precession offset
+		ASSERT_TRUE(fabs(remainder(wcs(AGENT_PLATESOLVER_WCS_ANGLE_ITEM_NAME) - (current.rotation + (current.pier == 1 ? 0 : 180)), 360)) < ANGLE_TOLERANCE);
+	} else {
+		ASSERT_TRUE(solution_matches(ra, dec, GUIDER_FOV / current.height, angle, current.width, current.height, 2000));
+	}
 }
 
 static indigo_test_case rosetta_tests[] = {
@@ -601,11 +620,12 @@ int main(int argc, char **argv) {
 		sweep_combination c = combination(i);
 		bool guider_agent = (i % GUIDER_AGENT_EVERY) == GUIDER_AGENT_EVERY - 1;
 		bool fits = !guider_agent && (i % FITS_EVERY) == FITS_EVERY / 2;
+		bool hint = !guider_agent && !fits && (i % HINT_EVERY) == HINT_EVERY / 2;
 		int n = (int)ARRAY_SIZE(rosetta_tests) + i;
-		snprintf(names[n], sizeof(names[n]), "guider %03d RA %.2f h Dec %+.1f rot %g pier %d %dx%d mag %.1f epoch %d noise %g grad %g hot %d/%d/%d%s", i + 1, c.ra, c.dec, c.rotation, c.pier, c.width, c.height, c.magnitude, c.epoch, c.noise, c.gradient, c.hotpixels, c.hotcol, c.hotrow, guider_agent ? " via guider agent" : fits ? " as fits" : "");
+		snprintf(names[n], sizeof(names[n]), "guider %03d RA %.2f h Dec %+.1f rot %g pier %d %dx%d mag %.1f epoch %d noise %g grad %g hot %d/%d/%d%s", i + 1, c.ra, c.dec, c.rotation, c.pier, c.width, c.height, c.magnitude, c.epoch, c.noise, c.gradient, c.hotpixels, c.hotcol, c.hotrow, guider_agent ? " via guider agent" : fits ? " as fits" : hint ? " with hint" : "");
 		tests[n].name = names[n];
 		tests[n].function = sweep_case;
-		kinds[n] = guider_agent ? SWEEP_GUIDER_AGENT : fits ? SWEEP_FITS : SWEEP;
+		kinds[n] = guider_agent ? SWEEP_GUIDER_AGENT : fits ? SWEEP_FITS : hint ? SWEEP_HINT : SWEEP;
 	}
 	int selected = 0;
 	for (int i = 0; i < count; i++) {

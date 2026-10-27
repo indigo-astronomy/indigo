@@ -58,9 +58,15 @@ directory and writes the index files next to it; copy them into the cache direct
 
 ### Hints
 
-- `AGENT_PLATESOLVER_HINTS.SCALE` (pixel scale in degrees per pixel) orders the indexes to try; without it the pixel scale reported by the related Imager or Guider agent is used, and without either the selected indexes are tried in their order.
-- `AGENT_PLATESOLVER_HINTS.DOWNSAMPLE` of 2 or more bins 16 bit mono frames by that factor before the star detection.
-- `AGENT_PLATESOLVER_HINTS.EPOCH` of 0 reports the solved centre in JNow, otherwise in J2000.
+- `AGENT_PLATESOLVER_HINTS.SCALE` (pixel scale in degrees per pixel) orders the indexes to try: the index fitting the field first, then the other selected ones nearest to the field size first; without it the pixel scale reported by the related Imager or Guider agent is used, and without either the selected indexes are tried in their order.
+- `AGENT_PLATESOLVER_HINTS.RADIUS`, `RA` and `DEC`: with a radius above 0 the catalogue is restricted to the stars within the radius plus the field extent around the position (RA in hours, DEC in degrees, in the hints epoch), which makes solves near a known mount position faster and more reliable in sparse fields; a field outside the radius is not solved. The Mount Agent keeps RA and DEC at the mount position.
+- `AGENT_PLATESOLVER_HINTS.PARITY` of 1 or -1 rejects a solution of the other parity; the quad codes of the index serve both parities, so the hint does not shorten the search.
+- `AGENT_PLATESOLVER_HINTS.DEPTH` tries the brightest DEPTH stars first and then all detected stars; 0 uses the built-in progression of 40, 100 and all stars.
+- `AGENT_PLATESOLVER_HINTS.CPU_LIMIT` (seconds, 0 for none) bounds the solve, counted from the start of the solve including index loading.
+- `AGENT_PLATESOLVER_HINTS.DOWNSAMPLE` of 2 or more bins the frame by that factor before the star detection; a Bayer mosaic (RAW with the BAYERPAT appendix or FITS with the BAYERPAT card) is binned at least 2 x 2, an odd factor raised to the next even one.
+- `AGENT_PLATESOLVER_HINTS.EPOCH` of 0 reports the solved centre in JNow and reads the position hint in JNow, otherwise in J2000.
+- The last used index stays loaded between solves; a solve with the same index does not read the file again.
+- The solved message reports the matched stars and the residual of the fit, for example "Solved: 21 of 22 stars matched, rms 0.02"".
 
 ### Solution
 
@@ -76,4 +82,4 @@ alignment workflows.
 
 ## Testing
 
-- 2026-10-27 19:48 3.0.0.7 mac arm64 simulator 141/141 OK
+- 2026-10-27 20:37 3.0.0.8 mac arm64 simulator 149/149 OK

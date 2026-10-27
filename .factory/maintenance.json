@@ -195,6 +195,15 @@
       "scope": "Complete Pentax driver using open-source protocol references and non-interactive fake USB/hardware verification",
       "checkpoint": "After this task, before unrelated work/release; audit remains due",
       "resets_checkpoint": false
+    },
+    "solver_hints_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-27",
+      "task": "20261027192244-16bd-solver-hints-input-diagnostics",
+      "scope": "Implement the Solver Agent hint, limit, input and message improvements only",
+      "authority": "Áno, odložiť audit pre túto úlohu; audit ostáva splatný po nej, pred ďalšou nesúvisiacou prácou alebo releasom.",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"
