@@ -11,7 +11,9 @@
     "indigo_test/integration/test_agent_solver.c",
     "indigo_test/unit/test_agent_solver_core.c",
     "indigo_tools/Makefile",
-    "indigo_tools/indigo_solver_indexer.c"
+    "indigo_tools/indigo_solver_indexer.c",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261027102245-431a-port-quad-solver.json"
   ],
   "checks": [
     {
@@ -65,7 +67,9 @@
       "evidence": "verification.md"
     }
   ],
-  "risk_reviews": {},
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
   "reviews": [],
   "reviewed_content": {
     ".gitignore": [
@@ -157,6 +161,16 @@
       "100644",
       "blob",
       "ac5e94c658fed13a4cb96b46ae58707d16124aca"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "e467c027d9528850dc22025644e884230b5dbaed"
+    ],
+    ".factory/completions/20261027102245-431a-port-quad-solver.json": [
+      "100644",
+      "blob",
+      "a4ef0c195cea2ce429a438129371f75e37ed770e"
     ]
   }
 }
