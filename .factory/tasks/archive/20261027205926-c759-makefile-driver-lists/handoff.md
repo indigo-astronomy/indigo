@@ -11,26 +11,26 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - Blockers: none
 
 ## Host/model handoff
-- Current host/tool and model ID (if exposed; otherwise unknown): TODO
+- Current host/tool and model ID (if exposed; otherwise unknown): Claude Code desktop app, claude-opus-5-5
 - Capabilities: file read/edit, shell/tests, Git, network, delegation; record actual availability/authorization
-- Current writer and assigned paths: TODO
-- Incoming host/writer and release of outgoing writer: TODO
-- Snapshot revision and uncommitted work to preserve: TODO
-- Loaded shared/scoped instructions and capability limitations: TODO
-- Context pack/source excerpts provided and omitted scope: TODO
+- Current writer and assigned paths: this agent; Makefile and this task record
+- Incoming host/writer and release of outgoing writer: none; single writer
+- Snapshot revision and uncommitted work to preserve: base 750174b3f, clean before the task
+- Loaded shared/scoped instructions and capability limitations: AGENTS.md, CLAUDE.md, bootstrap.md, task-archive and process-check routines; no delegation used
+- Context pack/source excerpts provided and omitted scope: not applicable (local checkout)
 
 ## Model choice and budget
-- Assignment risk, selected tier, actual model/settings, and rationale: TODO
-- Same-problem unsuccessful attempts and escalation/de-escalation checkpoint: TODO
-- Owner-defined budget/currency and existing spending authorization: TODO
+- Assignment risk, selected tier, actual model/settings, and rationale: low risk build-list change; session model claude-opus-5-5 chosen by the owner
+- Same-problem unsuccessful attempts and escalation/de-escalation checkpoint: none
+- Owner-defined budget/currency and existing spending authorization: none defined
 
 ## Git delivery tracking
-- Task branch / main target / remote: TODO
-- Base revision and latest merged target revision: TODO
+- Task branch / main target / remote: task/20261027205926-c759-makefile-driver-lists / master / origin
+- Base revision and latest merged target revision: 750174b3f (master tip at start)
 - Tested candidate revision: record after the single final commit in the external delivery/CI log
 - Check evidence on synchronized candidate: link verification.md; not run
 - Integration / publication / cleanup: pending
-- Existing authorization and protected-branch requirements: TODO
+- Existing authorization and protected-branch requirements: merge to master and push only with owner approval
 
 ## Latest handoff
 - From role / to role: coordinator (single agent: analyst, developer, reviewer)
@@ -53,7 +53,7 @@ Complete process.json from actual results, with scope globs, version 2 reviewed 
 
 
 ## Central findings handoff
-- Relevant canonical FND IDs and registry reference: TODO
-- Reconciliation decisions or blockers, if any: TODO; current ownership/status stays in the registry
-- Durable report pins and findings check/prune-gate evidence: TODO
+- Relevant canonical FND IDs and registry reference: none
+- Reconciliation decisions or blockers, if any: none; current ownership/status stays in the registry
+- Durable report pins and findings check/prune-gate evidence: `findings check` passed before and after archival (28 active, 206 archived)
 Read the active register only; retain unresolved findings and the ID counter across task cleanup. Do not attach the archive wholesale.
