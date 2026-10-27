@@ -92,6 +92,16 @@ static int backend_capture_count, backend_lock_depth, attach_error, release_erro
 static unsigned char *native_jpeg;
 static unsigned long native_jpeg_size;
 static unsigned command_calls[32][32];
+static uint32_t command_arguments[32][32][4];
+static unsigned command_argument_writes[32][32], command_argument_bytes[32][32];
+static unsigned parameter_bytes, parameter_writes;
+static bool parameter_invalid, framing_error;
+static uint32_t camera_aperture_num, camera_aperture_den;
+static uint32_t pending_aperture_num, pending_aperture_den;
+static unsigned aperture_apply_delay, aperture_pending_reads, full_state_reads;
+static useconds_t fullpress_ack_delay, fullpress_parameter_delay;
+static bool fullpress_ack_pending;
+static double fullpress_command_time, fullpress_ack_time, bulb_close_time;
 static int kernel_active, detach_error, claim_error, kernel_detaches, kernel_attaches, interface_releases, interface_claims;
 static int token, stage, open_error, invalid_calls, close_calls;
 static int polls, busy_polls, busy_mode, short_stage, error_stage, pipe_stage, bad_csw;
@@ -121,6 +131,18 @@ static void reset_usb(void) {
 	command_group = command_code = 0;
 	memset(arguments, 0, sizeof(arguments));
 	memset(command_calls, 0, sizeof(command_calls));
+	memset(command_arguments, 0, sizeof(command_arguments));
+	memset(command_argument_writes, 0, sizeof(command_argument_writes));
+	memset(command_argument_bytes, 0, sizeof(command_argument_bytes));
+	parameter_bytes = parameter_writes = 0;
+	parameter_invalid = framing_error = false;
+	camera_aperture_num = 56;
+	camera_aperture_den = 10;
+	pending_aperture_num = pending_aperture_den = 0;
+	aperture_apply_delay = aperture_pending_reads = full_state_reads = 0;
+	fullpress_ack_delay = fullpress_parameter_delay = 0;
+	fullpress_ack_pending = false;
+	fullpress_command_time = fullpress_ack_time = bulb_close_time = 0;
 	camera_iso = 400;
 	camera_program = 8;
 	camera_num = 1;
@@ -312,6 +334,8 @@ static void camera_command(uint8_t group, uint8_t command) {
 	}
 	if (group == 0x10 && command == 0x05 && arguments[0] == 2) {
 		shutter_calls++;
+		fullpress_command_time = indigo_monotonic_time();
+		fullpress_ack_pending = true;
 		for (unsigned i = 0; i < 10; i++) {
 			if (!(camera_mask & (1U << i))) {
 				camera_mask |= 1U << i;
@@ -323,6 +347,7 @@ static void camera_command(uint8_t group, uint8_t command) {
 			bulb_starts++;
 		} else {
 			bulb_stops++;
+			bulb_close_time = indigo_monotonic_time();
 		}
 	} else if (group == 0x18 && command == 0x01) {
 		if (!refuse_controls) {
@@ -333,6 +358,15 @@ static void camera_command(uint8_t group, uint8_t command) {
 		camera_den = refuse_shutter ? 0 : arguments[1];
 	} else if (group == 0x18 && command == 0x15) {
 		camera_iso = arguments[0];
+	} else if (group == 0x18 && command == 0x17) {
+		if (aperture_apply_delay) {
+			pending_aperture_num = arguments[0];
+			pending_aperture_den = arguments[1];
+			aperture_pending_reads = aperture_apply_delay;
+		} else {
+			camera_aperture_num = arguments[0];
+			camera_aperture_den = arguments[1];
+		}
 	} else if (group == 0x02 && command == 0x01) {
 		segment_index = 0;
 	} else if (group == 0x04 && command == 0x01) {
@@ -373,12 +407,17 @@ static void camera_response(unsigned char *data, int length) {
 		data[0] = 1;
 		data[1] = 2;
 	} else if (command_group == 0 && command_code == 8 && length >= 412) {
+		full_state_reads++;
+		if (aperture_pending_reads && --aperture_pending_reads == 0) {
+			camera_aperture_num = pending_aperture_num;
+			camera_aperture_den = pending_aperture_den;
+		}
 		data[0x1a] = (camera_mask >> 8) & 0xff;
 		data[0x1b] = camera_mask & 0xff;
 		set_uint32_be(camera_num, data + 0x30);
 		set_uint32_be(camera_den, data + 0x34);
-		set_uint32_be(56, data + 0x38);
-		set_uint32_be(10, data + 0x3c);
+		set_uint32_be(camera_aperture_num, data + 0x38);
+		set_uint32_be(camera_aperture_den, data + 0x3c);
 		set_uint32_be(camera_iso, data + 0x64);
 		set_uint32_be(0, data + 0x7c);
 		set_uint32_be(0, data + 0x80);
@@ -414,7 +453,20 @@ static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned ch
 		current_tag = cbw->dCBWTag;
 		memcpy(current_cdb, cbw->CBWCB, 16);
 		if (camera_protocol && current_cdb[1] == 0x24 && cbw->dCBWDataTransferLength == 0) {
-			camera_command(current_cdb[2], current_cdb[3]);
+			unsigned bytes = current_cdb[4] | (current_cdb[5] << 8);
+			bool legacy = private_state.flags & PENTAX_LEGACY_COMMANDS;
+			framing_error = bytes && (parameter_invalid || parameter_bytes != bytes || (!legacy && parameter_writes != 1));
+			unsigned group = current_cdb[2], command = current_cdb[3];
+			if (group < 32 && command < 32) {
+				memcpy(command_arguments[group][command], arguments, sizeof(arguments));
+				command_argument_writes[group][command] = parameter_writes;
+				command_argument_bytes[group][command] = bytes;
+			}
+			parameter_bytes = parameter_writes = 0;
+			parameter_invalid = false;
+			if (!framing_error) {
+				camera_command(group, command);
+			}
 		}
 		stage = cbw->dCBWDataTransferLength ? 1 : 2;
 		event('B');
@@ -423,8 +475,19 @@ static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned ch
 		event('D');
 		if (camera_protocol && current_cdb[1] == 0x4f) {
 			unsigned offset = current_cdb[2] | (current_cdb[3] << 8);
-			if (n == 4 && offset < sizeof(arguments)) {
-				arguments[offset / 4] = get_uint32_be(data);
+			parameter_writes++;
+			bool legacy = private_state.flags & PENTAX_LEGACY_COMMANDS;
+			if (n <= 0 || n % 4 || offset % 4 || offset + n > sizeof(arguments) ||
+				(legacy ? n != 4 || offset != parameter_bytes : offset != 0 || parameter_writes != 1)) {
+				parameter_invalid = true;
+			} else {
+				for (int i = 0; i < n; i += 4) {
+					arguments[(offset + i) / 4] = get_uint32_be(data + i);
+				}
+				parameter_bytes = offset + n;
+				if (fullpress_parameter_delay && n == 4 && arguments[0] == 2 && bulb_starts > bulb_stops) {
+					indigo_usleep(fullpress_parameter_delay);
+				}
 			}
 		} else if (camera_protocol && current_cdb[1] == 0x49) {
 			read_calls++;
@@ -466,7 +529,7 @@ static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned ch
 		}
 	} else {
 		command_status_wrapper reply = { { 'U', 'S', 'B', 'S' }, current_tag, 0, 0 };
-		if (camera_protocol && command_group == camera_error_group && command_code == camera_error_command) {
+		if (camera_protocol && ((command_group == camera_error_group && command_code == camera_error_command) || (current_cdb[1] == 0x24 && framing_error))) {
 			reply.bCSWStatus = 1;
 		}
 		if (bad_csw == 1) {
@@ -477,6 +540,13 @@ static int fake_bulk(libusb_device_handle *handle, unsigned char ep, unsigned ch
 		}
 		if (bad_csw == 3) {
 			reply.dCSWDataResidue = 1;
+		}
+		if (camera_protocol && current_cdb[1] == 0x26 && command_group == 0x10 && command_code == 0x05 && fullpress_ack_pending) {
+			if (fullpress_ack_delay) {
+				indigo_usleep(fullpress_ack_delay);
+			}
+			fullpress_ack_time = indigo_monotonic_time();
+			fullpress_ack_pending = false;
 		}
 		memcpy(data, &reply, n < 13 ? n : 13);
 		stage = 0;
@@ -901,6 +971,50 @@ static indigo_device *prepare_camera(bool properties) {
 	return device;
 }
 
+static void test_nonlegacy_control_argument_batches(void) {
+	indigo_device *device = prepare_camera(false);
+	ASSERT_EQ_INT(0, pentax_set_iso(device, 800, 0, 0));
+	ASSERT_EQ_INT(1, command_argument_writes[0x18][0x15]);
+	ASSERT_EQ_INT(12, command_argument_bytes[0x18][0x15]);
+	ASSERT_EQ_INT(800, command_arguments[0x18][0x15][0]);
+	ASSERT_EQ_INT(0, command_arguments[0x18][0x15][1]);
+	ASSERT_EQ_INT(0, command_arguments[0x18][0x15][2]);
+	ASSERT_EQ_INT(800, camera_iso);
+	ASSERT_EQ_INT(0, pentax_set_aperture(device, 40, 10));
+	ASSERT_EQ_INT(1, command_argument_writes[0x18][0x17]);
+	ASSERT_EQ_INT(12, command_argument_bytes[0x18][0x17]);
+	ASSERT_EQ_INT(0, command_arguments[0x18][0x17][2]);
+	ASSERT_EQ_INT(40, camera_aperture_num);
+	ASSERT_EQ_INT(10, camera_aperture_den);
+	ASSERT_EQ_INT(0, pentax_set_shutter(device, 1, 100));
+	ASSERT_EQ_INT(1, command_argument_writes[0x18][0x16]);
+	ASSERT_EQ_INT(8, command_argument_bytes[0x18][0x16]);
+	ASSERT_EQ_INT(1, camera_num);
+	ASSERT_EQ_INT(100, camera_den);
+	ASSERT_EQ_INT(0, pentax_set_program(device, PENTAX_EXPOSURE_MODE_B));
+	ASSERT_EQ_INT(1, command_argument_writes[0x18][0x01]);
+	ASSERT_EQ_INT(8, command_argument_bytes[0x18][0x01]);
+	ASSERT_EQ_INT(1, command_arguments[0x18][0x01][0]);
+	ASSERT_EQ_INT(7, command_arguments[0x18][0x01][1]);
+	ASSERT_EQ_INT(PENTAX_EXPOSURE_MODE_B, camera_program);
+}
+
+static void test_legacy_control_argument_offsets(void) {
+	indigo_device *device = prepare_camera(false);
+	private_state.flags |= PENTAX_LEGACY_COMMANDS;
+	ASSERT_EQ_INT(0, pentax_set_iso(device, 800, 0, 0));
+	ASSERT_EQ_INT(3, command_argument_writes[0x18][0x15]);
+	ASSERT_EQ_INT(800, camera_iso);
+	ASSERT_EQ_INT(0, pentax_set_aperture(device, 40, 10));
+	ASSERT_EQ_INT(3, command_argument_writes[0x18][0x17]);
+	ASSERT_EQ_INT(12, command_argument_bytes[0x18][0x17]);
+	ASSERT_EQ_INT(40, camera_aperture_num);
+	ASSERT_EQ_INT(10, camera_aperture_den);
+	ASSERT_EQ_INT(0, pentax_set_shutter(device, 1, 100));
+	ASSERT_EQ_INT(2, command_argument_writes[0x18][0x16]);
+	ASSERT_EQ_INT(100, camera_den);
+}
+
 static void test_capture_buttons(void) {
 	indigo_device *device = prepare_camera(false);
 	ASSERT_EQ_INT(0, pentax_button(device, 0x05, 2));
@@ -969,6 +1083,13 @@ static indigo_property_state observed_exposure;
 static bool observed_countdown_progress;
 static bool observed_connected;
 static unsigned connection_revision;
+static unsigned observed_iso_selected, initial_iso_selected, observed_iso_revision;
+static uint32_t observed_iso_value, initial_iso_value;
+static bool initial_connection_seen;
+static indigo_property_state observed_iso_state;
+static unsigned observed_aperture_revision;
+static uint32_t observed_aperture_value;
+static indigo_property_state observed_aperture_state;
 static indigo_client capture_client;
 
 static indigo_result capture_observe_core(indigo_client *client, indigo_device *device, indigo_property *property, const char *message, bool update) {
@@ -991,6 +1112,31 @@ static indigo_result capture_observe_core(indigo_client *client, indigo_device *
 		for (int i = 0; i < property->count; i++) {
 			if (!strcmp(property->items[i].name, CONNECTION_CONNECTED_ITEM_NAME)) {
 				observed_connected = property->items[i].sw.value && property->state == INDIGO_OK_STATE;
+			}
+		}
+		if (observed_connected && !initial_connection_seen) {
+			initial_connection_seen = true;
+			initial_iso_selected = observed_iso_selected;
+			initial_iso_value = observed_iso_value;
+		}
+	} else if (!strcmp(property->name, DSLR_ISO_PROPERTY_NAME)) {
+		observed_iso_selected = 0;
+		observed_iso_value = 0;
+		observed_iso_state = property->state;
+		observed_iso_revision++;
+		for (int i = 0; i < property->count; i++) {
+			if (property->items[i].sw.value) {
+				observed_iso_selected++;
+				observed_iso_value = hex_to_uint32(property->items[i].name);
+			}
+		}
+	} else if (!strcmp(property->name, DSLR_APERTURE_PROPERTY_NAME)) {
+		observed_aperture_value = 0;
+		observed_aperture_state = property->state;
+		observed_aperture_revision++;
+		for (int i = 0; i < property->count; i++) {
+			if (property->items[i].sw.value) {
+				observed_aperture_value = hex_to_uint32(property->items[i].name);
 			}
 		}
 	} else if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME) && property->state == INDIGO_OK_STATE && property->count > 0) {
@@ -1061,6 +1207,12 @@ static bool camera_attach_public(void) {
 	test_device.master_device = &test_device;
 	private_state.handle = NULL;
 	observed_revision = observed_images = observed_bad_images = connection_revision = observed_program_revision = 0;
+	observed_iso_selected = initial_iso_selected = observed_iso_revision = 0;
+	observed_iso_value = initial_iso_value = 0;
+	initial_connection_seen = false;
+	observed_iso_state = INDIGO_IDLE_STATE;
+	observed_aperture_revision = observed_aperture_value = 0;
+	observed_aperture_state = INDIGO_IDLE_STATE;
 	observed_blob = NULL;
 	observed_blob_size = 0;
 	observed_file[0] = 0;
@@ -1103,6 +1255,78 @@ static void camera_detach_public(void) {
 	bus_attached = false;
 }
 
+static void test_public_connection_initial_iso_selection(void) {
+	bool attached = camera_attach_public();
+	pthread_mutex_lock(&observation_mutex);
+	unsigned selected = initial_iso_selected;
+	uint32_t value = initial_iso_value;
+	pthread_mutex_unlock(&observation_mutex);
+	camera_detach_public();
+	ASSERT_TRUE(attached);
+	ASSERT_EQ_INT(1, selected);
+	ASSERT_EQ_INT(400, value);
+}
+
+static void test_public_fixed_iso_disables_auto_range(void) {
+	bool attached = camera_attach_public();
+	bool changed = false;
+	if (attached) {
+		pthread_mutex_lock(&observation_mutex);
+		unsigned before = observed_iso_revision;
+		pthread_mutex_unlock(&observation_mutex);
+		indigo_change_switch_property_1(&capture_client, test_device.name, DSLR_ISO_PROPERTY_NAME, uint32_to_hex(800), true);
+		double end = indigo_monotonic_time() + 1;
+		while (indigo_monotonic_time() < end) {
+			pthread_mutex_lock(&observation_mutex);
+			changed = observed_iso_revision > before && observed_iso_selected == 1 && observed_iso_value == 800 && observed_iso_state == INDIGO_OK_STATE;
+			pthread_mutex_unlock(&observation_mutex);
+			if (changed) break;
+			indigo_usleep(1000);
+		}
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && changed);
+	ASSERT_EQ_INT(800, command_arguments[0x18][0x15][0]);
+	ASSERT_EQ_INT(0, command_arguments[0x18][0x15][1]);
+	ASSERT_EQ_INT(0, command_arguments[0x18][0x15][2]);
+	ASSERT_EQ_INT(1, command_argument_writes[0x18][0x15]);
+	ASSERT_EQ_INT(12, command_argument_bytes[0x18][0x15]);
+}
+
+static void test_public_delayed_aperture_readback(void) {
+	bool attached = camera_attach_public();
+	bool applied = false;
+	unsigned status_reads = 0;
+	uint32_t expected = (40U << 16) | 10;
+	if (attached) {
+		aperture_apply_delay = 3;
+		pthread_mutex_lock(&observation_mutex);
+		unsigned before = observed_aperture_revision;
+		pthread_mutex_unlock(&observation_mutex);
+		unsigned before_reads = full_state_reads;
+		indigo_change_switch_property_1(&capture_client, test_device.name, DSLR_APERTURE_PROPERTY_NAME, uint32_to_hex(expected), true);
+		double end = indigo_monotonic_time() + 1;
+		while (indigo_monotonic_time() < end) {
+			pthread_mutex_lock(&observation_mutex);
+			bool updated = observed_aperture_revision > before;
+			applied = updated && observed_aperture_state == INDIGO_OK_STATE && observed_aperture_value == expected;
+			bool failed = updated && observed_aperture_state == INDIGO_ALERT_STATE;
+			pthread_mutex_unlock(&observation_mutex);
+			if (applied || failed) {
+				break;
+			}
+			indigo_usleep(1000);
+		}
+		status_reads = full_state_reads - before_reads;
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && applied);
+	ASSERT_TRUE(status_reads >= 3);
+	ASSERT_EQ_INT(1, command_calls[0x18][0x17]);
+	ASSERT_EQ_INT(40, camera_aperture_num);
+	ASSERT_EQ_INT(10, camera_aperture_den);
+}
+
 static void test_public_timed_capture(void) {
 	bool attached = camera_attach_public();
 	bool completed = false;
@@ -1120,6 +1344,84 @@ static void test_public_timed_capture(void) {
 	ASSERT_EQ_INT(1, observed_images);
 	ASSERT_EQ_INT(0, observed_bad_images);
 	ASSERT_EQ_INT(1, buffer_deletes);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_public_initial_bulb_without_numeric_shutter(void) {
+	bool attached = camera_attach_public();
+	bool completed = false;
+	if (attached) {
+		/* The physical B setting reports no numeric timed shutter fraction. */
+		pthread_mutex_lock(&private_state.mutex);
+		camera_program = PENTAX_EXPOSURE_MODE_B;
+		camera_num = camera_den = 0;
+		pthread_mutex_unlock(&private_state.mutex);
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1.2);
+		completed = capture_wait(INDIGO_OK_STATE, before, 5) && retained_blob_valid();
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && completed);
+	ASSERT_EQ_INT(PENTAX_EXPOSURE_MODE_B, camera_program);
+	ASSERT_EQ_INT(0, camera_num);
+	ASSERT_EQ_INT(0, camera_den);
+	ASSERT_EQ_INT(0, command_calls[0x18][0x16]);
+	ASSERT_EQ_INT(1, bulb_starts);
+	ASSERT_EQ_INT(1, bulb_stops);
+	ASSERT_EQ_INT(1, observed_images);
+	ASSERT_EQ_INT(0, observed_bad_images);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_public_bulb_duration_from_trigger_command(void) {
+	bool attached = camera_attach_public();
+	bool completed = false;
+	if (attached) {
+		pthread_mutex_lock(&private_state.mutex);
+		fullpress_ack_delay = 200000;
+		fullpress_parameter_delay = 100000;
+		pthread_mutex_unlock(&private_state.mutex);
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1.2);
+		completed = capture_wait(INDIGO_OK_STATE, before, 5) && retained_blob_valid();
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && completed);
+	ASSERT_TRUE(fullpress_ack_time > 0);
+	double hold = bulb_close_time - fullpress_command_time;
+	printf("fake trigger-to-close interval=%.3fs (readiness delay=0.200s)\n", hold);
+	/* Readiness polling consumes the hold; it must neither restart nor shorten it. */
+	ASSERT_TRUE(fullpress_command_time > 0 && fullpress_ack_time > fullpress_command_time);
+	ASSERT_TRUE(hold >= 1.2 - 0.03 && hold <= 1.2 + 0.03);
+	ASSERT_EQ_INT(1, bulb_starts);
+	ASSERT_EQ_INT(1, bulb_stops);
+	ASSERT_EQ_INT(1, shutter_calls);
+	ASSERT_EQ_INT(1, observed_images);
+	ASSERT_EQ_INT(0, observed_bad_images);
+	ASSERT_EQ_INT(0, invalid_calls);
+}
+
+static void test_public_bulb_slow_trigger_readiness(void) {
+	bool attached = camera_attach_public();
+	bool completed = false;
+	if (attached) {
+		pthread_mutex_lock(&private_state.mutex);
+		fullpress_ack_delay = 1400000;
+		pthread_mutex_unlock(&private_state.mutex);
+		unsigned before = exposure_revision();
+		indigo_change_number_property_1(&capture_client, test_device.name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 1.2);
+		completed = capture_wait(INDIGO_OK_STATE, before, 5) && retained_blob_valid();
+	}
+	camera_detach_public();
+	ASSERT_TRUE(attached && completed);
+	/* An over-budget trigger must close promptly, never wait a second full hold. */
+	double overdue = bulb_close_time - fullpress_ack_time;
+	printf("fake close after over-budget readiness=%.3fs\n", overdue);
+	ASSERT_TRUE(fullpress_ack_time - fullpress_command_time >= 1.4);
+	ASSERT_TRUE(overdue >= 0 && overdue <= 0.03);
+	ASSERT_EQ_INT(1, bulb_starts);
+	ASSERT_EQ_INT(1, bulb_stops);
+	ASSERT_EQ_INT(1, observed_images);
 	ASSERT_EQ_INT(0, invalid_calls);
 }
 
@@ -1203,7 +1505,8 @@ static void test_public_refused_program_readback(void) {
 		unsigned before = observed_program_revision;
 		pthread_mutex_unlock(&observation_mutex);
 		indigo_change_switch_property_1(&capture_client, test_device.name, DSLR_PROGRAM_PROPERTY_NAME, "00000009", true);
-		double end = indigo_monotonic_time() + 2;
+		// Allow the two-second camera settling deadline plus queue dispatch.
+		double end = indigo_monotonic_time() + 3;
 		while (indigo_monotonic_time() < end) {
 			pthread_mutex_lock(&observation_mutex);
 			rejected = observed_program_revision > before && observed_program_state == INDIGO_ALERT_STATE;
@@ -1217,6 +1520,7 @@ static void test_public_refused_program_readback(void) {
 	camera_detach_public();
 	ASSERT_TRUE(attached && rejected);
 	ASSERT_EQ_INT(8, camera_program);
+	ASSERT_EQ_INT(1, command_calls[0x18][0x01]);
 	ASSERT_EQ_INT(0, observed_images);
 }
 
@@ -1480,11 +1784,19 @@ int main(int argc, char **argv) {
 		{ "general state boundaries", test_general_state_bounds },
 		{ "CSW integrity", test_csw_integrity },
 		{ "hotplug descriptor names", test_hotplug_descriptor_names },
+		{ "nonlegacy control argument batches", test_nonlegacy_control_argument_batches },
+		{ "legacy control argument offsets", test_legacy_control_argument_offsets },
 		{ "capture button and program commands", test_capture_buttons },
 		{ "image buffer segment traversal", test_buffer_segments },
 		{ "download payload and transport errors", test_download_bytes_and_errors },
 		{ "capture state metadata", test_capture_state_metadata },
+		{ "public initial ISO selection before idle polling", test_public_connection_initial_iso_selection },
+		{ "public fixed ISO disables automatic ISO range", test_public_fixed_iso_disables_auto_range },
+		{ "public delayed aperture readback without repeated writes", test_public_delayed_aperture_readback },
 		{ "public timed native capture", test_public_timed_capture },
+		{ "public initial bulb accepts nonnumeric shutter and preserves it", test_public_initial_bulb_without_numeric_shutter },
+		{ "public bulb duration excludes readiness latency", test_public_bulb_duration_from_trigger_command },
+		{ "public bulb closes after over-budget readiness", test_public_bulb_slow_trigger_readiness },
 		{ "public bulb abort and recovery", test_public_bulb_abort_recovery },
 		{ "public abort during image download", test_public_abort_during_download },
 		{ "public refused program readback", test_public_refused_program_readback },

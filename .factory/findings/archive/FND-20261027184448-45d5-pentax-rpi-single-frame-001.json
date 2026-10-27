@@ -1,0 +1,24 @@
+{
+  "title": "Packed nonlegacy control arguments",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "Pentax task coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261027184448-45d5-pentax-rpi-single-frame",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Split argument writes and missing aperture word caused K-m control rejection. Nonlegacy arguments are packed; legacy writes preserved. Strict protocol regression and real M controls pass.",
+  "evidence": "findings.md and verification.md; named baseline/final logs retained with this task.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md: final44-case normal/sanitized tests and per-profile hardware limits; independent quality/security review.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261027184448-45d5-pentax-rpi-single-frame-001"
+}

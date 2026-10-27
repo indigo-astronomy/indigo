@@ -26,7 +26,7 @@
  \file indigo_ccd_pentax.c
  */
 
-#define DRIVER_VERSION 0x03000004
+#define DRIVER_VERSION 0x03000005
 #define DRIVER_NAME "indigo_ccd_pentax"
 
 #include <stdlib.h>
@@ -675,6 +675,7 @@ uint8_t pentax_get_full_state(indigo_device *device) {
 				PRIVATE_DATA->jpeg_resolution = get_uint32(device, buffer + 0x80);
 				PRIVATE_DATA->jpeg_quality = get_uint32(device, buffer + 0x84);
 				PRIVATE_DATA->raw_format = get_uint32(device, buffer + 0x88);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "K-m state: program=%u shutter=%u/%u aperture=%u/%u fixedISO=%u format=%u quality=%u", PRIVATE_DATA->program, PRIVATE_DATA->shutter_num, PRIVATE_DATA->shutter_den, get_uint32(device, buffer + 0x38), get_uint32(device, buffer + 0x3c), get_uint32(device, buffer + 0x64), PRIVATE_DATA->image_format, PRIVATE_DATA->jpeg_quality);
 			}
 			uint16_t state;
 			uint32_t value1, value2, value3;
@@ -802,68 +803,21 @@ uint8_t pentax_set_wu(indigo_device *device, uint32_t mode) {
 	return result;
 }
 
+static uint8_t pentax_arguments(indigo_device *device, uint8_t group, uint8_t command, unsigned count, const uint32_t *arguments);
+
 uint8_t pentax_set_aperture(indigo_device *device, uint32_t aperture_nom, uint32_t aperture_denom) {
-	uint8_t param[4];
-	set_uint32(device, aperture_nom, param);
-	uint8_t result = pentax_parameter(device, param, 4, 0);
-	if (result == 0) {
-		set_uint32(device, aperture_denom, param);
-		result = pentax_parameter(device, param, 4, 4);
-	}
-	if (result == 0) {
-		result = pentax_command(device, 0x18, 0x17, 8);
-		if (result == 0) {
-			result = pentax_status(device, NULL);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d %s (%02x)", aperture_nom, aperture_denom, result ? "Failure" : "OK", result);
-			return result;
-		}
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d Failure (%02x)", aperture_nom, aperture_denom, result);
-	return result;
+	uint32_t arguments[] = { aperture_nom, aperture_denom, 0 };
+	return pentax_arguments(device, 0x18, 0x17, 3, arguments);
 }
 
 uint8_t pentax_set_shutter(indigo_device *device, uint32_t shutter_nom, uint32_t shutter_denom) {
-	uint8_t param[4];
-	set_uint32(device, shutter_nom, param);
-	uint8_t result = pentax_parameter(device, param, 4, 0);
-	if (result == 0) {
-		set_uint32(device, shutter_denom, param);
-		result = pentax_parameter(device, param, 4, 4);
-	}
-	if (result == 0) {
-		result = pentax_command(device, 0x18, 0x16, 8);
-		if (result == 0) {
-			result = pentax_status(device, NULL);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d %s (%02x)", shutter_nom, shutter_denom, result ? "Failure" : "OK", result);
-			return result;
-		}
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d Failure (%02x)", shutter_nom, shutter_denom, result);
-	return result;
+	uint32_t arguments[] = { shutter_nom, shutter_denom };
+	return pentax_arguments(device, 0x18, 0x16, 2, arguments);
 }
 
 uint8_t pentax_set_iso(indigo_device *device, uint32_t iso, uint32_t min_iso, uint32_t max_iso) {
-	uint8_t param[4];
-	set_uint32(device, iso, param);
-	uint8_t result = pentax_parameter(device, param, 4, 0);
-	if (result == 0) {
-		set_uint32(device, min_iso, param);
-		result = pentax_parameter(device, param, 4, 4);
-	}
-	if (result == 0) {
-		set_uint32(device, max_iso, param);
-		result = pentax_parameter(device, param, 4, 8);
-	}
-	if (result == 0) {
-		result = pentax_command(device, 0x18, 0x15, 12);
-		if (result == 0) {
-			result = pentax_status(device, NULL);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d %d %s (%02x)", iso, min_iso, max_iso, result ? "Failure" : "OK", result);
-			return result;
-		}
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d %d %d Failure (%02x)",  iso, min_iso, max_iso, result);
-	return result;
+	uint32_t arguments[] = { iso, min_iso, max_iso };
+	return pentax_arguments(device, 0x18, 0x15, 3, arguments);
 }
 
 static bool pentax_capture_supported(indigo_device *device) {
@@ -871,10 +825,22 @@ static bool pentax_capture_supported(indigo_device *device) {
 }
 
 static uint8_t pentax_arguments(indigo_device *device, uint8_t group, uint8_t command, unsigned count, const uint32_t *arguments) {
+	if (!arguments || !count || count > 4) {
+		return 0xFF;
+	}
+	uint8_t values[16];
 	for (unsigned i = 0; i < count; i++) {
-		uint8_t value[4];
-		set_uint32(device, arguments[i], value);
-		uint8_t result = pentax_parameter(device, value, 4, 4 * i);
+		set_uint32(device, arguments[i], values + 4 * i);
+	}
+	if (PRIVATE_DATA->flags & PENTAX_LEGACY_COMMANDS) {
+		for (unsigned i = 0; i < count; i++) {
+			uint8_t result = pentax_parameter(device, values + 4 * i, 4, 4 * i);
+			if (result != 0) {
+				return result;
+			}
+		}
+	} else {
+		uint8_t result = pentax_parameter(device, values, count * 4, 0);
 		if (result != 0) {
 			return result;
 		}
@@ -885,6 +851,21 @@ static uint8_t pentax_arguments(indigo_device *device, uint8_t group, uint8_t co
 
 uint8_t pentax_button(indigo_device *device, uint8_t command, uint32_t value) {
 	return pentax_arguments(device, 0x10, command, 1, &value);
+}
+
+/* Separate argument staging from the trigger's dispatch/readiness interval. */
+static uint8_t pentax_trigger(indigo_device *device, double *started) {
+	uint8_t argument[4];
+	set_uint32(device, 2, argument);
+	uint8_t result = pentax_parameter(device, argument, sizeof(argument), 0);
+	if (result == 0) {
+		*started = indigo_monotonic_time();
+		result = pentax_command(device, 0x10, 0x05, sizeof(argument));
+		if (result == 0) {
+			result = pentax_status(device, NULL);
+		}
+	}
+	return result;
 }
 
 uint8_t pentax_set_program(indigo_device *device, uint32_t native) {
@@ -1088,7 +1069,9 @@ static void exposure_finish(indigo_device *device, bool success, const char *mes
 	}
 	if (PRIVATE_DATA->settings_saved && PRIVATE_DATA->handle) {
 		bool restored = pentax_set_program(device, PRIVATE_DATA->saved_program) == 0;
-		restored = pentax_change_shutter(device, PRIVATE_DATA->saved_shutter_num, PRIVATE_DATA->saved_shutter_den) == 0 && restored;
+		if (PRIVATE_DATA->saved_program != PENTAX_EXPOSURE_MODE_B && PRIVATE_DATA->saved_program != 12) {
+			restored = pentax_change_shutter(device, PRIVATE_DATA->saved_shutter_num, PRIVATE_DATA->saved_shutter_den) == 0 && restored;
+		}
 		if (!restored) {
 			success = false;
 			message = "Failed to restore camera exposure settings";
@@ -1256,7 +1239,8 @@ static void exposure_handler(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return;
 	}
-	if (PRIVATE_DATA->shutter_den == 0 || PRIVATE_DATA->shutter_num == 0) {
+	bool original_bulb = PRIVATE_DATA->program == PENTAX_EXPOSURE_MODE_B || PRIVATE_DATA->program == 12;
+	if (!original_bulb && (PRIVATE_DATA->shutter_den == 0 || PRIVATE_DATA->shutter_num == 0)) {
 		exposure_finish(device, false, "Invalid camera shutter settings");
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return;
@@ -1299,11 +1283,12 @@ static void exposure_handler(indigo_device *device) {
 		PRIVATE_DATA->bulb_open = true;
 		success = pentax_button(device, 0x0d, 1) == 0;
 	}
-	PRIVATE_DATA->capture_deadline = indigo_monotonic_time() + duration;
-	PRIVATE_DATA->readout_deadline = PRIVATE_DATA->capture_deadline + 60;
+	double started = indigo_monotonic_time();
 	if (success) {
-		success = pentax_button(device, 0x05, 2) == 0;
+		success = pentax_trigger(device, &started) == 0;
 	}
+	PRIVATE_DATA->capture_deadline = started + duration;
+	PRIVATE_DATA->readout_deadline = PRIVATE_DATA->capture_deadline + 60;
 	if (success) {
 		CCD_EXPOSURE_ITEM->number.value = duration;
 		indigo_ccd_resume_countdown(device);
@@ -1371,14 +1356,23 @@ static void settings_handler(indigo_device *device) {
 			}
 		}
 		if (success) {
-			success = pentax_get_full_state(device) == 0;
-			if (success) {
+			double deadline = indigo_monotonic_time() + 2;
+			for (;;) {
+				success = pentax_get_full_state(device) == 0;
+				if (!success) {
+					break;
+				}
 				uint32_t actual = p == 0 ? PRIVATE_DATA->program : p == 1 ? ((get_uint32(device, PRIVATE_DATA->buffer + 0x38) << 16) | get_uint32(device, PRIVATE_DATA->buffer + 0x3c)) : PRIVATE_DATA->program == PENTAX_EXPOSURE_MODE_B ? 0 : (PRIVATE_DATA->shutter_num << 16) | PRIVATE_DATA->shutter_den;
 				success = actual == expected;
+				if (success || indigo_monotonic_time() >= deadline) {
+					break;
+				}
+				indigo_usleep(50000);
 			}
 		}
 		property->state = success ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-		indigo_update_property(device, property, success ? NULL : "Camera setting failed or capture is busy");
+		const char *error = p == 0 && IS_CONNECTED && !PRIVATE_DATA->capture_active && PRIVATE_DATA->program != expected ? "Camera mode unchanged; select the requested mode on the camera dial or use USER" : "Camera setting failed or capture is busy";
+		indigo_update_property(device, property, success ? NULL : error);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1428,7 +1422,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				if (iso_min <= iso && iso <= iso_max) {
 					char label[8];
 					sprintf(label, "%d", iso);
-					indigo_init_switch_item(DSLR_ISO_PROPERTY->items + count, uint32_to_hex(iso), label, false);
+					indigo_init_switch_item(DSLR_ISO_PROPERTY->items + count, uint32_to_hex(iso), label, iso == PRIVATE_DATA->iso);
 					count++;
 				}
 			}
@@ -1479,7 +1473,7 @@ static void iso_handler(indigo_device *device) {
 		indigo_item *item = DSLR_ISO_PROPERTY->items + i;
 		if (indigo_get_switch_target(DSLR_ISO_PROPERTY, item->name)) {
 			bool success = pentax_set_wu(device, 1) == 0;
-			success = success && pentax_set_iso(device, hex_to_uint32(item->name), MODEL_INFO[PRIVATE_DATA->model].iso.min, MODEL_INFO[PRIVATE_DATA->model].iso.max) == 0;
+			success = success && pentax_set_iso(device, hex_to_uint32(item->name), pentax_capture_supported(device) ? 0 : MODEL_INFO[PRIVATE_DATA->model].iso.min, pentax_capture_supported(device) ? 0 : MODEL_INFO[PRIVATE_DATA->model].iso.max) == 0;
 			success = pentax_set_wu(device, 2) == 0 && success;
 			success = success && pentax_get_full_state(device) == 0 && PRIVATE_DATA->iso == hex_to_uint32(item->name);
 			if (success) {

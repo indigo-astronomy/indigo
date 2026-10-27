@@ -1,0 +1,4 @@
+Running ccd_pentax_usb
+indigo_test/integration/test_ccd_pentax_usb.c:940: expected 0, got 1
+  FAIL nonlegacy control argument batches
+ccd_pentax_usb: 1 test(s) failed

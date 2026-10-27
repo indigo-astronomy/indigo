@@ -1,0 +1,3 @@
+Before: mode=8 shutter=1/125
+Zero/one setting: status=0 read=1 mode=8 shutter=1/4000
+Restored=1 mode=8 shutter=1/125

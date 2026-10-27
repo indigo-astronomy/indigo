@@ -1,0 +1,51 @@
+JSON: Cannot find camera model
+./pktriggercord-cli: K-m Connected...
+
+current iso                     : 800
+current shutter speed           : 1/125
+camera max shutter speed        : 1/4000
+current aperture                : 8.0
+lens max aperture               : 27.0
+lens min aperture               : 4.0
+set shutter speed               : 1/125
+set aperture                    : 8.0
+fixed iso                       : 800
+auto iso                        : 100-3200
+jpeg quality                    : 2
+jpeg resolution                 : 6M
+jpeg image tone                 : Bright
+jpeg saturation                 : 4
+jpeg contrast                   : 5
+jpeg sharpness                  : 5
+jpeg hue                        : 4
+zoom                            : 20.00 mm
+focus                           : 0
+color space                     : sRGB
+image format                    : JPEG
+raw format                      : DNG
+light meter flags               : 0
+ec                              : 0.00
+custom ev steps                 : 1/2 EV steps
+custom sensitivity steps        : 1 EV steps
+exposure mode                   : 6
+scene mode                      : NONE
+user mode flag                  : 0
+ae metering mode                : Center
+af mode                         : AF.S
+af point select                 : Auto-5
+selected af point               : none
+focused af point                : none
+drive mode                      : Single
+auto bracket mode               : off
+auto bracket picture count      : 0
+auto bracket picture counter    : 0
+auto bracket ev                 : 0.50
+shake reduction                 : on
+white balance mode              : Auto
+white balance adjust            : 0
+flash mode                      : Manual-RedEye
+flash exposure compensation     : 0.00
+manual mode ev                  : -7.00
+lens                            : smc PENTAX-DA L 18-55mm F3.5-5.6
+battery                         : 30130831.36V 1.35V 2.22V 20.00V
+buffer mask                     : 0000000000000000

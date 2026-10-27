@@ -1,0 +1,24 @@
+{
+  "title": "Bulb deadline excludes readiness latency",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "Pentax task coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261027184448-45d5-pentax-rpi-single-frame",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Deadline after full-press readiness extended1.2s to1.408s in fake and1.42s in physical RAW metadata. Timestamp command dispatch after staging; fake44/44 and sanitizer44/44 verify both bounds and overdue close. Final physical accuracy intentionally untested under owner offline instruction.",
+  "evidence": "findings.md and verification.md; named baseline/final logs retained with this task.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md: final44-case normal/sanitized tests and per-profile hardware limits; independent quality/security review.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261027184448-45d5-pentax-rpi-single-frame-005"
+}

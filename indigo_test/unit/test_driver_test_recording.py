@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class DriverRecordingTests(unittest.TestCase):
-	def run_fixture(self, exit_code=0, partial=False, dry_run=False, tagged=True, driver_name="ccd_fixture", extra=(), make_args=(), env_values=None, executes=True):
+	def run_fixture(self, exit_code=0, partial=False, dry_run=False, tagged=True, driver_name="ccd_fixture", extra=(), make_args=(), env_values=None, executes=True, initial_readme="# Fixture\n"):
 		with tempfile.TemporaryDirectory(prefix="indigo recording ") as directory:
 			root = Path(directory)
 			tools = root / "tools"
@@ -40,7 +40,7 @@ class DriverRecordingTests(unittest.TestCase):
 				shutil.copyfile(ROOT / "tools" / name, tools / name)
 			driver = root / "indigo_drivers" / driver_name
 			driver.mkdir(parents=True)
-			(driver / "README.md").write_text("# Fixture\n")
+			(driver / "README.md").write_text(initial_readme)
 			(driver / ("indigo_" + driver_name + ".c")).write_text("#define DRIVER_VERSION 0x03000001\n")
 			tests = root / "indigo_test"
 			tests.mkdir()
@@ -122,6 +122,78 @@ class DriverRecordingTests(unittest.TestCase):
 
 	def test_pentax_baseline_no_record_needs_no_label(self):
 		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", extra=("--no-record",), make_args=("PENTAX_HW_ARGS=--baseline",))
+		self.assertEqual(result.returncode, 0, result.stderr)
+		self.assertEqual(readme, "# Fixture\n")
+		self.assertEqual(summary, "")
+
+	def test_pentax_single_frame_requires_profile_label(self):
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", make_args=("PENTAX_HW_ARGS=--single-frame",), executes=False)
+		self.assertNotEqual(result.returncode, 0)
+		self.assertEqual(readme, "# Fixture\n")
+		self.assertEqual(summary, "")
+
+	def test_pentax_single_frame_rejects_plain_camera_type(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", extra=("--type", "PENTAX K-m"), make_args=("PENTAX_HW_ARGS=--single-frame",), executes=False)
+		self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_single_frame_environment_cannot_bypass_label(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", env_values={"PENTAX_HW_ARGS": "--single-frame"}, executes=False)
+		self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_single_frame_rejects_connection_baseline_label(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", extra=("--type", "PENTAX K-m (connection baseline)"), make_args=("PENTAX_HW_ARGS=--single-frame",), executes=False)
+		self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_single_frame_explicit_label_records_separately(self):
+		full, previous, _ = self.run_fixture(driver_name="ccd_pentax", tagged=False, extra=("--type", "PENTAX K-m"))
+		self.assertEqual(full.returncode, 0, full.stderr)
+		baseline, previous, _ = self.run_fixture(driver_name="ccd_pentax", tagged=False, extra=("--type", "PENTAX K-m (connection baseline)"), make_args=("PENTAX_HW_ARGS=--baseline",), initial_readme=previous)
+		self.assertEqual(baseline.returncode, 0, baseline.stderr)
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", tagged=False, extra=("--type", "PENTAX K-m (single frame)"), make_args=("PENTAX_HW_ARGS=--single-frame",), initial_readme=previous)
+		self.assertEqual(result.returncode, 0, result.stderr)
+		for hardware_type in ("PENTAX K-m", "PENTAX K-m (connection baseline)", "PENTAX K-m (single frame)"):
+			self.assertIn(hardware_type + " 2/2 OK", readme)
+			self.assertIn(hardware_type, summary)
+
+	def test_pentax_single_frame_no_record_needs_no_label(self):
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", extra=("--no-record",), make_args=("PENTAX_HW_ARGS=--single-frame",))
+		self.assertEqual(result.returncode, 0, result.stderr)
+		self.assertEqual(readme, "# Fixture\n")
+		self.assertEqual(summary, "")
+
+	def test_pentax_bulb_requires_profile_label(self):
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", make_args=("PENTAX_HW_ARGS=--bulb-only",), executes=False)
+		self.assertNotEqual(result.returncode, 0)
+		self.assertEqual(readme, "# Fixture\n")
+		self.assertEqual(summary, "")
+
+	def test_pentax_bulb_rejects_plain_camera_type(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", extra=("--type", "PENTAX K-m"), make_args=("PENTAX_HW_ARGS=--bulb-only",), executes=False)
+		self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_bulb_environment_cannot_bypass_label(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", env_values={"PENTAX_HW_ARGS": "--bulb-only"}, executes=False)
+		self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_bulb_rejects_other_partial_profile_labels(self):
+		for label in ("(connection baseline)", "(single frame)"):
+			with self.subTest(label=label):
+				result, _, _ = self.run_fixture(driver_name="ccd_pentax", extra=("--type", "PENTAX K-m " + label), make_args=("PENTAX_HW_ARGS=--bulb-only",), executes=False)
+				self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_bulb_explicit_label_records_separately(self):
+		previous = "# Fixture\n"
+		for hardware_type, mode in (("PENTAX K-m", "--run"), ("PENTAX K-m (connection baseline)", "--baseline"), ("PENTAX K-m (single frame)", "--single-frame")):
+			result, previous, _ = self.run_fixture(driver_name="ccd_pentax", tagged=False, extra=("--type", hardware_type), make_args=("PENTAX_HW_ARGS=" + mode,), initial_readme=previous)
+			self.assertEqual(result.returncode, 0, result.stderr)
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", tagged=False, extra=("--type", "PENTAX K-m (bulb)"), make_args=("PENTAX_HW_ARGS=--bulb-only",), initial_readme=previous)
+		self.assertEqual(result.returncode, 0, result.stderr)
+		for hardware_type in ("PENTAX K-m", "PENTAX K-m (connection baseline)", "PENTAX K-m (single frame)", "PENTAX K-m (bulb)"):
+			self.assertIn(hardware_type + " 2/2 OK", readme)
+			self.assertIn(hardware_type, summary)
+
+	def test_pentax_bulb_no_record_needs_no_label(self):
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", extra=("--no-record",), make_args=("PENTAX_HW_ARGS=--bulb-only",))
 		self.assertEqual(result.returncode, 0, result.stderr)
 		self.assertEqual(readme, "# Fixture\n")
 		self.assertEqual(summary, "")

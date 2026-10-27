@@ -1,0 +1,18 @@
+test_dry_run_executes_without_writing_final_records (test_driver_test_recording.DriverRecordingTests) ... ok
+test_partial_records_preserve_device_counts (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_baseline_environment_cannot_bypass_label (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_baseline_explicit_label_records_separately (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_baseline_no_record_needs_no_label (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_baseline_rejects_plain_camera_type (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_baseline_requires_profile_label (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_full_mode_overrides_baseline_environment (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_recording_rejects_alternate_make_assignments (test_driver_test_recording.DriverRecordingTests) ... ok
+test_pentax_recording_rejects_make_profile_expansion (test_driver_test_recording.DriverRecordingTests) ... ok
+test_process_failure_never_certifies_a_tagged_device (test_driver_test_recording.DriverRecordingTests) ... ok
+test_success_records_each_model (test_driver_test_recording.DriverRecordingTests) ... ok
+test_untagged_process_failure_remains_failed (test_driver_test_recording.DriverRecordingTests) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 1.162s
+
+OK

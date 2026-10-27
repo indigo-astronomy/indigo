@@ -95,3 +95,35 @@ The Linux-only test fixture failure is fixed without weakening coverage (FND-202
 Simulated:36 run/36 passed on Linux arm64 via canonical runner. Limited hardware connection/status baseline:1 run/1 passed with3.0.0.4, explicitly recorded as PENTAX K-m (connection baseline). Full capture/bulb/abort hardware cases during this task:0 run/0 passed. Physical unplug:0/0. The old full K-m failure record remains distinct. Compatible current framework/server and driver built only in a temporary directory; existing remote checkout and packages unchanged. Owner camera use ended after the short baseline.
 
 Final guard regression counts:13/13 macOS andLinux; alternate Make assignment and expansion bypasses rejected. Linux fake36/36, connection-only baseline1/1. No further camera requests or full capture claim.
+
+## Single-frame RPi preparation 20261027184448-45d5-pentax-rpi-single-frame
+
+Prepare only: --single-frame requests one0.1s native exposure, validates one decoded payload and optionally saves an exclusive-create artifact. Skips control exercise/bulb/abort/recovery; existing restore/disconnect,35s image wait/60s watchdog. Recorder requires distinct '(single frame)' label, retaining full/baseline records. Original13recorder cases passed; new-profile regression failed before extension, final19/19passed. Linux harness builds and invalid relative path rejects before USB. Hardware inventory remains one conditional case; MIGRATION_STATUS stays36/1. Physical single-frame0run/0passed, pending owner wake confirmation. Connection baseline1/1 does not certify capture.
+
+## Full RPi hardware repair (owner scope update)
+
+Owner authorizes full non-interactive test/fix/repeat on permanently connected camera, no more wake prompts.3.0.0.4 singleframe failed before payload and fullgroup failedISOexercise/restoration. Originalstatus shows configuredISO800 and range100..3200; firstfailedISOtestleft100. Debugrecords show initializationclearsallISOselection. Primary-source pslr framing requires one packed multiargument0x4f block for nonlegacy K-m; current code splits4bytewrites. FixedISO protocol useszero rangeparameters.
+
+Plan before production changes: reproduce framing/initialISO failures in stricterfake, preserve split framing onlylegacy, route ISO/aperture/shutter through packedhelper, retain configuredISOoffset0x64 and initializecurrentISOselection correctly. Incrementdriver. Build/fakecheck, recoveroriginalISO800, rerun fullhardware group with debug, fix subsequent observed defects without weakeningtests. No physical unplug or SD-card deletion.
+
+### Offline bulb timing correction (owner authorization)
+
+Real DNG and PEF single-frame profiles passed transfer and LibRaw unpack (3896x2616), but both reported1.420s for a requested1.2s. The previous after-acknowledgement deadline incorrectly includes readiness polling in the exposure. Plan before implementation: replace the regression's after-ACK lower-bound-only assertion with trigger-command-to-close lower AND upper bounds, reproduce failure with200ms delayed readiness, then timestamp immediately before the trigger command after argument staging. Preserve USB argument/command/status ordering and existing abort/cleanup. No fixed hardware calibration; no camera access for this repair. Verify normal and sanitizer fake suites. Physical curtain/EXIF accuracy remains pending later hardware verification.
+
+### Final repair outcomes
+
+- Nonlegacy K-m controls now upload a single packed argument block. Legacy cameras retain ordered four-byte writes. Aperture uses three words including its trailing zero; K-m fixed ISO uses zero range parameters. Strict fake regressions reproduce the earlier rejected framing.
+- ISO800 is selected when connected properties are rebuilt. Delayed setting updates are polled for up to two seconds instead of treating an acknowledged command as immediately applied. The aperture regression delays application across three status reads.
+- Physical B may report a nonnumeric shutter; saving/restoring B no longer sends a meaningless timed shutter value. The fake regression starts with B and0/0 and retains it after capture.
+- Bulb timing starts immediately before the full-press command, after parameter staging. Trigger readiness consumes the requested interval instead of restarting it. The corrected upper-bound regression failed at1.408s before repair and measured1.205s after repair for1.2s requested, with100ms staging and200ms readiness delay. A1.4s acknowledgement for a1.2s request closes immediately once readiness returns. USB call order is unchanged. There is no guessed mechanical calibration.
+- Original upstream pkTriggerCord0.85.01 (c1177a4881f363455255866f6f6d8149574e4b35) also could not switch this non-USER K-m from M into B. The owner physically selected B before reconnecting USB; this is a setup prerequisite, not a tested hotplug scenario.
+
+### Final physical coverage and limits
+
+Physical M controls, timed0.1s JPEG, timed abort and recovery passed. The full mixed-mode group retained its failure at the B prerequisite. After physical B setup, the distinct bulb profile passed capture/abort/recovery. DNG16,664,256bytes and PEF11,258,021bytes each transferred and unpacked with LibRaw to3896x2616. JPEG and latent DNG, ISO800 andf/8 were restored. Images remain outside Git. Partial profile records never replace the full-camera failure.
+
+The bulb/RAW physical runs preceded the final offline timing repair and reported1.40–1.42s for1.2s requested. The owner explicitly requested the correction without camera use. Software dispatch timing is verified; physical EXIF/curtain accuracy of the final correction remains unverified. macOS device claim, other camera models, Windows, multiple devices and physical hotplug remain outside this result.
+
+### Final test summary
+
+Simulated USB:44 run/44 passed on macOS arm64 and Linux arm64; macOS ASan/UBSan44/44 passed, with leak detection unavailable. Recorder fixtures:25/25 passed. Latest recorded hardware profiles: full mixed-mode1 run/0 passed; bulb1/1 passed; DNG single-frame1/1 passed; PEF single-frame1/1 passed. These are latest profile verdicts, not a count of every exploratory run. Physical tests after the final offline timing repair:0 run/0 passed. Inventory44/1 counts the conditional hardware case once. No camera access during final repair.

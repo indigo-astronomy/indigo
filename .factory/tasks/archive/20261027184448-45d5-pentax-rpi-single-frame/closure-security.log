@@ -1,0 +1,4 @@
+Working directory: /private/tmp/indigo-pentax-rpi
+[security] python3 .factory/scripts/validate_project.py --security
+Factory local security boundaries valid.
+Configured security commands passed. Assess coverage separately.
