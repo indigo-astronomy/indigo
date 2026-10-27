@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "task": "20261027131225-a980-solver-simulator-tests",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/agent_solver/*",
+    "indigo_test/AGENTS.md",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_agent_solver.c",
+    "indigo_test/integration/test_agent_solver_simulator.c",
+    "indigo_test/unit/test_agent_solver_core.c",
+    "indigo_tools/indigo_solver_indexer.c",
+    ".factory/completions/20261027131225-a980-solver-simulator-tests.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_solver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_astrometry"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "70b6035035a402b4576f293e31a1a621892c8121"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "0001dcae3cb5907cf577ed6c661ac24fa52b2f74"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "08319c8461558b9e7c65dcfdf6fe8406e673b07f"
+    ],
+    "indigo_drivers/agent_solver/README.md": [
+      "100644",
+      "blob",
+      "f497c127cd041ec30501a7a446a2e78efcd9f678"
+    ],
+    "indigo_drivers/agent_solver/REFACTOR.md": [
+      "100644",
+      "blob",
+      "2ebde5c85ec33f3c9d8f1de2f019c57cd2a69d9b"
+    ],
+    "indigo_drivers/agent_solver/indigo_agent_solver.c": [
+      "100644",
+      "blob",
+      "e50fd77c32f7a61ba4a79cdcc6ddb827cec6d5fa"
+    ],
+    "indigo_drivers/agent_solver/indigo_solver.c": [
+      "100644",
+      "blob",
+      "85eeb25b5db56a0f2699705fcb049ff82ab22b98"
+    ],
+    "indigo_drivers/agent_solver/indigo_solver_utils.c": [
+      "100644",
+      "blob",
+      "f1a3a423abdb525717cc02f3d32b3ef41730f4ec"
+    ],
+    "indigo_drivers/agent_solver/indigo_solver_utils.h": [
+      "100644",
+      "blob",
+      "7e01101209f7d76de07a63917204f57f56652dc6"
+    ],
+    "indigo_test/AGENTS.md": [
+      "100644",
+      "blob",
+      "e57ac0fe59b54a80a2918a7752fc76fdfbe8d63b"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "e96aaca15b06cb29d446bb0bf00088bec3efc9d2"
+    ],
+    "indigo_test/integration/test_agent_solver.c": [
+      "100644",
+      "blob",
+      "14be08620f82d7198687ad1cdbaffbc005adcdff"
+    ],
+    "indigo_test/integration/test_agent_solver_simulator.c": [
+      "100644",
+      "blob",
+      "4b6eacb8b979d5f248976952bdc982e42dfd7a1e"
+    ],
+    "indigo_test/unit/test_agent_solver_core.c": [
+      "100644",
+      "blob",
+      "5a334261b57f4b78e3119a6808109af1327d01d2"
+    ],
+    "indigo_tools/indigo_solver_indexer.c": [
+      "100644",
+      "blob",
+      "75497ff3bb25a5a5021f8fbc58a2c856ad5ce1d9"
+    ],
+    ".factory/completions/20261027131225-a980-solver-simulator-tests.json": [
+      "100644",
+      "blob",
+      "0"
+    ]
+  }
+}

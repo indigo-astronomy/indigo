@@ -39,7 +39,7 @@ is claimed.
 Index files (`tyc2-<fov>deg.isix`, 1°, 2°, 5°, 10° and 20°, 32 MB to 534 MB each) are never checked in. They are
 built from the Tycho-2 catalogue (CDS I/259, `I_259/tyc2.dat.00` … `tyc2.dat.19` in the working directory) with
 `indigo_solver_indexer 1 2 5 10 20`, published under `AGENT_SOLVER_INDEX_URL` and downloaded on demand by the agent.
-The URL is a placeholder until the owner selects the hosting.
+The URL is the `index_release_v1` release of the INDIGO repository on GitHub, where the five files built by the tool are published.
 
 ## Found defects and fixes
 
@@ -77,6 +77,41 @@ All defects were found in the ported code by the new tests; none existed in this
 - Not covered: the download path (network), FITS/JPEG uploads (refused by design in this version), Linux and Windows
   builds.
 
+## Simulator verification (task 20261027131225-a980-solver-simulator-tests)
+
+`indigo_test/integration/test_agent_solver_simulator.c` (opt-in, `make -C indigo_test test-agent-solver-simulator`)
+drives the agent with the production Imager and Guider agents, the CCD simulators and the real Tycho-2 indexes of the
+`index_release_v1` release, taken from the persistent cache `$INDIGO_CACHE_BASE/solver` (default `~/.indigo/solver`)
+and downloaded there by the agent only when missing. Set 1 solves the Rosetta frame of the CCD Imager Simulator
+(full resolution, agent downsampling, sub-frame, JNow output, each index alone, wrong scale hint, repeated solves)
+against the astrometry.net solution of the same frame. Set 2 renders 120 distinct `SIMULATION_SETUP` combinations
+of the CCD Guider Simulator (24 sky positions down to Dec ±85°, five rotations, both pier sides, seven frame sizes,
+three magnitude limits, J2000 and JNow, four noise levels, three gradients, four hot pixel/column/row settings, every
+twentieth frame captured through the Guider Agent) and compares every solution with the rendered field: centre within
+36", scale within 2 %, angle within 0.2° (the precession turn of JNow fields against J2000 north is added to the
+expectation), frame size, WCS epoch and state.
+
+Defects found by the sets, fixed in this task:
+
+- The angle of the solution referred to north at the tangent point of the fit, which is a reference star up to half a
+  field away from the image centre; the meridians converge between the two points by up to a degree at high
+  declination (0.92° at Dec −60° in a 5.3° frame, nothing at the Dec 5° Rosetta frame, so the first task did not see
+  it). `indigo_solver_compute_center()` now refits the inliers with the found centre as the tangent point, so angle,
+  scale and centre refer to the image centre. Angles agree with the rendering to 0.03°.
+- The parity sign and the angle of mirrored frames did not follow the astrometry.net convention the Astrometry agent
+  reports: the simulator frames (east to the right, north up) came out as parity −1 with an angle 180° from the
+  reference run of `test_agent_astrometry_solver` (angle 36.00°, parity 1 for rotation 36°). Parity is now 1 for
+  such frames and their angle is turned by 180°, the Rosetta frame (parity −1, 179.2°) is unchanged.
+  `indigo_radec_to_xy()` takes the parity in the same convention; the unit tests render and expect it, the agent
+  integration test expects parity −1 for its sky-as-seen synthetic frame, the indexer passes −1 (unchanged
+  projection). Version 3.0.0.5.
+
+Not a solver defect, excluded from the sets: the CCD simulator bins the imager frame by taking every second pixel
+instead of summing, which turns the stars into single pixel spikes whose codes do not match (the agent's own 2 x 2
+downsampling, which averages, solves). IMAGE_NOISE_VAR at or above the amplitude of magnitude 8 stars (600 and
+1000 ADU) buries most of the rendered field and is likewise not a valid input; the sweep uses 100 to 400.
+
 ## Final test summary
 
-Simulated (hardware-free) tests: 15 run, 15 passed (9 unit, 6 integration). Hardware tests: 0 run, 0 passed.
+Simulated (hardware-free) tests: 143 run, 143 passed (9 unit, 6 agent integration, 128 simulator integration:
+8 Rosetta cases and 120 guider setups). Hardware tests: 0 run, 0 passed.

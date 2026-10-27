@@ -290,7 +290,7 @@ static void build_synthetic_catalog(synthetic_catalog *c) {
 		c->catalog[i].id = i;
 		c->catalog[i].ra = c->ra0 + (frand() - 0.5) * 3.2 * DEG_TO_RAD;
 		c->catalog[i].dec = c->dec0 + (frand() - 0.5) * 2.4 * DEG_TO_RAD;
-		ASSERT_TRUE(indigo_radec_to_xy(c->ra0, c->dec0 + 0.4 * DEG_TO_RAD, 0, CATALOG_SCALE, 1000, 1000, true, c->catalog[i].ra, c->catalog[i].dec, &c->catalog[i].x, &c->catalog[i].y));
+		ASSERT_TRUE(indigo_radec_to_xy(c->ra0, c->dec0 + 0.4 * DEG_TO_RAD, 0, CATALOG_SCALE, 1000, 1000, -1, c->catalog[i].ra, c->catalog[i].dec, &c->catalog[i].x, &c->catalog[i].y));
 	}
 	int capacity = 40000;
 	c->quads = malloc(capacity * sizeof(indigo_solver_quad));
@@ -312,12 +312,13 @@ static void build_synthetic_catalog(synthetic_catalog *c) {
 }
 
 // Solves a synthetic image of the catalog and checks the solution reproduces the star positions
-static void solve_synthetic_image(synthetic_catalog *c, float ra_center, float dec_center, float angle, float scale, bool flip_x) {
+// Renders the catalog with the given WCS angle and parity (astrometry.net convention) and expects them back
+static void solve_synthetic_image(synthetic_catalog *c, float ra_center, float dec_center, float angle, float scale, int parity_in) {
 	indigo_solver_star image_stars[CATALOG_STAR_COUNT];
 	int star_count = 0;
 	for (int i = 0; i < CATALOG_STAR_COUNT; i++) {
 		float x, y;
-		if (indigo_radec_to_xy(ra_center, dec_center, angle, scale, IMAGE_WIDTH, IMAGE_HEIGHT, flip_x, c->catalog[i].ra, c->catalog[i].dec, &x, &y) && x >= 0 && x < IMAGE_WIDTH && y >= 0 && y < IMAGE_HEIGHT) {
+		if (indigo_radec_to_xy(ra_center, dec_center, angle, scale, IMAGE_WIDTH, IMAGE_HEIGHT, parity_in, c->catalog[i].ra, c->catalog[i].dec, &x, &y) && x >= 0 && x < IMAGE_WIDTH && y >= 0 && y < IMAGE_HEIGHT) {
 			memset(image_stars + star_count, 0, sizeof(indigo_solver_star));
 			image_stars[star_count].x = x + (frand() - 0.5) * 0.4;
 			image_stars[star_count].y = y + (frand() - 0.5) * 0.4;
@@ -343,12 +344,13 @@ static void solve_synthetic_image(synthetic_catalog *c, float ra_center, float d
 	ASSERT_TRUE(indigo_solver_compute_center(star_matches, star_match_count, IMAGE_WIDTH, IMAGE_HEIGHT, &ra, &dec, &rotation, &pixel, &parity));
 	ASSERT_TRUE(indigo_angular_distance(ra, dec, ra_center, dec_center) < 5 * ARCSEC_TO_RAD);
 	ASSERT_TRUE(fabs(pixel / scale - 1) < 0.002);
-	ASSERT_EQ_INT(flip_x ? 1 : -1, parity);
+	ASSERT_EQ_INT(parity_in, parity);
+	ASSERT_TRUE(fabs(remainder(rotation - angle, 2 * M_PI)) < 0.2 * DEG_TO_RAD);
 	// the solution maps the catalog back onto the detected stars
 	int reprojected = 0;
 	for (int i = 0; i < star_match_count; i++) {
 		float x, y;
-		ASSERT_TRUE(indigo_radec_to_xy(ra, dec, rotation, pixel, IMAGE_WIDTH, IMAGE_HEIGHT, parity > 0, star_matches[i].catalog_star->ra, star_matches[i].catalog_star->dec, &x, &y));
+		ASSERT_TRUE(indigo_radec_to_xy(ra, dec, rotation, pixel, IMAGE_WIDTH, IMAGE_HEIGHT, parity, star_matches[i].catalog_star->ra, star_matches[i].catalog_star->dec, &x, &y));
 		if (hypot(x - star_matches[i].image_star->x, y - star_matches[i].image_star->y) < 1.5) {
 			reprojected++;
 		}
@@ -362,7 +364,7 @@ static void test_solve_synthetic_field(void) {
 	synthetic_catalog *c = malloc(sizeof(synthetic_catalog));
 	build_synthetic_catalog(c);
 	ASSERT_TRUE(c->quad_count > 1000);
-	solve_synthetic_image(c, c->ra0 + 0.15 * DEG_TO_RAD, c->dec0 - 0.1 * DEG_TO_RAD, 33 * DEG_TO_RAD, 8 * ARCSEC_TO_RAD, true);
+	solve_synthetic_image(c, c->ra0 + 0.15 * DEG_TO_RAD, c->dec0 - 0.1 * DEG_TO_RAD, 33 * DEG_TO_RAD, 8 * ARCSEC_TO_RAD, -1);
 	free(c->quads);
 	free(c);
 }
@@ -370,7 +372,7 @@ static void test_solve_synthetic_field(void) {
 static void test_solve_synthetic_mirrored_field(void) {
 	synthetic_catalog *c = malloc(sizeof(synthetic_catalog));
 	build_synthetic_catalog(c);
-	solve_synthetic_image(c, c->ra0 - 0.2 * DEG_TO_RAD, c->dec0 + 0.25 * DEG_TO_RAD, 197 * DEG_TO_RAD, 7 * ARCSEC_TO_RAD, false);
+	solve_synthetic_image(c, c->ra0 - 0.2 * DEG_TO_RAD, c->dec0 + 0.25 * DEG_TO_RAD, 197 * DEG_TO_RAD, 7 * ARCSEC_TO_RAD, 1);
 	free(c->quads);
 	free(c);
 }
@@ -402,7 +404,7 @@ static void test_solve_rejects_unrelated_field(void) {
 		int reprojected = 0;
 		for (int i = 0; i < star_match_count; i++) {
 			float x, y;
-			if (indigo_radec_to_xy(ra, dec, rotation, pixel, IMAGE_WIDTH, IMAGE_HEIGHT, parity > 0, star_matches[i].catalog_star->ra, star_matches[i].catalog_star->dec, &x, &y) && hypot(x - star_matches[i].image_star->x, y - star_matches[i].image_star->y) < 1.5) {
+			if (indigo_radec_to_xy(ra, dec, rotation, pixel, IMAGE_WIDTH, IMAGE_HEIGHT, parity, star_matches[i].catalog_star->ra, star_matches[i].catalog_star->dec, &x, &y) && hypot(x - star_matches[i].image_star->x, y - star_matches[i].image_star->y) < 1.5) {
 				reprojected++;
 			}
 		}

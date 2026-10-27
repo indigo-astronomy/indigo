@@ -239,19 +239,19 @@ static uint32_t build_quads(const index_params *p, indigo_solver_star *stars, ui
 			if (si->used > p->star_reuse) {
 				continue;
 			}
-			indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, true, si->ra, si->dec, &si->x, &si->y);
+			indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, -1, si->ra, si->dec, &si->x, &si->y);
 			for (int j = i + 1; j < used_star_count; j++) {
 				indigo_solver_star *sj = used_stars[j];
 				if (sj->used > p->star_reuse || !distance_check(p, sj, si)) {
 					continue;
 				}
-				indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, true, sj->ra, sj->dec, &sj->x, &sj->y);
+				indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, -1, sj->ra, sj->dec, &sj->x, &sj->y);
 				for (int k = j + 1; k < used_star_count; k++) {
 					indigo_solver_star *sk = used_stars[k];
 					if (sk->used > p->star_reuse || !distance_check(p, sk, si) || !distance_check(p, sk, sj)) {
 						continue;
 					}
-					indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, true, sk->ra, sk->dec, &sk->x, &sk->y);
+					indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, -1, sk->ra, sk->dec, &sk->x, &sk->y);
 					for (int l = k + 1; l < used_star_count; l++) {
 						indigo_solver_star *sl = used_stars[l];
 						if (sl->used > p->star_reuse || !distance_check(p, sl, si) || !distance_check(p, sl, sj) || !distance_check(p, sl, sk)) {
@@ -270,7 +270,7 @@ static uint32_t build_quads(const index_params *p, indigo_solver_star *stars, ui
 						if (first_one->ipix != ipix) { // force ownership rule
 							continue;
 						}
-						indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, true, sl->ra, sl->dec, &sl->x, &sl->y);
+						indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, -1, sl->ra, sl->dec, &sl->x, &sl->y);
 						if (quad_count + INDIGO_SOLVER_MAX_QUAD_VARIANTS > quads_size) {
 							quads_size *= 2;
 							quads = indigo_safe_realloc(quads, sizeof(indigo_solver_quad) * quads_size);

@@ -36,7 +36,7 @@
 |  | 2026-10-19 11:54 | 3.0.0.28 | mac arm64 | simulator | 76 / 76 | ✅ OK |
 | agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
 |  | 2026-10-24 20:08 | 3.0.0.14 | mac arm64 | simulator | 63 / 63 | ✅ OK |
-| agent_solver | 2026-10-27 13:45 | 3.0.0.4 | mac arm64 | simulator | 6 / 6 | ✅ OK |
+| agent_solver | 2026-10-27 14:37 | 3.0.0.5 | mac arm64 | simulator | 134 / 134 | ✅ OK |
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 |  | 2026-09-27 21:22 | 3.0.0.15 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-30 18:14 | 3.0.0.15 | linux arm64 | StarlightXpress AO | 16 / 16 | ✅ OK |

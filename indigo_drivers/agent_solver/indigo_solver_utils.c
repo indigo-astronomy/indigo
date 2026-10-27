@@ -87,14 +87,18 @@ void indigo_tangent_to_radec(float ra0, float dec0, float xi, float eta, float *
 	*dec = atan2(sdec0 + eta * cdec0, sqrt(xi * xi + denom * denom));
 }
 
-bool indigo_radec_to_xy(float ra0, float dec0, float angle, float scale, int width, int height, bool flip_x, float ra, float dec, float *x, float *y) {
+bool indigo_radec_to_xy(float ra0, float dec0, float angle, float scale, int width, int height, int parity, float ra, float dec, float *x, float *y) {
 	float xi, eta;
 	if (!indigo_radec_to_tangent(ra0, dec0, ra, dec, &xi, &eta)) {
 		return false;
 	}
-	// Optional common convention: east goes to decreasing image x
-	if (flip_x) {
+	// The angle and the parity are those of indigo_solver_compute_center() and of the WCS of the astrometry agent:
+	// negative parity is the sky as seen (east to the left with north up), positive parity its mirror image, whose
+	// angle is counted from the opposite direction.
+	if (parity < 0) {
 		xi = -xi;
+	} else {
+		angle -= M_PI;
 	}
 	// Rotate from (xi, eta) to image axes.
 	// rot is CCW: (x_img_axis, y_img_axis) relative to (east,north)

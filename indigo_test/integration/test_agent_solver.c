@@ -228,7 +228,7 @@ static bool write_synthetic_index(const char *path) {
 		catalog[i].id = i;
 		catalog[i].ra = ra0 + (frand() - 0.5) * 3.2 * DEG_TO_RAD;
 		catalog[i].dec = dec0 + (frand() - 0.5) * 2.4 * DEG_TO_RAD;
-		REQUIRE(indigo_radec_to_xy(ra0, dec0 + 0.4 * DEG_TO_RAD, 0, CATALOG_SCALE, 1000, 1000, true, catalog[i].ra, catalog[i].dec, &catalog[i].x, &catalog[i].y));
+		REQUIRE(indigo_radec_to_xy(ra0, dec0 + 0.4 * DEG_TO_RAD, 0, CATALOG_SCALE, 1000, 1000, -1, catalog[i].ra, catalog[i].dec, &catalog[i].x, &catalog[i].y));
 	}
 	int capacity = 40000, count = 0;
 	indigo_solver_quad *quads = malloc(capacity * sizeof(indigo_solver_quad));
@@ -293,7 +293,7 @@ static indigo_raw_header *render_image(long *size) {
 	fclose(file);
 	for (int i = 0; i < CATALOG_STAR_COUNT; i++) {
 		float x, y;
-		if (indigo_radec_to_xy(image_ra, image_dec, IMAGE_ANGLE, IMAGE_SCALE, IMAGE_WIDTH, IMAGE_HEIGHT, true, stars[i].ra, stars[i].dec, &x, &y)) {
+		if (indigo_radec_to_xy(image_ra, image_dec, IMAGE_ANGLE, IMAGE_SCALE, IMAGE_WIDTH, IMAGE_HEIGHT, -1, stars[i].ra, stars[i].dec, &x, &y)) {
 			for (int dy = -6; dy <= 6; dy++) {
 				for (int dx = -6; dx <= 6; dx++) {
 					int px = (int)rint(x) + dx, py = (int)rint(y) + dy;
@@ -398,7 +398,7 @@ static void solve_raw_image(void) {
 	ASSERT_TRUE(fabs(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_HEIGHT_ITEM_NAME) - IMAGE_HEIGHT * scale) < 1e-6);
 	double angle = number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_ANGLE_ITEM_NAME);
 	ASSERT_TRUE(fabs(angle - IMAGE_ANGLE * RAD_TO_DEG) < 0.2);
-	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_PARITY_ITEM_NAME) == 1);
+	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_PARITY_ITEM_NAME) == -1);
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_STATE_ITEM_NAME) == INDIGO_SOLVER_STATE_IDLE);
 }

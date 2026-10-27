@@ -594,6 +594,7 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 	float *eta = indigo_safe_malloc(match_count * sizeof(float));
 	bool *valid = indigo_safe_malloc(match_count * sizeof(bool));
 	bool *inlier = indigo_safe_malloc(match_count * sizeof(bool));
+	bool *best_inlier = indigo_safe_malloc(match_count * sizeof(bool));
 	fit_data data = {
 		.count = match_count, .dx = dx, .dy = dy, .xi = xi, .eta = eta, .valid = valid,
 		.fx = indigo_safe_malloc(match_count * sizeof(float)), .fy = indigo_safe_malloc(match_count * sizeof(float)),
@@ -632,9 +633,30 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 						best_fit = fit;
 						ref_ra = ra0;
 						ref_dec = dec0;
+						memcpy(best_inlier, inlier, match_count * sizeof(bool));
 					}
 				}
 			}
+		}
+	}
+	// 4. The rotation of a fit is measured against north at its tangent point, which is up to half a field away from
+	//    the image centre; at high declination the meridians converge by a degree over that distance. The centre found
+	//    with the reference star becomes the tangent point of a second fit over the same inliers, so the angle, the
+	//    scale and the final centre refer to the image centre.
+	if (best_n >= FIT_MIN_INLIERS) {
+		float ra0, dec0;
+		indigo_tangent_to_radec(ref_ra, ref_dec, best_fit.a0, best_fit.b0, &ra0, &dec0);
+		for (int i = 0; i < match_count; i++) {
+			indigo_solver_star *cat = sorted[i].catalog_star;
+			valid[i] = indigo_radec_to_tangent(ra0, dec0, cat->ra, cat->dec, xi + i, eta + i);
+		}
+		memcpy(inlier, best_inlier, match_count * sizeof(bool));
+		int n = grow_fit(&data, inlier, &fit);
+		if (n >= FIT_MIN_INLIERS) {
+			best_n = n;
+			best_fit = fit;
+			ref_ra = ra0;
+			ref_dec = dec0;
 		}
 	}
 	indigo_safe_free(dx);
@@ -643,6 +665,7 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 	indigo_safe_free(eta);
 	indigo_safe_free(valid);
 	indigo_safe_free(inlier);
+	indigo_safe_free(best_inlier);
 	indigo_safe_free(data.fx);
 	indigo_safe_free(data.fy);
 	indigo_safe_free(data.fxi);
@@ -653,12 +676,19 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 		indigo_error("%s: no consistent set of matches found (%d of %d)", __FUNCTION__, best_n, match_count);
 		return false;
 	}
-	// 5. rotation, scale and parity (sign of the image to tangent plane mapping determinant); the eta row of the
-	//    fit does not depend on the parity, so the angle is taken from it and matches indigo_radec_to_xy() for both
-	*rotation = fmod(atan2(best_fit.b1, best_fit.b2) + M_PI, 2 * M_PI);
+	// 5. Rotation, scale and parity in the convention of astrometry.net, so the WCS of this agent and of the
+	//    astrometry agent agree: the parity is positive when the image is the sky seen in a mirror (east to the
+	//    right with north up, the determinant of the pixel to tangent plane mapping is negative), and for that
+	//    parity the angle is turned by 180 degrees; the eta row of the fit gives the angle for both parities.
+	float angle = atan2(best_fit.b1, best_fit.b2) + M_PI;
+	int mirrored = best_fit.a1 * best_fit.b2 - best_fit.a2 * best_fit.b1 < 0 ? 1 : -1;
+	if (mirrored > 0) {
+		angle += M_PI;
+	}
+	*rotation = fmod(angle + 4 * M_PI, 2 * M_PI);
 	*scale = best_fit.pixel;
 	if (parity != NULL) {
-		*parity = best_fit.a1 * best_fit.b2 - best_fit.a2 * best_fit.b1 > 0 ? 1 : -1;
+		*parity = mirrored;
 	}
 	// 6. RA/Dec of the image centre: Δx = Δy = 0 maps to (a0, b0) on the tangent plane
 	indigo_tangent_to_radec(ref_ra, ref_dec, best_fit.a0, best_fit.b0, ra_center, dec_center);

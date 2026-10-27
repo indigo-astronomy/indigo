@@ -5794,6 +5794,7 @@
 		C0DE20260926120000000001 /* hardware_device_record.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hardware_device_record.h; sourceTree = "<group>"; };
 		C0DE20260926D0AB00000001 /* test_detach_abort.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_detach_abort.c; sourceTree = "<group>"; };
 		C0DE20260928A00100000001 /* test_agent_astrometry_solver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_astrometry_solver.c; sourceTree = "<group>"; };
+		C0DE20261027A00100000002 /* test_agent_solver_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_solver_simulator.c; sourceTree = "<group>"; };
 		C0DE20260930000100000001 /* test_ccd_dsi_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_dsi_hw.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000001 /* indigo_system_alpaca.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_alpaca.c; sourceTree = "<group>"; };
 		C0DE20261001A10000000002 /* indigo_system_alpaca.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_system_alpaca.h; sourceTree = "<group>"; };
@@ -14472,6 +14473,7 @@
 				59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */,
 				9D56D3593058283B00725436 /* test_agent_astrometry.c */,
 				C0DE20260928A00100000001 /* test_agent_astrometry_solver.c */,
+				C0DE20261027A00100000002 /* test_agent_solver_simulator.c */,
 				59910AA23054836E00FB1C2F /* test_agent_config.c */,
 				59910A763052B3A100FB1C2F /* test_agent_guider.c */,
 				61D0437E0DBADA8CCC6CCAAF /* test_agent_imager_numerics.py */,

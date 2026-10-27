@@ -128,6 +128,6 @@ extern int indigo_solver_make_quad_variants(indigo_solver_quad *quads, int max_c
 extern float indigo_angular_distance(float ra1, float dec1, float ra2, float dec2);
 extern bool indigo_radec_to_tangent(float ra0, float dec0, float ra, float dec, float *xi, float *eta);
 extern void indigo_tangent_to_radec(float ra0, float dec0, float xi, float eta, float *ra, float *dec);
-extern bool indigo_radec_to_xy(float ra0, float dec0, float angle, float scale, int width, int height, bool flip_x, float ra, float dec, float *x, float *y);
+extern bool indigo_radec_to_xy(float ra0, float dec0, float angle, float scale, int width, int height, int parity, float ra, float dec, float *x, float *y);
 
 #endif

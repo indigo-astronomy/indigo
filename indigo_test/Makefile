@@ -390,7 +390,8 @@ OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_lunatico_udp_simulator \
 	$(INTEGRATION_BUILD)/test_system_alpaca_http \
 	$(INTEGRATION_BUILD)/test_system_alpaca_simulator \
-	$(INTEGRATION_BUILD)/test_agent_astrometry_solver
+	$(INTEGRATION_BUILD)/test_agent_astrometry_solver \
+	$(INTEGRATION_BUILD)/test_agent_solver_simulator
 
 test-integration: check-lib $(INTEGRATION_TESTS)
 	@for test in $(INTEGRATION_TESTS); do \
@@ -2567,6 +2568,19 @@ $(INTEGRATION_BUILD)/test_agent_solver: integration/test_agent_solver.c test_run
 .PHONY: test-agent-solver
 test-agent-solver: check-lib $(INTEGRATION_BUILD)/test_agent_solver
 	$(INTEGRATION_BUILD)/test_agent_solver
+
+# The production Solver agent with its native quad solver and the real Tycho-2 indexes, the Imager and
+# Guider agents and the CCD simulators: the Rosetta frame of the imager simulator and 120 simulation
+# setups of the guider simulator. Opt-in: the 2° and 5° indexes are taken from the persistent cache
+# $INDIGO_CACHE_BASE/solver (default ~/.indigo/solver) and downloaded there once when missing.
+SOLVER_SIMULATOR_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_solver.a $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_guider.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a
+
+$(INTEGRATION_BUILD)/test_agent_solver_simulator: integration/test_agent_solver_simulator.c test_runner.h $(SOLVER_SIMULATOR_ARCHIVES) | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(SOLVER_SIMULATOR_ARCHIVES) $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-agent-solver-simulator
+test-agent-solver-simulator: check-lib $(INTEGRATION_BUILD)/test_agent_solver_simulator
+	$(INTEGRATION_BUILD)/test_agent_solver_simulator
 
 # The production Astrometry agent with the real astrometry.net solver, the Imager, Guider and Mount agents
 # and the CCD and mount simulators. Opt-in: it needs solve-field and image2xy installed and

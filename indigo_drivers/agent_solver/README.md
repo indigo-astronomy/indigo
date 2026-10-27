@@ -60,6 +60,13 @@ directory and writes the index files next to it; copy them into the cache direct
 - `AGENT_PLATESOLVER_HINTS.DOWNSAMPLE` of 2 or more bins 16 bit mono frames by that factor before the star detection.
 - `AGENT_PLATESOLVER_HINTS.EPOCH` of 0 reports the solved centre in JNow, otherwise in J2000.
 
+### Solution
+
+The WCS angle and parity follow the convention of astrometry.net and of the Astrometry agent: parity 1 is the mirror
+image of the sky (east to the right with north up), parity -1 the sky as seen, and the angle is the rotation of the
+frame against north of the solution's epoch. The two agents can therefore be exchanged in the Mount agent and polar
+alignment workflows.
+
 ## Limitations
 
 - Only INDIGO RAW uploads are solved, FITS and JPEG uploads are refused.
@@ -68,4 +75,4 @@ directory and writes the index files next to it; copy them into the cache direct
 
 ## Testing
 
-- 2026-10-27 13:45 3.0.0.4 mac arm64 simulator 6/6 OK
+- 2026-10-27 14:37 3.0.0.5 mac arm64 simulator 134/134 OK
