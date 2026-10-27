@@ -57,7 +57,8 @@
     }
   ],
   "risk_reviews": {
-    "data-model": "security.md"
+    "data-model": "security.md",
+    "process-policy": "security.md"
   },
   "reviews": [],
   "reviewed_content": {
@@ -139,7 +140,7 @@
     ".factory/completions/20261027131225-a980-solver-simulator-tests.json": [
       "100644",
       "blob",
-      "0"
+      "f32a7b9976103a7a7b7910ccb6eba743f43ad2a4"
     ]
   }
 }

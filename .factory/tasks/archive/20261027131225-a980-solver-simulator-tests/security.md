@@ -40,3 +40,7 @@ Pass. Same-agent review; no sanitizer run.
 
 ## Register reconciliation
 No findings records created; nothing to reconcile.
+
+The `indigo_test/AGENTS.md` change adds one line documenting the opt-in `test-agent-solver-simulator` target, its
+index cache and the `INDIGO_SOLVER_SETUP` aid; it changes no process rule, gate or authorization (process-policy
+classification by path only).
