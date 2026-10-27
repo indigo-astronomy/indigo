@@ -54,3 +54,5 @@ indigo_test/build/
 /.factory/review.local.json
 /.factory/telemetry/*.local.json
 /.factory/telemetry/*.local.jsonl
+# quad solver index files are built by indigo_solver_indexer or downloaded by the solver agent, never checked in
+*.isix

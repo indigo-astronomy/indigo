@@ -669,6 +669,14 @@ Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 
 Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_solver/indigo_agent_solver.c` and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
 
+### Solver agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| X_AGENT_SOLVER_INDEX | switch | no | TYC2_1, TYC2_2, TYC2_5, TYC2_10, TYC2_20 | Installed Tycho-2 quad index management, selecting an item downloads the `tyc2-<fov>deg.isix` file, clearing it deletes the file. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
+
+Source: `indigo_drivers/agent_solver/indigo_agent_solver.c`.
+
 ### Scripting agent
 
 | Property name | Type | RO | Items | Comments |

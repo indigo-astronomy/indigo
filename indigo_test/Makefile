@@ -41,6 +41,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_image_math \
 	$(UNIT_BUILD)/test_core_text_bounds \
 	$(UNIT_BUILD)/test_align_math \
+	$(UNIT_BUILD)/test_agent_solver_core \
 	$(UNIT_BUILD)/test_aux_math \
 	$(UNIT_BUILD)/test_base64 \
 	$(UNIT_BUILD)/test_bus_helpers \
@@ -149,6 +150,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_mount \
 	$(INTEGRATION_BUILD)/test_agent_config \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
+	$(INTEGRATION_BUILD)/test_agent_solver \
 	$(INTEGRATION_BUILD)/test_agent_scripting \
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer \
 	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount \
@@ -495,6 +497,9 @@ $(UNIT_BUILD)/test_aux_math: unit/test_aux_math.c test_runner.h | $(UNIT_BUILD)
 
 $(UNIT_BUILD)/test_align_math: unit/test_align_math.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lindigocat
+
+$(UNIT_BUILD)/test_agent_solver_core: unit/test_agent_solver_core.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(TEST_LDFLAGS) -lindigocat
 
 $(UNIT_BUILD)/test_test_runner: unit/test_test_runner.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
@@ -2553,6 +2558,15 @@ $(INTEGRATION_BUILD)/test_agent_imager_guider_mount: integration/test_agent_imag
 .PHONY: test-agent-imager-guider-mount
 test-agent-imager-guider-mount: check-lib $(INTEGRATION_BUILD)/test_agent_imager_guider_mount
 	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount
+
+# The Solver agent with its native quad solver against a synthetic index written into INDIGO_CACHE_BASE;
+# no network access, the index download is not exercised.
+$(INTEGRATION_BUILD)/test_agent_solver: integration/test_agent_solver.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-agent-solver
+test-agent-solver: check-lib $(INTEGRATION_BUILD)/test_agent_solver
+	$(INTEGRATION_BUILD)/test_agent_solver
 
 # The production Astrometry agent with the real astrometry.net solver, the Imager, Guider and Mount agents
 # and the CCD and mount simulators. Opt-in: it needs solve-field and image2xy installed and

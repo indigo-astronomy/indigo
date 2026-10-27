@@ -1,0 +1,37 @@
+# Security review
+
+Verdict: pass
+Reviewer: Claude Fable 5.1 acting as security reviewer (same agent as the developer, limitation recorded)
+Date: 2026-10-27
+Revision and working-tree state: task branch, uncommitted working tree on master `aabaed8ec963631cca9ba37826b1777339cc43e7`
+Review independence: not independent
+
+## Scope, assets, and trust boundaries
+Inputs: image BLOBs from the bus (any client), index files on disk (downloaded over the network), the Tycho-2
+catalogue text files for the tool, property changes. Outputs: files under the cache base directory, WCS properties.
+
+## Risk coverage
+| Area | Applicable? | Review evidence / reason not applicable |
+| --- | --- | --- |
+| Authentication and authorization | No | bus properties follow the existing INDIGO model, no new auth |
+| Input, injection, and output handling | Yes | RAW uploads: signature and header length checked before use; index load: header magic/version, read lengths and star index range validated (`test_index_file_roundtrip`); curl on POSIX via `execlp` without a shell, URL from a constant plus `tyc2-%gdeg.isix`; catalogue lines length checked before field access |
+| Data, secrets, cryptography, and logs | No secrets | downloads are plain HTTPS through curl, no integrity signature beyond the header check (same level as the astrometry agent) |
+| Filesystem and outbound network access | Yes | writes limited to `$INDIGO_CACHE_BASE/solver` or `~/.indigo/solver`; partial downloads use `.part` and are removed; deletion only of the agent's own index files; outbound only to `AGENT_SOLVER_INDEX_URL` |
+| Dependencies and configuration | Yes | runtime `curl` (as the astrometry agent); no new libraries; Windows branch uses `system()` with quoted constant paths, the agent is not built there |
+| Abuse and failure behavior | Yes | at most `MAX_IMAGE_QUAD_COUNT` image quads and `MAX_QUAD_MATCH_COUNT` matches (fixed buffers); solving holds `config_mutex`, a second upload is refused while busy; abort kills the download and stops the solve loop |
+
+## Automated checks
+`./.factory/scripts/security` (validate_project.py --security): exit 0. No sanitizer run in this task.
+
+## Findings
+None.
+
+## Accepted risks
+None recorded.
+
+## Verdict and limitations
+Pass for the reviewed scope. `INDIGO_CACHE_BASE` from the environment is trusted as in the astrometry agent; the
+Windows download branch is untested because the agent is not built on Windows.
+
+## Register reconciliation
+No FND records.

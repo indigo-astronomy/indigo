@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000003
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -35,44 +35,475 @@
 #include <assert.h>
 #include <pthread.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <limits.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <setjmp.h>
-#include <jpeglib.h>
+#if !defined(INDIGO_WINDOWS)
+#include <sys/wait.h>
+#endif
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_raw_utils.h>
 #include <indigo/indigo_platesolver.h>
-#include <indigo/indigocat/indigocat_star.h>
+#include <indigo/indigo_align.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_agent_solver.h"
-
+#include "indigo_solver.h"
 
 #define SOLVER_DEVICE_PRIVATE_DATA				((solver_private_data *)device->private_data)
 #define SOLVER_CLIENT_PRIVATE_DATA				((solver_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
-#define MAX_DETECTION_COUNT								1024
+#define AGENT_SOLVER_INDEX_PROPERTY				(SOLVER_DEVICE_PRIVATE_DATA->index_property)
+#define AGENT_SOLVER_INDEX_PROPERTY_NAME	"X_AGENT_SOLVER_INDEX"
+
+// Tycho-2 quad indexes built by indigo_solver_indexer are downloaded from here as tyc2-<fov>deg.isix
+#define AGENT_SOLVER_INDEX_URL						"https://indigo-astronomy.org/solver"
+#define AGENT_SOLVER_INDEX_ITEM_PREFIX		"TYC2_"
+
+#define MAX_IMAGE_STAR_COUNT							500
+#define MAX_IMAGE_QUAD_COUNT							1000000
+#define MAX_QUAD_MATCH_COUNT							1000000
+#define MAX_STAR_MATCH_COUNT							1000
+#define IMAGE_GRID_CELLS									10
+
+static char base_dir[512];
+
+// approximate sizes of the published index files, in the order of indigo_solver_index_fovs
+static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "534 MB", "354 MB", "174 MB", "88 MB", "32 MB" };
 
 typedef struct {
 	platesolver_private_data platesolver;
+	indigo_property *index_property;
+	int index_pending;
+	bool index_download_aborted;
+	bool abort_requested;
+#if !defined(INDIGO_WINDOWS)
+	pid_t download_pid;
+#endif
+	char loaded_index[PATH_MAX];
+	indigo_solver_star *catalog_stars;
+	int catalog_star_count;
+	indigo_solver_quad *catalog_quads;
+	int catalog_quad_count;
 } solver_private_data;
 
-// --------------------------------------------------------------------------------
+static pthread_mutex_t index_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// -------------------------------------------------------------------------------- Index files
 
-// --------------------------------------------------------------------------------
+static void index_item_name(float fov, char *name, size_t size) {
+	snprintf(name, size, "%s%g", AGENT_SOLVER_INDEX_ITEM_PREFIX, fov);
+}
+
+static bool index_item_fov(const char *name, float *fov) {
+	size_t length = strlen(AGENT_SOLVER_INDEX_ITEM_PREFIX);
+	if (strncmp(name, AGENT_SOLVER_INDEX_ITEM_PREFIX, length)) {
+		return false;
+	}
+	float value = atof(name + length);
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		if (indigo_solver_index_fovs[i] == value) {
+			*fov = value;
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool index_installed(float fov) {
+	char path[PATH_MAX];
+	indigo_solver_index_path(path, sizeof(path), base_dir, fov);
+	return indigo_uni_is_readable(path);
+}
+
+// an interrupted transfer is never taken for an installed index, so partial files are removed on start
+static void remove_partial_index_files(void) {
+	char path[PATH_MAX + 8];
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		char index[PATH_MAX];
+		indigo_solver_index_path(index, sizeof(index), base_dir, indigo_solver_index_fovs[i]);
+		snprintf(path, sizeof(path), "%s.part", index);
+		if (indigo_uni_is_readable(path)) {
+			indigo_uni_remove(path);
+		}
+	}
+}
+
+static void free_catalog(indigo_device *device) {
+	indigo_solver_free_catalog(SOLVER_DEVICE_PRIVATE_DATA->catalog_stars, SOLVER_DEVICE_PRIVATE_DATA->catalog_quads);
+	SOLVER_DEVICE_PRIVATE_DATA->catalog_stars = NULL;
+	SOLVER_DEVICE_PRIVATE_DATA->catalog_star_count = 0;
+	SOLVER_DEVICE_PRIVATE_DATA->catalog_quads = NULL;
+	SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count = 0;
+	SOLVER_DEVICE_PRIVATE_DATA->loaded_index[0] = 0;
+}
+
+// the last used index stays loaded, the next solve with the same index skips the file
+static bool load_catalog(indigo_device *device, const char *path) {
+	if (!strcmp(SOLVER_DEVICE_PRIVATE_DATA->loaded_index, path)) {
+		return true;
+	}
+	free_catalog(device);
+	if (!indigo_solver_load_index(path, &SOLVER_DEVICE_PRIVATE_DATA->catalog_stars, &SOLVER_DEVICE_PRIVATE_DATA->catalog_star_count, &SOLVER_DEVICE_PRIVATE_DATA->catalog_quads, &SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count)) {
+		return false;
+	}
+	snprintf(SOLVER_DEVICE_PRIVATE_DATA->loaded_index, sizeof(SOLVER_DEVICE_PRIVATE_DATA->loaded_index), "%s", path);
+	return true;
+}
+
+// Fetches the index with curl into part_path, the transfer is interrupted by solver_abort()
+static bool download_index_file(indigo_device *device, const char *url, const char *part_path) {
+#if defined(INDIGO_WINDOWS)
+	char command[2 * PATH_MAX];
+	snprintf(command, sizeof(command), "curl -L -s -f -o \"%s\" \"%s\"", part_path, url);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", command);
+	return system(command) == 0;
+#else
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> curl -L -s -f -o %s %s", part_path, url);
+	pid_t pid = fork();
+	if (pid < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute curl (%s)", strerror(errno));
+		return false;
+	}
+	if (pid == 0) {
+		execlp("curl", "curl", "-L", "-s", "-f", "-o", part_path, url, (char *)NULL);
+		_exit(127);
+	}
+	SOLVER_DEVICE_PRIVATE_DATA->download_pid = pid;
+	int status = 0;
+	while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+	}
+	SOLVER_DEVICE_PRIVATE_DATA->download_pid = 0;
+	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "curl failed with status %d", WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+		return false;
+	}
+	return true;
+#endif
+}
+
+// a downloaded file is accepted only with a valid header for the requested scale
+static bool validate_index_file(const char *path, float fov) {
+	FILE *file = fopen(path, "rb");
+	if (file == NULL) {
+		return false;
+	}
+	indigo_solve_index_header header;
+	bool valid = indigo_solver_index_read_header(file, &header) && header.fov == fov && header.star_count > 0 && header.quad_count > 0;
+	fclose(file);
+	return valid;
+}
+
+static void unselect_missing_indexes(indigo_device *device) {
+	for (int i = 0; i < AGENT_SOLVER_INDEX_PROPERTY->count; i++) {
+		indigo_item *item = AGENT_SOLVER_INDEX_PROPERTY->items + i;
+		float fov;
+		if (item->sw.value && index_item_fov(item->name, &fov) && !index_installed(fov)) {
+			item->sw.value = false;
+		}
+	}
+}
+
+static void rebuild_use_index(indigo_device *device) {
+	indigo_delete_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
+	bool selected[INDIGO_SOLVER_INDEX_FOV_COUNT] = { false };
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		char name[INDIGO_NAME_SIZE];
+		index_item_name(indigo_solver_index_fovs[i], name, sizeof(name));
+		for (int j = 0; j < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; j++) {
+			if (!strcmp(name, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[j].name)) {
+				selected[i] = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[j].sw.value;
+			}
+		}
+	}
+	AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count = 0;
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		float fov = indigo_solver_index_fovs[i];
+		if (index_installed(fov)) {
+			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+			index_item_name(fov, name, sizeof(name));
+			snprintf(label, sizeof(label), "Tycho-2 %g° index", fov);
+			indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, selected[i]);
+		}
+	}
+	indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
+	AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_define_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
+}
+
+// Downloads every newly selected index and removes every unselected one, then republishes the usable set
+static void sync_installed_indexes(indigo_device *device) {
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	char path[PATH_MAX], part_path[PATH_MAX + 8], url[INDIGO_VALUE_SIZE];
+	pthread_mutex_lock(&mutex);
+	for (int i = 0; i < AGENT_SOLVER_INDEX_PROPERTY->count; i++) {
+		indigo_item *item = AGENT_SOLVER_INDEX_PROPERTY->items + i;
+		float fov;
+		if (!index_item_fov(item->name, &fov)) {
+			continue;
+		}
+		indigo_solver_index_path(path, sizeof(path), base_dir, fov);
+		if (item->sw.value) {
+			if (indigo_uni_is_readable(path)) {
+				continue;
+			}
+			if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
+				goto aborted;
+			}
+			snprintf(part_path, sizeof(part_path), "%s.part", path);
+			char *file_name = strrchr(path, '/');
+			file_name = file_name ? file_name + 1 : path;
+			snprintf(url, sizeof(url), "%s/%s", AGENT_SOLVER_INDEX_URL, file_name);
+			indigo_send_message(device, IDLE_PROPERTY, "Downloading %s...", file_name);
+			bool downloaded = download_index_file(device, url, part_path);
+			if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
+				indigo_uni_remove(part_path);
+				goto aborted;
+			}
+			if (!downloaded || !validate_index_file(part_path, fov) || rename(part_path, path)) {
+				indigo_uni_remove(part_path);
+				item->sw.value = false;
+				AGENT_SOLVER_INDEX_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_SOLVER_INDEX_PROPERTY, "Index download failed: '%s'", url);
+				goto done;
+			}
+			indigo_send_message(device, OK_PROPERTY, "Done");
+		} else if (indigo_uni_is_readable(path)) {
+			if (!strcmp(SOLVER_DEVICE_PRIVATE_DATA->loaded_index, path)) {
+				free_catalog(device);
+			}
+			if (!indigo_uni_remove(path)) {
+				AGENT_SOLVER_INDEX_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_SOLVER_INDEX_PROPERTY, "%s", strerror(errno));
+				goto done;
+			}
+		}
+	}
+	goto done;
+aborted:
+	unselect_missing_indexes(device);
+	AGENT_SOLVER_INDEX_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, AGENT_SOLVER_INDEX_PROPERTY, "Index download aborted");
+done:
+	rebuild_use_index(device);
+	indigo_platesolver_save_config(device);
+	pthread_mutex_unlock(&mutex);
+}
+
+/* Index changes are accepted while a download is running, each one queues another handler;
+   the property stays busy until the last queued request is processed. */
+
+static void index_request_queued(indigo_device *device) {
+	pthread_mutex_lock(&index_pending_mutex);
+	SOLVER_DEVICE_PRIVATE_DATA->index_pending++;
+	pthread_mutex_unlock(&index_pending_mutex);
+}
+
+static void index_handler(indigo_device *device) {
+	sync_installed_indexes(device);
+	pthread_mutex_lock(&index_pending_mutex);
+	bool more = --SOLVER_DEVICE_PRIVATE_DATA->index_pending > 0;
+	pthread_mutex_unlock(&index_pending_mutex);
+	if (more && !SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
+		return;
+	}
+	if (AGENT_SOLVER_INDEX_PROPERTY->state == INDIGO_BUSY_STATE) {
+		AGENT_SOLVER_INDEX_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, AGENT_SOLVER_INDEX_PROPERTY, NULL);
+}
+
+// -------------------------------------------------------------------------------- Solving
 
 static void solver_abort(indigo_device *device) {
+	SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted = true;
+	SOLVER_DEVICE_PRIVATE_DATA->abort_requested = true;
+#if !defined(INDIGO_WINDOWS)
+	pid_t pid = SOLVER_DEVICE_PRIVATE_DATA->download_pid;
+	if (pid > 0) {
+		kill(pid, SIGTERM);
+	}
+#endif
+}
+
+// Orders the selected indexes: the one fitting the field size first, when the scale is known, then the others
+static int select_candidate_fovs(indigo_device *device, double scale, int width, int height, float *candidates) {
+	float selected[INDIGO_SOLVER_INDEX_FOV_COUNT];
+	int selected_count = 0;
+	for (int i = 0; i < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; i++) {
+		indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + i;
+		float fov;
+		if (item->sw.value && index_item_fov(item->name, &fov) && index_installed(fov)) {
+			selected[selected_count++] = fov;
+		}
+	}
+	int count = 0;
+	if (scale > 0 && selected_count > 0) {
+		char path[PATH_MAX];
+		float fov;
+		if (indigo_solver_select_index(base_dir, selected, selected_count, width * scale * DEG_TO_RAD, height * scale * DEG_TO_RAD, path, sizeof(path), &fov)) {
+			candidates[count++] = fov;
+		}
+	}
+	for (int i = 0; i < selected_count; i++) {
+		if (count == 0 || candidates[0] != selected[i]) {
+			candidates[count++] = selected[i];
+		}
+	}
+	return count;
 }
 
 static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
-	return false;
+	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) != 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
+		return false;
+	}
+	if (AGENT_SOLVER_INDEX_PROPERTY->state == INDIGO_BUSY_STATE) {
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Index download in progress, solving is not possible");
+		return false;
+	}
+	/* an abort since the image arrived stays requested, an older one is cleared */
+	SOLVER_DEVICE_PRIVATE_DATA->abort_requested = task->abort_generation != INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_generation;
+	indigo_send_message(device, IDLE_PROPERTY, "Solving started");
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
+	const char *message = "";
+	AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
+	AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
+	AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SOLVING;
+	indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+	indigo_raw_header *image = NULL;
+	indigo_solver_star *image_stars = NULL;
+	indigo_solver_quad *image_quads = NULL;
+	indigo_solver_quad_match *quad_matches = NULL;
+	indigo_solver_star_match *star_matches = NULL;
+	// 1. only INDIGO RAW images are solved natively
+	uint32_t signature = 0;
+	if (task->size >= (long)sizeof(signature)) {
+		memcpy(&signature, task->image, sizeof(signature));
+	}
+	if (signature != INDIGO_RAW_MONO8 && signature != INDIGO_RAW_MONO16 && signature != INDIGO_RAW_RGB24 && signature != INDIGO_RAW_RGB48) {
+		message = "Only INDIGO RAW images are supported";
+		goto cleanup;
+	}
+	if (task->size < (long)sizeof(indigo_raw_header)) {
+		message = "Truncated RAW image";
+		goto cleanup;
+	}
+	image = indigo_safe_malloc_copy(task->size, task->image);
+	int full_width = image->width;
+	int full_height = image->height;
+	int bin = (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
+	if (bin < 1) {
+		bin = 1;
+	}
+	if (bin > 1 && signature == INDIGO_RAW_MONO16) {
+		indigo_solver_bin_image(image, bin);
+	} else {
+		bin = 1;
+	}
+	int width = image->width;
+	int height = image->height;
+	// 2. image stars and quads
+	image_stars = indigo_safe_malloc(MAX_IMAGE_STAR_COUNT * sizeof(indigo_solver_star));
+	int star_count = indigo_solver_image_stars(image, image_stars, MAX_IMAGE_STAR_COUNT);
+	if (star_count < 4) {
+		message = "Not enough stars detected";
+		goto cleanup;
+	}
+	if (SOLVER_DEVICE_PRIVATE_DATA->abort_requested) {
+		message = "Aborted";
+		goto cleanup;
+	}
+	image_quads = indigo_safe_malloc(MAX_IMAGE_QUAD_COUNT * sizeof(indigo_solver_quad));
+	int used_star_count = 0;
+	int grid = (width > height ? width : height) / IMAGE_GRID_CELLS;
+	int quad_count = indigo_solver_build_image_quads(image_stars, star_count, width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
+	if (quad_count == 0) {
+		message = "Not enough stars detected";
+		goto cleanup;
+	}
+	// 3. indexes to try, the one fitting the expected field size first
+	float candidates[INDIGO_SOLVER_INDEX_FOV_COUNT];
+	double scale = AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0 ? AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value : INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale;
+	int candidate_count = select_candidate_fovs(device, scale, full_width, full_height, candidates);
+	if (candidate_count == 0) {
+		message = "No index files are selected, select at least one";
+		goto cleanup;
+	}
+	quad_matches = indigo_safe_malloc(MAX_QUAD_MATCH_COUNT * sizeof(indigo_solver_quad_match));
+	star_matches = indigo_safe_malloc(MAX_STAR_MATCH_COUNT * sizeof(indigo_solver_star_match));
+	float ra = 0, dec = 0, rotation = 0, pixel = 0, fov = 0;
+	int parity = 0;
+	bool solved = false;
+	for (int i = 0; i < candidate_count && !solved; i++) {
+		if (SOLVER_DEVICE_PRIVATE_DATA->abort_requested) {
+			break;
+		}
+		char path[PATH_MAX];
+		indigo_solver_index_path(path, sizeof(path), base_dir, candidates[i]);
+		indigo_send_message(device, IDLE_PROPERTY, "Solving with Tycho-2 %g° index...", candidates[i]);
+		if (!load_catalog(device, path)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
+			continue;
+		}
+		int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, SOLVER_DEVICE_PRIVATE_DATA->catalog_quads, SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count, quad_matches, MAX_QUAD_MATCH_COUNT);
+		int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT);
+		if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity)) {
+			fov = candidates[i];
+			solved = true;
+		}
+	}
+	if (!solved) {
+		message = SOLVER_DEVICE_PRIVATE_DATA->abort_requested ? "Aborted" : "No solution found";
+		goto cleanup;
+	}
+	// 4. WCS result: RA in hours, Dec and angles in degrees, scale in degrees per unbinned pixel
+	double ra_hours = ra * RAD_TO_DEG / 15;
+	double dec_degrees = dec * RAD_TO_DEG;
+	if (AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target == 0) {
+		indigo_j2k_to_jnow(&ra_hours, &dec_degrees);
+		AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 0;
+	} else {
+		AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 2000;
+	}
+	AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = ra_hours;
+	AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = dec_degrees;
+	AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = pixel * RAD_TO_DEG / bin;
+	AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = full_width * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
+	AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = full_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
+	AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = rotation * RAD_TO_DEG;
+	AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = parity;
+	AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = fov;
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
+	AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_send_message(device, OK_PROPERTY, "Solved");
+cleanup:
+	indigo_safe_free(star_matches);
+	indigo_safe_free(quad_matches);
+	indigo_safe_free(image_quads);
+	indigo_safe_free(image_stars);
+	indigo_safe_free(image);
+	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed) {
+		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	if (message[0] == '\0') {
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+	} else {
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "%s", message);
+	}
+	pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	return !INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed;
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
@@ -82,6 +513,27 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_platesolver_device_attach(device, DRIVER_NAME, DRIVER_VERSION, 0) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- AGENT_SOLVER_INDEX
+		AGENT_SOLVER_INDEX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SOLVER_INDEX_PROPERTY_NAME, "Index management", "Installed Tycho-2 indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_SOLVER_INDEX_FOV_COUNT);
+		if (AGENT_SOLVER_INDEX_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		strcpy(AGENT_SOLVER_INDEX_PROPERTY->hints, "warn_on_clear:\"Delete Tycho-2 index file?\";");
+		for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+			float fov = indigo_solver_index_fovs[i];
+			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
+			index_item_name(fov, name, sizeof(name));
+			snprintf(label, sizeof(label), "Tycho-2 %g° index (%s)", fov, index_sizes[i]);
+			bool present = index_installed(fov);
+			indigo_item *item = AGENT_SOLVER_INDEX_PROPERTY->items + i;
+			indigo_init_switch_item(item, name, label, present);
+			snprintf(item->hints, sizeof(item->hints), "warn_on_clear:\"Delete Tycho-2 %g° index?\";", fov);
+			if (present) {
+				snprintf(label, sizeof(label), "Tycho-2 %g° index", fov);
+				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, false);
+			}
+		}
+		indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
 		// --------------------------------------------------------------------------------
 		SOLVER_DEVICE_PRIVATE_DATA->platesolver.save_config = indigo_platesolver_save_config;
 		SOLVER_DEVICE_PRIVATE_DATA->platesolver.solve = solver_solve;
@@ -97,6 +549,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
 	}
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_SOLVER_INDEX_PROPERTY);
 	return indigo_platesolver_enumerate_properties(device, client, property);
 }
 
@@ -107,11 +560,28 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
 	}
+	if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_PROPERTY, property) && AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		AGENT_PLATESOLVER_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_PROPERTY, "Solver is busy");
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_SOLVER_INDEX_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_SOLVER_INDEX
+		INDIGO_REJECT_CHANGE_IF(AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE, AGENT_SOLVER_INDEX_PROPERTY, "Solving in progress, index change is not possible");
+		SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted = false;
+		index_request_queued(device);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(AGENT_SOLVER_INDEX_PROPERTY, index_handler);
+		return INDIGO_OK;
+	}
 	return indigo_platesolver_change_property(device, client, property);
 }
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	solver_abort(device);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
+	free_catalog(device);
+	indigo_release_property(AGENT_SOLVER_INDEX_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_platesolver_device_detach(device);
 }
@@ -152,6 +622,14 @@ indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_inf
 	switch(action) {
 		case INDIGO_DRIVER_INIT: {
 			last_action = action;
+			char *env = getenv("INDIGO_CACHE_BASE");
+			if (env) {
+				snprintf(base_dir, sizeof(base_dir), "%s/solver", env);
+			} else {
+				snprintf(base_dir, sizeof(base_dir), "%s/.indigo/solver", indigo_uni_home_folder());
+			}
+			indigo_uni_mkdir(base_dir);
+			remove_partial_index_files();
 			void *private_data = indigo_safe_malloc(sizeof(solver_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;

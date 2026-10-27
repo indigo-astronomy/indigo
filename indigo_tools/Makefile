@@ -30,7 +30,7 @@ else
 	INDIGO_CLIENT_LIBS = $(BUILD_LIB)/libindigo_client.a -lz -ldl -lm
 endif
 
-all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_scan_drivers
+all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_scan_drivers $(BUILD_BIN)/indigo_solver_indexer
 
 install: all
 	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
@@ -46,7 +46,7 @@ status:
 	@printf "\nindigo_tools -------------------------\n\n"
 
 clean: status
-	rm -f *.o $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_generator
+	rm -f *.o $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_solver_indexer
 
 clean-all: status
 	git clean -dfx
@@ -75,3 +75,14 @@ $(BUILD_BIN)/indigo_generator: indigo_generator.c
 $(BUILD_BIN)/indigo_scan_drivers: indigo_scan_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_scan_drivers.o $(LDFLAGS) -lindigo
 
+# The index builder shares the quad code and index file format with the solver agent.
+SOLVER_AGENT_DIR = ../indigo_drivers/agent_solver
+
+indigo_solver_utils.o: $(SOLVER_AGENT_DIR)/indigo_solver_utils.c $(SOLVER_AGENT_DIR)/indigo_solver_utils.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+indigo_solver_healpix.o: $(SOLVER_AGENT_DIR)/indigo_solver_healpix.c $(SOLVER_AGENT_DIR)/indigo_solver_healpix.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILD_BIN)/indigo_solver_indexer: indigo_solver_indexer.o indigo_solver_utils.o indigo_solver_healpix.o
+	$(CC) $(CFLAGS)  -o $@ indigo_solver_indexer.o indigo_solver_utils.o indigo_solver_healpix.o $(LDFLAGS) $(INDIGO_LIBS)

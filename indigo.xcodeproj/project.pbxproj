@@ -920,6 +920,18 @@
 		9D1541EE2F2A0ACD00B7045F /* indigo_agent_solver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D1541E72F2A0ACD00B7045F /* indigo_agent_solver.h */; };
 		9D1541EF2F2A0ACD00B7045F /* indigo_agent_solver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1541E82F2A0ACD00B7045F /* indigo_agent_solver.c */; };
 		9D1541F12F2A0ACD00B7045F /* indigo_agent_solver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D1541E72F2A0ACD00B7045F /* indigo_agent_solver.h */; };
+		59575E5B1895F54C454C552C /* indigo_solver.c in Sources */ = {isa = PBXBuildFile; fileRef = 5941466D3700FDD12D7F68C5 /* indigo_solver.c */; };
+		59E9303A53823AD656A93EFE /* indigo_solver.c in Sources */ = {isa = PBXBuildFile; fileRef = 5941466D3700FDD12D7F68C5 /* indigo_solver.c */; };
+		595ED23422F7F155D5DBA716 /* indigo_solver_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 596FAD48BA20368968294CAB /* indigo_solver_utils.c */; };
+		59B5081C4F9B9DED5FE360E5 /* indigo_solver_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 596FAD48BA20368968294CAB /* indigo_solver_utils.c */; };
+		591507EC4604BB3BE0E02190 /* indigo_solver_healpix.c in Sources */ = {isa = PBXBuildFile; fileRef = 593CCABD9417CA961170F447 /* indigo_solver_healpix.c */; };
+		592CA1809C5BEC6CC9F71E89 /* indigo_solver_healpix.c in Sources */ = {isa = PBXBuildFile; fileRef = 593CCABD9417CA961170F447 /* indigo_solver_healpix.c */; };
+		5974B8BC7663CA735E130DC6 /* indigo_solver.h in Headers */ = {isa = PBXBuildFile; fileRef = 599687E2AACCCA3CB9F0237E /* indigo_solver.h */; };
+		5914B2617AD1D233EE8CE653 /* indigo_solver.h in Headers */ = {isa = PBXBuildFile; fileRef = 599687E2AACCCA3CB9F0237E /* indigo_solver.h */; };
+		5995A6DED1E8FF7D64281ACD /* indigo_solver_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59BF1591A472776E94CB6184 /* indigo_solver_utils.h */; };
+		5970738803B69C3DEDBCF753 /* indigo_solver_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59BF1591A472776E94CB6184 /* indigo_solver_utils.h */; };
+		59A2503E1A08096B62E87E5D /* indigo_solver_healpix.h in Headers */ = {isa = PBXBuildFile; fileRef = 59AD5706AB25DF043BC30A48 /* indigo_solver_healpix.h */; };
+		5954C5B7243D1F4C25C7E7BB /* indigo_solver_healpix.h in Headers */ = {isa = PBXBuildFile; fileRef = 59AD5706AB25DF043BC30A48 /* indigo_solver_healpix.h */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D214E073061408D0050FA96 /* indigo_mount_mxhd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D214DFE3061403C0050FA96 /* indigo_mount_mxhd.c */; };
 		9D214E083061408D0050FA96 /* indigo_mount_mxhd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D214DFE3061403C0050FA96 /* indigo_mount_mxhd.c */; };
@@ -5111,6 +5123,13 @@
 		9D0AE7602DB7A5F40012933D /* indigo_gps_nmea.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_gps_nmea.driver; sourceTree = "<group>"; };
 		9D1541E72F2A0ACD00B7045F /* indigo_agent_solver.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_solver.h; sourceTree = "<group>"; };
 		9D1541E82F2A0ACD00B7045F /* indigo_agent_solver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_solver.c; sourceTree = "<group>"; };
+		5941466D3700FDD12D7F68C5 /* indigo_solver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_solver.c; sourceTree = "<group>"; };
+		596FAD48BA20368968294CAB /* indigo_solver_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_solver_utils.c; sourceTree = "<group>"; };
+		593CCABD9417CA961170F447 /* indigo_solver_healpix.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_solver_healpix.c; sourceTree = "<group>"; };
+		599687E2AACCCA3CB9F0237E /* indigo_solver.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_solver.h; sourceTree = "<group>"; };
+		59BF1591A472776E94CB6184 /* indigo_solver_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_solver_utils.h; sourceTree = "<group>"; };
+		59AD5706AB25DF043BC30A48 /* indigo_solver_healpix.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_solver_healpix.h; sourceTree = "<group>"; };
+		594DF2A3C4B9F05190DFE465 /* indigo_solver_indexer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_solver_indexer.c; sourceTree = "<group>"; };
 		9D1541E92F2A0ACD00B7045F /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9D1541EA2F2A0ACD00B7045F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -15014,6 +15033,12 @@
 				9D1541EA2F2A0ACD00B7045F /* README.md */,
 				9D1541E72F2A0ACD00B7045F /* indigo_agent_solver.h */,
 				9D1541E82F2A0ACD00B7045F /* indigo_agent_solver.c */,
+				599687E2AACCCA3CB9F0237E /* indigo_solver.h */,
+				59BF1591A472776E94CB6184 /* indigo_solver_utils.h */,
+				59AD5706AB25DF043BC30A48 /* indigo_solver_healpix.h */,
+				5941466D3700FDD12D7F68C5 /* indigo_solver.c */,
+				596FAD48BA20368968294CAB /* indigo_solver_utils.c */,
+				593CCABD9417CA961170F447 /* indigo_solver_healpix.c */,
 				9D1541E92F2A0ACD00B7045F /* Makefile.inc */,
 			);
 			path = agent_solver;
@@ -15022,6 +15047,7 @@
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
 			isa = PBXGroup;
 			children = (
+				594DF2A3C4B9F05190DFE465 /* indigo_solver_indexer.c */,
 				598C583E21A890B5001CA8C0 /* Makefile */,
 				9D44F3802DA55CCD00AB7377 /* indigo_generator.c */,
 				59E7C8392DBE2D0B00C84BAB /* indigo_metadata_extractor.c */,
@@ -17189,6 +17215,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5974B8BC7663CA735E130DC6 /* indigo_solver.h in Headers */,
+				5995A6DED1E8FF7D64281ACD /* indigo_solver_utils.h in Headers */,
+				59A2503E1A08096B62E87E5D /* indigo_solver_healpix.h in Headers */,
 				59B8A8C827ADAD8400A27609 /* indigo_align.h in Headers */,
 				9D8D9EA62D4B990E007A5BA3 /* indigo_uni_io.h in Headers */,
 				598A1C1B259BA94A00C0B34C /* libdsusb.h in Headers */,
@@ -17385,6 +17414,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5914B2617AD1D233EE8CE653 /* indigo_solver.h in Headers */,
+				5970738803B69C3DEDBCF753 /* indigo_solver_utils.h in Headers */,
+				5954C5B7243D1F4C25C7E7BB /* indigo_solver_healpix.h in Headers */,
 				59D9684221A2FFC40069A64C /* libdsusb.h in Headers */,
 				5910D9C62580284E0015D915 /* duk_config.h in Headers */,
 				595F291E211E211100380EF4 /* DDHidUsageTables.h in Headers */,
@@ -17909,6 +17941,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59575E5B1895F54C454C552C /* indigo_solver.c in Sources */,
+				595ED23422F7F155D5DBA716 /* indigo_solver_utils.c in Sources */,
+				591507EC4604BB3BE0E02190 /* indigo_solver_healpix.c in Sources */,
 				59647F032F769C5F005F72E3 /* indigo_aux_svbpowerbox.c in Sources */,
 				593894B32C4C22B100CEF4A5 /* indigo_aux_upb3.c in Sources */,
 				59111CF2285F504200E57194 /* indigocat_earth.c in Sources */,
@@ -18200,6 +18235,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59E9303A53823AD656A93EFE /* indigo_solver.c in Sources */,
+				59B5081C4F9B9DED5FE360E5 /* indigo_solver_utils.c in Sources */,
+				592CA1809C5BEC6CC9F71E89 /* indigo_solver_healpix.c in Sources */,
 				59D29A1B2841469D00D5E7F7 /* indigo_mount_starbook.c in Sources */,
 				9D73E61B21FF37F9003CEC15 /* libuvc_misc.c in Sources */,
 				599EB1772B52ECE300B333E4 /* indigo_aux_wbprov3.c in Sources */,
