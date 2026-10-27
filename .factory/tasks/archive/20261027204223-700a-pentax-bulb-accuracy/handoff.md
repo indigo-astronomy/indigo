@@ -1,0 +1,11 @@
+# Handoff
+
+Root coordinator/writer; Codex desktop, current model retained (exact settings unknown), balanced tier for bounded test preparation. Shell/Git/SSH and in-host independent review available, no extra provider/charges. Isolated worktree protects concurrent owner refactor-record archival. Existing Pentax audit deferral applies; no unrelated work. Published source e0a2d5490; remote isolated root /tmp/indigo-pentax-20261027181603, installed checkout untouched. No camera access in preparation. Next: verify launcher/analyzer and notify owner, task remains active for hardware evidence.
+
+Preparation complete: published source matched, harness rebuilt, remote launcher syntax checked, EXIF analyzer baseline passed. No camera access. Ready to notify owner; two frames only,90s hard watchdog, expected completion much shorter.
+
+Owner authorized execution, complete registered tests and README limitations. Two-frame EXIF check failed:1.2→1.09s,3→2.88s. Full canonical case failed M-mode prerequisite from physical B; separate bulb case passed. RAW follow-up initially lacked block device during kernel re-enumeration; passive identity returned and bounded identity wait used before reference format setup. All hardware now in one continuation; no physical unplug or USB reset by agent.
+
+Hardware ended: full1/0 at physicalM prerequisite, bulb1/1, DNG1/1, PEF1/1. RAWmetadata1.100s for1.2s requested. Restorestatus confirmsJPEG,latentDNG,f8,B,emptybuffer; ISO800 ineachcapture. User told camera may bepoweredoff. No furthercameraaccess. Masterd021e659b mergedfast-forward beforefinalverification, preservingownerrefactor-notearchival/rulewithdrawal. OpenFND...001 tracksphysicaltiming; delivery isdiagnostics+README,notrepair. Finalreviewsassignedto independentagent withseparatequality/securitypasses,sharedcontextlimitationexplicit. Integration/pushnotauthorizedforthisnewtask.
+
+Execution and independent reviews complete. Factory190/190 and configuredcheck/security pass. Complete diagnostic/doc task with measured timing failure and open nonblocking functional finding; do not claim driver timingfixed. Archive before localcommit. Localintegration/publicationremainpendingseparateownerauthorization; preserveworktreeandtaskbranchforthatdelivery.

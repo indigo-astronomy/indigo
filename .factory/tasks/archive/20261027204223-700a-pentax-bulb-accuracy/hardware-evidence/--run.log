@@ -1,0 +1,20 @@
++ make test-ccd-pentax-hw PENTAX_HW_ARGS=--run
+build/hardware/test_ccd_pentax_hw --run
+Running ccd_pentax hardware
+Discovered PENTAX K-m
+DEVICE_MODEL=PENTAX K-m (00012d73)
+DEVICE_FIRMWARE_REVISION=1.11.1.8
+Original DSLR_ISO=00000320 (800)
+Original DSLR_SHUTTER=00000000 (Bulb)
+Original DSLR_APERTURE=0050000a (f/8.0)
+Original DSLR_PROGRAM=00000009 (Bulb)
+hardware/test_ccd_pentax_hw.c:333: change_switch(DSLR_PROGRAM_PROPERTY_NAME, "00000008")
+  FAIL K-m short grouped hardware acceptance
+ccd_pentax hardware: 1 test(s) failed
+make: *** [Makefile:3779: test-ccd-pentax-hw] Error 1
+1 driver(s) written to /tmp/indigo-pentax-20261027181603/TEST_SUMMARY.md
+
+FAILED: test-ccd-pentax-hw
+ccd_pentax: 1/0 Failed
+recorded in indigo_drivers/ccd_pentax/README.md:
+2026-10-27 20:49 3.0.0.5 linux arm64 PENTAX K-m 1/0 Failed

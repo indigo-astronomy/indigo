@@ -1,0 +1,75 @@
+{
+  "version": 2,
+  "task": "20261027204223-700a-pentax-bulb-accuracy",
+  "scope": [
+    "indigo_drivers/ccd_pentax/README.md",
+    "TEST_SUMMARY.md",
+    ".factory/findings/active/FND-20261027204223-700a-pentax-bulb-accuracy-*.json",
+    ".factory/completions/20261027204223-700a-pentax-bulb-accuracy.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "bash",
+        "-n",
+        ".factory/tasks/20261027204223-700a-pentax-bulb-accuracy/run-on-rpi.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        ".factory/tasks/20261027204223-700a-pentax-bulb-accuracy/measure.py",
+        "1.4=/private/tmp/pentax-km-bulb-corrected.jpeg"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261027204223-700a-pentax-bulb-accuracy.json": [
+      "100644",
+      "blob",
+      "22d4f089d92cbdd4d8d2e859df5457eabd41bc8a"
+    ],
+    ".factory/findings/active/FND-20261027204223-700a-pentax-bulb-accuracy-001.json": [
+      "100644",
+      "blob",
+      "7d60a9487c53985a060d8044539e900d4bb3a340"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "76655f0da54b3310bf6b0af72fbc41691bd9889f"
+    ],
+    "indigo_drivers/ccd_pentax/README.md": [
+      "100644",
+      "blob",
+      "6b8c120bfb81faa283814647774864d0b776053a"
+    ]
+  }
+}
