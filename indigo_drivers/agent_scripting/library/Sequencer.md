@@ -276,6 +276,7 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 | Method | Description |
 |---|---|
 | `sync_center(exposure)` | Plate solve using `exposure` second frames and center the current pointing. |
+| `set_solver_filter(filter)` | Set the filter the solver selects for its exposures (e.g. in `sync_center()` or `precise_goto()`); the wheel is not moved now, and returns to the previous filter after each solver exposure. Either the filter **name** (e.g. `"L"`) or the **slot number** (e.g. `"1"`) may be passed, `"CURRENT"` or `"0"` solves through whatever filter is selected. |
 | `precise_goto(exposure, ra, dec)` | Iteratively slew and plate-solve to precisely reach the target `ra`/`dec`. |
 
 ### Guiding
