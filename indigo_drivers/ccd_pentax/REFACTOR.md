@@ -81,3 +81,17 @@ Plan steps1–3 complete in software: baseline regression captured, original ord
 ### Latest repair test summary
 
 Simulated tests:36 run/36 passed; sanitized:36 run/36 passed. Physical tests during this offline repair:0 run/0 passed. Earlier3.0.0.3 hardware acceptance remains1 planned/0 passed, plus the failed direct-server diagnostic. The owner asked to keep the camera asleep. Linux/Windows runtime, real device binding restoration, and current physical capture remain unverified.
+
+## RPi connection validation 20261027181603-4710-pentax-rpi-validation
+
+Owner provided SSH access to Linux arm64 RPi with K-m, retaining non-interactive short groups and no physical unplug. Existing prebuilt2.0.0.0 passed connection/status/disconnect. An isolated3.0.0.4 build initially lacked three current framework symbols against the old installed build; rebuilt matching current framework/server in a remote temporary directory instead of modifying the installed checkout. The matching current server/driver then passed connection and disconnection with INFO version3.0.0.4, identity012d73 and firmware1.11.1.8. No exposures requested. This verifies connection on that Linux host, not complete capture or macOS -99 resolution.
+
+A focused Linux fake USB baseline reproduced a test portability defect: output recovery hard-coded /private/tmp, absent on Linux, causing its fixture setup/recovery to fail. Plan: use portable /tmp fixture path, expose the existing opt-in --baseline hardware harness through a Makefile argument (default remains full --run), label the baseline case explicitly, run36 fake cases, and record the owner-authorized connection-only profile with the canonical runner and a distinct model label. No production behavior change or extra physical case added; coverage inventory remains36/1. Final full-class acceptance and exposures remain deferred.
+
+The Linux-only test fixture failure is fixed without weakening coverage (FND-20261027181603-4710-pentax-rpi-validation-001). Review also identified that an unlabelled baseline could replace a full-camera record; a pre-execution recorder guard now requires the explicit connection-baseline type or --no-record (FND-...-002). An actual-recorder pre-fix test reproduced execution under an unlabeled partial profile; all11 recorder tests pass on macOS and Linux after repair. No production driver change.
+
+### RPi final test summary
+
+Simulated:36 run/36 passed on Linux arm64 via canonical runner. Limited hardware connection/status baseline:1 run/1 passed with3.0.0.4, explicitly recorded as PENTAX K-m (connection baseline). Full capture/bulb/abort hardware cases during this task:0 run/0 passed. Physical unplug:0/0. The old full K-m failure record remains distinct. Compatible current framework/server and driver built only in a temporary directory; existing remote checkout and packages unchanged. Owner camera use ended after the short baseline.
+
+Final guard regression counts:13/13 macOS andLinux; alternate Make assignment and expansion bypasses rejected. Linux fake36/36, connection-only baseline1/1. No further camera requests or full capture claim.

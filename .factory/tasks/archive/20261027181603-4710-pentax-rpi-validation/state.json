@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "active_task": "20261027181603-4710-pentax-rpi-validation",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive and commit verified limited Linux validation locally; preserve unmerged task branch/worktree, no integration/push authorization. Notify owner before future camera use.",
+  "blocker": null,
+  "acceptance_scope": "Connection/status/disconnect baseline only; no exposures/full class acceptance."
+}

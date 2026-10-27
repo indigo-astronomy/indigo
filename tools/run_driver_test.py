@@ -50,6 +50,7 @@ import datetime
 import os
 import platform
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -388,6 +389,24 @@ def main():
 	if record and filters:
 		print("run_driver_test: %s set, the run will not be recorded" % ", ".join(filters), file=sys.stderr)
 		record = False
+
+	# A connection-only profile must never replace a full camera acceptance record.
+	pentax_hw_args = os.environ.get("PENTAX_HW_ARGS", "--run")
+	for argument in make_arguments:
+		if argument.startswith("PENTAX_HW_ARGS="):
+			pentax_hw_args = argument.split("=", 1)[1]
+	if driver == "ccd_pentax" and hardware and record:
+		for argument in make_arguments:
+			if re.match(r"^PENTAX_HW_ARGS\s*[:+?!]*=", argument) and not argument.startswith("PENTAX_HW_ARGS="):
+				fail("Use the PENTAX_HW_ARGS= assignment form for a recorded Pentax profile")
+		try:
+			profile = shlex.split(pentax_hw_args)
+		except ValueError:
+			fail("Invalid Pentax hardware profile quoting")
+		if profile not in (["--run"], ["--baseline"]):
+			fail("A recorded Pentax profile must be the literal --run or --baseline")
+		if profile == ["--baseline"] and (args.type is None or "(connection baseline)" not in args.type):
+			fail("Pentax --baseline recording requires --type 'PENTAX K-m (connection baseline)' or --no-record")
 
 	if not args.no_build:
 		build_driver(driver_dir)

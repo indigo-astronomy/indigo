@@ -1,0 +1,170 @@
+18:17:16.809384 indigo_server: INDIGO server 3.0-9 Linux/arm64 built on 2026-10-25T11:39:32+00:00 e49bfce27
+18:17:16.809603 indigo_server: Driver indigo_ccd_pentax 2.0.0.0 loaded
+18:17:16.809624 indigo_server: Registered USB hotplug callback 1 for ffffffff:ffffffff
+18:17:16.809636 indigo_server: indigo_ccd_pentax[indigo_ccd_pentax:1195]: libusb_hotplug_register_callback ->  OK
+18:17:16.912111 indigo_server: Server attached
+18:17:16.915863 indigo_server: Service registered as indigosky
+18:17:19.807254 indigo_server: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0003
+18:17:19.807330 indigo_server: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0002
+18:17:19.807364 indigo_server: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 04e8:4001
+18:17:19.807390 indigo_server: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0003
+18:17:19.807402 indigo_server: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 0a17:00ce
+18:17:19.807446 indigo_server: Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to 1 for 1d6b:0002
+18:17:19.810084 indigo_server: indigo_ccd_pentax[process_plug_event:1096]: detected Samsung PSSD T7 (0x04e8, 0x4001)
+18:17:19.810428 indigo_server: indigo_ccd_pentax: 'Samsung PSSD T7' attached
+18:17:19.812461 indigo_server: indigo_ccd_pentax[process_plug_event:1096]: detected PENTAX K-m (0x0a17, 0x00ce)
+18:17:19.812714 indigo_server: indigo_ccd_pentax: 'PENTAX K-m' attached
+18:17:20.829758 indigo_server: indigo_ccd_pentax: Kernel driver used
+18:17:20.894213 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 4f 00 00 04 00
+18:17:20.894329 indigo_server: indigo_ccd_pentax[scsi_command:419]: 4 bytes written: 00 00 00 01
+18:17:20.894993 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.895015 indigo_server: indigo_ccd_pentax[pentax_parameter:516]: 00 00 00 01  OK (00), 00 00 00 01
+18:17:20.895068 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 00 00 04 00
+18:17:20.940182 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.940213 indigo_server: indigo_ccd_pentax[pentax_command:451]: 00 00 4 OK (00)
+18:17:20.940281 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:20.940867 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:20.942025 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.992124 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:20.992593 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 00
+18:17:20.992903 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.992907 indigo_server: indigo_ccd_pentax[pentax_status:483]: OK (00) repeat 1, s0 = 00, s1 = 00
+18:17:20.992911 indigo_server: indigo_ccd_pentax[pentax_set_mode:747]: 1 OK (00)
+18:17:20.992948 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 00 04 00 00
+18:17:20.994029 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.994035 indigo_server: indigo_ccd_pentax[pentax_command:451]: 00 04 0 OK (00)
+18:17:20.994073 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:20.994682 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 08 00 00 00 00 00 01 00
+18:17:20.994969 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.994973 indigo_server: indigo_ccd_pentax[pentax_status:468]: OK (00) repeat 0, 8 bytes to read, s0 = 01, s1 = 00
+18:17:20.995014 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 49 00 00 08 00
+18:17:20.995588 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 01 2d 73 00 00 01 d0
+18:17:20.995867 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.995872 indigo_server: indigo_ccd_pentax[pentax_read:505]: OK (00), 00 01 2d 73 00 00 01 d0
+18:17:20.995877 indigo_server: indigo_ccd_pentax[pentax_get_identity:570]: OK (00), 012d73, 00000004, '(null)'
+18:17:20.995913 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 4f 00 00 04 00
+18:17:20.995956 indigo_server: indigo_ccd_pentax[scsi_command:419]: 4 bytes written: 00 00 00 01
+18:17:20.996759 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.996764 indigo_server: indigo_ccd_pentax[pentax_parameter:516]: 00 00 00 01  OK (00), 00 00 00 01
+18:17:20.996804 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 10 0a 04 00
+18:17:20.998553 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.998559 indigo_server: indigo_ccd_pentax[pentax_command:451]: 10 0a 4 OK (00)
+18:17:20.998597 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:20.999279 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 00
+18:17:20.999545 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:20.999550 indigo_server: indigo_ccd_pentax[pentax_status:483]: OK (00) repeat 0, s0 = 00, s1 = 00
+18:17:20.999553 indigo_server: indigo_ccd_pentax[pentax_connect:542]: 1 OK (00)
+18:17:20.999591 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 4f 00 00 04 00
+18:17:20.999635 indigo_server: indigo_ccd_pentax[scsi_command:419]: 4 bytes written: 00 00 00 02
+18:17:21.000463 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.000468 indigo_server: indigo_ccd_pentax[pentax_parameter:516]: 00 00 00 02  OK (00), 00 00 00 02
+18:17:21.000507 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 00 09 04 00
+18:17:21.005760 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.005765 indigo_server: indigo_ccd_pentax[pentax_command:451]: 00 09 4 OK (00)
+18:17:21.005804 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.011128 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.011415 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.061508 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.062000 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.062289 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.112383 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.112732 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.113035 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.163137 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.163482 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.163741 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.213837 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.214300 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.214591 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.264687 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.265047 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.265309 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.315403 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.315752 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.316048 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.366142 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.366588 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.366896 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.416992 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.417345 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:21.417604 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.467699 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.533955 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 00
+18:17:21.534278 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.534283 indigo_server: indigo_ccd_pentax[pentax_status:483]: OK (00) repeat 9, s0 = 00, s1 = 00
+18:17:21.534286 indigo_server: indigo_ccd_pentax[pentax_set_wu:763]: 2 OK (00)
+18:17:21.534321 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 4f 00 00 04 00
+18:17:21.534364 indigo_server: indigo_ccd_pentax[scsi_command:419]: 4 bytes written: 00 00 00 01
+18:17:21.536322 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.536327 indigo_server: indigo_ccd_pentax[pentax_parameter:516]: 00 00 00 01  OK (00), 00 00 00 01
+18:17:21.536368 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 10 0a 04 00
+18:17:21.539816 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.539825 indigo_server: indigo_ccd_pentax[pentax_command:451]: 10 0a 4 OK (00)
+18:17:21.539860 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.540529 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 00
+18:17:21.540812 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.540817 indigo_server: indigo_ccd_pentax[pentax_status:483]: OK (00) repeat 0, s0 = 00, s1 = 00
+18:17:21.540820 indigo_server: indigo_ccd_pentax[pentax_connect:542]: 1 OK (00)
+18:17:21.540857 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 01 01 00 00
+18:17:21.689628 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.689646 indigo_server: indigo_ccd_pentax[pentax_command:451]: 01 01 0 OK (00)
+18:17:21.689708 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:21.690359 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 04 00 00 00 00 00 01 00
+18:17:21.690635 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.690642 indigo_server: indigo_ccd_pentax[pentax_status:468]: OK (00) repeat 0, 4 bytes to read, s0 = 01, s1 = 00
+18:17:21.690681 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 49 00 00 04 00
+18:17:21.691338 indigo_server: indigo_ccd_pentax[scsi_command:419]: 4 bytes read: 01 0b 01 08
+18:17:21.692475 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:21.692483 indigo_server: indigo_ccd_pentax[pentax_read:505]: OK (00), 01 0b 01 08
+18:17:21.692488 indigo_server: indigo_ccd_pentax[pentax_get_firmware:595]: OK (00), 1.11.1.8
+18:17:22.693171 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 00 08 00 00
+18:17:22.749925 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.749940 indigo_server: indigo_ccd_pentax[pentax_command:451]: 00 08 0 OK (00)
+18:17:22.749985 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:22.751476 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 9c 01 00 00 00 00 01 00
+18:17:22.752675 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.752683 indigo_server: indigo_ccd_pentax[pentax_status:468]: OK (00) repeat 0, 412 bytes to read, s0 = 01, s1 = 00
+18:17:22.752721 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 49 00 00 9c 01
+18:17:22.753497 indigo_server: indigo_ccd_pentax[scsi_command:419]: 412 bytes read: 00 00 00 02 00 00 00 00 02 00 02 00 85 e0 00 01 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 01 00 00 00 00 00 00 01 00 00 00 00 01 00 00 00 7d 00 00 00 28 00 00 00 0a 00 00 00 00 00 00 00 0a 00 00 00 00 00 00 00 05 00 00 00 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 20 00 00 00 64 00 00 0c 80 00 00 00 00 00 00 00 07 00 00 00 07 00 00 00 00 ...
+18:17:22.753731 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.753759 indigo_server: indigo_ccd_pentax[pentax_read:505]: OK (00), 00 00 00 02 00 00 00 00 02 00 02 00 85 e0 00 01 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 01 00 00 00 00 00 00 01 00 00 00 00 01 00 00 00 7d 00 00 00 28 00 00 00 0a 00 00 00 00 00 00 00 0a 00 00 00 00 00 00 00 05 00 00 00 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 20 00 00 00 64 00 00 0c 80 00 00 00 00 00 00 00 07 00 00 00 07 00 00 00 00 ...
+18:17:22.753786 indigo_server: indigo_ccd_pentax[pentax_get_full_state:628]: OK (00), 00 00 00 02 00 00 00 00 02 00 02 00 85 e0 00 01 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 01 00 00 00 00 00 00 01 00 00 00 00 01 00 00 00 7d 00 00 00 28 00 00 00 0a 00 00 00 00 00 00 00 0a 00 00 00 00 00 00 00 05 00 00 00 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 20 00 00 00 64 00 00 0c 80 00 00 00 00 00 00 00 07 00 00 00 07 00 00 00 00 ...
+18:17:22.754343 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 4f 00 00 04 00
+18:17:22.754399 indigo_server: indigo_ccd_pentax[scsi_command:419]: 4 bytes written: 00 00 00 00
+18:17:22.755919 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.755927 indigo_server: indigo_ccd_pentax[pentax_parameter:516]: 00 00 00 00  OK (00), 00 00 00 00
+18:17:22.755964 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 10 0a 04 00
+18:17:22.761395 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.761406 indigo_server: indigo_ccd_pentax[pentax_command:451]: 10 0a 4 OK (00)
+18:17:22.761445 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:22.762098 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 00
+18:17:22.762366 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.762373 indigo_server: indigo_ccd_pentax[pentax_status:483]: OK (00) repeat 0, s0 = 00, s1 = 00
+18:17:22.762378 indigo_server: indigo_ccd_pentax[pentax_connect:542]: 0 OK (00)
+18:17:22.762414 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 4f 00 00 04 00
+18:17:22.762458 indigo_server: indigo_ccd_pentax[scsi_command:419]: 4 bytes written: 00 00 00 00
+18:17:22.763283 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.763291 indigo_server: indigo_ccd_pentax[pentax_parameter:516]: 00 00 00 00  OK (00), 00 00 00 00
+18:17:22.763330 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 24 00 00 04 00
+18:17:22.772549 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.772557 indigo_server: indigo_ccd_pentax[pentax_command:451]: 00 00 4 OK (00)
+18:17:22.772593 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:22.773272 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:22.773528 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.823632 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:22.824126 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 01
+18:17:22.824419 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.874529 indigo_server: indigo_ccd_pentax[scsi_command:410]: 6 CDB bytes written: f0 26 00 00 00 00
+18:17:22.878720 indigo_server: indigo_ccd_pentax[scsi_command:419]: 8 bytes read: 00 00 00 00 00 00 00 00
+18:17:22.879048 indigo_server: indigo_ccd_pentax[scsi_command:444]: OK (00)
+18:17:22.879054 indigo_server: indigo_ccd_pentax[pentax_status:483]: OK (00) repeat 2, s0 = 00, s1 = 00
+18:17:22.879060 indigo_server: indigo_ccd_pentax[pentax_set_mode:747]: 0 OK (00)
+18:17:22.879102 indigo_server: indigo_ccd_pentax[pentax_close:883]: libusb_close
+18:17:34.750671 indigo_server: Shutdown initiated (signal 2)...
+18:17:34.750983 indigo_server: Service unregistered
+18:17:34.951366 indigo_server: Deregistered USB hotplug callback 1
+18:17:34.951385 indigo_server: indigo_ccd_pentax[indigo_ccd_pentax:1204]: libusb_hotplug_deregister_callback
+18:17:34.951412 indigo_server: indigo_ccd_pentax: 'Samsung PSSD T7' detached
+18:17:34.951449 indigo_server: indigo_ccd_pentax: 'PENTAX K-m' detached
+18:17:34.951513 indigo_server: Driver indigo_ccd_pentax unloaded
+18:17:34.951538 indigo_server: Server detached

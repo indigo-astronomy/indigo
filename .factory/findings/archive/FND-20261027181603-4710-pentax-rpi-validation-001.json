@@ -1,0 +1,24 @@
+{
+  "title": "Pentax fake USB fixture uses macOS-only temporary path",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261027181603-4710-pentax-rpi-validation",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Linux /private/tmp absent causes mkdtemp to fail and false recovery test failure; portable /tmp fixes while preserving assertions.",
+  "evidence": "verification.md and retained pre-fix baseline/recorder-before logs; final pass evidence retained.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md, retained before/after logs, quality-review.md and security.md; Linux36/36 fake,13/13 recorder tests, labelled hardware baseline1/1.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261027181603-4710-pentax-rpi-validation-001"
+}

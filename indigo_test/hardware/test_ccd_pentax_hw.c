@@ -348,7 +348,7 @@ int main(int argc, char **argv) {
 	baseline_only = !strcmp(argv[1], "--baseline");
 	setvbuf(stdout, NULL, _IONBF, 0);
 	alarm(60);
-	const indigo_test_case tests[] = { { "K-m short grouped hardware acceptance", acceptance } };
+	const indigo_test_case tests[] = { { baseline_only ? "K-m connection and status baseline" : "K-m short grouped hardware acceptance", acceptance } };
 	int result = indigo_run_tests("ccd_pentax hardware", tests, 1);
 	alarm(0);
 	for (int i = 0; i < MAX_PROPERTIES; i++) {

@@ -1285,7 +1285,7 @@ static bool request_short_capture(indigo_property_state expected) {
 }
 
 static void test_public_upload_failure_cross_recovery(void) {
-	char directory[] = "/private/tmp/pentax-outputs-XXXXXX";
+	char directory[] = "/tmp/pentax-outputs-XXXXXX";
 	char blocker[512] = { 0 }, blocked_directory[512] = { 0 }, saved_path[INDIGO_VALUE_SIZE] = { 0 };
 	bool attached = camera_attach_public();
 	bool client_failed = false, local_recovered = false, local_failed = false, client_recovered = false;

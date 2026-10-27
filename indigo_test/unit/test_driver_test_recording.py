@@ -31,33 +31,39 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class DriverRecordingTests(unittest.TestCase):
-	def run_fixture(self, exit_code=0, partial=False, dry_run=False, tagged=True):
+	def run_fixture(self, exit_code=0, partial=False, dry_run=False, tagged=True, driver_name="ccd_fixture", extra=(), make_args=(), env_values=None, executes=True):
 		with tempfile.TemporaryDirectory(prefix="indigo recording ") as directory:
 			root = Path(directory)
 			tools = root / "tools"
 			tools.mkdir()
 			for name in ("run_driver_test.py", "make_test_summary.py"):
 				shutil.copyfile(ROOT / "tools" / name, tools / name)
-			driver = root / "indigo_drivers" / "ccd_fixture"
+			driver = root / "indigo_drivers" / driver_name
 			driver.mkdir(parents=True)
 			(driver / "README.md").write_text("# Fixture\n")
-			(driver / "indigo_ccd_fixture.c").write_text("#define DRIVER_VERSION 0x03000001\n")
+			(driver / ("indigo_" + driver_name + ".c")).write_text("#define DRIVER_VERSION 0x03000001\n")
 			tests = root / "indigo_test"
 			tests.mkdir()
 			records = ["plan\t2\tfixture", "device\tindigo_ccd_fixture\t2\tCamera A\tModel A", "device\tindigo_ccd_fixture\t2\tCamera B\tModel B"]
 			if tagged:
 				records += ["case_device\tfixture\ta\tindigo_ccd_fixture\tCamera A", "case_device\tfixture\tb\tindigo_ccd_fixture\tCamera B"]
 			records += ["pass\tfixture\ta", "fail\tfixture\tb" if partial else "pass\tfixture\tb"]
+			records = [record.replace("indigo_ccd_fixture", "indigo_" + driver_name) for record in records]
 			(tests / "emit.py").write_text("import os, pathlib, sys\npathlib.Path(os.environ['INDIGO_TEST_RESULTS']).write_text(" + repr("\n".join(records) + "\n") + ")\npathlib.Path('executed').write_text('yes')\nsys.exit(" + str(exit_code) + ")\n")
 			(tests / "Makefile").write_text("synthetic:\n\t\"" + sys.executable + "\" emit.py\n")
-			env = {key: value for key, value in os.environ.items() if not (key == "INDIGO_TEST_CASE_FILTER" or key.endswith("_TEST_FILTER"))}
-			command = [sys.executable, str(tools / "run_driver_test.py"), "ccd_fixture", "--hw", "--target", "synthetic", "--no-build"]
+			env = {key: value for key, value in os.environ.items() if not (key in ("INDIGO_TEST_CASE_FILTER", "PENTAX_HW_ARGS") or key.endswith("_TEST_FILTER"))}
+			command = [sys.executable, str(tools / "run_driver_test.py"), driver_name, "--hw", "--target", "synthetic", "--no-build"]
 			if dry_run:
 				command.append("--dry-run")
+			command.extend(extra)
+			if make_args:
+				command += ["--"] + list(make_args)
+			if env_values:
+				env.update(env_values)
 			result = subprocess.run(command, cwd=root, env=env, text=True, capture_output=True)
 			readme = (driver / "README.md").read_text()
 			summary = (root / "TEST_SUMMARY.md").read_text() if (root / "TEST_SUMMARY.md").exists() else ""
-			self.assertTrue((tests / "executed").exists(), result.stdout + result.stderr)
+			self.assertEqual((tests / "executed").exists(), executes, result.stdout + result.stderr)
 			return result, readme, summary
 
 	def test_success_records_each_model(self):
@@ -93,6 +99,46 @@ class DriverRecordingTests(unittest.TestCase):
 		self.assertEqual(readme, "# Fixture\n")
 		self.assertEqual(summary, "")
 		self.assertIn("would record", result.stdout)
+
+	def test_pentax_baseline_requires_profile_label(self):
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", make_args=("PENTAX_HW_ARGS=--baseline",), executes=False)
+		self.assertNotEqual(result.returncode, 0)
+		self.assertIn("connection baseline", result.stderr)
+		self.assertEqual(readme, "# Fixture\n")
+		self.assertEqual(summary, "")
+
+	def test_pentax_baseline_rejects_plain_camera_type(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", extra=("--type", "PENTAX K-m"), make_args=("PENTAX_HW_ARGS=--baseline",), executes=False)
+		self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_baseline_environment_cannot_bypass_label(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", env_values={"PENTAX_HW_ARGS": "--baseline"}, executes=False)
+		self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_baseline_explicit_label_records_separately(self):
+		result, readme, _ = self.run_fixture(driver_name="ccd_pentax", tagged=False, extra=("--type", "PENTAX K-m (connection baseline)"), make_args=("PENTAX_HW_ARGS=--baseline",))
+		self.assertEqual(result.returncode, 0, result.stderr)
+		self.assertIn("PENTAX K-m (connection baseline) 2/2 OK", readme)
+
+	def test_pentax_baseline_no_record_needs_no_label(self):
+		result, readme, summary = self.run_fixture(driver_name="ccd_pentax", extra=("--no-record",), make_args=("PENTAX_HW_ARGS=--baseline",))
+		self.assertEqual(result.returncode, 0, result.stderr)
+		self.assertEqual(readme, "# Fixture\n")
+		self.assertEqual(summary, "")
+
+	def test_pentax_full_mode_overrides_baseline_environment(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", make_args=("PENTAX_HW_ARGS=--run",), env_values={"PENTAX_HW_ARGS": "--baseline"})
+		self.assertEqual(result.returncode, 0, result.stderr)
+
+	def test_pentax_recording_rejects_alternate_make_assignments(self):
+		for operator in (":=", "+=", "?=", "::="):
+			with self.subTest(operator=operator):
+				result, _, _ = self.run_fixture(driver_name="ccd_pentax", make_args=("PENTAX_HW_ARGS" + operator + "--baseline",), executes=False)
+				self.assertNotEqual(result.returncode, 0)
+
+	def test_pentax_recording_rejects_make_profile_expansion(self):
+		result, _, _ = self.run_fixture(driver_name="ccd_pentax", make_args=("PENTAX_HW_ARGS=$(PROFILE)", "PROFILE=--baseline"), executes=False)
+		self.assertNotEqual(result.returncode, 0)
 
 
 if __name__ == "__main__":

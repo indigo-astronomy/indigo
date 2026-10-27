@@ -1,0 +1,4 @@
+Running ccd_pentax_usb
+integration/test_ccd_pentax_usb.c:1327: assertion failed: attached && client_failed && local_recovered && local_failed && client_recovered
+  FAIL public upload output failure cross recovery
+ccd_pentax_usb: 1 test(s) failed
