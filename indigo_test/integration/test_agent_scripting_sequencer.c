@@ -58,7 +58,7 @@ static observation cache[4096];
 static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_client observer;
 static indigo_device *scripting_device;
-static indigo_property *config_load_property, *drivers_property, *solver_exposure_property, *solver_target_property, *solver_process_property;
+static indigo_property *config_load_property, *drivers_property, *solver_exposure_property, *solver_target_property, *solver_process_property, *solver_filter_property;
 static char test_root[256], messages[131072];
 static atomic_int message_count;
 static atomic_int orchestration_changes;
@@ -73,7 +73,7 @@ time_t sequencer_test_time(time_t *result) {
 }
 
 static indigo_result orchestration_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_property *properties[3] = { NULL, NULL, NULL };
+	indigo_property *properties[4] = { NULL, NULL, NULL, NULL };
 	if (!strcmp(device->name, "Configuration Agent")) {
 		properties[0] = config_load_property;
 	} else if (!strcmp(device->name, "Server")) {
@@ -82,8 +82,9 @@ static indigo_result orchestration_enumerate(indigo_device *device, indigo_clien
 		properties[0] = solver_exposure_property;
 		properties[1] = solver_target_property;
 		properties[2] = solver_process_property;
+		properties[3] = solver_filter_property;
 	}
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < 4; i++) {
 		if (properties[i] && indigo_property_match(properties[i], property)) {
 			indigo_define_property(device, properties[i], NULL);
 		}
@@ -103,6 +104,8 @@ static indigo_result orchestration_change(indigo_device *device, indigo_client *
 		target = solver_target_property;
 	} else if (!strcmp(property->name, "AGENT_START_PROCESS")) {
 		target = solver_process_property;
+	} else if (!strcmp(property->name, "AGENT_PLATESOLVER_FILTER")) {
+		target = solver_filter_property;
 	}
 	if (indigo_property_match_changeable(target, property)) {
 		indigo_property_copy_values(target, property, false);
@@ -130,6 +133,10 @@ static bool attach_orchestration_peers(void) {
 	solver_process_property = indigo_init_switch_property(NULL, astrometry_peer.name, "AGENT_START_PROCESS", "Test", "Process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	indigo_init_switch_item(solver_process_property->items, "CENTER", "Center", false);
 	indigo_init_switch_item(solver_process_property->items + 1, "PRECISE_GOTO", "Precise goto", false);
+	solver_filter_property = indigo_init_switch_property(NULL, astrometry_peer.name, "AGENT_PLATESOLVER_FILTER", "Test", "Solver filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+	indigo_init_switch_item(solver_filter_property->items, "CURRENT", "Current filter", true);
+	indigo_init_switch_item(solver_filter_property->items + 1, "1", "L", false);
+	indigo_init_switch_item(solver_filter_property->items + 2, "2", "R", false);
 	REQUIRE(indigo_attach_device(&configuration_peer) == INDIGO_OK);
 	REQUIRE(indigo_attach_device(&server_peer) == INDIGO_OK);
 	REQUIRE(indigo_attach_device(&astrometry_peer) == INDIGO_OK);
@@ -441,11 +448,12 @@ static void cleanup(void) {
 	indigo_release_property(solver_process_property);
 	indigo_release_property(solver_target_property);
 	indigo_release_property(solver_exposure_property);
+	indigo_release_property(solver_filter_property);
 }
 
 static void library_inventory(void) {
 	ASSERT_TRUE(check_js("typeof Sequence==='function'"));
-	ASSERT_TRUE(check_js("(function(){var names=Object.getOwnPropertyNames(Sequence.prototype); if(names.length!==107) throw new Error('prototype count '+names.length); return true})()"));
+	ASSERT_TRUE(check_js("(function(){var names=Object.getOwnPropertyNames(Sequence.prototype); if(names.length!==108) throw new Error('prototype count '+names.length); return true})()"));
 	ASSERT_TRUE(check_js("indigo_event_handlers.indigo_sequencer===indigo_sequencer"));
 	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE" };
 	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
@@ -503,9 +511,9 @@ static void focus_batch_snapshot(void) {
 }
 
 static void all_public_constructors(void) {
-	ASSERT_TRUE(run_js("publicMethods=Object.getOwnPropertyNames(Sequence.prototype).filter(function(n){return n!=='constructor'}); publicCalls={}; publicMethods.forEach(function(n){var original=Sequence.prototype[n]; Sequence.prototype[n]=function(){publicCalls[n]=(publicCalls[n]||0)+1; return original.apply(this,arguments)}}); var s=new Sequence('all'); s.enable_reset_loop_content_state(); s.disable_reset_loop_content_state(); s.repeat(1,function(){s.send_message('loop')}); s.enable_verbose(); s.disable_verbose(); s.recovery_point(); s.wait(0); s.wait_until(1704112495); s.continue_on_failure(); s.recover_on_failure(); s.abort_on_failure(); s.break_at(1704112495); s.break_at_ha('01:00:00'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,1,2); s.break_if_solar_altitude_above(91); s.break_if_target_altitude_below(-91,1,2); s.resume_point(); s.evaluate('testValue=1'); s.send_message('message'); s.load_config('Config'); s.load_driver('Driver'); s.unload_driver('Driver'); s.select_imager_agent('Imager Agent'); s.select_mount_agent('Mount Agent'); s.select_guider_agent('Guider Agent'); s.select_imager_camera('CCD Imager Simulator'); s.select_filter_wheel('CCD Imager Simulator (wheel)'); s.select_focuser('CCD Imager Simulator (focuser)'); s.select_rotator('Field Rotator Simulator'); s.select_mount('Mount Simulator'); s.select_dome('Dome Simulator'); s.select_gps('GPS Simulator'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.select_frame_type('Light'); s.select_image_format('RAW'); s.set_frame(0,0,100,100); s.reset_frame(); s.select_camera_mode('BIN_1x1'); s.set_gain(10); s.set_offset(5); s.set_gamma(1); s.select_program('M'); s.select_aperture('f/4'); s.select_shutter('1/10'); s.select_iso('800'); s.enable_cooler(-10); s.disable_cooler(); s.enable_dithering(2,3,4); s.disable_dithering(); s.enable_meridian_flip(true,0); s.disable_meridian_flip(); s.enable_filter_offsets(); s.disable_filter_offsets(); s.set_fits_header('OBJECT','M42'); s.remove_fits_header('OBJECT'); s.select_filter('L'); s.set_directory('/tmp'); s.set_file_template('frame'); s.set_object_name('M42'); s.start_preview(0.1); s.stop_preview(); s.capture_batch(2,0.1); s.capture_batch('batch',2,0.1); s.capture_stream(2,0.1); s.capture_stream('stream',2,0.1); s.set_manual_focuser_mode(); s.set_automatic_focuser_mode(); s.focus(0.1); s.focus_ignore_failure(0.1); s.clear_focuser_selection(); s.set_focuser_position(100); s.slew(1,2); s.park(); s.unpark(); s.home(); s.enable_tracking(); s.disable_tracking(); s.dome_slew(90); s.dome_park(); s.dome_unpark(); s.dome_open(); s.dome_close(); s.enable_ha_limit(); s.disable_ha_limit(); s.enable_time_limit(); s.disable_time_limit(); s.enable_dome_slaving(); s.disable_dome_slaving(); s.make_dome_slaving_persistent(); s.make_dome_slaving_not_persistent(); s.enable_field_derotation(); s.disable_field_derotation(); s.make_field_derotation_persistent(); s.make_field_derotation_not_persistent(); s.enable_joystick_control(); s.disable_joystick_control(); s.wait_for_gps(); s.calibrate_guiding(); s.calibrate_guiding(0.1); s.calibrate_guiding(0.1,0.4); s.start_guiding(); s.start_guiding(0.1); s.start_guiding_exposure(0.1); s.stop_guiding(); s.clear_guider_selection(); s.sync_center(0.1); s.precise_goto(0.1,1,2); s.set_rotator_angle(45); new Sequence('start').start();"));
+	ASSERT_TRUE(run_js("publicMethods=Object.getOwnPropertyNames(Sequence.prototype).filter(function(n){return n!=='constructor'}); publicCalls={}; publicMethods.forEach(function(n){var original=Sequence.prototype[n]; Sequence.prototype[n]=function(){publicCalls[n]=(publicCalls[n]||0)+1; return original.apply(this,arguments)}}); var s=new Sequence('all'); s.enable_reset_loop_content_state(); s.disable_reset_loop_content_state(); s.repeat(1,function(){s.send_message('loop')}); s.enable_verbose(); s.disable_verbose(); s.recovery_point(); s.wait(0); s.wait_until(1704112495); s.continue_on_failure(); s.recover_on_failure(); s.abort_on_failure(); s.break_at(1704112495); s.break_at_ha('01:00:00'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,1,2); s.break_if_solar_altitude_above(91); s.break_if_target_altitude_below(-91,1,2); s.resume_point(); s.evaluate('testValue=1'); s.send_message('message'); s.load_config('Config'); s.load_driver('Driver'); s.unload_driver('Driver'); s.select_imager_agent('Imager Agent'); s.select_mount_agent('Mount Agent'); s.select_guider_agent('Guider Agent'); s.select_imager_camera('CCD Imager Simulator'); s.select_filter_wheel('CCD Imager Simulator (wheel)'); s.select_focuser('CCD Imager Simulator (focuser)'); s.select_rotator('Field Rotator Simulator'); s.select_mount('Mount Simulator'); s.select_dome('Dome Simulator'); s.select_gps('GPS Simulator'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.select_frame_type('Light'); s.select_image_format('RAW'); s.set_frame(0,0,100,100); s.reset_frame(); s.select_camera_mode('BIN_1x1'); s.set_gain(10); s.set_offset(5); s.set_gamma(1); s.select_program('M'); s.select_aperture('f/4'); s.select_shutter('1/10'); s.select_iso('800'); s.enable_cooler(-10); s.disable_cooler(); s.enable_dithering(2,3,4); s.disable_dithering(); s.enable_meridian_flip(true,0); s.disable_meridian_flip(); s.enable_filter_offsets(); s.disable_filter_offsets(); s.set_fits_header('OBJECT','M42'); s.remove_fits_header('OBJECT'); s.select_filter('L'); s.set_directory('/tmp'); s.set_file_template('frame'); s.set_object_name('M42'); s.start_preview(0.1); s.stop_preview(); s.capture_batch(2,0.1); s.capture_batch('batch',2,0.1); s.capture_stream(2,0.1); s.capture_stream('stream',2,0.1); s.set_manual_focuser_mode(); s.set_automatic_focuser_mode(); s.focus(0.1); s.focus_ignore_failure(0.1); s.clear_focuser_selection(); s.set_focuser_position(100); s.slew(1,2); s.park(); s.unpark(); s.home(); s.enable_tracking(); s.disable_tracking(); s.dome_slew(90); s.dome_park(); s.dome_unpark(); s.dome_open(); s.dome_close(); s.enable_ha_limit(); s.disable_ha_limit(); s.enable_time_limit(); s.disable_time_limit(); s.enable_dome_slaving(); s.disable_dome_slaving(); s.make_dome_slaving_persistent(); s.make_dome_slaving_not_persistent(); s.enable_field_derotation(); s.disable_field_derotation(); s.make_field_derotation_persistent(); s.make_field_derotation_not_persistent(); s.enable_joystick_control(); s.disable_joystick_control(); s.wait_for_gps(); s.calibrate_guiding(); s.calibrate_guiding(0.1); s.calibrate_guiding(0.1,0.4); s.start_guiding(); s.start_guiding(0.1); s.start_guiding_exposure(0.1); s.stop_guiding(); s.clear_guider_selection(); s.set_solver_filter('L'); s.sync_center(0.1); s.precise_goto(0.1,1,2); s.set_rotator_angle(45); new Sequence('start').start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
-	ASSERT_TRUE(check_js("publicMethods.length===106 && publicMethods.every(function(n){return publicCalls[n]>0}) && s.step>100 && s.progress>100 && s.exposure===0.8 && s.reset_loop_content_state===false"));
+	ASSERT_TRUE(check_js("publicMethods.length===107 && publicMethods.every(function(n){return publicCalls[n]>0}) && s.step>100 && s.progress>100 && s.exposure===0.8 && s.reset_loop_content_state===false"));
 	ASSERT_TRUE(check_js("s.sequence.every(function(entry){var name=entry.execute.substring(0,entry.execute.indexOf('(')); return typeof indigo_sequencer[name]==='function' && Function('return function(){indigo_sequencer.'+entry.execute+'}')})"));
 }
 
@@ -682,10 +690,24 @@ static void configuration_and_driver_orchestration(void) {
 
 static void astrometry_orchestration(void) {
 	int before = atomic_load(&orchestration_changes);
-	ASSERT_TRUE(run_js("var s=new Sequence('astrometry'); s.sync_center(0.2); s.precise_goto(0.3,5,20); s.start();"));
+	ASSERT_TRUE(run_js("var s=new Sequence('astrometry'); s.set_solver_filter('R'); s.sync_center(0.2); s.set_solver_filter('1'); s.precise_goto(0.3,5,20); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
-	ASSERT_EQ_INT(before + 5, atomic_load(&orchestration_changes));
-	indigo_property *property = snapshot("Astrometry Agent", "AGENT_PLATESOLVER_GOTO_SETTINGS");
+	ASSERT_EQ_INT(before + 7, atomic_load(&orchestration_changes));
+	indigo_property *property = snapshot("Astrometry Agent", "AGENT_PLATESOLVER_FILTER");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_FALSE(property->items[0].sw.value);
+	ASSERT_TRUE(property->items[1].sw.value);
+	ASSERT_FALSE(property->items[2].sw.value);
+	indigo_release_property(property);
+	ASSERT_TRUE(run_js("var s=new Sequence('solver filter zero'); s.set_solver_filter(0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_EQ_INT(before + 8, atomic_load(&orchestration_changes));
+	property = snapshot("Astrometry Agent", "AGENT_PLATESOLVER_FILTER");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_TRUE(property->items[0].sw.value);
+	ASSERT_FALSE(property->items[1].sw.value);
+	indigo_release_property(property);
+	property = snapshot("Astrometry Agent", "AGENT_PLATESOLVER_GOTO_SETTINGS");
 	ASSERT_TRUE(property != NULL);
 	ASSERT_NEAR(5, property->items[0].number.value, 0.001);
 	ASSERT_NEAR(20, property->items[1].number.value, 0.001);

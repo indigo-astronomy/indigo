@@ -535,6 +535,10 @@ Sequence.prototype.sync_center = function(exposure) {
 	this.sequence.push({ execute: 'start_astrometry_process("CENTER")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.set_solver_filter = function(filter) {
+	this.sequence.push({ execute: 'set_solver_filter(' + sequencer_string(filter) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.precise_goto = function(exposure, ra, dec) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_solver_target(' + ra + ', ' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
@@ -1742,6 +1746,10 @@ var indigo_sequencer = {
 
 	set_solver_exposure: function(exposure) {
 		this.change_numbers(this.devices[ASTROMETRY_AGENT], "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: exposure });
+	},
+
+	set_solver_filter: function(filter) {
+		this.select_switch(this.devices[ASTROMETRY_AGENT], "AGENT_PLATESOLVER_FILTER", String(filter) === "0" ? "CURRENT" : filter);
 	},
 
 	set_solver_target: function(ra, dec) {
