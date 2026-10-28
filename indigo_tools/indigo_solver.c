@@ -298,7 +298,7 @@ static int select_candidate_fovs(solver_options *options, double scale, int widt
 			candidates[count++] = fov;
 		}
 	}
-	float target = scale > 0 ? 1.5 * sqrt((double)width * height) * scale : 0;
+	float target = scale > 0 ? INDIGO_SOLVER_INDEX_FIELD_RATIO * sqrt((double)width * height) * scale : 0;
 	while (true) {
 		float best = 0, best_distance = 0;
 		for (int i = 0; i < installed_count; i++) {
