@@ -1226,14 +1226,13 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 		return false;
 	}
 	// 5. Rotation, scale and parity in the convention of astrometry.net, so the WCS of this agent and of the
-	//    astrometry agent agree: the parity is positive when the image is the sky seen in a mirror (east to the
-	//    right with north up, the determinant of the pixel to tangent plane mapping is negative), and for that
-	//    parity the angle is turned by 180 degrees; the eta row of the fit gives the angle for both parities.
-	float angle = atan2(best_fit.b1, best_fit.b2) + M_PI;
-	int mirrored = best_fit.a1 * best_fit.b2 - best_fit.a2 * best_fit.b1 < 0 ? 1 : -1;
-	if (mirrored > 0) {
-		angle += M_PI;
-	}
+	//    astrometry agent agree. The fit is the CD matrix of the pixel axes; the parity is positive when its
+	//    determinant is negative (the sky seen in a mirror) and the angle is the orientation astrometry.net derives
+	//    from the CD matrix (tan_get_orientation() in its sip-utils.c), from -180° to 180° there, from 0 to 360 here.
+	float det = best_fit.a1 * best_fit.b2 - best_fit.a2 * best_fit.b1;
+	int mirrored = det < 0 ? 1 : -1;
+	float sign = det >= 0 ? 1 : -1;
+	float angle = -atan2(sign * best_fit.b1 - best_fit.a2, sign * best_fit.a1 + best_fit.b2);
 	*rotation = fmod(angle + 4 * M_PI, 2 * M_PI);
 	*scale = best_fit.pixel;
 	if (parity != NULL) {

@@ -91,11 +91,12 @@ bool indigo_radec_to_xy(float ra0, float dec0, float angle, float scale, int wid
 	if (!indigo_radec_to_tangent(ra0, dec0, ra, dec, &xi, &eta)) {
 		return false;
 	}
-	// The angle and the parity are those of indigo_solver_compute_center() and of the WCS of the astrometry agent:
-	// negative parity is the sky as seen (east to the left with north up), positive parity its mirror image, whose
-	// angle is counted from the opposite direction.
+	// The angle and the parity are those of indigo_solver_compute_center() and of the WCS of the astrometry agent
+	// (astrometry.net orientation): negative parity is the sky as seen (east to the left with north up), positive
+	// parity its mirror image; the angle of the sky as seen is counted in the opposite sense from 180 degrees.
 	if (parity < 0) {
 		xi = -xi;
+		angle = (float)M_PI - angle;
 	} else {
 		angle -= M_PI;
 	}
