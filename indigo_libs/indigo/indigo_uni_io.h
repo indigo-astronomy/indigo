@@ -395,6 +395,15 @@ INDIGO_EXTERN bool indigo_uni_is_readable(const char *path);
  */
 INDIGO_EXTERN bool indigo_uni_is_writable(const char *path);
 
+/** Map the whole file read only into memory; returns its address and size, NULL if it can't be mapped. The pages are
+ read from the file when they are first touched and belong to the page cache of the system.
+ */
+INDIGO_EXTERN const void *indigo_uni_map_file(const char *path, size_t *size);
+
+/** Unmap a file mapped by indigo_uni_map_file().
+ */
+INDIGO_EXTERN void indigo_uni_unmap_file(const void *address, size_t size);
+
 /** Make real path.
  */
 INDIGO_EXTERN char* indigo_uni_realpath(const char* path, char* resolved_path);

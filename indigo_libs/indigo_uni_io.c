@@ -46,6 +46,7 @@
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <libgen.h>
 #include <dirent.h>
+#include <sys/mman.h>
 #include <termios.h>
 #include <netdb.h>
 #include <sys/socket.h>
@@ -2667,6 +2668,75 @@ bool indigo_uni_is_writable(const char *path) {
 #pragma message ("TODO: indigo_uni_is_writable()")
 #endif
 	return false;
+}
+
+const void *indigo_uni_map_file(const char *path, size_t *size) {
+	*size = 0;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		indigo_error("Failed to open %s (%s)", path, strerror(errno));
+		return NULL;
+	}
+	struct stat st;
+	if (fstat(fd, &st) != 0 || st.st_size <= 0) {
+		indigo_error("Failed to get the size of %s", path);
+		close(fd);
+		return NULL;
+	}
+	void *address = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	// the mapping stays valid after the file is closed
+	close(fd);
+	if (address == MAP_FAILED) {
+		indigo_error("Failed to map %s (%s)", path, strerror(errno));
+		return NULL;
+	}
+	*size = (size_t)st.st_size;
+	return address;
+#elif defined(INDIGO_WINDOWS)
+	HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) {
+		indigo_error("Failed to open %s (%s)", path, indigo_last_windows_error());
+		return NULL;
+	}
+	LARGE_INTEGER file_size;
+	if (!GetFileSizeEx(file, &file_size) || file_size.QuadPart <= 0) {
+		indigo_error("Failed to get the size of %s", path);
+		CloseHandle(file);
+		return NULL;
+	}
+	HANDLE mapping = CreateFileMappingA(file, NULL, PAGE_READONLY, 0, 0, NULL);
+	CloseHandle(file);
+	if (mapping == NULL) {
+		indigo_error("Failed to map %s (%s)", path, indigo_last_windows_error());
+		return NULL;
+	}
+	void *address = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
+	// the view stays valid after the mapping handle is closed
+	CloseHandle(mapping);
+	if (address == NULL) {
+		indigo_error("Failed to map %s (%s)", path, indigo_last_windows_error());
+		return NULL;
+	}
+	*size = (size_t)file_size.QuadPart;
+	return address;
+#else
+#pragma message ("TODO: indigo_uni_map_file()")
+	return NULL;
+#endif
+}
+
+void indigo_uni_unmap_file(const void *address, size_t size) {
+	if (address == NULL) {
+		return;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	munmap((void *)address, size);
+#elif defined(INDIGO_WINDOWS)
+	UnmapViewOfFile(address);
+#else
+#pragma message ("TODO: indigo_uni_unmap_file()")
+#endif
 }
 
 char* indigo_uni_realpath(const char* path, char *resolved_path) {
