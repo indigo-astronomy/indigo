@@ -151,6 +151,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_config \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
 	$(INTEGRATION_BUILD)/test_agent_solver \
+	$(INTEGRATION_BUILD)/test_indigo_solver_tool \
 	$(INTEGRATION_BUILD)/test_agent_scripting \
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer \
 	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount \
@@ -2568,6 +2569,19 @@ $(INTEGRATION_BUILD)/test_agent_solver: integration/test_agent_solver.c test_run
 .PHONY: test-agent-solver
 test-agent-solver: check-lib $(INTEGRATION_BUILD)/test_agent_solver
 	$(INTEGRATION_BUILD)/test_agent_solver
+
+# The indigo_solver command line tool from indigo_tools, run as built on a synthetic index and synthetic frames in
+# a private directory. The tool is brought up to date by its own Makefile before every run of the test.
+.PHONY: indigo-solver-tool-binary
+indigo-solver-tool-binary:
+	$(MAKE) -C ../indigo_tools $(BUILD_BIN)/indigo_solver
+
+$(INTEGRATION_BUILD)/test_indigo_solver_tool: integration/test_indigo_solver_tool.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a | indigo-solver-tool-binary $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DINDIGO_SOLVER_EXECUTABLE='"$(BUILD_BIN)/indigo_solver"' -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(TEST_LDFLAGS) -lindigocat
+
+.PHONY: test-indigo-solver-tool
+test-indigo-solver-tool: check-lib $(INTEGRATION_BUILD)/test_indigo_solver_tool
+	$(INTEGRATION_BUILD)/test_indigo_solver_tool
 
 # The production Solver agent with its native quad solver and the real Tycho-2 indexes, the Imager and
 # Guider agents and the CCD simulators: the Rosetta frame of the imager simulator and 120 simulation
