@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000009
+#define DRIVER_VERSION 0x0300000A
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -360,7 +360,8 @@ static int select_candidate_fovs(indigo_device *device, double scale, int width,
 			candidates[count++] = fov;
 		}
 	}
-	// the other selected indexes follow, the nearest to the field size first when the scale is known
+	// the other selected indexes follow, the nearest to the field size first when the scale is known, otherwise the
+	// largest index first
 	float target = scale > 0 ? 1.5 * sqrt((double)width * height) * scale : 0;
 	while (true) {
 		float best = 0, best_distance = 0;
@@ -372,7 +373,7 @@ static int select_candidate_fovs(indigo_device *device, double scale, int width,
 			if (listed) {
 				continue;
 			}
-			float distance = target > 0 ? fabs(log(selected[i] / target)) : i;
+			float distance = target > 0 ? fabs(log(selected[i] / target)) : -selected[i];
 			if (best == 0 || distance < best_distance) {
 				best = selected[i];
 				best_distance = distance;
@@ -508,47 +509,57 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 	float ra = 0, dec = 0, rotation = 0, pixel = 0, fov = 0, rms = 0;
 	int parity = 0, matched = 0, star_match_count = 0;
 	bool solved = false, wrong_parity = false;
-	for (int i = 0; i < candidate_count && !solved && !limits_exceeded_or_aborted(device, &limits); i++) {
-		char path[PATH_MAX];
-		indigo_solver_index_path(path, sizeof(path), base_dir, candidates[i]);
-		indigo_send_message(device, IDLE_PROPERTY, "Solving with %s %g° index...", candidates[i] < 1 ? "Gaia DR3" : "Tycho-2", candidates[i]);
-		if (!load_catalog(device, path)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
-			continue;
-		}
-		// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
-		// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
-		indigo_solver_quad *catalog_quads = SOLVER_DEVICE_PRIVATE_DATA->catalog_quads;
-		int catalog_quad_count = SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count;
-		indigo_solver_quad *cone_quads = NULL;
-		if (hint_radius > 0) {
-			double extent = scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * scale : candidates[i];
-			catalog_quad_count = indigo_solver_filter_quads(catalog_quads, catalog_quad_count, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (hint_radius + extent) * DEG_TO_RAD, &cone_quads);
-			catalog_quads = cone_quads;
-		}
-		for (int stage = 0; stage < stage_count && !solved && catalog_quad_count > 0 && !limits_exceeded_or_aborted(device, &limits); stage++) {
-			int used_star_count = 0;
-			int quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
-			if (quad_count == 0) {
+	// Without the scale the indexes are searched stage by stage: the first stage on every index, the largest index
+	// first, as the larger indexes are the smaller files and fail fast, then the next stage on every index in the
+	// opposite order, so the index loaded last is used again without loading it; with the scale the index fitting
+	// the field goes through all stages first
+	int pass_count = scale > 0 ? 1 : stage_count;
+	for (int pass = 0; pass < pass_count && !solved && !limits_exceeded_or_aborted(device, &limits); pass++) {
+		int first_stage = pass_count == 1 ? 0 : pass;
+		int last_stage = pass_count == 1 ? stage_count : pass + 1;
+		for (int k = 0; k < candidate_count && !solved && !limits_exceeded_or_aborted(device, &limits); k++) {
+			int i = pass % 2 ? candidate_count - 1 - k : k;
+			char path[PATH_MAX];
+			indigo_solver_index_path(path, sizeof(path), base_dir, candidates[i]);
+			indigo_send_message(device, IDLE_PROPERTY, "Solving with %s %g° index...", candidates[i] < 1 ? "Gaia DR3" : "Tycho-2", candidates[i]);
+			if (!load_catalog(device, path)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
 				continue;
 			}
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stage %d: %d brightest stars, %d quads, %d catalog quads", stage + 1, stages[stage], quad_count, catalog_quad_count);
-			int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, catalog_quads, catalog_quad_count, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
-			star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
-			if (limits.exceeded) {
-				break;
+			// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
+			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
+			indigo_solver_quad *catalog_quads = SOLVER_DEVICE_PRIVATE_DATA->catalog_quads;
+			int catalog_quad_count = SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count;
+			indigo_solver_quad *cone_quads = NULL;
+			if (hint_radius > 0) {
+				double extent = scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * scale : candidates[i];
+				catalog_quad_count = indigo_solver_filter_quads(catalog_quads, catalog_quad_count, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (hint_radius + extent) * DEG_TO_RAD, &cone_quads);
+				catalog_quads = cone_quads;
 			}
-			if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity, &matched, &rms)) {
-				if (hint_parity != 0 && parity != hint_parity) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solution with parity %d rejected by the parity hint %d", parity, hint_parity);
-					wrong_parity = true;
+			for (int stage = first_stage; stage < last_stage && !solved && catalog_quad_count > 0 && !limits_exceeded_or_aborted(device, &limits); stage++) {
+				int used_star_count = 0;
+				int quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
+				if (quad_count == 0) {
 					continue;
 				}
-				fov = candidates[i];
-				solved = true;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stage %d: %d brightest stars, %d quads, %d catalog quads", stage + 1, stages[stage], quad_count, catalog_quad_count);
+				int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, catalog_quads, catalog_quad_count, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
+				star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
+				if (limits.exceeded) {
+					break;
+				}
+				if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity, &matched, &rms)) {
+					if (hint_parity != 0 && parity != hint_parity) {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solution with parity %d rejected by the parity hint %d", parity, hint_parity);
+						wrong_parity = true;
+						continue;
+					}
+					fov = candidates[i];
+					solved = true;
+				}
 			}
+			indigo_safe_free(cone_quads);
 		}
-		indigo_safe_free(cone_quads);
 	}
 	if (!solved) {
 		message = limits.exceeded ? limits.reason : SOLVER_DEVICE_PRIVATE_DATA->abort_requested ? "Aborted" : wrong_parity ? "Solution has the wrong parity" : "No solution found";

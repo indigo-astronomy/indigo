@@ -64,7 +64,7 @@ data: ESA/Gaia/DPAC, CC BY-SA 3.0 IGO.
 
 ### Hints
 
-- `AGENT_PLATESOLVER_HINTS.SCALE` (pixel scale in degrees per pixel) orders the indexes to try: the index fitting the field first, then the other selected ones nearest to the field size first; without it the pixel scale reported by the related Imager or Guider agent is used, and without either the selected indexes are tried in their order.
+- `AGENT_PLATESOLVER_HINTS.SCALE` (pixel scale in degrees per pixel) orders the indexes to try: the index fitting the field first, then the other selected ones nearest to the field size first; without it the pixel scale reported by the related Imager or Guider agent is used, and without either the selected indexes are searched stage by stage: the first stage on every index, the largest index first, then the next stage on every index in the opposite order.
 - `AGENT_PLATESOLVER_HINTS.RADIUS`, `RA` and `DEC`: with a radius above 0 the catalogue is restricted to the stars within the radius plus the field extent around the position (RA in hours, DEC in degrees, in the hints epoch), which makes solves near a known mount position faster and more reliable in sparse fields; a field outside the radius is not solved. The Mount Agent keeps RA and DEC at the mount position.
 - `AGENT_PLATESOLVER_HINTS.PARITY` of 1 or -1 rejects a solution of the other parity; the quad codes of the index serve both parities, so the hint does not shorten the search.
 - `AGENT_PLATESOLVER_HINTS.DEPTH` tries the brightest DEPTH stars first and then all detected stars; 0 uses the built-in progression of 40, 100 and all stars.
