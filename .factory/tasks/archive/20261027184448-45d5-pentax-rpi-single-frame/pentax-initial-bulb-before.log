@@ -1,0 +1,4 @@
+Running ccd_pentax_usb
+indigo_test/integration/test_ccd_pentax_usb.c:1345: assertion failed: attached && completed
+  FAIL public initial bulb accepts nonnumeric shutter and preserves it
+ccd_pentax_usb: 1 test(s) failed

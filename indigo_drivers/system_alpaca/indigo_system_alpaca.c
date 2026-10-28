@@ -815,7 +815,7 @@ static bool system_alpaca_open(indigo_device *device) {
 
 // Decision D5: an INDIGO disconnect disconnects the Alpaca device. Nothing is sent when the transport is known to be lost
 // or when the device reported that it is not connected any more. One failed request is no reason not to try.
-// A Platform 7 disconnect is asynchronous, its completion is Connecting false (REFACTOR.md 2.4, 2.7). With wait the device is asked
+// A Platform 7 disconnect is asynchronous, its completion is Connecting false (.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 2.4, 2.7). With wait the device is asked
 // once right away; if it is still disconnecting, true is returned and the channel stays open for proxy_disconnection_finalizer().
 static bool system_alpaca_close(indigo_device *device, bool wait) {
 	bool disconnecting = false;

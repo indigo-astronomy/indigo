@@ -1,0 +1,24 @@
+{
+  "title": "Restore original physical Bulb safely",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "Pentax task coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261027184448-45d5-pentax-rpi-single-frame",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "B may report0/0 timed shutter, causing capture rejection or invalid restoration. Accept nonnumeric B and skip numeric shutter restore for B. Fake B0/0 and real bulb profile pass.",
+  "evidence": "findings.md and verification.md; named baseline/final logs retained with this task.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md: final44-case normal/sanitized tests and per-profile hardware limits; independent quality/security review.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261027184448-45d5-pentax-rpi-single-frame-004"
+}

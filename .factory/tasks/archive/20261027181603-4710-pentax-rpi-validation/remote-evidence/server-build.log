@@ -1,0 +1,39 @@
+make: Entering directory '/tmp/indigo-pentax-20261027181603/indigo_server'
+cat resource/data/constellations.bounds.json | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/data/constellations.bounds.json.data
+cat resource/data/mw.json | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/data/mw.json.data
+cat resource/data/constellations.json | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/data/constellations.json.data
+cat resource/data/planets.json | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/data/planets.json.data
+cat resource/celestial.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/celestial.min.js.data
+cat resource/d3.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/d3.min.js.data
+cat resource/celestial.css | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/celestial.css.data
+cat resource/mng.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/mng.html.data
+cat resource/ctrl.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/ctrl.html.data
+cat resource/imager.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/imager.html.data
+cat resource/mount.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/mount.html.data
+cat resource/guider.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/guider.html.data
+cat resource/astrometry.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/astrometry.html.data
+cat resource/script.html | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/script.html.data
+cat resource/indigo.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/indigo.js.data
+cat resource/mng.png | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/mng.png.data
+cat resource/components.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/components.js.data
+cat resource/mount.png | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/mount.png.data
+cat resource/ctrl.png | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/ctrl.png.data
+cat resource/imager.png | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/imager.png.data
+cat resource/guider.png | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/guider.png.data
+cat resource/astrometry.png | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/astrometry.png.data
+cat resource/script.png | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/script.png.data
+cat resource/indigo.css | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/indigo.css.data
+cat resource/bootstrap.min.css | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/bootstrap.min.css.data
+cat resource/glyphicons.css | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/glyphicons.css.data
+cat resource/jquery.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/jquery.min.js.data
+cat resource/bootstrap.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/bootstrap.min.js.data
+cat resource/popper.min.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/popper.min.js.data
+cat resource/vue.global.prod.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/vue.global.prod.js.data
+cat resource/glyphicons-regular.ttf | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/glyphicons-regular.ttf.data
+make: *** No rule to make target '../indigo_drivers/agent_scripting/library/Sequencer.js', needed by 'resource/Sequencer.js.data'.  Stop.
+make: Leaving directory '/tmp/indigo-pentax-20261027181603/indigo_server'
+make: Entering directory '/tmp/indigo-pentax-20261027181603/indigo_server'
+cat ../indigo_drivers/agent_scripting/library/Sequencer.js | gzip | hexdump -v -e '1/1 "0x%02x, "' >resource/Sequencer.js.data
+gcc -g -fPIC -O3 -isystem/tmp/indigo-pentax-20261027181603/indigo_libs -I/home/indigo/indigo/indigo_drivers -I/home/indigo/indigo/indigo_linux_drivers -I/home/indigo/indigo/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT   -c -o indigo_server.o indigo_server.c
+gcc -g -fPIC -O3 -isystem/tmp/indigo-pentax-20261027181603/indigo_libs -I/home/indigo/indigo/indigo_drivers -I/home/indigo/indigo/indigo_linux_drivers -I/home/indigo/indigo/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT -o /tmp/indigo-pentax-20261027181603/build/bin/indigo_server indigo_server.o  -lm -lrt -lusb-1.0 -pthread -L/tmp/indigo-pentax-20261027181603/build/lib -L/home/indigo/indigo/build/lib -Wl,-rpath=\$ORIGIN/../lib,-rpath=\$ORIGIN/../drivers,-rpath=. -lz -lstdc++ -lindigo -lindigocat
+make: Leaving directory '/tmp/indigo-pentax-20261027181603/indigo_server'

@@ -7,7 +7,7 @@ INDIGO is an astronomy device framework and software bus, with native/legacy pro
 | Component | Sources | Tests | Build / documentation evidence |
 | --- | --- | --- | --- |
 | Core bus, protocol, base drivers and portable I/O | indigo_libs/; public headers indigo_libs/indigo/ | indigo_test/unit/, indigo_test/integration/ | indigo_libs/Makefile; indigo_docs/DEVELOPMENT.md |
-| Portable drivers and agents | indigo_drivers/; .driver inputs own generated C/headers/main files | indigo_test/integration/, simulator_common/, fake SDK/USB backends, driver-local simulators | Makefile.drv, Makefile.drvs; driver REFACTOR.md and README.md |
+| Portable drivers and agents | indigo_drivers/; .driver inputs own generated C/headers/main files | indigo_test/integration/, simulator_common/, fake SDK/USB backends, driver-local simulators | Makefile.drv, Makefile.drvs; driver README.md |
 | Platform and optional drivers | indigo_linux_drivers/, indigo_mac_drivers/, indigo_optional_drivers/ | applicable indigo_test/integration/ and explicit hardware targets | platform make/project files; SDK prerequisites |
 | Server and browser UI | indigo_server/ and indigo_server/resource/ | indigo_test/unit/, indigo_test/integration/ | indigo_server/Makefile; existing UI resources |
 | Tools, examples and developer utilities | indigo_tools/, indigo_examples/, tools/ | indigo_test/; driver editor's existing tests | component Makefiles; indigo_tools/driver_editor/AGENTS.md |
@@ -51,4 +51,4 @@ Execution state is per task (.factory/tasks/<id>/state.json); .factory/state.jso
 Xcode projects must not reference .factory or any descendant through groups, folder/file references or build membership. Factory lifecycle changes must not modify project.pbxproj. Application build/source objects and the actual Factory records stay independent.
 
 ## Documentation
-New project documents are English. Keep current facts here, task execution evidence under tasks/, canonical findings under findings/, and durable Factory decisions under docs/decisions/. Product/developer documentation remains under indigo_docs/. No template project task history or findings archive is imported.
+New project documents are English. Keep current facts here, task execution evidence under tasks/, canonical findings under findings/, and durable Factory decisions under indigo_docs/decisions/. Product/developer documentation remains under indigo_docs/. This project has no docs/ directory: indigo_docs/ takes its place everywhere, including template paths that mention docs/. No template project task history or findings archive is imported.

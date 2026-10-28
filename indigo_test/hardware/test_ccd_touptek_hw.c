@@ -596,7 +596,7 @@ static bool exercise_cooling(void) {
 // KNOWN FAILURE on the Touptek GPCMOS01200KMB: the save is correct and every saved property is
 // published and settled, but the restore answers "Configuration restore failed or timed out" without
 // issuing a single SDK call, so nothing is applied. Recorded as an expected baseline failure with the
-// evidence in indigo_drivers/ccd_touptek/REFACTOR.md; the case is left asserting the real contract
+// evidence in .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/ccd_touptek.md; the case is left asserting the real contract
 // rather than being weakened.
 static bool exercise_configuration_roundtrip(void) {
 	indigo_property *gain = snapshot(camera, "CCD_GAIN");

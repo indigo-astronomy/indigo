@@ -173,8 +173,5 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-  <ItemGroup>
-    <None Include="REFACTOR.md" />
-  </ItemGroup>
 </Project>
 

@@ -7,7 +7,7 @@
 // open-source license' (see LICENSE.md).
 
 // Models the GIOTTO protocol v2.1 and the behaviour of a GIOTTO with application firmware 1.03.09
-// (indigo_drivers/aux_giotto/REFACTOR.md): every member of a get, set or cmd is answered in its own
+// (.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_giotto.md): every member of a get, set or cmd is answered in its own
 // field, a refused member does not stop the others, and malformed input gets no reply.
 
 #include <stdio.h>

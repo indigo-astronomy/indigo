@@ -175,6 +175,5 @@
   </ImportGroup>
   <ItemGroup>
     <None Include="indigo_focuser_efa.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>

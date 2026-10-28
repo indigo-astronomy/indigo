@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "task": "20261027210510-7dc4-aux-rts-stable",
+  "scope": [
+    "Makefile",
+    ".factory/completions/20261027210510-7dc4-aux-rts-stable.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261027210510-7dc4-aux-rts-stable.json": [
+      "100644",
+      "blob",
+      "fa7ab8b508572c9c385c731b80e582a1d45fff12"
+    ],
+    "Makefile": [
+      "100644",
+      "blob",
+      "fd15a9a0f7b6e6594a608ee2a844932a93570546"
+    ]
+  }
+}

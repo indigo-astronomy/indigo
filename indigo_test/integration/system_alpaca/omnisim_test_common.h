@@ -20,7 +20,7 @@
 
 // Harness of test_system_alpaca_omnisim: the in-process system_alpaca driver against ASCOM OmniSim (ASCOM Alpaca Simulators),
 // an Alpaca server written independently of this driver. It builds on system_alpaca_test_common.h (the property cache, the
-// driver lifecycle and the bridge helpers) and adds what OmniSim needs. See REFACTOR.md 4.1 of the driver for OmniSim itself.
+// driver lifecycle and the bridge helpers) and adds what OmniSim needs. See .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 4.1 for OmniSim itself.
 //
 // HOW OMNISIM IS RUN
 //

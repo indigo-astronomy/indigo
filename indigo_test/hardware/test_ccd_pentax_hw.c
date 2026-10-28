@@ -41,7 +41,9 @@ static char camera[INDIGO_NAME_SIZE];
 static indigo_property *properties[MAX_PROPERTIES];
 static unsigned revisions[MAX_PROPERTIES];
 static unsigned image_count, invalid_images;
-static bool baseline_only;
+static bool baseline_only, single_frame_only, bulb_only;
+static const char *image_output_path;
+static double single_frame_seconds = 0.1;
 
 static unsigned frames(void) {
 	pthread_mutex_lock(&mutex);
@@ -111,6 +113,9 @@ static bool valid_raw(const unsigned char *bytes, long size) {
 		return false;
 	}
 	bool valid = libraw_open_buffer(raw, bytes, size) == LIBRAW_SUCCESS && libraw_unpack(raw) == LIBRAW_SUCCESS && raw->sizes.width > 3000 && raw->sizes.height > 2000;
+	if (valid) {
+		printf("RAW unpacked: %ux%u, exposure=%.3fs, ISO=%.0f\n", raw->sizes.width, raw->sizes.height, raw->other.shutter, raw->other.iso_speed);
+	}
 	libraw_close(raw);
 	return valid;
 }
@@ -118,9 +123,11 @@ static bool valid_raw(const unsigned char *bytes, long size) {
 static indigo_result observe(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	(void)client;
 	(void)device;
-	(void)message;
 	if (!strstr(property->device, "K-m")) {
 		return INDIGO_OK;
+	}
+	if (message) {
+		fprintf(stderr, "%s: %s\n", property->name, message);
 	}
 	pthread_mutex_lock(&mutex);
 	if (!*camera) {
@@ -141,7 +148,21 @@ static indigo_result observe(indigo_client *client, indigo_device *device, indig
 		bool jpeg = item->blob.size > 4 && bytes[0] == 0xff && bytes[1] == 0xd8 && bytes[item->blob.size - 2] == 0xff && bytes[item->blob.size - 1] == 0xd9;
 		bool tiff = item->blob.size > 1024 && ((!memcmp(bytes, "II*\0", 4)) || (!memcmp(bytes, "MM\0*", 4)));
 		image_count++;
-		invalid_images += !((jpeg && valid_jpeg(bytes, item->blob.size)) || (tiff && valid_raw(bytes, item->blob.size)));
+		bool valid = (jpeg && valid_jpeg(bytes, item->blob.size)) || (tiff && valid_raw(bytes, item->blob.size));
+		if (valid && image_count == 1 && image_output_path) {
+			FILE *output = fopen(image_output_path, "wbx");
+			bool saved = output && fwrite(bytes, 1, (size_t)item->blob.size, output) == (size_t)item->blob.size;
+			if (output && fclose(output)) {
+				saved = false;
+			}
+			if (!saved) {
+				fprintf(stderr, "Failed to save exclusive native image artifact: %s\n", image_output_path);
+				valid = false;
+			} else {
+				printf("Saved native image artifact: %s\n", image_output_path);
+			}
+		}
+		invalid_images += !valid;
 		printf("Captured %s payload: %ld bytes, container=%s\n", item->blob.format, item->blob.size, jpeg ? "JPEG" : tiff ? "TIFF RAW" : "invalid");
 	}
 	if (index >= 0) {
@@ -215,7 +236,7 @@ static bool change_switch(const char *name, const char *item) {
 
 static bool expose(double duration, bool finish) {
 	unsigned before = revision(CCD_EXPOSURE_PROPERTY_NAME);
-	return indigo_change_number_property_1(&client, camera, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, duration) == INDIGO_OK && wait_state(CCD_EXPOSURE_PROPERTY_NAME, before, finish ? INDIGO_OK_STATE : INDIGO_BUSY_STATE, 15);
+	return indigo_change_number_property_1(&client, camera, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, duration) == INDIGO_OK && wait_state(CCD_EXPOSURE_PROPERTY_NAME, before, finish ? INDIGO_OK_STATE : INDIGO_BUSY_STATE, single_frame_only && finish ? 35 : 15);
 }
 
 static bool restore_switch(indigo_property *saved) {
@@ -235,7 +256,7 @@ static bool exercise_control(indigo_property *saved) {
 		return true;
 	}
 	for (int i = 0; i < saved->count; i++) {
-		if (!saved->items[i].sw.value) {
+		if (!saved->items[i].sw.value && (strcmp(saved->name, DSLR_SHUTTER_PROPERTY_NAME) || strcmp(saved->items[i].name, "00000000"))) {
 			printf("Exercise %s -> %s\n", saved->name, saved->items[i].label);
 			bool changed = change_switch(saved->name, saved->items[i].name);
 			return restore_switch(saved) && changed;
@@ -292,24 +313,55 @@ static void acceptance(void) {
 	show_control(saved_aperture);
 	show_control(saved_program);
 	show_control(saved_compression);
-	if (!baseline_only) {
-		CHECK(exercise_control(saved_iso));
-		CHECK(exercise_control(saved_aperture));
-		CHECK(exercise_control(saved_shutter));
+	if (bulb_only) {
 		CHECK(change_switch(CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME));
 		CHECK(change_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME));
 		unsigned before = frames();
-		CHECK(expose(0.1, true));
-		CHECK(frames() == before + 1 && images_valid());
-		before = frames();
 		CHECK(expose(1.2, true));
 		CHECK(frames() == before + 1 && images_valid());
 		CHECK(expose(2, false));
 		indigo_usleep(100000);
 		CHECK(change_switch(CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME));
 		before = frames();
-		CHECK(expose(0.1, true));
+		CHECK(expose(1.2, true));
 		CHECK(frames() == before + 1 && images_valid());
+		printf("Bulb exposure, abort and recovery passed\n");
+		goto cleanup;
+	}
+	if (!baseline_only) {
+		if (!single_frame_only) {
+			CHECK(change_switch(DSLR_PROGRAM_PROPERTY_NAME, "00000008"));
+			indigo_property *controls[] = { saved_iso, saved_aperture, saved_shutter };
+			for (unsigned i = 0; i < sizeof(controls) / sizeof(*controls); i++) {
+				if (!exercise_control(controls[i])) {
+					fprintf(stderr, "Control exercise failed: %s\n", controls[i] ? controls[i]->name : "missing");
+					indigo_test_failures++;
+				}
+			}
+		}
+		CHECK(change_switch(CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME));
+		CHECK(change_switch(CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_NATIVE_ITEM_NAME));
+		unsigned before = frames();
+		CHECK(expose(single_frame_only ? single_frame_seconds : 0.1, true));
+		CHECK(frames() == before + 1 && images_valid());
+		if (!single_frame_only) {
+			CHECK(expose(0.5, false));
+			indigo_usleep(100000);
+			CHECK(change_switch(CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME));
+			before = frames();
+			CHECK(expose(0.1, true));
+			CHECK(frames() == before + 1 && images_valid());
+			printf("Timed abort and recovery passed\n");
+			before = frames();
+			CHECK(expose(1.2, true));
+			CHECK(frames() == before + 1 && images_valid());
+			CHECK(expose(2, false));
+			indigo_usleep(100000);
+			CHECK(change_switch(CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME));
+			before = frames();
+			CHECK(expose(0.1, true));
+			CHECK(frames() == before + 1 && images_valid());
+		}
 	}
 cleanup:
 	if (connected) {
@@ -341,14 +393,33 @@ cleanup:
 }
 
 int main(int argc, char **argv) {
-	if (argc != 2 || (strcmp(argv[1], "--run") && strcmp(argv[1], "--baseline"))) {
-		fprintf(stderr, "Physical Pentax K-m test requires --run or --baseline. No physical hotplug.\n");
+	if (argc != 2 || (strcmp(argv[1], "--run") && strcmp(argv[1], "--baseline") && strcmp(argv[1], "--single-frame") && strcmp(argv[1], "--bulb-only"))) {
+		fprintf(stderr, "Physical Pentax K-m test requires --run, --baseline, --single-frame or --bulb-only. No physical hotplug.\n");
 		return 2;
 	}
 	baseline_only = !strcmp(argv[1], "--baseline");
+	single_frame_only = !strcmp(argv[1], "--single-frame");
+	bulb_only = !strcmp(argv[1], "--bulb-only");
+	const char *exposure = single_frame_only ? getenv("PENTAX_HW_EXPOSURE") : NULL;
+	if (exposure) {
+		char *end;
+		single_frame_seconds = strtod(exposure, &end);
+		if (*end || !isfinite(single_frame_seconds) || single_frame_seconds < 1.0 / 4000 || single_frame_seconds > 5) {
+			fprintf(stderr, "PENTAX_HW_EXPOSURE must be a finite duration from 1/4000 to 5 seconds\n");
+			return 2;
+		}
+	}
+	image_output_path = baseline_only ? NULL : getenv("PENTAX_HW_IMAGE_PATH");
+	if (image_output_path && image_output_path[0] != '/') {
+		fprintf(stderr, "PENTAX_HW_IMAGE_PATH must be an absolute new file path\n");
+		return 2;
+	}
+	if (getenv("PENTAX_HW_DEBUG")) {
+		indigo_set_log_level(INDIGO_LOG_DEBUG);
+	}
 	setvbuf(stdout, NULL, _IONBF, 0);
 	alarm(60);
-	const indigo_test_case tests[] = { { "K-m short grouped hardware acceptance", acceptance } };
+	const indigo_test_case tests[] = { { baseline_only ? "K-m connection and status baseline" : single_frame_only ? "K-m one exposure and native image transfer" : bulb_only ? "K-m bulb exposure, abort and recovery" : "K-m short grouped hardware acceptance", acceptance } };
 	int result = indigo_run_tests("ccd_pentax hardware", tests, 1);
 	alarm(0);
 	for (int i = 0; i < MAX_PROPERTIES; i++) {

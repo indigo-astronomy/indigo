@@ -346,12 +346,17 @@ static inline float get_f32(const uint8_t *p) {
 
 #define IO_CHUNK	1024
 
+const char *indigo_solver_index_catalog(float fov) {
+	return fov < 1 ? "gaia" : "tyc2";
+}
+
 void indigo_solver_index_path(char *path, size_t size, const char *directory, float fov) {
+	const char *catalog = indigo_solver_index_catalog(fov);
 	if (directory == NULL || directory[0] == 0) {
-		snprintf(path, size, "tyc2-%gdeg.isix", fov);
+		snprintf(path, size, "%s-%gdeg.isix", catalog, fov);
 	} else {
 		size_t length = strlen(directory);
-		snprintf(path, size, "%s%styc2-%gdeg.isix", directory, directory[length - 1] == '/' ? "" : "/", fov);
+		snprintf(path, size, "%s%s%s-%gdeg.isix", directory, directory[length - 1] == '/' ? "" : "/", catalog, fov);
 	}
 }
 

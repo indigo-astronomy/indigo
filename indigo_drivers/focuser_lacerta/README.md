@@ -1,20 +1,17 @@
 # LACERTA Motorfocus focuser driver
 
+https://en.lacerta-optics.com/MFOC_LACERTA-Motorfocus---precision-stepper-motor-with#m
+
 ## Supported devices
 
-LACERTA MFOC and FMC, serial connection at 9600 baud. One focuser is present at startup; additional independent instances can be configured at runtime. No hot-plug support.
+* LACERTA MFOC
+* LACERTA FMC
 
-The generated INDIGO 3.0 source is `indigo_focuser_lacerta.driver`. Protocol reference: bundled `Lacerta_Mfoc-Fmc_API_2024.xlsx`, sheet `Munka1`.
-
-Absolute and relative moves, coordinate SYNC, abort, reversal, backlash and maximum position are supported. Backlash is 0–255 steps. Maximum position is 300–65535 for firmware v1 and 300–250000 for v2/v3; minimum position is zero. Position and relative-step metadata follow the configured maximum. Settings are checked against device readback and loaded again on connection.
-
-Temperature is read-only; the documented 99.9 (NC) response publishes it IDLE (once) and preserves the last valid value; a malformed reading reports ALERT. Speed, automatic mode and temperature compensation remain hidden and unsupported.
-
-Movement reports measured position separately from its target. A no-op completes immediately. Abort reads the stopped position and ends the move ALERT there; a failed stop or readback reports ALERT, and abort while idle sends nothing. Motion with no observed progress for 100 polls (nominally about 10 seconds) attempts a stop and reports ALERT. This is a software stall policy, not a measurement of physical motor timing. If stop or stopped-position confirmation fails, retry abort or reconnect before another move. Disconnect cancels queued work and attempts to halt active motion; transport failure cannot confirm a physical stop.
+One focuser is present at startup; additional independent instances can be configured at runtime. No hot-plug support.
 
 ## Supported platforms
 
-Uses portable INDIGO serial I/O. Universal macOS arm64/x86_64 compilation is checked; simulator tests run on arm64. Windows project/solution integration is included, but Windows and Linux builds/runs and physical hardware acceptance remain unverified.
+This driver is platform independent.
 
 ## License
 
@@ -22,11 +19,19 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-```sh
 indigo_server indigo_focuser_lacerta
-```
 
-Select the serial port before connecting. Migration decisions and validation results are recorded in `REFACTOR.md`; automated coverage is recorded in `../../indigo_test/CHANGES.md`.
+## Status: Untested
+
+## Notes
+
+Select the serial port before connecting; the device communicates at 9600 baud.
+
+Absolute and relative moves, coordinate SYNC, abort, reversal, backlash and maximum position are supported. Backlash is 0–255 steps. Maximum position is 300–65535 for firmware v1 and 300–250000 for v2/v3; minimum position is zero. Settings are loaded again on connection.
+
+Temperature is read-only; when no sensor is connected it is published IDLE and the last valid value is kept. Speed, automatic mode and temperature compensation are not supported.
+
+Abort reads the stopped position and ends the move there. Motion with no observed progress for 100 polls (nominally about 10 seconds) triggers a stop attempt and ALERT. If a stop cannot be confirmed, retry abort or reconnect before another move. Disconnect attempts to halt active motion; transport failure cannot confirm a physical stop.
 
 ## Testing
 

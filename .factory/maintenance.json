@@ -195,6 +195,42 @@
       "scope": "Complete Pentax driver using open-source protocol references and non-interactive fake USB/hardware verification",
       "checkpoint": "After this task, before unrelated work/release; audit remains due",
       "resets_checkpoint": false
+    },
+    "solver_hints_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-27",
+      "task": "20261027192244-16bd-solver-hints-input-diagnostics",
+      "scope": "Implement the Solver Agent hint, limit, input and message improvements only",
+      "authority": "Áno, odložiť audit pre túto úlohu; audit ostáva splatný po nej, pred ďalšou nesúvisiacou prácou alebo releasom.",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
+    },
+    "solver_retro_evidence_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-27",
+      "task": "20261027195534-4608-solver-retro-evidence",
+      "scope": "Record the AI Factory evidence of the published commit a1e7f53d0 (solver noise filter and input formats) only; evidence-only housekeeping task",
+      "authority": "Yes, defer the full repository audit for task 20261027195534-4608-solver-retro-evidence only; the audit remains due after it, before the next unrelated work or release.",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
+    },
+    "refactor_notes_archive_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-27",
+      "task": "20261027203747-a8d5-archive-refactor-notes",
+      "scope": "Archive all REFACTOR.md files into the task record, remove the REFACTOR.md rules and references, and reduce the eight affected driver README.md files to the fixed user-facing structure only",
+      "authority": "pokracuj podla odporucani (recommendation 6: defer the full repository audit for this task; the audit is performed right after it)",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
+    },
+    "solver_index_0_5_deferral": {
+      "approved_by": "Peter Polakovic, explicit chat reply",
+      "date": "2026-10-27",
+      "task": "20261027214032-3577-solver-index-0-5deg",
+      "scope": "Create the 0.5 degree Tycho-2 index and add it to the Solver Agent only",
+      "authority": "Áno, odložiť audit aj pre úlohu 0.5° indexu; audit ostáva splatný po nej, pred ďalšou nesúvisiacou prácou alebo releasom.",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

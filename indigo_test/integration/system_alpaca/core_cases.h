@@ -1059,7 +1059,7 @@ static void core_connect_disconnect_platform7(void) {
 	indigo_usleep(200000);
 	SA_CHECK(sa_is_connected(sa_device) && sa_request_count(0, "PUT", "/api/v1/focuser/0/connect") == 1);
 	// decision D5: the INDIGO disconnect sends disconnect to the Alpaca device, and polling stops. A Platform 7 disconnect is asynchronous:
-	// CONNECTION stays BUSY while "connecting" is polled, until the device reports that it is no longer connecting (REFACTOR.md 2.4, 2.7)
+	// CONNECTION stays BUSY while "connecting" is polled, until the device reports that it is no longer connecting (.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md 2.4, 2.7)
 	revision = sa_revision(sa_device, CONNECTION_PROPERTY_NAME);
 	int mark = sa_message_mark();
 	SA_CHECK(sa_request_connection(sa_device, false) && SA_WAIT(sa_request_count(0, "PUT", "/api/v1/focuser/0/disconnect") == 1, SA_TIMEOUT));

@@ -112,6 +112,9 @@ typedef struct {
 } indigo_solver_index_quad;
 
 // directory NULL or empty means the current working directory
+// The catalogue an index of the given scale is built from: scales below 1 degree come from Gaia DR3, the others
+// from Tycho-2; it is the file name prefix (gaia-0.5deg.isix, tyc2-1deg.isix) and the item name prefix of the agent
+extern const char *indigo_solver_index_catalog(float fov);
 extern void indigo_solver_index_path(char *path, size_t size, const char *directory, float fov);
 extern bool indigo_solver_index_write_header(FILE *file, const indigo_solve_index_header *header);
 extern bool indigo_solver_index_read_header(FILE *file, indigo_solve_index_header *header);

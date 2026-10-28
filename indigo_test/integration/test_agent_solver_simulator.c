@@ -22,13 +22,17 @@
 // related Imager Agent (or Guider Agent) capturing with the CCD simulators.
 //
 // Set 1, CCD Imager Simulator: the fixed Rosetta nebula frame (1600 x 1200, 8.44"/px) solved at full
-// resolution, downsampled by the agent, binned 2 x 2 by the camera, as a sub-frame, in JNow, with each
-// index alone, with a wrong scale hint and repeatedly.
+// resolution, captured as FITS and as JPEG, downsampled by the agent, binned 2 x 2 by the camera, as a
+// sub-frame, in JNow, with each index alone, with a wrong scale hint and repeatedly.
+//
+// Set 3, the 0.5 degree index: a 0.5 x 0.4 degree field rendered from the index's own stars (the simulators
+// render Hipparcos only, too sparse for such a field) solved with that index alone.
 //
 // Set 2, CCD Guider Simulator: the catalogue star field (4° over the frame height) rendered for 120
 // different combinations of SIMULATION_SETUP (RA, Dec, rotation, side of pier, frame size, magnitude
 // limit, epoch, noise, gradient, hot pixels, columns and rows), each solved and compared with what the
-// simulator rendered; a few of them through the Guider Agent instead of the Imager Agent.
+// simulator rendered; a few of them through the Guider Agent instead of the Imager Agent, a few captured
+// as FITS instead of RAW, a few with a position hint in the hints epoch.
 //
 // Opt-in: the 2° and 5° indexes (354 MB and 174 MB) are needed in the persistent cache
 // $INDIGO_CACHE_BASE/solver, by default ~/.indigo/solver of the real home. An index missing there is
@@ -82,7 +86,7 @@
 #define SCALE_TOLERANCE 0.02
 #define ANGLE_TOLERANCE 0.2
 
-typedef enum { ROSETTA, SWEEP, SWEEP_GUIDER_AGENT } case_kind;
+typedef enum { ROSETTA, NARROW, SWEEP, SWEEP_FITS, SWEEP_HINT, SWEEP_GUIDER_AGENT } case_kind;
 
 typedef struct {
 	double ra, dec, rotation, magnitude, noise, gradient;
@@ -408,13 +412,13 @@ static bool setup(void) {
 	guider_started = true;
 	REQUIRE(indigo_agent_solver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	solver_started = true;
-	if (current_kind == ROSETTA) {
+	if (current_kind == ROSETTA || current_kind == NARROW) {
 		REQUIRE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, IMAGER_CAMERA, true, INDIGO_OK_STATE, 20));
 		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
 		REQUIRE(relate(SOLVER, IMAGER));
-	} else if (current_kind == SWEEP) {
+	} else if (current_kind == SWEEP || current_kind == SWEEP_FITS || current_kind == SWEEP_HINT) {
 		REQUIRE(change_switch_and_wait(IMAGER, FILTER_CCD_LIST_PROPERTY_NAME, GUIDER_CAMERA, true, INDIGO_OK_STATE, 20));
-		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
+		REQUIRE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, current_kind == SWEEP_FITS ? CCD_IMAGE_FORMAT_FITS_ITEM_NAME : CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true, INDIGO_OK_STATE, 10));
 		REQUIRE(relate(SOLVER, IMAGER));
 	} else {
 		REQUIRE(change_switch_and_wait(GUIDER, FILTER_CCD_LIST_PROPERTY_NAME, GUIDER_CAMERA, true, INDIGO_OK_STATE, 20));
@@ -454,6 +458,19 @@ static void rosetta_full_resolution(void) {
 	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
 	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE, ROSETTA_ANGLE, ROSETTA_WIDTH, ROSETTA_HEIGHT, 2000));
 	ASSERT_TRUE(wcs(AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 2 || wcs(AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
+}
+
+// The frame captured as FITS and as JPEG by the Imager Agent is converted by the solver and solved like the RAW one
+static void rosetta_fits(void) {
+	ASSERT_TRUE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, true, INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
+	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE, ROSETTA_ANGLE, ROSETTA_WIDTH, ROSETTA_HEIGHT, 2000));
+}
+
+static void rosetta_jpeg(void) {
+	ASSERT_TRUE(change_switch_and_wait(IMAGER, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_JPEG_ITEM_NAME, true, INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
+	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE, ROSETTA_ANGLE, ROSETTA_WIDTH, ROSETTA_HEIGHT, 2000));
 }
 
 static void rosetta_downsampled(void) {
@@ -516,6 +533,152 @@ static void rosetta_repeated(void) {
 	}
 }
 
+// ---- set 3: the 0.5 degree index checked against a field rendered from its own stars
+
+#define INDEX_0_5 "GAIA_0_5"
+#define NARROW_WIDTH 1000
+#define NARROW_HEIGHT 800
+#define NARROW_SCALE (1.8 / 3600)
+#define NARROW_ANGLE 30.0
+
+// Uploads a frame to the solver and waits for the solve to end in OK or ALERT
+static bool solve_upload(void *image, long size) {
+	unsigned ok_before = state_count(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_OK_STATE);
+	unsigned alert_before = state_count(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_ALERT_STATE);
+	REQUIRE(indigo_change_blob_property_1(&observer, SOLVER, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, image, size, ".raw", "") == INDIGO_OK);
+	REQUIRE(WAIT_UNTIL(state_count(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_OK_STATE) > ok_before || state_count(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, INDIGO_ALERT_STATE) > alert_before, 120));
+	return true;
+}
+
+// Renders a 0.5 x 0.4 degree frame of the index stars around the given star (shifted by a few arcminutes) and
+// solves it; returns the number of rendered stars and whether the solution matches the rendering
+static int solve_narrow_field(const indigo_solver_index_star *stars, uint32_t star_count, double ra_hours, double dec_degrees, bool *solved) {
+	*solved = false;
+	float ra0 = ra_hours * 15 * M_PI / 180, dec0 = dec_degrees * M_PI / 180;
+	long size = sizeof(indigo_raw_header) + NARROW_WIDTH * NARROW_HEIGHT * 2;
+	indigo_raw_header *image = calloc(1, size);
+	image->signature = INDIGO_RAW_MONO16;
+	image->width = NARROW_WIDTH;
+	image->height = NARROW_HEIGHT;
+	uint16_t *pixels = (uint16_t *)(image + 1);
+	uint32_t seed = 20261027 + (uint32_t)(ra_hours * 1000);
+	for (long i = 0; i < NARROW_WIDTH * NARROW_HEIGHT; i++) {
+		seed = seed * 1664525u + 1013904223u;
+		pixels[i] = 1000 + (seed >> 24) / 2;
+	}
+	int rendered = 0;
+	for (uint32_t i = 0; i < star_count; i++) {
+		if (indigo_angular_distance(ra0, dec0, stars[i].ra, stars[i].dec) > 0.45 * M_PI / 180) {
+			continue;
+		}
+		float x, y;
+		if (indigo_radec_to_xy(ra0, dec0, NARROW_ANGLE * M_PI / 180, NARROW_SCALE * M_PI / 180, NARROW_WIDTH, NARROW_HEIGHT, -1, stars[i].ra, stars[i].dec, &x, &y) && x >= 0 && x < NARROW_WIDTH && y >= 0 && y < NARROW_HEIGHT) {
+			float peak = 8000 + (i % 7) * 2000;
+			for (int dy = -6; dy <= 6; dy++) {
+				for (int dx = -6; dx <= 6; dx++) {
+					int px = (int)rint(x) + dx, py = (int)rint(y) + dy;
+					if (px >= 0 && px < NARROW_WIDTH && py >= 0 && py < NARROW_HEIGHT) {
+						float r2 = (px - x) * (px - x) + (py - y) * (py - y);
+						int value = pixels[py * NARROW_WIDTH + px] + (int)(peak * exp(-r2 / (2 * 1.5 * 1.5)));
+						pixels[py * NARROW_WIDTH + px] = value > 65535 ? 65535 : value;
+					}
+				}
+			}
+			rendered++;
+		}
+	}
+	printf("  field at RA %.5f h Dec %+.4f°: %d index stars\n", ra_hours, dec_degrees, rendered);
+	bool sent = solve_upload(image, size);
+	free(image);
+	if (sent && state(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME) == INDIGO_OK_STATE) {
+		*solved = solution_matches(ra0 * 180 / M_PI / 15, dec0 * 180 / M_PI, NARROW_SCALE, NARROW_ANGLE, NARROW_WIDTH, NARROW_HEIGHT, 2000) && wcs(AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 0.5 && wcs(AGENT_PLATESOLVER_WCS_PARITY_ITEM_NAME) == -1;
+	}
+	return rendered;
+}
+
+// The CCD simulators render the Hipparcos catalogue only, too sparse for a 0.5 degree field, so twelve fields
+// spread over the sky are rendered from the index's own stars (gaussian images of a few brightnesses, noise)
+// and solved with the 0.5 degree index alone. Tycho-2 is not deep enough for every 0.5 degree field: every
+// field with at least NARROW_MIN_STARS index stars must solve, and at least half of the fields must solve; the
+// check is self-consistent, not independent of the index.
+#define NARROW_FIELDS 12
+#define NARROW_MIN_STARS 8
+
+static const double narrow_fields[NARROW_FIELDS][2] = {
+	{ 0.85, -27.1 }, { 1.50, 45 }, { 3.00, -30 }, { 4.50, 70 }, { 6.00, 20 }, { 7.50, -60 },
+	{ 9.00, 40 }, { 12.85, 27.1 }, { 15.00, 10 }, { 17.76, -29 }, { 19.50, 30 }, { 22.50, 65 }
+};
+
+// INDIGO_SOLVER_NARROW_FIELDS=<n> replaces the twelve fixed fields by n pseudo-random positions over the sky
+// (|Dec| < 85°) for a one-off long verification; the standard suite keeps the twelve
+// INDIGO_SOLVER_NARROW_FIELD="ra_hours,dec_degrees" solves that single field, to reproduce one by hand
+static int narrow_field_count(void) {
+	const char *count = getenv("INDIGO_SOLVER_NARROW_FIELDS");
+	if (getenv("INDIGO_SOLVER_NARROW_FIELD") != NULL) {
+		return 1;
+	}
+	return count != NULL && atoi(count) > 0 ? atoi(count) : NARROW_FIELDS;
+}
+
+static void narrow_field(int k, double *ra_hours, double *dec_degrees) {
+	const char *single = getenv("INDIGO_SOLVER_NARROW_FIELD");
+	if (single != NULL && sscanf(single, "%lf,%lf", ra_hours, dec_degrees) == 2) {
+		return;
+	}
+	if (getenv("INDIGO_SOLVER_NARROW_FIELDS") == NULL) {
+		*ra_hours = narrow_fields[k][0];
+		*dec_degrees = narrow_fields[k][1];
+		return;
+	}
+	uint32_t seed = 20261027 + 7919 * (uint32_t)k;
+	seed = seed * 1664525u + 1013904223u;
+	*ra_hours = 24.0 * (seed >> 8) / (double)(1u << 24);
+	seed = seed * 1664525u + 1013904223u;
+	// uniform on the sphere: Dec from the arcsine of a uniform sine, limited to 85 degrees
+	double sine = 2.0 * (seed >> 8) / (double)(1u << 24) - 1;
+	*dec_degrees = asin(sine) * 180 / M_PI;
+	if (*dec_degrees > 85) {
+		*dec_degrees = 85;
+	} else if (*dec_degrees < -85) {
+		*dec_degrees = -85;
+	}
+}
+
+static void index_0_5_self_consistency(void) {
+	ASSERT_TRUE(install_index(INDEX_0_5));
+	ASSERT_TRUE(change_switch_and_wait(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_2, false, INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(change_switch_and_wait(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_5, false, INDIGO_OK_STATE, 10));
+	ASSERT_TRUE(switch_value(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_0_5));
+	ASSERT_TRUE(set_hints(2000, 1, 0));
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s/solver/gaia-0.5deg.isix", cache_base);
+	FILE *file = fopen(path, "rb");
+	ASSERT_TRUE(file != NULL);
+	indigo_solve_index_header header;
+	ASSERT_TRUE(indigo_solver_index_read_header(file, &header) && header.fov == 0.5f && header.star_count > 0);
+	indigo_solver_index_star *stars = malloc(header.star_count * sizeof(indigo_solver_index_star));
+	ASSERT_TRUE(indigo_solver_index_read_stars(file, stars, header.star_count));
+	fclose(file);
+	printf("  index: %u stars, %u quads\n", header.star_count, header.quad_count);
+	int solved_count = 0, dense_count = 0, dense_solved = 0, field_count = narrow_field_count();
+	for (int k = 0; k < field_count; k++) {
+		bool solved;
+		double ra_hours, dec_degrees;
+		narrow_field(k, &ra_hours, &dec_degrees);
+		int rendered = solve_narrow_field(stars, header.star_count, ra_hours, dec_degrees, &solved);
+		printf("  %s\n", solved ? "solved" : "not solved");
+		solved_count += solved;
+		if (rendered >= NARROW_MIN_STARS) {
+			dense_count++;
+			dense_solved += solved;
+		}
+	}
+	free(stars);
+	printf("  %d of %d fields solved, %d of %d fields with at least %d index stars solved\n", solved_count, field_count, dense_solved, dense_count, NARROW_MIN_STARS);
+	ASSERT_TRUE(dense_solved == dense_count);
+	ASSERT_TRUE(solved_count * 2 >= field_count);
+}
+
 // ---- set 2: the catalogue field of the guider simulator for many simulation setups
 
 static const double positions[][2] = {
@@ -532,6 +695,8 @@ static const int hot[][3] = { { 0, 0, 0 }, { 50, 0, 0 }, { 200, 600, 800 }, { 50
 
 #define SWEEP_COUNT 120
 #define GUIDER_AGENT_EVERY 20
+#define FITS_EVERY 15
+#define HINT_EVERY 25
 
 // INDIGO_SOLVER_SETUP="ra,dec,rotation,pier,width,height,magnitude,epoch,noise,gradient,hotpixels,hotcol,hotrow"
 // replaces the first combination, to reproduce one setup by hand with the case filter "guider 001"
@@ -561,12 +726,32 @@ static void sweep_case(void) {
 	double ra, dec, angle;
 	ASSERT_TRUE(render_combination(&current));
 	rendered_field(&current, &ra, &dec, &angle);
+	if (current_kind == SWEEP_HINT) {
+		// the position hint in the hints epoch (JNow for a JNow setup), 1 degree off the rendered centre
+		const char *items[] = { AGENT_PLATESOLVER_HINTS_EPOCH_ITEM_NAME, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME, AGENT_PLATESOLVER_HINTS_RA_ITEM_NAME, AGENT_PLATESOLVER_HINTS_DEC_ITEM_NAME };
+		double values[] = { current.epoch, 3, current.ra + 1.0 / 15, current.dec > 80 ? current.dec - 1 : current.dec + 1 };
+		ASSERT_TRUE(change_numbers(SOLVER, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, 4, items, values));
+	}
 	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
-	ASSERT_TRUE(solution_matches(ra, dec, GUIDER_FOV / current.height, angle, current.width, current.height, 2000));
+	if (current_kind == SWEEP_HINT && current.epoch == 0) {
+		// the solution follows the hints epoch: convert it to J2000 for the comparison
+		double wcs_ra = wcs(AGENT_PLATESOLVER_WCS_RA_ITEM_NAME), wcs_dec = wcs(AGENT_PLATESOLVER_WCS_DEC_ITEM_NAME);
+		ASSERT_TRUE(wcs(AGENT_PLATESOLVER_WCS_EPOCH_ITEM_NAME) == 0);
+		indigo_jnow_to_j2k(&wcs_ra, &wcs_dec);
+		printf("  solution converted from JNow: RA %.5f h Dec %.4f°, centre error %.1f\"\n", wcs_ra, wcs_dec, distance(wcs_ra, wcs_dec, ra, dec) * 3600);
+		ASSERT_TRUE(distance(wcs_ra, wcs_dec, ra, dec) < CENTER_TOLERANCE);
+		ASSERT_TRUE(fabs(wcs(AGENT_PLATESOLVER_WCS_SCALE_ITEM_NAME) / (GUIDER_FOV / current.height) - 1) < SCALE_TOLERANCE);
+		// in JNow the angle refers to JNow north, the rendered rotation without the precession offset
+		ASSERT_TRUE(fabs(remainder(wcs(AGENT_PLATESOLVER_WCS_ANGLE_ITEM_NAME) - (current.rotation + (current.pier == 1 ? 0 : 180)), 360)) < ANGLE_TOLERANCE);
+	} else {
+		ASSERT_TRUE(solution_matches(ra, dec, GUIDER_FOV / current.height, angle, current.width, current.height, 2000));
+	}
 }
 
 static indigo_test_case rosetta_tests[] = {
 	{ "rosetta full resolution", rosetta_full_resolution },
+	{ "rosetta fits", rosetta_fits },
+	{ "rosetta jpeg", rosetta_jpeg },
 	{ "rosetta downsampled", rosetta_downsampled },
 	{ "rosetta camera binned", rosetta_camera_binned },
 	{ "rosetta subframe", rosetta_subframe },
@@ -575,6 +760,7 @@ static indigo_test_case rosetta_tests[] = {
 	{ "rosetta index 5 only", rosetta_index_5_only },
 	{ "rosetta wrong scale hint", rosetta_wrong_scale_hint },
 	{ "rosetta repeated", rosetta_repeated },
+	{ "index 0.5 self consistency", index_0_5_self_consistency },
 };
 
 int main(int argc, char **argv) {
@@ -586,16 +772,18 @@ int main(int argc, char **argv) {
 	char (*names)[128] = calloc(count, sizeof(*names));
 	for (int i = 0; i < (int)ARRAY_SIZE(rosetta_tests); i++) {
 		tests[i] = rosetta_tests[i];
-		kinds[i] = ROSETTA;
+		kinds[i] = strstr(tests[i].name, "index 0.5") ? NARROW : ROSETTA;
 	}
 	for (int i = 0; i < SWEEP_COUNT; i++) {
 		sweep_combination c = combination(i);
 		bool guider_agent = (i % GUIDER_AGENT_EVERY) == GUIDER_AGENT_EVERY - 1;
+		bool fits = !guider_agent && (i % FITS_EVERY) == FITS_EVERY / 2;
+		bool hint = !guider_agent && !fits && (i % HINT_EVERY) == HINT_EVERY / 2;
 		int n = (int)ARRAY_SIZE(rosetta_tests) + i;
-		snprintf(names[n], sizeof(names[n]), "guider %03d RA %.2f h Dec %+.1f rot %g pier %d %dx%d mag %.1f epoch %d noise %g grad %g hot %d/%d/%d%s", i + 1, c.ra, c.dec, c.rotation, c.pier, c.width, c.height, c.magnitude, c.epoch, c.noise, c.gradient, c.hotpixels, c.hotcol, c.hotrow, guider_agent ? " via guider agent" : "");
+		snprintf(names[n], sizeof(names[n]), "guider %03d RA %.2f h Dec %+.1f rot %g pier %d %dx%d mag %.1f epoch %d noise %g grad %g hot %d/%d/%d%s", i + 1, c.ra, c.dec, c.rotation, c.pier, c.width, c.height, c.magnitude, c.epoch, c.noise, c.gradient, c.hotpixels, c.hotcol, c.hotrow, guider_agent ? " via guider agent" : fits ? " as fits" : hint ? " with hint" : "");
 		tests[n].name = names[n];
 		tests[n].function = sweep_case;
-		kinds[n] = guider_agent ? SWEEP_GUIDER_AGENT : SWEEP;
+		kinds[n] = guider_agent ? SWEEP_GUIDER_AGENT : fits ? SWEEP_FITS : hint ? SWEEP_HINT : SWEEP;
 	}
 	int selected = 0;
 	for (int i = 0; i < count; i++) {

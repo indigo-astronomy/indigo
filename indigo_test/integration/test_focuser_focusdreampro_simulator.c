@@ -224,7 +224,7 @@ static bool switch_change(const char *property, const char *item, indigo_propert
 // The simulator steps at the rate the controller does, about 90 steps per second
 // at the speed index the focuser base class starts from, so a scenario whose
 // subject is not the speed picks the fastest index first, exactly as a user
-// would. See the measured step timing in the driver's REFACTOR.md.
+// would. See the measured step timing in .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/focuser_focusdreampro.md.
 static bool select_fastest_speed(void) {
 	return number_change(FOCUSER_SPEED_PROPERTY_NAME, FOCUSER_SPEED_ITEM_NAME, 5, INDIGO_OK_STATE);
 }

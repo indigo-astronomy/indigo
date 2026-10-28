@@ -1,0 +1,20 @@
++ make test-ccd-pentax-hw PENTAX_HW_ARGS=--single-frame
+build/hardware/test_ccd_pentax_hw --single-frame
+Running ccd_pentax hardware
+Discovered PENTAX K-m
+DEVICE_MODEL=PENTAX K-m (00012d73)
+DEVICE_FIRMWARE_REVISION=1.11.1.8
+Original DSLR_SHUTTER=0001007d (1/125s)
+Original DSLR_APERTURE=0028000a (f/4.0)
+Original DSLR_PROGRAM=00000000 (P)
+hardware/test_ccd_pentax_hw.c:319: expose(0.1, true)
+Failed to restore one or more camera controls
+  FAIL K-m one exposure and native image transfer
+ccd_pentax hardware: 2 test(s) failed
+make: *** [Makefile:3779: test-ccd-pentax-hw] Error 1
+1 driver(s) written to /tmp/indigo-pentax-20261027181603/TEST_SUMMARY.md
+
+FAILED: test-ccd-pentax-hw
+ccd_pentax: 1/0 Failed
+recorded in indigo_drivers/ccd_pentax/README.md:
+2026-10-27 18:54 3.0.0.4 linux arm64 PENTAX K-m (single frame) 1/0 Failed

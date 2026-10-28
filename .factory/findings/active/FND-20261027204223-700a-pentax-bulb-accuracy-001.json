@@ -1,0 +1,19 @@
+{
+  "title": "K-m bulb exposures fall short of requested duration",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "Pentax driver maintainers",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261027204223-700a-pentax-bulb-accuracy",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "JPEG EXIF reports1.09/2.88s for1.2/3s requested; RAW reports1.100s for1.2s. Both JPEG points fail the diagnostic50ms criterion. Independently measure shutter/command timing before model-specific compensation; no guessed offset. Diagnostic/documentation delivery does not certify timing accuracy.",
+  "evidence": "verification.md, timing-results.json and hardware-evidence/ timing/DNG/PEF logs.",
+  "resolution": null,
+  "id": "FND-20261027204223-700a-pentax-bulb-accuracy-001"
+}

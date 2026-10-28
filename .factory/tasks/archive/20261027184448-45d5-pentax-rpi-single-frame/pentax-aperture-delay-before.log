@@ -1,0 +1,4 @@
+Running ccd_pentax_usb
+indigo_test/integration/test_ccd_pentax_usb.c:1304: assertion failed: attached && applied
+  FAIL public delayed aperture readback without repeated writes
+ccd_pentax_usb: 1 test(s) failed

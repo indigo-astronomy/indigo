@@ -23,11 +23,12 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000005
+#define DRIVER_VERSION 0x03000009
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
@@ -58,9 +59,9 @@
 #define AGENT_SOLVER_INDEX_PROPERTY				(SOLVER_DEVICE_PRIVATE_DATA->index_property)
 #define AGENT_SOLVER_INDEX_PROPERTY_NAME	"X_AGENT_SOLVER_INDEX"
 
-// Tycho-2 quad indexes built by indigo_solver_indexer are downloaded from here as tyc2-<fov>deg.isix
+// Quad indexes built by indigo_solver_indexer are downloaded from here as tyc2-<scale>deg.isix (Tycho-2) and
+// gaia-<scale>deg.isix (Gaia DR3, scales below 1 degree)
 #define AGENT_SOLVER_INDEX_URL						"https://github.com/indigo-astronomy/indigo/releases/download/index_release_v1"
-#define AGENT_SOLVER_INDEX_ITEM_PREFIX		"TYC2_"
 
 #define MAX_IMAGE_STAR_COUNT							500
 #define MAX_IMAGE_QUAD_COUNT							1000000
@@ -71,14 +72,14 @@
 static char base_dir[512];
 
 // approximate sizes of the published index files, in the order of indigo_solver_index_fovs
-static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "534 MB", "354 MB", "174 MB", "88 MB", "32 MB" };
+static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "907 MB", "534 MB", "354 MB", "174 MB", "88 MB", "32 MB" };
 
 typedef struct {
 	platesolver_private_data platesolver;
 	indigo_property *index_property;
 	int index_pending;
 	bool index_download_aborted;
-	bool abort_requested;
+	volatile bool abort_requested;
 #if !defined(INDIGO_WINDOWS)
 	pid_t download_pid;
 #endif
@@ -93,16 +94,27 @@ static pthread_mutex_t index_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // -------------------------------------------------------------------------------- Index files
 
+// <CATALOG>_<scale>: TYC2_1 … TYC2_20 for the Tycho-2 indexes, GAIA_0_5 for the Gaia DR3 index of scale 0.5, a
+// fractional scale with an underscore for the decimal point (a dot in an item name is not safe for every client)
 static void index_item_name(float fov, char *name, size_t size) {
-	snprintf(name, size, "%s%g", AGENT_SOLVER_INDEX_ITEM_PREFIX, fov);
+	snprintf(name, size, "%s_%g", indigo_solver_index_catalog(fov), fov);
+	for (char *c = name; *c; c++) {
+		*c = *c == '.' ? '_' : toupper(*c);
+	}
 }
 
 static bool index_item_fov(const char *name, float *fov) {
-	size_t length = strlen(AGENT_SOLVER_INDEX_ITEM_PREFIX);
-	if (strncmp(name, AGENT_SOLVER_INDEX_ITEM_PREFIX, length)) {
+	const char *underscore = strchr(name, '_');
+	if (underscore == NULL) {
 		return false;
 	}
-	float value = atof(name + length);
+	char scale[INDIGO_NAME_SIZE];
+	snprintf(scale, sizeof(scale), "%s", underscore + 1);
+	char *point = strchr(scale, '_');
+	if (point != NULL) {
+		*point = '.';
+	}
+	float value = atof(scale);
 	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
 		if (indigo_solver_index_fovs[i] == value) {
 			*fov = value;
@@ -143,6 +155,7 @@ static void free_catalog(indigo_device *device) {
 // the last used index stays loaded, the next solve with the same index skips the file
 static bool load_catalog(indigo_device *device, const char *path) {
 	if (!strcmp(SOLVER_DEVICE_PRIVATE_DATA->loaded_index, path)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Index %s is already loaded", path);
 		return true;
 	}
 	free_catalog(device);
@@ -224,7 +237,7 @@ static void rebuild_use_index(indigo_device *device) {
 		if (index_installed(fov)) {
 			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 			index_item_name(fov, name, sizeof(name));
-			snprintf(label, sizeof(label), "Tycho-2 %g° index", fov);
+			snprintf(label, sizeof(label), "%s %g° index", fov < 1 ? "Gaia DR3" : "Tycho-2", fov);
 			indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, selected[i]);
 		}
 	}
@@ -347,12 +360,57 @@ static int select_candidate_fovs(indigo_device *device, double scale, int width,
 			candidates[count++] = fov;
 		}
 	}
-	for (int i = 0; i < selected_count; i++) {
-		if (count == 0 || candidates[0] != selected[i]) {
-			candidates[count++] = selected[i];
+	// the other selected indexes follow, the nearest to the field size first when the scale is known
+	float target = scale > 0 ? 1.5 * sqrt((double)width * height) * scale : 0;
+	while (true) {
+		float best = 0, best_distance = 0;
+		for (int i = 0; i < selected_count; i++) {
+			bool listed = false;
+			for (int j = 0; j < count; j++) {
+				listed = listed || candidates[j] == selected[i];
+			}
+			if (listed) {
+				continue;
+			}
+			float distance = target > 0 ? fabs(log(selected[i] / target)) : i;
+			if (best == 0 || distance < best_distance) {
+				best = selected[i];
+				best_distance = distance;
+			}
 		}
+		if (best == 0) {
+			break;
+		}
+		candidates[count++] = best;
 	}
 	return count;
+}
+
+// The image star counts of the progressive stages: the DEPTH hint first and then all stars, or the built-in
+// progression when the hint is 0; the stages above the detected count collapse into the final one
+static int depth_stages(int depth, int star_count, int *stages) {
+	static const int progression[] = { 40, 100 };
+	int count = 0;
+	if (depth > 0) {
+		if (depth < star_count) {
+			stages[count++] = depth;
+		}
+	} else {
+		for (unsigned i = 0; i < sizeof(progression) / sizeof(progression[0]); i++) {
+			if (progression[i] < star_count) {
+				stages[count++] = progression[i];
+			}
+		}
+	}
+	stages[count++] = star_count;
+	return count;
+}
+
+#define MAX_DEPTH_STAGES 3
+
+// The matching loops stop at the CPU limit or an abort; the abort also stops the index loop before any matching
+static bool limits_exceeded_or_aborted(indigo_device *device, indigo_solver_limits *limits) {
+	return limits->exceeded || SOLVER_DEVICE_PRIVATE_DATA->abort_requested;
 }
 
 static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
@@ -387,34 +445,35 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 	indigo_solver_quad *image_quads = NULL;
 	indigo_solver_quad_match *quad_matches = NULL;
 	indigo_solver_star_match *star_matches = NULL;
-	// 1. only INDIGO RAW images are solved natively
-	uint32_t signature = 0;
-	if (task->size >= (long)sizeof(signature)) {
-		memcpy(&signature, task->image, sizeof(signature));
+	// the CPU limit and the abort flag bound every matching loop; the deadline starts now, so index loading counts
+	indigo_solver_limits limits = { 0 };
+	limits.abort = &SOLVER_DEVICE_PRIVATE_DATA->abort_requested;
+	if (AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value > 0) {
+		limits.deadline = indigo_monotonic_time() + AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value;
 	}
-	if (signature != INDIGO_RAW_MONO8 && signature != INDIGO_RAW_MONO16 && signature != INDIGO_RAW_RGB24 && signature != INDIGO_RAW_RGB48) {
-		message = "Only INDIGO RAW images are supported";
+	// 1. the input image as RAW MONO16: INDIGO RAW as it is, FITS, JPEG and camera raw files converted; a Bayer
+	//    mosaic is binned at least 2 x 2 so the colour pattern does not reach the star detector
+	bool bayered = false;
+	image = indigo_solver_load_image(task->image, task->size, &bayered, &message);
+	if (image == NULL) {
 		goto cleanup;
 	}
-	if (task->size < (long)sizeof(indigo_raw_header)) {
-		message = "Truncated RAW image";
-		goto cleanup;
-	}
-	image = indigo_safe_malloc_copy(task->size, task->image);
 	int full_width = image->width;
 	int full_height = image->height;
 	int bin = (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
 	if (bin < 1) {
 		bin = 1;
 	}
-	if (bin > 1 && signature == INDIGO_RAW_MONO16) {
+	if (bayered && (bin < 2 || bin % 2)) {
+		bin = bin < 2 ? 2 : bin + 1;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayer mosaic, binning %d x %d", bin, bin);
+	}
+	if (bin > 1) {
 		indigo_solver_bin_image(image, bin);
-	} else {
-		bin = 1;
 	}
 	int width = image->width;
 	int height = image->height;
-	// 2. image stars and quads
+	// 2. image stars, brightest first
 	image_stars = indigo_safe_malloc(MAX_IMAGE_STAR_COUNT * sizeof(indigo_solver_star));
 	int star_count = indigo_solver_image_stars(image, image_stars, MAX_IMAGE_STAR_COUNT);
 	if (star_count < 4) {
@@ -426,14 +485,10 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 		goto cleanup;
 	}
 	image_quads = indigo_safe_malloc(MAX_IMAGE_QUAD_COUNT * sizeof(indigo_solver_quad));
-	int used_star_count = 0;
 	int grid = (width > height ? width : height) / IMAGE_GRID_CELLS;
-	int quad_count = indigo_solver_build_image_quads(image_stars, star_count, width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
-	if (quad_count == 0) {
-		message = "Not enough stars detected";
-		goto cleanup;
-	}
-	// 3. indexes to try, the one fitting the expected field size first
+	int stages[MAX_DEPTH_STAGES];
+	int stage_count = depth_stages((int)AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value, star_count, stages);
+	// 3. indexes to try, the one fitting the expected field size first, then the nearest other ones
 	float candidates[INDIGO_SOLVER_INDEX_FOV_COUNT];
 	double scale = AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0 ? AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value : INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale;
 	int candidate_count = select_candidate_fovs(device, scale, full_width, full_height, candidates);
@@ -441,31 +496,62 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 		message = "No index files are selected, select at least one";
 		goto cleanup;
 	}
+	// the position hint, in the hints epoch, as a J2000 cone around which the catalog is restricted
+	double hint_radius = AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value;
+	double hint_ra = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value, hint_dec = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value;
+	if (hint_radius > 0 && AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value == 0) {
+		indigo_jnow_to_j2k(&hint_ra, &hint_dec);
+	}
+	int hint_parity = (int)AGENT_PLATESOLVER_HINTS_PARITY_ITEM->number.value;
 	quad_matches = indigo_safe_malloc(MAX_QUAD_MATCH_COUNT * sizeof(indigo_solver_quad_match));
 	star_matches = indigo_safe_malloc(MAX_STAR_MATCH_COUNT * sizeof(indigo_solver_star_match));
-	float ra = 0, dec = 0, rotation = 0, pixel = 0, fov = 0;
-	int parity = 0;
-	bool solved = false;
-	for (int i = 0; i < candidate_count && !solved; i++) {
-		if (SOLVER_DEVICE_PRIVATE_DATA->abort_requested) {
-			break;
-		}
+	float ra = 0, dec = 0, rotation = 0, pixel = 0, fov = 0, rms = 0;
+	int parity = 0, matched = 0, star_match_count = 0;
+	bool solved = false, wrong_parity = false;
+	for (int i = 0; i < candidate_count && !solved && !limits_exceeded_or_aborted(device, &limits); i++) {
 		char path[PATH_MAX];
 		indigo_solver_index_path(path, sizeof(path), base_dir, candidates[i]);
-		indigo_send_message(device, IDLE_PROPERTY, "Solving with Tycho-2 %g° index...", candidates[i]);
+		indigo_send_message(device, IDLE_PROPERTY, "Solving with %s %g° index...", candidates[i] < 1 ? "Gaia DR3" : "Tycho-2", candidates[i]);
 		if (!load_catalog(device, path)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
 			continue;
 		}
-		int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, SOLVER_DEVICE_PRIVATE_DATA->catalog_quads, SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count, quad_matches, MAX_QUAD_MATCH_COUNT);
-		int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT);
-		if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity)) {
-			fov = candidates[i];
-			solved = true;
+		// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
+		// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
+		indigo_solver_quad *catalog_quads = SOLVER_DEVICE_PRIVATE_DATA->catalog_quads;
+		int catalog_quad_count = SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count;
+		indigo_solver_quad *cone_quads = NULL;
+		if (hint_radius > 0) {
+			double extent = scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * scale : candidates[i];
+			catalog_quad_count = indigo_solver_filter_quads(catalog_quads, catalog_quad_count, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (hint_radius + extent) * DEG_TO_RAD, &cone_quads);
+			catalog_quads = cone_quads;
 		}
+		for (int stage = 0; stage < stage_count && !solved && catalog_quad_count > 0 && !limits_exceeded_or_aborted(device, &limits); stage++) {
+			int used_star_count = 0;
+			int quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
+			if (quad_count == 0) {
+				continue;
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stage %d: %d brightest stars, %d quads, %d catalog quads", stage + 1, stages[stage], quad_count, catalog_quad_count);
+			int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, catalog_quads, catalog_quad_count, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
+			star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
+			if (limits.exceeded) {
+				break;
+			}
+			if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity, &matched, &rms)) {
+				if (hint_parity != 0 && parity != hint_parity) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solution with parity %d rejected by the parity hint %d", parity, hint_parity);
+					wrong_parity = true;
+					continue;
+				}
+				fov = candidates[i];
+				solved = true;
+			}
+		}
+		indigo_safe_free(cone_quads);
 	}
 	if (!solved) {
-		message = SOLVER_DEVICE_PRIVATE_DATA->abort_requested ? "Aborted" : "No solution found";
+		message = limits.exceeded ? limits.reason : SOLVER_DEVICE_PRIVATE_DATA->abort_requested ? "Aborted" : wrong_parity ? "Solution has the wrong parity" : "No solution found";
 		goto cleanup;
 	}
 	// 4. WCS result: RA in hours, Dec and angles in degrees, scale in degrees per unbinned pixel
@@ -487,7 +573,7 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 	AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = fov;
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
 	AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_send_message(device, OK_PROPERTY, "Solved");
+	indigo_send_message(device, OK_PROPERTY, "Solved: %d of %d stars matched, rms %.2f\"", matched, star_match_count, rms * RAD_TO_DEG * 3600);
 cleanup:
 	indigo_safe_free(star_matches);
 	indigo_safe_free(quad_matches);
@@ -523,13 +609,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			float fov = indigo_solver_index_fovs[i];
 			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 			index_item_name(fov, name, sizeof(name));
-			snprintf(label, sizeof(label), "Tycho-2 %g° index (%s)", fov, index_sizes[i]);
+			snprintf(label, sizeof(label), "%s %g° index (%s)", fov < 1 ? "Gaia DR3" : "Tycho-2", fov, index_sizes[i]);
 			bool present = index_installed(fov);
 			indigo_item *item = AGENT_SOLVER_INDEX_PROPERTY->items + i;
 			indigo_init_switch_item(item, name, label, present);
-			snprintf(item->hints, sizeof(item->hints), "warn_on_clear:\"Delete Tycho-2 %g° index?\";", fov);
+			snprintf(item->hints, sizeof(item->hints), "warn_on_clear:\"Delete %s %g° index?\";", fov < 1 ? "Gaia DR3" : "Tycho-2", fov);
 			if (present) {
-				snprintf(label, sizeof(label), "Tycho-2 %g° index", fov);
+				snprintf(label, sizeof(label), "%s %g° index", fov < 1 ? "Gaia DR3" : "Tycho-2", fov);
 				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, false);
 			}
 		}

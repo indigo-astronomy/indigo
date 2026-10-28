@@ -1,0 +1,14 @@
+Definition:
+Sources:    indigo_ccd_pentax.c indigo_ccd_pentax_main.c
+Archive:    indigo_ccd_pentax.a
+SO library: indigo_ccd_pentax.so
+indigo_ccd_pentax.o
+Executable: indigo_ccd_pentax
+
+gcc -g -fPIC -O3 -isystem/home/indigo/indigo/indigo_libs -I/home/indigo/indigo/indigo_drivers -I/home/indigo/indigo/indigo_linux_drivers -I/home/indigo/indigo/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT    -c -o indigo_ccd_pentax.o indigo_ccd_pentax.c
+ar -rv /tmp/indigo-pentax-20261027181603/build/drivers/indigo_ccd_pentax.a indigo_ccd_pentax.o
+ar: creating /tmp/indigo-pentax-20261027181603/build/drivers/indigo_ccd_pentax.a
+a - indigo_ccd_pentax.o
+gcc -shared -o /tmp/indigo-pentax-20261027181603/build/drivers/indigo_ccd_pentax.so -Wl,--whole-archive /tmp/indigo-pentax-20261027181603/build/drivers/indigo_ccd_pentax.a -Wl,--no-whole-archive   -lindigo -lm -lrt -lusb-1.0 -pthread -L/home/indigo/indigo/build/lib -Wl,-rpath=\$ORIGIN/../lib,-rpath=\$ORIGIN/../drivers,-rpath=. -lusb-1.0
+gcc -g -fPIC -O3 -isystem/home/indigo/indigo/indigo_libs -I/home/indigo/indigo/indigo_drivers -I/home/indigo/indigo/indigo_linux_drivers -I/home/indigo/indigo/build/include -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT    -c -o indigo_ccd_pentax_main.o indigo_ccd_pentax_main.c
+gcc -o /tmp/indigo-pentax-20261027181603/build/drivers/indigo_ccd_pentax indigo_ccd_pentax_main.o /tmp/indigo-pentax-20261027181603/build/drivers/indigo_ccd_pentax.a   -lindigo -lm -lrt -lusb-1.0 -pthread -L/home/indigo/indigo/build/lib -Wl,-rpath=\$ORIGIN/../lib,-rpath=\$ORIGIN/../drivers,-rpath=. -lusb-1.0

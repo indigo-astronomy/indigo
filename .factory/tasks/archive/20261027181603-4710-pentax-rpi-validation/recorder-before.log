@@ -1,0 +1,25 @@
+F
+======================================================================
+FAIL: test_pentax_baseline_requires_profile_label (__main__.DriverRecordingTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-pentax-rpi/indigo_test/unit/test_driver_test_recording.py", line 104, in test_pentax_baseline_requires_profile_label
+    result, readme, summary = self.run_fixture(driver_name="ccd_pentax", make_args=("PENTAX_HW_ARGS=--baseline",), executes=False)
+  File "/private/tmp/indigo-pentax-rpi/indigo_test/unit/test_driver_test_recording.py", line 66, in run_fixture
+    self.assertEqual((tests / "executed").exists(), executes, result.stdout + result.stderr)
+AssertionError: True != False : + make synthetic PENTAX_HW_ARGS=--baseline
+"/Applications/Xcode.app/Contents/Developer/usr/bin/python3" emit.py
+1 driver(s) written to /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo recording 47s4epnc/TEST_SUMMARY.md
+
+ccd_pentax: 2/2 OK
+ccd_pentax: Model A 1/1 OK
+ccd_pentax: Model B 1/1 OK
+recorded in indigo_drivers/ccd_pentax/README.md:
+2026-10-27 19:29 3.0.0.1 mac arm64 Model A 1/1 OK
+2026-10-27 19:29 3.0.0.1 mac arm64 Model B 1/1 OK
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.101s
+
+FAILED (failures=1)

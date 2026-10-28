@@ -1,0 +1,168 @@
+{
+  "version": 2,
+  "task": "20261027184448-45d5-pentax-rpi-single-frame",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo_test/hardware/test_ccd_pentax_hw.c",
+    "indigo_test/integration/test_ccd_pentax_usb.c",
+    "indigo_test/unit/test_driver_test_recording.py",
+    "tools/run_driver_test.py",
+    ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-*.json",
+    ".factory/completions/20261027184448-45d5-pentax-rpi-single-frame.json",
+    "indigo_drivers/ccd_pentax/README.md",
+    "indigo_drivers/ccd_pentax/REFACTOR.md",
+    "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "/private/tmp/pentax-protocol-tests/build.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/private/tmp/pentax-protocol-tests/test_ccd_pentax_usb"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/private/tmp/pentax-protocol-tests/test_ccd_pentax_usb_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_pentax",
+        "--no-build"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/unit",
+        "-p",
+        "test_driver_test_recording.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261027184448-45d5-pentax-rpi-single-frame.json": [
+      "100644",
+      "blob",
+      "1e565c01bb45a76af7e9554475a0a933ab899e28"
+    ],
+    ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-001.json": [
+      "100644",
+      "blob",
+      "c82b13d3fc686accfae11a132f2b58e0ffb9a49f"
+    ],
+    ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-002.json": [
+      "100644",
+      "blob",
+      "f6afa0c732ec5c7c78329e40254d4efafc753717"
+    ],
+    ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-003.json": [
+      "100644",
+      "blob",
+      "5466e04bce9b19903049f32b756e8eea603e3fe9"
+    ],
+    ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-004.json": [
+      "100644",
+      "blob",
+      "9e251feb8fc314efe0ef92e1354ed380d812028d"
+    ],
+    ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-005.json": [
+      "100644",
+      "blob",
+      "7c5597612e138be1b6239955327be92e7d0177d1"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "9c6aee3c2c62f3c671ab3ef45e49f92ee9f41d2f"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "37864f75801c9f92a7b48f7f1a6e704a5cc287d8"
+    ],
+    "indigo_drivers/ccd_pentax/README.md": [
+      "100644",
+      "blob",
+      "e16d2da117e9470857ec06b0d291741a6abcf1f6"
+    ],
+    "indigo_drivers/ccd_pentax/REFACTOR.md": [
+      "100644",
+      "blob",
+      "52d630dc341111faec83413a72dd0932ef036b11"
+    ],
+    "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c": [
+      "100644",
+      "blob",
+      "8036ce27b6631100240860f528e509a80d69fae0"
+    ],
+    "indigo_test/hardware/test_ccd_pentax_hw.c": [
+      "100644",
+      "blob",
+      "f6d99cdb82ada5f53585cec6f9e494cda40b40df"
+    ],
+    "indigo_test/integration/test_ccd_pentax_usb.c": [
+      "100644",
+      "blob",
+      "1d5b6670db871e75a7cf8c6a56d43e0e5e34e7e5"
+    ],
+    "indigo_test/unit/test_driver_test_recording.py": [
+      "100644",
+      "blob",
+      "6f0454855ae280c72ff126fdb96c6db1dc77b014"
+    ],
+    "tools/run_driver_test.py": [
+      "100755",
+      "blob",
+      "971efc255c462ae7213bef0a3b7b416554e78ff7"
+    ]
+  }
+}

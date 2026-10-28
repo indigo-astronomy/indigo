@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261027184448-45d5-pentax-rpi-single-frame",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Execution/reviews complete; archive and commit, then immutable process gate and authorized integration/publication.",
+  "blocker": null
+}

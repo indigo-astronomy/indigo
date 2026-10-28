@@ -6,7 +6,7 @@
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
-// Models an ALTO1 with application firmware 1.03.11 (indigo_drivers/aux_alto/REFACTOR.md): MOT1 POSITION 0 (closed)
+// Models an ALTO1 with application firmware 1.03.11 (.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_alto.md): MOT1 POSITION 0 (closed)
 // to 100 (open) over CAL_MAXPOS steps, every member of a get, set or cmd answered in its own field, and no reply to
 // malformed input. A full stroke takes 5 s instead of the unit's 34 s. The calibration follows the INDI driver and is
 // not verified on hardware.

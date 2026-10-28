@@ -189,7 +189,7 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 - Modify the generator implementation, its DSL or generated lifecycle semantics only after explicit user approval of the concrete proposed change. Authorization to implement/refactor a driver or extend its tests does not authorize generator changes. First describe the limitation, proposed generator diff and impact on existing drivers, then wait for approval. Running the unchanged generator and editing a driver's existing `.driver` input remain ordinary authorized driver work.
 - If a `.driver` source exists for a generated `.c` file, edit the generator input rather than hand-editing generated output unless the task explicitly requires otherwise.
 - Keep generated output and checked-in generated files synchronized when the repository convention expects both.
-- After completing any driver migration, update only the status columns of the driver's row in root `MIGRATION_STATUS.md` in the same change: API, Windows, generator, async queues, retesting and automated-test availability. Preserve the Comment column exactly; it is reserved for manual user input. Distinguish simulator validation from hardware validation in the retesting status, and document unverified platforms, remaining limitations and detailed results in the driver's `REFACTOR.md`, not in the Comment column. Keep both files consistent.
+- After completing any driver migration, update only the status columns of the driver's row in root `MIGRATION_STATUS.md` in the same change: API, Windows, generator, async queues, retesting and automated-test availability. Preserve the Comment column exactly; it is reserved for manual user input. Distinguish simulator validation from hardware validation in the retesting status, and document unverified platforms, remaining limitations and detailed results in the evidence of the Factory task performing the migration, not in the Comment column. Keep both files consistent.
 - During refactoring, use generator defaults unless the user explicitly requests an override. In particular, never override `MAX_DEVICES` with `#undef` / `#define` to preserve a legacy capacity; check that no such override is introduced.
 - Review `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` before migrating or creating generated drivers.
 - Treat the `.driver` file as the source of truth once migration starts. Check in the `.driver` file together with the regenerated `.c`, `.h`, and `_main.c` files, and add the `.driver` file to project files such as Xcode groups when relevant.
@@ -220,7 +220,7 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 
 For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow the shared scope and class standards in [Driver Testing Rules](indigo_test/DRIVER_TESTING_RULES.md).
 
-- Every driver refactoring must include full applicable test coverage of its supported capabilities and driver-specific behavior, using the class standard as the acceptance checklist. Cover protocol commands and readback, property transitions, failure/recovery paths, lifecycle and concurrency; a smoke test alone is not completion. Record the scenario-to-test mapping and justify non-applicable cases or hardware-only gaps in the driver's `REFACTOR.md`.
+- Every driver refactoring must include full applicable test coverage of its supported capabilities and driver-specific behavior, using the class standard as the acceptance checklist. Cover protocol commands and readback, property transitions, failure/recovery paths, lifecycle and concurrency; a smoke test alone is not completion. Record the scenario-to-test mapping and justify non-applicable cases or hardware-only gaps in the task's `verification.md`.
 - Audit the simulator as part of each refactoring against the supplied manufacturer protocol documentation (including bundled XLSX documents). For serial simulators with motion, use `indigo_test/simulator_common/serial_motion.h` unless a documented protocol requirement cannot be represented by it. Validate elapsed-time motion, stop and sync through the simulator protocol; do not count testing the shared helper itself as driver coverage.
 
 ### Requested Test Runs
@@ -239,7 +239,7 @@ For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow t
 ## Repository Hygiene
 
 - Do not modify any `README.md` file without the user's explicit approval.
-- Add every newly created persistent repository file to the appropriate group in `indigo.xcodeproj/project.pbxproj` in the same change, including source files, headers, `.driver` inputs, tests and documentation. Preserve existing project edits; temporary files and build artifacts must not be added.
+- Add every newly created persistent repository file to the appropriate group in `indigo.xcodeproj/project.pbxproj` in the same change, including source files, headers, `.driver` inputs, tests and documentation. Visual Studio project files (`.vcxproj`, `.vcxproj.filters`, `.vcxproj.user`) do not belong in the Xcode project. Preserve existing project edits; temporary files and build artifacts must not be added.
 - Keep changes scoped to the requested behavior.
 - Do not edit vendored SDKs, binary outputs, object files, or build products unless the task is specifically about them.
 - Do not commit or rely on local absolute paths from generated build files.
@@ -291,7 +291,7 @@ Follow these rules when preparing a release entry in `CHANGELOG.md`.
 - Keep AI work scoped to the files, folders, and behavior explicitly requested.
 - Ground conclusions in repository sources. For reviews, cite exact files and lines; for implementation, follow nearby code and documented INDIGO APIs.
 - Treat AI-generated code, tests, and review notes as drafts until they are compiled, tested, or otherwise verified.
-- Separate concerns: use `.factory/findings/active.json` for risks and findings, driver-local `REFACTOR.md` files for automated-test plans, coverage notes and refactoring evidence, and patches for actual code changes.
+- Separate concerns: use `.factory/findings/active/` for risks and findings, the Factory task record for automated-test plans, coverage notes and refactoring evidence, and patches for actual code changes.
 - Prefer simulator-backed or hardware-free validation before claiming driver behavior is covered; document hardware assumptions when real devices are required.
 - Do not edit generated output, vendored SDKs, build products, or local artifacts unless the task explicitly targets them.
 - Leave the workspace clean of avoidable temporary files, running servers, test processes, and generated artifacts.

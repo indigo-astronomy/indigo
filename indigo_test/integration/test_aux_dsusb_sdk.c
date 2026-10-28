@@ -370,7 +370,7 @@ cleanup:
 // write. Trusting that status aborted every exposure of a physically working DSUSB the moment the
 // shutter opened. The driver asks the library once at open whether it can report a success at all
 // and stops trusting a failure from a build that cannot. The evidence is recorded in
-// indigo_drivers/aux_dsusb/REFACTOR.md.
+// .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_dsusb.md.
 static void library_never_reports_success(void) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&driver));
 	indigo_queue_drain(queue);

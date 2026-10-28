@@ -33,7 +33,4 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="REFACTOR.md" />
-  </ItemGroup>
 </Project>

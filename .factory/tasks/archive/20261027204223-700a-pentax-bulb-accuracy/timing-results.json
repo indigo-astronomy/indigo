@@ -1,0 +1,16 @@
+[
+  {
+    "requested_s": 1.2,
+    "exif_s": 1.09,
+    "error_ms": -110,
+    "abs_error_ms": 110,
+    "passed": false
+  },
+  {
+    "requested_s": 3,
+    "exif_s": 2.88,
+    "error_ms": -120,
+    "abs_error_ms": 120,
+    "passed": false
+  }
+]

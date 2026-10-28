@@ -15,7 +15,7 @@ This document explains how INDIGO drivers, and the framework code they depend on
 * [AGENTS.md](../AGENTS.md), section *Driver Testing*: the four run modes, commit units, and the rule that the final, recorded run is always made with `tools/run_driver_test.py`.
 * [indigo_test/AGENTS.md](../indigo_test/AGENTS.md): test layout, harness conventions, Makefile wiring, configuration isolation, parallel runners, hardware hosts and the `README.md` test record format.
 * [indigo_test/DRIVER_TESTING_RULES.md](../indigo_test/DRIVER_TESTING_RULES.md): the acceptance checklist for each driver class (CCD, wheel, focuser, guider, AO, GPS, rotator, dome, mount, polar aligner, AUX).
-* [indigo_drivers/AGENTS.override.md](../indigo_drivers/AGENTS.override.md): the refactoring workflow (`REFACTOR.md`, baseline, reference traces, MountSim).
+* [indigo_drivers/AGENTS.md](../indigo_drivers/AGENTS.md): the refactoring workflow (task record, baseline, reference traces, MountSim).
 * [SERIAL_DEVICE_SIMULATORS.md](SERIAL_DEVICE_SIMULATORS.md): the contract for host-side serial simulators.
 
 ---
@@ -193,7 +193,7 @@ In `indigo_test/Makefile` (see *Makefile Rules* and *Wiring a Host-Side Serial S
 4. Add the test rule. List the shared headers, the simulator binary **and the driver archive** as prerequisites, so a rebuilt driver relinks the test.
 5. Optionally add a `test-<driver>-...` phony target, and a `_sanitize` build for drivers with non-trivial state.
 
-Then add every new source, header and fixture to its group in `indigo.xcodeproj/project.pbxproj`. After changing a driver's test coverage, update the driver's `REFACTOR.md` and the *Automated Tests (Sim / HW)* counts in the root `MIGRATION_STATUS.md`.
+Then add every new source, header and fixture to its group in `indigo.xcodeproj/project.pbxproj`. After changing a driver's test coverage, record it in the task's `verification.md` and update the *Automated Tests (Sim / HW)* counts in the root `MIGRATION_STATUS.md`.
 
 ---
 
@@ -368,10 +368,10 @@ How the generator itself works is in [DRIVER_GENERATOR_BASICS.md](DRIVER_GENERAT
 2. **Baseline for migrations.** When a hand-written driver is converted, the suite must first pass against the original driver, and its reference trace must be recorded (`INDIGO_SIMULATOR_TRACE_DIR`, `fixtures/<driver>/original_reference_trace.txt`) before reverse extraction. See [indigo_drivers/AGENTS.override.md](../indigo_drivers/AGENTS.override.md) and [DRIVER_GENERATOR_MIGRATION.md](DRIVER_GENERATOR_MIGRATION.md).
 3. **Use public names.** Generated headers expose only the entry point. Tests use the generated device names and public property names, not removed private macros.
 4. **Cover generator semantics.** Beyond the class checklist, test the paths the generator owns: connect failure rollback and reconnect, shared-connection reference counting for multi-device drivers (both connection orders, last close), the BUSY guard that rejects overlapping requests, finalizer completion versus abort and disconnect, persistent properties through a save/load cycle in a private `HOME`, the mount parked-mount guard, and hot-plug attach, detach and duplicate events for `libusb`/`hid`/`sdk` drivers.
-   For an `sdk` hot-plug driver, include several devices arriving together while the fake SDK enumerates them in reverse. Most vendor SDKs cannot say which USB device a camera or wheel enumerates from, so the `plug` block binds each USB device to the first SDK device not attached yet, and the pointer in `PRIVATE_DATA->usbdev` can belong to another device. The generated code therefore lets `unplug_match` decide every removal, preset with the libusb identity, and a case must show that unplugging one device leaves the other attached (`simultaneous arrivals and SDK-based removal identity` in `test_wheel_playerone_sdk.c`). A driver that has to trust the libusb identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does, and says in `REFACTOR.md` what that costs.
+   For an `sdk` hot-plug driver, include several devices arriving together while the fake SDK enumerates them in reverse. Most vendor SDKs cannot say which USB device a camera or wheel enumerates from, so the `plug` block binds each USB device to the first SDK device not attached yet, and the pointer in `PRIVATE_DATA->usbdev` can belong to another device. The generated code therefore lets `unplug_match` decide every removal, preset with the libusb identity, and a case must show that unplugging one device leaves the other attached (`simultaneous arrivals and SDK-based removal identity` in `test_wheel_playerone_sdk.c`). A driver that has to trust the libusb identity guards its own block with `if (!unplug_result)`, as `ccd_qhy2` does, and says in the task's `verification.md` what that costs.
 5. **Regenerate, build, run narrow, then full.** After each `.driver` edit, regenerate, build the driver archive (the test rule relinks because the archive is a prerequisite), inspect the generated diff, run the narrowest case with `INDIGO_TEST_CASE_FILTER`, and then the driver's full suite and its sanitize target if present.
 6. **Generator changes** are validated by `test_generator_architecture`, which runs `build/bin/indigo_generator` on fixture `.driver` files and compiles the output. Generator changes need explicit user approval ([AGENTS.md](../AGENTS.md)).
-7. **Record.** Make the final run with `python3 tools/run_driver_test.py <driver>` (and `--hw` or `--hot-plug` for hardware), which writes the driver `README.md` `## Testing` line and regenerates `TEST_SUMMARY.md`. Update `REFACTOR.md` (scenario-to-test mapping, gaps) and the `MIGRATION_STATUS.md` status columns and test counts by hand.
+7. **Record.** Make the final run with `python3 tools/run_driver_test.py <driver>` (and `--hw` or `--hot-plug` for hardware), which writes the driver `README.md` `## Testing` line and regenerates `TEST_SUMMARY.md`. Record the scenario-to-test mapping and gaps in the task's `verification.md` and update the `MIGRATION_STATUS.md` status columns and test counts by hand.
 
 ---
 
@@ -386,9 +386,9 @@ How the generator itself works is in [DRIVER_GENERATOR_BASICS.md](DRIVER_GENERAT
 * Cleanup runs on every path: disconnect, shutdown, detach, `indigo_stop()`, simulator stop and directory removal.
 * No exact `DRIVER_VERSION` asserts. Only the API generation is asserted.
 * The Makefile lists the executable and has prerequisites for the headers, the simulator binary and the driver archive. Sources, headers and fixtures are registered in `indigo.xcodeproj`.
-* Guider-capable drivers have a pulse-duration measurement recorded in `REFACTOR.md`.
+* Guider-capable drivers have a pulse-duration measurement recorded in the task's `verification.md`.
 * Full suite clean, plus the sanitize target where present. Run `make -C indigo_test test-clean` afterwards.
-* The final run is made with `tools/run_driver_test.py`, which updates the driver `README.md` `## Testing` line and `TEST_SUMMARY.md`. `REFACTOR.md` and `MIGRATION_STATUS.md` are updated. One driver per commit.
+* The final run is made with `tools/run_driver_test.py`, which updates the driver `README.md` `## Testing` line and `TEST_SUMMARY.md`. The task's `verification.md` and `MIGRATION_STATUS.md` are updated. One driver per commit.
 
 ---
 

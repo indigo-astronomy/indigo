@@ -1,0 +1,24 @@
+{
+  "title": "Pentax connection-only profile can overwrite full hardware record",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261027181603-4710-pentax-rpi-validation",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "New baseline profile requires explicit recording label; guard prevents an unlabeled partial success replacing full camera acceptance.",
+  "evidence": "verification.md and retained pre-fix baseline/recorder-before logs; final pass evidence retained.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md, retained before/after logs, quality-review.md and security.md; Linux36/36 fake,13/13 recorder tests, labelled hardware baseline1/1.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261027181603-4710-pentax-rpi-validation-002"
+}

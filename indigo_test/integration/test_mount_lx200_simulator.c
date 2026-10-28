@@ -824,7 +824,7 @@ static void lx200_agotino_profile(void) {
 }
 
 // What a physical aGotino on firmware 230312 showed, all three reproduced through the quirks the
-// simulator now models. See indigo_drivers/mount_lx200/REFACTOR.md.
+// simulator now models. See .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md.
 //
 // The firmware recomputes the strings :GR# and :GD# answer from only after its slew loop ends, so
 // the coordinates do not move for as long as a goto runs. The generic "the position changed"
@@ -953,7 +953,7 @@ cleanup:
 }
 
 // What a physical OpenAstroTracker on firmware v1.13.20 showed, each reproduced through a quirk
-// the simulator now models. See indigo_drivers/mount_lx200/REFACTOR.md.
+// the simulator now models. See .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md.
 //
 // The firmware reports a declination as +45*00'00, with the arcminute mark where the protocol
 // puts a colon, and it refuses an unsigned longitude with 0 while keeping the site it had. The

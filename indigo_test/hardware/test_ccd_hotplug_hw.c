@@ -27,7 +27,7 @@
 // in the report and TEST_VENDORS the USB vendor ids that identify the camera's port, as a brace
 // enclosed list, because a camera line sold under several brands enumerates under several ids.
 // TEST_DEFECT_CASES names, comma separated, the cases a driver is known to fail because of a
-// defect recorded in its REFACTOR.md. Those cases run only under --known-defects, following the
+// defect recorded in the Factory findings or task evidence. Those cases run only under --known-defects, following the
 // convention the simulator suites use, so a recorded defect does not hide a new regression behind
 // a suite that is red anyway.
 //

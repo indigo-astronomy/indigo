@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261027204223-700a-pentax-bulb-accuracy",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive and create local outcome commit; run committed process gate. Merge/push pending separate owner authorization.",
+  "blocker": null
+}

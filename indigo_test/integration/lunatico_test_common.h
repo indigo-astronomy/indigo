@@ -84,7 +84,7 @@ static bool lunatico_release_poll(void) {
 // LA_* names on both device classes; the migration renames them to the mandatory
 // X_ prefix and qualifies them by class, because the generator needs a distinct
 // handle per logical device. The scenarios themselves are unchanged; see
-// indigo_drivers/focuser_lunatico/REFACTOR.md, defect LU-04.
+// .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/focuser_lunatico.md, defect LU-04.
 #define X_FOCUSER_STEP_MODE_PROPERTY_NAME          "X_FOCUSER_STEP_MODE"
 #define X_FOCUSER_POWER_CONTROL_PROPERTY_NAME      "X_FOCUSER_POWER_CONTROL"
 #define X_FOCUSER_TEMPERATURE_SENSOR_PROPERTY_NAME "X_FOCUSER_TEMPERATURE_SENSOR"

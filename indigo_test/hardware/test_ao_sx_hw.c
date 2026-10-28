@@ -35,7 +35,7 @@
 // sx_ao_measures_guide_pulse_duration is the guiding-pulse measurement required by
 // indigo_drivers/AGENTS.override.md. The AO acknowledges the guide command immediately and times
 // the relay pulse in its own firmware, so this measures the driver command path, not the physical
-// ST4 output. See indigo_drivers/ao_sx/REFACTOR.md.
+// ST4 output. See .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/ao_sx.md.
 //
 // The serial port comes from AO_SX_HW_PORT. When it is not set the port the driver itself detected
 // is used.

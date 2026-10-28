@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "task": "20261027205926-c759-makefile-driver-lists",
+  "scope": [
+    "Makefile",
+    ".factory/completions/20261027205926-c759-makefile-driver-lists.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261027205926-c759-makefile-driver-lists.json": [
+      "100644",
+      "blob",
+      "399ec962cf2585d43d661a039a8cba32db9eefaa"
+    ],
+    "Makefile": [
+      "100644",
+      "blob",
+      "bb57dc437e3a0f6703c64f429b528f3f7ec4aee0"
+    ]
+  }
+}

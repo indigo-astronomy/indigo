@@ -1,0 +1,4 @@
+Running ccd_pentax_usb
+indigo_test/integration/test_ccd_pentax_usb.c:1210: expected 1, got 0
+  FAIL public initial ISO selection before idle polling
+ccd_pentax_usb: 1 test(s) failed

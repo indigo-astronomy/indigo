@@ -35,6 +35,5 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="indigo_polaralign_mlastro.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>

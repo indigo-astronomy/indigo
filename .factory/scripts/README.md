@@ -14,7 +14,7 @@ Requires Python 3.9+ on PATH. Run scripts directly on macOS/Linux or invoke the 
 
 ## Decision navigation and delivery evidence
 
-`python3 .factory/scripts/decision_index.py` generates `docs/decisions/README.md` from canonical ADR metadata; `--check`
+`python3 .factory/scripts/decision_index.py` generates `indigo_docs/decisions/README.md` from canonical ADR metadata; `--check`
 returns 1 if stale without writing. `python3 .factory/scripts/process_check.py --base BASE_COMMIT --head HEAD` validates
 committed task evidence, reviewed source identity, findings and diff risk. The POSIX wrapper is `./.factory/scripts/process-check`.
 `--record-content --base BASE --task TASK-ID` prints staged source identities for a version 2 manifest without writes; `--risk-only` describes risk without checking completion; `--show-policy` prints defaults for the project-owned

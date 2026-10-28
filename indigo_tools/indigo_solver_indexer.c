@@ -19,7 +19,7 @@
 // version history
 // 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO quad based plate solver - Tycho-2 index builder
+/** INDIGO quad based plate solver - Tycho-2 and Gaia DR3 index builder
  \file indigo_solver_indexer.c
  */
 
@@ -31,6 +31,7 @@
 #include <math.h>
 #include <time.h>
 #include <errno.h>
+#include <limits.h>
 
 #include <indigo/indigo_bus.h>
 
@@ -43,6 +44,8 @@
 #define FILE_COUNT				20
 #define MAX_STARS					2600000		// Tycho-2 has 2 539 913 records
 #define MIN_LINE_LENGTH		130				// VT magnitude ends at byte 129
+#define MAX_GAIA_STARS		24000000	// Gaia DR3 has about 7.4 million sources brighter than G = 13 and 16.8 million brighter than G = 14
+#define GAIA_EPOCH				2016.0
 
 #define J2000_UNIX				946728000.0	// 2000-01-01 12:00 UTC
 #define JULIAN_YEAR				(365.25 * 86400.0)
@@ -70,7 +73,51 @@ typedef struct {
 	float star_reuse;
 	uint32_t nside;
 	uint32_t stars_per_cell;
+	uint32_t anchor_neighbours;	// > 0: anchored quads, each star gets star_reuse quads with its nearest neighbours
 } index_params;
+
+typedef struct {
+	indigo_solver_star *star;
+	float distance;
+} neighbour;
+
+static int compare_neighbours_by_distance(const void *a, const void *b) {
+	const neighbour *na = (const neighbour *)a;
+	const neighbour *nb = (const neighbour *)b;
+	return (na->distance > nb->distance) - (na->distance < nb->distance);
+}
+
+// The star pointers of a quad in address order; the quad itself keeps its code order, which the matcher relies on
+static void sorted_quad_stars(const indigo_solver_quad *quad, const indigo_solver_star **sorted) {
+	memcpy(sorted, quad->stars, 4 * sizeof(indigo_solver_star *));
+	for (int i = 0; i < 3; i++) {
+		for (int j = i + 1; j < 4; j++) {
+			if (sorted[i] > sorted[j]) {
+				const indigo_solver_star *t = sorted[i];
+				sorted[i] = sorted[j];
+				sorted[j] = t;
+			}
+		}
+	}
+}
+
+// Quads with the same hash and the same four stars (whatever their order) sort together, so duplicates are adjacent
+static int compare_quads_by_hash_and_stars(const void *a, const void *b) {
+	const indigo_solver_quad *qa = (const indigo_solver_quad *)a;
+	const indigo_solver_quad *qb = (const indigo_solver_quad *)b;
+	if (qa->hash != qb->hash) {
+		return qa->hash > qb->hash ? 1 : -1;
+	}
+	const indigo_solver_star *sa[4], *sb[4];
+	sorted_quad_stars(qa, sa);
+	sorted_quad_stars(qb, sb);
+	for (int i = 0; i < 4; i++) {
+		if (sa[i] != sb[i]) {
+			return sa[i] > sb[i] ? 1 : -1;
+		}
+	}
+	return 0;
+}
 
 static int compare_star_pointers_by_magnitude(const void *a, const void *b) {
 	const indigo_solver_star *ma = *(const indigo_solver_star**)a;
@@ -148,6 +195,87 @@ static uint32_t parse_catalog(indigo_solver_star *stars) {
 	return star_count;
 }
 
+// Loads a Gaia DR3 extract: every *.csv file of the directory with the columns ra, dec, phot_g_mean_mag, pmra, pmdec
+// (degrees, magnitudes, mas/yr, "null" allowed for the proper motions), as written by a TAP query on
+// gaiadr3.gaia_source; proper motion applied from the Gaia epoch to the current one
+static uint32_t parse_gaia_catalog(const char *directory, indigo_solver_star *stars) {
+	double years = (time(NULL) - J2000_UNIX) / JULIAN_YEAR + 2000.0 - GAIA_EPOCH;
+	printf("Loading Gaia stars from %s, proper motion applied for J%.2f...\n", directory, GAIA_EPOCH + years);
+	uint32_t star_count = 0, total_star_count = 0;
+	char *line = NULL;
+	size_t size = 0;
+	char command[PATH_MAX + 32];
+	snprintf(command, sizeof(command), "ls \"%s\"/*.csv", directory);
+	FILE *list = popen(command, "r");
+	if (list == NULL) {
+		fprintf(stderr, "Cannot list %s\n", directory);
+		exit(1);
+	}
+	char path[PATH_MAX];
+	while (fgets(path, sizeof(path), list) != NULL) {
+		path[strcspn(path, "\n")] = 0;
+		FILE *file = fopen(path, "r");
+		if (file == NULL) {
+			fprintf(stderr, "Cannot open %s: %s\n", path, strerror(errno));
+			exit(1);
+		}
+		printf("%s\n", path);
+		bool header = true;
+		while (getline(&line, &size, file) != -1) {
+			if (header) {
+				header = false;
+				continue;
+			}
+			char *p = line, *end;
+			double ra = strtod(p, &end) * DEG_TO_RAD;
+			if (end == p || *end != ',') {
+				continue;
+			}
+			p = end + 1;
+			double dec = strtod(p, &end) * DEG_TO_RAD;
+			if (end == p || *end != ',') {
+				continue;
+			}
+			p = end + 1;
+			float magnitude = strtod(p, &end);
+			if (end == p || *end != ',') {
+				continue;
+			}
+			p = end + 1;
+			double pm_ra = strtod(p, &end) * MAS_TO_RAD * years;
+			p = strchr(p, ',');
+			double pm_dec = p != NULL ? strtod(p + 1, &end) * MAS_TO_RAD * years : 0;
+			total_star_count++;
+			if (star_count == MAX_GAIA_STARS) {
+				fprintf(stderr, "More than %d stars, increase MAX_GAIA_STARS\n", MAX_GAIA_STARS);
+				exit(1);
+			}
+			indigo_solver_star *s = stars + star_count;
+			double cos_dec = cos(dec);
+			if (fabs(cos_dec) > 1e-6) {
+				ra += pm_ra / cos_dec;
+			}
+			dec += pm_dec;
+			while (ra < 0) {
+				ra += 2 * M_PI;
+			}
+			while (ra >= 2 * M_PI) {
+				ra -= 2 * M_PI;
+			}
+			memset(s, 0, sizeof(indigo_solver_star));
+			s->ra = ra;
+			s->dec = dec;
+			s->magnitude = magnitude;
+			star_count++;
+		}
+		fclose(file);
+	}
+	pclose(list);
+	indigo_safe_free(line);
+	printf("Loaded %u out of %u stars\n\n", star_count, total_star_count);
+	return star_count;
+}
+
 static bucket *fill_buckets(uint32_t nside, indigo_solver_star *stars, uint32_t star_count) {
 	uint32_t npix = 12 * nside * nside;
 	bucket *buckets = indigo_safe_malloc(sizeof(bucket) * npix);
@@ -210,8 +338,95 @@ static uint32_t build_quads(const index_params *p, indigo_solver_star *stars, ui
 	}
 	indigo_solver_quad *quads = indigo_safe_malloc(sizeof(indigo_solver_quad) * quads_size);
 	indigo_solver_star **used_stars = indigo_safe_malloc(star_count * sizeof(indigo_solver_star *));
-	printf("Building quads...\n");
-	for (uint32_t ipix = 0; ipix < npix; ipix++) {
+	if (p->anchor_neighbours > 0) {
+		// Anchored quads: every star of a cell is the anchor of quads with triples of its nearest neighbours in the
+		// cell and the surrounding ones (distances within the quad range), nearest triples first, up to star_reuse
+		// quads per anchor. Every star of a field therefore has compact quads of its own, which the cell-owned
+		// enumeration above does not guarantee (it piles quads on the brightest stars). A quad found from several
+		// anchors is kept once.
+		printf("Building anchored quads, %u nearest neighbours, %g quads per anchor...\n", p->anchor_neighbours, p->star_reuse);
+		neighbour *candidates = indigo_safe_malloc(star_count * sizeof(neighbour));
+		for (uint32_t ipix = 0; ipix < npix; ipix++) {
+			bucket *b = buckets + ipix;
+			if (ipix > 0 && ipix % 1000 == 0) {
+				printf("ipix = %u/%u -> %u quads\n", ipix, npix, quad_count);
+			}
+			float ra0, dec0;
+			indigo_healpix_pix2ang_ring(nside, ipix, &ra0, &dec0);
+			indigo_healpix_neighbours_ring(nside, ipix, neighbours);
+			memcpy(used_stars, b->stars, b->count * sizeof(indigo_solver_star *));
+			int used_star_count = b->count;
+			for (int j = 0; j < 8; j++) {
+				int32_t k = neighbours[j];
+				if (k != -1) {
+					bucket *nb = buckets + k;
+					memcpy(used_stars + used_star_count, nb->stars, nb->count * sizeof(indigo_solver_star *));
+					used_star_count += nb->count;
+				}
+			}
+			for (int i = 0; i < used_star_count; i++) {
+				indigo_radec_to_xy(ra0, dec0, 0, 16 * M_PI / 648000, 1000, 1000, -1, used_stars[i]->ra, used_stars[i]->dec, &used_stars[i]->x, &used_stars[i]->y);
+			}
+			for (int a = 0; a < b->count; a++) {
+				indigo_solver_star *anchor = b->stars[a];
+				int candidate_count = 0;
+				for (int i = 0; i < used_star_count; i++) {
+					indigo_solver_star *s = used_stars[i];
+					if (s == anchor) {
+						continue;
+					}
+					float distance = indigo_angular_distance(anchor->ra, anchor->dec, s->ra, s->dec);
+					if (distance >= p->d_min && distance <= p->d_max) {
+						candidates[candidate_count].star = s;
+						candidates[candidate_count].distance = distance;
+						candidate_count++;
+					}
+				}
+				qsort(candidates, candidate_count, sizeof(neighbour), compare_neighbours_by_distance);
+				if (candidate_count > (int)p->anchor_neighbours) {
+					candidate_count = p->anchor_neighbours;
+				}
+				int built = 0;
+				for (int j = 0; j < candidate_count && built < p->star_reuse; j++) {
+					indigo_solver_star *sj = candidates[j].star;
+					for (int k = j + 1; k < candidate_count && built < p->star_reuse; k++) {
+						indigo_solver_star *sk = candidates[k].star;
+						if (!distance_check(p, sk, sj)) {
+							continue;
+						}
+						for (int l = k + 1; l < candidate_count && built < p->star_reuse; l++) {
+							indigo_solver_star *sl = candidates[l].star;
+							if (!distance_check(p, sl, sj) || !distance_check(p, sl, sk)) {
+								continue;
+							}
+							if (quad_count + INDIGO_SOLVER_MAX_QUAD_VARIANTS > quads_size) {
+								quads_size *= 2;
+								quads = indigo_safe_realloc(quads, sizeof(indigo_solver_quad) * quads_size);
+							}
+							int n = indigo_solver_make_quad_variants(quads + quad_count, INDIGO_SOLVER_MAX_QUAD_VARIANTS, anchor, sj, sk, sl);
+							quad_count += n;
+							variant_count += n - 1;
+							built++;
+						}
+					}
+				}
+			}
+		}
+		indigo_safe_free(candidates);
+		qsort(quads, quad_count, sizeof(indigo_solver_quad), compare_quads_by_hash_and_stars);
+		uint32_t unique = 0;
+		for (uint32_t i = 0; i < quad_count; i++) {
+			if (unique == 0 || compare_quads_by_hash_and_stars(quads + unique - 1, quads + i) != 0) {
+				quads[unique++] = quads[i];
+			}
+		}
+		printf("%u anchored quads, %u after removing the duplicates\n", quad_count, unique);
+		quad_count = unique;
+	}
+	if (p->anchor_neighbours == 0) {
+		printf("Building quads...\n");
+	}
+	for (uint32_t ipix = 0; ipix < npix && p->anchor_neighbours == 0; ipix++) {
 		bucket *b = buckets + ipix;
 		if (ipix > 0 && ipix % 1000 == 0) {
 			printf("ipix = %u/%u -> %u quads\n", ipix, npix, quad_count);
@@ -359,7 +574,17 @@ static bool write_index(float fov, indigo_solver_star *stars, uint32_t star_coun
 static void select_params(float fov, index_params *p) {
 	p->fov = fov;
 	p->star_reuse = 512;
-	if (fov <= 1.0) {
+	p->anchor_neighbours = 0;
+	if (fov <= 0.5) {
+		// the Gaia tier: a 0.5 x 0.4 degree field covers about one nside 128 cell, so the field needs many stars per
+		// cell and the size is kept by few quads per star instead
+		p->d_min = 0.05 * DEG_TO_RAD;
+		p->d_max = 0.3 * DEG_TO_RAD;
+		p->nside = 128;
+		p->stars_per_cell = 20;
+		p->star_reuse = 10;
+		p->anchor_neighbours = 10;
+	} else if (fov <= 1.0) {
 		p->d_min = 0.1 * DEG_TO_RAD;
 		p->d_max = 0.8 * DEG_TO_RAD;
 		p->nside = 64;
@@ -411,10 +636,15 @@ static bool build_index(float fov, indigo_solver_star *stars, uint32_t star_coun
 int main(int argc, char **argv) {
 	float fovs[16];
 	int fov_count = 0;
+	const char *gaia = NULL;
 	for (int i = 1; i < argc && fov_count < 16; i++) {
+		if (!strcmp(argv[i], "-g") && i + 1 < argc) {
+			gaia = argv[++i];
+			continue;
+		}
 		float fov = atof(argv[i]);
 		if (fov <= 0) {
-			fprintf(stderr, "Usage: %s [fov_deg ...]   (default %g)\n", argv[0], INDIGO_SOLVER_DEFAULT_INDEX_FOV);
+			fprintf(stderr, "Usage: %s [-g gaia_csv_directory] [fov_deg ...]   (default %g; scales below 1 degree need the Gaia extract, see README)\n", argv[0], INDIGO_SOLVER_DEFAULT_INDEX_FOV);
 			return 1;
 		}
 		fovs[fov_count++] = fov;
@@ -422,9 +652,9 @@ int main(int argc, char **argv) {
 	if (fov_count == 0) {
 		fovs[fov_count++] = INDIGO_SOLVER_DEFAULT_INDEX_FOV;
 	}
-	printf("INDIGO Solver - Tycho-2 index builder\n-------------------------------------\n");
-	indigo_solver_star *stars = indigo_safe_malloc(MAX_STARS * sizeof(indigo_solver_star));
-	uint32_t star_count = parse_catalog(stars);
+	printf("INDIGO Solver - %s index builder\n-------------------------------------\n", gaia ? "Gaia DR3" : "Tycho-2");
+	indigo_solver_star *stars = indigo_safe_malloc((gaia ? MAX_GAIA_STARS : MAX_STARS) * sizeof(indigo_solver_star));
+	uint32_t star_count = gaia ? parse_gaia_catalog(gaia, stars) : parse_catalog(stars);
 	int failed = 0;
 	for (int i = 0; i < fov_count; i++) {
 		if (!build_index(fovs[i], stars, star_count)) {

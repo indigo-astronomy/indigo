@@ -55,7 +55,6 @@ All source files and headers under `indigo_test/`, including new files, must use
 - `leak/` contains the opt-in memory leak check of the `indigo_server` executable with the simulator drivers under Valgrind.
 - `integration/simulator_test_common.h` contains shared simulator lifecycle helpers, the in-process client, property cache, wait helpers, and compliance-style assertions.
 - `fixtures/protocol/` contains fixed XML and JSON protocol parser fixtures.
-- Driver-local `REFACTOR.md` files summarize current driver coverage and deferred automated-test work.
 
 ## Running Tests
 
@@ -247,7 +246,7 @@ implement.
   into the simulator or fake SDK**, together with a test that pins it down. This
   is not optional cleanup afterwards: a hardware run that finds a defect is
   finished only when the same defect can be reproduced hardware-free. Say in the
-  driver's `REFACTOR.md` which hardware observation each addition came from.
+  task's `verification.md` which hardware observation each addition came from.
 - Model the quirk, not the symptom. A camera that reports a cooler power level
   below the minimum it advertised, a setpoint no one ever wrote, a reply read
   from data an earlier transfer left in the pipe - reproduce the behaviour that
@@ -261,7 +260,7 @@ implement.
   on hardware over round ones: they are what the driver's arithmetic has to
   survive, and they document the model in the test.
 - When a defect cannot be reproduced hardware-free, say so explicitly in
-  `REFACTOR.md` with the reason, and do not count the scenario as covered.
+  the task's `verification.md` with the reason, and do not count the scenario as covered.
 - A simulator change that makes a case pass by being less like the hardware is a
   defect in the simulator. Fix the driver instead.
 
@@ -277,7 +276,7 @@ implement.
 - Build every harness being compared with identical compiler flags; mismatched flags have
   already produced a false finding once.
 - For driver-related benchmarks, record comparison results, environment, sample counts
-  and anything left open in the relevant driver's `REFACTOR.md`.
+  and anything left open in the task's `verification.md`.
 
 ## Test Naming
 
@@ -667,5 +666,5 @@ of the same test run.
 
 ## Documentation
 
-- Update the relevant driver's `REFACTOR.md` when adding meaningful new test coverage or deferring known work.
+- Record meaningful new test coverage and deferred known work in the task's `verification.md`.
 - Update `DRIVER_TESTING_RULES.md` when base driver property visibility, simulator compliance coverage, or driver-class test scenarios change.

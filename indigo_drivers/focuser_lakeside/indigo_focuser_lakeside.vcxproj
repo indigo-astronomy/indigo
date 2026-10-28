@@ -175,7 +175,6 @@
   </ImportGroup>
   <ItemGroup>
     <None Include="indigo_focuser_lakeside.driver" />
-    <None Include="REFACTOR.md" />
   </ItemGroup>
 </Project>
 

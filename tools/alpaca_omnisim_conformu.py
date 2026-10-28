@@ -11,8 +11,9 @@
 # results and report.md go to --outdir.
 #
 # Prerequisites, none of them part of the repository:
-# - OmniSim unpacked in 'omnisim/' next to the working tree (system_alpaca
-#   REFACTOR.md 4.1) or named by INDIGO_TEST_OMNISIM;
+# - OmniSim unpacked in 'omnisim/' next to the working tree (section 4.1 of
+#   .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/system_alpaca.md)
+#   or named by INDIGO_TEST_OMNISIM;
 # - ConformU, by default /Applications/ConformU.app (CONFORMU overrides it);
 # - a build with build/bin/indigo_server and both Alpaca drivers.
 #

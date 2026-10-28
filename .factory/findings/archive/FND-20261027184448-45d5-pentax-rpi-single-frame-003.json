@@ -1,0 +1,24 @@
+{
+  "title": "Wait for asynchronous setting readback",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "Pentax task coordinator",
+  "blocking": true,
+  "tasks": [
+    {
+      "id": "20261027184448-45d5-pentax-rpi-single-frame",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Aperture acknowledgement preceded application, producing false failures. Poll bounded full-state readback. Three-read delayed application fake and real aperture exercise pass.",
+  "evidence": "findings.md and verification.md; named baseline/final logs retained with this task.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md: final44-case normal/sanitized tests and per-profile hardware limits; independent quality/security review.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261027184448-45d5-pentax-rpi-single-frame-003"
+}

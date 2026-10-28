@@ -1,0 +1,16 @@
++ make test-ccd-pentax-hw PENTAX_HW_ARGS=--single-frame
+build/hardware/test_ccd_pentax_hw --single-frame
+Running ccd_pentax hardware
+Discovered PENTAX K-m
+DEVICE_MODEL=PENTAX K-m (00012d73)
+DEVICE_FIRMWARE_REVISION=1.11.1.8
+Original DSLR_ISO=00000320 (800)
+Original DSLR_SHUTTER=00000000 (Bulb)
+Original DSLR_APERTURE=0050000a (f/8.0)
+Original DSLR_PROGRAM=00000009 (Bulb)
+Saved native image artifact: /tmp/indigo-pentax-20261027181603/bulb-accuracy-HvlzPHno/3.native
+Captured .jpeg payload: 1290419 bytes, container=JPEG
+  PASS K-m one exposure and native image transfer
+ccd_pentax hardware: all tests passed
+
+ccd_pentax: 1/1 OK

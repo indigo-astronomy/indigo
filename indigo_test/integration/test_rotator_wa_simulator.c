@@ -263,7 +263,7 @@ cleanup:
 }
 
 // GOTO is sent as steps + 1000000 (fast speed) and a relative move with plain steps, as the 3.0-7 driver (3.0.0.3) did;
-// the migrated driver sent GOTO with plain steps (regression, see REFACTOR.md).
+// the migrated driver sent GOTO with plain steps (regression, see .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/rotator_wa.md).
 static void wa_goto_uses_fast_speed(void) {
 	external_serial_simulator simulator = { 0 };
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, ROTATOR_WA_SIMULATOR_EXECUTABLE));

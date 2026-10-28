@@ -39,7 +39,7 @@ The following cameras are, in theory, supported by this driver. Nevertheless the
 * Pentax 645D - Medium Format 40 MP
 * Pentax 645Z - Medium Format 51.4 MP
 
-This driver supports hot-plug (multiple devices).
+Hot-plug and multiple-device discovery are implemented, but simultaneous cameras and physical USB removal during capture have not been hardware-validated.
 
 ## Supported platforms
 
@@ -57,7 +57,25 @@ indigo_server indigo_ccd_pentax
 
 The following VIDs are recognised by this driver: 0x0A17 (Pentax) a 0x04E8 (rebranded Samsung).
 
-On macOS there is a conflict between the driver and USB Mass Storage Device driver, so the driver must be executed with elevated privileges to detach from the system driver. On linux the situation is uknown yet.
+The camera uses USB Mass Storage transport, which can conflict with the operating system's storage driver. On macOS, elevated privileges may be needed to detach that driver; successful connection with the current K-m driver is still unverified, and `sudo` alone did not resolve the observed USB claim error (-99). Linux arm64 capture and transfer have been tested on a Raspberry Pi using `sudo`; operation without elevated privileges has not been verified.
+
+## Limitations and camera setup
+
+Exposure and abort support is currently enabled only for the K-m and K2000 camera identities. Physical capture tests cover a K-m with firmware 1.11.1.8 on Linux arm64. The other listed cameras have not been validated for capture; the list is not a statement of complete tethering support. K2000 hardware validation and Windows runtime testing remain outstanding.
+
+On the tested K-m, program-mode commands do not switch between Manual and Bulb while USB is connected. The camera's e-dial is also locked during the connection. Original pkTriggerCord behaved the same way on this camera.
+
+For bulb exposures:
+
+1. Stop capture and disconnect the camera's USB cable.
+2. Set the physical mode dial to **M**, then turn the e-dial past the 30-second shutter setting until **Bulb** is selected.
+3. Reconnect USB and connect the camera in INDIGO.
+
+The driver uses a timed Manual exposure for requests shorter than one second and Bulb for requests of one second or longer. Switching between these ranges on the tested K-m therefore requires the corresponding physical camera setup before connecting USB. A refused mode change produces an error rather than an exposure in the wrong mode.
+
+Bulb timing is controlled by host USB commands and is not calibrated to the physical shutter. A short K-m test requested 1.2 s and 3 s but recorded 1.09 s and 2.88 s in JPEG EXIF, respectively (110–120 ms short). These two samples failed a ±50 ms accuracy check; do not assume precision timing from the requested duration. Mechanical shutter timing has not been measured independently.
+
+JPEG, DNG and PEF native image transfer has been tested. Select the desired capture format on the camera before connecting; INDIGO's image-format property controls delivered processing/output and does not select the camera's JPEG/RAW capture format. Streaming, subframes and camera binning are not supported.
 
 ## Status: Under development
 
@@ -68,3 +86,9 @@ Driver is developed and tested with:
 
 - 2026-10-26 23:38 3.0.0.3 mac arm64 PENTAX K-m 1/0 Failed
 - 2026-10-26 23:51 3.0.0.4 mac arm64 fake SDK 36/36 OK
+- 2026-10-27 18:24 3.0.0.4 linux arm64 PENTAX K-m (connection baseline) 1/1 OK
+- 2026-10-27 20:15 3.0.0.5 linux arm64 fake SDK 44/44 OK
+- 2026-10-27 20:49 3.0.0.5 linux arm64 PENTAX K-m 1/0 Failed
+- 2026-10-27 20:49 3.0.0.5 linux arm64 PENTAX K-m (bulb) 1/1 OK
+- 2026-10-27 20:50 3.0.0.5 linux arm64 PENTAX K-m DNG (single frame) 1/1 OK
+- 2026-10-27 20:50 3.0.0.5 linux arm64 PENTAX K-m PEF (single frame) 1/1 OK

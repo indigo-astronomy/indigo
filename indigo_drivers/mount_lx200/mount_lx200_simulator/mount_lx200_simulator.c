@@ -143,7 +143,7 @@ typedef struct {
 	int alignment_points;
 	// A NYX-101 that was reset at its home position with :hF# behaves like a cold started
 	// controller: it refuses :hP# with 0 until tracking is enabled again. Observed on firmware
-	// 1.32.1, see indigo_drivers/mount_lx200/REFACTOR.md.
+	// 1.32.1, see .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md.
 	bool standby;
 	// An OpenAstroTracker stops its tracking motor for the duration of every slew and starts it
 	// again when the slew ends, so the tracking it reports goes away and comes back on its own.
@@ -256,7 +256,7 @@ static bool model_is_oat(void) {
 // The ESP32Go prints every angle with 0xE1 where the protocol allows * or 0xDF, answers :GR# with
 // a tenth of a second of time, carries its whole state in :GU#, and has no command that stops the
 // tracking motor and none that releases a mount :hP# sent home. Observed on the source commit
-// bbf224a, see indigo_drivers/mount_lx200/REFACTOR.md.
+// bbf224a, see .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md.
 static bool model_is_esp32go(void) {
 	return options.model == MODEL_ESP32GO;
 }
@@ -478,7 +478,7 @@ static double gemini_guide_speed = 0.5;
 static bool gemini_park_reported;
 // When the pulse a :Mg[d][n]# command started ends. A NYX-101 counts a running pulse as motion
 // and refuses :MS# with error 8 until it is over; observed on firmware 1.32.1, see
-// indigo_drivers/mount_lx200/REFACTOR.md.
+// .factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md.
 static double guide_pulse_until;
 // A guide pulse moves the axis it is sent to, at the guide rate, for as long as it lasts. The
 // rates are the classic half sidereal: 15.041 arcseconds per second of declination and one

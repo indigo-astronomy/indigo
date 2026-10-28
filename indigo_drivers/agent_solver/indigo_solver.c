@@ -23,17 +23,24 @@
  \file indigo_solver.c
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <math.h>
+#include <setjmp.h>
+
+#include <jpeglib.h>
+
+#include <indigo/indigo_timer.h>
+#include <indigo/indigo_dslr_raw.h>
 
 #include "indigo_solver_utils.h"
 #include "indigo_solver.h"
 
-const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT] = { 1, 2, 5, 10, 20 };
+const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT] = { 0.5, 1, 2, 5, 10, 20 };
 
 // Hash buckets keyed by the quantised (x3, y3) code coordinates, both in [0, INDIGO_SOLVER_CODE_QUANTUM].
 #define BUCKET_SIDE		(INDIGO_SOLVER_CODE_QUANTUM + 1)
@@ -138,10 +145,488 @@ void indigo_solver_bin_image(indigo_raw_header *image, int bin) {
 	indigo_debug("%s: binned image width = %d, height = %d", __FUNCTION__, image->width, image->height);
 }
 
+// ---- input images: everything is turned into an INDIGO RAW MONO16 image, which is solved as it is
+
+// The physical values of a FITS primary image (BITPIX 8, 16, 32, -32, -64 with BZERO/BSCALE, NAXIS 2 or 3 with the
+// planes averaged), the dimensions and the value range; NULL with the reason when the data is not a usable image
+#define FITS_RECORD 2880
+#define FITS_CARD 80
+
+static bool fits_card_value(const char *card, const char *keyword, double *value) {
+	size_t length = strlen(keyword);
+	if (strncmp(card, keyword, length) != 0 || card[length] != ' ' || card[8] != '=') {
+		return false;
+	}
+	char buffer[FITS_CARD + 1];
+	memcpy(buffer, card + 10, FITS_CARD - 10);
+	buffer[FITS_CARD - 10] = 0;
+	char *comment = strchr(buffer, '/');
+	if (comment != NULL) {
+		*comment = 0;
+	}
+	char *end;
+	*value = strtod(buffer, &end);
+	return end != buffer;
+}
+
+// Luminance weight of a colour channel of a three channel image, 1 for every channel of any other channel count
+static float channel_weight(int channel, int channels) {
+	static const float weights[3] = { 0.299f, 0.587f, 0.114f };
+	return channels == 3 ? weights[channel] : 1.0f / channels;
+}
+
+static float *fits_values(const void *data, long size, int *width, int *height, float *min, float *max, bool *bayered, const char **message) {
+	const char *fits = (const char *)data;
+	double bitpix = 0, naxis = 0, naxis1 = 0, naxis2 = 0, naxis3 = 1, bzero = 0, bscale = 1;
+	long offset = 0;
+	bool end = false;
+	while (!end) {
+		if (offset + FITS_RECORD > size) {
+			*message = "Truncated FITS header";
+			return NULL;
+		}
+		for (int i = 0; i < FITS_RECORD / FITS_CARD && !end; i++) {
+			const char *card = fits + offset + i * FITS_CARD;
+			double value;
+			if (strncmp(card, "END     ", 8) == 0) {
+				end = true;
+			} else if (strncmp(card, "BAYERPAT", 8) == 0) {
+				*bayered = true;
+			} else if (fits_card_value(card, "BITPIX", &value)) {
+				bitpix = value;
+			} else if (fits_card_value(card, "NAXIS", &value)) {
+				naxis = value;
+			} else if (fits_card_value(card, "NAXIS1", &value)) {
+				naxis1 = value;
+			} else if (fits_card_value(card, "NAXIS2", &value)) {
+				naxis2 = value;
+			} else if (fits_card_value(card, "NAXIS3", &value)) {
+				naxis3 = value;
+			} else if (fits_card_value(card, "BZERO", &value)) {
+				bzero = value;
+			} else if (fits_card_value(card, "BSCALE", &value)) {
+				bscale = value;
+			}
+		}
+		offset += FITS_RECORD;
+	}
+	int bytes = (int)fabs(bitpix) / 8;
+	if ((bitpix != 8 && bitpix != 16 && bitpix != 32 && bitpix != -32 && bitpix != -64) || (naxis != 2 && naxis != 3) || naxis1 < 1 || naxis2 < 1 || naxis3 < 1 || naxis1 > 65535 || naxis2 > 65535 || naxis3 > 16) {
+		*message = "Unsupported FITS image";
+		return NULL;
+	}
+	int planes = (int)naxis3;
+	*width = (int)naxis1;
+	*height = (int)naxis2;
+	size_t pixels = (size_t)*width * *height;
+	if (offset + (long)(pixels * planes * bytes) > size) {
+		*message = "Truncated FITS image";
+		return NULL;
+	}
+	float *values = indigo_safe_malloc(pixels * sizeof(float));
+	const uint8_t *p = (const uint8_t *)fits + offset;
+	for (int plane = 0; plane < planes; plane++) {
+		float weight = channel_weight(plane, planes);
+		for (size_t i = 0; i < pixels; i++, p += bytes) {
+			double value;
+			switch ((int)bitpix) {
+				case 8:
+					value = p[0];
+					break;
+				case 16:
+					value = (int16_t)((p[0] << 8) | p[1]);
+					break;
+				case 32:
+					value = (int32_t)(((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3]);
+					break;
+				case -32: {
+					uint32_t bits = ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
+					float f;
+					memcpy(&f, &bits, sizeof(f));
+					value = f;
+					break;
+				}
+				default: {
+					uint64_t bits = 0;
+					for (int k = 0; k < 8; k++) {
+						bits = (bits << 8) | p[k];
+					}
+					double d;
+					memcpy(&d, &bits, sizeof(d));
+					value = d;
+					break;
+				}
+			}
+			value = bzero + bscale * value;
+			if (!isfinite(value)) {
+				value = 0;
+			}
+			values[i] = plane == 0 ? (float)value * weight : values[i] + (float)value * weight;
+		}
+	}
+	*min = *max = values[0];
+	for (size_t i = 0; i < pixels; i++) {
+		*min = values[i] < *min ? values[i] : *min;
+		*max = values[i] > *max ? values[i] : *max;
+	}
+	indigo_debug("%s: %d x %d, BITPIX %d, %d plane(s), values %g to %g", __FUNCTION__, *width, *height, (int)bitpix, planes, *min, *max);
+	return values;
+}
+
+// A RAW MONO16 image of the given size with the pixels filled by the caller
+static indigo_raw_header *mono16_image(int width, int height) {
+	indigo_raw_header *image = indigo_safe_malloc(sizeof(indigo_raw_header) + (size_t)width * height * sizeof(uint16_t));
+	image->signature = INDIGO_RAW_MONO16;
+	image->width = width;
+	image->height = height;
+	return image;
+}
+
+struct solver_jpeg_decompress {
+	struct jpeg_decompress_struct pub;
+	jmp_buf error;
+};
+
+static void jpeg_error_callback(j_common_ptr cinfo) {
+	longjmp(((struct solver_jpeg_decompress *)cinfo)->error, 1);
+}
+
+// A JPEG image as RAW MONO16, the components averaged and the 8 bit values spread over 16 bits
+static indigo_raw_header *jpeg_image(const void *data, long size, const char **message) {
+	struct solver_jpeg_decompress cinfo;
+	struct jpeg_error_mgr jerr;
+	indigo_raw_header *image = NULL;
+	uint8_t *row = NULL;
+	cinfo.pub.err = jpeg_std_error(&jerr);
+	jerr.error_exit = jpeg_error_callback;
+	if (setjmp(cinfo.error)) {
+		jpeg_destroy_decompress(&cinfo.pub);
+		indigo_safe_free(image);
+		indigo_safe_free(row);
+		*message = "Broken JPEG image";
+		return NULL;
+	}
+	jpeg_create_decompress(&cinfo.pub);
+	jpeg_mem_src(&cinfo.pub, (unsigned char *)data, (unsigned long)size);
+	if (jpeg_read_header(&cinfo.pub, TRUE) != JPEG_HEADER_OK) {
+		jpeg_destroy_decompress(&cinfo.pub);
+		*message = "Broken JPEG image";
+		return NULL;
+	}
+	jpeg_start_decompress(&cinfo.pub);
+	int components = cinfo.pub.output_components;
+	if (components < 1 || cinfo.pub.output_width < 1 || cinfo.pub.output_height < 1 || cinfo.pub.output_width > 65535 || cinfo.pub.output_height > 65535) {
+		jpeg_destroy_decompress(&cinfo.pub);
+		*message = "Unsupported JPEG image";
+		return NULL;
+	}
+	int width = (int)cinfo.pub.output_width, height = (int)cinfo.pub.output_height;
+	image = mono16_image(width, height);
+	row = indigo_safe_malloc((size_t)width * components);
+	uint16_t *out = (uint16_t *)(image + 1);
+	while (cinfo.pub.output_scanline < cinfo.pub.output_height) {
+		int y = cinfo.pub.output_scanline;
+		JSAMPROW rows[1] = { row };
+		jpeg_read_scanlines(&cinfo.pub, rows, 1);
+		for (int x = 0; x < width; x++) {
+			float sum = 0;
+			for (int c = 0; c < components; c++) {
+				sum += row[x * components + c] * channel_weight(c, components);
+			}
+			out[(size_t)y * width + x] = (uint16_t)(sum * 257 + 0.5f);
+		}
+	}
+	jpeg_finish_decompress(&cinfo.pub);
+	jpeg_destroy_decompress(&cinfo.pub);
+	indigo_safe_free(row);
+	indigo_debug("%s: %d x %d, %d component(s)", __FUNCTION__, width, height, components);
+	return image;
+}
+
+// A camera raw file (anything libraw reads) as RAW MONO16
+static indigo_raw_header *dslr_image(const void *data, long size, const char **message) {
+	indigo_dslr_raw_image_s output = { 0 };
+	if (indigo_dslr_raw_process_image((void *)data, (size_t)size, &output) != LIBRAW_SUCCESS || output.data == NULL || output.width < 1 || output.height < 1) {
+		free(output.data);
+		*message = "Unsupported image format";
+		return NULL;
+	}
+	indigo_raw_header *image = mono16_image(output.width, output.height);
+	size_t pixels = (size_t)output.width * output.height;
+	uint16_t *out = (uint16_t *)(image + 1);
+	if (output.bits == 16 && output.colors == 1 && output.size >= pixels * sizeof(uint16_t)) {
+		memcpy(out, output.data, pixels * sizeof(uint16_t));
+	} else if (output.bits == 8 && output.colors == 1 && output.size >= pixels) {
+		for (size_t i = 0; i < pixels; i++) {
+			out[i] = ((uint8_t *)output.data)[i] * 257;
+		}
+	} else if (output.bits == 16 && output.colors == 3 && output.size >= pixels * 3 * sizeof(uint16_t)) {
+		const uint16_t *in = output.data;
+		for (size_t i = 0; i < pixels; i++) {
+			out[i] = (uint16_t)(in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3) + 0.5f);
+		}
+	} else if (output.bits == 8 && output.colors == 3 && output.size >= pixels * 3) {
+		const uint8_t *in = output.data;
+		for (size_t i = 0; i < pixels; i++) {
+			out[i] = (uint16_t)((in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3)) * 257 + 0.5f);
+		}
+	} else {
+		free(output.data);
+		indigo_safe_free(image);
+		*message = "Unsupported camera raw image";
+		return NULL;
+	}
+	free(output.data);
+	indigo_debug("%s: %d x %d, %d bit, %d color(s)", __FUNCTION__, output.width, output.height, output.bits, output.colors);
+	return image;
+}
+
+// A RAW mono frame of a colour camera carries "BAYERPAT='RGGB'" in the text appended after its pixels
+static bool raw_bayer_keyword(const char *extension, size_t length) {
+	static const char keyword[] = "BAYERPAT";
+	for (size_t i = 0; i + sizeof(keyword) - 1 <= length; i++) {
+		if (memcmp(extension + i, keyword, sizeof(keyword) - 1) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+indigo_raw_header *indigo_solver_load_image(const void *data, long size, bool *bayered, const char **message) {
+	uint32_t signature = 0;
+	*bayered = false;
+	if (size >= (long)sizeof(signature)) {
+		memcpy(&signature, data, sizeof(signature));
+	}
+	if (signature == INDIGO_RAW_MONO8 || signature == INDIGO_RAW_MONO16 || signature == INDIGO_RAW_RGB24 || signature == INDIGO_RAW_RGB48) {
+		const indigo_raw_header *header = (const indigo_raw_header *)data;
+		int bytes = signature == INDIGO_RAW_MONO8 ? 1 : signature == INDIGO_RAW_MONO16 ? 2 : signature == INDIGO_RAW_RGB24 ? 3 : 6;
+		if (size < (long)sizeof(indigo_raw_header) || header->width < 1 || header->height < 1 || size - (long)sizeof(indigo_raw_header) < (long)((size_t)header->width * header->height * bytes)) {
+			*message = "Truncated RAW image";
+			return NULL;
+		}
+		size_t pixels = (size_t)header->width * header->height;
+		size_t data_size = sizeof(indigo_raw_header) + pixels * bytes;
+		if (bytes <= 2) {
+			*bayered = raw_bayer_keyword((const char *)data + data_size, size - data_size);
+		}
+		if (signature == INDIGO_RAW_MONO16) {
+			return indigo_safe_malloc_copy(data_size, (void *)data);
+		}
+		indigo_raw_header *image = mono16_image(header->width, header->height);
+		uint16_t *out = (uint16_t *)(image + 1);
+		if (signature == INDIGO_RAW_MONO8) {
+			const uint8_t *in = (const uint8_t *)(header + 1);
+			for (size_t i = 0; i < pixels; i++) {
+				out[i] = in[i] * 257;
+			}
+		} else if (signature == INDIGO_RAW_RGB24) {
+			const uint8_t *in = (const uint8_t *)(header + 1);
+			for (size_t i = 0; i < pixels; i++) {
+				out[i] = (uint16_t)((in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3)) * 257 + 0.5f);
+			}
+		} else {
+			const uint16_t *in = (const uint16_t *)(header + 1);
+			for (size_t i = 0; i < pixels; i++) {
+				out[i] = (uint16_t)(in[3 * i] * channel_weight(0, 3) + in[3 * i + 1] * channel_weight(1, 3) + in[3 * i + 2] * channel_weight(2, 3) + 0.5f);
+			}
+		}
+		return image;
+	}
+	if (size >= 9 && strncmp((const char *)data, "SIMPLE  =", 9) == 0) {
+		int width, height;
+		float min, max;
+		float *values = fits_values(data, size, &width, &height, &min, &max, bayered, message);
+		if (values == NULL) {
+			return NULL;
+		}
+		// physical values within 16 bits are kept, any other range is mapped onto them
+		float scale = 1, shift = 0;
+		if (min < 0 || max > 65535) {
+			scale = max > min ? 65535 / (max - min) : 1;
+			shift = min;
+		}
+		indigo_raw_header *image = mono16_image(width, height);
+		uint16_t *out = (uint16_t *)(image + 1);
+		size_t pixels = (size_t)width * height;
+		for (size_t i = 0; i < pixels; i++) {
+			out[i] = (uint16_t)((values[i] - shift) * scale + 0.5f);
+		}
+		indigo_safe_free(values);
+		return image;
+	}
+	if (size >= 3 && ((const uint8_t *)data)[0] == 0xFF && ((const uint8_t *)data)[1] == 0xD8 && ((const uint8_t *)data)[2] == 0xFF) {
+		return jpeg_image(data, size, message);
+	}
+	return dslr_image(data, size, message);
+}
+
+// Star detection works on a copy of the frame with its defects replaced and a matched filter applied: a
+// faint star spread over a few pixels is barely above the single pixel noise, after a gaussian blur of the
+// width of the star image its peak stands out while the noise averages down. Hot pixels, columns and rows
+// must go before the blur, which would turn them into star like blobs.
+#define FILTER_SIGMA 1.0
+#define FILTER_RADIUS 3
+#define DEFECT_MIN_SIGMAS 10
+#define DEFECT_NEIGHBOUR_RATIO 0.1
+
+// Standard deviation of the pixel noise: the median absolute difference of horizontally adjacent pixels,
+// which stars and gradients hardly affect, scaled from the median of |N(0, 2 sigma²)| to sigma, and at least
+// the quantisation step of the data (the smallest non-zero difference), below which 8 bit or JPEG data has no
+// noise to measure and a single step would look like a spike
+static float image_noise_sigma(const uint16_t *data, int width, int height) {
+	uint32_t *histogram = indigo_safe_malloc(65536 * sizeof(uint32_t));
+	uint32_t count = 0;
+	for (int y = 0; y < height; y++) {
+		const uint16_t *row = data + (size_t)y * width;
+		for (int x = 1; x < width; x++) {
+			histogram[abs((int)row[x] - (int)row[x - 1])]++;
+			count++;
+		}
+	}
+	uint32_t cumulative = 0;
+	int median = 0, quantum = 0;
+	for (int i = 0; i < 65536; i++) {
+		cumulative += histogram[i];
+		if (quantum == 0 && i > 0 && histogram[i] > 0) {
+			quantum = i;
+		}
+		if (median == 0 && cumulative * 2 >= count) {
+			median = i;
+		}
+	}
+	indigo_safe_free(histogram);
+	float sigma = median / (0.6745 * M_SQRT2);
+	sigma = sigma < quantum ? quantum : sigma;
+	return sigma < 1 ? 1 : sigma;
+}
+
+static int compare_uint16(const void *a, const void *b) {
+	return (int)*(const uint16_t *)a - (int)*(const uint16_t *)b;
+}
+
+// Replaces defective pixels by the median of their 8 neighbours. A pixel is defective when it stands far above
+// the lowest of them and its horizontal or its vertical neighbours carry almost nothing of that excess: a hot
+// pixel has no such neighbours, a hot column or row pixel none on one axis, a star image has them on both axes,
+// on its flanks as well as at its peak. Where a hot column crosses a hot row or a hot pixel touches one, the
+// pixel has hot neighbours on both axes and survives the first pass; the passes repeat until nothing is left.
+#define DEFECT_PASSES 4
+
+static int remove_defects(const uint16_t *src, uint16_t *dst, int width, int height, float sigma) {
+	size_t size = (size_t)width * height;
+	uint16_t *work = indigo_safe_malloc(size * sizeof(uint16_t));
+	memcpy(dst, src, size * sizeof(uint16_t));
+	float min_excess = DEFECT_MIN_SIGMAS * sigma;
+	int removed = 0;
+	for (int pass = 0; pass < DEFECT_PASSES; pass++) {
+		int replaced = 0;
+		memcpy(work, dst, size * sizeof(uint16_t));
+		for (int y = 1; y < height - 1; y++) {
+			const uint16_t *row = work + (size_t)y * width;
+			for (int x = 1; x < width - 1; x++) {
+				uint16_t neighbours[8] = { row[x - width - 1], row[x - width], row[x - width + 1], row[x - 1], row[x + 1], row[x + width - 1], row[x + width], row[x + width + 1] };
+				uint16_t lowest = neighbours[0];
+				for (int k = 1; k < 8; k++) {
+					lowest = neighbours[k] < lowest ? neighbours[k] : lowest;
+				}
+				float excess = row[x] - lowest;
+				if (excess < min_excess) {
+					continue;
+				}
+				float horizontal = (row[x - 1] > row[x + 1] ? row[x - 1] : row[x + 1]) - lowest;
+				float vertical = (row[x - width] > row[x + width] ? row[x - width] : row[x + width]) - lowest;
+				if (horizontal < DEFECT_NEIGHBOUR_RATIO * excess || vertical < DEFECT_NEIGHBOUR_RATIO * excess) {
+					qsort(neighbours, 8, sizeof(uint16_t), compare_uint16);
+					dst[(size_t)y * width + x] = (uint16_t)((neighbours[3] + neighbours[4]) / 2);
+					replaced++;
+				}
+			}
+		}
+		removed += replaced;
+		if (replaced == 0) {
+			break;
+		}
+	}
+	indigo_safe_free(work);
+	return removed;
+}
+
+// Separable gaussian blur, the edges repeat the border pixel
+static void blur_image(const uint16_t *src, uint16_t *dst, int width, int height) {
+	float kernel[2 * FILTER_RADIUS + 1], sum = 0;
+	for (int k = -FILTER_RADIUS; k <= FILTER_RADIUS; k++) {
+		kernel[k + FILTER_RADIUS] = expf(-k * k / (2 * FILTER_SIGMA * FILTER_SIGMA));
+		sum += kernel[k + FILTER_RADIUS];
+	}
+	for (int k = 0; k <= 2 * FILTER_RADIUS; k++) {
+		kernel[k] /= sum;
+	}
+	float *tmp = indigo_safe_malloc((size_t)width * height * sizeof(float));
+	for (int y = 0; y < height; y++) {
+		const uint16_t *row = src + (size_t)y * width;
+		float *out = tmp + (size_t)y * width;
+		for (int x = 0; x < width; x++) {
+			float value = 0;
+			for (int k = -FILTER_RADIUS; k <= FILTER_RADIUS; k++) {
+				int xx = x + k;
+				xx = xx < 0 ? 0 : xx >= width ? width - 1 : xx;
+				value += kernel[k + FILTER_RADIUS] * row[xx];
+			}
+			out[x] = value;
+		}
+	}
+	for (int y = 0; y < height; y++) {
+		uint16_t *out = dst + (size_t)y * width;
+		for (int x = 0; x < width; x++) {
+			float value = 0;
+			for (int k = -FILTER_RADIUS; k <= FILTER_RADIUS; k++) {
+				int yy = y + k;
+				yy = yy < 0 ? 0 : yy >= height ? height - 1 : yy;
+				value += kernel[k + FILTER_RADIUS] * tmp[(size_t)yy * width + x];
+			}
+			out[x] = (uint16_t)(value + 0.5f);
+		}
+	}
+	indigo_safe_free(tmp);
+}
+
+// The filtered copy of a mono frame as 16 bit data, NULL for other frame types
+static uint16_t *filtered_image(const indigo_raw_header *image) {
+	size_t size = (size_t)image->width * image->height;
+	if (image->width < 3 || image->height < 3) {
+		return NULL;
+	}
+	uint16_t *mono = indigo_safe_malloc(size * sizeof(uint16_t));
+	if (image->signature == INDIGO_RAW_MONO16) {
+		memcpy(mono, image + 1, size * sizeof(uint16_t));
+	} else if (image->signature == INDIGO_RAW_MONO8) {
+		const uint8_t *data = (const uint8_t *)(image + 1);
+		for (size_t i = 0; i < size; i++) {
+			mono[i] = data[i];
+		}
+	} else {
+		indigo_safe_free(mono);
+		return NULL;
+	}
+	uint16_t *cleaned = indigo_safe_malloc(size * sizeof(uint16_t));
+	float sigma = image_noise_sigma(mono, image->width, image->height);
+	int removed = remove_defects(mono, cleaned, image->width, image->height, sigma);
+	blur_image(cleaned, mono, image->width, image->height);
+	indigo_safe_free(cleaned);
+	indigo_debug("%s: noise sigma %.1f, %d defective pixels replaced", __FUNCTION__, sigma, removed);
+	return mono;
+}
+
 int indigo_solver_image_stars(indigo_raw_header *image, indigo_solver_star *stars, int max_star_count) {
 	indigo_star_detection *all_stars = indigo_safe_malloc(sizeof(indigo_star_detection) * max_star_count);
 	int stars_found, count = 0;
-	indigo_find_stars_precise_threshold(image->signature, image + 1, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+	uint16_t *filtered = filtered_image(image);
+	if (filtered != NULL) {
+		indigo_find_stars_precise_threshold(INDIGO_RAW_MONO16, filtered, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+		indigo_safe_free(filtered);
+	} else {
+		indigo_find_stars_precise_threshold(image->signature, image + 1, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+	}
 	for (int i = 0; i < stars_found; i++) {
 		indigo_star_detection *as = all_stars + i;
 		indigo_solver_star *s = stars + (count++);
@@ -337,6 +822,55 @@ exit:
 	return count;
 }
 
+int indigo_solver_filter_quads(indigo_solver_quad *quads, int quad_count, float ra, float dec, float radius, indigo_solver_quad **filtered) {
+	int count = 0;
+	*filtered = NULL;
+	for (int pass = 0; pass < 2; pass++) {
+		count = 0;
+		for (int i = 0; i < quad_count; i++) {
+			indigo_solver_quad *quad = quads + i;
+			bool inside = true;
+			for (int k = 0; k < 4 && inside; k++) {
+				inside = indigo_angular_distance(ra, dec, quad->stars[k]->ra, quad->stars[k]->dec) <= radius;
+			}
+			if (inside) {
+				if (pass) {
+					(*filtered)[count] = *quad;
+				}
+				count++;
+			}
+		}
+		if (count == 0) {
+			break;
+		}
+		if (pass == 0) {
+			*filtered = indigo_safe_malloc(count * sizeof(indigo_solver_quad));
+		}
+	}
+	indigo_debug("%s: %d of %d catalog quads within %.2f° of RA %.3f° Dec %.3f°", __FUNCTION__, count, quad_count, radius * RAD_TO_DEG, ra * RAD_TO_DEG, dec * RAD_TO_DEG);
+	return count;
+}
+
+// Checked every LIMITS_CHECK_INTERVAL iterations of the matching loops
+#define LIMITS_CHECK_INTERVAL 4096
+
+static bool limits_exceeded(indigo_solver_limits *limits) {
+	if (limits == NULL) {
+		return false;
+	}
+	if (limits->exceeded) {
+		return true;
+	}
+	if (limits->abort != NULL && *limits->abort) {
+		limits->exceeded = true;
+		limits->reason = "Aborted";
+	} else if (limits->deadline > 0 && indigo_monotonic_time() > limits->deadline) {
+		limits->exceeded = true;
+		limits->reason = "CPU time limit exceeded";
+	}
+	return limits->exceeded;
+}
+
 static inline int bucket_key(int hx3, int hy3) {
 	return hx3 * BUCKET_SIDE + hy3;
 }
@@ -357,8 +891,11 @@ static uint32_t *build_buckets(indigo_solver_quad *catalog_quads, int catalog_qu
 	return starts;
 }
 
-int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, indigo_solver_quad *catalog_quads, int catalog_quad_count, indigo_solver_quad_match *matches, int max_match_count) {
+int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, indigo_solver_quad *catalog_quads, int catalog_quad_count, indigo_solver_quad_match *matches, int max_match_count, indigo_solver_limits *limits) {
 	int count_by_hash = 0, count_by_scale = 0;
+	if (limits_exceeded(limits)) {
+		return 0;
+	}
 	for (int i = 1; i < catalog_quad_count; i++) {
 		if (catalog_quads[i - 1].hash > catalog_quads[i].hash) {
 			indigo_debug("%s: catalog quads are not sorted by hash, sorting", __FUNCTION__);
@@ -369,6 +906,10 @@ int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_co
 	uint32_t *starts = build_buckets(catalog_quads, catalog_quad_count);
 	const int t = INDIGO_SOLVER_HASH_TOLERANCE;
 	for (int i = 0; i < image_quad_count; i++) {
+		if (i % LIMITS_CHECK_INTERVAL == 0 && limits_exceeded(limits)) {
+			indigo_safe_free(starts);
+			return 0;
+		}
 		indigo_solver_quad *image_quad = image_quads + i;
 		int hx3, hy3, hx4, hy4;
 		indigo_solver_quad_hash_components(image_quad->hash, &hx3, &hy3, &hx4, &hy4);
@@ -409,6 +950,9 @@ exit:
 	float best_scale = 0;
 	int best_votes = 0;
 	for (int i = 0; i < count_by_hash; i++) {
+		if (i % (LIMITS_CHECK_INTERVAL / 64) == 0 && limits_exceeded(limits)) {
+			return 0;
+		}
 		indigo_solver_quad_match *qmi = matches + i;
 		for (int j = i + 1; j < count_by_hash; j++) {
 			indigo_solver_quad_match *qmj = matches + j;
@@ -447,10 +991,13 @@ exit:
 	return count_by_scale;
 }
 
-int indigo_solver_match_stars(indigo_solver_quad_match *quad_matches, int quad_match_count, indigo_solver_star_match *star_matches, int max_star_match_count) {
+int indigo_solver_match_stars(indigo_solver_quad_match *quad_matches, int quad_match_count, indigo_solver_star_match *star_matches, int max_star_match_count, indigo_solver_limits *limits) {
 	int count = 0, accepted = 0;
 	// 1) Accumulate votes per (image star, catalog star) correspondence
 	for (int i = 0; i < quad_match_count; i++) {
+		if (i % LIMITS_CHECK_INTERVAL == 0 && limits_exceeded(limits)) {
+			return 0;
+		}
 		indigo_solver_quad_match *quad_match = quad_matches + i;
 		for (int j = 0; j < 4; j++) {
 			indigo_solver_star *image_star = quad_match->image_quad->stars[j];
@@ -578,7 +1125,7 @@ static int grow_fit(const fit_data *d, bool *inlier, affine_fit *fit) {
 	return fit_affine(d, inlier, fit) ? fit->n : 0;
 }
 
-bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_count, int width, int height, float *ra_center, float *dec_center, float *rotation, float *scale, int *parity) {
+bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_count, int width, int height, float *ra_center, float *dec_center, float *rotation, float *scale, int *parity, int *matched, float *rms) {
 	if (match_count < 3) {
 		return false;
 	}
@@ -689,6 +1236,12 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 	*scale = best_fit.pixel;
 	if (parity != NULL) {
 		*parity = mirrored;
+	}
+	if (matched != NULL) {
+		*matched = best_n;
+	}
+	if (rms != NULL) {
+		*rms = best_fit.rms;
 	}
 	// 6. RA/Dec of the image centre: Δx = Δy = 0 maps to (a0, b0) on the tangent plane
 	indigo_tangent_to_radec(ref_ra, ref_dec, best_fit.a0, best_fit.b0, ra_center, dec_center);

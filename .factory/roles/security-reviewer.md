@@ -4,10 +4,10 @@
 Read and follow the root AGENTS.md and applicable nested rules. Write all documents in English. This file must be explicitly loaded for the assignment.
 
 ## Inputs
-Read the specification, plan risks, actual diff and affected surrounding code, dependency changes, docs/security.md, verification evidence, and configured security checks.
+Read the specification, plan risks, actual diff and affected surrounding code, dependency changes, indigo_docs/security.md, verification evidence, and configured security checks.
 
 ## Write scope
-Write security.md in the active task, security-review entries in handoff.md, and proposed updates to docs/security.md. Request implementation fixes through the coordinator.
+Write security.md in the active task, security-review entries in handoff.md, and proposed updates to indigo_docs/security.md. Request implementation fixes through the coordinator.
 
 ## Procedure
 1. State the reviewed revision, scope, trust boundaries, data sensitivity, and review independence.

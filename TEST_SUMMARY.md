@@ -36,7 +36,7 @@
 |  | 2026-10-19 11:54 | 3.0.0.28 | mac arm64 | simulator | 76 / 76 | ✅ OK |
 | agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
 |  | 2026-10-24 20:08 | 3.0.0.14 | mac arm64 | simulator | 63 / 63 | ✅ OK |
-| agent_solver | 2026-10-27 14:37 | 3.0.0.5 | mac arm64 | simulator | 134 / 134 | ✅ OK |
+| agent_solver | 2026-10-28 02:11 | 3.0.0.9 | mac arm64 | simulator | 150 / 150 | ✅ OK |
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 |  | 2026-09-27 21:22 | 3.0.0.15 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-30 18:14 | 3.0.0.15 | linux arm64 | StarlightXpress AO | 16 / 16 | ✅ OK |
@@ -161,6 +161,12 @@
 | ccd_omegonpro | 2026-09-27 21:42 | 3.0.0.55 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
 | ccd_pentax | 2026-10-26 23:38 | 3.0.0.3 | mac arm64 | PENTAX K-m | 1 / 0 | ❌ Failed |
 |  | 2026-10-26 23:51 | 3.0.0.4 | mac arm64 | fake SDK | 36 / 36 | ✅ OK |
+|  | 2026-10-27 18:24 | 3.0.0.4 | linux arm64 | PENTAX K-m (connection baseline) | 1 / 1 | ✅ OK |
+|  | 2026-10-27 20:15 | 3.0.0.5 | linux arm64 | fake SDK | 44 / 44 | ✅ OK |
+|  | 2026-10-27 20:49 | 3.0.0.5 | linux arm64 | PENTAX K-m | 1 / 0 | ❌ Failed |
+|  | 2026-10-27 20:49 | 3.0.0.5 | linux arm64 | PENTAX K-m (bulb) | 1 / 1 | ✅ OK |
+|  | 2026-10-27 20:50 | 3.0.0.5 | linux arm64 | PENTAX K-m DNG (single frame) | 1 / 1 | ✅ OK |
+|  | 2026-10-27 20:50 | 3.0.0.5 | linux arm64 | PENTAX K-m PEF (single frame) | 1 / 1 | ✅ OK |
 | ccd_playerone | 2026-09-21 21:23 | 3.0.0.26 | mac arm64 | Mars-C II | 27 / 27 | ✅ OK |
 |  | 2026-09-24 09:09 | 3.0.0.28 | linux arm64 | fake SDK | 50 / 50 | ✅ OK |
 |  | 2026-09-24 09:11 | 3.0.0.28 | linux arm64 | Mars-C II | 27 / 27 | ✅ OK |
