@@ -406,6 +406,54 @@ static void test_solve_synthetic_mirrored_field(void) {
 	free(c);
 }
 
+// The orientation astrometry.net derives from a CD matrix, written out independently of the solver: tan_get_orientation()
+// in util/sip-utils.c of astrometry.net, in degrees from -180 to 180
+static double astrometry_net_orientation(double cd00, double cd01, double cd10, double cd11) {
+	double det = cd00 * cd11 - cd01 * cd10;
+	double parity = det >= 0 ? 1 : -1;
+	return -atan2(parity * cd10 - cd01, parity * cd00 + cd11) * RAD_TO_DEG;
+}
+
+// Matches generated from a known CD matrix (pixel offsets from the image centre to the tangent plane, a rotation by
+// phi, mirrored or not) are solved with the angle astrometry.net reports for that matrix and the parity it reports:
+// positive for a negative determinant, so the Solver and the Astrometry agents agree on every frame
+static void test_compute_center_uses_astrometry_net_orientation(void) {
+	const double phis[] = { -170, -98.19, -8.41, 0, 26.85, 90, 179.14 };
+	const double scale = 2 * ARCSEC_TO_RAD;
+	const float ra0 = 1.2f, dec0 = 0.5f;
+	indigo_solver_star image[16], catalog[16];
+	indigo_solver_star_match matches[16];
+	for (unsigned p = 0; p < sizeof(phis) / sizeof(phis[0]); p++) {
+		for (int mirror = 0; mirror < 2; mirror++) {
+			double c = cos(phis[p] * DEG_TO_RAD), s = sin(phis[p] * DEG_TO_RAD), m = mirror ? -1 : 1;
+			double cd00 = scale * c * m, cd01 = -scale * s, cd10 = scale * s * m, cd11 = scale * c;
+			for (int i = 0; i < 16; i++) {
+				memset(image + i, 0, sizeof(indigo_solver_star));
+				memset(catalog + i, 0, sizeof(indigo_solver_star));
+				image[i].x = 100 + frand() * (IMAGE_WIDTH - 200);
+				image[i].y = 100 + frand() * (IMAGE_HEIGHT - 200);
+				double dx = image[i].x - IMAGE_WIDTH / 2.0, dy = image[i].y - IMAGE_HEIGHT / 2.0;
+				indigo_tangent_to_radec(ra0, dec0, cd00 * dx + cd01 * dy, cd10 * dx + cd11 * dy, &catalog[i].ra, &catalog[i].dec);
+				matches[i].image_star = image + i;
+				matches[i].catalog_star = catalog + i;
+				matches[i].votes = 10;
+			}
+			float ra, dec, rotation, pixel;
+			int parity;
+			ASSERT_TRUE(indigo_solver_compute_center(matches, 16, IMAGE_WIDTH, IMAGE_HEIGHT, &ra, &dec, &rotation, &pixel, &parity, NULL, NULL));
+			double expected = astrometry_net_orientation(cd00, cd01, cd10, cd11);
+			if (fabs(remainder(rotation * RAD_TO_DEG - expected, 360)) >= 0.01) {
+				fprintf(stderr, "phi %g mirrored %d: angle %.3f, astrometry.net %.3f\n", phis[p], mirror, rotation * RAD_TO_DEG, expected);
+			}
+			ASSERT_TRUE(fabs(remainder(rotation * RAD_TO_DEG - expected, 360)) < 0.01);
+			ASSERT_TRUE(rotation >= 0 && rotation < 2 * M_PI);
+			ASSERT_EQ_INT(cd00 * cd11 - cd01 * cd10 < 0 ? 1 : -1, parity);
+			ASSERT_TRUE(fabs(pixel / scale - 1) < 1e-4);
+			ASSERT_TRUE(indigo_angular_distance(ra, dec, ra0, dec0) < 0.1 * ARCSEC_TO_RAD);
+		}
+	}
+}
+
 static void test_solve_rejects_unrelated_field(void) {
 	synthetic_catalog *c = malloc(sizeof(synthetic_catalog));
 	build_synthetic_catalog(c);
@@ -598,6 +646,7 @@ int main(void) {
 		{ "index_selection", test_index_selection },
 		{ "solve_synthetic_field", test_solve_synthetic_field },
 		{ "solve_synthetic_mirrored_field", test_solve_synthetic_mirrored_field },
+		{ "compute_center_uses_astrometry_net_orientation", test_compute_center_uses_astrometry_net_orientation },
 		{ "solve_rejects_unrelated_field", test_solve_rejects_unrelated_field },
 		{ "image_stars_noisy_frame", test_image_stars_noisy_frame },
 		{ "match_respects_limits_and_cone", test_match_respects_limits_and_cone },

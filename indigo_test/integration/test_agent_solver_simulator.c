@@ -76,7 +76,7 @@
 #define ROSETTA_RA (97.903 / 15)
 #define ROSETTA_DEC 5.095
 #define ROSETTA_SCALE (8.44 / 3600)
-#define ROSETTA_ANGLE 179.2
+#define ROSETTA_ANGLE 0.80
 #define ROSETTA_WIDTH 1600
 #define ROSETTA_HEIGHT 1200
 // the guider simulator renders 4° over the frame height
@@ -375,7 +375,9 @@ static bool render_combination(const sweep_combination *c) {
 
 // J2000 centre and the angle the guider simulator renders for a combination. A field rendered in JNow is
 // turned against north of J2000 by the precession of the pole, so the angle of the WCS, which refers to
-// J2000, is the rendered rotation plus the position angle of JNow north seen from the centre in J2000.
+// J2000, is the rendered rotation plus the position angle of JNow north seen from the centre in J2000. The guider
+// simulator renders the mirror image of the sky (parity 1), whose astrometry.net orientation is counted in the
+// sense of the rendered rotation.
 static void rendered_field(const sweep_combination *c, double *ra, double *dec, double *angle) {
 	double north_offset = 0;
 	*ra = c->ra;
