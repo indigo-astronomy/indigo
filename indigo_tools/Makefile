@@ -30,23 +30,24 @@ else
 	INDIGO_CLIENT_LIBS = $(BUILD_LIB)/libindigo_client.a -lz -ldl -lm
 endif
 
-all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_scan_drivers $(BUILD_BIN)/indigo_solver_indexer
+all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_scan_drivers $(BUILD_BIN)/indigo_solver_indexer $(BUILD_BIN)/indigo_solver
 
 install: all
 	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
 	cp $(BUILD_BIN)/indigo_list_usbserial $(INSTALL_BIN)
 	cp $(BUILD_BIN)/indigo_raw_to_fits $(INSTALL_BIN)
 	cp $(BUILD_BIN)/indigo_raw_crop $(INSTALL_BIN)
+	cp $(BUILD_BIN)/indigo_solver $(INSTALL_BIN)
 	cp ./indigo_log_analyzer.pl $(INSTALL_BIN)/indigo_log_analyzer
 
 uninstall:
-	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(INSTALL_BIN)/indigo_raw_crop $(INSTALL_BIN)/indigo_log_analyzer $(INSTALL_BIN)/indigo_list_usbserial
+	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(INSTALL_BIN)/indigo_raw_crop $(INSTALL_BIN)/indigo_log_analyzer $(INSTALL_BIN)/indigo_list_usbserial $(INSTALL_BIN)/indigo_solver
 
 status:
 	@printf "\nindigo_tools -------------------------\n\n"
 
 clean: status
-	rm -f *.o $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_solver_indexer
+	rm -f *.o $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_solver_indexer $(BUILD_BIN)/indigo_solver
 
 clean-all: status
 	git clean -dfx
@@ -86,3 +87,11 @@ indigo_solver_healpix.o: $(SOLVER_AGENT_DIR)/indigo_solver_healpix.c $(SOLVER_AG
 
 $(BUILD_BIN)/indigo_solver_indexer: indigo_solver_indexer.o indigo_solver_utils.o indigo_solver_healpix.o
 	$(CC) $(CFLAGS)  -o $@ indigo_solver_indexer.o indigo_solver_utils.o indigo_solver_healpix.o $(LDFLAGS) $(INDIGO_LIBS)
+
+# The command line solver runs the solver agent's solving steps; its core is built under another object name, as
+# indigo_solver.o is the tool itself.
+indigo_solver_core.o: $(SOLVER_AGENT_DIR)/indigo_solver.c $(SOLVER_AGENT_DIR)/indigo_solver.h $(SOLVER_AGENT_DIR)/indigo_solver_utils.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$(BUILD_BIN)/indigo_solver: indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o
+	$(CC) $(CFLAGS)  -o $@ indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o $(LDFLAGS) $(INDIGO_LIBS) -lindigocat

@@ -202,6 +202,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_cloudwatcher", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_prop_tool", "indigo_tools\indigo_prop_tool.vcxproj", "{56E115D1-037B-4D7E-9766-4ECDC23B12D5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_solver", "indigo_tools\indigo_solver.vcxproj", "{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "remote_server_client", "indigo_examples\remote_server_client.vcxproj", "{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_sx", "indigo_drivers\wheel_sx\indigo_wheel_sx.vcxproj", "{EB583D11-DDB6-4D62-927A-F855188A35C3}"
@@ -1078,6 +1080,14 @@ Global
 		{56E115D1-037B-4D7E-9766-4ECDC23B12D5}.Release|ARM64.Build.0 = Release|ARM64
 		{56E115D1-037B-4D7E-9766-4ECDC23B12D5}.Release|x64.ActiveCfg = Release|x64
 		{56E115D1-037B-4D7E-9766-4ECDC23B12D5}.Release|x64.Build.0 = Release|x64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Debug|ARM64.Build.0 = Debug|ARM64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Debug|x64.ActiveCfg = Debug|x64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Debug|x64.Build.0 = Debug|x64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Release|ARM64.ActiveCfg = Release|ARM64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Release|ARM64.Build.0 = Release|ARM64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Release|x64.ActiveCfg = Release|x64
+		{52BF5D0D-C06A-45A7-B8C8-6092C5A2CA8B}.Release|x64.Build.0 = Release|x64
 		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|ARM64.Build.0 = Debug|ARM64
 		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|x64.ActiveCfg = Debug|x64
