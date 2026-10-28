@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x0300000E
+#define DRIVER_VERSION 0x0300000F
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -61,7 +61,7 @@
 
 // Quad indexes built by indigo_solver_indexer are downloaded from here as tyc2-<scale>deg.isix (Tycho-2) and
 // gaia-<scale>deg.isix (Gaia DR3, scales below 1 degree)
-#define AGENT_SOLVER_INDEX_URL						"https://github.com/indigo-astronomy/indigo/releases/download/index_release_v1"
+#define AGENT_SOLVER_INDEX_URL						"https://github.com/indigo-astronomy/indigo/releases/download/index_release_v2"
 
 #define MAX_IMAGE_STAR_COUNT							500
 #define MAX_IMAGE_QUAD_COUNT							1000000
@@ -72,7 +72,7 @@
 static char base_dir[512];
 
 // approximate sizes of the published index files, in the order of indigo_solver_index_fovs
-static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "907 MB", "534 MB", "354 MB", "174 MB", "88 MB", "32 MB" };
+static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "911 MB", "538 MB", "358 MB", "178 MB", "92 MB", "36 MB" };
 
 typedef struct {
 	platesolver_private_data platesolver;

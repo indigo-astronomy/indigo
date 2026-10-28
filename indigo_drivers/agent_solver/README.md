@@ -32,16 +32,16 @@ scale is the size of the star marks (quads) in the index, not the field of view:
 
 | Index | Catalogue | Quad scale | Size |
 | ----- | ----- | ----- | ----- |
-| GAIA_0_5 | Gaia DR3 | 0.5° | 907 MB |
-| TYC2_1 | Tycho-2 | 1° | 534 MB |
-| TYC2_2 | Tycho-2 | 2° | 354 MB |
-| TYC2_5 | Tycho-2 | 5° | 174 MB |
-| TYC2_10 | Tycho-2 | 10° | 88 MB |
-| TYC2_20 | Tycho-2 | 20° | 32 MB |
+| GAIA_0_5 | Gaia DR3 | 0.5° | 911 MB |
+| TYC2_1 | Tycho-2 | 1° | 538 MB |
+| TYC2_2 | Tycho-2 | 2° | 358 MB |
+| TYC2_5 | Tycho-2 | 5° | 178 MB |
+| TYC2_10 | Tycho-2 | 10° | 92 MB |
+| TYC2_20 | Tycho-2 | 20° | 36 MB |
 
 The files are kept outside the repository in `$INDIGO_CACHE_BASE/solver`, or in `~/.indigo/solver` when
 `INDIGO_CACHE_BASE` is not set. They are managed with the `X_AGENT_SOLVER_INDEX` property: selecting an item downloads
-the file from the `index_release_v1` release of the INDIGO repository on GitHub and verifies it, clearing it deletes the
+the file from the `index_release_v2` release of the INDIGO repository on GitHub and verifies it, clearing it deletes the
 file. Installed indexes are offered in `AGENT_PLATESOLVER_USE_INDEX` and
 at least one of them must be selected to solve. Choose the index whose scale is nearest to 0.7 x the size of the
 frame (the geometric mean of its width and height); indexes of about 0.4 to 1 x the frame size solve it; when the pixel scale is known, the index fitting the frame size is tried first, then the other selected ones.
