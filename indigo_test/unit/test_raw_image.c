@@ -360,6 +360,42 @@ static void star_exclusion_removes_only_the_rectangle(void) {
 	free(data);
 }
 
+static void fast_star_detection_matches_precise(void) {
+	/* a 6 x 6 grid of stars of decreasing brightness, far enough apart not to be marked close */
+	double stars[36][2];
+	uint16_t *data = make_star_frame(NULL, 0);
+	for (int n = 0; n < 36; n++) {
+		stars[n][0] = 30 + 36 * (n % 6);
+		stars[n][1] = 30 + 36 * (n / 6);
+		add_gaussian_star(data, STAR_FRAME_SIZE, STAR_FRAME_SIZE, stars[n][0], stars[n][1], 2.0, 30000 - 700 * n);
+	}
+	indigo_star_detection precise[64] = { { 0 } }, fast[64] = { { 0 } };
+	int precise_found = 0, fast_found = 0;
+	/* with room for every star, both find the same stars in the same order */
+	ASSERT_EQ_INT(INDIGO_OK, indigo_find_stars_precise_threshold(INDIGO_RAW_MONO16, data, 8, 3.5, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 64, precise, &precise_found));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_find_stars_fast_threshold(INDIGO_RAW_MONO16, data, 8, 3.5, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 64, fast, &fast_found));
+	ASSERT_EQ_INT(36, precise_found);
+	ASSERT_EQ_INT(precise_found, fast_found);
+	for (int i = 0; i < fast_found; i++) {
+		ASSERT_NEAR(precise[i].x, fast[i].x, 1e-9);
+		ASSERT_NEAR(precise[i].y, fast[i].y, 1e-9);
+		ASSERT_NEAR(precise[i].luminance, fast[i].luminance, 1e-9);
+	}
+	/* with stars_max far below the candidates, only the brightest 4 x stars_max are evaluated and the brightest stars
+	   are still found */
+	ASSERT_EQ_INT(INDIGO_OK, indigo_find_stars_fast_threshold(INDIGO_RAW_MONO16, data, 8, 3.5, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 3, fast, &fast_found));
+	ASSERT_EQ_INT(3, fast_found);
+	for (int n = 0; n < 3; n++) {
+		ASSERT_TRUE(star_listed(fast, fast_found, stars[n][0], stars[n][1]));
+		ASSERT_NEAR(precise[n].x, fast[n].x, 1e-9);
+		ASSERT_NEAR(precise[n].y, fast[n].y, 1e-9);
+	}
+	/* invalid arguments are refused */
+	ASSERT_EQ_INT(INDIGO_FAILED, indigo_find_stars_fast_threshold(INDIGO_RAW_MONO16, data, 8, 3.5, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 0, fast, &fast_found));
+	ASSERT_EQ_INT(INDIGO_FAILED, indigo_find_stars_fast_threshold(INDIGO_RAW_MONO16, NULL, 8, 3.5, STAR_FRAME_SIZE, STAR_FRAME_SIZE, 4, fast, &fast_found));
+	free(data);
+}
+
 static void psf_map_uses_only_measured_stars(void) {
 	/* a single star near the top-left corner, measured independently */
 	const double stars[][2] = { { 40, 40 } };
@@ -463,6 +499,7 @@ int main(void) {
 		{ "saturation_mask_marks_saturated_feature", saturation_mask_marks_saturated_feature },
 		{ "contrast_for_constant_frame_is_zero_and_not_saturated", contrast_for_constant_frame_is_zero_and_not_saturated },
 		{ "star_exclusion_removes_only_the_rectangle", star_exclusion_removes_only_the_rectangle },
+		{ "fast_star_detection_matches_precise", fast_star_detection_matches_precise },
 		{ "psf_map_uses_only_measured_stars", psf_map_uses_only_measured_stars },
 		{ "psf_map_without_stars_is_empty", psf_map_without_stars_is_empty },
 		{ "bahtinov_error_releases_binarized_frame", bahtinov_error_releases_binarized_frame }
