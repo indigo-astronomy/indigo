@@ -385,8 +385,9 @@ bool indigo_solver_index_read_header(FILE *file, indigo_solve_index_header *head
 		fprintf(stderr, "%s: bad magic\n", __FUNCTION__);
 		return false;
 	}
-	if (header->version != INDIGO_SOLVER_INDEX_VERSION) {
-		fprintf(stderr, "%s: unsupported index version %u (expected %u)\n", __FUNCTION__, header->version, INDIGO_SOLVER_INDEX_VERSION);
+	// the first bytes of the version 2 header are the version 1 header
+	if (header->version != INDIGO_SOLVER_INDEX_VERSION && header->version != INDIGO_SOLVER_INDEX_MAPPED_VERSION) {
+		fprintf(stderr, "%s: unsupported index version %u (expected %u or %u)\n", __FUNCTION__, header->version, INDIGO_SOLVER_INDEX_VERSION, INDIGO_SOLVER_INDEX_MAPPED_VERSION);
 		return false;
 	}
 	return true;

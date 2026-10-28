@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -42,9 +43,6 @@
 
 const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT] = { 0.5, 1, 2, 5, 10, 20 };
 
-// Hash buckets keyed by the quantised (x3, y3) code coordinates, both in [0, INDIGO_SOLVER_CODE_QUANTUM].
-#define BUCKET_SIDE		(INDIGO_SOLVER_CODE_QUANTUM + 1)
-#define BUCKET_COUNT	(BUCKET_SIDE * BUCKET_SIDE)
 
 static int compare_quads(const void *a, const void *b) {
 	const indigo_solver_quad *qa = (const indigo_solver_quad*)a;
@@ -62,12 +60,6 @@ static int compare_quads(const void *a, const void *b) {
 		return p;
 	}
 	return (qa->stars[3] > qb->stars[3]) - (qa->stars[3] < qb->stars[3]);
-}
-
-static int compare_quads_by_hash(const void *a, const void *b) {
-	const indigo_solver_quad *qa = (const indigo_solver_quad*)a;
-	const indigo_solver_quad *qb = (const indigo_solver_quad*)b;
-	return (qa->hash > qb->hash) - (qa->hash < qb->hash);
 }
 
 static int compare_star_matches_by_votes(const void *a, const void *b) {
@@ -666,11 +658,192 @@ bool indigo_solver_select_index(const char *index_directory, const float *fovs, 
 	return true;
 }
 
-bool indigo_solver_load_index(const char *path, indigo_solver_star **stars, int *star_count, indigo_solver_quad **quads, int *quad_count) {
-	*stars = NULL;
-	*star_count = 0;
-	*quads = NULL;
-	*quad_count = 0;
+static inline int bucket_key(int hx3, int hy3) {
+	return hx3 * INDIGO_SOLVER_BUCKET_SIDE + hy3;
+}
+
+static bool host_is_little_endian(void) {
+	uint16_t value = 1;
+	return *(uint8_t *)&value == 1;
+}
+
+// Allocates the arrays of a catalog in memory; the stars are allocated only when the catalog doesn't share them
+static void catalog_allocate(indigo_solver_catalog *catalog, uint32_t star_count, uint32_t quad_count, bool stars) {
+	memset(catalog, 0, sizeof(indigo_solver_catalog));
+	catalog->star_count = star_count;
+	catalog->quad_count = quad_count;
+	if (stars) {
+		catalog->stars = catalog->allocated[0] = indigo_safe_malloc((star_count > 0 ? star_count : 1) * sizeof(indigo_solver_index_star));
+	}
+	catalog->buckets = catalog->allocated[1] = indigo_safe_malloc((INDIGO_SOLVER_BUCKET_COUNT + 1) * sizeof(uint32_t));
+	catalog->hashes = catalog->allocated[2] = indigo_safe_malloc((quad_count > 0 ? quad_count : 1) * sizeof(uint64_t));
+	catalog->baselines = catalog->allocated[3] = indigo_safe_malloc((quad_count > 0 ? quad_count : 1) * sizeof(float));
+	catalog->quad_stars = catalog->allocated[4] = indigo_safe_malloc((quad_count > 0 ? quad_count : 1) * 4 * sizeof(uint32_t));
+}
+
+typedef struct {
+	uint64_t hash;
+	uint32_t index;
+} hash_order;
+
+static int compare_hash_order(const void *a, const void *b) {
+	const hash_order *ha = (const hash_order *)a;
+	const hash_order *hb = (const hash_order *)b;
+	if (ha->hash != hb->hash) {
+		return ha->hash > hb->hash ? 1 : -1;
+	}
+	return (ha->index > hb->index) - (ha->index < hb->index);
+}
+
+// Sorts the quads of a catalog in memory by hash, keeping the order of quads with equal hashes, and counts its buckets
+static void catalog_finish(indigo_solver_catalog *catalog) {
+	uint64_t *hashes = catalog->allocated[2];
+	float *baselines = catalog->allocated[3];
+	uint32_t *quad_stars = catalog->allocated[4];
+	uint32_t *buckets = catalog->allocated[1];
+	bool sorted = true;
+	for (uint32_t i = 1; i < catalog->quad_count && sorted; i++) {
+		sorted = hashes[i - 1] <= hashes[i];
+	}
+	if (!sorted) {
+		hash_order *order = indigo_safe_malloc(catalog->quad_count * sizeof(hash_order));
+		for (uint32_t i = 0; i < catalog->quad_count; i++) {
+			order[i].hash = hashes[i];
+			order[i].index = i;
+		}
+		qsort(order, catalog->quad_count, sizeof(hash_order), compare_hash_order);
+		float *sorted_baselines = indigo_safe_malloc(catalog->quad_count * sizeof(float));
+		uint32_t *sorted_stars = indigo_safe_malloc(catalog->quad_count * 4 * sizeof(uint32_t));
+		for (uint32_t i = 0; i < catalog->quad_count; i++) {
+			hashes[i] = order[i].hash;
+			sorted_baselines[i] = baselines[order[i].index];
+			memcpy(sorted_stars + 4 * (size_t)i, quad_stars + 4 * (size_t)order[i].index, 4 * sizeof(uint32_t));
+		}
+		indigo_safe_free(order);
+		indigo_safe_free(baselines);
+		indigo_safe_free(quad_stars);
+		catalog->baselines = catalog->allocated[3] = sorted_baselines;
+		catalog->quad_stars = catalog->allocated[4] = sorted_stars;
+	}
+	memset(buckets, 0, (INDIGO_SOLVER_BUCKET_COUNT + 1) * sizeof(uint32_t));
+	for (uint32_t i = 0; i < catalog->quad_count; i++) {
+		int hx3, hy3, hx4, hy4;
+		indigo_solver_quad_hash_components(hashes[i], &hx3, &hy3, &hx4, &hy4);
+		buckets[bucket_key(hx3, hy3) + 1]++;
+	}
+	for (int k = 1; k <= INDIGO_SOLVER_BUCKET_COUNT; k++) {
+		buckets[k] += buckets[k - 1];
+	}
+}
+
+#define LOAD_CHUNK	65536
+
+// A version 1 index is read in chunks straight into the catalog arrays
+static bool load_index_v1(const char *path, FILE *file, const indigo_solve_index_header *header, indigo_solver_catalog *catalog) {
+	catalog_allocate(catalog, header->star_count, header->quad_count, true);
+	catalog->fov = header->fov;
+	if (!indigo_solver_index_read_stars(file, catalog->allocated[0], header->star_count)) {
+		indigo_error("%s: %s is truncated", __FUNCTION__, path);
+		indigo_solver_free_catalog(catalog);
+		return false;
+	}
+	uint64_t *hashes = catalog->allocated[2];
+	float *baselines = catalog->allocated[3];
+	uint32_t *quad_stars = catalog->allocated[4];
+	indigo_solver_index_quad *chunk = indigo_safe_malloc(LOAD_CHUNK * sizeof(indigo_solver_index_quad));
+	for (uint32_t i = 0; i < header->quad_count; i += LOAD_CHUNK) {
+		uint32_t n = header->quad_count - i < LOAD_CHUNK ? header->quad_count - i : LOAD_CHUNK;
+		if (!indigo_solver_index_read_quads(file, chunk, n)) {
+			indigo_error("%s: %s is truncated", __FUNCTION__, path);
+			indigo_safe_free(chunk);
+			indigo_solver_free_catalog(catalog);
+			return false;
+		}
+		for (uint32_t j = 0; j < n; j++) {
+			for (int k = 0; k < 4; k++) {
+				if (chunk[j].stars[k] >= header->star_count) {
+					indigo_error("%s: %s is corrupted (quad %u references star %u of %u)", __FUNCTION__, path, i + j, chunk[j].stars[k], header->star_count);
+					indigo_safe_free(chunk);
+					indigo_solver_free_catalog(catalog);
+					return false;
+				}
+				quad_stars[4 * (size_t)(i + j) + k] = chunk[j].stars[k];
+			}
+			hashes[i + j] = chunk[j].hash;
+			baselines[i + j] = chunk[j].baseline;
+		}
+	}
+	indigo_safe_free(chunk);
+	catalog_finish(catalog);
+	return true;
+}
+
+static inline uint32_t mapped_u32(const uint8_t *p) {
+	uint32_t value;
+	memcpy(&value, p, sizeof(value));
+	return value;
+}
+
+static inline uint64_t mapped_u64(const uint8_t *p) {
+	uint64_t value;
+	memcpy(&value, p, sizeof(value));
+	return value;
+}
+
+// The section [offset, offset + count * size) lies in the file and is aligned for its elements
+static bool section_valid(uint64_t offset, uint64_t count, uint64_t size, uint64_t alignment, size_t file_size) {
+	return offset % alignment == 0 && offset >= INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE && offset <= file_size && count <= (file_size - offset) / size;
+}
+
+// A version 2 index is mapped and used in place; the header and the bucket table are checked here, the star indices
+// of a quad when it is matched, so pages of the file are read only when the solver needs them
+static bool load_index_v2(const char *path, indigo_solver_catalog *catalog) {
+	memset(catalog, 0, sizeof(indigo_solver_catalog));
+	if (!host_is_little_endian()) {
+		indigo_error("%s: %s can't be mapped on a big endian host", __FUNCTION__, path);
+		return false;
+	}
+	size_t size;
+	const uint8_t *data = indigo_uni_map_file(path, &size);
+	if (data == NULL) {
+		return false;
+	}
+	catalog->mapping = data;
+	catalog->mapping_size = size;
+	if (size < INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE) {
+		indigo_error("%s: %s is truncated", __FUNCTION__, path);
+		indigo_solver_free_catalog(catalog);
+		return false;
+	}
+	uint32_t star_count = mapped_u32(data + 12), quad_count = mapped_u32(data + 16), bucket_side = mapped_u32(data + 20);
+	uint64_t stars = mapped_u64(data + 24), buckets = mapped_u64(data + 32), hashes = mapped_u64(data + 40), baselines = mapped_u64(data + 48), quad_stars = mapped_u64(data + 56);
+	if (bucket_side != INDIGO_SOLVER_BUCKET_SIDE || !section_valid(stars, star_count, sizeof(indigo_solver_index_star), 4, size) || !section_valid(buckets, INDIGO_SOLVER_BUCKET_COUNT + 1, sizeof(uint32_t), 4, size) || !section_valid(hashes, quad_count, sizeof(uint64_t), 8, size) || !section_valid(baselines, quad_count, sizeof(float), 4, size) || !section_valid(quad_stars, quad_count, 4 * sizeof(uint32_t), 4, size)) {
+		indigo_error("%s: %s is corrupted (invalid header)", __FUNCTION__, path);
+		indigo_solver_free_catalog(catalog);
+		return false;
+	}
+	memcpy(&catalog->fov, data + 8, sizeof(float));
+	catalog->star_count = star_count;
+	catalog->quad_count = quad_count;
+	catalog->stars = (const indigo_solver_index_star *)(data + stars);
+	catalog->buckets = (const uint32_t *)(data + buckets);
+	catalog->hashes = (const uint64_t *)(data + hashes);
+	catalog->baselines = (const float *)(data + baselines);
+	catalog->quad_stars = (const uint32_t *)(data + quad_stars);
+	bool valid = catalog->buckets[0] == 0 && catalog->buckets[INDIGO_SOLVER_BUCKET_COUNT] == quad_count;
+	for (int k = 1; k <= INDIGO_SOLVER_BUCKET_COUNT && valid; k++) {
+		valid = catalog->buckets[k - 1] <= catalog->buckets[k];
+	}
+	if (!valid) {
+		indigo_error("%s: %s is corrupted (invalid buckets)", __FUNCTION__, path);
+		indigo_solver_free_catalog(catalog);
+		return false;
+	}
+	return true;
+}
+
+bool indigo_solver_load_index(const char *path, indigo_solver_catalog *catalog) {
+	memset(catalog, 0, sizeof(indigo_solver_catalog));
 	FILE *file = fopen(path, "rb");
 	if (file == NULL) {
 		indigo_error("%s: failed to open %s", __FUNCTION__, path);
@@ -681,80 +854,127 @@ bool indigo_solver_load_index(const char *path, indigo_solver_star **stars, int 
 		fclose(file);
 		return false;
 	}
-	indigo_solver_index_star *index_stars = indigo_safe_malloc(sizeof(indigo_solver_index_star) * header.star_count);
-	indigo_solver_index_quad *index_quads = indigo_safe_malloc(sizeof(indigo_solver_index_quad) * header.quad_count);
-	bool ok = indigo_solver_index_read_stars(file, index_stars, header.star_count) && indigo_solver_index_read_quads(file, index_quads, header.quad_count);
-	fclose(file);
-	if (!ok) {
-		indigo_error("%s: %s is truncated", __FUNCTION__, path);
-		indigo_safe_free(index_stars);
-		indigo_safe_free(index_quads);
-		return false;
+	bool loaded;
+	if (header.version == INDIGO_SOLVER_INDEX_MAPPED_VERSION) {
+		fclose(file);
+		loaded = load_index_v2(path, catalog);
+	} else {
+		loaded = load_index_v1(path, file, &header, catalog);
+		fclose(file);
 	}
-	indigo_solver_star *s = indigo_safe_malloc(sizeof(indigo_solver_star) * header.star_count);
-	memset(s, 0, sizeof(indigo_solver_star) * header.star_count);
-	for (uint32_t i = 0; i < header.star_count; i++) {
-		s[i].id = i;
-		s[i].ra = index_stars[i].ra;
-		s[i].dec = index_stars[i].dec;
+	if (loaded) {
+		indigo_debug("%s: using %u catalog stars and %u catalog quads from %s (%g°, version %u%s)", __FUNCTION__, catalog->star_count, catalog->quad_count, path, catalog->fov, header.version, catalog->mapping ? ", mapped" : "");
 	}
-	indigo_safe_free(index_stars);
-	indigo_solver_quad *q = indigo_safe_malloc(sizeof(indigo_solver_quad) * header.quad_count);
-	memset(q, 0, sizeof(indigo_solver_quad) * header.quad_count);
-	bool sorted = true;
-	for (uint32_t i = 0; i < header.quad_count; i++) {
-		indigo_solver_index_quad *iq = index_quads + i;
-		for (int k = 0; k < 4; k++) {
-			if (iq->stars[k] >= header.star_count) {
-				indigo_error("%s: %s is corrupted (quad %u references star %u of %u)", __FUNCTION__, path, i, iq->stars[k], header.star_count);
-				indigo_safe_free(index_quads);
-				indigo_safe_free(s);
-				indigo_safe_free(q);
-				return false;
-			}
-			q[i].stars[k] = s + iq->stars[k];
-		}
-		q[i].hash = iq->hash;
-		q[i].baseline = iq->baseline;
-		int hx3, hy3, hx4, hy4;
-		indigo_solver_quad_hash_components(iq->hash, &hx3, &hy3, &hx4, &hy4);
-		q[i].x3 = (float)hx3 / INDIGO_SOLVER_CODE_QUANTUM;
-		q[i].y3 = (float)hy3 / INDIGO_SOLVER_CODE_QUANTUM;
-		q[i].x4 = (float)hx4 / INDIGO_SOLVER_CODE_QUANTUM;
-		q[i].y4 = (float)hy4 / INDIGO_SOLVER_CODE_QUANTUM;
-		if (i > 0 && q[i - 1].hash > q[i].hash) {
-			sorted = false;
-		}
-	}
-	indigo_safe_free(index_quads);
-	if (!sorted) {
-		indigo_debug("%s: %s is not sorted by hash, sorting", __FUNCTION__, path);
-		qsort(q, header.quad_count, sizeof(indigo_solver_quad), compare_quads_by_hash);
-	}
-	*stars = s;
-	*star_count = header.star_count;
-	*quads = q;
-	*quad_count = header.quad_count;
-	indigo_debug("%s: using %d catalog stars and %d catalog quads from %s (%g°)", __FUNCTION__, header.star_count, header.quad_count, path, header.fov);
-	return true;
+	return loaded;
 }
 
-bool indigo_solver_catalog(const char *index_directory, float field_width, float field_height, indigo_solver_star **stars, int *star_count, indigo_solver_quad **quads, int *quad_count) {
+bool indigo_solver_catalog_load(const char *index_directory, float field_width, float field_height, indigo_solver_catalog *catalog) {
 	char path[PATH_MAX];
 	float fov;
 	if (!indigo_solver_select_index(index_directory, indigo_solver_index_fovs, INDIGO_SOLVER_INDEX_FOV_COUNT, field_width, field_height, path, sizeof(path), &fov)) {
-		*stars = NULL;
-		*star_count = 0;
-		*quads = NULL;
-		*quad_count = 0;
+		memset(catalog, 0, sizeof(indigo_solver_catalog));
 		return false;
 	}
-	return indigo_solver_load_index(path, stars, star_count, quads, quad_count);
+	return indigo_solver_load_index(path, catalog);
 }
 
-void indigo_solver_free_catalog(indigo_solver_star *stars, indigo_solver_quad *quads) {
-	indigo_safe_free(quads);
-	indigo_safe_free(stars);
+bool indigo_solver_catalog_build(const indigo_solver_star *stars, int star_count, const indigo_solver_quad *quads, int quad_count, float fov, indigo_solver_catalog *catalog) {
+	catalog_allocate(catalog, star_count, quad_count, true);
+	catalog->fov = fov;
+	indigo_solver_index_star *catalog_stars = catalog->allocated[0];
+	for (int i = 0; i < star_count; i++) {
+		catalog_stars[i].ra = stars[i].ra;
+		catalog_stars[i].dec = stars[i].dec;
+	}
+	uint64_t *hashes = catalog->allocated[2];
+	float *baselines = catalog->allocated[3];
+	uint32_t *quad_stars = catalog->allocated[4];
+	for (int i = 0; i < quad_count; i++) {
+		for (int k = 0; k < 4; k++) {
+			ptrdiff_t index = quads[i].stars[k] - stars;
+			if (index < 0 || index >= star_count) {
+				indigo_error("%s: quad %d references a star outside of the catalog", __FUNCTION__, i);
+				indigo_solver_free_catalog(catalog);
+				return false;
+			}
+			quad_stars[4 * (size_t)i + k] = (uint32_t)index;
+		}
+		hashes[i] = quads[i].hash;
+		baselines[i] = quads[i].baseline;
+	}
+	catalog_finish(catalog);
+	return true;
+}
+
+static bool write_section(FILE *file, const void *data, size_t size, uint64_t *offset) {
+	static const uint8_t padding[8] = { 0 };
+	size_t pad = (8 - *offset % 8) % 8;
+	if (pad > 0 && fwrite(padding, 1, pad, file) != pad) {
+		return false;
+	}
+	*offset += pad;
+	if (size > 0 && fwrite(data, 1, size, file) != size) {
+		return false;
+	}
+	*offset += size;
+	return true;
+}
+
+static inline uint64_t aligned_offset(uint64_t offset) {
+	return (offset + 7) / 8 * 8;
+}
+
+bool indigo_solver_write_index(const char *path, const indigo_solver_catalog *catalog) {
+	if (!host_is_little_endian()) {
+		indigo_error("%s: version 2 indexes are written on little endian hosts only", __FUNCTION__);
+		return false;
+	}
+	uint64_t stars = INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE;
+	uint64_t buckets = aligned_offset(stars + catalog->star_count * sizeof(indigo_solver_index_star));
+	uint64_t hashes = aligned_offset(buckets + (INDIGO_SOLVER_BUCKET_COUNT + 1) * sizeof(uint32_t));
+	uint64_t baselines = aligned_offset(hashes + catalog->quad_count * sizeof(uint64_t));
+	uint64_t quad_stars = aligned_offset(baselines + catalog->quad_count * sizeof(float));
+	uint8_t header[INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE] = { 0 };
+	uint32_t version = INDIGO_SOLVER_INDEX_MAPPED_VERSION, bucket_side = INDIGO_SOLVER_BUCKET_SIDE;
+	memcpy(header, INDIGO_SOLVER_INDEX_MAGIC, 4);
+	memcpy(header + 4, &version, 4);
+	memcpy(header + 8, &catalog->fov, 4);
+	memcpy(header + 12, &catalog->star_count, 4);
+	memcpy(header + 16, &catalog->quad_count, 4);
+	memcpy(header + 20, &bucket_side, 4);
+	memcpy(header + 24, &stars, 8);
+	memcpy(header + 32, &buckets, 8);
+	memcpy(header + 40, &hashes, 8);
+	memcpy(header + 48, &baselines, 8);
+	memcpy(header + 56, &quad_stars, 8);
+	FILE *file = fopen(path, "wb");
+	if (file == NULL) {
+		indigo_error("%s: failed to create %s", __FUNCTION__, path);
+		return false;
+	}
+	uint64_t offset = 0;
+	bool ok = write_section(file, header, sizeof(header), &offset);
+	ok = ok && write_section(file, catalog->stars, catalog->star_count * sizeof(indigo_solver_index_star), &offset) && offset == stars + catalog->star_count * sizeof(indigo_solver_index_star);
+	ok = ok && write_section(file, catalog->buckets, (INDIGO_SOLVER_BUCKET_COUNT + 1) * sizeof(uint32_t), &offset);
+	ok = ok && write_section(file, catalog->hashes, catalog->quad_count * sizeof(uint64_t), &offset);
+	ok = ok && write_section(file, catalog->baselines, catalog->quad_count * sizeof(float), &offset);
+	ok = ok && write_section(file, catalog->quad_stars, catalog->quad_count * 4 * sizeof(uint32_t), &offset) && offset == quad_stars + catalog->quad_count * 4 * sizeof(uint32_t);
+	ok = fclose(file) == 0 && ok;
+	if (!ok) {
+		indigo_error("%s: failed to write %s", __FUNCTION__, path);
+	}
+	return ok;
+}
+
+void indigo_solver_free_catalog(indigo_solver_catalog *catalog) {
+	if (catalog == NULL) {
+		return;
+	}
+	indigo_uni_unmap_file(catalog->mapping, catalog->mapping_size);
+	for (int i = 0; i < 5; i++) {
+		indigo_safe_free(catalog->allocated[i]);
+	}
+	memset(catalog, 0, sizeof(indigo_solver_catalog));
 }
 
 int indigo_solver_build_image_quads(indigo_solver_star *stars, int star_count, int width, int height, int cell_size, int *used_stars, indigo_solver_quad *quads, int max_quad_count) {
@@ -824,32 +1044,39 @@ exit:
 	return count;
 }
 
-int indigo_solver_filter_quads(indigo_solver_quad *quads, int quad_count, float ra, float dec, float radius, indigo_solver_quad **filtered) {
-	int count = 0;
-	*filtered = NULL;
+// A quad whose star indices lie outside of the catalog (a damaged mapped file) is never used
+static inline bool quad_stars_valid(const indigo_solver_catalog *catalog, const uint32_t *stars) {
+	return stars[0] < catalog->star_count && stars[1] < catalog->star_count && stars[2] < catalog->star_count && stars[3] < catalog->star_count;
+}
+
+int indigo_solver_filter_quads(const indigo_solver_catalog *catalog, float ra, float dec, float radius, indigo_solver_catalog *filtered) {
+	uint32_t count = 0;
 	for (int pass = 0; pass < 2; pass++) {
 		count = 0;
-		for (int i = 0; i < quad_count; i++) {
-			indigo_solver_quad *quad = quads + i;
-			bool inside = true;
+		for (uint32_t i = 0; i < catalog->quad_count; i++) {
+			const uint32_t *stars = catalog->quad_stars + 4 * (size_t)i;
+			bool inside = quad_stars_valid(catalog, stars);
 			for (int k = 0; k < 4 && inside; k++) {
-				inside = indigo_angular_distance(ra, dec, quad->stars[k]->ra, quad->stars[k]->dec) <= radius;
+				inside = indigo_angular_distance(ra, dec, catalog->stars[stars[k]].ra, catalog->stars[stars[k]].dec) <= radius;
 			}
 			if (inside) {
 				if (pass) {
-					(*filtered)[count] = *quad;
+					((uint64_t *)filtered->allocated[2])[count] = catalog->hashes[i];
+					((float *)filtered->allocated[3])[count] = catalog->baselines[i];
+					memcpy((uint32_t *)filtered->allocated[4] + 4 * (size_t)count, stars, 4 * sizeof(uint32_t));
 				}
 				count++;
 			}
 		}
-		if (count == 0) {
-			break;
-		}
 		if (pass == 0) {
-			*filtered = indigo_safe_malloc(count * sizeof(indigo_solver_quad));
+			// the quads keep their hash order, the stars are those of the catalog
+			catalog_allocate(filtered, catalog->star_count, count, false);
+			filtered->fov = catalog->fov;
+			filtered->stars = catalog->stars;
 		}
 	}
-	indigo_debug("%s: %d of %d catalog quads within %.2f° of RA %.3f° Dec %.3f°", __FUNCTION__, count, quad_count, radius * RAD_TO_DEG, ra * RAD_TO_DEG, dec * RAD_TO_DEG);
+	catalog_finish(filtered);
+	indigo_debug("%s: %u of %u catalog quads within %.2f° of RA %.3f° Dec %.3f°", __FUNCTION__, count, catalog->quad_count, radius * RAD_TO_DEG, ra * RAD_TO_DEG, dec * RAD_TO_DEG);
 	return count;
 }
 
@@ -873,62 +1100,38 @@ static bool limits_exceeded(indigo_solver_limits *limits) {
 	return limits->exceeded;
 }
 
-static inline int bucket_key(int hx3, int hy3) {
-	return hx3 * BUCKET_SIDE + hy3;
-}
-
-// starts[key] .. starts[key + 1] is the range of catalog quads with the given (x3, y3) bucket; the catalog is hash-sorted,
-// so the quads of one bucket are contiguous.
-static uint32_t *build_buckets(indigo_solver_quad *catalog_quads, int catalog_quad_count) {
-	uint32_t *starts = indigo_safe_malloc((BUCKET_COUNT + 1) * sizeof(uint32_t));
-	memset(starts, 0, (BUCKET_COUNT + 1) * sizeof(uint32_t));
-	for (int i = 0; i < catalog_quad_count; i++) {
-		int hx3, hy3, hx4, hy4;
-		indigo_solver_quad_hash_components(catalog_quads[i].hash, &hx3, &hy3, &hx4, &hy4);
-		starts[bucket_key(hx3, hy3) + 1]++;
-	}
-	for (int k = 1; k <= BUCKET_COUNT; k++) {
-		starts[k] += starts[k - 1];
-	}
-	return starts;
-}
-
-int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, indigo_solver_quad *catalog_quads, int catalog_quad_count, indigo_solver_quad_match *matches, int max_match_count, indigo_solver_limits *limits) {
+int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, const indigo_solver_catalog *catalog, indigo_solver_quad_match *matches, int max_match_count, indigo_solver_limits *limits) {
 	int count_by_hash = 0, count_by_scale = 0;
-	if (limits_exceeded(limits)) {
+	if (limits_exceeded(limits) || catalog->quad_count == 0) {
 		return 0;
 	}
-	for (int i = 1; i < catalog_quad_count; i++) {
-		if (catalog_quads[i - 1].hash > catalog_quads[i].hash) {
-			indigo_debug("%s: catalog quads are not sorted by hash, sorting", __FUNCTION__);
-			qsort(catalog_quads, catalog_quad_count, sizeof(indigo_solver_quad), compare_quads_by_hash);
-			break;
-		}
-	}
-	uint32_t *starts = build_buckets(catalog_quads, catalog_quad_count);
+	// the catalog quads of one (x3, y3) bucket are contiguous, the catalog keeps the ranges
+	const uint32_t *starts = catalog->buckets;
 	const int t = INDIGO_SOLVER_HASH_TOLERANCE;
 	for (int i = 0; i < image_quad_count; i++) {
 		if (i % LIMITS_CHECK_INTERVAL == 0 && limits_exceeded(limits)) {
-			indigo_safe_free(starts);
 			return 0;
 		}
 		indigo_solver_quad *image_quad = image_quads + i;
 		int hx3, hy3, hx4, hy4;
 		indigo_solver_quad_hash_components(image_quad->hash, &hx3, &hy3, &hx4, &hy4);
 		for (int x3 = hx3 - t; x3 <= hx3 + t; x3++) {
-			if (x3 < 0 || x3 >= BUCKET_SIDE) {
+			if (x3 < 0 || x3 >= INDIGO_SOLVER_BUCKET_SIDE) {
 				continue;
 			}
 			for (int y3 = hy3 - t; y3 <= hy3 + t; y3++) {
-				if (y3 < 0 || y3 >= BUCKET_SIDE) {
+				if (y3 < 0 || y3 >= INDIGO_SOLVER_BUCKET_SIDE) {
 					continue;
 				}
 				int key = bucket_key(x3, y3);
 				for (uint32_t j = starts[key]; j < starts[key + 1]; j++) {
-					indigo_solver_quad *catalog_quad = catalog_quads + j;
 					int cx3, cy3, cx4, cy4;
-					indigo_solver_quad_hash_components(catalog_quad->hash, &cx3, &cy3, &cx4, &cy4);
+					indigo_solver_quad_hash_components(catalog->hashes[j], &cx3, &cy3, &cx4, &cy4);
 					if (abs(cx4 - hx4) > t || abs(cy4 - hy4) > t) {
+						continue;
+					}
+					const uint32_t *stars = catalog->quad_stars + 4 * (size_t)j;
+					if (!quad_stars_valid(catalog, stars)) {
 						continue;
 					}
 					if (count_by_hash == max_match_count) {
@@ -937,8 +1140,10 @@ int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_co
 					}
 					indigo_solver_quad_match *match = matches + count_by_hash;
 					match->image_quad = image_quad;
-					match->catalog_quad = catalog_quad;
-					match->scale = image_quad->baseline / catalog_quad->baseline;
+					for (int k = 0; k < 4; k++) {
+						match->catalog_stars[k] = catalog->stars + stars[k];
+					}
+					match->scale = image_quad->baseline / catalog->baselines[j];
 					match->votes = 0;
 					count_by_hash++;
 				}
@@ -946,7 +1151,6 @@ int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_co
 		}
 	}
 exit:
-	indigo_safe_free(starts);
 	indigo_debug("%s: %d quads matched by hash (tolerance +-%d)", __FUNCTION__, count_by_hash, t);
 	// Each pair of matches sharing an (image star, catalog star) correspondence votes for both.
 	float best_scale = 0;
@@ -960,10 +1164,10 @@ exit:
 			indigo_solver_quad_match *qmj = matches + j;
 			for (int ii = 0; ii < 4; ii++) {
 				indigo_solver_star *isi = qmi->image_quad->stars[ii];
-				indigo_solver_star *csi = qmi->catalog_quad->stars[ii];
+				const indigo_solver_index_star *csi = qmi->catalog_stars[ii];
 				for (int jj = 0; jj < 4; jj++) {
 					indigo_solver_star *isj = qmj->image_quad->stars[jj];
-					indigo_solver_star *csj = qmj->catalog_quad->stars[jj];
+					const indigo_solver_index_star *csj = qmj->catalog_stars[jj];
 					if (isi == isj && csi == csj) {
 						qmi->votes++;
 						qmj->votes++;
@@ -1003,7 +1207,7 @@ int indigo_solver_match_stars(indigo_solver_quad_match *quad_matches, int quad_m
 		indigo_solver_quad_match *quad_match = quad_matches + i;
 		for (int j = 0; j < 4; j++) {
 			indigo_solver_star *image_star = quad_match->image_quad->stars[j];
-			indigo_solver_star *catalog_star = quad_match->catalog_quad->stars[j];
+			const indigo_solver_index_star *catalog_star = quad_match->catalog_stars[j];
 			bool add = true;
 			for (int k = 0; k < count; k++) {
 				indigo_solver_star_match *star_match = star_matches + k;
@@ -1165,7 +1369,7 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 		float ra0 = sorted[ref].catalog_star->ra;
 		float dec0 = sorted[ref].catalog_star->dec;
 		for (int i = 0; i < match_count; i++) {
-			indigo_solver_star *cat = sorted[i].catalog_star;
+			const indigo_solver_index_star *cat = sorted[i].catalog_star;
 			valid[i] = indigo_radec_to_tangent(ra0, dec0, cat->ra, cat->dec, xi + i, eta + i);
 		}
 		for (int i = 0; i < candidates; i++) {
@@ -1196,7 +1400,7 @@ bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_c
 		float ra0, dec0;
 		indigo_tangent_to_radec(ref_ra, ref_dec, best_fit.a0, best_fit.b0, &ra0, &dec0);
 		for (int i = 0; i < match_count; i++) {
-			indigo_solver_star *cat = sorted[i].catalog_star;
+			const indigo_solver_index_star *cat = sorted[i].catalog_star;
 			valid[i] = indigo_radec_to_tangent(ra0, dec0, cat->ra, cat->dec, xi + i, eta + i);
 		}
 		memcpy(inlier, best_inlier, match_count * sizeof(bool));

@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x0300000C
+#define DRIVER_VERSION 0x0300000D
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -84,10 +84,7 @@ typedef struct {
 	pid_t download_pid;
 #endif
 	char loaded_index[PATH_MAX];
-	indigo_solver_star *catalog_stars;
-	int catalog_star_count;
-	indigo_solver_quad *catalog_quads;
-	int catalog_quad_count;
+	indigo_solver_catalog catalog;
 } solver_private_data;
 
 static pthread_mutex_t index_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -144,11 +141,7 @@ static void remove_partial_index_files(void) {
 }
 
 static void free_catalog(indigo_device *device) {
-	indigo_solver_free_catalog(SOLVER_DEVICE_PRIVATE_DATA->catalog_stars, SOLVER_DEVICE_PRIVATE_DATA->catalog_quads);
-	SOLVER_DEVICE_PRIVATE_DATA->catalog_stars = NULL;
-	SOLVER_DEVICE_PRIVATE_DATA->catalog_star_count = 0;
-	SOLVER_DEVICE_PRIVATE_DATA->catalog_quads = NULL;
-	SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count = 0;
+	indigo_solver_free_catalog(&SOLVER_DEVICE_PRIVATE_DATA->catalog);
 	SOLVER_DEVICE_PRIVATE_DATA->loaded_index[0] = 0;
 }
 
@@ -159,7 +152,7 @@ static bool load_catalog(indigo_device *device, const char *path) {
 		return true;
 	}
 	free_catalog(device);
-	if (!indigo_solver_load_index(path, &SOLVER_DEVICE_PRIVATE_DATA->catalog_stars, &SOLVER_DEVICE_PRIVATE_DATA->catalog_star_count, &SOLVER_DEVICE_PRIVATE_DATA->catalog_quads, &SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count)) {
+	if (!indigo_solver_load_index(path, &SOLVER_DEVICE_PRIVATE_DATA->catalog)) {
 		return false;
 	}
 	snprintf(SOLVER_DEVICE_PRIVATE_DATA->loaded_index, sizeof(SOLVER_DEVICE_PRIVATE_DATA->loaded_index), "%s", path);
@@ -528,14 +521,14 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 			}
 			// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
 			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
-			indigo_solver_quad *catalog_quads = SOLVER_DEVICE_PRIVATE_DATA->catalog_quads;
-			int catalog_quad_count = SOLVER_DEVICE_PRIVATE_DATA->catalog_quad_count;
-			indigo_solver_quad *cone_quads = NULL;
+			const indigo_solver_catalog *catalog = &SOLVER_DEVICE_PRIVATE_DATA->catalog;
+			indigo_solver_catalog cone = { 0 };
 			if (hint_radius > 0) {
 				double extent = scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * scale : candidates[i];
-				catalog_quad_count = indigo_solver_filter_quads(catalog_quads, catalog_quad_count, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (hint_radius + extent) * DEG_TO_RAD, &cone_quads);
-				catalog_quads = cone_quads;
+				indigo_solver_filter_quads(catalog, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (hint_radius + extent) * DEG_TO_RAD, &cone);
+				catalog = &cone;
 			}
+			int catalog_quad_count = catalog->quad_count;
 			for (int stage = first_stage; stage < last_stage && !solved && catalog_quad_count > 0 && !limits_exceeded_or_aborted(device, &limits); stage++) {
 				int used_star_count = 0;
 				int quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
@@ -543,7 +536,7 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 					continue;
 				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stage %d: %d brightest stars, %d quads, %d catalog quads", stage + 1, stages[stage], quad_count, catalog_quad_count);
-				int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, catalog_quads, catalog_quad_count, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
+				int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, catalog, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
 				star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
 				if (limits.exceeded) {
 					break;
@@ -558,7 +551,7 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 					solved = true;
 				}
 			}
-			indigo_safe_free(cone_quads);
+			indigo_solver_free_catalog(&cone);
 		}
 	}
 	if (!solved) {

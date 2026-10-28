@@ -71,26 +71,46 @@ typedef struct {
 	uint16_t used;
 } indigo_solver_quad;
 
+// A catalog star, the star record of the index files
+typedef struct {
+	float ra;
+	float dec;
+} indigo_solver_index_star;
+
+// A catalog quad is identified by its position in the catalog arrays; a match keeps its four stars
 typedef struct {
 	indigo_solver_quad *image_quad;
-	indigo_solver_quad *catalog_quad;
+	const indigo_solver_index_star *catalog_stars[4];
 	float scale;
 	int votes;
 } indigo_solver_quad_match;
 
 typedef struct {
 	indigo_solver_star *image_star;
-	indigo_solver_star *catalog_star;
+	const indigo_solver_index_star *catalog_star;
 	int votes;
 } indigo_solver_star_match;
 
-// Index file: little-endian, packed, no padding. In-memory structs below are serialised field by field.
+// Catalog quads are bucketed by the quantised (x3, y3) code coordinates, both in [0, INDIGO_SOLVER_CODE_QUANTUM]
+#define INDIGO_SOLVER_BUCKET_SIDE					(INDIGO_SOLVER_CODE_QUANTUM + 1)
+#define INDIGO_SOLVER_BUCKET_COUNT				(INDIGO_SOLVER_BUCKET_SIDE * INDIGO_SOLVER_BUCKET_SIDE)
+
+// Index file version 1: little-endian, packed, no padding, the quads in records of hash, baseline and four star
+// indices. The in-memory structs below are serialised field by field.
 
 #define INDIGO_SOLVER_INDEX_MAGIC					"ISIX"
 #define INDIGO_SOLVER_INDEX_VERSION				1
 #define INDIGO_SOLVER_INDEX_HEADER_SIZE		20
 #define INDIGO_SOLVER_INDEX_STAR_SIZE			8
 #define INDIGO_SOLVER_INDEX_QUAD_SIZE			28
+
+// Index file version 2: little-endian, the layout the solver uses in memory, so the file is mapped and used as it
+// is. A 64 byte header (the version 1 header, the bucket side and the offsets of the sections, each 8 byte aligned)
+// is followed by the stars, the INDIGO_SOLVER_BUCKET_COUNT + 1 bucket starts, the quad hashes in ascending order,
+// their baselines and their star indices, four per quad. Both versions are read by indigo_solver_load_index().
+
+#define INDIGO_SOLVER_INDEX_MAPPED_VERSION			2
+#define INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE	64
 
 typedef struct {
 	char magic[4];
@@ -99,11 +119,6 @@ typedef struct {
 	uint32_t star_count;
 	uint32_t quad_count;
 } indigo_solve_index_header;
-
-typedef struct {
-	float ra;
-	float dec;
-} indigo_solver_index_star;
 
 typedef struct {
 	uint64_t hash;
