@@ -42,7 +42,7 @@
 extern "C" {
 #endif
 
-#define SOLVER_AGENT_NAME	"Solver Agent"
+#define SOLVER_AGENT_NAME	"INDIGO Solver Agent"
 	
 /** Create solver agent instance
  */

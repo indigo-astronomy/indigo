@@ -59,7 +59,7 @@
 
 #include "../test_runner.h"
 
-#define SOLVER "Solver Agent"
+#define SOLVER SOLVER_AGENT_NAME
 #define IMAGER "Imager Agent"
 #define GUIDER "Guider Agent"
 #define IMAGER_CAMERA "CCD Imager Simulator"

@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0300001C
+#define DRIVER_VERSION 0x0300001D
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -277,6 +277,10 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 	if (!strncmp(info_property->device, "ASTAP Agent", 11)) {
 		return true;
 	}
+	if (!strncmp(info_property->device, "INDIGO Solver Agent", 19)) {
+		return true;
+	}
+	// the Solver Agent of older INDIGO servers
 	if (!strncmp(info_property->device, "Solver Agent", 12)) {
 		return true;
 	}

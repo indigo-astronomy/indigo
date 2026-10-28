@@ -2081,6 +2081,12 @@ static void related_solver_filters(void) {
 	CHECK(select_peer(6, false, false));
 }
 
+// The Solver Agent is related under its name and under the name of older INDIGO servers (in related_invalid_filter)
+static void related_indigo_solver_filter(void) {
+	peer_names[5] = "INDIGO Solver Agent Test";
+	CHECK(select_peer(5, false, false));
+}
+
 static void related_invalid_filter(void) {
 	peer_names[5] = "Solver Agent Test";
 	peer_names[6] = "Unrelated Agent Test";
@@ -2430,6 +2436,7 @@ static const indigo_test_case tests[] = {
 	{ "legacy dome slew", legacy_dome_slew },
 	{ "geometry and threshold", geometry_and_threshold },
 	{ "related solver filters", related_solver_filters },
+	{ "related INDIGO solver filter", related_indigo_solver_filter },
 	{ "related invalid filter", related_invalid_filter },
 	{ "negative site fits", negative_site_fits },
 	{ "lx200 invalid coordinates", lx200_invalid_coordinates },
