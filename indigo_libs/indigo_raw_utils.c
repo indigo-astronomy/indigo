@@ -2594,6 +2594,7 @@ static const double FIND_STAR_EDGE_CLIPPING = 20;
 static const double FIND_STAR_MEAN_THRESHOLD_FACTOR = 4.5;
 static const double FIND_STAR_MEDIAN_THRESHOLD_FACTOR = 5.0;
 static const int    STAR_CANDIDATE_BUFFER_CAP = 512;
+static const int    FIND_STAR_FAST_EVALUATION_FACTOR = 4;
 
 static int luminance_comparator(const void *item_1, const void *item_2) {
 	if (((indigo_star_detection *)item_1)->luminance < ((indigo_star_detection *)item_2)->luminance)
@@ -2928,6 +2929,445 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 	}
 
 	indigo_debug("%s(): found %d star candidates (capacity = %d)", __FUNCTION__, num_candidates, candidates_cap);
+
+	/* Sort candidates by brightness (descending) */
+	if (num_candidates > 1) {
+		qsort(candidates, (size_t)num_candidates, sizeof(local_maximum), local_maximum_comparator);
+	}
+
+	int found = 0;
+	indigo_star_detection star = { 0 };
+
+	/* Process candidates in order of brightness */
+	for (int c = 0; c < num_candidates && found < stars_max; c++) {
+		int star_x = candidates[c].x;
+		int star_y = candidates[c].y;
+
+		star.x = star_x;
+		star.y = star_y;
+		star.nc_distance = 0;
+		star.luminance = 0;
+		star.oversaturated = 0;
+		star.close_to_other = false;
+
+		indigo_result res = INDIGO_FAILED;
+		/* Refine star position using frame digest centroid */
+		if (radius >= 3) {
+			indigo_frame_digest center = {0};
+			res = indigo_selection_frame_digest_iterative(raw_type, data, &star.x, &star.y, radius, width, height, &center, 2);
+			star.x = center.centroid_x;
+			star.y = center.centroid_y;
+			star.luminance = center.lunminance;
+			star.close_to_other = false;
+			if (res == INDIGO_OK) {
+				indigo_delete_frame_digest(&center);
+			}
+		}
+
+		/* Reject stars that have unmeasurable HFD */
+		if (res == INDIGO_OK && radius >= 2) {
+			double hfd = 1000;
+			res = indigo_selection_psf(raw_type, data, star.x, star.y, radius, width, height, NULL, &hfd, NULL);
+			if (hfd > radius * 1.8 || hfd <= 1.5) {
+				indigo_debug("indigo_find_stars(): rejected star (%lf, %lf), hfd = %.1f > radius = %d", star.x, star.y, hfd, radius);
+				res = INDIGO_FAILED;
+			} else {
+				indigo_debug("indigo_find_stars(): res = %d hfd = %.1f radius = %d star precise position refined to (%lf, %lf)", res, hfd, radius, star.x, star.y);
+			}
+		}
+
+		/* Check if the star is a duplicate (probably artifact) or is in close proximity to another one.
+		   Duplicates are removed, close stars are kept but marked. */
+		if (res == INDIGO_OK || radius < 2) {
+			double min_distance_sqr = 4 * radius * radius; /* minimum distance between stars */
+			/* First, check for duplicates */
+			for (int i = 0; i < found; i++) {
+				double dx = fabs(star_list[i].x - star.x);
+				double dy = fabs(star_list[i].y - star.y);
+				double distance_sqr = dx * dx + dy * dy;
+				if (distance_sqr < 4) {
+					/* The star is a duplicate of another star. We skip the duplicate and keep the first star. */
+					indigo_debug("indigo_find_stars(): star (%lf, %lf) skipped, duplicate of #%u = (%lf, %lf)", star.x, star.y, i + 1, star_list[i].x, star_list[i].y);
+					res = INDIGO_FAILED;
+					break;
+				}
+			}
+			/* If not a duplicate, check for close proximity */
+			if (res != INDIGO_FAILED) {
+				for (int i = 0; i < found; i++) {
+					double dx = fabs(star_list[i].x - star.x);
+					double dy = fabs(star_list[i].y - star.y);
+					double distance_sqr = dx * dx + dy * dy;
+					if (distance_sqr < min_distance_sqr) {
+						/* The star is too close to another star.
+						   We mark both stars as being close to another one, so they
+						   won't be used automatically but we keep both stars in the list. */
+						indigo_debug("indigo_find_stars(): star (%lf, %lf), too close to #%u = (%lf, %lf)", star.x, star.y, i + 1, star_list[i].x, star_list[i].y);
+						star.close_to_other = true;
+						star_list[i].close_to_other = true;
+					}
+				}
+			}
+		}
+
+		if (res == INDIGO_OK || radius < 2) {
+			int width2 = width / 2;
+			int height2 = height / 2;
+			int divider = (width > height) ? height2 : width2;
+
+			star.oversaturated = (buf[star_y * width + star_x] == max_luminance) ? 1 : 0;
+			star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
+			star.nc_distance /= divider;
+			star_list[found++] = star;
+		}
+	}
+
+	free(candidates);
+	free(buf);
+
+	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
+
+	INDIGO_DEBUG(
+		indigo_debug("%s: Refined stars:", __FUNCTION__);
+		for (int i = 0; i < found; i++) {
+			indigo_debug(
+				"%s: star #%u = (%lf, %lf), ncdist = %lf, lum = %lf, close_to_other = %d, oversaturated = %d",
+				__FUNCTION__,
+				i+1,
+				star_list[i].x,
+				star_list[i].y,
+				star_list[i].nc_distance,
+				star_list[i].luminance,
+				star_list[i].close_to_other,
+				star_list[i].oversaturated
+			);
+		}
+	);
+
+	*stars_found = found;
+	indigo_debug("%s: found %d stars with threshold %.1f\n", __FUNCTION__, found, stddev_threshold_factor);
+	return INDIGO_OK;
+}
+
+/* Same as indigo_find_stars_precise_threshold(), but the local maxima are ranked by their peak above the cell background
+   first and only the brightest of them are evaluated (local background, hot pixel check and luminance) until
+   FIND_STAR_FAST_EVALUATION_FACTOR x stars_max of them pass, which avoids evaluating every local maximum of dense frames */
+indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const void *data, const int radius, const double stddev_threshold_factor, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
+	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
+	if (width <= 0 || height <= 0 || stars_max <= 0) return INDIGO_FAILED;
+
+	int  size = width * height;
+	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
+	const int clip_edge = height >= FIND_STAR_EDGE_CLIPPING * 4 ? (int)FIND_STAR_EDGE_CLIPPING : (height / 4);
+	int clip_width  = width - clip_edge;
+	int clip_height = height - clip_edge;
+	uint16_t max_luminance = 0;
+
+	uint8_t *data8 = (uint8_t *)data;
+	uint16_t *data16 = (uint16_t *)data;
+
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8: {
+			max_luminance = UINT8_MAX;
+			for (int i = 0; i < size; i++) {
+				buf[i] = data8[i];
+			}
+			break;
+		}
+		case INDIGO_RAW_MONO16: {
+			max_luminance = UINT16_MAX;
+			for (int i = 0; i < size; i++) {
+				buf[i] = data16[i];
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			max_luminance = UINT8_MAX;
+			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
+				buf[j] = median3(data8[i], data8[i + 1], data8[i + 2]);
+				i += 2;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGBA32: {
+			max_luminance = UINT8_MAX;
+			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
+				buf[j] = median3(data8[i], data8[i + 1], data8[i + 2]);
+				i += 3;
+			}
+			break;
+		}
+		case INDIGO_RAW_ABGR32: {
+			max_luminance = UINT8_MAX;
+			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
+				buf[j] = median3(data8[i + 1], data8[i + 2], data8[i + 3]);
+				i += 3;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			max_luminance = UINT16_MAX;
+			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
+				buf[j] = median3(data16[i], data16[i + 1], data16[i + 2]);
+				i += 2;
+			}
+			break;
+		}
+	}
+
+	if (max_luminance == 0) {
+		/* Unsupported raw_type */
+		free(buf);
+		return INDIGO_FAILED;
+	}
+
+	/* Build per-cell robust background estimates to handle gradients.
+	   Divide image into a NxN grid and compute median + MAD-based stddev
+	   for each cell. These are used as local median/stddev when
+	   evaluating star candidates. */
+
+	double cell_medians[FIND_STAR_GRID][FIND_STAR_GRID];
+	double cell_stddevs[FIND_STAR_GRID][FIND_STAR_GRID];
+	for (int gy = 0; gy < FIND_STAR_GRID; gy++) {
+		for (int gx = 0; gx < FIND_STAR_GRID; gx++) {
+			int x0 = (width * gx) / FIND_STAR_GRID;
+			int x1 = (width * (gx + 1)) / FIND_STAR_GRID;
+			int y0 = (height * gy) / FIND_STAR_GRID;
+			int y1 = (height * (gy + 1)) / FIND_STAR_GRID;
+			if (x1 > width) x1 = width;
+			if (y1 > height) y1 = height;
+
+			int cell_size = (x1 - x0) * (y1 - y0);
+			if (cell_size <= 0) {
+				cell_medians[gy][gx] = 0.0;
+				cell_stddevs[gy][gx] = 0.0;
+				continue;
+			}
+
+			/* find min/max in cell and sum/count for fallback */
+			uint16_t c_min = UINT16_MAX, c_max = 0;
+			double c_sum = 0, c_sum_sq = 0;
+			int c_count = 0;
+			for (int yy = y0; yy < y1; yy++) {
+				int off = yy * width + x0;
+				for (int xx = x0; xx < x1; xx++, off++) {
+					uint16_t v = buf[off];
+					if (v < c_min) c_min = v;
+					if (v > c_max) c_max = v;
+					c_sum += v;
+					c_sum_sq += (double)v * (double)v;
+					c_count++;
+				}
+			}
+
+			if (c_count == 0) {
+				cell_medians[gy][gx] = 0.0;
+				cell_stddevs[gy][gx] = 0.0;
+				continue;
+			}
+
+			size_t c_bins = (size_t)c_max - (size_t)c_min + 1;
+			double c_stddev = 0;
+			double c_median = c_sum / c_count;
+			if (c_bins > 65536) {
+				c_stddev = sqrt(fabs(c_sum_sq / c_count - c_median * c_median));
+				cell_medians[gy][gx] = c_median;
+				cell_stddevs[gy][gx] = c_stddev;
+			} else {
+				uint32_t *chist = (uint32_t *)calloc(c_bins, sizeof(uint32_t));
+				if (!chist) {
+					c_stddev = sqrt(fabs(c_sum_sq / c_count - c_median * c_median));
+					cell_medians[gy][gx] = c_median;
+					cell_stddevs[gy][gx] = c_stddev;
+				} else {
+					int m = 0;
+					for (int yy = y0; yy < y1; yy++) {
+						int off = yy * width + x0;
+						for (int xx = x0; xx < x1; xx++, off++) {
+							uint16_t v = buf[off];
+							if (v < max_luminance) {
+								size_t idx = (size_t)v - (size_t)c_min;
+								chist[idx]++;
+								m++;
+							}
+						}
+					}
+					if (m < cell_size / 10) {
+						c_stddev = sqrt(fabs(c_sum_sq / c_count - c_median * c_median));
+						cell_medians[gy][gx] = c_median;
+						cell_stddevs[gy][gx] = c_stddev;
+						free(chist);
+					} else {
+						int target = m / 2;
+						int cum = 0;
+						int median_idx = 0;
+						for (size_t v = 0; v < c_bins; v++) {
+							cum += chist[v];
+							if (cum > target) {
+								median_idx = (int)v;
+								break;
+							}
+						}
+						int median_value = (int)c_min + median_idx;
+
+						uint32_t *dev_hist = (uint32_t *)calloc(c_bins, sizeof(uint32_t));
+						if (!dev_hist) {
+							c_stddev = sqrt(fabs(c_sum_sq / c_count - c_median * c_median));
+							cell_medians[gy][gx] = c_median;
+							cell_stddevs[gy][gx] = c_stddev;
+							free(chist);
+						} else {
+							for (size_t v = 0; v < c_bins; v++) {
+								uint32_t c = chist[v];
+								if (c == 0) continue;
+								size_t d = (v > (size_t)median_idx) ? (v - (size_t)median_idx) : ((size_t)median_idx - v);
+								if (d < c_bins) dev_hist[d] += c;
+							}
+							cum = 0;
+							int mad = 0;
+							for (size_t d = 0; d < c_bins; d++) {
+								cum += dev_hist[d];
+								if (cum > target) {
+									mad = (int)d;
+									break;
+								}
+							}
+							c_stddev = mad * 1.4826;
+							cell_medians[gy][gx] = (double)median_value;
+							cell_stddevs[gy][gx] = c_stddev;
+							free(dev_hist);
+							free(chist);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	int candidates_cap = stars_max > STAR_CANDIDATE_BUFFER_CAP ? (stars_max) : STAR_CANDIDATE_BUFFER_CAP;
+	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
+	int num_candidates = 0;
+
+	// Find all local maxima
+	for (int j = clip_edge; j < clip_height; j++) {
+		for (int i = clip_edge; i < clip_width; i++) {
+			int off = j * width + i;
+			uint16_t center = buf[off];
+
+			/* determine cell for this pixel and use cell-specific threshold */
+			int cell_x = (i * FIND_STAR_GRID) / width;
+			int cell_y = (j * FIND_STAR_GRID) / height;
+			if (cell_x >= FIND_STAR_GRID) cell_x = FIND_STAR_GRID - 1;
+			if (cell_y >= FIND_STAR_GRID) cell_y = FIND_STAR_GRID - 1;
+
+			double cell_median = cell_medians[cell_y][cell_x];
+			double cell_stddev = cell_stddevs[cell_y][cell_x];
+
+			uint32_t cell_threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * cell_stddev + cell_median);
+			if (center > cell_threshold) {
+				/* Check if this is a local maximum (brighter than all 8 neighbors) */
+				bool is_local_max = true;
+				is_local_max = is_local_max && (center >= buf[off - 1]);                    // left
+				is_local_max = is_local_max && (center >= buf[off + 1]);                    // right
+				is_local_max = is_local_max && (center >= buf[off - width]);                // top
+				is_local_max = is_local_max && (center >= buf[off + width]);                // bottom
+				is_local_max = is_local_max && (center >= buf[off - width - 1]);            // top-left
+				is_local_max = is_local_max && (center >= buf[off - width + 1]);            // top-right
+				is_local_max = is_local_max && (center >= buf[off + width - 1]);            // bottom-left
+				is_local_max = is_local_max && (center >= buf[off + width + 1]);            // bottom-right
+
+				if (is_local_max) {
+					/* Rank by the peak above the cell background, the brightest ones are evaluated below */
+					local_maximum item;
+					item.x = i;
+					item.y = j;
+					item.value = center - cell_median;
+					if (num_candidates >= candidates_cap) {
+						int new_candidates_cap = candidates_cap * 2;
+						local_maximum *tmp = (local_maximum *)realloc(candidates, (size_t)new_candidates_cap * sizeof(local_maximum));
+						if (tmp) {
+							candidates = tmp;
+							candidates_cap = new_candidates_cap;
+						} else {
+							indigo_error("%s(): candidates realloc to %d failed", __FUNCTION__, new_candidates_cap);
+							/* if realloc fails, keep current buffer and skip adding this item */
+							break;
+						}
+					}
+					candidates[num_candidates++] = item;
+				}
+			}
+		}
+	}
+
+	/* Evaluate the brightest local maxima until evaluated_max of them pass, keeping them in place */
+	int local_maxima = num_candidates;
+	int evaluated_max = stars_max > INT_MAX / FIND_STAR_FAST_EVALUATION_FACTOR ? INT_MAX : FIND_STAR_FAST_EVALUATION_FACTOR * stars_max;
+	if (local_maxima > 1) {
+		qsort(candidates, (size_t)local_maxima, sizeof(local_maximum), local_maximum_comparator);
+	}
+	num_candidates = 0;
+	for (int c = 0; c < local_maxima && num_candidates < evaluated_max; c++) {
+		int i = candidates[c].x;
+		int j = candidates[c].y;
+		int off = j * width + i;
+		int cell_x = (i * FIND_STAR_GRID) / width;
+		int cell_y = (j * FIND_STAR_GRID) / height;
+		if (cell_x >= FIND_STAR_GRID) cell_x = FIND_STAR_GRID - 1;
+		if (cell_y >= FIND_STAR_GRID) cell_y = FIND_STAR_GRID - 1;
+		double cell_stddev = cell_stddevs[cell_y][cell_x];
+
+		/* Calculate local background as median of pixels in a square with side 2*radius+1 */
+		int side = 2 * radius + 1;
+		int local_pixel_count = 0;
+		uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
+
+		for (int dy = -radius; dy <= radius; dy++) {
+			for (int dx = -radius; dx <= radius; dx++) {
+				int px = i + dx;
+				int py = j + dy;
+				if (px >= 0 && px < width && py >= 0 && py < height) {
+					local_pixels[local_pixel_count++] = buf[py * width + px];
+				}
+			}
+		}
+
+		/* Sort local pixels with qsort to find median */
+		qsort(local_pixels, (size_t)local_pixel_count, sizeof(uint16_t), uint16_comparator);
+		uint16_t local_background = local_pixels[local_pixel_count / 2];
+		free(local_pixels);
+
+		/* use per-cell stddev for local thresholding to handle gradients */
+		uint32_t local_threshold = (uint32_t)(cell_stddev * stddev_threshold_factor + local_background);
+
+		/* Count how many neighbors are above local threshold to reject hot pixels */
+		int neighbors_above = 0;
+		neighbors_above += (buf[off - 1] > local_threshold) ? 1 : 0;
+		neighbors_above += (buf[off + 1] > local_threshold) ? 1 : 0;
+		neighbors_above += (buf[off - width] > local_threshold) ? 1 : 0;
+		neighbors_above += (buf[off + width] > local_threshold) ? 1 : 0;
+		neighbors_above += (buf[off - width - 1] > local_threshold) ? 1 : 0;
+		neighbors_above += (buf[off - width + 1] > local_threshold) ? 1 : 0;
+		neighbors_above += (buf[off + width - 1] > local_threshold) ? 1 : 0;
+		neighbors_above += (buf[off + width + 1] > local_threshold) ? 1 : 0;
+
+		/* Require at least 6 out of 8 neighbors above threshold to avoid hot pixels */
+		if (neighbors_above >= 6) {
+			double x = i;
+			double y = j;
+
+			// Calculate luminance using frame digest
+			indigo_frame_digest digest = {0};
+			indigo_selection_frame_digest_iterative(raw_type, data, &x, &y, radius, width, height, &digest, 2);
+			candidates[num_candidates].x = i;
+			candidates[num_candidates].y = j;
+			candidates[num_candidates].value = digest.lunminance;
+			indigo_delete_frame_digest(&digest);
+			num_candidates++;
+		}
+	}
+
+	indigo_debug("%s(): evaluated %d of %d local maxima", __FUNCTION__, num_candidates, local_maxima);
 
 	/* Sort candidates by brightness (descending) */
 	if (num_candidates > 1) {
