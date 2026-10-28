@@ -32,4 +32,4 @@ indigo_server -s
 ## Testing
 
 - 2026-10-25 19:48 3.0.0.43 linux x64 simulator 26/26 OK
-- 2026-10-27 15:19 3.0.0.45 mac arm64 simulator 28/28 OK
+- 2026-10-28 08:24 3.0.0.45 mac arm64 simulator 28/28 OK

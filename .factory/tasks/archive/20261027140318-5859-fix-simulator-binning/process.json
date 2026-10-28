@@ -5,10 +5,8 @@
     "MIGRATION_STATUS.md",
     "TEST_SUMMARY.md",
     "indigo_drivers/ccd_simulator/README.md",
-    "indigo_drivers/ccd_simulator/REFACTOR.md",
     "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver",
     "indigo_drivers/ccd_simulator/indigo_ccd_simulator.c",
-    "indigo_drivers/agent_solver/REFACTOR.md",
     "indigo_test/integration/test_ccd_simulator.c",
     "indigo_test/integration/test_agent_solver_simulator.c",
     ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-*.json",
@@ -92,27 +90,17 @@
     "MIGRATION_STATUS.md": [
       "100644",
       "blob",
-      "97cefe9f2cddd9be83763dc11558445d6b15a0ea"
+      "fcdb28f4bc1544e6fac6080f64060c25b7925787"
     ],
     "TEST_SUMMARY.md": [
       "100644",
       "blob",
-      "5b5aae70469679b611f22c40a23fe74e51738d6b"
-    ],
-    "indigo_drivers/agent_solver/REFACTOR.md": [
-      "100644",
-      "blob",
-      "769b56bc9dde8646e7ae6f2af2f17ec7ece89c42"
+      "a5182c8418f1e60cf8bc3913e25a8e4710ec6548"
     ],
     "indigo_drivers/ccd_simulator/README.md": [
       "100644",
       "blob",
-      "1ba16a02ed00f650bf5d232aeacb56bf3d0be0ea"
-    ],
-    "indigo_drivers/ccd_simulator/REFACTOR.md": [
-      "100644",
-      "blob",
-      "71882003a21cda8cd9ad68affcde76485bc5673a"
+      "c0d37e2098ed2aa83c11586173c06327bee304f3"
     ],
     "indigo_drivers/ccd_simulator/indigo_ccd_simulator.c": [
       "100644",
@@ -127,7 +115,7 @@
     "indigo_test/integration/test_agent_solver_simulator.c": [
       "100644",
       "blob",
-      "6b1e4af18cf8deb9d0c5411eecd865249828a0fb"
+      "91da2bc460737e4277bc4902d4c8294bfe97d298"
     ],
     "indigo_test/integration/test_ccd_simulator.c": [
       "100644",

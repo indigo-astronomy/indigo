@@ -3,7 +3,7 @@
 Verdict: pass
 Reviewer: Claude Fable 5.1 (Claude Code desktop app) acting as verifier
 Date: 2026-10-27
-Revision and working-tree state: task branch `task/20261027140318-5859-fix-simulator-binning` on master `42c0960a2` during the runs, `32d7396d7` (the owner's server commit) at the task commit; uncommitted working tree
+Revision and working-tree state: task branch `task/20261027140318-5859-fix-simulator-binning` on master `42c0960a2` during the first runs, `32d7396d7` (the owner's server commit) at the task commit `855c8f571`; the merged candidate `34f1dea8f` (origin/master `1e7c23390`) rerun on 2026-10-28, see Merged candidate
 Review independence: not independent, the same agent implemented the change.
 
 ## Acceptance evidence
@@ -39,6 +39,28 @@ case changed its result: the imager, guider and astrometry suites pass with the 
 Rosetta set grew from 8 to 9 cases. The first version of this task (sum clamped at 65535) passed the simulator cases
 and the imager suite but not the Rosetta case; it was replaced by the mean before the recorded run.
 
+## Found defects
+- Reproduced: a 2 x 2 binned Rosetta frame of `CCD Imager Simulator` did not solve in the Solver Agent while the
+  agent's own 2 x 2 downsampling of the unbinned frame did (task 20261027131225-a980 left camera binning out of its
+  Rosetta set). Root cause: `create_frame()` binned the imager by taking every `horizontal_bin`-th /
+  `vertical_bin`-th pixel of the fixed image, so a binned star kept one sample of its core and the stars became single
+  pixel spikes whose quad codes no centroid can place. Fix: a binned imager pixel is the integer mean of its bin block
+  (`indigo_ccd_simulator.driver`, version 45). Regression: `simulator_imager_binning_averages_the_bin_block` and
+  `test_agent_solver_simulator "rosetta camera binned"`.
+- Source audit: the guider camera divided the star centres by the bin but rendered the same `exp(-(x² + y²) / 4)`
+  profile in binned pixels, so a binned star was as wide in binned pixels as an unbinned one in unbinned pixels. Fix:
+  the profile is evaluated in unbinned pixels, `(centre - pixel) * bin`, with the unbinned amplitude. Regression:
+  `simulator_guider_binning_scales_the_star_profile`.
+- Rejected by measurement: a first version summed the block, clamped at 65535 like a saturated well (60 of the
+  480 000 2 x 2 blocks of the 16-bit image exceed it), with the guider amplitude multiplied by the block size. That
+  frame did not solve either, deterministically in three runs: 106 detected stars (96 on the agent's averaged frame),
+  57 stars matched by votes but only 5 consistent (5 of 53 with the 5° index). The averaged camera frame gives 71
+  detected stars and solves with 6 of 23 consistent matches, the agent's own downsampling with 7 of 32. Whether the
+  clamped cores or the additional faint detections break the summed frame was not separated; registered as
+  FND-20261027140318-5859-fix-simulator-binning-002 for the solver.
+- Source audit, out of scope: the hot pixel loop tests `y > frame_height` where `y >= frame_height` is meant,
+  FND-20261027140318-5859-fix-simulator-binning-001.
+
 ## Findings
 - FND-20261027140318-5859-fix-simulator-binning-001 (functional, low, deferred): hot pixel row bound `y > frame_height`
   in `create_frame()`, out of scope, found by source audit.
@@ -55,6 +77,28 @@ part of this task and the server was not rebuilt or tested here.
 ## Verification verdict rationale
 All five acceptance criteria have direct evidence from the recorded run, the Rosetta set and the agent suites; the
 remaining limitations are the same-agent review, the platforms not run and the two deferred findings.
+
+## Merged candidate
+Origin/master `1e7c23390` (20 commits: FITS, JPEG, hint and 0.5° index cases of the solver test, solver noise filter
+and hints, archived REFACTOR.md files, driver build lists, Pentax validation) was merged as `34f1dea8f` on 2026-10-28.
+Rebuilt `indigo_agent_solver` (3.0.0.9) and `indigo_ccd_simulator`, relinked the test binaries and rerun:
+
+| Command | Exit code | Result |
+| --- | --- | --- |
+| `python3 tools/run_driver_test.py ccd_simulator` | 0 | 28/28, recorded `2026-10-28 08:24 3.0.0.45 mac arm64 simulator 28/28 OK`, TEST_SUMMARY.md regenerated |
+| `make -C indigo_drivers/agent_solver -f ../../Makefile.drv all` | 0 | `indigo_agent_solver` 3.0.0.9 rebuilt |
+| `indigo_test/build/integration/test_agent_solver_simulator rosetta` | 0 | 11/11 (master's `rosetta fits` and `rosetta jpeg` included); `rosetta camera binned`: RA 6.52682 h Dec 5.0934° angle 179.19° 16.888"/px, centre error 6.4" |
+| `indigo_test/build/integration/test_agent_imager` | 0 | 39/39 |
+| `indigo_test/build/integration/test_agent_guider` | 0 | 95/95 |
+| `indigo_test/build/integration/test_agent_astrometry` (in the chain, machine loaded) | 1 | 53/54: `index abort download` timed out waiting for the ALERT state after aborting the hanging fake download, a bounded wait unrelated to the simulator (master changed only that driver's archived notes) |
+| `indigo_test/build/integration/test_agent_astrometry` (alone) | 0 | 54/54 |
+| `python3 .factory/scripts/process_check.py --base 1e7c23390 --head HEAD` | see the external delivery log | run on the evidence commit |
+
+## Final test summary
+Simulated (hardware-free) tests on the merged candidate: 227 run, 227 passed (`test_ccd_simulator` 28,
+`test_agent_solver_simulator rosetta` 11, `test_agent_imager` 39, `test_agent_guider` 95, `test_agent_astrometry` 54 on
+its solo run). Hardware tests: 0 run, 0 passed. The 120 guider setups and the 0.5° index case of the solver suite were
+not rerun here (unaffected by the simulator change at binning 1; master's record of 2026-10-28 02:11 covers them).
 
 ## Register reconciliation
 Two findings created from this task, both active and deferred, owner coordinator; nothing closed.

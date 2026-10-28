@@ -2,12 +2,13 @@
 
 Verdict: pass
 Reviewer and independence: Claude Fable 5.1 as quality reviewer, same agent as the developer (not independent)
-Reviewed revision and working-tree state: uncommitted task working tree on `32d7396d7` (master `42c0960a2` plus the owner's server commit)
+Reviewed revision and working-tree state: uncommitted task working tree on `32d7396d7` (master `42c0960a2` plus the owner's server commit); the merge of origin/master `1e7c23390` (`34f1dea8f`) re-read for the solver test header and array, the status table and the archived notes
 
 ## Scope and method
 Final diff: the `.driver` change and its regenerated `.c` (version and the two rendering loops only, checked with
 `git diff`), the two cases and three helpers added to `test_ccd_simulator.c`, the re-added solver case and header,
-both REFACTOR.md files, MIGRATION_STATUS.md, the README record and TEST_SUMMARY.md. Read against the root and test
+MIGRATION_STATUS.md, the README record, TEST_SUMMARY.md and this record (the notes first written into the two
+REFACTOR.md files moved into verification.md when master archived those files). Read against the root and test
 AGENTS.md rules (tabs, braces, single-line calls, no blank lines in bodies, spaces in initializers, English, version
 bump, generated outputs regenerated not hand-edited).
 

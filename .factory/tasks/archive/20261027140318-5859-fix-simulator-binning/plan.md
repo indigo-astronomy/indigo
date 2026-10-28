@@ -7,10 +7,10 @@ Change the two rendering loops in the `code` block of the generated driver's `.d
 regenerate with the unchanged generator through `Makefile.drv`. Add two regression cases to the simulator suite,
 one comparing a binned imager region pixel by pixel with the block means of the fixed image, one comparing the
 profile moments of an unsaturated guider star unbinned and 2 x 2 binned. Re-add the camera binned case to the solver
-simulator test. Components: `indigo_drivers/ccd_simulator/indigo_ccd_simulator.{driver,c}`, `REFACTOR.md`,
+simulator test. Components: `indigo_drivers/ccd_simulator/indigo_ccd_simulator.{driver,c}`,
 `README.md` (test record), `indigo_test/integration/test_ccd_simulator.c`,
-`indigo_test/integration/test_agent_solver_simulator.c`, `indigo_drivers/agent_solver/REFACTOR.md`,
-`MIGRATION_STATUS.md`, `TEST_SUMMARY.md`.
+`indigo_test/integration/test_agent_solver_simulator.c`, `MIGRATION_STATUS.md`, `TEST_SUMMARY.md`; the defect
+record and test summary are in verification.md (master archived the driver-local REFACTOR.md files during the task).
 
 ## Baseline
 - Commands and environment: Darwin arm64 (macOS 27), Apple clang, `make all` tree of 2026-10-27 in `build/`,
@@ -28,6 +28,7 @@ simulator test. Components: `indigo_drivers/ccd_simulator/indigo_ccd_simulator.{
 | 2 | Regression cases in `test_ccd_simulator.c` | AC-002, AC-003 | 1 | both cases pass, old driver would fail them | complete |
 | 3 | `rosetta camera binned` case and header in `test_agent_solver_simulator.c` | AC-001 | 1 | Rosetta set passes | complete |
 | 4 | Regression suites, recorded run, records | AC-004, AC-005 | 2, 3 | suites pass, README line written, documents updated | complete |
+| 5 | Synchronize with origin/master (`1e7c23390`, 20 commits: FITS/JPEG/hint/0.5° solver cases, archived REFACTOR.md files, driver lists), resolve, rebuild, rerun the recorded run and the suites, refresh the evidence | AC-001, AC-004, AC-005 | 4 | merge commit, suites pass on the merged candidate | complete |
 
 ## Test strategy
 Unit layer is not applicable (the rendering is inside the driver); the simulator integration suite reads the RAW
@@ -48,4 +49,5 @@ frame's range independent of the binning, like the agent's own downsampling and 
 Not applicable; no stored data. Rollback is the previous driver version.
 
 ## Deviations and owner decisions
-The clamped sum of the brief was replaced by the mean after measurement; the brief allowed either.
+The clamped sum of the brief was replaced by the mean after measurement; the brief allowed either. The notes first
+appended to the two REFACTOR.md files were moved into verification.md when master archived those files.

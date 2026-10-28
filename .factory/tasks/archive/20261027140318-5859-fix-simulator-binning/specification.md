@@ -27,7 +27,7 @@ other platforms.
 | AC-002 | Every pixel of a binned imager light frame equals the integer mean of its bin block of the fixed image plus the 0 to 127 ADU frame noise, for binning 1, 2 and 4; blocks summing beyond 65535 are averaged, not clamped | `test_ccd_simulator simulator_imager_binning_averages_the_bin_block` |
 | AC-003 | A 2 x 2 binned guider frame renders an unsaturated star at half the unbinned position (within 1 binned px), with a root mean square radius between 0.3 and 0.7 of the unbinned one and a quarter of the flux above the background (within 20 %) | `test_ccd_simulator simulator_guider_binning_scales_the_star_profile` |
 | AC-004 | The existing simulator based suites still pass: `test_ccd_simulator`, `test_agent_imager`, `test_agent_guider`, `test_agent_astrometry`, the Rosetta set of `test_agent_solver_simulator` | the suites |
-| AC-005 | Driver version 45, regenerated outputs reproduce from the `.driver` file, the simulator record is updated with a recorded run, the solver documentation no longer excludes camera binning | `tools/run_driver_test.py ccd_simulator`, README.md, REFACTOR.md, MIGRATION_STATUS.md, TEST_SUMMARY.md, diff review |
+| AC-005 | Driver version 45, regenerated outputs reproduce from the `.driver` file, the simulator record is updated with a recorded run, the solver test no longer excludes camera binning | `tools/run_driver_test.py ccd_simulator`, README.md, MIGRATION_STATUS.md, TEST_SUMMARY.md, the test header, diff review |
 
 ## Failure behavior and edge cases
 The mean of a block never exceeds 65535, so no binned pixel clamps; the saturated cores of the fixed image stay at
@@ -51,4 +51,6 @@ scale of the binned case is twice the unbinned one and the field size is unchang
 ## Owner decisions and requirement changes
 2026-10-27: the owner's session proposed the task with sum (clamped) or average as acceptable; the sum was
 implemented first and rejected by measurement (the summed frame does not solve), the average is delivered, see the
-brief and the simulator REFACTOR.md.
+brief and verification.md.
+2026-10-28: master archived the driver-local REFACTOR.md files (`c002f790a`) and moved their rules to the task record;
+the notes of this task moved into verification.md, the archived files stay as master left them.
