@@ -95,23 +95,16 @@ typedef struct {
 #define INDIGO_SOLVER_BUCKET_SIDE					(INDIGO_SOLVER_CODE_QUANTUM + 1)
 #define INDIGO_SOLVER_BUCKET_COUNT				(INDIGO_SOLVER_BUCKET_SIDE * INDIGO_SOLVER_BUCKET_SIDE)
 
-// Index file version 1: little-endian, packed, no padding, the quads in records of hash, baseline and four star
-// indices. The in-memory structs below are serialised field by field.
+// Index file version 2: little-endian, the layout the solver uses in memory, so the file is mapped and used as it
+// is. A 64 byte header (magic, version, scale, star and quad counts, the bucket side and the offsets of the sections,
+// each 8 byte aligned) is followed by the stars, the INDIGO_SOLVER_BUCKET_COUNT + 1 bucket starts, the quad hashes in
+// ascending order, their baselines and their star indices, four per quad. Read by indigo_solver_load_index().
 
 #define INDIGO_SOLVER_INDEX_MAGIC					"ISIX"
-#define INDIGO_SOLVER_INDEX_VERSION				1
-#define INDIGO_SOLVER_INDEX_HEADER_SIZE		20
-#define INDIGO_SOLVER_INDEX_STAR_SIZE			8
-#define INDIGO_SOLVER_INDEX_QUAD_SIZE			28
+#define INDIGO_SOLVER_INDEX_VERSION				2
+#define INDIGO_SOLVER_INDEX_HEADER_SIZE		64
 
-// Index file version 2: little-endian, the layout the solver uses in memory, so the file is mapped and used as it
-// is. A 64 byte header (the version 1 header, the bucket side and the offsets of the sections, each 8 byte aligned)
-// is followed by the stars, the INDIGO_SOLVER_BUCKET_COUNT + 1 bucket starts, the quad hashes in ascending order,
-// their baselines and their star indices, four per quad. Both versions are read by indigo_solver_load_index().
-
-#define INDIGO_SOLVER_INDEX_MAPPED_VERSION			2
-#define INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE	64
-
+// The leading fields of the header
 typedef struct {
 	char magic[4];
 	uint32_t version;
@@ -120,23 +113,12 @@ typedef struct {
 	uint32_t quad_count;
 } indigo_solve_index_header;
 
-typedef struct {
-	uint64_t hash;
-	float baseline;
-	uint32_t stars[4];
-} indigo_solver_index_quad;
-
 // directory NULL or empty means the current working directory
 // The catalogue an index of the given scale is built from: scales below 1 degree come from Gaia DR3, the others
 // from Tycho-2; it is the file name prefix (gaia-0.5deg.isix, tyc2-1deg.isix) and the item name prefix of the agent
 extern const char *indigo_solver_index_catalog(float fov);
 extern void indigo_solver_index_path(char *path, size_t size, const char *directory, float fov);
-extern bool indigo_solver_index_write_header(FILE *file, const indigo_solve_index_header *header);
 extern bool indigo_solver_index_read_header(FILE *file, indigo_solve_index_header *header);
-extern bool indigo_solver_index_write_stars(FILE *file, const indigo_solver_index_star *stars, uint32_t count);
-extern bool indigo_solver_index_read_stars(FILE *file, indigo_solver_index_star *stars, uint32_t count);
-extern bool indigo_solver_index_write_quads(FILE *file, const indigo_solver_index_quad *quads, uint32_t count);
-extern bool indigo_solver_index_read_quads(FILE *file, indigo_solver_index_quad *quads, uint32_t count);
 
 extern uint64_t indigo_solver_quad_hash(int hx3, int hy3, int hx4, int hy4);
 extern void indigo_solver_quad_hash_components(uint64_t hash, int *hx3, int *hy3, int *hx4, int *hy4);

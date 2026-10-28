@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x0300000D
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>

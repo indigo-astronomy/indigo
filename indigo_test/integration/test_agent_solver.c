@@ -260,26 +260,9 @@ static bool write_synthetic_index(const char *path) {
 			}
 		}
 	}
-	indigo_solver_index_quad *index_quads = malloc(count * sizeof(indigo_solver_index_quad));
-	for (int i = 0; i < count; i++) {
-		index_quads[i].hash = quads[i].hash;
-		index_quads[i].baseline = quads[i].baseline;
-		for (int k = 0; k < 4; k++) {
-			index_quads[i].stars[k] = quads[i].stars[k]->id;
-		}
-	}
-	// the index is sorted by hash on load when needed, store it unsorted to cover that path
-	indigo_solver_index_star index_stars[CATALOG_STAR_COUNT];
-	for (int i = 0; i < CATALOG_STAR_COUNT; i++) {
-		index_stars[i].ra = catalog[i].ra;
-		index_stars[i].dec = catalog[i].dec;
-	}
-	indigo_solve_index_header header = { .magic = INDIGO_SOLVER_INDEX_MAGIC, .version = INDIGO_SOLVER_INDEX_VERSION, .fov = 5, .star_count = CATALOG_STAR_COUNT, .quad_count = count };
-	FILE *file = fopen(path, "wb");
-	REQUIRE(file != NULL);
-	bool ok = indigo_solver_index_write_header(file, &header) && indigo_solver_index_write_stars(file, index_stars, CATALOG_STAR_COUNT) && indigo_solver_index_write_quads(file, index_quads, count);
-	fclose(file);
-	free(index_quads);
+	indigo_solver_catalog index;
+	bool ok = indigo_solver_catalog_build(catalog, CATALOG_STAR_COUNT, quads, count, 5, &index) && indigo_solver_write_index(path, &index);
+	indigo_solver_free_catalog(&index);
 	free(quads);
 	REQUIRE(ok);
 	return true;
@@ -298,14 +281,15 @@ static indigo_raw_header *render_image(long *size) {
 	}
 	image_ra = ra0 + 0.1 * DEG_TO_RAD;
 	image_dec = dec0 - 0.05 * DEG_TO_RAD;
-	FILE *file = fopen(index_path, "rb");
-	indigo_solve_index_header header;
-	indigo_solver_index_star stars[CATALOG_STAR_COUNT];
-	if (file == NULL || !indigo_solver_index_read_header(file, &header) || !indigo_solver_index_read_stars(file, stars, CATALOG_STAR_COUNT)) {
+	indigo_solver_catalog index;
+	if (!indigo_solver_load_index(index_path, &index) || index.star_count != CATALOG_STAR_COUNT) {
+		indigo_solver_free_catalog(&index);
 		free(image);
 		return NULL;
 	}
-	fclose(file);
+	indigo_solver_index_star stars[CATALOG_STAR_COUNT];
+	memcpy(stars, index.stars, sizeof(stars));
+	indigo_solver_free_catalog(&index);
 	for (int i = 0; i < CATALOG_STAR_COUNT; i++) {
 		float x, y;
 		if (indigo_radec_to_xy(image_ra, image_dec, IMAGE_ANGLE, IMAGE_SCALE, IMAGE_WIDTH, IMAGE_HEIGHT, -1, stars[i].ra, stars[i].dec, &x, &y)) {

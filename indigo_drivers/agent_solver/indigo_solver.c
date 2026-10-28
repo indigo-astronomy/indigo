@@ -736,48 +736,6 @@ static void catalog_finish(indigo_solver_catalog *catalog) {
 	}
 }
 
-#define LOAD_CHUNK	65536
-
-// A version 1 index is read in chunks straight into the catalog arrays
-static bool load_index_v1(const char *path, FILE *file, const indigo_solve_index_header *header, indigo_solver_catalog *catalog) {
-	catalog_allocate(catalog, header->star_count, header->quad_count, true);
-	catalog->fov = header->fov;
-	if (!indigo_solver_index_read_stars(file, catalog->allocated[0], header->star_count)) {
-		indigo_error("%s: %s is truncated", __FUNCTION__, path);
-		indigo_solver_free_catalog(catalog);
-		return false;
-	}
-	uint64_t *hashes = catalog->allocated[2];
-	float *baselines = catalog->allocated[3];
-	uint32_t *quad_stars = catalog->allocated[4];
-	indigo_solver_index_quad *chunk = indigo_safe_malloc(LOAD_CHUNK * sizeof(indigo_solver_index_quad));
-	for (uint32_t i = 0; i < header->quad_count; i += LOAD_CHUNK) {
-		uint32_t n = header->quad_count - i < LOAD_CHUNK ? header->quad_count - i : LOAD_CHUNK;
-		if (!indigo_solver_index_read_quads(file, chunk, n)) {
-			indigo_error("%s: %s is truncated", __FUNCTION__, path);
-			indigo_safe_free(chunk);
-			indigo_solver_free_catalog(catalog);
-			return false;
-		}
-		for (uint32_t j = 0; j < n; j++) {
-			for (int k = 0; k < 4; k++) {
-				if (chunk[j].stars[k] >= header->star_count) {
-					indigo_error("%s: %s is corrupted (quad %u references star %u of %u)", __FUNCTION__, path, i + j, chunk[j].stars[k], header->star_count);
-					indigo_safe_free(chunk);
-					indigo_solver_free_catalog(catalog);
-					return false;
-				}
-				quad_stars[4 * (size_t)(i + j) + k] = chunk[j].stars[k];
-			}
-			hashes[i + j] = chunk[j].hash;
-			baselines[i + j] = chunk[j].baseline;
-		}
-	}
-	indigo_safe_free(chunk);
-	catalog_finish(catalog);
-	return true;
-}
-
 static inline uint32_t mapped_u32(const uint8_t *p) {
 	uint32_t value;
 	memcpy(&value, p, sizeof(value));
@@ -792,12 +750,12 @@ static inline uint64_t mapped_u64(const uint8_t *p) {
 
 // The section [offset, offset + count * size) lies in the file and is aligned for its elements
 static bool section_valid(uint64_t offset, uint64_t count, uint64_t size, uint64_t alignment, size_t file_size) {
-	return offset % alignment == 0 && offset >= INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE && offset <= file_size && count <= (file_size - offset) / size;
+	return offset % alignment == 0 && offset >= INDIGO_SOLVER_INDEX_HEADER_SIZE && offset <= file_size && count <= (file_size - offset) / size;
 }
 
-// A version 2 index is mapped and used in place; the header and the bucket table are checked here, the star indices
-// of a quad when it is matched, so pages of the file are read only when the solver needs them
-static bool load_index_v2(const char *path, indigo_solver_catalog *catalog) {
+// An index is mapped and used in place; the header and the bucket table are checked here, the star indices of a quad
+// when it is matched, so pages of the file are read only when the solver needs them
+static bool map_index(const char *path, indigo_solver_catalog *catalog) {
 	memset(catalog, 0, sizeof(indigo_solver_catalog));
 	if (!host_is_little_endian()) {
 		indigo_error("%s: %s can't be mapped on a big endian host", __FUNCTION__, path);
@@ -810,7 +768,7 @@ static bool load_index_v2(const char *path, indigo_solver_catalog *catalog) {
 	}
 	catalog->mapping = data;
 	catalog->mapping_size = size;
-	if (size < INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE) {
+	if (size < INDIGO_SOLVER_INDEX_HEADER_SIZE) {
 		indigo_error("%s: %s is truncated", __FUNCTION__, path);
 		indigo_solver_free_catalog(catalog);
 		return false;
@@ -850,20 +808,14 @@ bool indigo_solver_load_index(const char *path, indigo_solver_catalog *catalog) 
 		return false;
 	}
 	indigo_solve_index_header header;
-	if (!indigo_solver_index_read_header(file, &header)) {
-		fclose(file);
+	bool valid = indigo_solver_index_read_header(file, &header);
+	fclose(file);
+	if (!valid) {
 		return false;
 	}
-	bool loaded;
-	if (header.version == INDIGO_SOLVER_INDEX_MAPPED_VERSION) {
-		fclose(file);
-		loaded = load_index_v2(path, catalog);
-	} else {
-		loaded = load_index_v1(path, file, &header, catalog);
-		fclose(file);
-	}
+	bool loaded = map_index(path, catalog);
 	if (loaded) {
-		indigo_debug("%s: using %u catalog stars and %u catalog quads from %s (%g°, version %u%s)", __FUNCTION__, catalog->star_count, catalog->quad_count, path, catalog->fov, header.version, catalog->mapping ? ", mapped" : "");
+		indigo_debug("%s: using %u catalog stars and %u catalog quads from %s (%g°)", __FUNCTION__, catalog->star_count, catalog->quad_count, path, catalog->fov);
 	}
 	return loaded;
 }
@@ -926,16 +878,16 @@ static inline uint64_t aligned_offset(uint64_t offset) {
 
 bool indigo_solver_write_index(const char *path, const indigo_solver_catalog *catalog) {
 	if (!host_is_little_endian()) {
-		indigo_error("%s: version 2 indexes are written on little endian hosts only", __FUNCTION__);
+		indigo_error("%s: indexes are written on little endian hosts only", __FUNCTION__);
 		return false;
 	}
-	uint64_t stars = INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE;
+	uint64_t stars = INDIGO_SOLVER_INDEX_HEADER_SIZE;
 	uint64_t buckets = aligned_offset(stars + catalog->star_count * sizeof(indigo_solver_index_star));
 	uint64_t hashes = aligned_offset(buckets + (INDIGO_SOLVER_BUCKET_COUNT + 1) * sizeof(uint32_t));
 	uint64_t baselines = aligned_offset(hashes + catalog->quad_count * sizeof(uint64_t));
 	uint64_t quad_stars = aligned_offset(baselines + catalog->quad_count * sizeof(float));
-	uint8_t header[INDIGO_SOLVER_INDEX_MAPPED_HEADER_SIZE] = { 0 };
-	uint32_t version = INDIGO_SOLVER_INDEX_MAPPED_VERSION, bucket_side = INDIGO_SOLVER_BUCKET_SIDE;
+	uint8_t header[INDIGO_SOLVER_INDEX_HEADER_SIZE] = { 0 };
+	uint32_t version = INDIGO_SOLVER_INDEX_VERSION, bucket_side = INDIGO_SOLVER_BUCKET_SIDE;
 	memcpy(header, INDIGO_SOLVER_INDEX_MAGIC, 4);
 	memcpy(header + 4, &version, 4);
 	memcpy(header + 8, &catalog->fov, 4);

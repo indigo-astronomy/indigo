@@ -312,29 +312,10 @@ void indigo_solver_make_quad(indigo_solver_quad *quad, indigo_solver_star *star_
 	indigo_solver_make_quad_variants(quad, 1, star_0, star_1, star_2, star_3);
 }
 
-// -------------------------------------------------------------------------------- Index file I/O (little-endian, packed)
-
-static inline void put_u32(uint8_t *p, uint32_t v) {
-	p[0] = v; p[1] = v >> 8; p[2] = v >> 16; p[3] = v >> 24;
-}
+// -------------------------------------------------------------------------------- Index file I/O (little-endian)
 
 static inline uint32_t get_u32(const uint8_t *p) {
 	return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
-}
-
-static inline void put_u64(uint8_t *p, uint64_t v) {
-	put_u32(p, (uint32_t)v);
-	put_u32(p + 4, (uint32_t)(v >> 32));
-}
-
-static inline uint64_t get_u64(const uint8_t *p) {
-	return (uint64_t)get_u32(p) | (uint64_t)get_u32(p + 4) << 32;
-}
-
-static inline void put_f32(uint8_t *p, float f) {
-	uint32_t u;
-	memcpy(&u, &f, 4);
-	put_u32(p, u);
 }
 
 static inline float get_f32(const uint8_t *p) {
@@ -343,8 +324,6 @@ static inline float get_f32(const uint8_t *p) {
 	memcpy(&f, &u, 4);
 	return f;
 }
-
-#define IO_CHUNK	1024
 
 const char *indigo_solver_index_catalog(float fov) {
 	return fov < 1 ? "gaia" : "tyc2";
@@ -358,16 +337,6 @@ void indigo_solver_index_path(char *path, size_t size, const char *directory, fl
 		size_t length = strlen(directory);
 		snprintf(path, size, "%s%s%s-%gdeg.isix", directory, directory[length - 1] == '/' ? "" : "/", catalog, fov);
 	}
-}
-
-bool indigo_solver_index_write_header(FILE *file, const indigo_solve_index_header *header) {
-	uint8_t buf[INDIGO_SOLVER_INDEX_HEADER_SIZE];
-	memcpy(buf, header->magic, 4);
-	put_u32(buf + 4, header->version);
-	put_f32(buf + 8, header->fov);
-	put_u32(buf + 12, header->star_count);
-	put_u32(buf + 16, header->quad_count);
-	return fwrite(buf, INDIGO_SOLVER_INDEX_HEADER_SIZE, 1, file) == 1;
 }
 
 bool indigo_solver_index_read_header(FILE *file, indigo_solve_index_header *header) {
@@ -385,82 +354,9 @@ bool indigo_solver_index_read_header(FILE *file, indigo_solve_index_header *head
 		fprintf(stderr, "%s: bad magic\n", __FUNCTION__);
 		return false;
 	}
-	// the first bytes of the version 2 header are the version 1 header
-	if (header->version != INDIGO_SOLVER_INDEX_VERSION && header->version != INDIGO_SOLVER_INDEX_MAPPED_VERSION) {
-		fprintf(stderr, "%s: unsupported index version %u (expected %u or %u)\n", __FUNCTION__, header->version, INDIGO_SOLVER_INDEX_VERSION, INDIGO_SOLVER_INDEX_MAPPED_VERSION);
+	if (header->version != INDIGO_SOLVER_INDEX_VERSION) {
+		fprintf(stderr, "%s: unsupported index version %u (expected %u)\n", __FUNCTION__, header->version, INDIGO_SOLVER_INDEX_VERSION);
 		return false;
-	}
-	return true;
-}
-
-bool indigo_solver_index_write_stars(FILE *file, const indigo_solver_index_star *stars, uint32_t count) {
-	uint8_t buf[IO_CHUNK * INDIGO_SOLVER_INDEX_STAR_SIZE];
-	for (uint32_t i = 0; i < count; i += IO_CHUNK) {
-		uint32_t n = count - i < IO_CHUNK ? count - i : IO_CHUNK;
-		for (uint32_t j = 0; j < n; j++) {
-			uint8_t *p = buf + j * INDIGO_SOLVER_INDEX_STAR_SIZE;
-			put_f32(p, stars[i + j].ra);
-			put_f32(p + 4, stars[i + j].dec);
-		}
-		if (fwrite(buf, INDIGO_SOLVER_INDEX_STAR_SIZE, n, file) != n) {
-			return false;
-		}
-	}
-	return true;
-}
-
-bool indigo_solver_index_read_stars(FILE *file, indigo_solver_index_star *stars, uint32_t count) {
-	uint8_t buf[IO_CHUNK * INDIGO_SOLVER_INDEX_STAR_SIZE];
-	for (uint32_t i = 0; i < count; i += IO_CHUNK) {
-		uint32_t n = count - i < IO_CHUNK ? count - i : IO_CHUNK;
-		if (fread(buf, INDIGO_SOLVER_INDEX_STAR_SIZE, n, file) != n) {
-			return false;
-		}
-		for (uint32_t j = 0; j < n; j++) {
-			uint8_t *p = buf + j * INDIGO_SOLVER_INDEX_STAR_SIZE;
-			stars[i + j].ra = get_f32(p);
-			stars[i + j].dec = get_f32(p + 4);
-		}
-	}
-	return true;
-}
-
-bool indigo_solver_index_write_quads(FILE *file, const indigo_solver_index_quad *quads, uint32_t count) {
-	uint8_t buf[IO_CHUNK * INDIGO_SOLVER_INDEX_QUAD_SIZE];
-	for (uint32_t i = 0; i < count; i += IO_CHUNK) {
-		uint32_t n = count - i < IO_CHUNK ? count - i : IO_CHUNK;
-		for (uint32_t j = 0; j < n; j++) {
-			uint8_t *p = buf + j * INDIGO_SOLVER_INDEX_QUAD_SIZE;
-			const indigo_solver_index_quad *q = quads + i + j;
-			put_u64(p, q->hash);
-			put_f32(p + 8, q->baseline);
-			for (int k = 0; k < 4; k++) {
-				put_u32(p + 12 + 4 * k, q->stars[k]);
-			}
-		}
-		if (fwrite(buf, INDIGO_SOLVER_INDEX_QUAD_SIZE, n, file) != n) {
-			return false;
-		}
-	}
-	return true;
-}
-
-bool indigo_solver_index_read_quads(FILE *file, indigo_solver_index_quad *quads, uint32_t count) {
-	uint8_t buf[IO_CHUNK * INDIGO_SOLVER_INDEX_QUAD_SIZE];
-	for (uint32_t i = 0; i < count; i += IO_CHUNK) {
-		uint32_t n = count - i < IO_CHUNK ? count - i : IO_CHUNK;
-		if (fread(buf, INDIGO_SOLVER_INDEX_QUAD_SIZE, n, file) != n) {
-			return false;
-		}
-		for (uint32_t j = 0; j < n; j++) {
-			uint8_t *p = buf + j * INDIGO_SOLVER_INDEX_QUAD_SIZE;
-			indigo_solver_index_quad *q = quads + i + j;
-			q->hash = get_u64(p);
-			q->baseline = get_f32(p + 8);
-			for (int k = 0; k < 4; k++) {
-				q->stars[k] = get_u32(p + 12 + 4 * k);
-			}
-		}
 	}
 	return true;
 }

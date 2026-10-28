@@ -64,10 +64,10 @@ extern int indigo_solver_image_stars(indigo_raw_header *image, indigo_solver_sta
  index_directory (NULL = current working directory) are considered.
  */
 extern bool indigo_solver_select_index(const char *index_directory, const float *fovs, int fov_count, float field_width, float field_height, char *path, size_t size, float *fov);
-/** Catalog stars and quads in the layout of the version 2 index file: the quads, sorted by hash, are the entries i of
+/** Catalog stars and quads in the layout of the index file: the quads, sorted by hash, are the entries i of
  hashes, baselines and quad_stars (four star indices from 4 * i); buckets[k] .. buckets[k + 1] is the range of the
- quads in the (x3, y3) bucket k of their codes. The arrays point into the mapped file of a version 2 index, or to
- memory the catalog owns (a version 1 index, a built or a filtered catalog); a filtered catalog shares the stars.
+ quads in the (x3, y3) bucket k of their codes. The arrays point into the mapped index file, or to memory the
+ catalog owns (a built or a filtered catalog); a filtered catalog shares the stars.
  */
 typedef struct {
 	float fov;
@@ -83,7 +83,7 @@ typedef struct {
 	void *allocated[5];
 } indigo_solver_catalog;
 
-/** Loads an index file of version 1 (read into memory) or 2 (mapped), see indigo_solver_free_catalog().
+/** Maps an index file, see indigo_solver_free_catalog().
  */
 extern bool indigo_solver_load_index(const char *path, indigo_solver_catalog *catalog);
 /** Selects the index among all known FOVs and loads it.
@@ -92,7 +92,7 @@ extern bool indigo_solver_catalog_load(const char *index_directory, float field_
 /** Builds a catalog of the stars and of the quads, whose star pointers point into stars; used by the indexer.
  */
 extern bool indigo_solver_catalog_build(const indigo_solver_star *stars, int star_count, const indigo_solver_quad *quads, int quad_count, float fov, indigo_solver_catalog *catalog);
-/** Writes the catalog as an index file of version 2.
+/** Writes the catalog as an index file.
  */
 extern bool indigo_solver_write_index(const char *path, const indigo_solver_catalog *catalog);
 /** Unmaps or frees the catalog and clears it; a cleared catalog may be freed again.

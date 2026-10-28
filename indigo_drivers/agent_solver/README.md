@@ -54,11 +54,10 @@ the columns `ra, dec, phot_g_mean_mag, pmra, pmdec` of `gaiadr3.gaia_source` for
 the ESA Gaia archive TAP service (about 16.8 million stars; proper motion is applied from the Gaia epoch 2016.0). Gaia
 data: ESA/Gaia/DPAC, CC BY-SA 3.0 IGO.
 
-Index files of version 2, written by `indigo_solver_indexer`, are memory mapped: an index opens at once, only the parts a
-solve touches are read from the disk and the memory they occupy is the page cache of the system, so even the 0.5° index
-solves in about 300 MB of memory. Index files of version 1 are still read, into memory (about 900 MB for the 0.5°
-index); `indigo_solver_indexer -c <index files>` converts them to version 2 in place. Both versions are described in
-[Solver Index Format](../../indigo_docs/SOLVER_INDEX_FORMAT.md).
+The index files (version 2) are memory mapped: an index opens at once, only the parts a solve touches are read from the
+disk and the memory they occupy is the page cache of the system, so even the 0.5° index solves in about 300 MB of
+memory. Index files of the former version 1 are refused and must be downloaded or built again. The format is described
+in [Solver Index Format](../../indigo_docs/SOLVER_INDEX_FORMAT.md).
 
 ### Agent configuration
 
