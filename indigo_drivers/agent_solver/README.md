@@ -57,7 +57,8 @@ data: ESA/Gaia/DPAC, CC BY-SA 3.0 IGO.
 Index files of version 2, written by `indigo_solver_indexer`, are memory mapped: an index opens at once, only the parts a
 solve touches are read from the disk and the memory they occupy is the page cache of the system, so even the 0.5° index
 solves in about 300 MB of memory. Index files of version 1 are still read, into memory (about 900 MB for the 0.5°
-index); `indigo_solver_indexer -c <index files>` converts them to version 2 in place.
+index); `indigo_solver_indexer -c <index files>` converts them to version 2 in place. Both versions are described in
+[Solver Index Format](../../indigo_docs/SOLVER_INDEX_FORMAT.md).
 
 ### Agent configuration
 

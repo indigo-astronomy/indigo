@@ -2872,6 +2872,7 @@
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
 		599EB1542B52EC3900B333E4 /* GUIDING_MISCONCEPTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_MISCONCEPTIONS.md; sourceTree = "<group>"; };
 		599EB1552B52EC3900B333E4 /* INDIGO_RAW_IMAGE_FORMAT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_RAW_IMAGE_FORMAT.md; sourceTree = "<group>"; };
+		59ECA503B2CD35CEF6E3094C /* SOLVER_INDEX_FORMAT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SOLVER_INDEX_FORMAT.md; sourceTree = "<group>"; };
 		599EB1562B52EC3900B333E4 /* CCD_DRIVER_SAVED_IMAGES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CCD_DRIVER_SAVED_IMAGES.md; sourceTree = "<group>"; };
 		599EB1572B52EC3900B333E4 /* PLATE_SOLVING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PLATE_SOLVING.md; sourceTree = "<group>"; };
 		599EB1582B52EC3900B333E4 /* SCRIPTING_BASICS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SCRIPTING_BASICS.md; sourceTree = "<group>"; };
@@ -6386,6 +6387,7 @@
 				599EB1562B52EC3900B333E4 /* CCD_DRIVER_SAVED_IMAGES.md */,
 				599EB1542B52EC3900B333E4 /* GUIDING_MISCONCEPTIONS.md */,
 				599EB1552B52EC3900B333E4 /* INDIGO_RAW_IMAGE_FORMAT.md */,
+				59ECA503B2CD35CEF6E3094C /* SOLVER_INDEX_FORMAT.md */,
 				599EB1572B52EC3900B333E4 /* PLATE_SOLVING.md */,
 				599EB1582B52EC3900B333E4 /* SCRIPTING_BASICS.md */,
 				59CEDA6127D514B700D9277A /* MULTI-INSTANCE_SUPPORT.md */,

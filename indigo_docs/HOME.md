@@ -27,6 +27,7 @@
 - [Multi-instance Support](MULTI-INSTANCE_SUPPORT.md)
 - [Device Access Control and Locking](INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
 - [RAW Image Format](INDIGO_RAW_IMAGE_FORMAT.md)
+- [Solver Index Format](SOLVER_INDEX_FORMAT.md)
 - [Camera Driver Saved Images](CCD_DRIVER_SAVED_IMAGES.md)
 
 ## Agents
