@@ -277,7 +277,7 @@ static void *read_file(const char *file_name, long *size) {
 }
 
 // Orders the installed indexes like the agent orders the selected ones: the one fitting the field size first, when
-// the scale is known, then the others nearest to the field size first
+// the scale is known, then the others nearest to the field size first; without the scale the largest index first
 static int select_candidate_fovs(solver_options *options, double scale, int width, int height, float *candidates) {
 	float installed[INDIGO_SOLVER_INDEX_FOV_COUNT];
 	int installed_count = 0;
@@ -309,7 +309,7 @@ static int select_candidate_fovs(solver_options *options, double scale, int widt
 			if (listed) {
 				continue;
 			}
-			float distance = target > 0 ? fabs(log(installed[i] / target)) : i;
+			float distance = target > 0 ? fabs(log(installed[i] / target)) : -installed[i];
 			if (best == 0 || distance < best_distance) {
 				best = installed[i];
 				best_distance = distance;
@@ -404,57 +404,72 @@ static bool solve(solver_options *options, const void *data, long size) {
 	float ra = 0, dec = 0, rotation = 0, pixel = 0, fov = 0, rms = 0;
 	int parity = 0, matched = 0, star_match_count = 0;
 	bool wrong_parity = false;
-	for (int i = 0; i < candidate_count && !solved && !limits.exceeded; i++) {
-		char path[PATH_MAX];
-		indigo_solver_index_path(path, sizeof(path), options->index_dir, candidates[i]);
-		if (options->verbose) {
-			printf("Solving with %s %g° index...\n", catalog_name(candidates[i]), candidates[i]);
-		}
-		int catalog_star_count = 0, catalog_quad_count = 0;
-		indigo_solver_free_catalog(catalog_stars, catalog_quads);
-		catalog_stars = NULL;
-		catalog_quads = NULL;
-		if (!indigo_solver_load_index(path, &catalog_stars, &catalog_star_count, &catalog_quads, &catalog_quad_count)) {
-			fprintf(stderr, "%s: failed to load %s\n", TOOL_NAME, path);
-			continue;
-		}
-		// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
-		// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
-		indigo_solver_quad *quads = catalog_quads;
-		int quad_count = catalog_quad_count;
-		indigo_solver_quad *cone_quads = NULL;
-		if (options->radius > 0) {
-			double extent = options->scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * options->scale : candidates[i];
-			quad_count = indigo_solver_filter_quads(catalog_quads, catalog_quad_count, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (options->radius + extent) * DEG_TO_RAD, &cone_quads);
-			quads = cone_quads;
-		}
-		for (int stage = 0; stage < stage_count && !solved && quad_count > 0 && !limits.exceeded; stage++) {
-			int used_star_count = 0;
-			int image_quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
-			if (image_quad_count == 0) {
-				continue;
-			}
+	// Without the scale the indexes are searched stage by stage: the first stage on every index, the largest index
+	// first, as the larger indexes are the smaller files and fail fast, then the next stage on every index in the
+	// opposite order, so the index loaded last is used again without loading it; with the scale the index fitting
+	// the field goes through all stages first
+	int pass_count = options->scale > 0 ? 1 : stage_count;
+	float loaded_fov = 0;
+	int catalog_star_count = 0, catalog_quad_count = 0;
+	for (int pass = 0; pass < pass_count && !solved && !limits.exceeded; pass++) {
+		int first_stage = pass_count == 1 ? 0 : pass;
+		int last_stage = pass_count == 1 ? stage_count : pass + 1;
+		for (int k = 0; k < candidate_count && !solved && !limits.exceeded; k++) {
+			int i = pass % 2 ? candidate_count - 1 - k : k;
+			char path[PATH_MAX];
+			indigo_solver_index_path(path, sizeof(path), options->index_dir, candidates[i]);
 			if (options->verbose) {
-				printf("Stage %d: %d brightest stars, %d quads, %d catalog quads\n", stage + 1, stages[stage], image_quad_count, quad_count);
+				printf("Solving with %s %g° index...\n", catalog_name(candidates[i]), candidates[i]);
 			}
-			int quad_match_count = indigo_solver_match_quads(image_quads, image_quad_count, quads, quad_count, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
-			star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
-			if (limits.exceeded) {
-				break;
-			}
-			if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity, &matched, &rms)) {
-				if (options->parity != 0 && parity != options->parity) {
-					if (options->verbose) {
-						printf("Solution with parity %d rejected by the parity hint %d\n", parity, options->parity);
-					}
-					wrong_parity = true;
+			if (loaded_fov != candidates[i]) {
+				indigo_solver_free_catalog(catalog_stars, catalog_quads);
+				catalog_stars = NULL;
+				catalog_quads = NULL;
+				loaded_fov = 0;
+				if (!indigo_solver_load_index(path, &catalog_stars, &catalog_star_count, &catalog_quads, &catalog_quad_count)) {
+					fprintf(stderr, "%s: failed to load %s\n", TOOL_NAME, path);
 					continue;
 				}
-				fov = candidates[i];
-				solved = true;
+				loaded_fov = candidates[i];
 			}
+			// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
+			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
+			indigo_solver_quad *quads = catalog_quads;
+			int quad_count = catalog_quad_count;
+			indigo_solver_quad *cone_quads = NULL;
+			if (options->radius > 0) {
+				double extent = options->scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * options->scale : candidates[i];
+				quad_count = indigo_solver_filter_quads(catalog_quads, catalog_quad_count, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (options->radius + extent) * DEG_TO_RAD, &cone_quads);
+				quads = cone_quads;
+			}
+			for (int stage = first_stage; stage < last_stage && !solved && quad_count > 0 && !limits.exceeded; stage++) {
+				int used_star_count = 0;
+				int image_quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
+				if (image_quad_count == 0) {
+					continue;
+				}
+				if (options->verbose) {
+					printf("Stage %d: %d brightest stars, %d quads, %d catalog quads\n", stage + 1, stages[stage], image_quad_count, quad_count);
+				}
+				int quad_match_count = indigo_solver_match_quads(image_quads, image_quad_count, quads, quad_count, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
+				star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
+				if (limits.exceeded) {
+					break;
+				}
+				if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity, &matched, &rms)) {
+					if (options->parity != 0 && parity != options->parity) {
+						if (options->verbose) {
+							printf("Solution with parity %d rejected by the parity hint %d\n", parity, options->parity);
+						}
+						wrong_parity = true;
+						continue;
+					}
+					fov = candidates[i];
+					solved = true;
+				}
+			}
+			indigo_safe_free(cone_quads);
 		}
-		indigo_safe_free(cone_quads);
 	}
 	if (!solved) {
 		message = limits.exceeded ? limits.reason : wrong_parity ? "Solution has the wrong parity" : "No solution found";
