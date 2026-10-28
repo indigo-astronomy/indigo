@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000010
+#define DRIVER_VERSION 0x03000011
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -38,7 +38,10 @@
 #include <errno.h>
 #include <limits.h>
 #include <sys/types.h>
-#if !defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS)
+#include <windows.h>
+#include <wininet.h>
+#else
 #include <sys/wait.h>
 #endif
 
@@ -78,10 +81,10 @@ typedef struct {
 	platesolver_private_data platesolver;
 	indigo_property *index_property;
 	int index_pending;
-	bool index_download_aborted;
+	volatile bool index_download_aborted;
 	volatile bool abort_requested;
 #if !defined(INDIGO_WINDOWS)
-	pid_t download_pid;
+	volatile pid_t download_pid;
 #endif
 	char loaded_index[PATH_MAX];
 	indigo_solver_catalog catalog;
@@ -159,14 +162,67 @@ static bool load_catalog(indigo_device *device, const char *path) {
 	return true;
 }
 
-// Fetches the index with curl into part_path, the transfer is interrupted by solver_abort()
-static bool download_index_file(indigo_device *device, const char *url, const char *part_path) {
 #if defined(INDIGO_WINDOWS)
-	char command[2 * PATH_MAX];
-	snprintf(command, sizeof(command), "curl -L -s -f -o \"%s\" \"%s\"", part_path, url);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", command);
-	return system(command) == 0;
+
+/* Fetches the index natively over HTTP(S) into part_path, so that the agent does not depend on an external curl
+   executable on Windows; the transfer is interrupted by solver_abort() or kill_children(). */
+static bool download_index_file(indigo_device *device, const char *url, const char *part_path) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> GET %s", url);
+	bool res = false;
+	HINTERNET session = InternetOpenA("INDIGO Solver Agent", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	if (session == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "InternetOpen() failed (%s)", indigo_last_windows_error());
+		return false;
+	}
+	HINTERNET request = InternetOpenUrlA(session, url, NULL, 0, INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE, 0);
+	if (request == NULL) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "InternetOpenUrl() failed (%s)", indigo_last_windows_error());
+	} else {
+		DWORD status = 0, status_size = sizeof(status);
+		if (!HttpQueryInfoA(request, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &status, &status_size, NULL) || status != 200) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "HTTP status %lu", (unsigned long)status);
+		} else {
+			FILE *file = fopen(part_path, "wb");
+			if (file != NULL) {
+				unsigned char *buffer = indigo_safe_malloc(64 * 1024);
+				DWORD bytes_read = 0;
+				res = true;
+				while (true) {
+					if (!InternetReadFile(request, buffer, 64 * 1024, &bytes_read)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "InternetReadFile() failed (%s)", indigo_last_windows_error());
+						res = false;
+						break;
+					}
+					if (bytes_read == 0) {
+						break;
+					}
+					if (fwrite(buffer, 1, bytes_read, file) != bytes_read) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write %s", part_path);
+						res = false;
+						break;
+					}
+					if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
+						res = false;
+						break;
+					}
+				}
+				free(buffer);
+				fclose(file);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create %s (%s)", part_path, strerror(errno));
+			}
+		}
+		InternetCloseHandle(request);
+	}
+	InternetCloseHandle(session);
+	return res;
+}
+
 #else
+
+/* Fetches the index with curl into part_path; curl runs in its own process group, so that solver_abort() and
+   kill_children() stop the transfer. */
+static bool download_index_file(indigo_device *device, const char *url, const char *part_path) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> curl -L -s -f -o %s %s", part_path, url);
 	pid_t pid = fork();
 	if (pid < 0) {
@@ -174,21 +230,34 @@ static bool download_index_file(indigo_device *device, const char *url, const ch
 		return false;
 	}
 	if (pid == 0) {
+		setpgid(0, 0);
 		execlp("curl", "curl", "-L", "-s", "-f", "-o", part_path, url, (char *)NULL);
 		_exit(127);
 	}
+	setpgid(pid, pid);
 	SOLVER_DEVICE_PRIVATE_DATA->download_pid = pid;
-	int status = 0;
-	while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {
+	/* an abort requested between fork() and the assignment above did not see the child */
+	if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
+		kill(-pid, SIGTERM);
 	}
+	int status = 0;
+	pid_t waited;
+	do {
+		waited = waitpid(pid, &status, 0);
+	} while (waited < 0 && errno == EINTR);
 	SOLVER_DEVICE_PRIVATE_DATA->download_pid = 0;
-	if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "curl failed with status %d", WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+	if (waited != pid || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		if (WIFEXITED(status) && WEXITSTATUS(status) == 127) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "curl is not available");
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "curl failed with status %d", waited == pid && WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+		}
 		return false;
 	}
 	return true;
-#endif
 }
+
+#endif
 
 // a downloaded file is accepted only with a valid header for the requested scale
 static bool validate_index_file(const char *path, float fov) {
@@ -329,7 +398,7 @@ static void solver_abort(indigo_device *device) {
 #if !defined(INDIGO_WINDOWS)
 	pid_t pid = SOLVER_DEVICE_PRIVATE_DATA->download_pid;
 	if (pid > 0) {
-		kill(pid, SIGTERM);
+		kill(-pid, SIGTERM);
 	}
 #endif
 }
@@ -681,6 +750,21 @@ static indigo_result agent_device_detach(indigo_device *device) {
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
 
+// a running download is stopped when the server exits, the partial file is removed on the next start
+static void kill_children() {
+	indigo_device *device = agent_device;
+	if (device && device->private_data) {
+		SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted = true;
+		SOLVER_DEVICE_PRIVATE_DATA->abort_requested = true;
+#if !defined(INDIGO_WINDOWS)
+		pid_t pid = SOLVER_DEVICE_PRIVATE_DATA->download_pid;
+		if (pid > 0) {
+			kill(-pid, SIGKILL);
+		}
+#endif
+	}
+}
+
 indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(
 		SOLVER_AGENT_NAME,
@@ -727,6 +811,11 @@ indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_inf
 			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
 			agent_client->client_context = agent_device->device_context;
 			indigo_attach_client(agent_client);
+			static bool first_time = true;
+			if (first_time) {
+				first_time = false;
+				atexit(kill_children);
+			}
 			break;
 		}
 		case INDIGO_DRIVER_SHUTDOWN: {
