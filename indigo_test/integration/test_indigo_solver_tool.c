@@ -69,7 +69,7 @@ typedef struct {
 	int parity;
 } tool_solution;
 
-static char work_dir[PATH_MAX], index_dir[PATH_MAX], two_index_dir[PATH_MAX], empty_dir[PATH_MAX], raw_path[PATH_MAX], fits_path[PATH_MAX], text_path[PATH_MAX];
+static char work_dir[PATH_MAX], index_dir[PATH_MAX], two_index_dir[PATH_MAX], three_index_dir[PATH_MAX], empty_dir[PATH_MAX], raw_path[PATH_MAX], fits_path[PATH_MAX], text_path[PATH_MAX];
 static float ra0, dec0, image_ra, image_dec;
 static uint32_t rng_state = 20261028;
 
@@ -322,6 +322,16 @@ static bool setup(void) {
 	REQUIRE(copy_file(matching, path));
 	indigo_solver_index_path(path, sizeof(path), two_index_dir, 0.5);
 	REQUIRE(write_synthetic_index(path));
+	// the same and, as the 2° index, a third random patch that matches nothing
+	snprintf(three_index_dir, sizeof(three_index_dir), "%s/three", work_dir);
+	REQUIRE(mkdir(three_index_dir, 0755) == 0);
+	char copy[PATH_MAX];
+	indigo_solver_index_path(copy, sizeof(copy), three_index_dir, 5);
+	REQUIRE(copy_file(matching, copy));
+	indigo_solver_index_path(copy, sizeof(copy), three_index_dir, 0.5);
+	REQUIRE(copy_file(path, copy));
+	indigo_solver_index_path(copy, sizeof(copy), three_index_dir, 2);
+	REQUIRE(write_synthetic_index(copy));
 	return true;
 }
 
@@ -478,16 +488,21 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_FALSE(output_in_order(&run, three_times, 3));
 }
 
-// With the scale the index fitting the 3.6° x 2.7° frame, 0.5° of the two, goes through all stages first and the
-// 5° index, which solves it, follows; neither is searched twice
+// With the scale the index nearest to 0.7 x the 3.6° x 2.7° frame is searched first, through all stages, then the
+// next nearest: of 0.5°, 2° and 5° it is 2° (2.16), which matches nothing, then 5° (log distance 0.84 against 1.46
+// of 0.5°), which solves it; 0.5° is never tried and no index is searched twice
 static void scaled_search_uses_fitting_index_first(void) {
 	tool_run run;
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 -s %.8f '%s'", two_index_dir, IMAGE_SCALE * RAD_TO_DEG, raw_path));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 -s %.8f '%s'", three_index_dir, IMAGE_SCALE * RAD_TO_DEG, raw_path));
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
-	const char *order[] = { "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Solved in " };
-	ASSERT_TRUE(output_in_order(&run, order, 3));
-	const char *gaia_twice[] = { "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index" };
-	ASSERT_FALSE(output_in_order(&run, gaia_twice, 2));
+	const char *order[] = { "Solving with Tycho-2 2° index", "Stage 2:", "Solving with Tycho-2 5° index", "Solved in " };
+	if (!output_in_order(&run, order, 4)) {
+		fprintf(stderr, "Unexpected search order:\n%s\n", run.output);
+	}
+	ASSERT_TRUE(output_in_order(&run, order, 4));
+	ASSERT_FALSE(strstr(run.output, "Solving with Gaia DR3 0.5° index") != NULL);
+	const char *two_twice[] = { "Solving with Tycho-2 2° index", "Solving with Tycho-2 2° index" };
+	ASSERT_FALSE(output_in_order(&run, two_twice, 2));
 	const char *five_twice[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
 	ASSERT_FALSE(output_in_order(&run, five_twice, 2));
 }

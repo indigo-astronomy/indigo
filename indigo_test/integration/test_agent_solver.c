@@ -599,8 +599,8 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_FALSE(messages_in_order(three_times, 3));
 }
 
-// With the pixel scale the index fitting the 3.6° x 2.7° frame among the selected ones, 0.5°, goes through all stages
-// first, then the 5° index, which solves it; neither is searched twice
+// With the pixel scale the index nearest to 0.7 x the 3.6° x 2.7° frame among the selected ones, 5°, is searched
+// first, through all stages, and solves it; the 0.5° index is never tried
 static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(prepare_full_resolution());
 	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5", true) == INDIGO_OK);
@@ -611,10 +611,9 @@ static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(solve_rendered_raw());
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
-	const char *order[] = { "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Solved: " };
-	ASSERT_TRUE(messages_in_order_or_print(order, 3));
-	const char *gaia_twice[] = { "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index" };
-	ASSERT_FALSE(messages_in_order(gaia_twice, 2));
+	const char *order[] = { "Solving with Tycho-2 5° index", "Solved: " };
+	ASSERT_TRUE(messages_in_order_or_print(order, 2));
+	ASSERT_FALSE(message_seen("Solving with Gaia DR3 0.5° index"));
 	const char *five_twice[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
 	ASSERT_FALSE(messages_in_order(five_twice, 2));
 }

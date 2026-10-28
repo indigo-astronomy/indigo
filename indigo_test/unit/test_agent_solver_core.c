@@ -248,12 +248,12 @@ static void test_index_selection(void) {
 		ASSERT_TRUE(file != NULL);
 		fclose(file);
 	}
-	// 3.75 x 2.8 degrees: 1.5 x geometric mean is 4.9, the largest present index below it is 2
+	// 3.75 x 2.8 degrees: 0.7 x geometric mean is 2.27, the nearest present index is 2
 	ASSERT_TRUE(indigo_solver_select_index(dir, present, 3, 3.75 * DEG_TO_RAD, 2.8 * DEG_TO_RAD, selected, sizeof(selected), &fov));
 	ASSERT_TRUE(fov == 2);
 	indigo_solver_index_path(path, sizeof(path), dir, 2);
 	ASSERT_TRUE(strcmp(path, selected) == 0);
-	// a 10 degree field selects 5, a 30 degree field 20, a tiny field falls back to the smallest present one
+	// a 10 x 8 degree field selects 5 (6.3), a 30 x 20 degree field 20 (17.1), a tiny field the smallest present one
 	ASSERT_TRUE(indigo_solver_select_index(dir, present, 3, 10 * DEG_TO_RAD, 8 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 5);
 	ASSERT_TRUE(indigo_solver_select_index(dir, present, 3, 30 * DEG_TO_RAD, 20 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 20);
 	ASSERT_TRUE(indigo_solver_select_index(dir, present, 3, 0.5 * DEG_TO_RAD, 0.3 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 2);
@@ -264,8 +264,9 @@ static void test_index_selection(void) {
 		indigo_solver_index_path(path, sizeof(path), dir, present[i]);
 		unlink(path);
 	}
-	// the 0.5 degree scale (a Gaia index): a 0.3 x 0.25 degree field falls back to it as the smallest, a 0.6 x 0.45
-	// field selects it (1.5 x 0.52 = 0.78) and a 1 x 0.75 field selects 1
+	// the 0.5 degree scale (a Gaia index): the index nearest to 0.7 x the geometric mean of the field is selected, 0.5
+	// for 0.3 x 0.25, 0.6 x 0.45 and 1 x 0.75 degrees (0.61, on frames of 1.03 x 0.69 degrees the 1 degree index does
+	// not solve) as well as 0.71 x 0.71 degrees, 1 for 1.9 x 1.27 degrees (1.09, the 2 degree index does not solve it)
 	float narrow[] = { 0.5, 1 };
 	for (int i = 0; i < 2; i++) {
 		indigo_solver_index_path(path, sizeof(path), dir, narrow[i]);
@@ -279,7 +280,9 @@ static void test_index_selection(void) {
 	ASSERT_TRUE(strcmp(indigo_solver_index_catalog(0.5), "gaia") == 0 && strcmp(indigo_solver_index_catalog(1), "tyc2") == 0);
 	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.3 * DEG_TO_RAD, 0.25 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
 	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.6 * DEG_TO_RAD, 0.45 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
-	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 1 * DEG_TO_RAD, 0.75 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 1);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 1 * DEG_TO_RAD, 0.75 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.71 * DEG_TO_RAD, 0.71 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 1.9 * DEG_TO_RAD, 1.27 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 1);
 	ASSERT_TRUE(indigo_solver_index_fovs[0] == 0.5 && INDIGO_SOLVER_INDEX_FOV_COUNT == 6);
 	for (int i = 0; i < 2; i++) {
 		indigo_solver_index_path(path, sizeof(path), dir, narrow[i]);
