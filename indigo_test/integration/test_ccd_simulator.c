@@ -667,6 +667,61 @@ cleanup:
 	sim_end(&ccd_imager_simulator);
 }
 
+// Every binned pixel of a 128 x 96 region of the imager frame is the mean of its bin block of the fixed image (the
+// integer part), plus the frame noise of 0 to 127 ADU added after binning (CCD_FRAME is in unbinned pixels; the region
+// around (682, 928) holds the brightest star of the image, whose 2 x 2 blocks sum beyond 65535 and must not clamp)
+#define BIN_REGION_LEFT 616
+#define BIN_REGION_TOP 880
+#define BIN_REGION_WIDTH 128
+#define BIN_REGION_HEIGHT 96
+
+static bool sim_imager_bins_average_the_block(int bin) {
+	int width = (int)atomic_load(&sim_width), height = (int)atomic_load(&sim_height);
+	if (sim_image == NULL || width != BIN_REGION_WIDTH / bin || height != BIN_REGION_HEIGHT / bin) {
+		fprintf(stderr, "bin %d: %d x %d frame captured\n", bin, width, height);
+		return false;
+	}
+	int bright = 0;
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			unsigned sum = 0;
+			for (int j = 0; j < bin; j++) {
+				for (int i = 0; i < bin; i++) {
+					sum += indigo_ccd_simulator_raw_image[(BIN_REGION_TOP + y * bin + j) * IMAGER_WIDTH + BIN_REGION_LEFT + x * bin + i];
+				}
+			}
+			unsigned low = sum / (bin * bin);
+			unsigned high = low + 127 > 65535 ? 65535 : low + 127;
+			unsigned value = sim_image[y * width + x];
+			if (value < low || value > high) {
+				fprintf(stderr, "bin %d: pixel %d, %d is %u, expected %u to %u\n", bin, x, y, value, low, high);
+				return false;
+			}
+			if (sum > 65535) {
+				bright++;
+			}
+		}
+	}
+	printf("    bin %d: %d x %d pixels are the means of their bin blocks, %d of them with a block sum beyond 65535\n", bin, width, height, bright);
+	return bin == 1 || bright > 0;
+}
+
+static void simulator_imager_binning_averages_the_bin_block(void) {
+	sim_begin(&ccd_imager_simulator);
+	atomic_store(&sim_capture, true);
+	for (int bin = 1; bin <= 4; bin *= 2) {
+		SIM_CHECK(sim_number("CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ bin, bin }, INDIGO_OK_STATE));
+		SIM_CHECK(sim_number("CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ BIN_REGION_LEFT, BIN_REGION_TOP, BIN_REGION_WIDTH, BIN_REGION_HEIGHT }, INDIGO_OK_STATE));
+		SIM_CHECK(sim_expose());
+		SIM_CHECK(sim_imager_bins_average_the_block(bin));
+	}
+cleanup:
+	atomic_store(&sim_capture, false);
+	free(sim_image);
+	sim_image = NULL;
+	sim_end(&ccd_imager_simulator);
+}
+
 static void simulator_stream_abort_and_reconnect(void) {
 	sim_begin(&ccd_imager_simulator);
 	SIM_CHECK(sim_number("CCD_FRAME", 2, (const char *[]){ "WIDTH", "HEIGHT" }, (double []){ 64, 64 }, INDIGO_OK_STATE));
@@ -981,6 +1036,119 @@ static void sim_follow_end(void) {
 
 static bool sim_expose_centroid(double *cx, double *cy) {
 	return sim_expose() && sim_star_centroid(cx, cy);
+}
+
+// Centroid, width (the root mean square radius of the profile) and flux of the star at the local maximum nearest to
+// (x, y), from the signal above the exact background of a frame rendered without noise and gradient
+static bool sim_star_profile(int x, int y, int radius, double background, double *cx, double *cy, double *width_px, double *flux) {
+	int width = (int)atomic_load(&sim_width), height = (int)atomic_load(&sim_height);
+	if (sim_image == NULL || x < 0 || x >= width || y < 0 || y >= height) {
+		return false;
+	}
+	int peak = y * width + x;
+	for (int j = y - 3; j <= y + 3; j++) {
+		for (int i = x - 3; i <= x + 3; i++) {
+			if (i >= 0 && i < width && j >= 0 && j < height && sim_image[j * width + i] > sim_image[peak]) {
+				peak = j * width + i;
+			}
+		}
+	}
+	double sum = 0, sum_x = 0, sum_y = 0, sum_r2 = 0;
+	for (int j = peak / width - radius; j <= peak / width + radius; j++) {
+		for (int i = peak % width - radius; i <= peak % width + radius; i++) {
+			if (i < 0 || i >= width || j < 0 || j >= height) {
+				continue;
+			}
+			double weight = fmax(0, sim_image[j * width + i] - background);
+			sum += weight;
+			sum_x += weight * i;
+			sum_y += weight * j;
+		}
+	}
+	if (sum == 0) {
+		return false;
+	}
+	*cx = sum_x / sum;
+	*cy = sum_y / sum;
+	for (int j = peak / width - radius; j <= peak / width + radius; j++) {
+		for (int i = peak % width - radius; i <= peak % width + radius; i++) {
+			if (i < 0 || i >= width || j < 0 || j >= height) {
+				continue;
+			}
+			double weight = fmax(0, sim_image[j * width + i] - background);
+			sum_r2 += weight * ((i - *cx) * (i - *cx) + (j - *cy) * (j - *cy));
+		}
+	}
+	*width_px = sqrt(sum_r2 / sum);
+	*flux = sum;
+	return true;
+}
+
+// The brightest star peak below the given value, at least margin pixels from the frame edges: a local maximum, so
+// the wing of a saturated star does not qualify
+static bool sim_brightest_peak_below(unsigned limit, int margin, int *x, int *y) {
+	int width = (int)atomic_load(&sim_width), height = (int)atomic_load(&sim_height);
+	int best = -1;
+	for (int i = 0; i < width * height; i++) {
+		if (sim_image[i] >= limit || (best >= 0 && sim_image[i] <= sim_image[best])) {
+			continue;
+		}
+		if (i % width < margin || i % width >= width - margin || i / width < margin || i / width >= height - margin) {
+			continue;
+		}
+		bool peak = true;
+		for (int j = i / width - 3; peak && j <= i / width + 3; j++) {
+			for (int k = i % width - 3; peak && k <= i % width + 3; k++) {
+				peak = k < 0 || k >= width || j < 0 || j >= height || sim_image[j * width + k] <= sim_image[i];
+			}
+		}
+		if (peak) {
+			best = i;
+		}
+	}
+	if (best < 0) {
+		return false;
+	}
+	*x = best % width;
+	*y = best / width;
+	return true;
+}
+
+// A 2 x 2 binned guider frame renders every star with the profile of the unbinned one scaled down by the binning
+// and with the unbinned amplitude, like the imager's mean of the bin block: the star is at half the unbinned
+// position, half as wide in binned pixels (the root mean square radius goes from 2 px to about 1 px, the pixel
+// sampling adds a little) and its flux above the background is a quarter
+#define GUIDER_BIN_BACKGROUND 500
+
+static void simulator_guider_binning_scales_the_star_profile(void) {
+	double x1, y1, w1, f1, x2, y2, w2, f2;
+	int x, y;
+	sim_begin(&ccd_guider_camera_simulator);
+	atomic_store(&sim_capture, true);
+	SIM_CHECK(sim_switch("GUIDER_MODE", "STARS", INDIGO_OK_STATE));
+	// deterministic frame: no noise (a range of 1 adds 0), no gradient, no periodic error, Orion at rotation 0
+	SIM_CHECK(sim_number("SIMULATION_SETUP", 7, (const char *[]){ "RA", "DEC", "IMAGE_ROTATION_ANGLE", "PER_ERR_CYCLE", "IMAGE_NOISE_FIX", "IMAGE_NOISE_VAR", "IMAGE_GRADIENT" }, (double []){ FOLLOW_RA, FOLLOW_DEC, 0, 0, GUIDER_BIN_BACKGROUND, 1, 0 }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_number("CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ 1, 1 }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+	// a star of magnitude 5 or 6 (peak 7800 or 3100 ADU), far from the clamp at 65535
+	SIM_CHECK(sim_brightest_peak_below(GUIDER_BIN_BACKGROUND + 10000, 32, &x, &y));
+	SIM_CHECK(sim_star_profile(x, y, 12, GUIDER_BIN_BACKGROUND, &x1, &y1, &w1, &f1));
+	printf("    unbinned star at %.2f, %.2f width %.2f px flux %.0f ADU\n", x1, y1, w1, f1);
+	// the profile exp(-(x² + y²) / 4) has a root mean square radius of 2 px
+	SIM_CHECK(w1 > 1.8 && w1 < 2.3);
+	SIM_CHECK(sim_number("CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ 2, 2 }, INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(atomic_load(&sim_width) == GUIDER_WIDTH / 2 && atomic_load(&sim_height) == GUIDER_HEIGHT / 2);
+	SIM_CHECK(sim_star_profile((int)round(x1 / 2), (int)round(y1 / 2), 6, GUIDER_BIN_BACKGROUND, &x2, &y2, &w2, &f2));
+	printf("    2 x 2 binned star at %.2f, %.2f width %.2f px flux %.0f ADU\n", x2, y2, w2, f2);
+	SIM_CHECK(fabs(x2 - x1 / 2) < 1 && fabs(y2 - y1 / 2) < 1);
+	SIM_CHECK(w2 > 0.3 * w1 && w2 < 0.7 * w1);
+	SIM_CHECK(fabs(4 * f2 / f1 - 1) < 0.2);
+cleanup:
+	atomic_store(&sim_capture, false);
+	free(sim_image);
+	sim_image = NULL;
+	sim_end(&ccd_guider_camera_simulator);
 }
 
 static void simulator_guider_camera_follows_simulated_mount(void) {
@@ -1473,6 +1641,8 @@ int main(int argc, char **argv) {
 		{ "simulator_fractional_exposure_and_finite_stream_timing", simulator_fractional_exposure_and_finite_stream_timing },
 		{ "simulator_guider_replacement_and_simultaneous_axes", simulator_guider_replacement_and_simultaneous_axes },
 		{ "simulator_raw_geometry_and_bins", simulator_raw_geometry_and_bins },
+		{ "simulator_imager_binning_averages_the_bin_block", simulator_imager_binning_averages_the_bin_block },
+		{ "simulator_guider_binning_scales_the_star_profile", simulator_guider_binning_scales_the_star_profile },
 		{ "simulator_stream_abort_and_reconnect", simulator_stream_abort_and_reconnect },
 		{ "simulator_cooling_target_and_polling", simulator_cooling_target_and_polling },
 		{ "simulator_camera_modes_and_settings", simulator_camera_modes_and_settings },

@@ -22,12 +22,11 @@
 // related Imager Agent (or Guider Agent) capturing with the CCD simulators.
 //
 // Set 1, CCD Imager Simulator: the fixed Rosetta nebula frame (1600 x 1200, 8.44"/px) solved at full
-// resolution, captured as FITS and as JPEG, downsampled by the agent, as a sub-frame, in JNow, with each
-// index alone, with a wrong scale hint and repeatedly.
+// resolution, captured as FITS and as JPEG, downsampled by the agent, binned 2 x 2 by the camera, as a
+// sub-frame, in JNow, with each index alone, with a wrong scale hint and repeatedly.
 //
 // Set 3, the 0.5 degree index: a 0.5 x 0.4 degree field rendered from the index's own stars (the simulators
-// render Hipparcos only, too sparse for such a field) solved with that index alone. Camera binning is not covered: the simulator bins by taking every second
-// pixel instead of summing, which turns the stars into single pixel spikes no centroid can place.
+// render Hipparcos only, too sparse for such a field) solved with that index alone.
 //
 // Set 2, CCD Guider Simulator: the catalogue star field (4° over the frame height) rendered for 120
 // different combinations of SIMULATION_SETUP (RA, Dec, rotation, side of pier, frame size, magnitude
@@ -480,6 +479,14 @@ static void rosetta_downsampled(void) {
 	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE, ROSETTA_ANGLE, ROSETTA_WIDTH, ROSETTA_HEIGHT, 2000));
 }
 
+// The camera bins 2 x 2 (the simulator averages the bin block since version 45): the same centre, 800 x 600 binned
+// pixels of twice the scale, so 8.44"/px per unbinned pixel and the same field
+static void rosetta_camera_binned(void) {
+	ASSERT_TRUE(change_numbers(IMAGER, CCD_BIN_PROPERTY_NAME, 2, (const char *[]){ CCD_BIN_HORIZONTAL_ITEM_NAME, CCD_BIN_VERTICAL_ITEM_NAME }, (double []){ 2, 2 }));
+	ASSERT_TRUE(run_process(AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, INDIGO_OK_STATE, 120));
+	ASSERT_TRUE(solution_matches(ROSETTA_RA, ROSETTA_DEC, ROSETTA_SCALE * 2, ROSETTA_ANGLE, ROSETTA_WIDTH / 2, ROSETTA_HEIGHT / 2, 2000));
+}
+
 // A centred 1000 x 750 sub-frame keeps the centre and the scale
 static void rosetta_subframe(void) {
 	ASSERT_TRUE(change_numbers(IMAGER, CCD_FRAME_PROPERTY_NAME, 4, (const char *[]){ CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME }, (double []){ 300, 225, 1000, 750 }));
@@ -746,6 +753,7 @@ static indigo_test_case rosetta_tests[] = {
 	{ "rosetta fits", rosetta_fits },
 	{ "rosetta jpeg", rosetta_jpeg },
 	{ "rosetta downsampled", rosetta_downsampled },
+	{ "rosetta camera binned", rosetta_camera_binned },
 	{ "rosetta subframe", rosetta_subframe },
 	{ "rosetta jnow", rosetta_jnow },
 	{ "rosetta index 2 only", rosetta_index_2_only },

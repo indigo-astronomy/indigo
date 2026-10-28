@@ -1,0 +1,19 @@
+{
+  "title": "Simulator hot pixel row check lets a hot pixel land one row below the frame",
+  "category": "functional",
+  "severity": "low",
+  "status": "deferred",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261027140318-5859-fix-simulator-binning",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The hot pixel loop of create_frame() in indigo_ccd_simulator.driver skips a pixel with 'y > frame_height' where 'y >= frame_height' is meant, so a hot pixel whose binned row equals the bottom edge of a sub-frame is written one row below the frame; the frame buffer is the unbinned size, so for most columns the write lands in its slack, but columns beyond 1439 of a full-width row reach past the buffer. Found by source audit next to the binning change, not reproduced; out of the binning task's scope. Next: change the comparison and add a sub-frame hot pixel case to test_ccd_simulator.",
+  "evidence": "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver, hot pixel loop in create_frame() ('if (x < 0 || x >= frame_width || y < 0 || y > frame_height)'); quality-review.md of task 20261027140318-5859-fix-simulator-binning",
+  "resolution": null,
+  "id": "FND-20261027140318-5859-fix-simulator-binning-001"
+}
