@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000011
+#define DRIVER_VERSION 0x03000012
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -281,12 +281,14 @@ static void unselect_missing_indexes(indigo_device *device) {
 	}
 }
 
+// every installed index is listed, so an index not listed yet was just downloaded and is selected for use
 static void rebuild_use_index(indigo_device *device) {
 	indigo_delete_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
-	bool selected[INDIGO_SOLVER_INDEX_FOV_COUNT] = { false };
+	bool selected[INDIGO_SOLVER_INDEX_FOV_COUNT];
 	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
 		char name[INDIGO_NAME_SIZE];
 		index_item_name(indigo_solver_index_fovs[i], name, sizeof(name));
+		selected[i] = true;
 		for (int j = 0; j < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; j++) {
 			if (!strcmp(name, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[j].name)) {
 				selected[i] = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[j].sw.value;

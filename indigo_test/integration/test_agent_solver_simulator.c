@@ -337,13 +337,16 @@ static bool solution_matches(double ra, double dec, double scale, double angle, 
 }
 
 // Selects an index in AGENT_PLATESOLVER_USE_INDEX; an index missing in the persistent cache is first
-// downloaded by the agent through X_AGENT_SOLVER_INDEX, an index present there is never downloaded again
+// downloaded by the agent through X_AGENT_SOLVER_INDEX, which selects it, an index present there is never downloaded
+// again
 static bool install_index(const char *name) {
 	REQUIRE(WAIT_UNTIL(exists(SOLVER, INDEX_PROPERTY) && exists(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME), 10));
 	if (!has_item(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, name)) {
 		printf("  index %s is not in %s/solver, downloading it once\n", name, cache_base);
 		REQUIRE(change_switch_and_wait(SOLVER, INDEX_PROPERTY, name, true, INDIGO_OK_STATE, 1800));
 		REQUIRE(WAIT_UNTIL(has_item(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, name), 10));
+		// a newly downloaded index is selected for use
+		REQUIRE(switch_value(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, name));
 	}
 	if (!switch_value(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, name)) {
 		REQUIRE(change_switch_and_wait(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, name, true, INDIGO_OK_STATE, 10));
