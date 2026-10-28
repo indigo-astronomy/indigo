@@ -73,7 +73,7 @@ static indigo_client observer;
 static char messages[65536];
 static bool bus_started, observer_attached, solver_started;
 static char cache_base[64];
-static char index_path[PATH_MAX];
+static char index_path[PATH_MAX], narrow_index_path[PATH_MAX];
 static float ra0, dec0, image_ra, image_dec;
 static uint32_t rng_state = 20261027;
 
@@ -333,6 +333,10 @@ static bool setup(void) {
 	mkdir(dir, 0755);
 	indigo_solver_index_path(index_path, sizeof(index_path), dir, 5);
 	REQUIRE(write_synthetic_index(index_path));
+	// the same synthetic index under the 0.5 degree name, so the fractional scale item is offered too
+	indigo_solver_index_path(narrow_index_path, sizeof(narrow_index_path), dir, 0.5);
+	REQUIRE(strstr(narrow_index_path, "gaia-0.5deg.isix") != NULL);
+	REQUIRE(write_synthetic_index(narrow_index_path));
 	REQUIRE(indigo_start() == INDIGO_OK);
 	bus_started = true;
 	INDIGO_COPY_NAME(observer.name, "Solver observer");
@@ -360,6 +364,7 @@ static void cleanup(void) {
 		indigo_stop();
 	}
 	unlink(index_path);
+	unlink(narrow_index_path);
 }
 
 static bool select_use_index(void) {
@@ -384,9 +389,12 @@ static bool prepare_full_resolution(void);
 // An index file present in the cache directory is reported as installed and offered for solving
 static void index_property_reflects_installed_files(void) {
 	ASSERT_TRUE(switch_value(INDEX_PROPERTY, INDEX_ITEM));
+	ASSERT_TRUE(switch_value(INDEX_PROPERTY, "GAIA_0_5"));
+	ASSERT_FALSE(has_item(INDEX_PROPERTY, "TYC2_0.5"));
 	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "TYC2_1"));
 	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "TYC2_20"));
 	ASSERT_TRUE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM));
+	ASSERT_TRUE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5"));
 	ASSERT_FALSE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "TYC2_1"));
 	ASSERT_FALSE(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM));
 }
@@ -810,6 +818,11 @@ static void unsupported_image_rejected(void) {
 
 // Clearing an installed index deletes its file and withdraws it from the usable set
 static void deselecting_index_removes_file(void) {
+	ASSERT_TRUE(access(narrow_index_path, R_OK) == 0);
+	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, INDEX_PROPERTY, "GAIA_0_5", false) == INDIGO_OK);
+	ASSERT_TRUE(WAIT_UNTIL(state(INDEX_PROPERTY) == INDIGO_OK_STATE && !switch_value(INDEX_PROPERTY, "GAIA_0_5"), 10));
+	ASSERT_TRUE(access(narrow_index_path, R_OK) != 0);
+	ASSERT_TRUE(WAIT_UNTIL(exists(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME) && !has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5"), 10));
 	ASSERT_TRUE(access(index_path, R_OK) == 0);
 	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, INDEX_PROPERTY, INDEX_ITEM, false) == INDIGO_OK);
 	ASSERT_TRUE(WAIT_UNTIL(state(INDEX_PROPERTY) == INDIGO_OK_STATE && !switch_value(INDEX_PROPERTY, INDEX_ITEM), 10));

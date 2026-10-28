@@ -40,7 +40,7 @@
 #include "indigo_solver_utils.h"
 #include "indigo_solver.h"
 
-const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT] = { 1, 2, 5, 10, 20 };
+const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT] = { 0.5, 1, 2, 5, 10, 20 };
 
 // Hash buckets keyed by the quantised (x3, y3) code coordinates, both in [0, INDIGO_SOLVER_CODE_QUANTUM].
 #define BUCKET_SIDE		(INDIGO_SOLVER_CODE_QUANTUM + 1)

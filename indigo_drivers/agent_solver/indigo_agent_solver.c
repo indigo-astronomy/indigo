@@ -23,11 +23,12 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000008
+#define DRIVER_VERSION 0x03000009
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
@@ -58,9 +59,9 @@
 #define AGENT_SOLVER_INDEX_PROPERTY				(SOLVER_DEVICE_PRIVATE_DATA->index_property)
 #define AGENT_SOLVER_INDEX_PROPERTY_NAME	"X_AGENT_SOLVER_INDEX"
 
-// Tycho-2 quad indexes built by indigo_solver_indexer are downloaded from here as tyc2-<fov>deg.isix
+// Quad indexes built by indigo_solver_indexer are downloaded from here as tyc2-<scale>deg.isix (Tycho-2) and
+// gaia-<scale>deg.isix (Gaia DR3, scales below 1 degree)
 #define AGENT_SOLVER_INDEX_URL						"https://github.com/indigo-astronomy/indigo/releases/download/index_release_v1"
-#define AGENT_SOLVER_INDEX_ITEM_PREFIX		"TYC2_"
 
 #define MAX_IMAGE_STAR_COUNT							500
 #define MAX_IMAGE_QUAD_COUNT							1000000
@@ -71,7 +72,7 @@
 static char base_dir[512];
 
 // approximate sizes of the published index files, in the order of indigo_solver_index_fovs
-static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "534 MB", "354 MB", "174 MB", "88 MB", "32 MB" };
+static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "907 MB", "534 MB", "354 MB", "174 MB", "88 MB", "32 MB" };
 
 typedef struct {
 	platesolver_private_data platesolver;
@@ -93,16 +94,27 @@ static pthread_mutex_t index_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // -------------------------------------------------------------------------------- Index files
 
+// <CATALOG>_<scale>: TYC2_1 … TYC2_20 for the Tycho-2 indexes, GAIA_0_5 for the Gaia DR3 index of scale 0.5, a
+// fractional scale with an underscore for the decimal point (a dot in an item name is not safe for every client)
 static void index_item_name(float fov, char *name, size_t size) {
-	snprintf(name, size, "%s%g", AGENT_SOLVER_INDEX_ITEM_PREFIX, fov);
+	snprintf(name, size, "%s_%g", indigo_solver_index_catalog(fov), fov);
+	for (char *c = name; *c; c++) {
+		*c = *c == '.' ? '_' : toupper(*c);
+	}
 }
 
 static bool index_item_fov(const char *name, float *fov) {
-	size_t length = strlen(AGENT_SOLVER_INDEX_ITEM_PREFIX);
-	if (strncmp(name, AGENT_SOLVER_INDEX_ITEM_PREFIX, length)) {
+	const char *underscore = strchr(name, '_');
+	if (underscore == NULL) {
 		return false;
 	}
-	float value = atof(name + length);
+	char scale[INDIGO_NAME_SIZE];
+	snprintf(scale, sizeof(scale), "%s", underscore + 1);
+	char *point = strchr(scale, '_');
+	if (point != NULL) {
+		*point = '.';
+	}
+	float value = atof(scale);
 	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
 		if (indigo_solver_index_fovs[i] == value) {
 			*fov = value;
@@ -225,7 +237,7 @@ static void rebuild_use_index(indigo_device *device) {
 		if (index_installed(fov)) {
 			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 			index_item_name(fov, name, sizeof(name));
-			snprintf(label, sizeof(label), "Tycho-2 %g° index", fov);
+			snprintf(label, sizeof(label), "%s %g° index", fov < 1 ? "Gaia DR3" : "Tycho-2", fov);
 			indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, selected[i]);
 		}
 	}
@@ -499,7 +511,7 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 	for (int i = 0; i < candidate_count && !solved && !limits_exceeded_or_aborted(device, &limits); i++) {
 		char path[PATH_MAX];
 		indigo_solver_index_path(path, sizeof(path), base_dir, candidates[i]);
-		indigo_send_message(device, IDLE_PROPERTY, "Solving with Tycho-2 %g° index...", candidates[i]);
+		indigo_send_message(device, IDLE_PROPERTY, "Solving with %s %g° index...", candidates[i] < 1 ? "Gaia DR3" : "Tycho-2", candidates[i]);
 		if (!load_catalog(device, path)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
 			continue;
@@ -597,13 +609,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			float fov = indigo_solver_index_fovs[i];
 			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 			index_item_name(fov, name, sizeof(name));
-			snprintf(label, sizeof(label), "Tycho-2 %g° index (%s)", fov, index_sizes[i]);
+			snprintf(label, sizeof(label), "%s %g° index (%s)", fov < 1 ? "Gaia DR3" : "Tycho-2", fov, index_sizes[i]);
 			bool present = index_installed(fov);
 			indigo_item *item = AGENT_SOLVER_INDEX_PROPERTY->items + i;
 			indigo_init_switch_item(item, name, label, present);
-			snprintf(item->hints, sizeof(item->hints), "warn_on_clear:\"Delete Tycho-2 %g° index?\";", fov);
+			snprintf(item->hints, sizeof(item->hints), "warn_on_clear:\"Delete %s %g° index?\";", fov < 1 ? "Gaia DR3" : "Tycho-2", fov);
 			if (present) {
-				snprintf(label, sizeof(label), "Tycho-2 %g° index", fov);
+				snprintf(label, sizeof(label), "%s %g° index", fov < 1 ? "Gaia DR3" : "Tycho-2", fov);
 				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, false);
 			}
 		}

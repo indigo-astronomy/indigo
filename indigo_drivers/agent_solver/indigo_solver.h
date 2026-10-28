@@ -32,7 +32,7 @@
 
 #include "indigo_solver_utils.h"
 
-#define INDIGO_SOLVER_INDEX_FOV_COUNT	5
+#define INDIGO_SOLVER_INDEX_FOV_COUNT	6
 
 /** Quad scales of the available indexes in degrees, ascending; an index of scale n° holds quads of 0.1 n° to 0.8 n°,
  not a field of view.

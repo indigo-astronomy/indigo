@@ -25,17 +25,19 @@ indigo_server indigo_agent_solver indigo_agent_imager indigo_agent_mount indigo_
 
 ### Index management
 
-The indexes `tyc2-<scale>deg.isix` are built from the Tycho-2 catalogue for quad scales of 1°, 2°, 5°, 10° and 20°. The
+The indexes `tyc2-<scale>deg.isix` are built from the Tycho-2 catalogue for quad scales of 1°, 2°, 5°, 10° and 20°, the
+index `gaia-0.5deg.isix` from Gaia DR3 (stars brighter than G = 14) for the quad scale of 0.5°, where Tycho-2 is too shallow. The
 scale is the size of the star marks (quads) in the index, not the field of view: an index of scale n° contains quads of
 0.1 n° to 0.8 n°:
 
-| Index | Quad scale | Size |
-| ----- | ----- | ----- |
-| TYC2_1 | 1° | 534 MB |
-| TYC2_2 | 2° | 354 MB |
-| TYC2_5 | 5° | 174 MB |
-| TYC2_10 | 10° | 88 MB |
-| TYC2_20 | 20° | 32 MB |
+| Index | Catalogue | Quad scale | Size |
+| ----- | ----- | ----- | ----- |
+| GAIA_0_5 | Gaia DR3 | 0.5° | 907 MB |
+| TYC2_1 | Tycho-2 | 1° | 534 MB |
+| TYC2_2 | Tycho-2 | 2° | 354 MB |
+| TYC2_5 | Tycho-2 | 5° | 174 MB |
+| TYC2_10 | Tycho-2 | 10° | 88 MB |
+| TYC2_20 | Tycho-2 | 20° | 32 MB |
 
 The files are kept outside the repository in `$INDIGO_CACHE_BASE/solver`, or in `~/.indigo/solver` when
 `INDIGO_CACHE_BASE` is not set. They are managed with the `X_AGENT_SOLVER_INDEX` property: selecting an item downloads
@@ -46,7 +48,11 @@ frame; when the pixel scale is known, the index fitting the frame size is tried 
 
 The indexes can also be built locally with `indigo_solver_indexer 1 2 5 10 20` from `indigo_tools`. The tool reads the
 Tycho-2 catalogue (CDS I/259, files `tyc2.dat.00` to `tyc2.dat.19`) from an `I_259` directory in the current working
-directory and writes the index files next to it; copy them into the cache directory described above.
+directory and writes the index files next to it; copy them into the cache directory described above. The 0.5° index is
+built with `indigo_solver_indexer -g <directory> 0.5` from a Gaia DR3 extract: every `*.csv` file of the directory with
+the columns `ra, dec, phot_g_mean_mag, pmra, pmdec` of `gaiadr3.gaia_source` for `phot_g_mean_mag < 14`, as returned by
+the ESA Gaia archive TAP service (about 16.8 million stars; proper motion is applied from the Gaia epoch 2016.0). Gaia
+data: ESA/Gaia/DPAC, CC BY-SA 3.0 IGO.
 
 ### Agent configuration
 
@@ -78,8 +84,8 @@ alignment workflows.
 ## Limitations
 
 - INDIGO RAW is the preferred input and is solved as it is; FITS (8, 16 and 32 bit integer, 32 and 64 bit floating point, mono or three planes averaged), JPEG and camera raw files readable by libraw are converted to 16 bit mono first. Colour frames are averaged to mono.
-- The field of view is limited by the available indexes, from about 0.5° to 15°.
+- The field of view is limited by the available indexes, from about 0.3° to 15°.
 
 ## Testing
 
-- 2026-10-27 20:37 3.0.0.8 mac arm64 simulator 149/149 OK
+- 2026-10-28 02:11 3.0.0.9 mac arm64 simulator 150/150 OK

@@ -264,6 +264,27 @@ static void test_index_selection(void) {
 		indigo_solver_index_path(path, sizeof(path), dir, present[i]);
 		unlink(path);
 	}
+	// the 0.5 degree scale (a Gaia index): a 0.3 x 0.25 degree field falls back to it as the smallest, a 0.6 x 0.45
+	// field selects it (1.5 x 0.52 = 0.78) and a 1 x 0.75 field selects 1
+	float narrow[] = { 0.5, 1 };
+	for (int i = 0; i < 2; i++) {
+		indigo_solver_index_path(path, sizeof(path), dir, narrow[i]);
+		FILE *file = fopen(path, "wb");
+		ASSERT_TRUE(file != NULL);
+		fclose(file);
+	}
+	ASSERT_TRUE(strstr(path, "tyc2-1deg.isix") != NULL);
+	indigo_solver_index_path(path, sizeof(path), dir, 0.5);
+	ASSERT_TRUE(strstr(path, "gaia-0.5deg.isix") != NULL);
+	ASSERT_TRUE(strcmp(indigo_solver_index_catalog(0.5), "gaia") == 0 && strcmp(indigo_solver_index_catalog(1), "tyc2") == 0);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.3 * DEG_TO_RAD, 0.25 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.6 * DEG_TO_RAD, 0.45 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 1 * DEG_TO_RAD, 0.75 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 1);
+	ASSERT_TRUE(indigo_solver_index_fovs[0] == 0.5 && INDIGO_SOLVER_INDEX_FOV_COUNT == 6);
+	for (int i = 0; i < 2; i++) {
+		indigo_solver_index_path(path, sizeof(path), dir, narrow[i]);
+		unlink(path);
+	}
 	rmdir(dir);
 }
 
