@@ -43,12 +43,6 @@ static float frand(void) {
 	return (rng_state >> 8) / (float)(1u << 24);
 }
 
-static int compare_quads_by_hash(const void *a, const void *b) {
-	const indigo_solver_quad *qa = (const indigo_solver_quad *)a;
-	const indigo_solver_quad *qb = (const indigo_solver_quad *)b;
-	return (qa->hash > qb->hash) - (qa->hash < qb->hash);
-}
-
 // --------------------------------------------------------------------------------
 
 static void test_tangent_plane_roundtrip(void) {
@@ -188,7 +182,7 @@ static void test_index_file_roundtrip(void) {
 	// a wrong magic or version is rejected
 	file = fopen(path, "wb");
 	ASSERT_TRUE(file != NULL);
-	header.version = INDIGO_SOLVER_INDEX_VERSION + 1;
+	header.version = 99;
 	ASSERT_TRUE(indigo_solver_index_write_header(file, &header));
 	fclose(file);
 	file = fopen(path, "rb");
@@ -204,9 +198,7 @@ static void test_index_file_roundtrip(void) {
 	ASSERT_FALSE(indigo_solver_index_read_header(file, &read_header));
 	fclose(file);
 	// a loaded index must reference existing stars only
-	indigo_solver_star *loaded_stars;
-	indigo_solver_quad *loaded_quads;
-	int star_count, quad_count;
+	indigo_solver_catalog loaded;
 	file = fopen(path, "wb");
 	ASSERT_TRUE(file != NULL);
 	memcpy(header.magic, INDIGO_SOLVER_INDEX_MAGIC, 4);
@@ -215,8 +207,8 @@ static void test_index_file_roundtrip(void) {
 	ASSERT_TRUE(indigo_solver_index_write_stars(file, stars, 3));
 	ASSERT_TRUE(indigo_solver_index_write_quads(file, quads, 2));
 	fclose(file);
-	ASSERT_FALSE(indigo_solver_load_index(path, &loaded_stars, &star_count, &loaded_quads, &quad_count));
-	ASSERT_TRUE(loaded_stars == NULL && loaded_quads == NULL);
+	ASSERT_FALSE(indigo_solver_load_index(path, &loaded));
+	ASSERT_TRUE(loaded.stars == NULL && loaded.hashes == NULL && loaded.mapping == NULL);
 	quads[1].stars[0] = 2;
 	file = fopen(path, "wb");
 	ASSERT_TRUE(file != NULL);
@@ -224,13 +216,19 @@ static void test_index_file_roundtrip(void) {
 	ASSERT_TRUE(indigo_solver_index_write_stars(file, stars, 3));
 	ASSERT_TRUE(indigo_solver_index_write_quads(file, quads, 2));
 	fclose(file);
-	ASSERT_TRUE(indigo_solver_load_index(path, &loaded_stars, &star_count, &loaded_quads, &quad_count));
-	ASSERT_EQ_INT(3, star_count);
-	ASSERT_EQ_INT(2, quad_count);
-	// the unsorted input is sorted by hash on load
-	ASSERT_TRUE(loaded_quads[0].hash <= loaded_quads[1].hash);
-	ASSERT_TRUE(loaded_quads[0].stars[0] == loaded_stars + 0 && loaded_quads[0].stars[1] == loaded_stars + 1);
-	indigo_solver_free_catalog(loaded_stars, loaded_quads);
+	ASSERT_TRUE(indigo_solver_load_index(path, &loaded));
+	ASSERT_EQ_INT(3, loaded.star_count);
+	ASSERT_EQ_INT(2, loaded.quad_count);
+	ASSERT_TRUE(loaded.fov == 5 && loaded.mapping == NULL);
+	ASSERT_TRUE(loaded.stars[1].ra == 1.5f && loaded.stars[2].dec == -1.4f);
+	// the unsorted input is sorted by hash on load, the baselines and stars follow their quads
+	ASSERT_TRUE(loaded.hashes[0] <= loaded.hashes[1]);
+	ASSERT_TRUE(loaded.hashes[0] == quads[0].hash && loaded.baselines[0] == quads[0].baseline);
+	ASSERT_TRUE(loaded.quad_stars[0] == 0 && loaded.quad_stars[1] == 1 && loaded.quad_stars[4] == 2);
+	ASSERT_TRUE(loaded.buckets[0] == 0 && loaded.buckets[INDIGO_SOLVER_BUCKET_COUNT] == 2);
+	indigo_solver_free_catalog(&loaded);
+	ASSERT_TRUE(loaded.stars == NULL && loaded.quad_count == 0);
+	indigo_solver_free_catalog(&loaded);
 	unlink(path);
 }
 
@@ -303,6 +301,7 @@ typedef struct {
 	indigo_solver_star catalog[CATALOG_STAR_COUNT];
 	indigo_solver_quad *quads;
 	int quad_count;
+	indigo_solver_catalog index;
 } synthetic_catalog;
 
 // Random stars around the field centre, quads built the way the indexer does: projected around a tangent point
@@ -333,7 +332,13 @@ static void build_synthetic_catalog(synthetic_catalog *c) {
 			}
 		}
 	}
-	qsort(c->quads, c->quad_count, sizeof(indigo_solver_quad), compare_quads_by_hash);
+	ASSERT_TRUE(indigo_solver_catalog_build(c->catalog, CATALOG_STAR_COUNT, c->quads, c->quad_count, 5, &c->index));
+}
+
+static void free_synthetic_catalog(synthetic_catalog *c) {
+	indigo_solver_free_catalog(&c->index);
+	free(c->quads);
+	free(c);
 }
 
 // Solves a synthetic image of the catalog and checks the solution reproduces the star positions
@@ -359,7 +364,7 @@ static void solve_synthetic_image(synthetic_catalog *c, float ra_center, float d
 	ASSERT_TRUE(quad_count > 0);
 	int max_matches = 200000;
 	indigo_solver_quad_match *quad_matches = malloc(max_matches * sizeof(indigo_solver_quad_match));
-	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_matches, NULL);
+	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, &c->index, quad_matches, max_matches, NULL);
 	ASSERT_TRUE(quad_match_count > 0);
 	indigo_solver_star_match star_matches[1000];
 	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000, NULL);
@@ -394,16 +399,158 @@ static void test_solve_synthetic_field(void) {
 	build_synthetic_catalog(c);
 	ASSERT_TRUE(c->quad_count > 1000);
 	solve_synthetic_image(c, c->ra0 + 0.15 * DEG_TO_RAD, c->dec0 - 0.1 * DEG_TO_RAD, 33 * DEG_TO_RAD, 8 * ARCSEC_TO_RAD, -1);
-	free(c->quads);
-	free(c);
+	free_synthetic_catalog(c);
 }
 
 static void test_solve_synthetic_mirrored_field(void) {
 	synthetic_catalog *c = malloc(sizeof(synthetic_catalog));
 	build_synthetic_catalog(c);
 	solve_synthetic_image(c, c->ra0 - 0.2 * DEG_TO_RAD, c->dec0 + 0.25 * DEG_TO_RAD, 197 * DEG_TO_RAD, 7 * ARCSEC_TO_RAD, 1);
-	free(c->quads);
-	free(c);
+	free_synthetic_catalog(c);
+}
+
+static bool write_bytes(const char *path, const void *data, size_t size) {
+	FILE *file = fopen(path, "wb");
+	if (file == NULL) {
+		return false;
+	}
+	bool ok = fwrite(data, 1, size, file) == size;
+	return fclose(file) == 0 && ok;
+}
+
+static bool same_catalog(const indigo_solver_catalog *a, const indigo_solver_catalog *b) {
+	return a->fov == b->fov && a->star_count == b->star_count && a->quad_count == b->quad_count && memcmp(a->stars, b->stars, a->star_count * sizeof(indigo_solver_index_star)) == 0 && memcmp(a->buckets, b->buckets, (INDIGO_SOLVER_BUCKET_COUNT + 1) * sizeof(uint32_t)) == 0 && memcmp(a->hashes, b->hashes, a->quad_count * sizeof(uint64_t)) == 0 && memcmp(a->baselines, b->baselines, a->quad_count * sizeof(float)) == 0 && memcmp(a->quad_stars, b->quad_stars, a->quad_count * 4 * sizeof(uint32_t)) == 0;
+}
+
+// A catalog written as a version 2 index is mapped with the same contents, aligned sections and no copies, and solves
+// the field like the catalog in memory; the same catalog written as version 1 is read with the same contents
+static void test_mapped_index_roundtrip(void) {
+	synthetic_catalog *c = malloc(sizeof(synthetic_catalog));
+	build_synthetic_catalog(c);
+	char path[] = "/tmp/indigo_test_solver_mapped_XXXXXX";
+	int fd = mkstemp(path);
+	ASSERT_TRUE(fd >= 0);
+	close(fd);
+	ASSERT_TRUE(indigo_solver_write_index(path, &c->index));
+	FILE *file = fopen(path, "rb");
+	ASSERT_TRUE(file != NULL);
+	indigo_solve_index_header header;
+	ASSERT_TRUE(indigo_solver_index_read_header(file, &header));
+	fclose(file);
+	ASSERT_TRUE(header.version == INDIGO_SOLVER_INDEX_MAPPED_VERSION && header.fov == 5 && header.star_count == c->index.star_count && header.quad_count == c->index.quad_count);
+	indigo_solver_catalog mapped;
+	ASSERT_TRUE(indigo_solver_load_index(path, &mapped));
+	ASSERT_TRUE(mapped.mapping != NULL && mapped.mapping_size > 0);
+	for (int i = 0; i < 5; i++) {
+		ASSERT_TRUE(mapped.allocated[i] == NULL);
+	}
+	ASSERT_TRUE(same_catalog(&mapped, &c->index));
+	ASSERT_TRUE((uintptr_t)mapped.hashes % 8 == 0 && (uintptr_t)mapped.stars % 4 == 0 && (uintptr_t)mapped.buckets % 4 == 0 && (uintptr_t)mapped.baselines % 4 == 0 && (uintptr_t)mapped.quad_stars % 4 == 0);
+	indigo_solver_catalog built = c->index;
+	c->index = mapped;
+	solve_synthetic_image(c, c->ra0 + 0.15 * DEG_TO_RAD, c->dec0 - 0.1 * DEG_TO_RAD, 33 * DEG_TO_RAD, 8 * ARCSEC_TO_RAD, -1);
+	c->index = built;
+	indigo_solver_free_catalog(&mapped);
+	ASSERT_TRUE(mapped.mapping == NULL && mapped.quad_count == 0);
+	// version 1 records of the same catalog
+	file = fopen(path, "wb");
+	ASSERT_TRUE(file != NULL);
+	indigo_solve_index_header v1 = { .magic = INDIGO_SOLVER_INDEX_MAGIC, .version = INDIGO_SOLVER_INDEX_VERSION, .fov = 5, .star_count = built.star_count, .quad_count = built.quad_count };
+	indigo_solver_index_quad *records = malloc(built.quad_count * sizeof(indigo_solver_index_quad));
+	for (uint32_t i = 0; i < built.quad_count; i++) {
+		records[i].hash = built.hashes[i];
+		records[i].baseline = built.baselines[i];
+		memcpy(records[i].stars, built.quad_stars + 4 * i, sizeof(records[i].stars));
+	}
+	ASSERT_TRUE(indigo_solver_index_write_header(file, &v1) && indigo_solver_index_write_stars(file, built.stars, built.star_count) && indigo_solver_index_write_quads(file, records, built.quad_count));
+	fclose(file);
+	free(records);
+	indigo_solver_catalog read;
+	ASSERT_TRUE(indigo_solver_load_index(path, &read));
+	ASSERT_TRUE(read.mapping == NULL);
+	ASSERT_TRUE(same_catalog(&read, &c->index));
+	indigo_solver_free_catalog(&read);
+	unlink(path);
+	free_synthetic_catalog(c);
+}
+
+// A damaged version 2 index is refused when it is mapped: truncated, another bucket side, a section outside of the
+// file or misaligned, a bucket table not ending at the quad count; quads whose star indices lie outside of the
+// catalog are loaded but never matched nor kept by the cone
+static void test_mapped_index_rejects_damage(void) {
+	synthetic_catalog *c = malloc(sizeof(synthetic_catalog));
+	build_synthetic_catalog(c);
+	char path[] = "/tmp/indigo_test_solver_damaged_XXXXXX";
+	int fd = mkstemp(path);
+	ASSERT_TRUE(fd >= 0);
+	close(fd);
+	ASSERT_TRUE(indigo_solver_write_index(path, &c->index));
+	FILE *file = fopen(path, "rb");
+	ASSERT_TRUE(file != NULL);
+	fseek(file, 0, SEEK_END);
+	size_t size = (size_t)ftell(file);
+	fseek(file, 0, SEEK_SET);
+	uint8_t *original = malloc(size), *damaged = malloc(size);
+	ASSERT_TRUE(fread(original, 1, size, file) == size);
+	fclose(file);
+	uint64_t buckets_offset, quad_stars_offset;
+	memcpy(&buckets_offset, original + 32, 8);
+	memcpy(&quad_stars_offset, original + 56, 8);
+	indigo_solver_catalog catalog;
+	// truncated in the quad stars and in the header
+	ASSERT_TRUE(write_bytes(path, original, size - 4));
+	ASSERT_FALSE(indigo_solver_load_index(path, &catalog));
+	ASSERT_TRUE(catalog.mapping == NULL && catalog.hashes == NULL);
+	ASSERT_TRUE(write_bytes(path, original, 40));
+	ASSERT_FALSE(indigo_solver_load_index(path, &catalog));
+	// another bucket side
+	memcpy(damaged, original, size);
+	uint32_t side = INDIGO_SOLVER_BUCKET_SIDE - 1;
+	memcpy(damaged + 20, &side, 4);
+	ASSERT_TRUE(write_bytes(path, damaged, size));
+	ASSERT_FALSE(indigo_solver_load_index(path, &catalog));
+	// the stars beyond the end of the file, the hashes misaligned
+	memcpy(damaged, original, size);
+	uint64_t offset = size;
+	memcpy(damaged + 24, &offset, 8);
+	ASSERT_TRUE(write_bytes(path, damaged, size));
+	ASSERT_FALSE(indigo_solver_load_index(path, &catalog));
+	memcpy(damaged, original, size);
+	memcpy(&offset, original + 40, 8);
+	offset += 4;
+	memcpy(damaged + 40, &offset, 8);
+	ASSERT_TRUE(write_bytes(path, damaged, size));
+	ASSERT_FALSE(indigo_solver_load_index(path, &catalog));
+	// the bucket table not ending at the quad count
+	memcpy(damaged, original, size);
+	uint32_t end = c->index.quad_count + 1;
+	memcpy(damaged + buckets_offset + 4 * INDIGO_SOLVER_BUCKET_COUNT, &end, 4);
+	ASSERT_TRUE(write_bytes(path, damaged, size));
+	ASSERT_FALSE(indigo_solver_load_index(path, &catalog));
+	// every quad references a star outside of the catalog: loaded, but no match and an empty cone
+	memcpy(damaged, original, size);
+	uint32_t outside = c->index.star_count;
+	for (uint32_t i = 0; i < 4 * c->index.quad_count; i++) {
+		memcpy(damaged + quad_stars_offset + 4 * (size_t)i, &outside, 4);
+	}
+	ASSERT_TRUE(write_bytes(path, damaged, size));
+	ASSERT_TRUE(indigo_solver_load_index(path, &catalog));
+	indigo_solver_quad image_quads[8];
+	for (int i = 0; i < 8; i++) {
+		image_quads[i] = c->quads[i * 13];
+	}
+	indigo_solver_quad_match matches[64];
+	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, 8, &catalog, matches, 64, NULL));
+	// the intact catalog matches the same quads
+	ASSERT_TRUE(indigo_solver_match_quads(image_quads, 8, &c->index, matches, 64, NULL) > 0);
+	indigo_solver_catalog cone;
+	ASSERT_EQ_INT(0, indigo_solver_filter_quads(&catalog, c->ra0, c->dec0, 10 * DEG_TO_RAD, &cone));
+	indigo_solver_free_catalog(&cone);
+	indigo_solver_free_catalog(&catalog);
+	free(original);
+	free(damaged);
+	unlink(path);
+	free_synthetic_catalog(c);
 }
 
 // The orientation astrometry.net derives from a CD matrix, written out independently of the solver: tan_get_orientation()
@@ -421,7 +568,8 @@ static void test_compute_center_uses_astrometry_net_orientation(void) {
 	const double phis[] = { -170, -98.19, -8.41, 0, 26.85, 90, 179.14 };
 	const double scale = 2 * ARCSEC_TO_RAD;
 	const float ra0 = 1.2f, dec0 = 0.5f;
-	indigo_solver_star image[16], catalog[16];
+	indigo_solver_star image[16];
+	indigo_solver_index_star catalog[16];
 	indigo_solver_star_match matches[16];
 	for (unsigned p = 0; p < sizeof(phis) / sizeof(phis[0]); p++) {
 		for (int mirror = 0; mirror < 2; mirror++) {
@@ -429,7 +577,7 @@ static void test_compute_center_uses_astrometry_net_orientation(void) {
 			double cd00 = scale * c * m, cd01 = -scale * s, cd10 = scale * s * m, cd11 = scale * c;
 			for (int i = 0; i < 16; i++) {
 				memset(image + i, 0, sizeof(indigo_solver_star));
-				memset(catalog + i, 0, sizeof(indigo_solver_star));
+				memset(catalog + i, 0, sizeof(indigo_solver_index_star));
 				image[i].x = 100 + frand() * (IMAGE_WIDTH - 200);
 				image[i].y = 100 + frand() * (IMAGE_HEIGHT - 200);
 				double dx = image[i].x - IMAGE_WIDTH / 2.0, dy = image[i].y - IMAGE_HEIGHT / 2.0;
@@ -470,7 +618,7 @@ static void test_solve_rejects_unrelated_field(void) {
 	int used = 0;
 	int quad_count = indigo_solver_build_image_quads(image_stars, 20, IMAGE_WIDTH, IMAGE_HEIGHT, IMAGE_WIDTH / 10, &used, image_quads, max_quads);
 	indigo_solver_quad_match *quad_matches = malloc(max_quads * sizeof(indigo_solver_quad_match));
-	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, NULL);
+	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, &c->index, quad_matches, max_quads, NULL);
 	indigo_solver_star_match star_matches[1000];
 	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000, NULL);
 	float ra, dec, rotation, pixel;
@@ -489,8 +637,7 @@ static void test_solve_rejects_unrelated_field(void) {
 	}
 	free(quad_matches);
 	free(image_quads);
-	free(c->quads);
-	free(c);
+	free_synthetic_catalog(c);
 }
 
 // A deadline in the past and an abort flag stop the matching loops at once with the limit named; the cone filter
@@ -517,13 +664,13 @@ static void test_match_respects_limits_and_cone(void) {
 	indigo_solver_quad_match *quad_matches = malloc(max_quads * sizeof(indigo_solver_quad_match));
 	indigo_solver_limits limits = { 0 };
 	limits.deadline = indigo_monotonic_time() - 1;
-	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, &limits));
+	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, &c->index, quad_matches, max_quads, &limits));
 	ASSERT_TRUE(limits.exceeded);
 	ASSERT_TRUE(strcmp(limits.reason, "CPU time limit exceeded") == 0);
 	volatile bool abort = true;
 	memset(&limits, 0, sizeof(limits));
 	limits.abort = &abort;
-	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, &limits));
+	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, &c->index, quad_matches, max_quads, &limits));
 	ASSERT_TRUE(limits.exceeded);
 	ASSERT_TRUE(strcmp(limits.reason, "Aborted") == 0);
 	indigo_solver_star_match star_matches[1000];
@@ -533,25 +680,29 @@ static void test_match_respects_limits_and_cone(void) {
 	limits.deadline = indigo_monotonic_time() + 60;
 	abort = false;
 	limits.abort = &abort;
-	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, c->quads, c->quad_count, quad_matches, max_quads, &limits);
+	int quad_match_count = indigo_solver_match_quads(image_quads, quad_count, &c->index, quad_matches, max_quads, &limits);
 	ASSERT_TRUE(quad_match_count > 0);
 	ASSERT_FALSE(limits.exceeded);
 	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000, &limits);
 	ASSERT_TRUE(star_match_count >= 6);
 	// the cone around the field keeps its quads, a cone 30 degrees away keeps none
-	indigo_solver_quad *cone = NULL;
-	int cone_count = indigo_solver_filter_quads(c->quads, c->quad_count, c->ra0, c->dec0, 3 * DEG_TO_RAD, &cone);
-	ASSERT_TRUE(cone_count > 0 && cone_count <= c->quad_count);
+	indigo_solver_catalog cone;
+	int cone_count = indigo_solver_filter_quads(&c->index, c->ra0, c->dec0, 3 * DEG_TO_RAD, &cone);
+	ASSERT_TRUE(cone_count > 0 && cone_count <= c->quad_count && (int)cone.quad_count == cone_count);
+	ASSERT_TRUE(cone.stars == c->index.stars && cone.buckets[INDIGO_SOLVER_BUCKET_COUNT] == cone.quad_count);
 	for (int i = 1; i < cone_count; i++) {
-		ASSERT_TRUE(cone[i - 1].hash <= cone[i].hash);
+		ASSERT_TRUE(cone.hashes[i - 1] <= cone.hashes[i]);
 	}
-	free(cone);
-	ASSERT_EQ_INT(0, indigo_solver_filter_quads(c->quads, c->quad_count, c->ra0 + 30 * DEG_TO_RAD, c->dec0, 3 * DEG_TO_RAD, &cone));
-	ASSERT_TRUE(cone == NULL);
+	// the cone solves the field like the whole catalog
+	ASSERT_TRUE(indigo_solver_match_quads(image_quads, quad_count, &cone, quad_matches, max_quads, NULL) > 0);
+	indigo_solver_free_catalog(&cone);
+	ASSERT_EQ_INT(0, indigo_solver_filter_quads(&c->index, c->ra0 + 30 * DEG_TO_RAD, c->dec0, 3 * DEG_TO_RAD, &cone));
+	ASSERT_TRUE(cone.quad_count == 0 && cone.buckets[INDIGO_SOLVER_BUCKET_COUNT] == 0);
+	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, &cone, quad_matches, max_quads, NULL));
+	indigo_solver_free_catalog(&cone);
 	free(quad_matches);
 	free(image_quads);
-	free(c->quads);
-	free(c);
+	free_synthetic_catalog(c);
 }
 
 // A noisy frame with faint gaussian stars, hot pixels, a hot column and a hot row: every star is detected at
@@ -646,6 +797,8 @@ int main(void) {
 		{ "index_selection", test_index_selection },
 		{ "solve_synthetic_field", test_solve_synthetic_field },
 		{ "solve_synthetic_mirrored_field", test_solve_synthetic_mirrored_field },
+		{ "mapped_index_roundtrip", test_mapped_index_roundtrip },
+		{ "mapped_index_rejects_damage", test_mapped_index_rejects_damage },
 		{ "compute_center_uses_astrometry_net_orientation", test_compute_center_uses_astrometry_net_orientation },
 		{ "solve_rejects_unrelated_field", test_solve_rejects_unrelated_field },
 		{ "image_stars_noisy_frame", test_image_stars_noisy_frame },

@@ -51,6 +51,7 @@
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_platesolver.h>
 #include <indigo_drivers/agent_solver/indigo_agent_solver.h>
+#include <indigo_drivers/agent_solver/indigo_solver.h>
 #include <indigo_drivers/agent_solver/indigo_solver_utils.h>
 #include <indigo_drivers/agent_imager/indigo_agent_imager.h>
 #include <indigo_drivers/agent_guider/indigo_agent_guider.h>
@@ -654,20 +655,17 @@ static void index_0_5_self_consistency(void) {
 	ASSERT_TRUE(set_hints(2000, 1, 0));
 	char path[PATH_MAX];
 	snprintf(path, sizeof(path), "%s/solver/gaia-0.5deg.isix", cache_base);
-	FILE *file = fopen(path, "rb");
-	ASSERT_TRUE(file != NULL);
-	indigo_solve_index_header header;
-	ASSERT_TRUE(indigo_solver_index_read_header(file, &header) && header.fov == 0.5f && header.star_count > 0);
-	indigo_solver_index_star *stars = malloc(header.star_count * sizeof(indigo_solver_index_star));
-	ASSERT_TRUE(indigo_solver_index_read_stars(file, stars, header.star_count));
-	fclose(file);
-	printf("  index: %u stars, %u quads\n", header.star_count, header.quad_count);
+	// the index stars of either index file version
+	indigo_solver_catalog catalog;
+	ASSERT_TRUE(indigo_solver_load_index(path, &catalog) && catalog.fov == 0.5f && catalog.star_count > 0);
+	const indigo_solver_index_star *stars = catalog.stars;
+	printf("  index: %u stars, %u quads%s\n", catalog.star_count, catalog.quad_count, catalog.mapping ? ", mapped" : "");
 	int solved_count = 0, dense_count = 0, dense_solved = 0, field_count = narrow_field_count();
 	for (int k = 0; k < field_count; k++) {
 		bool solved;
 		double ra_hours, dec_degrees;
 		narrow_field(k, &ra_hours, &dec_degrees);
-		int rendered = solve_narrow_field(stars, header.star_count, ra_hours, dec_degrees, &solved);
+		int rendered = solve_narrow_field(stars, catalog.star_count, ra_hours, dec_degrees, &solved);
 		printf("  %s\n", solved ? "solved" : "not solved");
 		solved_count += solved;
 		if (rendered >= NARROW_MIN_STARS) {
@@ -675,7 +673,7 @@ static void index_0_5_self_consistency(void) {
 			dense_solved += solved;
 		}
 	}
-	free(stars);
+	indigo_solver_free_catalog(&catalog);
 	printf("  %d of %d fields solved, %d of %d fields with at least %d index stars solved\n", solved_count, field_count, dense_solved, dense_count, NARROW_MIN_STARS);
 	ASSERT_TRUE(dense_solved == dense_count);
 	ASSERT_TRUE(solved_count * 2 >= field_count);
