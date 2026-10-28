@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <math.h>
@@ -36,6 +35,7 @@
 
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_dslr_raw.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_solver_utils.h"
 #include "indigo_solver.h"
@@ -650,7 +650,7 @@ bool indigo_solver_select_index(const char *index_directory, const float *fovs, 
 	for (int i = 0; i < fov_count; i++) {
 		float fov = fovs[i];
 		indigo_solver_index_path(candidate, sizeof(candidate), index_directory, fov);
-		if (access(candidate, R_OK) == 0 && (selected == 0 || fov <= target)) {
+		if (indigo_uni_is_readable(candidate) && (selected == 0 || fov <= target)) {
 			selected = fov;
 			strncpy(path, candidate, size);
 		}
@@ -758,39 +758,38 @@ void indigo_solver_free_catalog(indigo_solver_star *stars, indigo_solver_quad *q
 int indigo_solver_build_image_quads(indigo_solver_star *stars, int star_count, int width, int height, int cell_size, int *used_stars, indigo_solver_quad *quads, int max_quad_count) {
 	int cell_cols = width / cell_size;
 	int cell_rows = height / cell_size;
+	int cell_count = cell_cols * cell_rows;
 	struct cell {
 		int row, col;
 		indigo_solver_star *star;
-	} cells[cell_rows][cell_cols];
+	};
+	// row-major cell grid on the heap, MSVC has no variable length arrays; at least one cell, malloc(0) may return NULL
+	struct cell *c = indigo_safe_malloc((cell_count > 0 ? cell_count : 1) * sizeof(struct cell));
 	for (int j = 0; j < cell_rows; j++) {
 		for (int i = 0; i < cell_cols; i++) {
-			cells[j][i].row = j;
-			cells[j][i].col = i;
-			cells[j][i].star = NULL;
+			c[j * cell_cols + i].row = j;
+			c[j * cell_cols + i].col = i;
+			c[j * cell_cols + i].star = NULL;
 		}
 	}
 	for (int i = 0; i < star_count; i++) {
 		indigo_solver_star *star = stars + i;
 		int x = star->x / cell_size;
 		int y = star->y / cell_size;
-		if (x < cell_cols && y < cell_rows && (cells[y][x].star == NULL || cells[y][x].star->magnitude > star->magnitude)) {
-			cells[y][x].star = star;
+		if (x < cell_cols && y < cell_rows && (c[y * cell_cols + x].star == NULL || c[y * cell_cols + x].star->magnitude > star->magnitude)) {
+			c[y * cell_cols + x].star = star;
 		}
 	}
 	int count = 0;
-	for (int j = 0; j < cell_rows; j++) {
-		for (int i = 0; i < cell_cols; i++) {
-			indigo_solver_star *star = cells[j][i].star;
-			if (star) {
-				star->used++;
-				count++;
-			}
+	for (int i = 0; i < cell_count; i++) {
+		indigo_solver_star *star = c[i].star;
+		if (star) {
+			star->used++;
+			count++;
 		}
 	}
 	*used_stars = count;
 	count = 0;
-	int cell_count = cell_cols * cell_rows;
-	struct cell *c = (struct cell *)cells;
 	for (int i = 0; i < cell_count; i++) {
 		if (c[i].star == NULL) {
 			continue;
@@ -817,6 +816,7 @@ int indigo_solver_build_image_quads(indigo_solver_star *stars, int star_count, i
 		}
 	}
 exit:
+	indigo_safe_free(c);
 	qsort(quads, count, sizeof(indigo_solver_quad), compare_quads);
 	indigo_debug("%s: %d stars used to form %d quads", __FUNCTION__, *used_stars, count);
 	return count;
