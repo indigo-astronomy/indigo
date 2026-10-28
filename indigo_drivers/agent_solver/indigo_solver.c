@@ -614,10 +614,10 @@ int indigo_solver_image_stars(indigo_raw_header *image, indigo_solver_star *star
 	int stars_found, count = 0;
 	uint16_t *filtered = filtered_image(image);
 	if (filtered != NULL) {
-		indigo_find_stars_precise_threshold(INDIGO_RAW_MONO16, filtered, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+		indigo_find_stars_fast_threshold(INDIGO_RAW_MONO16, filtered, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
 		indigo_safe_free(filtered);
 	} else {
-		indigo_find_stars_precise_threshold(image->signature, image + 1, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+		indigo_find_stars_fast_threshold(image->signature, image + 1, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
 	}
 	for (int i = 0; i < stars_found; i++) {
 		indigo_star_detection *as = all_stars + i;
