@@ -85,8 +85,8 @@ indigo_solver_utils.o: $(SOLVER_AGENT_DIR)/indigo_solver_utils.c $(SOLVER_AGENT_
 indigo_solver_healpix.o: $(SOLVER_AGENT_DIR)/indigo_solver_healpix.c $(SOLVER_AGENT_DIR)/indigo_solver_healpix.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BUILD_BIN)/indigo_solver_indexer: indigo_solver_indexer.o indigo_solver_utils.o indigo_solver_healpix.o
-	$(CC) $(CFLAGS)  -o $@ indigo_solver_indexer.o indigo_solver_utils.o indigo_solver_healpix.o $(LDFLAGS) $(INDIGO_LIBS)
+$(BUILD_BIN)/indigo_solver_indexer: indigo_solver_indexer.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o
+	$(CC) $(CFLAGS)  -o $@ indigo_solver_indexer.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o $(LDFLAGS) $(INDIGO_LIBS) -lindigocat
 
 # The command line solver runs the solver agent's solving steps; its core is built under another object name, as
 # indigo_solver.o is the tool itself.

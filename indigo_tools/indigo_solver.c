@@ -351,8 +351,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 	indigo_solver_quad *image_quads = NULL;
 	indigo_solver_quad_match *quad_matches = NULL;
 	indigo_solver_star_match *star_matches = NULL;
-	indigo_solver_star *catalog_stars = NULL;
-	indigo_solver_quad *catalog_quads = NULL;
+	indigo_solver_catalog catalog = { 0 };
 	indigo_solver_limits limits = { 0 };
 	if (options->cpu_limit > 0) {
 		limits.deadline = start + options->cpu_limit;
@@ -410,7 +409,6 @@ static bool solve(solver_options *options, const void *data, long size) {
 	// the field goes through all stages first
 	int pass_count = options->scale > 0 ? 1 : stage_count;
 	float loaded_fov = 0;
-	int catalog_star_count = 0, catalog_quad_count = 0;
 	for (int pass = 0; pass < pass_count && !solved && !limits.exceeded; pass++) {
 		int first_stage = pass_count == 1 ? 0 : pass;
 		int last_stage = pass_count == 1 ? stage_count : pass + 1;
@@ -422,11 +420,9 @@ static bool solve(solver_options *options, const void *data, long size) {
 				printf("Solving with %s %g° index...\n", catalog_name(candidates[i]), candidates[i]);
 			}
 			if (loaded_fov != candidates[i]) {
-				indigo_solver_free_catalog(catalog_stars, catalog_quads);
-				catalog_stars = NULL;
-				catalog_quads = NULL;
+				indigo_solver_free_catalog(&catalog);
 				loaded_fov = 0;
-				if (!indigo_solver_load_index(path, &catalog_stars, &catalog_star_count, &catalog_quads, &catalog_quad_count)) {
+				if (!indigo_solver_load_index(path, &catalog)) {
 					fprintf(stderr, "%s: failed to load %s\n", TOOL_NAME, path);
 					continue;
 				}
@@ -434,14 +430,14 @@ static bool solve(solver_options *options, const void *data, long size) {
 			}
 			// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
 			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
-			indigo_solver_quad *quads = catalog_quads;
-			int quad_count = catalog_quad_count;
-			indigo_solver_quad *cone_quads = NULL;
+			const indigo_solver_catalog *quads = &catalog;
+			indigo_solver_catalog cone = { 0 };
 			if (options->radius > 0) {
 				double extent = options->scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * options->scale : candidates[i];
-				quad_count = indigo_solver_filter_quads(catalog_quads, catalog_quad_count, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (options->radius + extent) * DEG_TO_RAD, &cone_quads);
-				quads = cone_quads;
+				indigo_solver_filter_quads(&catalog, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (options->radius + extent) * DEG_TO_RAD, &cone);
+				quads = &cone;
 			}
+			int quad_count = quads->quad_count;
 			for (int stage = first_stage; stage < last_stage && !solved && quad_count > 0 && !limits.exceeded; stage++) {
 				int used_star_count = 0;
 				int image_quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
@@ -451,7 +447,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 				if (options->verbose) {
 					printf("Stage %d: %d brightest stars, %d quads, %d catalog quads\n", stage + 1, stages[stage], image_quad_count, quad_count);
 				}
-				int quad_match_count = indigo_solver_match_quads(image_quads, image_quad_count, quads, quad_count, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
+				int quad_match_count = indigo_solver_match_quads(image_quads, image_quad_count, quads, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
 				star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
 				if (limits.exceeded) {
 					break;
@@ -468,7 +464,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 					solved = true;
 				}
 			}
-			indigo_safe_free(cone_quads);
+			indigo_solver_free_catalog(&cone);
 		}
 	}
 	if (!solved) {
@@ -495,7 +491,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 	printf("Parity:   %d\n", parity);
 	printf("Index:    %s %g°\n", catalog_name(fov), fov);
 cleanup:
-	indigo_solver_free_catalog(catalog_stars, catalog_quads);
+	indigo_solver_free_catalog(&catalog);
 	indigo_safe_free(star_matches);
 	indigo_safe_free(quad_matches);
 	indigo_safe_free(image_quads);

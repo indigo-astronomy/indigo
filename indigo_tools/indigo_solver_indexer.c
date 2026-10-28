@@ -34,7 +34,9 @@
 #include <limits.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_uni_io.h>
 
+#include <agent_solver/indigo_solver.h>
 #include <agent_solver/indigo_solver_utils.h>
 #include <agent_solver/indigo_solver_healpix.h>
 
@@ -521,55 +523,72 @@ static uint32_t build_quads(const index_params *p, indigo_solver_star *stars, ui
 	return quad_count;
 }
 
+// Writes the stars used by the quads and the quads as an index of version 2; the quads are pointed to the compacted
+// stars, they are not used afterwards
 static bool write_index(float fov, indigo_solver_star *stars, uint32_t star_count, indigo_solver_quad *quads, uint32_t quad_count) {
 	char path[128];
 	indigo_solver_index_path(path, sizeof(path), NULL, fov);
-	FILE *file = fopen(path, "wb");
-	if (file == NULL) {
-		fprintf(stderr, "Failed to create %s: %s\n", path, strerror(errno));
-		return false;
-	}
-	indigo_solve_index_header h = {
-		.magic = INDIGO_SOLVER_INDEX_MAGIC,
-		.version = INDIGO_SOLVER_INDEX_VERSION,
-		.fov = fov,
-		.star_count = 0,
-		.quad_count = quad_count
-	};
+	uint32_t used_count = 0;
 	for (uint32_t i = 0; i < star_count; i++) {
 		if (stars[i].used) {
-			stars[i].id = h.star_count++;
+			stars[i].id = used_count++;
 		}
 	}
-	bool ok = indigo_solver_index_write_header(file, &h);
-	indigo_solver_index_star *index_stars = indigo_safe_malloc(h.star_count * sizeof(indigo_solver_index_star));
-	uint32_t count = 0;
+	indigo_solver_star *used = indigo_safe_malloc((used_count > 0 ? used_count : 1) * sizeof(indigo_solver_star));
 	for (uint32_t i = 0; i < star_count; i++) {
-		indigo_solver_star *s = stars + i;
-		if (s->used) {
-			index_stars[count].ra = s->ra;
-			index_stars[count].dec = s->dec;
-			count++;
+		if (stars[i].used) {
+			used[stars[i].id] = stars[i];
 		}
 	}
-	ok = ok && indigo_solver_index_write_stars(file, index_stars, h.star_count);
-	indigo_safe_free(index_stars);
-	indigo_solver_index_quad *index_quads = indigo_safe_malloc(quad_count * sizeof(indigo_solver_index_quad));
 	for (uint32_t i = 0; i < quad_count; i++) {
-		indigo_solver_quad *q = quads + i;
-		index_quads[i].hash = q->hash;
-		index_quads[i].baseline = q->baseline;
 		for (int k = 0; k < 4; k++) {
-			index_quads[i].stars[k] = q->stars[k]->id;
+			quads[i].stars[k] = used + quads[i].stars[k]->id;
 		}
 	}
-	ok = ok && indigo_solver_index_write_quads(file, index_quads, quad_count);
-	indigo_safe_free(index_quads);
-	if (fclose(file) != 0 || !ok) {
+	indigo_solver_catalog catalog;
+	bool ok = indigo_solver_catalog_build(used, used_count, quads, quad_count, fov, &catalog) && indigo_solver_write_index(path, &catalog);
+	indigo_solver_free_catalog(&catalog);
+	indigo_safe_free(used);
+	if (!ok) {
 		fprintf(stderr, "Failed to write %s\n", path);
 		return false;
 	}
-	printf("Saved %u stars and %u quads to %s\n\n", h.star_count, h.quad_count, path);
+	printf("Saved %u stars and %u quads to %s\n\n", used_count, quad_count, path);
+	return true;
+}
+
+// Rewrites an index of version 1 as version 2 in place; an index of version 2 is left as it is
+static bool convert_index(const char *path) {
+	FILE *file = fopen(path, "rb");
+	indigo_solve_index_header header;
+	bool readable = file != NULL && indigo_solver_index_read_header(file, &header);
+	if (file != NULL) {
+		fclose(file);
+	}
+	if (!readable) {
+		fprintf(stderr, "%s is not an index file\n", path);
+		return false;
+	}
+	if (header.version == INDIGO_SOLVER_INDEX_MAPPED_VERSION) {
+		printf("%s is already version %u\n", path, header.version);
+		return true;
+	}
+	indigo_solver_catalog catalog;
+	if (!indigo_solver_load_index(path, &catalog)) {
+		fprintf(stderr, "Failed to read %s\n", path);
+		return false;
+	}
+	char temporary[PATH_MAX];
+	snprintf(temporary, sizeof(temporary), "%s.v2", path);
+	bool ok = indigo_solver_write_index(temporary, &catalog);
+	uint32_t star_count = catalog.star_count, quad_count = catalog.quad_count;
+	indigo_solver_free_catalog(&catalog);
+	if (!ok || !indigo_uni_replace_file(temporary, path)) {
+		fprintf(stderr, "Failed to rewrite %s\n", path);
+		indigo_uni_remove(temporary);
+		return false;
+	}
+	printf("Converted %s to version %u (%u stars, %u quads)\n", path, INDIGO_SOLVER_INDEX_MAPPED_VERSION, star_count, quad_count);
 	return true;
 }
 
@@ -639,6 +658,15 @@ int main(int argc, char **argv) {
 	float fovs[16];
 	int fov_count = 0;
 	const char *gaia = NULL;
+	if (argc > 2 && !strcmp(argv[1], "-c")) {
+		int failed = 0;
+		for (int i = 2; i < argc; i++) {
+			if (!convert_index(argv[i])) {
+				failed++;
+			}
+		}
+		return failed ? 1 : 0;
+	}
 	for (int i = 1; i < argc && fov_count < 16; i++) {
 		if (!strcmp(argv[i], "-g") && i + 1 < argc) {
 			gaia = argv[++i];
@@ -646,7 +674,7 @@ int main(int argc, char **argv) {
 		}
 		float fov = atof(argv[i]);
 		if (fov <= 0) {
-			fprintf(stderr, "Usage: %s [-g gaia_csv_directory] [fov_deg ...]   (default %g; scales below 1 degree need the Gaia extract, see README)\n", argv[0], INDIGO_SOLVER_DEFAULT_INDEX_FOV);
+			fprintf(stderr, "Usage: %s [-g gaia_csv_directory] [fov_deg ...]   (default %g; scales below 1 degree need the Gaia extract, see README)\n       %s -c index_file ...   (converts index files of version 1 to version 2 in place)\n", argv[0], INDIGO_SOLVER_DEFAULT_INDEX_FOV, argv[0]);
 			return 1;
 		}
 		fovs[fov_count++] = fov;
