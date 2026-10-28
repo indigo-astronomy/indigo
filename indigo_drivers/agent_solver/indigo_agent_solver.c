@@ -30,8 +30,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
@@ -42,6 +40,8 @@
 #include <windows.h>
 #include <wininet.h>
 #else
+#include <unistd.h>
+#include <signal.h>
 #include <sys/wait.h>
 #endif
 

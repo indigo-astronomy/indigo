@@ -238,6 +238,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_svbpowerbox", "i
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_astrometry", "indigo_drivers\agent_astrometry\indigo_agent_astrometry.vcxproj", "{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_solver", "indigo_drivers\agent_solver\indigo_agent_solver.vcxproj", "{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_skyroof", "indigo_drivers\dome_skyroof\indigo_dome_skyroof.vcxproj", "{F78FA65D-6AD7-4515-A053-DA574ACC3861}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_baader", "indigo_drivers\dome_baader\indigo_dome_baader.vcxproj", "{E0B3FD6E-F9C2-4AB1-844D-94C525DE5A96}"
@@ -1200,6 +1202,14 @@ Global
 		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Release|ARM64.Build.0 = Release|ARM64
 		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Release|x64.ActiveCfg = Release|x64
 		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Release|x64.Build.0 = Release|x64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Debug|ARM64.Build.0 = Debug|ARM64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Debug|x64.ActiveCfg = Debug|x64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Debug|x64.Build.0 = Debug|x64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Release|ARM64.ActiveCfg = Release|ARM64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Release|ARM64.Build.0 = Release|ARM64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Release|x64.ActiveCfg = Release|x64
+		{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}.Release|x64.Build.0 = Release|x64
 		{F78FA65D-6AD7-4515-A053-DA574ACC3861}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{F78FA65D-6AD7-4515-A053-DA574ACC3861}.Debug|ARM64.Build.0 = Debug|ARM64
 		{F78FA65D-6AD7-4515-A053-DA574ACC3861}.Debug|x64.ActiveCfg = Debug|x64
