@@ -13,14 +13,9 @@ stars of a catalogue and the quads (groups of four stars) built from them. The s
 image against the quads of an index. The files are written by `indigo_solver_indexer` from `indigo_tools` and are read by
 `indigo_solver_load_index()` in `indigo_drivers/agent_solver/indigo_solver.c`.
 
-There are two versions of the format:
-
-* **Version 1** stores packed records; the solver reads the whole file into memory.
-* **Version 2** stores the data in the layout the solver uses, so the file is memory mapped and used as it is: it opens
-  at once and only the parts a solve touches are read from the disk.
-
-Both versions are read; `indigo_solver_indexer` writes version 2 and `indigo_solver_indexer -c <index files>` converts
-files of version 1 to version 2 in place.
+The files are memory mapped and used as they are: an index opens at once and only the parts a solve touches are read
+from the disk. The current format is version 2; files of the former version 1 (packed records read into memory) are
+refused.
 
 ## Files
 An index is named after its catalogue and its quad scale:
@@ -82,43 +77,13 @@ The components are clamped to their ranges. The quads of an index are sorted by 
 so all quads with the same (hx3, hy3) are next to each other.
 
 ## Header
-Both versions start with the same 20 bytes:
-
-| Offset | Type | Field | Meaning |
-| ----- | ----- | ----- | ----- |
-| 0 | char[4] | magic | `ISIX` |
-| 4 | uint32 | version | 1 or 2 |
-| 8 | float | fov | quad scale in degrees, as in the file name |
-| 12 | uint32 | star_count | number of stars |
-| 16 | uint32 | quad_count | number of quads |
-
-## Version 1
-The header is followed by the stars and the quads, packed without padding:
-
-| Offset | Size | Contents |
-| ----- | ----- | ----- |
-| 0 | 20 | header |
-| 20 | 8 · star_count | stars |
-| 20 + 8 · star_count | 28 · quad_count | quads |
-
-A quad record is 28 bytes:
-
-| Offset | Type | Field |
-| ----- | ----- | ----- |
-| 0 | uint64 | hash |
-| 8 | float | baseline |
-| 12 | uint32[4] | star indices P1, P2, P3, P4 |
-
-The quads should be sorted by hash; a reader sorts them when they are not.
-
-## Version 2
-The header is 64 bytes long; its first 20 bytes are the common header with version 2:
+The header is 64 bytes long:
 
 | Offset | Type | Field | Meaning |
 | ----- | ----- | ----- | ----- |
 | 0 | char[4] | magic | `ISIX` |
 | 4 | uint32 | version | 2 |
-| 8 | float | fov | quad scale in degrees |
+| 8 | float | fov | quad scale in degrees, as in the file name |
 | 12 | uint32 | star_count | number of stars |
 | 16 | uint32 | quad_count | number of quads |
 | 20 | uint32 | bucket_side | 1001, the number of values of hx3 and of hy3 |
@@ -128,6 +93,7 @@ The header is 64 bytes long; its first 20 bytes are the common header with versi
 | 48 | uint64 | baselines_offset | offset of the quad baselines |
 | 56 | uint64 | quad_stars_offset | offset of the quad star indices |
 
+## Sections
 The offsets are counted from the start of the file. The sections hold one array each; the entry i of the hashes, the
 baselines and the star indices belongs to quad i:
 
@@ -150,22 +116,20 @@ order. The size of a file written that way is
 
 64 + 8 · star_count (+ padding) + 4 008 008 (+ padding) + 8 · quad_count + 4 · quad_count (+ padding) + 16 · quad_count
 
-bytes; for the Gaia 0.5° index with 3 839 927 stars and 31 293 651 quads it is 910 949 720 bytes, about 4 MB (the bucket
-table) more than the same index in version 1.
+bytes; for the Gaia 0.5° index with 3 839 927 stars and 31 293 651 quads it is 910 949 720 bytes.
 
 ### Validity
-When it maps a file of version 2, the solver refuses it unless
+When it maps an index, the solver refuses it unless
 
-* the header is complete, the magic is `ISIX` and bucket_side is 1001,
+* the header is complete, the magic is `ISIX`, the version is 2 and bucket_side is 1001,
 * every section lies within the file and is aligned for its elements,
 * the bucket table starts with 0, never decreases and ends with quad_count.
 
 The star indices of a quad are checked when the quad is used: a quad referring to a star beyond star_count is skipped.
-The data is used in place, so version 2 is mapped on little endian hosts only.
+The data is used in place, so indexes are mapped on little endian hosts only.
 
 ## Memory
-The solver reads a file of version 1 into arrays of the version 2 layout, 28 bytes per quad and 8 bytes per star; the
-Gaia 0.5° index takes about 900 MB of memory that way. A file of version 2 is not copied: its pages belong to the page
-cache of the system, are read when a solve first touches them and can be dropped by the system under memory pressure.
-Matching reads mostly the hashes and the bucket table; the baselines and the star indices are read only for the quads
-whose hash matches. With the Gaia 0.5° index, a solve of a 0.5° field touches about 300 MB of the 911 MB file.
+An index is not copied: its pages belong to the page cache of the system, are read when a solve first touches them and
+can be dropped by the system under memory pressure. Matching reads mostly the hashes and the bucket table; the baselines
+and the star indices are read only for the quads whose hash matches. With the Gaia 0.5° index, a solve of a 0.5° field
+touches about 300 MB of the 911 MB file.
