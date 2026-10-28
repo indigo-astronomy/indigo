@@ -555,6 +555,70 @@ static void solve_with_depth_hint(void) {
 	ASSERT_TRUE(solution_matches_rendered_frame());
 }
 
+// The messages contain the texts in this order, each after the previous one
+static bool messages_in_order(const char **texts, int count) {
+	pthread_mutex_lock(&cache_mutex);
+	const char *position = messages;
+	for (int i = 0; i < count && position != NULL; i++) {
+		position = strstr(position, texts[i]);
+		if (position != NULL) {
+			position += strlen(texts[i]);
+		}
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return position != NULL;
+}
+
+static bool messages_in_order_or_print(const char **texts, int count) {
+	if (messages_in_order(texts, count)) {
+		return true;
+	}
+	pthread_mutex_lock(&cache_mutex);
+	fprintf(stderr, "Messages out of the expected order:\n%s\n", messages);
+	pthread_mutex_unlock(&cache_mutex);
+	return false;
+}
+
+// Both synthetic indexes selected and no pixel scale: the first stage runs on every index, the largest first, the
+// next stage in the opposite order starting with the index loaded last. The 0.5° file is another random patch, only
+// the 5° index matches the frame; the depth hint 4 leaves the first stage without quads, so the frame is solved in
+// the second stage with the 5° index after the 0.5° one
+static void blind_search_goes_stage_by_stage(void) {
+	ASSERT_TRUE(prepare_full_resolution());
+	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5", true) == INDIGO_OK);
+	ASSERT_TRUE(WAIT_UNTIL(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5") && switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM), 10));
+	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME, 0));
+	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME, 4));
+	clear_messages();
+	ASSERT_TRUE(solve_rendered_raw());
+	ASSERT_TRUE(solution_matches_rendered_frame());
+	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
+	const char *order[] = { "Solving with Tycho-2 5° index", "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Solved: " };
+	ASSERT_TRUE(messages_in_order_or_print(order, 5));
+	const char *three_times[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	ASSERT_FALSE(messages_in_order(three_times, 3));
+}
+
+// With the pixel scale the index fitting the 3.6° x 2.7° frame among the selected ones, 0.5°, goes through all stages
+// first, then the 5° index, which solves it; neither is searched twice
+static void scaled_search_uses_fitting_index_first(void) {
+	ASSERT_TRUE(prepare_full_resolution());
+	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5", true) == INDIGO_OK);
+	ASSERT_TRUE(WAIT_UNTIL(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5") && switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM), 10));
+	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME, IMAGE_SCALE * RAD_TO_DEG));
+	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME, 4));
+	clear_messages();
+	ASSERT_TRUE(solve_rendered_raw());
+	ASSERT_TRUE(solution_matches_rendered_frame());
+	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
+	const char *order[] = { "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Solved: " };
+	ASSERT_TRUE(messages_in_order_or_print(order, 3));
+	const char *gaia_twice[] = { "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index" };
+	ASSERT_FALSE(messages_in_order(gaia_twice, 2));
+	const char *five_twice[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	ASSERT_FALSE(messages_in_order(five_twice, 2));
+}
+
 // A RAW frame with the BAYERPAT appendix of a colour camera and a FITS with a BAYERPAT card are binned 2 x 2
 // before detection and still report the WCS in unbinned pixels
 static void bayer_raw_is_binned(void) {
@@ -844,6 +908,8 @@ static indigo_test_case tests[] = {
 	{ "wrong_position_hint_fails", wrong_position_hint_fails },
 	{ "parity_hint_rejects_mirror", parity_hint_rejects_mirror },
 	{ "solve_with_depth_hint", solve_with_depth_hint },
+	{ "blind_search_goes_stage_by_stage", blind_search_goes_stage_by_stage },
+	{ "scaled_search_uses_fitting_index_first", scaled_search_uses_fitting_index_first },
 	{ "bayer_raw_is_binned", bayer_raw_is_binned },
 	{ "bayer_fits_is_binned", bayer_fits_is_binned },
 	{ "solve_rgb_fits_image", solve_rgb_fits_image },

@@ -69,7 +69,7 @@ typedef struct {
 	int parity;
 } tool_solution;
 
-static char work_dir[PATH_MAX], index_dir[PATH_MAX], empty_dir[PATH_MAX], raw_path[PATH_MAX], fits_path[PATH_MAX], text_path[PATH_MAX];
+static char work_dir[PATH_MAX], index_dir[PATH_MAX], two_index_dir[PATH_MAX], empty_dir[PATH_MAX], raw_path[PATH_MAX], fits_path[PATH_MAX], text_path[PATH_MAX];
 static float ra0, dec0, image_ra, image_dec;
 static uint32_t rng_state = 20261028;
 
@@ -183,6 +183,21 @@ static bool write_file(const char *path, const void *data, long size) {
 	return true;
 }
 
+static bool copy_file(const char *from, const char *to) {
+	FILE *file = fopen(from, "rb");
+	REQUIRE(file != NULL);
+	fseek(file, 0, SEEK_END);
+	long size = ftell(file);
+	fseek(file, 0, SEEK_SET);
+	char *data = malloc(size);
+	bool ok = fread(data, 1, size, file) == (size_t)size;
+	fclose(file);
+	ok = ok && write_file(to, data, size);
+	free(data);
+	REQUIRE(ok);
+	return true;
+}
+
 // -------------------------------------------------------------------------------- running the tool
 
 // Runs the tool with the arguments, stdout and stderr captured together; INDIGO_CACHE_BASE always points into the
@@ -222,6 +237,18 @@ static bool output_value(tool_run *run, const char *label, double *value) {
 	}
 	fprintf(stderr, "No '%s' value in the output:\n%s\n", label, run->output);
 	return false;
+}
+
+// The output contains the texts in this order, each after the previous one
+static bool output_in_order(tool_run *run, const char **texts, int count) {
+	const char *position = run->output;
+	for (int i = 0; i < count && position != NULL; i++) {
+		position = strstr(position, texts[i]);
+		if (position != NULL) {
+			position += strlen(texts[i]);
+		}
+	}
+	return position != NULL;
 }
 
 static bool parse_solution(tool_run *run, tool_solution *solution) {
@@ -285,6 +312,16 @@ static bool setup(void) {
 	free(image);
 	REQUIRE(ok);
 	REQUIRE(write_file(text_path, "not an image\n", 13));
+	// the matching 5° index and, as the 0.5° index, another random patch around the same centre that matches nothing
+	snprintf(two_index_dir, sizeof(two_index_dir), "%s/two", work_dir);
+	REQUIRE(mkdir(two_index_dir, 0755) == 0);
+	char path[PATH_MAX];
+	char matching[PATH_MAX];
+	indigo_solver_index_path(matching, sizeof(matching), index_dir, 5);
+	indigo_solver_index_path(path, sizeof(path), two_index_dir, 5);
+	REQUIRE(copy_file(matching, path));
+	indigo_solver_index_path(path, sizeof(path), two_index_dir, 0.5);
+	REQUIRE(write_synthetic_index(path));
 	return true;
 }
 
@@ -420,6 +457,41 @@ static void depth_hint_and_verbose_progress(void) {
 	ASSERT_TRUE(output_contains(&run, "is not installed"));
 }
 
+// Without the scale the largest index is searched first, stage by stage: the first stage on every index, then the
+// next stage in the opposite order starting with the index loaded last. Only the 5° index matches the frame; the
+// depth 4 leaves the first stage without quads, so the 0.5° index is searched in the second stage before the 5° one
+static void blind_search_goes_stage_by_stage(void) {
+	tool_run run;
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 '%s'", two_index_dir, raw_path));
+	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
+	const char *first[] = { "Solving with Tycho-2 5° index...\nStage 1:", "Solved in " };
+	ASSERT_TRUE(output_in_order(&run, first, 2));
+	ASSERT_FALSE(strstr(run.output, "Solving with Gaia DR3 0.5° index") != NULL);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 '%s'", two_index_dir, raw_path));
+	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
+	const char *order[] = { "Solving with Tycho-2 5° index", "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Stage 2:", "Solved in " };
+	if (!output_in_order(&run, order, 6)) {
+		fprintf(stderr, "Unexpected search order:\n%s\n", run.output);
+	}
+	ASSERT_TRUE(output_in_order(&run, order, 6));
+	const char *three_times[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	ASSERT_FALSE(output_in_order(&run, three_times, 3));
+}
+
+// With the scale the index fitting the 3.6° x 2.7° frame, 0.5° of the two, goes through all stages first and the
+// 5° index, which solves it, follows; neither is searched twice
+static void scaled_search_uses_fitting_index_first(void) {
+	tool_run run;
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 -s %.8f '%s'", two_index_dir, IMAGE_SCALE * RAD_TO_DEG, raw_path));
+	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
+	const char *order[] = { "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Solved in " };
+	ASSERT_TRUE(output_in_order(&run, order, 3));
+	const char *gaia_twice[] = { "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index" };
+	ASSERT_FALSE(output_in_order(&run, gaia_twice, 2));
+	const char *five_twice[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	ASSERT_FALSE(output_in_order(&run, five_twice, 2));
+}
+
 // -x restricts the indexes, only uninstalled ones leave nothing to solve with; the CPU limit 0 means no limit
 static void index_selection_and_cpu_limit(void) {
 	tool_run run;
@@ -504,6 +576,8 @@ static const indigo_test_case tests[] = {
 	{ "jnow_epoch_hint_and_solution", jnow_epoch_hint_and_solution },
 	{ "parity_hint", parity_hint },
 	{ "depth_hint_and_verbose_progress", depth_hint_and_verbose_progress },
+	{ "blind_search_goes_stage_by_stage", blind_search_goes_stage_by_stage },
+	{ "scaled_search_uses_fitting_index_first", scaled_search_uses_fitting_index_first },
 	{ "index_selection_and_cpu_limit", index_selection_and_cpu_limit },
 	{ "invalid_arguments_are_refused", invalid_arguments_are_refused },
 	{ "unreadable_and_unsupported_files_fail", unreadable_and_unsupported_files_fail },
