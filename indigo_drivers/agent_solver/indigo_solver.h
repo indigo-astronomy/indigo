@@ -34,6 +34,11 @@
 
 #define INDIGO_SOLVER_INDEX_FOV_COUNT	6
 
+/** The index fitting a field best has the quad scale of about this fraction of the geometric mean of the field size:
+ on frames of 0.4° to 7° the indexes of 0.37 to 1.0 x the field solved, the ones above 1.2 x or below 0.35 x did not.
+ */
+#define INDIGO_SOLVER_INDEX_FIELD_RATIO	0.7
+
 /** Quad scales of the available indexes in degrees, ascending; an index of scale n° holds quads of 0.1 n° to 0.8 n°,
  not a field of view.
  */
@@ -54,9 +59,9 @@ extern void indigo_solver_bin_image(indigo_raw_header *image, int bin);
  stars stand out of the pixel noise; other frame types are detected as they are.
  */
 extern int indigo_solver_image_stars(indigo_raw_header *image, indigo_solver_star *stars, int max_star_count);
-/** Picks the index for the expected image size on the sky (radians) among the given FOVs: the largest FOV not above
- 1.5 x the geometric mean of the field size, or the smallest available one. Only existing files in index_directory
- (NULL = current working directory) are considered.
+/** Picks the index for the expected image size on the sky (radians) among the given FOVs: the one nearest, on the log
+ scale, to INDIGO_SOLVER_INDEX_FIELD_RATIO x the geometric mean of the field size. Only existing files in
+ index_directory (NULL = current working directory) are considered.
  */
 extern bool indigo_solver_select_index(const char *index_directory, const float *fovs, int fov_count, float field_width, float field_height, char *path, size_t size, float *fov);
 /** Loads an index file; the arrays are allocated and belong to the caller, see indigo_solver_free_catalog().

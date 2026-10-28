@@ -43,8 +43,8 @@ The files are kept outside the repository in `$INDIGO_CACHE_BASE/solver`, or in 
 `INDIGO_CACHE_BASE` is not set. They are managed with the `X_AGENT_SOLVER_INDEX` property: selecting an item downloads
 the file from the `index_release_v1` release of the INDIGO repository on GitHub and verifies it, clearing it deletes the
 file. Installed indexes are offered in `AGENT_PLATESOLVER_USE_INDEX` and
-at least one of them must be selected to solve. Choose the largest index whose scale is at most 1.5 x the size of the
-frame; when the pixel scale is known, the index fitting the frame size is tried first, then the other selected ones.
+at least one of them must be selected to solve. Choose the index whose scale is nearest to 0.7 x the size of the
+frame (the geometric mean of its width and height); indexes of about 0.4 to 1 x the frame size solve it; when the pixel scale is known, the index fitting the frame size is tried first, then the other selected ones.
 
 The indexes can also be built locally with `indigo_solver_indexer 1 2 5 10 20` from `indigo_tools`. The tool reads the
 Tycho-2 catalogue (CDS I/259, files `tyc2.dat.00` to `tyc2.dat.19`) from an `I_259` directory in the current working

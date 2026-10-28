@@ -641,17 +641,19 @@ int indigo_solver_image_stars(indigo_raw_header *image, indigo_solver_star *star
 	return count;
 }
 
-// Picks the largest available index whose FOV is at most 1.5 x the geometric mean of the field size
-// (enough index stars in the field while quads still fit inside it); falls back to the smallest available index.
+// Picks the available index nearest, on the log scale, to INDIGO_SOLVER_INDEX_FIELD_RATIO x the geometric mean of the
+// field size: its quads are large enough to be found in the field and small enough to fit inside it
 bool indigo_solver_select_index(const char *index_directory, const float *fovs, int fov_count, float field_width, float field_height, char *path, size_t size, float *fov_out) {
-	float target = 1.5 * sqrt(field_width * field_height) * RAD_TO_DEG;
-	float selected = 0;
+	float target = INDIGO_SOLVER_INDEX_FIELD_RATIO * sqrt(field_width * field_height) * RAD_TO_DEG;
+	float selected = 0, selected_distance = 0;
 	char candidate[PATH_MAX];
 	for (int i = 0; i < fov_count; i++) {
 		float fov = fovs[i];
+		float distance = fabs(log(fov / target));
 		indigo_solver_index_path(candidate, sizeof(candidate), index_directory, fov);
-		if (indigo_uni_is_readable(candidate) && (selected == 0 || fov <= target)) {
+		if (indigo_uni_is_readable(candidate) && (selected == 0 || distance < selected_distance)) {
 			selected = fov;
+			selected_distance = distance;
 			strncpy(path, candidate, size);
 		}
 	}

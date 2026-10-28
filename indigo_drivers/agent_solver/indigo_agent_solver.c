@@ -23,7 +23,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x0300000A
+#define DRIVER_VERSION 0x0300000B
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -362,7 +362,7 @@ static int select_candidate_fovs(indigo_device *device, double scale, int width,
 	}
 	// the other selected indexes follow, the nearest to the field size first when the scale is known, otherwise the
 	// largest index first
-	float target = scale > 0 ? 1.5 * sqrt((double)width * height) * scale : 0;
+	float target = scale > 0 ? INDIGO_SOLVER_INDEX_FIELD_RATIO * sqrt((double)width * height) * scale : 0;
 	while (true) {
 		float best = 0, best_distance = 0;
 		for (int i = 0; i < selected_count; i++) {
