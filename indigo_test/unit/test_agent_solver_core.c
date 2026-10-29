@@ -924,6 +924,36 @@ static void test_load_fits_scaled_binned_matches_full_size(void) {
 	indigo_safe_free(fits);
 }
 
+static void test_load_fits_16bit_without_bzero_wraps(void) {
+	// BITPIX 16 without BZERO stores unsigned camera values, values above 32767 read negative and are wrapped back
+	const int width = 4, height = 2;
+	const uint16_t values[4 * 2] = { 300, 32767, 32768, 65535, 0, 40000, 1000, 50000 };
+	const char *keywords[] = { "SIMPLE", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2" };
+	const char *card_values[] = { "T", "16", "2", "4", "2" };
+	uint8_t pixels[4 * 2 * 2];
+	for (int i = 0; i < width * height; i++) {
+		pixels[2 * i] = (uint8_t)(values[i] >> 8);
+		pixels[2 * i + 1] = (uint8_t)(values[i] & 0xFF);
+	}
+	long size;
+	char *fits = fits_file(keywords, card_values, 5, pixels, sizeof(pixels), &size);
+	for (int downsample = 1; downsample <= 2; downsample++) {
+		int bin, full_width, full_height;
+		bool bayered;
+		const char *message = NULL;
+		indigo_raw_header *image = indigo_solver_load_image(fits, size, downsample, &bin, &full_width, &full_height, &bayered, &message);
+		ASSERT_TRUE(image != NULL);
+		const uint16_t *loaded = (const uint16_t *)(image + 1);
+		for (int y = 0; y < height / bin; y++) {
+			for (int x = 0; x < width / bin; x++) {
+				ASSERT_EQ_INT(binned_value(values, width, x, y, bin), loaded[y * (width / bin) + x]);
+			}
+		}
+		indigo_safe_free(image);
+	}
+	indigo_safe_free(fits);
+}
+
 static void test_load_bayer_binning(void) {
 	// a Bayer mosaic is binned at least 2 x 2 and by an even factor, other images as requested and at least 1 x 1
 	uint16_t values[8 * 8];
@@ -1001,6 +1031,7 @@ int main(void) {
 		{ "image_stars_noisy_frame", test_image_stars_noisy_frame },
 		{ "match_respects_limits_and_cone", test_match_respects_limits_and_cone },
 		{ "load_fits_16bit_binned_odd_size", test_load_fits_16bit_binned_odd_size },
+		{ "load_fits_16bit_without_bzero_wraps", test_load_fits_16bit_without_bzero_wraps },
 		{ "load_fits_scaled_binned_matches_full_size", test_load_fits_scaled_binned_matches_full_size },
 		{ "load_bayer_binning", test_load_bayer_binning },
 		{ "load_raw_mono16_binned", test_load_raw_mono16_binned },

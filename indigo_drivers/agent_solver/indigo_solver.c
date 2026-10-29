@@ -203,10 +203,23 @@ static float channel_weight(int channel, int channels) {
 	return channels == 3 ? weights[channel] : 1.0f / channels;
 }
 
+// The sample format of a FITS image as given by BITPIX; FITS_U16 is BITPIX 16 with BZERO 0 and BSCALE 1, whose
+// negative values are unsigned camera values above 32767 written without BZERO 32768 (saturated star cores turned
+// black), so they are read as unsigned. The format is chosen once, the pixel loops do not test for it.
+typedef enum {
+	FITS_U8,
+	FITS_I16,
+	FITS_U16,
+	FITS_I32,
+	FITS_F32,
+	FITS_F64
+} fits_format;
+
 // The data layout and the scaling of a FITS primary image, read by fits_header, which fails with the reason when the
 // data is not a usable image
 typedef struct {
 	int bitpix, bytes, width, height, planes;
+	fits_format format;
 	double bzero, bscale;
 	const uint8_t *pixels;
 } fits_layout;
@@ -258,6 +271,23 @@ static bool fits_header(const void *data, long size, fits_layout *layout, bool *
 	layout->planes = (int)naxis3;
 	layout->bzero = bzero;
 	layout->bscale = bscale;
+	switch (layout->bitpix) {
+		case 8:
+			layout->format = FITS_U8;
+			break;
+		case 16:
+			layout->format = bzero == 0 && bscale == 1 ? FITS_U16 : FITS_I16;
+			break;
+		case 32:
+			layout->format = FITS_I32;
+			break;
+		case -32:
+			layout->format = FITS_F32;
+			break;
+		default:
+			layout->format = FITS_F64;
+			break;
+	}
 	layout->pixels = (const uint8_t *)fits + offset;
 	if (offset + (long)((size_t)layout->width * layout->height * layout->planes * bytes) > size) {
 		*message = "Truncated FITS image";
@@ -269,17 +299,20 @@ static bool fits_header(const void *data, long size, fits_layout *layout, bool *
 // The physical value of the pixel at p, BZERO + BSCALE x the stored value, 0 when not finite
 static inline double fits_value(const uint8_t *p, const fits_layout *layout) {
 	double value;
-	switch (layout->bitpix) {
-		case 8:
+	switch (layout->format) {
+		case FITS_U8:
 			value = p[0];
 			break;
-		case 16:
+		case FITS_I16:
 			value = (int16_t)((p[0] << 8) | p[1]);
 			break;
-		case 32:
+		case FITS_U16:
+			value = (uint16_t)((p[0] << 8) | p[1]);
+			break;
+		case FITS_I32:
 			value = (int32_t)(((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3]);
 			break;
-		case -32: {
+		case FITS_F32: {
 			uint32_t bits = ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
 			float f;
 			memcpy(&f, &bits, sizeof(f));
@@ -325,16 +358,20 @@ static float *fits_plane_values(const fits_layout *layout, float *min, float *ma
 // kept without looking at them
 static bool fits_range_within_16_bits(const fits_layout *layout) {
 	double low, high;
-	switch (layout->bitpix) {
-		case 8:
+	switch (layout->format) {
+		case FITS_U8:
 			low = 0;
 			high = UINT8_MAX;
 			break;
-		case 16:
+		case FITS_I16:
 			low = INT16_MIN;
 			high = INT16_MAX;
 			break;
-		case 32:
+		case FITS_U16:
+			low = 0;
+			high = UINT16_MAX;
+			break;
+		case FITS_I32:
 			low = INT32_MIN;
 			high = INT32_MAX;
 			break;
@@ -381,25 +418,41 @@ static indigo_raw_header *fits_image(const fits_layout *layout, int bin) {
 		indigo_solver_bin_image(image, bin);
 		return image;
 	}
-	// BITPIX 8 or 16 with BSCALE 1 and an integer BZERO stores the values themselves
-	bool exact = layout->bitpix <= 16 && layout->bitpix > 0 && layout->bscale == 1 && layout->bzero == floor(layout->bzero) && scale == 1 && shift == 0;
-	int dst_width = width / bin, dst_height = height / bin;
+	// BITPIX 8 or 16 with BSCALE 1 and an integer BZERO stores the values themselves, any other image goes through
+	// fits_value(). Each row is converted to 16 bits first, by a loop chosen once per row, and then binned from that
+	// buffer, so neither loop tests the format per pixel and the compiler can vectorise them.
+	bool exact = layout->format <= FITS_U16 && layout->bscale == 1 && layout->bzero == floor(layout->bzero) && scale == 1 && shift == 0;
+	int dst_width = width / bin, dst_height = height / bin, used = dst_width * bin;
 	image = mono16_image(dst_width, dst_height);
 	uint16_t *out = (uint16_t *)(image + 1);
 	uint32_t *sums = indigo_safe_malloc((dst_width > 0 ? dst_width : 1) * sizeof(uint32_t));
+	uint16_t *row = indigo_safe_malloc((used > 0 ? used : 1) * sizeof(uint16_t));
 	uint32_t divisor = bin * bin;
 	int zero = (int)layout->bzero;
 	for (int dst_y = 0; dst_y < dst_height; dst_y++) {
 		memset(sums, 0, dst_width * sizeof(uint32_t));
 		for (int by = 0; by < bin; by++) {
 			const uint8_t *p = layout->pixels + (size_t)(dst_y * bin + by) * width * layout->bytes;
-			for (int dst_x = 0; dst_x < dst_width; dst_x++) {
-				for (int bx = 0; bx < bin; bx++, p += layout->bytes) {
-					if (exact) {
-						sums[dst_x] += (layout->bitpix == 8 ? p[0] : (int16_t)((p[0] << 8) | p[1])) + zero;
-					} else {
-						sums[dst_x] += (uint16_t)(((float)fits_value(p, layout) - shift) * scale + 0.5f);
-					}
+			if (exact && layout->format == FITS_U8) {
+				for (int x = 0; x < used; x++) {
+					row[x] = (uint16_t)(p[x] + zero);
+				}
+			} else if (exact && layout->format == FITS_I16) {
+				for (int x = 0; x < used; x++) {
+					row[x] = (uint16_t)((int16_t)((p[2 * x] << 8) | p[2 * x + 1]) + zero);
+				}
+			} else if (exact && layout->format == FITS_U16) {
+				for (int x = 0; x < used; x++) {
+					row[x] = (uint16_t)((p[2 * x] << 8) | p[2 * x + 1]);
+				}
+			} else {
+				for (int x = 0; x < used; x++, p += layout->bytes) {
+					row[x] = (uint16_t)(((float)fits_value(p, layout) - shift) * scale + 0.5f);
+				}
+			}
+			for (int bx = 0; bx < bin; bx++) {
+				for (int dst_x = 0; dst_x < dst_width; dst_x++) {
+					sums[dst_x] += row[dst_x * bin + bx];
 				}
 			}
 		}
@@ -407,6 +460,7 @@ static indigo_raw_header *fits_image(const fits_layout *layout, int bin) {
 			out[(size_t)dst_y * dst_width + dst_x] = (uint16_t)(sums[dst_x] / divisor);
 		}
 	}
+	indigo_safe_free(row);
 	indigo_safe_free(sums);
 	return image;
 }
