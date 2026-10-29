@@ -330,7 +330,7 @@ static void help_lists_switches_and_defaults(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, work_dir, "-h"));
 	ASSERT_EQ_INT(0, run.exit_code);
-	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--verbose", "--help", "0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
+	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--verbose", "--help", "0.2,0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
 	for (unsigned i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
 		ASSERT_TRUE(output_contains(&run, expected[i]));
 	}
@@ -458,10 +458,10 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
 	const char *first[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)...\nStage 1:", "Solved in " };
 	ASSERT_TRUE(output_in_order(&run, first, 2));
-	ASSERT_FALSE(strstr(run.output, "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)") != NULL);
+	ASSERT_FALSE(strstr(run.output, "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)") != NULL);
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 '%s'", two_index_dir, raw_path));
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
-	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Stage 2:", "Solved in " };
+	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Stage 2:", "Solved in " };
 	if (!output_in_order(&run, order, 6)) {
 		fprintf(stderr, "Unexpected search order:\n%s\n", run.output);
 	}
@@ -478,12 +478,12 @@ static void scaled_search_uses_fitting_index_first(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 -s %.8f '%s'", three_index_dir, IMAGE_SCALE * RAD_TO_DEG, raw_path));
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
-	const char *order[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Stage 2:", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Stage 2:", "Solved in " };
+	const char *order[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Stage 2:", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Stage 2:", "Solved in " };
 	if (!output_in_order(&run, order, 8)) {
 		fprintf(stderr, "Unexpected search order:\n%s\n", run.output);
 	}
 	ASSERT_TRUE(output_in_order(&run, order, 8));
-	const char *gaia_twice[] = { "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)" };
+	const char *gaia_twice[] = { "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)" };
 	ASSERT_FALSE(output_in_order(&run, gaia_twice, 2));
 	const char *two_three_times[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)" };
 	ASSERT_FALSE(output_in_order(&run, two_three_times, 3));

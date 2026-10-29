@@ -33,7 +33,7 @@
 
 #include "indigo_solver_utils.h"
 
-#define INDIGO_SOLVER_INDEX_FOV_COUNT	6
+#define INDIGO_SOLVER_INDEX_FOV_COUNT	7
 
 /** The index fitting a field best has the quad scale of about this fraction of the geometric mean of the field size:
  on frames of 0.4° to 7° the indexes of 0.37 to 1.0 x the field solved, the ones above 1.2 x or below 0.35 x did not.
