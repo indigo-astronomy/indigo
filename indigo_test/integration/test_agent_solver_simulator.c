@@ -65,8 +65,8 @@
 #define IMAGER_CAMERA "CCD Imager Simulator"
 #define GUIDER_CAMERA "CCD Guider Simulator"
 #define INDEX_PROPERTY "X_AGENT_SOLVER_INDEX"
-#define INDEX_2 "TYC2_2"
-#define INDEX_5 "TYC2_5"
+#define INDEX_2 "INDEX_02DEG_TYC2"
+#define INDEX_5 "INDEX_05DEG_TYC2"
 #define SETUP "SIMULATION_SETUP"
 #define SUITE "Solver agent with the CCD simulators"
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -541,7 +541,7 @@ static void rosetta_repeated(void) {
 
 // ---- set 3: the 0.5 degree index checked against a field rendered from its own stars
 
-#define INDEX_0_5 "GAIA_0_5"
+#define INDEX_0_5 "INDEX_00_5DEG_GAIA"
 #define NARROW_WIDTH 1000
 #define NARROW_HEIGHT 800
 #define NARROW_SCALE (1.8 / 3600)
@@ -657,7 +657,7 @@ static void index_0_5_self_consistency(void) {
 	ASSERT_TRUE(switch_value(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_0_5));
 	ASSERT_TRUE(set_hints(2000, 1, 0));
 	char path[PATH_MAX];
-	snprintf(path, sizeof(path), "%s/solver/gaia-0.5deg.isix", cache_base);
+	snprintf(path, sizeof(path), "%s/solver/index-00.5deg-gaia.isix", cache_base);
 	// the index stars of either index file version
 	indigo_solver_catalog catalog;
 	ASSERT_TRUE(indigo_solver_load_index(path, &catalog) && catalog.fov == 0.5f && catalog.star_count > 0);

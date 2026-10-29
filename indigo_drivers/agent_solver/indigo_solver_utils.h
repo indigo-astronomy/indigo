@@ -18,6 +18,7 @@
 
 // version history
 // 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 index management, index optimization and performance optimization by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO quad based plate solver - geometry, quad codes and index file format
  \file indigo_solver_utils.h
@@ -115,8 +116,10 @@ typedef struct {
 
 // directory NULL or empty means the current working directory
 // The catalogue an index of the given scale is built from: scales below 1 degree come from Gaia DR3, the others
-// from Tycho-2; it is the file name prefix (gaia-0.5deg.isix, tyc2-1deg.isix) and the item name prefix of the agent
+// from Tycho-2; it is the file name suffix (index-00.5deg-gaia.isix, index-01deg-tyc2.isix)
 extern const char *indigo_solver_index_catalog(float fov);
+// The scale zero padded to two integer digits (00.5, 01, 20), so the file and item names sort by scale
+extern void indigo_solver_index_scale(float fov, char *scale, size_t size);
 extern void indigo_solver_index_path(char *path, size_t size, const char *directory, float fov);
 extern bool indigo_solver_index_read_header(FILE *file, indigo_solve_index_header *header);
 

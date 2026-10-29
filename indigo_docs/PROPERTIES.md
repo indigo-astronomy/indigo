@@ -673,7 +673,7 @@ Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_solver
 
 | Property name | Type | RO | Items | Comments |
 | ----- | ----- | ----- | ----- | ----- |
-| X_AGENT_SOLVER_INDEX | switch | no | GAIA_0_5, TYC2_1, TYC2_2, TYC2_5, TYC2_10, TYC2_20 | Installed quad index management (Gaia DR3 for the 0.5° scale, Tycho-2 for the others), selecting an item downloads the `gaia-<scale>deg.isix` or `tyc2-<scale>deg.isix` file, clearing it deletes the file. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
+| X_AGENT_SOLVER_INDEX | switch | no | INDEX_00_5DEG_GAIA, INDEX_01DEG_TYC2, INDEX_02DEG_TYC2, INDEX_05DEG_TYC2, INDEX_10DEG_TYC2, INDEX_20DEG_TYC2 | Installed quad index management (Gaia DR3 for the 0.5° scale, Tycho-2 for the others), selecting an item downloads the `index-<scale>deg-gaia.isix` or `index-<scale>deg-tyc2.isix` file (scale zero padded, for example `index-05deg-tyc2.isix`), clearing it deletes the file. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
 
 Source: `indigo_drivers/agent_solver/indigo_agent_solver.c`.
 

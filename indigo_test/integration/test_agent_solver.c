@@ -46,7 +46,7 @@
 
 #define SOLVER									SOLVER_AGENT_NAME
 #define INDEX_PROPERTY					"X_AGENT_SOLVER_INDEX"
-#define INDEX_ITEM							"TYC2_5"
+#define INDEX_ITEM							"INDEX_05DEG_TYC2"
 #define SUITE										"Solver agent"
 #define ARRAY_SIZE(a)						(sizeof(a) / sizeof((a)[0]))
 #define REQUIRE(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return false; } } while (0)
@@ -319,7 +319,7 @@ static bool setup(void) {
 	REQUIRE(write_synthetic_index(index_path));
 	// the same synthetic index under the 0.5 degree name, so the fractional scale item is offered too
 	indigo_solver_index_path(narrow_index_path, sizeof(narrow_index_path), dir, 0.5);
-	REQUIRE(strstr(narrow_index_path, "gaia-0.5deg.isix") != NULL);
+	REQUIRE(strstr(narrow_index_path, "index-00.5deg-gaia.isix") != NULL);
 	REQUIRE(write_synthetic_index(narrow_index_path));
 	REQUIRE(indigo_start() == INDIGO_OK);
 	bus_started = true;
@@ -373,13 +373,13 @@ static bool prepare_full_resolution(void);
 // An index file present in the cache directory is reported as installed and offered for solving
 static void index_property_reflects_installed_files(void) {
 	ASSERT_TRUE(switch_value(INDEX_PROPERTY, INDEX_ITEM));
-	ASSERT_TRUE(switch_value(INDEX_PROPERTY, "GAIA_0_5"));
-	ASSERT_FALSE(has_item(INDEX_PROPERTY, "TYC2_0.5"));
-	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "TYC2_1"));
-	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "TYC2_20"));
+	ASSERT_TRUE(switch_value(INDEX_PROPERTY, "INDEX_00_5DEG_GAIA"));
+	ASSERT_FALSE(has_item(INDEX_PROPERTY, "INDEX_00_5DEG_TYC2"));
+	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "INDEX_01DEG_TYC2"));
+	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "INDEX_20DEG_TYC2"));
 	ASSERT_TRUE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM));
-	ASSERT_TRUE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5"));
-	ASSERT_FALSE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "TYC2_1"));
+	ASSERT_TRUE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA"));
+	ASSERT_FALSE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_01DEG_TYC2"));
 	ASSERT_FALSE(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM));
 }
 
@@ -569,8 +569,8 @@ static bool messages_in_order_or_print(const char **texts, int count) {
 // the second stage with the 5° index after the 0.5° one
 static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_TRUE(prepare_full_resolution());
-	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5", true) == INDIGO_OK);
-	ASSERT_TRUE(WAIT_UNTIL(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5") && switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM), 10));
+	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA", true) == INDIGO_OK);
+	ASSERT_TRUE(WAIT_UNTIL(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA") && switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM), 10));
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME, 0));
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME, 4));
 	clear_messages();
@@ -587,8 +587,8 @@ static void blind_search_goes_stage_by_stage(void) {
 // first, through all stages, and solves it; the 0.5° index is never tried
 static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(prepare_full_resolution());
-	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5", true) == INDIGO_OK);
-	ASSERT_TRUE(WAIT_UNTIL(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5") && switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM), 10));
+	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA", true) == INDIGO_OK);
+	ASSERT_TRUE(WAIT_UNTIL(switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA") && switch_value(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM), 10));
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME, IMAGE_SCALE * RAD_TO_DEG));
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME, 4));
 	clear_messages();
@@ -866,10 +866,10 @@ static void unsupported_image_rejected(void) {
 // Clearing an installed index deletes its file and withdraws it from the usable set
 static void deselecting_index_removes_file(void) {
 	ASSERT_TRUE(access(narrow_index_path, R_OK) == 0);
-	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, INDEX_PROPERTY, "GAIA_0_5", false) == INDIGO_OK);
-	ASSERT_TRUE(WAIT_UNTIL(state(INDEX_PROPERTY) == INDIGO_OK_STATE && !switch_value(INDEX_PROPERTY, "GAIA_0_5"), 10));
+	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, INDEX_PROPERTY, "INDEX_00_5DEG_GAIA", false) == INDIGO_OK);
+	ASSERT_TRUE(WAIT_UNTIL(state(INDEX_PROPERTY) == INDIGO_OK_STATE && !switch_value(INDEX_PROPERTY, "INDEX_00_5DEG_GAIA"), 10));
 	ASSERT_TRUE(access(narrow_index_path, R_OK) != 0);
-	ASSERT_TRUE(WAIT_UNTIL(exists(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME) && !has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "GAIA_0_5"), 10));
+	ASSERT_TRUE(WAIT_UNTIL(exists(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME) && !has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA"), 10));
 	ASSERT_TRUE(access(index_path, R_OK) == 0);
 	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, INDEX_PROPERTY, INDEX_ITEM, false) == INDIGO_OK);
 	ASSERT_TRUE(WAIT_UNTIL(state(INDEX_PROPERTY) == INDIGO_OK_STATE && !switch_value(INDEX_PROPERTY, INDEX_ITEM), 10));

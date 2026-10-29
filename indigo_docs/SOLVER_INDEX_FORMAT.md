@@ -1,5 +1,5 @@
 # INDIGO Solver Index Format
-Revision: 28.10.2026 (draft)
+Revision: 29.10.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -18,16 +18,16 @@ from the disk. The current format is version 2; files of the former version 1 (p
 refused.
 
 ## Files
-An index is named after its catalogue and its quad scale:
+An index is named after its quad scale, zero padded to two integer digits so the files sort by it, and its catalogue:
 
 | File | Catalogue | Quad scale |
 | ----- | ----- | ----- |
-| `gaia-0.5deg.isix` | Gaia DR3 (G < 14) | 0.5° |
-| `tyc2-1deg.isix` | Tycho-2 (VT < 11.5) | 1° |
-| `tyc2-2deg.isix` | Tycho-2 | 2° |
-| `tyc2-5deg.isix` | Tycho-2 | 5° |
-| `tyc2-10deg.isix` | Tycho-2 | 10° |
-| `tyc2-20deg.isix` | Tycho-2 | 20° |
+| `index-00.5deg-gaia.isix` | Gaia DR3 (G < 14) | 0.5° |
+| `index-01deg-tyc2.isix` | Tycho-2 (VT < 11.5) | 1° |
+| `index-02deg-tyc2.isix` | Tycho-2 | 2° |
+| `index-05deg-tyc2.isix` | Tycho-2 | 5° |
+| `index-10deg-tyc2.isix` | Tycho-2 | 10° |
+| `index-20deg-tyc2.isix` | Tycho-2 | 20° |
 
 Scales below 1° come from Gaia DR3, the others from Tycho-2. The scale is the size of the quads in the index, not a field
 of view: an index of scale n° holds quads whose stars are about 0.1 n° to 0.8 n° apart. A field is solved best by the

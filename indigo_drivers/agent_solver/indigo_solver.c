@@ -18,6 +18,7 @@
 
 // version history
 // 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 index management, index optimization and performance optimization by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO quad based plate solver - catalog index, image quads, matching and WCS fit
  \file indigo_solver.c
@@ -650,7 +651,7 @@ bool indigo_solver_select_index(const char *index_directory, const float *fovs, 
 		}
 	}
 	if (selected == 0) {
-		indigo_error("%s: no tyc2-*deg.isix index file found in %s", __FUNCTION__, index_directory && index_directory[0] ? index_directory : "the working directory");
+		indigo_error("%s: no index-*deg-*.isix index file found in %s", __FUNCTION__, index_directory && index_directory[0] ? index_directory : "the working directory");
 		return false;
 	}
 	*fov_out = selected;

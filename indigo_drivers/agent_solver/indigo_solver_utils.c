@@ -18,6 +18,7 @@
 
 // version history
 // 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 index management, index optimization and performance optimization by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO quad based plate solver - geometry, quad codes and index file format
  \file indigo_solver_utils.c
@@ -329,13 +330,23 @@ const char *indigo_solver_index_catalog(float fov) {
 	return fov < 1 ? "gaia" : "tyc2";
 }
 
+void indigo_solver_index_scale(float fov, char *scale, size_t size) {
+	if (fov == floorf(fov)) {
+		snprintf(scale, size, "%02d", (int)fov);
+	} else {
+		snprintf(scale, size, "%04.1f", fov);
+	}
+}
+
 void indigo_solver_index_path(char *path, size_t size, const char *directory, float fov) {
 	const char *catalog = indigo_solver_index_catalog(fov);
+	char scale[16];
+	indigo_solver_index_scale(fov, scale, sizeof(scale));
 	if (directory == NULL || directory[0] == 0) {
-		snprintf(path, size, "%s-%gdeg.isix", catalog, fov);
+		snprintf(path, size, "index-%sdeg-%s.isix", scale, catalog);
 	} else {
 		size_t length = strlen(directory);
-		snprintf(path, size, "%s%s%s-%gdeg.isix", directory, directory[length - 1] == '/' ? "" : "/", catalog, fov);
+		snprintf(path, size, "%s%sindex-%sdeg-%s.isix", directory, directory[length - 1] == '/' ? "" : "/", scale, catalog);
 	}
 }
 

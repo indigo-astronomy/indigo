@@ -15,6 +15,10 @@ This driver is platform independent. The index download needs the `curl` executa
 
 INDIGO Astronomy open-source license.
 
+## Authors
+
+Peter Polakovic; index management, index optimization and performance optimization by Rumen G. Bogdanovski.
+
 ## Use
 
 indigo_server indigo_agent_solver indigo_agent_imager indigo_agent_mount indigo_ccd_... indigo_mount_...
@@ -25,19 +29,20 @@ indigo_server indigo_agent_solver indigo_agent_imager indigo_agent_mount indigo_
 
 ### Index management
 
-The indexes `tyc2-<scale>deg.isix` are built from the Tycho-2 catalogue for quad scales of 1°, 2°, 5°, 10° and 20°, the
-index `gaia-0.5deg.isix` from Gaia DR3 (stars brighter than G = 14) for the quad scale of 0.5°, where Tycho-2 is too shallow. The
-scale is the size of the star marks (quads) in the index, not the field of view: an index of scale n° contains quads of
-0.1 n° to 0.8 n°:
+The indexes `index-<scale>deg-tyc2.isix` are built from the Tycho-2 catalogue for quad scales of 1°, 2°, 5°, 10° and 20°,
+the index `index-00.5deg-gaia.isix` from Gaia DR3 (stars brighter than G = 14) for the quad scale of 0.5°, where Tycho-2
+is too shallow. The scale is zero padded in the file and item names, so they sort by it. The scale is the size of the
+star marks (quads) in the index, not the field of view: an index of scale n° contains quads of 0.1 n° to 0.8 n°. The
+fields column gives the frame sizes for which the index is chosen when all indexes are installed:
 
-| Index | Catalogue | Quad scale | Size |
-| ----- | ----- | ----- | ----- |
-| GAIA_0_5 | Gaia DR3 | 0.5° | 911 MB |
-| TYC2_1 | Tycho-2 | 1° | 538 MB |
-| TYC2_2 | Tycho-2 | 2° | 358 MB |
-| TYC2_5 | Tycho-2 | 5° | 178 MB |
-| TYC2_10 | Tycho-2 | 10° | 92 MB |
-| TYC2_20 | Tycho-2 | 20° | 36 MB |
+| Index | File | Catalogue | Quad scale | Fields | Size |
+| ----- | ----- | ----- | ----- | ----- | ----- |
+| INDEX_00_5DEG_GAIA | index-00.5deg-gaia.isix | Gaia DR3 | 0.5° | 0.5° to 1° | 911 MB |
+| INDEX_01DEG_TYC2 | index-01deg-tyc2.isix | Tycho-2 | 1° | 1° to 2° | 538 MB |
+| INDEX_02DEG_TYC2 | index-02deg-tyc2.isix | Tycho-2 | 2° | 2° to 4.5° | 358 MB |
+| INDEX_05DEG_TYC2 | index-05deg-tyc2.isix | Tycho-2 | 5° | 4.5° to 10° | 178 MB |
+| INDEX_10DEG_TYC2 | index-10deg-tyc2.isix | Tycho-2 | 10° | 10° to 20° | 92 MB |
+| INDEX_20DEG_TYC2 | index-20deg-tyc2.isix | Tycho-2 | 20° | over 20° | 36 MB |
 
 The files are kept outside the repository in `$INDIGO_CACHE_BASE/solver`, or in `~/.indigo/solver` when
 `INDIGO_CACHE_BASE` is not set. They are managed with the `X_AGENT_SOLVER_INDEX` property: selecting an item downloads

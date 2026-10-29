@@ -18,6 +18,7 @@
 
 // version history
 // 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 index management, index optimization and performance optimization by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO quad based plate solver - catalog index, image quads, matching and WCS fit
  \file indigo_solver.h

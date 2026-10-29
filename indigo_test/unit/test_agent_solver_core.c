@@ -278,9 +278,9 @@ static void test_index_selection(void) {
 		ASSERT_TRUE(file != NULL);
 		fclose(file);
 	}
-	ASSERT_TRUE(strstr(path, "tyc2-1deg.isix") != NULL);
+	ASSERT_TRUE(strstr(path, "index-01deg-tyc2.isix") != NULL);
 	indigo_solver_index_path(path, sizeof(path), dir, 0.5);
-	ASSERT_TRUE(strstr(path, "gaia-0.5deg.isix") != NULL);
+	ASSERT_TRUE(strstr(path, "index-00.5deg-gaia.isix") != NULL);
 	ASSERT_TRUE(strcmp(indigo_solver_index_catalog(0.5), "gaia") == 0 && strcmp(indigo_solver_index_catalog(1), "tyc2") == 0);
 	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.3 * DEG_TO_RAD, 0.25 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
 	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.6 * DEG_TO_RAD, 0.45 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
