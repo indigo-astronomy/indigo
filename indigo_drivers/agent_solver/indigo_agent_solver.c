@@ -24,7 +24,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000013
+#define DRIVER_VERSION 0x03000014
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -610,17 +610,19 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
 				continue;
 			}
-			// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
-			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
+			// the catalog restricted to the hint cone: the field centre is within the radius, its stars within the
+			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown); a quad needs
+			// four stars within the cone
 			const indigo_solver_catalog *catalog = &SOLVER_DEVICE_PRIVATE_DATA->catalog;
 			indigo_solver_catalog cone = { 0 };
+			bool usable = catalog->quad_count > 0;
 			if (hint_radius > 0) {
 				double extent = scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * scale : candidates[i];
-				indigo_solver_filter_quads(catalog, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (hint_radius + extent) * DEG_TO_RAD, &cone);
+				usable = usable && indigo_solver_cone_catalog(catalog, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (hint_radius + extent) * DEG_TO_RAD, &cone) >= 4;
 				catalog = &cone;
 			}
 			int catalog_quad_count = catalog->quad_count;
-			for (int stage = first_stage; stage < last_stage && !solved && catalog_quad_count > 0 && !limits_exceeded_or_aborted(device, &limits); stage++) {
+			for (int stage = first_stage; stage < last_stage && !solved && usable && !limits_exceeded_or_aborted(device, &limits); stage++) {
 				int used_star_count = 0;
 				int quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
 				if (quad_count == 0) {

@@ -943,7 +943,7 @@ void indigo_solver_free_catalog(indigo_solver_catalog *catalog) {
 		return;
 	}
 	indigo_uni_unmap_file(catalog->mapping, catalog->mapping_size);
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 6; i++) {
 		indigo_safe_free(catalog->allocated[i]);
 	}
 	memset(catalog, 0, sizeof(indigo_solver_catalog));
@@ -1021,34 +1021,23 @@ static inline bool quad_stars_valid(const indigo_solver_catalog *catalog, const 
 	return stars[0] < catalog->star_count && stars[1] < catalog->star_count && stars[2] < catalog->star_count && stars[3] < catalog->star_count;
 }
 
-int indigo_solver_filter_quads(const indigo_solver_catalog *catalog, float ra, float dec, float radius, indigo_solver_catalog *filtered) {
-	uint32_t count = 0;
-	for (int pass = 0; pass < 2; pass++) {
-		count = 0;
-		for (uint32_t i = 0; i < catalog->quad_count; i++) {
-			const uint32_t *stars = catalog->quad_stars + 4 * (size_t)i;
-			bool inside = quad_stars_valid(catalog, stars);
-			for (int k = 0; k < 4 && inside; k++) {
-				inside = indigo_angular_distance(ra, dec, catalog->stars[stars[k]].ra, catalog->stars[stars[k]].dec) <= radius;
-			}
-			if (inside) {
-				if (pass) {
-					((uint64_t *)filtered->allocated[2])[count] = catalog->hashes[i];
-					((float *)filtered->allocated[3])[count] = catalog->baselines[i];
-					memcpy((uint32_t *)filtered->allocated[4] + 4 * (size_t)count, stars, 4 * sizeof(uint32_t));
-				}
-				count++;
-			}
-		}
-		if (pass == 0) {
-			// the quads keep their hash order, the stars are those of the catalog
-			catalog_allocate(filtered, catalog->star_count, count, false);
-			filtered->fov = catalog->fov;
-			filtered->stars = catalog->stars;
-		}
+int indigo_solver_cone_catalog(const indigo_solver_catalog *catalog, float ra, float dec, float radius, indigo_solver_catalog *cone) {
+	*cone = *catalog;
+	cone->mapping = NULL;
+	cone->mapping_size = 0;
+	memset(cone->allocated, 0, sizeof(cone->allocated));
+	uint8_t *mask = cone->allocated[5] = indigo_safe_malloc(catalog->star_count > 0 ? catalog->star_count : 1);
+	cone->star_mask = mask;
+	// a star within the cone has the dot product of the unit vectors at least cos(radius), the declination rejects
+	// most of the stars before any trigonometry
+	double sin_dec = sin(dec), cos_dec = cos(dec), min_cos = cos(radius);
+	int count = 0;
+	for (uint32_t i = 0; i < catalog->star_count; i++) {
+		const indigo_solver_index_star *star = catalog->stars + i;
+		mask[i] = fabs(star->dec - dec) <= radius && sin(star->dec) * sin_dec + cos(star->dec) * cos_dec * cos(star->ra - ra) >= min_cos;
+		count += mask[i];
 	}
-	catalog_finish(filtered);
-	indigo_debug("%s: %u of %u catalog quads within %.2f° of RA %.3f° Dec %.3f°", __FUNCTION__, count, catalog->quad_count, radius * RAD_TO_DEG, ra * RAD_TO_DEG, dec * RAD_TO_DEG);
+	indigo_debug("%s: %d of %u catalog stars within %.2f° of RA %.3f° Dec %.3f°", __FUNCTION__, count, catalog->star_count, radius * RAD_TO_DEG, ra * RAD_TO_DEG, dec * RAD_TO_DEG);
 	return count;
 }
 
@@ -1104,6 +1093,9 @@ int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_co
 					}
 					const uint32_t *stars = catalog->quad_stars + 4 * (size_t)j;
 					if (!quad_stars_valid(catalog, stars)) {
+						continue;
+					}
+					if (catalog->star_mask != NULL && !(catalog->star_mask[stars[0]] && catalog->star_mask[stars[1]] && catalog->star_mask[stars[2]] && catalog->star_mask[stars[3]])) {
 						continue;
 					}
 					if (count_by_hash == max_match_count) {

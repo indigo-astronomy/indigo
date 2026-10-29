@@ -74,7 +74,8 @@ extern bool indigo_solver_select_index(const char *index_directory, const float 
 /** Catalog stars and quads in the layout of the index file: the quads, sorted by hash, are the entries i of
  hashes, baselines and quad_stars (four star indices from 4 * i); buckets[k] .. buckets[k + 1] is the range of the
  quads in the (x3, y3) bucket k of their codes. The arrays point into the mapped index file, or to memory the
- catalog owns (a built or a filtered catalog); a filtered catalog shares the stars.
+ catalog owns (a built catalog). A cone catalog shares all arrays of its catalog and owns star_mask, which is nonzero
+ for the stars within the cone; NULL means every star.
  */
 typedef struct {
 	float fov;
@@ -85,9 +86,10 @@ typedef struct {
 	const uint64_t *hashes;
 	const float *baselines;
 	const uint32_t *quad_stars;
+	const uint8_t *star_mask;
 	const void *mapping;
 	size_t mapping_size;
-	void *allocated[5];
+	void *allocated[6];
 } indigo_solver_catalog;
 
 /** Maps an index file, see indigo_solver_free_catalog().
@@ -116,10 +118,12 @@ typedef struct {
 	const char *reason;
 } indigo_solver_limits;
 
-/** The catalog of the quads whose four stars lie within radius (radians) of ra/dec (radians), sharing the stars of
- catalog; returns their count, the caller frees filtered with indigo_solver_free_catalog().
+/** The catalog restricted to the cone of radius (radians) around ra/dec (radians): it shares the arrays of catalog
+ and marks the stars within the cone, the matching uses only the quads whose four stars are marked. Only the stars
+ are read, so the quads of the index stay untouched; returns the number of stars within the cone, the caller frees
+ cone with indigo_solver_free_catalog().
  */
-extern int indigo_solver_filter_quads(const indigo_solver_catalog *catalog, float ra, float dec, float radius, indigo_solver_catalog *filtered);
+extern int indigo_solver_cone_catalog(const indigo_solver_catalog *catalog, float ra, float dec, float radius, indigo_solver_catalog *cone);
 extern int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, const indigo_solver_catalog *catalog, indigo_solver_quad_match *matches, int max_match_count, indigo_solver_limits *limits);
 extern int indigo_solver_match_stars(indigo_solver_quad_match *quad_matches, int quad_match_count, indigo_solver_star_match *star_matches, int max_star_match_count, indigo_solver_limits *limits);
 /** Fits the image centre; ra, dec, rotation in radians, scale in radians per pixel, parity 1 for a normal

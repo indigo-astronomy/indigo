@@ -438,7 +438,7 @@ static void test_mapped_index_roundtrip(void) {
 	indigo_solver_catalog mapped;
 	ASSERT_TRUE(indigo_solver_load_index(path, &mapped));
 	ASSERT_TRUE(mapped.mapping != NULL && mapped.mapping_size > 0);
-	for (int i = 0; i < 5; i++) {
+	for (int i = 0; i < 6; i++) {
 		ASSERT_TRUE(mapped.allocated[i] == NULL);
 	}
 	ASSERT_TRUE(same_catalog(&mapped, &c->index));
@@ -523,7 +523,8 @@ static void test_mapped_index_rejects_damage(void) {
 	// the intact catalog matches the same quads
 	ASSERT_TRUE(indigo_solver_match_quads(image_quads, 8, &c->index, matches, 64, NULL) > 0);
 	indigo_solver_catalog cone;
-	ASSERT_EQ_INT(0, indigo_solver_filter_quads(&catalog, c->ra0, c->dec0, 10 * DEG_TO_RAD, &cone));
+	ASSERT_TRUE(indigo_solver_cone_catalog(&catalog, c->ra0, c->dec0, 10 * DEG_TO_RAD, &cone) > 0);
+	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, 8, &cone, matches, 64, NULL));
 	indigo_solver_free_catalog(&cone);
 	indigo_solver_free_catalog(&catalog);
 	free(original);
@@ -664,19 +665,30 @@ static void test_match_respects_limits_and_cone(void) {
 	ASSERT_FALSE(limits.exceeded);
 	int star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, 1000, &limits);
 	ASSERT_TRUE(star_match_count >= 6);
-	// the cone around the field keeps its quads, a cone 30 degrees away keeps none
+	// the cone around the field marks its stars and shares the arrays of the catalog, a cone 30 degrees away marks none
 	indigo_solver_catalog cone;
-	int cone_count = indigo_solver_filter_quads(&c->index, c->ra0, c->dec0, 3 * DEG_TO_RAD, &cone);
-	ASSERT_TRUE(cone_count > 0 && cone_count <= c->quad_count && (int)cone.quad_count == cone_count);
-	ASSERT_TRUE(cone.stars == c->index.stars && cone.buckets[INDIGO_SOLVER_BUCKET_COUNT] == cone.quad_count);
-	for (int i = 1; i < cone_count; i++) {
-		ASSERT_TRUE(cone.hashes[i - 1] <= cone.hashes[i]);
+	int cone_count = indigo_solver_cone_catalog(&c->index, c->ra0, c->dec0, 3 * DEG_TO_RAD, &cone);
+	ASSERT_TRUE(cone_count > 0 && cone_count <= (int)c->index.star_count);
+	ASSERT_TRUE(cone.stars == c->index.stars && cone.hashes == c->index.hashes && cone.quad_stars == c->index.quad_stars && cone.quad_count == c->index.quad_count && cone.star_mask != NULL);
+	int marked = 0;
+	for (uint32_t i = 0; i < cone.star_count; i++) {
+		bool inside = indigo_angular_distance(c->ra0, c->dec0, cone.stars[i].ra, cone.stars[i].dec) <= 3 * DEG_TO_RAD;
+		ASSERT_TRUE((cone.star_mask[i] != 0) == inside);
+		marked += inside;
 	}
-	// the cone solves the field like the whole catalog
-	ASSERT_TRUE(indigo_solver_match_quads(image_quads, quad_count, &cone, quad_matches, max_quads, NULL) > 0);
+	ASSERT_EQ_INT(marked, cone_count);
+	// the cone solves the field like the whole catalog, every matched catalog star is within the cone
+	int cone_match_count = indigo_solver_match_quads(image_quads, quad_count, &cone, quad_matches, max_quads, NULL);
+	ASSERT_TRUE(cone_match_count > 0);
+	for (int i = 0; i < cone_match_count; i++) {
+		for (int k = 0; k < 4; k++) {
+			ASSERT_TRUE(cone.star_mask[quad_matches[i].catalog_stars[k] - cone.stars]);
+		}
+	}
 	indigo_solver_free_catalog(&cone);
-	ASSERT_EQ_INT(0, indigo_solver_filter_quads(&c->index, c->ra0 + 30 * DEG_TO_RAD, c->dec0, 3 * DEG_TO_RAD, &cone));
-	ASSERT_TRUE(cone.quad_count == 0 && cone.buckets[INDIGO_SOLVER_BUCKET_COUNT] == 0);
+	// freeing the cone leaves the catalog intact
+	ASSERT_TRUE(indigo_solver_match_quads(image_quads, quad_count, &c->index, quad_matches, max_quads, NULL) > 0);
+	ASSERT_EQ_INT(0, indigo_solver_cone_catalog(&c->index, c->ra0 + 30 * DEG_TO_RAD, c->dec0, 3 * DEG_TO_RAD, &cone));
 	ASSERT_EQ_INT(0, indigo_solver_match_quads(image_quads, quad_count, &cone, quad_matches, max_quads, NULL));
 	indigo_solver_free_catalog(&cone);
 	free(quad_matches);

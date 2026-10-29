@@ -426,17 +426,23 @@ static bool solve(solver_options *options, const void *data, long size) {
 				}
 				loaded_fov = candidates[i];
 			}
-			// the catalog quads within the hint cone: the field centre is within the radius, its stars within the
-			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown)
+			// the catalog restricted to the hint cone: the field centre is within the radius, its stars within the
+			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown); a quad needs
+			// four stars within the cone
 			const indigo_solver_catalog *quads = &catalog;
 			indigo_solver_catalog cone = { 0 };
+			bool usable = catalog.quad_count > 0;
 			if (options->radius > 0) {
 				double extent = options->scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * options->scale : candidates[i];
-				indigo_solver_filter_quads(&catalog, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (options->radius + extent) * DEG_TO_RAD, &cone);
+				int cone_star_count = indigo_solver_cone_catalog(&catalog, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (options->radius + extent) * DEG_TO_RAD, &cone);
+				if (options->verbose) {
+					printf("%d catalog stars within %.2f° of the position hint\n", cone_star_count, options->radius + extent);
+				}
+				usable = usable && cone_star_count >= 4;
 				quads = &cone;
 			}
 			int quad_count = quads->quad_count;
-			for (int stage = first_stage; stage < last_stage && !solved && quad_count > 0 && !limits.exceeded; stage++) {
+			for (int stage = first_stage; stage < last_stage && !solved && usable && !limits.exceeded; stage++) {
 				int used_star_count = 0;
 				int image_quad_count = indigo_solver_build_image_quads(image_stars, stages[stage], width, height, grid, &used_star_count, image_quads, MAX_IMAGE_QUAD_COUNT);
 				if (image_quad_count == 0) {
