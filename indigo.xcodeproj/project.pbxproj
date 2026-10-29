@@ -2830,6 +2830,7 @@
 		5995B7F82F312D8900A229E1 /* INDIGO_TEST_FRAMEWORK.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_TEST_FRAMEWORK.md; sourceTree = "<group>"; };
 		5995B7F92F312D8900A229E1 /* rotator_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rotator_compliance.sh; sourceTree = "<group>"; };
 		5995FFEA306832330095A792 /* run_driver_test.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_driver_test.py; sourceTree = "<group>"; };
+		C0DE20261029A10000000001 /* compare_solvers.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = compare_solvers.py; sourceTree = "<group>"; };
 		5996614522CE69F500330652 /* Handbook.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Handbook.pdf; sourceTree = "<group>"; };
 		5996614F22CE6A5F00330652 /* ao_sx_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ao_sx_simulator.ino; sourceTree = "<group>"; };
 		5996615122CF3E0F00330652 /* indigo_aux_ppb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_ppb.c; sourceTree = "<group>"; };
@@ -9490,6 +9491,7 @@
 			children = (
 				1DD24DE680C3E763067271B0 /* build_ftdi_macos.sh */,
 				5995FFEA306832330095A792 /* run_driver_test.py */,
+				C0DE20261029A10000000001 /* compare_solvers.py */,
 				59E4ADBC30607CA4002B1629 /* build_windows_installer.sh */,
 				59E4ADBD30607CA4002B1629 /* make_test_summary.py */,
 				59E4ADBF30607CA4002B1629 /* update_DELTA_UT1_UTC.sh */,
