@@ -399,17 +399,17 @@ static bool solve(solver_options *options, const void *data, long size) {
 	float ra = 0, dec = 0, rotation = 0, pixel = 0, fov = 0, rms = 0;
 	int parity = 0, matched = 0, star_match_count = 0;
 	bool wrong_parity = false;
-	// Without the scale the indexes are searched stage by stage: the first stage on every index, the largest index
-	// first, as the larger indexes are the smaller files and fail fast, then the next stage on every index in the
-	// opposite order, so the index loaded last is used again without loading it; with the scale the index fitting
-	// the field goes through all stages first
-	int pass_count = options->scale > 0 ? 1 : stage_count;
+	// The indexes are searched stage by stage: the first stage on every index, then the next stage on every index, so
+	// an index that does not fit the field costs only its cheap first stage before the others are tried. With the
+	// scale every stage starts with the index fitting the field; without it the first stage starts with the largest
+	// index, as the larger indexes are the smaller files and fail fast, and every next stage runs in the opposite
+	// order, so the index loaded last is used again without loading it
 	float loaded_fov = 0;
-	for (int pass = 0; pass < pass_count && !solved && !limits.exceeded; pass++) {
-		int first_stage = pass_count == 1 ? 0 : pass;
-		int last_stage = pass_count == 1 ? stage_count : pass + 1;
+	for (int pass = 0; pass < stage_count && !solved && !limits.exceeded; pass++) {
+		int first_stage = pass;
+		int last_stage = pass + 1;
 		for (int k = 0; k < candidate_count && !solved && !limits.exceeded; k++) {
-			int i = pass % 2 ? candidate_count - 1 - k : k;
+			int i = options->scale == 0 && pass % 2 ? candidate_count - 1 - k : k;
 			char path[PATH_MAX];
 			indigo_solver_index_path(path, sizeof(path), options->index_dir, candidates[i]);
 			if (options->verbose) {

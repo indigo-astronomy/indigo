@@ -583,8 +583,9 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_FALSE(messages_in_order(three_times, 3));
 }
 
-// With the pixel scale the index nearest to 0.7 x the 3.6° x 2.7° frame among the selected ones, 5°, is searched
-// first, through all stages, and solves it; the 0.5° index is never tried
+// With the pixel scale every stage starts with the index nearest to 0.7 x the 3.6° x 2.7° frame among the selected
+// ones, 5°; the depth hint 4 leaves the first stage without quads, so both indexes are tried in it, and the second
+// stage solves the frame with the 5° index before the 0.5° index is tried again
 static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(prepare_full_resolution());
 	ASSERT_TRUE(indigo_change_switch_property_1(&observer, SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA", true) == INDIGO_OK);
@@ -595,11 +596,12 @@ static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(solve_rendered_raw());
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
-	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
-	ASSERT_TRUE(messages_in_order_or_print(order, 2));
-	ASSERT_FALSE(message_seen("Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)"));
-	const char *five_twice[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
-	ASSERT_FALSE(messages_in_order(five_twice, 2));
+	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
+	ASSERT_TRUE(messages_in_order_or_print(order, 4));
+	const char *gaia_twice[] = { "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)" };
+	ASSERT_FALSE(messages_in_order(gaia_twice, 2));
+	const char *five_three_times[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
+	ASSERT_FALSE(messages_in_order(five_three_times, 3));
 }
 
 // A RAW frame with the BAYERPAT appendix of a colour camera and a FITS with a BAYERPAT card are binned 2 x 2

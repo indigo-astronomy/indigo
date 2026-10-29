@@ -24,7 +24,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000014
+#define DRIVER_VERSION 0x03000015
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -591,16 +591,16 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 	float ra = 0, dec = 0, rotation = 0, pixel = 0, fov = 0, rms = 0;
 	int parity = 0, matched = 0, star_match_count = 0;
 	bool solved = false, wrong_parity = false;
-	// Without the scale the indexes are searched stage by stage: the first stage on every index, the largest index
-	// first, as the larger indexes are the smaller files and fail fast, then the next stage on every index in the
-	// opposite order, so the index loaded last is used again without loading it; with the scale the index fitting
-	// the field goes through all stages first
-	int pass_count = scale > 0 ? 1 : stage_count;
-	for (int pass = 0; pass < pass_count && !solved && !limits_exceeded_or_aborted(device, &limits); pass++) {
-		int first_stage = pass_count == 1 ? 0 : pass;
-		int last_stage = pass_count == 1 ? stage_count : pass + 1;
+	// The indexes are searched stage by stage: the first stage on every index, then the next stage on every index, so
+	// an index that does not fit the field costs only its cheap first stage before the others are tried. With the
+	// scale every stage starts with the index fitting the field; without it the first stage starts with the largest
+	// index, as the larger indexes are the smaller files and fail fast, and every next stage runs in the opposite
+	// order, so the index loaded last is used again without loading it
+	for (int pass = 0; pass < stage_count && !solved && !limits_exceeded_or_aborted(device, &limits); pass++) {
+		int first_stage = pass;
+		int last_stage = pass + 1;
 		for (int k = 0; k < candidate_count && !solved && !limits_exceeded_or_aborted(device, &limits); k++) {
-			int i = pass % 2 ? candidate_count - 1 - k : k;
+			int i = scale == 0 && pass % 2 ? candidate_count - 1 - k : k;
 			char path[PATH_MAX];
 			indigo_solver_index_path(path, sizeof(path), base_dir, candidates[i]);
 			char label[INDIGO_VALUE_SIZE];

@@ -470,23 +470,23 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_FALSE(output_in_order(&run, three_times, 3));
 }
 
-// With the scale the index nearest to 0.7 x the 3.6° x 2.7° frame is searched first, through all stages, then the
-// next nearest: of 0.5°, 2° and 5° it is 2° (2.16), which matches nothing, then 5° (log distance 0.84 against 1.46
-// of 0.5°), which solves it; 0.5° is never tried and no index is searched twice
+// With the scale every stage starts with the index nearest to 0.7 x the 3.6° x 2.7° frame, then the next nearest: of
+// 0.5°, 2° and 5° it is 2° (2.16), which matches nothing, then 5° (log distance 0.84 against 1.46 of 0.5°), then 0.5°.
+// The depth 4 leaves the first stage without quads, so every index is tried in it, and the second stage solves the
+// frame with the 5° index after the 2° one, before the 0.5° index is tried again
 static void scaled_search_uses_fitting_index_first(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 -s %.8f '%s'", three_index_dir, IMAGE_SCALE * RAD_TO_DEG, raw_path));
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
-	const char *order[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Stage 2:", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved in " };
-	if (!output_in_order(&run, order, 4)) {
+	const char *order[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Stage 2:", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Stage 2:", "Solved in " };
+	if (!output_in_order(&run, order, 8)) {
 		fprintf(stderr, "Unexpected search order:\n%s\n", run.output);
 	}
-	ASSERT_TRUE(output_in_order(&run, order, 4));
-	ASSERT_FALSE(strstr(run.output, "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)") != NULL);
-	const char *two_twice[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)" };
-	ASSERT_FALSE(output_in_order(&run, two_twice, 2));
-	const char *five_twice[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
-	ASSERT_FALSE(output_in_order(&run, five_twice, 2));
+	ASSERT_TRUE(output_in_order(&run, order, 8));
+	const char *gaia_twice[] = { "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)" };
+	ASSERT_FALSE(output_in_order(&run, gaia_twice, 2));
+	const char *two_three_times[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)" };
+	ASSERT_FALSE(output_in_order(&run, two_three_times, 3));
 }
 
 // -x restricts the indexes, only uninstalled ones leave nothing to solve with; the CPU limit 0 means no limit
