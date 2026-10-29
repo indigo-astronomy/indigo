@@ -25,8 +25,9 @@
 // resolution, captured as FITS and as JPEG, downsampled by the agent, binned 2 x 2 by the camera, as a
 // sub-frame, in JNow, with each index alone, with a wrong scale hint and repeatedly.
 //
-// Set 3, the 0.5 degree index: a 0.5 x 0.4 degree field rendered from the index's own stars (the simulators
-// render Hipparcos only, too sparse for such a field) solved with that index alone.
+// Set 3, the Gaia indexes: a 0.5 x 0.4 degree field for the 0.5 degree index and a 0.2 x 0.16 degree field for the
+// 0.2 degree index rendered from the index's own stars (the simulators render Hipparcos only, too sparse for such a
+// field) solved with that index alone.
 //
 // Set 2, CCD Guider Simulator: the catalogue star field (4° over the frame height) rendered for 120
 // different combinations of SIMULATION_SETUP (RA, Dec, rotation, side of pier, frame size, magnitude
@@ -539,12 +540,12 @@ static void rosetta_repeated(void) {
 	}
 }
 
-// ---- set 3: the 0.5 degree index checked against a field rendered from its own stars
+// ---- set 3: the Gaia indexes checked against fields rendered from their own stars
 
+#define INDEX_0_2 "INDEX_00_2DEG_GAIA"
 #define INDEX_0_5 "INDEX_00_5DEG_GAIA"
 #define NARROW_WIDTH 1000
 #define NARROW_HEIGHT 800
-#define NARROW_SCALE (1.8 / 3600)
 #define NARROW_ANGLE 30.0
 
 // Uploads a frame to the solver and waits for the solve to end in OK or ALERT
@@ -556,9 +557,10 @@ static bool solve_upload(void *image, long size) {
 	return true;
 }
 
-// Renders a 0.5 x 0.4 degree frame of the index stars around the given star (shifted by a few arcminutes) and
-// solves it; returns the number of rendered stars and whether the solution matches the rendering
-static int solve_narrow_field(const indigo_solver_index_star *stars, uint32_t star_count, double ra_hours, double dec_degrees, bool *solved) {
+// Renders a frame of NARROW_WIDTH x NARROW_HEIGHT pixels of scale degrees per pixel from the index stars around the
+// given position and solves it; returns the number of rendered stars and whether the solution matches the rendering
+// and comes from the index of the given scale
+static int solve_narrow_field(const indigo_solver_index_star *stars, uint32_t star_count, float fov, double scale, double ra_hours, double dec_degrees, bool *solved) {
 	*solved = false;
 	float ra0 = ra_hours * 15 * M_PI / 180, dec0 = dec_degrees * M_PI / 180;
 	long size = sizeof(indigo_raw_header) + NARROW_WIDTH * NARROW_HEIGHT * 2;
@@ -574,11 +576,11 @@ static int solve_narrow_field(const indigo_solver_index_star *stars, uint32_t st
 	}
 	int rendered = 0;
 	for (uint32_t i = 0; i < star_count; i++) {
-		if (indigo_angular_distance(ra0, dec0, stars[i].ra, stars[i].dec) > 0.45 * M_PI / 180) {
+		if (indigo_angular_distance(ra0, dec0, stars[i].ra, stars[i].dec) > NARROW_WIDTH * scale * M_PI / 180) {
 			continue;
 		}
 		float x, y;
-		if (indigo_radec_to_xy(ra0, dec0, NARROW_ANGLE * M_PI / 180, NARROW_SCALE * M_PI / 180, NARROW_WIDTH, NARROW_HEIGHT, -1, stars[i].ra, stars[i].dec, &x, &y) && x >= 0 && x < NARROW_WIDTH && y >= 0 && y < NARROW_HEIGHT) {
+		if (indigo_radec_to_xy(ra0, dec0, NARROW_ANGLE * M_PI / 180, scale * M_PI / 180, NARROW_WIDTH, NARROW_HEIGHT, -1, stars[i].ra, stars[i].dec, &x, &y) && x >= 0 && x < NARROW_WIDTH && y >= 0 && y < NARROW_HEIGHT) {
 			float peak = 8000 + (i % 7) * 2000;
 			for (int dy = -6; dy <= 6; dy++) {
 				for (int dx = -6; dx <= 6; dx++) {
@@ -597,18 +599,19 @@ static int solve_narrow_field(const indigo_solver_index_star *stars, uint32_t st
 	bool sent = solve_upload(image, size);
 	free(image);
 	if (sent && state(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME) == INDIGO_OK_STATE) {
-		*solved = solution_matches(ra0 * 180 / M_PI / 15, dec0 * 180 / M_PI, NARROW_SCALE, NARROW_ANGLE, NARROW_WIDTH, NARROW_HEIGHT, 2000) && wcs(AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 0.5 && wcs(AGENT_PLATESOLVER_WCS_PARITY_ITEM_NAME) == -1;
+		*solved = solution_matches(ra0 * 180 / M_PI / 15, dec0 * 180 / M_PI, scale, NARROW_ANGLE, NARROW_WIDTH, NARROW_HEIGHT, 2000) && wcs(AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == fov && wcs(AGENT_PLATESOLVER_WCS_PARITY_ITEM_NAME) == -1;
 	}
 	return rendered;
 }
 
-// The CCD simulators render the Hipparcos catalogue only, too sparse for a 0.5 degree field, so twelve fields
+// The CCD simulators render the Hipparcos catalogue only, too sparse for a field below 1 degree, so twelve fields
 // spread over the sky are rendered from the index's own stars (gaussian images of a few brightnesses, noise)
-// and solved with the 0.5 degree index alone. Tycho-2 is not deep enough for every 0.5 degree field: every
-// field with at least NARROW_MIN_STARS index stars must solve, and at least half of the fields must solve; the
-// check is self-consistent, not independent of the index.
+// and solved with the Gaia index alone. The extract is not deep enough for every narrow field: every field with
+// at least min_stars index stars must solve, and at least half of the fields must solve; the check is
+// self-consistent, not independent of the index. The 0.2 degree index anchors few quads per star, so a field of
+// 8 to 11 stars may hold too few of them: of the twelve fixed and 100 random fields every one with at least 12
+// stars solved (43 of 43), 4 of 12 with 8 to 11 did not, so its threshold is 12.
 #define NARROW_FIELDS 12
-#define NARROW_MIN_STARS 8
 
 static const double narrow_fields[NARROW_FIELDS][2] = {
 	{ 0.85, -27.1 }, { 1.50, 45 }, { 3.00, -30 }, { 4.50, 70 }, { 6.00, 20 }, { 7.50, -60 },
@@ -650,17 +653,22 @@ static void narrow_field(int k, double *ra_hours, double *dec_degrees) {
 	}
 }
 
-static void index_0_5_self_consistency(void) {
-	ASSERT_TRUE(install_index(INDEX_0_5));
-	ASSERT_TRUE(change_switch_and_wait(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_2, false, INDIGO_OK_STATE, 10));
-	ASSERT_TRUE(change_switch_and_wait(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_5, false, INDIGO_OK_STATE, 10));
-	ASSERT_TRUE(switch_value(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_0_5));
+// Solves the narrow fields with the index of the given item and scale alone, every other index unselected
+static void narrow_self_consistency(const char *item, float fov, double scale, int min_stars) {
+	ASSERT_TRUE(install_index(item));
+	const char *indexes[] = { INDEX_0_2, INDEX_0_5, "INDEX_01DEG_TYC2", INDEX_2, INDEX_5, "INDEX_10DEG_TYC2", "INDEX_20DEG_TYC2" };
+	for (int i = 0; i < (int)ARRAY_SIZE(indexes); i++) {
+		if (strcmp(indexes[i], item) && switch_value(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, indexes[i])) {
+			ASSERT_TRUE(change_switch_and_wait(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, indexes[i], false, INDIGO_OK_STATE, 10));
+		}
+	}
+	ASSERT_TRUE(switch_value(SOLVER, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, item));
 	ASSERT_TRUE(set_hints(2000, 1, 0));
-	char path[PATH_MAX];
-	snprintf(path, sizeof(path), "%s/solver/index-00.5deg-gaia.isix", cache_base);
-	// the index stars of either index file version
+	char path[PATH_MAX], directory[PATH_MAX];
+	snprintf(directory, sizeof(directory), "%s/solver", cache_base);
+	indigo_solver_index_path(path, sizeof(path), directory, fov);
 	indigo_solver_catalog catalog;
-	ASSERT_TRUE(indigo_solver_load_index(path, &catalog) && catalog.fov == 0.5f && catalog.star_count > 0);
+	ASSERT_TRUE(indigo_solver_load_index(path, &catalog) && catalog.fov == fov && catalog.star_count > 0);
 	const indigo_solver_index_star *stars = catalog.stars;
 	printf("  index: %u stars, %u quads%s\n", catalog.star_count, catalog.quad_count, catalog.mapping ? ", mapped" : "");
 	int solved_count = 0, dense_count = 0, dense_solved = 0, field_count = narrow_field_count();
@@ -668,18 +676,26 @@ static void index_0_5_self_consistency(void) {
 		bool solved;
 		double ra_hours, dec_degrees;
 		narrow_field(k, &ra_hours, &dec_degrees);
-		int rendered = solve_narrow_field(stars, catalog.star_count, ra_hours, dec_degrees, &solved);
+		int rendered = solve_narrow_field(stars, catalog.star_count, fov, scale, ra_hours, dec_degrees, &solved);
 		printf("  %s\n", solved ? "solved" : "not solved");
 		solved_count += solved;
-		if (rendered >= NARROW_MIN_STARS) {
+		if (rendered >= min_stars) {
 			dense_count++;
 			dense_solved += solved;
 		}
 	}
 	indigo_solver_free_catalog(&catalog);
-	printf("  %d of %d fields solved, %d of %d fields with at least %d index stars solved\n", solved_count, field_count, dense_solved, dense_count, NARROW_MIN_STARS);
+	printf("  %d of %d fields solved, %d of %d fields with at least %d index stars solved\n", solved_count, field_count, dense_solved, dense_count, min_stars);
 	ASSERT_TRUE(dense_solved == dense_count);
 	ASSERT_TRUE(solved_count * 2 >= field_count);
+}
+
+static void index_0_5_self_consistency(void) {
+	narrow_self_consistency(INDEX_0_5, 0.5f, 1.8 / 3600, 8);
+}
+
+static void index_0_2_self_consistency(void) {
+	narrow_self_consistency(INDEX_0_2, 0.2f, 0.72 / 3600, 12);
 }
 
 // ---- set 2: the catalogue field of the guider simulator for many simulation setups
@@ -764,6 +780,7 @@ static indigo_test_case rosetta_tests[] = {
 	{ "rosetta wrong scale hint", rosetta_wrong_scale_hint },
 	{ "rosetta repeated", rosetta_repeated },
 	{ "index 0.5 self consistency", index_0_5_self_consistency },
+	{ "index 0.2 self consistency", index_0_2_self_consistency },
 };
 
 int main(int argc, char **argv) {
@@ -775,7 +792,7 @@ int main(int argc, char **argv) {
 	char (*names)[128] = calloc(count, sizeof(*names));
 	for (int i = 0; i < (int)ARRAY_SIZE(rosetta_tests); i++) {
 		tests[i] = rosetta_tests[i];
-		kinds[i] = strstr(tests[i].name, "index 0.5") ? NARROW : ROSETTA;
+		kinds[i] = strstr(tests[i].name, "index 0.") ? NARROW : ROSETTA;
 	}
 	for (int i = 0; i < SWEEP_COUNT; i++) {
 		sweep_combination c = combination(i);

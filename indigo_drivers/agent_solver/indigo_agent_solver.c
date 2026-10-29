@@ -24,7 +24,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000016
+#define DRIVER_VERSION 0x03000017
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -76,7 +76,7 @@
 static char base_dir[512];
 
 // approximate sizes of the published index files, in the order of indigo_solver_index_fovs
-static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "911 MB", "538 MB", "358 MB", "178 MB", "92 MB", "36 MB" };
+static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "1216 MB", "911 MB", "538 MB", "358 MB", "178 MB", "92 MB", "36 MB" };
 
 
 typedef struct {
@@ -96,9 +96,9 @@ static pthread_mutex_t index_pending_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // -------------------------------------------------------------------------------- Index files
 
-// INDEX_<scale>DEG_<CATALOG> as the file name: INDEX_00_5DEG_GAIA for the Gaia DR3 index of scale 0.5, INDEX_01DEG_TYC2
-// … INDEX_20DEG_TYC2 for the Tycho-2 indexes, the scale zero padded so the names sort by it and with an underscore for
-// the decimal point (a dot in an item name is not safe for every client)
+// INDEX_<scale>DEG_<CATALOG> as the file name: INDEX_00_2DEG_GAIA and INDEX_00_5DEG_GAIA for the Gaia DR3 indexes of
+// scale 0.2 and 0.5, INDEX_01DEG_TYC2 … INDEX_20DEG_TYC2 for the Tycho-2 indexes, the scale zero padded so the names
+// sort by it and with an underscore for the decimal point (a dot in an item name is not safe for every client)
 static void index_item_name(float fov, char *name, size_t size) {
 	char scale[16];
 	indigo_solver_index_scale(fov, scale, sizeof(scale));

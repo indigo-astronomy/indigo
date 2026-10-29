@@ -231,6 +231,15 @@
       "authority": "Áno, odložiť audit aj pre úlohu 0.5° indexu; audit ostáva splatný po nej, pred ďalšou nesúvisiacou prácou alebo releasom.",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
+    },
+    "solver_index_0_2_deferral": {
+      "approved_by": "Peter Polakovic, explicit conversation selection",
+      "date": "2026-10-29",
+      "task": "20261029191530-1288-solver-index-0-2deg",
+      "scope": "Create the 0.2 degree Gaia DR3 index and add it to the Solver Agent only",
+      "authority": "Odložiť, index najprv",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"

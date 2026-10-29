@@ -377,6 +377,10 @@ static void index_property_reflects_installed_files(void) {
 	ASSERT_FALSE(has_item(INDEX_PROPERTY, "INDEX_00_5DEG_TYC2"));
 	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "INDEX_01DEG_TYC2"));
 	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "INDEX_20DEG_TYC2"));
+	// the narrow Gaia index is offered for download, not installed
+	ASSERT_TRUE(has_item(INDEX_PROPERTY, "INDEX_00_2DEG_GAIA"));
+	ASSERT_FALSE(switch_value(INDEX_PROPERTY, "INDEX_00_2DEG_GAIA"));
+	ASSERT_FALSE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_2DEG_GAIA"));
 	ASSERT_TRUE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, INDEX_ITEM));
 	ASSERT_TRUE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_00_5DEG_GAIA"));
 	ASSERT_FALSE(has_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, "INDEX_01DEG_TYC2"));
@@ -577,7 +581,7 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_TRUE(solve_rendered_raw());
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
-	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
+	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
 	ASSERT_TRUE(messages_in_order_or_print(order, 5));
 	const char *three_times[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
 	ASSERT_FALSE(messages_in_order(three_times, 3));
@@ -596,9 +600,9 @@ static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(solve_rendered_raw());
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
-	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
+	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
 	ASSERT_TRUE(messages_in_order_or_print(order, 4));
-	const char *gaia_twice[] = { "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)" };
+	const char *gaia_twice[] = { "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)" };
 	ASSERT_FALSE(messages_in_order(gaia_twice, 2));
 	const char *five_three_times[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
 	ASSERT_FALSE(messages_in_order(five_three_times, 3));

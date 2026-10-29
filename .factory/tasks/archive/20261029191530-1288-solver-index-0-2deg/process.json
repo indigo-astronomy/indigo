@@ -1,0 +1,76 @@
+{
+  "version": 2,
+  "task": "20261029191530-1288-solver-index-0-2deg",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_docs/SOLVER_INDEX_FORMAT.md",
+    "indigo_drivers/agent_solver/*",
+    "indigo_tools/Makefile",
+    "indigo_tools/indigo_solver_indexer.c",
+    "indigo_test/integration/test_agent_solver.c",
+    "indigo_test/integration/test_agent_solver_simulator.c",
+    "indigo_test/integration/test_indigo_solver_tool.c",
+    "indigo_test/unit/test_agent_solver_core.c",
+    ".factory/maintenance.json",
+    ".factory/completions/20261029191530-1288-solver-index-0-2deg.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_solver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {}
+}
