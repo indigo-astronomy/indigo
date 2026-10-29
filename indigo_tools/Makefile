@@ -26,7 +26,7 @@ ifeq ($(OS_DETECTED),Linux)
 	INDIGO_LIBS = -lindigo -ludev
 	INDIGO_CLIENT_LIBS = -lindigo_client
 else
-	INDIGO_LIBS = $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libhidapi.a -lz -ldl -lm
+	INDIGO_LIBS = $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libhidapi.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libraw.a -lz -ldl -lm -lstdc++
 	INDIGO_CLIENT_LIBS = $(BUILD_LIB)/libindigo_client.a -lz -ldl -lm
 endif
 
@@ -78,6 +78,9 @@ $(BUILD_BIN)/indigo_scan_drivers: indigo_scan_drivers.o
 
 # The index builder shares the quad code and index file format with the solver agent.
 SOLVER_AGENT_DIR = ../indigo_drivers/agent_solver
+
+# the tools are rebuilt when the shared solver headers change (the index scale list, the quad and index structures)
+indigo_solver.o indigo_solver_indexer.o: $(SOLVER_AGENT_DIR)/indigo_solver.h $(SOLVER_AGENT_DIR)/indigo_solver_utils.h $(SOLVER_AGENT_DIR)/indigo_solver_healpix.h
 
 indigo_solver_utils.o: $(SOLVER_AGENT_DIR)/indigo_solver_utils.c $(SOLVER_AGENT_DIR)/indigo_solver_utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<

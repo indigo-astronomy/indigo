@@ -561,7 +561,16 @@ static void select_params(float fov, index_params *p) {
 	p->fov = fov;
 	p->star_reuse = 512;
 	p->anchor_neighbours = 0;
-	if (fov <= 0.5) {
+	if (fov <= 0.2f) {
+		// the narrow Gaia tier: the 0.5 degree tier scaled down, a 0.2 x 0.16 degree field covers about half an
+		// nside 256 cell
+		p->d_min = 0.02 * DEG_TO_RAD;
+		p->d_max = 0.12 * DEG_TO_RAD;
+		p->nside = 256;
+		p->stars_per_cell = 30;
+		p->star_reuse = 5;
+		p->anchor_neighbours = 10;
+	} else if (fov <= 0.5) {
 		// the Gaia tier: a 0.5 x 0.4 degree field covers about one nside 128 cell, so the field needs many stars per
 		// cell and the size is kept by few quads per star instead
 		p->d_min = 0.05 * DEG_TO_RAD;
@@ -604,8 +613,8 @@ static bool build_index(float fov, indigo_solver_star *stars, uint32_t star_coun
 	select_params(fov, &p);
 	uint32_t npix = 12 * p.nside * p.nside;
 	printf("fov               = %g°\n", p.fov);
-	printf("d_min             = %.1f°\n", p.d_min * RAD_TO_DEG);
-	printf("d_max             = %.1f°\n", p.d_max * RAD_TO_DEG);
+	printf("d_min             = %.2f°\n", p.d_min * RAD_TO_DEG);
+	printf("d_max             = %.2f°\n", p.d_max * RAD_TO_DEG);
 	printf("star_separation   = %.2f°\n", p.star_separation * RAD_TO_DEG);
 	printf("stars_per_cell    = %u\n", p.stars_per_cell);
 	printf("nside/npix        = %u/%u\n", p.nside, npix);

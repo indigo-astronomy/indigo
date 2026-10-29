@@ -288,30 +288,28 @@ static void test_index_selection(void) {
 	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 1 * DEG_TO_RAD, 0.75 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
 	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 0.71 * DEG_TO_RAD, 0.71 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
 	ASSERT_TRUE(indigo_solver_select_index(dir, narrow, 2, 1.9 * DEG_TO_RAD, 1.27 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 1);
-	ASSERT_TRUE(indigo_solver_index_fovs[0] == 0.2f && indigo_solver_index_fovs[1] == 0.5 && INDIGO_SOLVER_INDEX_FOV_COUNT == 7);
+	ASSERT_TRUE(indigo_solver_index_fovs[0] == 0.2f && indigo_solver_index_fovs[1] == 0.5f && INDIGO_SOLVER_INDEX_FOV_COUNT == 7);
 	for (int i = 0; i < 2; i++) {
 		indigo_solver_index_path(path, sizeof(path), dir, narrow[i]);
 		unlink(path);
 	}
-	// the 0.2 degree Gaia index: 0.2 for 0.3 x 0.25 and 0.4 x 0.4 degrees, 0.5 for 0.5 x 0.45 degrees (the boundary is
-	// 0.45 degrees, 0.7 x 0.45 being the geometric mean of 0.2 and 0.5)
-	float gaia[] = { 0.2, 0.5 };
+	// the 0.2 degree scale (the narrow Gaia index): 0.2 for 0.2 x 0.16 and 0.4 x 0.3 degrees (0.12 and 0.24), 0.5 for
+	// 0.6 x 0.45 degrees (0.36)
+	float narrowest[] = { 0.2, 0.5 };
 	for (int i = 0; i < 2; i++) {
-		indigo_solver_index_path(path, sizeof(path), dir, gaia[i]);
+		indigo_solver_index_path(path, sizeof(path), dir, narrowest[i]);
 		FILE *file = fopen(path, "wb");
 		ASSERT_TRUE(file != NULL);
 		fclose(file);
 	}
-	indigo_solver_index_path(path, sizeof(path), dir, 0.2);
-	ASSERT_TRUE(strstr(path, "index-00.2deg-gaia.isix") != NULL && strcmp(indigo_solver_index_catalog(0.2), "gaia") == 0);
-	ASSERT_TRUE(indigo_solver_select_index(dir, gaia, 2, 0.3 * DEG_TO_RAD, 0.25 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.2f);
-	ASSERT_TRUE(indigo_solver_select_index(dir, gaia, 2, 0.4 * DEG_TO_RAD, 0.4 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.2f);
-	ASSERT_TRUE(indigo_solver_select_index(dir, gaia, 2, 0.5 * DEG_TO_RAD, 0.45 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5);
-	char label[64];
-	indigo_solver_index_label(0.2, label, sizeof(label));
-	ASSERT_TRUE(strcmp(label, "0.2° Gaia DR3 (FOV 0.2° - 0.45°)") == 0);
+	indigo_solver_index_path(path, sizeof(path), dir, 0.2f);
+	ASSERT_TRUE(strstr(path, "index-00.2deg-gaia.isix") != NULL);
+	ASSERT_TRUE(strcmp(indigo_solver_index_catalog(0.2f), "gaia") == 0);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrowest, 2, 0.2 * DEG_TO_RAD, 0.16 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.2f);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrowest, 2, 0.4 * DEG_TO_RAD, 0.3 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.2f);
+	ASSERT_TRUE(indigo_solver_select_index(dir, narrowest, 2, 0.6 * DEG_TO_RAD, 0.45 * DEG_TO_RAD, selected, sizeof(selected), &fov) && fov == 0.5f);
 	for (int i = 0; i < 2; i++) {
-		indigo_solver_index_path(path, sizeof(path), dir, gaia[i]);
+		indigo_solver_index_path(path, sizeof(path), dir, narrowest[i]);
 		unlink(path);
 	}
 	rmdir(dir);

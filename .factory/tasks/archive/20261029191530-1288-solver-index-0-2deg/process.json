@@ -1,0 +1,152 @@
+{
+  "version": 2,
+  "task": "20261029191530-1288-solver-index-0-2deg",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_docs/SOLVER_INDEX_FORMAT.md",
+    "indigo_drivers/agent_solver/*",
+    "indigo_tools/Makefile",
+    "indigo_tools/indigo_solver_indexer.c",
+    "indigo_test/integration/test_agent_solver.c",
+    "indigo_test/integration/test_agent_solver_simulator.c",
+    "indigo_test/integration/test_indigo_solver_tool.c",
+    "indigo_test/unit/test_agent_solver_core.c",
+    ".factory/maintenance.json",
+    ".factory/completions/20261029191530-1288-solver-index-0-2deg.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_solver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261029191530-1288-solver-index-0-2deg.json": [
+      "100644",
+      "blob",
+      "3c0bced3ba708b5cdbc3e66a7cb3b8df5075dc85"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "5e75668680ed57f6b2f326e0d47e6567f9af288c"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "d831ccfaac8df2eea7820540506a776b327ede92"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "e420b735a988e3e6aa49461d38a9862b86098327"
+    ],
+    "indigo_docs/SOLVER_INDEX_FORMAT.md": [
+      "100644",
+      "blob",
+      "9771fc5fca1b599c5e0f5d185a5eec33979e4471"
+    ],
+    "indigo_drivers/agent_solver/README.md": [
+      "100644",
+      "blob",
+      "948f998bd73beda066b8bb6d83fb5938d4f681ec"
+    ],
+    "indigo_drivers/agent_solver/indigo_agent_solver.c": [
+      "100644",
+      "blob",
+      "7026889bf2be2614af0f4180febec1d947bc80d7"
+    ],
+    "indigo_drivers/agent_solver/indigo_solver.c": [
+      "100644",
+      "blob",
+      "8ab518fe514ad0852db93c14ad0062dab5647e29"
+    ],
+    "indigo_drivers/agent_solver/indigo_solver.h": [
+      "100644",
+      "blob",
+      "05b16967ccfd3eb09d10020bbb202f4213a06c59"
+    ],
+    "indigo_test/integration/test_agent_solver.c": [
+      "100644",
+      "blob",
+      "b1b75e64777b9e1df8eb9f4bbf375c8ffc0c0caa"
+    ],
+    "indigo_test/integration/test_agent_solver_simulator.c": [
+      "100644",
+      "blob",
+      "84f76bc24f4e2f9be2669459ed872d5adb3710e7"
+    ],
+    "indigo_test/integration/test_indigo_solver_tool.c": [
+      "100644",
+      "blob",
+      "af2ba95d918dc7585f160c3e9caaf6fd8a1b5e05"
+    ],
+    "indigo_test/unit/test_agent_solver_core.c": [
+      "100644",
+      "blob",
+      "2b897f0975a9c04f65d5a8f0adc0ca12c3d5bbdc"
+    ],
+    "indigo_tools/Makefile": [
+      "100644",
+      "blob",
+      "e038a26d158e9f64456ffae6fca3e244bedba802"
+    ],
+    "indigo_tools/indigo_solver_indexer.c": [
+      "100644",
+      "blob",
+      "e13c737193124ac97cb83a8e17744e5960e506ae"
+    ]
+  }
+}

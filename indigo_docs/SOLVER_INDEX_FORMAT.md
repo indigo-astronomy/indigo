@@ -22,6 +22,7 @@ An index is named after its quad scale, zero padded to two integer digits so the
 
 | File | Catalogue | Quad scale |
 | ----- | ----- | ----- |
+| `index-00.2deg-gaia.isix` | Gaia DR3 (G < 14) | 0.2° |
 | `index-00.5deg-gaia.isix` | Gaia DR3 (G < 14) | 0.5° |
 | `index-01deg-tyc2.isix` | Tycho-2 (VT < 11.5) | 1° |
 | `index-02deg-tyc2.isix` | Tycho-2 | 2° |

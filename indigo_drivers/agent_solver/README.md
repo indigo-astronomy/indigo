@@ -29,15 +29,17 @@ indigo_server indigo_agent_solver indigo_agent_imager indigo_agent_mount indigo_
 
 ### Index management
 
-The indexes `index-<scale>deg-tyc2.isix` are built from the Tycho-2 catalogue for quad scales of 1°, 2°, 5°, 10° and 20°,
-the index `index-00.5deg-gaia.isix` from Gaia DR3 (stars brighter than G = 14) for the quad scale of 0.5°, where Tycho-2
-is too shallow. The scale is zero padded in the file and item names, so they sort by it. The scale is the size of the
-star marks (quads) in the index, not the field of view: an index of scale n° contains quads of 0.1 n° to 0.8 n°. The
-fields column gives the frame sizes for which the index is chosen when all indexes are installed:
+The indexes `index-<scale>deg-tyc2.isix` are built from the Tycho-2 catalogue for quad scales of 1°, 2°, 5°, 10° and
+20°, the indexes `index-00.2deg-gaia.isix` and `index-00.5deg-gaia.isix` from Gaia DR3 (stars brighter than G = 14) for
+the quad scales of 0.2° and 0.5°, where Tycho-2 is too shallow. The scale is zero padded in the file and item names, so
+they sort by it. The scale is the size of the star marks (quads) in the index, not the field of view: an index of scale
+n° contains quads of 0.1 n° to 0.8 n°. The fields column gives the frame sizes for which the index is chosen when all
+indexes are installed:
 
 | Index | File | Catalogue | Quad scale | Fields | Size |
 | ----- | ----- | ----- | ----- | ----- | ----- |
-| INDEX_00_5DEG_GAIA | index-00.5deg-gaia.isix | Gaia DR3 | 0.5° | 0.5° to 1° | 911 MB |
+| INDEX_00_2DEG_GAIA | index-00.2deg-gaia.isix | Gaia DR3 | 0.2° | up to 0.45° | 1216 MB |
+| INDEX_00_5DEG_GAIA | index-00.5deg-gaia.isix | Gaia DR3 | 0.5° | 0.45° to 1° | 911 MB |
 | INDEX_01DEG_TYC2 | index-01deg-tyc2.isix | Tycho-2 | 1° | 1° to 2° | 538 MB |
 | INDEX_02DEG_TYC2 | index-02deg-tyc2.isix | Tycho-2 | 2° | 2° to 4.5° | 358 MB |
 | INDEX_05DEG_TYC2 | index-05deg-tyc2.isix | Tycho-2 | 5° | 4.5° to 10° | 178 MB |
@@ -53,11 +55,11 @@ frame (the geometric mean of its width and height); indexes of about 0.4 to 1 x 
 
 The indexes can also be built locally with `indigo_solver_indexer 1 2 5 10 20` from `indigo_tools`. The tool reads the
 Tycho-2 catalogue (CDS I/259, files `tyc2.dat.00` to `tyc2.dat.19`) from an `I_259` directory in the current working
-directory and writes the index files next to it; copy them into the cache directory described above. The 0.5° index is
-built with `indigo_solver_indexer -g <directory> 0.5` from a Gaia DR3 extract: every `*.csv` file of the directory with
-the columns `ra, dec, phot_g_mean_mag, pmra, pmdec` of `gaiadr3.gaia_source` for `phot_g_mean_mag < 14`, as returned by
-the ESA Gaia archive TAP service (about 16.8 million stars; proper motion is applied from the Gaia epoch 2016.0). Gaia
-data: ESA/Gaia/DPAC, CC BY-SA 3.0 IGO.
+directory and writes the index files next to it; copy them into the cache directory described above. The 0.2° and 0.5°
+indexes are built with `indigo_solver_indexer -g <directory> 0.2 0.5` from a Gaia DR3 extract: every `*.csv` file of the
+directory with the columns `ra, dec, phot_g_mean_mag, pmra, pmdec` of `gaiadr3.gaia_source` for `phot_g_mean_mag < 14`,
+as returned by the ESA Gaia archive TAP service (about 16.8 million stars; proper motion is applied from the Gaia epoch
+2016.0). Gaia data: ESA/Gaia/DPAC, CC BY-SA 3.0 IGO.
 
 The index files (version 2) are memory mapped: an index opens at once, only the parts a solve touches are read from the
 disk and the memory they occupy is the page cache of the system, so even the 0.5° index solves in about 300 MB of
@@ -94,8 +96,9 @@ alignment workflows.
 ## Limitations
 
 - INDIGO RAW is the preferred input and is solved as it is; FITS (8, 16 and 32 bit integer, 32 and 64 bit floating point, mono or three planes averaged), JPEG and camera raw files readable by libraw are converted to 16 bit mono first. Colour frames are averaged to mono.
-- The field of view is limited by the available indexes, from about 0.3° to 15°.
+- The field of view is limited by the available indexes, from about 0.1° to 15°.
+- G = 14 is shallow for the 0.2° index: about half of the fields of 0.2° x 0.16° (mostly at high galactic latitudes) hold fewer than 8 catalogue stars and are not solved; fields with 12 or more catalogue stars solve.
 
 ## Testing
 
-- 2026-10-28 02:11 3.0.0.9 mac arm64 simulator 150/150 OK
+- 2026-10-29 20:47 3.0.0.22 mac arm64 simulator 154/154 OK

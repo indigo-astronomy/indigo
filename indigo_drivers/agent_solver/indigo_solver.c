@@ -45,7 +45,7 @@
 const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT] = { 0.2, 0.5, 1, 2, 5, 10, 20 };
 
 // fields for which the index is selected when all indexes are installed (nearest to INDIGO_SOLVER_INDEX_FIELD_RATIO x
-// the field size on the log scale), 0.2° being the smallest field the Gaia indexes serve, in the order of
+// the field size on the log scale), 0.2° being the smallest field the narrow Gaia index serves, in the order of
 // indigo_solver_index_fovs
 static const char *index_fields[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "0.2° - 0.45°", "0.45° - 1°", "1° - 2°", "2° - 4.5°", "4.5° - 10°", "10° - 20°", "> 20°" };
 
