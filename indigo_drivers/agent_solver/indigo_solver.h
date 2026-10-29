@@ -45,6 +45,12 @@
  */
 extern const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT];
 
+/** The name of the index of the given scale shown by the Solver agent and the indigo_solver tool, for example
+ "5° Tycho-2 (FOV 4.5° - 10°)": the quad scale, the catalogue and the fields for which the index is selected when all
+ indexes are installed.
+ */
+extern void indigo_solver_index_label(float fov, char *label, size_t size);
+
 /** Any supported input image as a newly allocated INDIGO RAW MONO16 image: INDIGO RAW (MONO16 as it is, MONO8 spread
  over 16 bits, RGB24/RGB48 averaged to mono), FITS (BITPIX 8, 16, 32, -32, -64 with BZERO/BSCALE, NAXIS 2 or 3 with the
  planes weighted), JPEG (components weighted) and camera raw files read by libraw; colour is reduced to mono with the

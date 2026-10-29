@@ -253,7 +253,7 @@ static bool solution_matches_frame(tool_run *run, double tolerance, double scale
 	REQUIRE(output_contains(run, "Solved in "));
 	REQUIRE(output_contains(run, " stars matched, rms "));
 	REQUIRE(output_contains(run, "Epoch:    J2000"));
-	REQUIRE(output_contains(run, "Index:    Tycho-2 5°"));
+	REQUIRE(output_contains(run, "Index:    5° Tycho-2 (FOV 4.5° - 10°)"));
 	REQUIRE(parse_solution(run, &solution));
 	double distance = indigo_angular_distance(solution.ra * 15 * DEG_TO_RAD, solution.dec * DEG_TO_RAD, image_ra, image_dec) / ARCSEC_TO_RAD;
 	if (distance >= tolerance) {
@@ -444,7 +444,7 @@ static void depth_hint_and_verbose_progress(void) {
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
 	ASSERT_TRUE(output_contains(&run, "Image 1600 x 1200, binned 1 x 1"));
 	ASSERT_TRUE(output_contains(&run, " stars detected"));
-	ASSERT_TRUE(output_contains(&run, "Solving with Tycho-2 5° index..."));
+	ASSERT_TRUE(output_contains(&run, "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)..."));
 	ASSERT_TRUE(output_contains(&run, "Stage 1: 8 brightest stars"));
 	ASSERT_TRUE(output_contains(&run, "is not installed"));
 }
@@ -456,17 +456,17 @@ static void blind_search_goes_stage_by_stage(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 '%s'", two_index_dir, raw_path));
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
-	const char *first[] = { "Solving with Tycho-2 5° index...\nStage 1:", "Solved in " };
+	const char *first[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)...\nStage 1:", "Solved in " };
 	ASSERT_TRUE(output_in_order(&run, first, 2));
-	ASSERT_FALSE(strstr(run.output, "Solving with Gaia DR3 0.5° index") != NULL);
+	ASSERT_FALSE(strstr(run.output, "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)") != NULL);
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 '%s'", two_index_dir, raw_path));
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
-	const char *order[] = { "Solving with Tycho-2 5° index", "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Stage 2:", "Solved in " };
+	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Stage 2:", "Solved in " };
 	if (!output_in_order(&run, order, 6)) {
 		fprintf(stderr, "Unexpected search order:\n%s\n", run.output);
 	}
 	ASSERT_TRUE(output_in_order(&run, order, 6));
-	const char *three_times[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	const char *three_times[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
 	ASSERT_FALSE(output_in_order(&run, three_times, 3));
 }
 
@@ -477,15 +477,15 @@ static void scaled_search_uses_fitting_index_first(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' -D 1 -t 4 -s %.8f '%s'", three_index_dir, IMAGE_SCALE * RAD_TO_DEG, raw_path));
 	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
-	const char *order[] = { "Solving with Tycho-2 2° index", "Stage 2:", "Solving with Tycho-2 5° index", "Solved in " };
+	const char *order[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Stage 2:", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved in " };
 	if (!output_in_order(&run, order, 4)) {
 		fprintf(stderr, "Unexpected search order:\n%s\n", run.output);
 	}
 	ASSERT_TRUE(output_in_order(&run, order, 4));
-	ASSERT_FALSE(strstr(run.output, "Solving with Gaia DR3 0.5° index") != NULL);
-	const char *two_twice[] = { "Solving with Tycho-2 2° index", "Solving with Tycho-2 2° index" };
+	ASSERT_FALSE(strstr(run.output, "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)") != NULL);
+	const char *two_twice[] = { "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)", "Solving with index 2° Tycho-2 (FOV 2° - 4.5°)" };
 	ASSERT_FALSE(output_in_order(&run, two_twice, 2));
-	const char *five_twice[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	const char *five_twice[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
 	ASSERT_FALSE(output_in_order(&run, five_twice, 2));
 }
 

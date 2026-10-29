@@ -44,6 +44,25 @@
 
 const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT] = { 0.5, 1, 2, 5, 10, 20 };
 
+// fields for which the index is selected when all indexes are installed (nearest to INDIGO_SOLVER_INDEX_FIELD_RATIO x
+// the field size on the log scale), 0.5° being the smallest field the Gaia index serves, in the order of
+// indigo_solver_index_fovs
+static const char *index_fields[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "0.5° - 1°", "1° - 2°", "2° - 4.5°", "4.5° - 10°", "10° - 20°", "> 20°" };
+
+void indigo_solver_index_label(float fov, char *label, size_t size) {
+	const char *fields = NULL;
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		if (indigo_solver_index_fovs[i] == fov) {
+			fields = index_fields[i];
+		}
+	}
+	if (fields == NULL) {
+		snprintf(label, size, "%g° %s", fov, fov < 1 ? "Gaia DR3" : "Tycho-2");
+	} else {
+		snprintf(label, size, "%g° %s (FOV %s)", fov, fov < 1 ? "Gaia DR3" : "Tycho-2", fields);
+	}
+}
+
 
 static int compare_quads(const void *a, const void *b) {
 	const indigo_solver_quad *qa = (const indigo_solver_quad*)a;

@@ -577,9 +577,9 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_TRUE(solve_rendered_raw());
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
-	const char *order[] = { "Solving with Tycho-2 5° index", "Solving with Gaia DR3 0.5° index", "Solving with Gaia DR3 0.5° index", "Solving with Tycho-2 5° index", "Solved: " };
+	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
 	ASSERT_TRUE(messages_in_order_or_print(order, 5));
-	const char *three_times[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	const char *three_times[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
 	ASSERT_FALSE(messages_in_order(three_times, 3));
 }
 
@@ -595,10 +595,10 @@ static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(solve_rendered_raw());
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
-	const char *order[] = { "Solving with Tycho-2 5° index", "Solved: " };
+	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
 	ASSERT_TRUE(messages_in_order_or_print(order, 2));
-	ASSERT_FALSE(message_seen("Solving with Gaia DR3 0.5° index"));
-	const char *five_twice[] = { "Solving with Tycho-2 5° index", "Solving with Tycho-2 5° index" };
+	ASSERT_FALSE(message_seen("Solving with index 0.5° Gaia DR3 (FOV 0.5° - 1°)"));
+	const char *five_twice[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)" };
 	ASSERT_FALSE(messages_in_order(five_twice, 2));
 }
 

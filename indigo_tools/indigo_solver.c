@@ -85,10 +85,6 @@ static void default_index_dir(char *path, size_t size) {
 	}
 }
 
-static const char *catalog_name(float fov) {
-	return fov < 1 ? "Gaia DR3" : "Tycho-2";
-}
-
 static void print_usage(const char *name) {
 	char index_dir[PATH_MAX];
 	default_index_dir(index_dir, sizeof(index_dir));
@@ -417,7 +413,9 @@ static bool solve(solver_options *options, const void *data, long size) {
 			char path[PATH_MAX];
 			indigo_solver_index_path(path, sizeof(path), options->index_dir, candidates[i]);
 			if (options->verbose) {
-				printf("Solving with %s %g° index...\n", catalog_name(candidates[i]), candidates[i]);
+				char label[128];
+				indigo_solver_index_label(candidates[i], label, sizeof(label));
+				printf("Solving with index %s...\n", label);
 			}
 			if (loaded_fov != candidates[i]) {
 				indigo_solver_free_catalog(&catalog);
@@ -489,7 +487,9 @@ static bool solve(solver_options *options, const void *data, long size) {
 	printf("Scale:    %.8f°/pixel (%.3f\"/pixel)\n", scale, scale * 3600);
 	printf("Field:    %.4f° x %.4f°\n", full_width * scale, full_height * scale);
 	printf("Parity:   %d\n", parity);
-	printf("Index:    %s %g°\n", catalog_name(fov), fov);
+	char label[128];
+	indigo_solver_index_label(fov, label, sizeof(label));
+	printf("Index:    %s\n", label);
 cleanup:
 	indigo_solver_free_catalog(&catalog);
 	indigo_safe_free(star_matches);
