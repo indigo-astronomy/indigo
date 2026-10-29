@@ -481,7 +481,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 	indigo_dtos_r(dec_degrees, "%d:%02d:%04.1f", dec_string, sizeof(dec_string));
 	printf("Solved in %.2f s: %d of %d stars matched, rms %.2f\"\n", indigo_monotonic_time() - start, matched, star_match_count, rms * RAD_TO_DEG * 3600);
 	printf("RA:       %.6f h (%s)\n", ra_hours, ra_string);
-	printf("Dec:      %+.6f° (%s%s)\n", dec_degrees, dec_degrees < 0 ? "-" : "+", dec_string);
+	printf("Dec:      %+.6f° (%s%s)\n", dec_degrees, dec_degrees < 0 ? "" : "+", dec_string);
 	printf("Epoch:    %s\n", options->epoch == 0 ? "JNow" : "J2000");
 	printf("Angle:    %.4f°\n", rotation * RAD_TO_DEG);
 	printf("Scale:    %.8f°/pixel (%.3f\"/pixel)\n", scale, scale * 3600);
