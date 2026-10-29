@@ -353,21 +353,13 @@ static bool solve(solver_options *options, const void *data, long size) {
 		limits.deadline = start + options->cpu_limit;
 	}
 	bool bayered = false;
-	image = indigo_solver_load_image(data, size, &bayered, &message);
+	int bin, full_width, full_height;
+	image = indigo_solver_load_image(data, size, options->downsample, &bin, &full_width, &full_height, &bayered, &message);
 	if (image == NULL) {
 		goto cleanup;
 	}
-	int full_width = image->width;
-	int full_height = image->height;
-	int bin = options->downsample;
-	if (bayered && (bin < 2 || bin % 2)) {
-		bin = bin < 2 ? 2 : bin + 1;
-	}
 	if (options->verbose) {
 		printf("Image %d x %d%s, binned %d x %d\n", full_width, full_height, bayered ? " Bayer mosaic" : "", bin, bin);
-	}
-	if (bin > 1) {
-		indigo_solver_bin_image(image, bin);
 	}
 	int width = image->width;
 	int height = image->height;

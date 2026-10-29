@@ -24,7 +24,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000015
+#define DRIVER_VERSION 0x03000016
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -537,22 +537,13 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 	// 1. the input image as RAW MONO16: INDIGO RAW as it is, FITS, JPEG and camera raw files converted; a Bayer
 	//    mosaic is binned at least 2 x 2 so the colour pattern does not reach the star detector
 	bool bayered = false;
-	image = indigo_solver_load_image(task->image, task->size, &bayered, &message);
+	int bin, full_width, full_height;
+	image = indigo_solver_load_image(task->image, task->size, (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value, &bin, &full_width, &full_height, &bayered, &message);
 	if (image == NULL) {
 		goto cleanup;
 	}
-	int full_width = image->width;
-	int full_height = image->height;
-	int bin = (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
-	if (bin < 1) {
-		bin = 1;
-	}
-	if (bayered && (bin < 2 || bin % 2)) {
-		bin = bin < 2 ? 2 : bin + 1;
+	if (bayered) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayer mosaic, binning %d x %d", bin, bin);
-	}
-	if (bin > 1) {
-		indigo_solver_bin_image(image, bin);
 	}
 	int width = image->width;
 	int height = image->height;

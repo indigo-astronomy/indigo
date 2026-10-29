@@ -54,10 +54,12 @@ extern void indigo_solver_index_label(float fov, char *label, size_t size);
 /** Any supported input image as a newly allocated INDIGO RAW MONO16 image: INDIGO RAW (MONO16 as it is, MONO8 spread
  over 16 bits, RGB24/RGB48 averaged to mono), FITS (BITPIX 8, 16, 32, -32, -64 with BZERO/BSCALE, NAXIS 2 or 3 with the
  planes weighted), JPEG (components weighted) and camera raw files read by libraw; colour is reduced to mono with the
- luminance weights 0.299 R + 0.587 G + 0.114 B. bayered tells whether a RAW extension or a FITS card carries BAYERPAT,
- so the caller bins the mosaic. NULL with the reason in message.
+ luminance weights 0.299 R + 0.587 G + 0.114 B. The image is binned downsample x downsample, a Bayer mosaic (BAYERPAT
+ in a RAW extension or a FITS card, reported in bayered) at least 2 x 2 and by an even factor, so the colour pattern
+ does not reach the star detector; bin is the factor used and full_width x full_height the size before binning.
+ INDIGO RAW MONO16 and single plane FITS images are binned while they are read. NULL with the reason in message.
  */
-extern indigo_raw_header *indigo_solver_load_image(const void *data, long size, bool *bayered, const char **message);
+extern indigo_raw_header *indigo_solver_load_image(const void *data, long size, int downsample, int *bin, int *full_width, int *full_height, bool *bayered, const char **message);
 /** Averages bin x bin pixels in place; only INDIGO_RAW_MONO16 images are binned, others are left untouched.
  */
 extern void indigo_solver_bin_image(indigo_raw_header *image, int bin);

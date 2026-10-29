@@ -2604,13 +2604,37 @@ static int luminance_comparator(const void *item_1, const void *item_2) {
 	return 0;
 }
 
-/* Comparator for qsort on uint16_t values (ascending) */
-static int uint16_comparator(const void *a, const void *b) {
-	uint16_t va = *(const uint16_t *)a;
-	uint16_t vb = *(const uint16_t *)b;
-	if (va < vb) return -1;
-	if (va > vb) return 1;
-	return 0;
+/* The value at index count / 2 of the values sorted ascending, found by quickselect in linear time; the values are
+   reordered */
+static uint16_t uint16_median(uint16_t *values, int count) {
+	int k = count / 2, left = 0, right = count - 1;
+	while (left < right) {
+		uint16_t pivot = values[left + (right - left) / 2];
+		int i = left, j = right;
+		while (i <= j) {
+			while (values[i] < pivot) {
+				i++;
+			}
+			while (values[j] > pivot) {
+				j--;
+			}
+			if (i <= j) {
+				uint16_t tmp = values[i];
+				values[i] = values[j];
+				values[j] = tmp;
+				i++;
+				j--;
+			}
+		}
+		if (k <= j) {
+			right = j;
+		} else if (k >= i) {
+			left = i;
+		} else {
+			break;
+		}
+	}
+	return values[k];
 }
 
 /* Candidate for local maxima struct (moved to file scope for qsort comparator) */
@@ -2830,6 +2854,9 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 	int candidates_cap = stars_max > STAR_CANDIDATE_BUFFER_CAP ? (stars_max) : STAR_CANDIDATE_BUFFER_CAP;
 	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
 	int num_candidates = 0;
+	/* the square around a candidate whose median is the local background */
+	int side = 2 * radius + 1;
+	uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
 
 	// Find all local maxima
 	for (int j = clip_edge; j < clip_height; j++) {
@@ -2861,9 +2888,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 
 				if (is_local_max) {
 					/* Calculate local background as median of pixels in a square with side 2*radius+1 */
-					int side = 2 * radius + 1;
 					int local_pixel_count = 0;
-					uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
 
 					for (int dy = -radius; dy <= radius; dy++) {
 						for (int dx = -radius; dx <= radius; dx++) {
@@ -2875,10 +2900,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 						}
 					}
 
-					/* Sort local pixels with qsort to find median */
-					qsort(local_pixels, (size_t)local_pixel_count, sizeof(uint16_t), uint16_comparator);
-					uint16_t local_background = local_pixels[local_pixel_count / 2];
-					free(local_pixels);
+					uint16_t local_background = uint16_median(local_pixels, local_pixel_count);
 
 					/* use per-cell stddev for local thresholding to handle gradients */
 					uint32_t local_threshold = (uint32_t)(cell_stddev * stddev_threshold_factor + local_background);
@@ -3022,6 +3044,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		}
 	}
 
+	indigo_safe_free(local_pixels);
 	free(candidates);
 	free(buf);
 
@@ -3247,6 +3270,9 @@ indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const v
 	int candidates_cap = stars_max > STAR_CANDIDATE_BUFFER_CAP ? (stars_max) : STAR_CANDIDATE_BUFFER_CAP;
 	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
 	int num_candidates = 0;
+	/* the square around a candidate whose median is the local background */
+	int side = 2 * radius + 1;
+	uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
 
 	// Find all local maxima
 	for (int j = clip_edge; j < clip_height; j++) {
@@ -3318,9 +3344,7 @@ indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const v
 		double cell_stddev = cell_stddevs[cell_y][cell_x];
 
 		/* Calculate local background as median of pixels in a square with side 2*radius+1 */
-		int side = 2 * radius + 1;
 		int local_pixel_count = 0;
-		uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
 
 		for (int dy = -radius; dy <= radius; dy++) {
 			for (int dx = -radius; dx <= radius; dx++) {
@@ -3332,10 +3356,7 @@ indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const v
 			}
 		}
 
-		/* Sort local pixels with qsort to find median */
-		qsort(local_pixels, (size_t)local_pixel_count, sizeof(uint16_t), uint16_comparator);
-		uint16_t local_background = local_pixels[local_pixel_count / 2];
-		free(local_pixels);
+		uint16_t local_background = uint16_median(local_pixels, local_pixel_count);
 
 		/* use per-cell stddev for local thresholding to handle gradients */
 		uint32_t local_threshold = (uint32_t)(cell_stddev * stddev_threshold_factor + local_background);
@@ -3461,6 +3482,7 @@ indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const v
 		}
 	}
 
+	indigo_safe_free(local_pixels);
 	free(candidates);
 	free(buf);
 
