@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 60.32499.20260902 */
+/* Version: 60.33015.20261024 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -294,6 +294,7 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_HEAT_MIN                  0       /* Heat */
 #define ALTAIRCAM_LANE_MIN                  0       /* Lane */
 #define ALTAIRCAM_FAN_MIN                   0       /* Fan */
+#define ALTAIRCAM_CDSGAIN_MIN               0       /* CDS Gain */
 
 typedef struct {
     unsigned    width;
@@ -332,7 +333,7 @@ typedef struct {
 } AltaircamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 60.32499.20260902
+    get the version of this dll/so/dylib, which is: 60.33015.20261024
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -418,6 +419,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_Load(HAltaircam h, const char* strPara);
 #define ALTAIRCAM_EVENT_TRIGGER_ALLOW     0x4002    /* hardware event: next trigger allow */
 #define ALTAIRCAM_EVENT_HEARTBEAT         0x4003    /* hardware event: heartbeat, can be used to monitor whether the camera is alive */
 #define ALTAIRCAM_EVENT_TRIGGER_IN        0x4004    /* hardware event: trigger in */
+#define ALTAIRCAM_EVENT_TRIGGER_FAIL      0x4005    /* hardware event: trigger fail */
 #define ALTAIRCAM_EVENT_FACTORY           0x8001    /* restore factory settings */
 
 #if defined(_WIN32)
@@ -486,7 +488,7 @@ typedef struct {
     unsigned reserved;
     unsigned strideRaw;             /* stride of RAW, 0 means = image width (no padding) */
     AltaircamFrameInfoV4* ptrInfo;
-    void* snapCtx;
+    void* usrPtr;
     void* ptrRaw;                   /* RAW, see ALTAIRCAM_OPTION_IMAGEPTRRAW */
     unsigned char* ptr8;
     unsigned short* ptr16;
@@ -599,7 +601,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_Pause(HAltaircam h, int bPause); /* 1 => pause
 ALTAIRCAM_API(HRESULT)  Altaircam_Snap(HAltaircam h, unsigned nResolutionIndex);  /* still image snap */
 ALTAIRCAM_API(HRESULT)  Altaircam_SnapN(HAltaircam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple still image snap */
 ALTAIRCAM_API(HRESULT)  Altaircam_SnapR(HAltaircam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple RAW still image snap */
-ALTAIRCAM_API(HRESULT)  Altaircam_SnapV2(HAltaircam h, unsigned nResolutionIndex, unsigned nNumber, int eRGB, void* snapCtx);
+ALTAIRCAM_API(HRESULT)  Altaircam_SnapV2(HAltaircam h, unsigned nResolutionIndex, unsigned nNumber, int eRGB, void* usrPtr);
 
 /*
     soft trigger:
@@ -727,6 +729,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_MinAutoExpoTimeAGain(HAltaircam h, unsigne
 ALTAIRCAM_API(HRESULT)  Altaircam_get_ExpoTime(HAltaircam h, unsigned* Time); /* in microseconds */
 ALTAIRCAM_API(HRESULT)  Altaircam_put_ExpoTime(HAltaircam h, unsigned Time); /* in microseconds */
 ALTAIRCAM_API(HRESULT)  Altaircam_get_RealExpoTime(HAltaircam h, unsigned* Time); /* actual exposure time */
+ALTAIRCAM_API(HRESULT)  Altaircam_get_RealExpoGain(HAltaircam h, unsigned short* Gain); /* actual gain */
 ALTAIRCAM_API(HRESULT)  Altaircam_get_ExpTimeRange(HAltaircam h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 ALTAIRCAM_API(HRESULT)  Altaircam_get_ExpoAGain(HAltaircam h, unsigned short* Gain); /* percent, such as 300 */
@@ -965,7 +968,6 @@ ALTAIRCAM_API(HRESULT)  Altaircam_put_Str(HAltaircam h, const char* strName, con
 /* strValue: output buffer (128 bytes are always sufficient) */
 ALTAIRCAM_API(HRESULT)  Altaircam_get_Str(HAltaircam h, const char* strName, char strValue[]);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_Enum(HAltaircam h, const char* strName, int* pNumber, int arrValue[], const char* arrString[]);
-ALTAIRCAM_API(HRESULT)  Altaircam_get_StrPtr(HAltaircam h, const char* strName, const char** strValue);
 
 /* [RW] = Read/Write; [RO] = Read Only; [WO] = Write Only */
 #define ALTAIRCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* [RW] no frame timeout: 0 => disable, positive value (>= ALTAIRCAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
@@ -1275,7 +1277,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_StrPtr(HAltaircam h, const char* strName, 
 #define ALTAIRCAM_OPTION_GVSP_WAIT_PERCENT      0x73       /* [RW] GVSP wait percent: range = [0, 100], default = (trigger mode: 100, realtime: 0, other: 1) */
 #define ALTAIRCAM_OPTION_RESET_SEQ_TIMESTAMP    0x74       /* [WO] Reset to 0: 1 => seq; 2 => timestamp; 3 => both */
 #define ALTAIRCAM_OPTION_TRIGGER_CANCEL_MODE    0x75       /* [RW] Trigger cancel mode: 0 => no frame, 1 => output frame; default: 0 */
-#define ALTAIRCAM_OPTION_MECHANICALSHUTTER      0x76       /* [RW] Mechanical shutter: 0 => open, 1 => close; default: 0 */
+#define ALTAIRCAM_OPTION_MECHANICALSHUTTER      0x76       /* [RW] Mechanical shutter: 0 => open, 1 => close, 2 => auto; default: 0 */
 #define ALTAIRCAM_OPTION_LINE_TIME              0x77       /* [RO] Line-time of sensor in nanosecond */
 #define ALTAIRCAM_OPTION_ZERO_PADDING           0x78       /* [RW] Zero padding: 0 => high, 1 => low; default: 0 */
 #define ALTAIRCAM_OPTION_UPTIME                 0x79       /* [RO] device uptime in millisecond */
@@ -1310,7 +1312,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_StrPtr(HAltaircam h, const char* strName, 
                                                               However, anti-blooming structures can reduce the effective quantum efficiency and introduce non linearity into the sensor.
                                                               Therefore, anti-blooming sensors are not recommended for applications requiring very low light or high accuracy measurements.
                                                          */
-#define ALTAIRCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming */
+#define ALTAIRCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming: maximum */
 #define ALTAIRCAM_OPTION_CDS_MAX                0x8d       /* [RO] Correlated Double Sampling */
 #define ALTAIRCAM_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(areascan), 1(linescan) */
 #define ALTAIRCAM_OPTION_OPERATIONMODE          0x8f       /* [RW] TDI Operation Mode: 1(area), 2(TDI) */
