@@ -1,0 +1,86 @@
+{
+  "version": 2,
+  "task": "20261030113409-6069-solver-index-message-debug",
+  "scope": [
+    "TEST_SUMMARY.md",
+    "indigo_drivers/agent_solver/README.md",
+    "indigo_drivers/agent_solver/indigo_agent_solver.c",
+    "indigo_test/integration/test_agent_solver.c",
+    ".factory/maintenance.json",
+    ".factory/completions/20261030113409-6069-solver-index-message-debug.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_solver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261030113409-6069-solver-index-message-debug.json": [
+      "100644",
+      "blob",
+      "401fc84f45896118e71968396ba2cc711b3e6ac8"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "9f03ea98012e8090d823d17e35b422190e193feb"
+    ],
+    "indigo_drivers/agent_solver/README.md": [
+      "100644",
+      "blob",
+      "15197b6023ac0d55ecc84e6a331307c786eddb1f"
+    ],
+    "indigo_drivers/agent_solver/indigo_agent_solver.c": [
+      "100644",
+      "blob",
+      "f45e43a80fd42d4a7454618913a37f973b132950"
+    ],
+    "indigo_test/integration/test_agent_solver.c": [
+      "100644",
+      "blob",
+      "24fe159e0acf11c9b2d3ab5f1395f062034cca12"
+    ]
+  }
+}

@@ -567,6 +567,31 @@ static bool messages_in_order_or_print(const char **texts, int count) {
 	return false;
 }
 
+// The agent reports the index it tries in the debug log only, not to clients; the search order tests copy those
+// lines from the debug log into the message buffer, marked "log:", in order with the client messages
+static indigo_log_levels saved_log_level;
+
+static void capture_index_log(indigo_log_levels level, const char *message) {
+	if (strstr(message, "Solving with index")) {
+		pthread_mutex_lock(&cache_mutex);
+		add_message("log", message);
+		pthread_mutex_unlock(&cache_mutex);
+	}
+	if (saved_log_level >= INDIGO_LOG_DEBUG) {
+		fprintf(stderr, "%s\n", message);
+	}
+}
+
+static bool solve_rendered_raw_capturing_index_log(void) {
+	saved_log_level = indigo_get_log_level();
+	indigo_log_message_handler = capture_index_log;
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
+	bool solved = solve_rendered_raw();
+	indigo_set_log_level(saved_log_level);
+	indigo_log_message_handler = NULL;
+	return solved;
+}
+
 // Both synthetic indexes selected and no pixel scale: the first stage runs on every index, the largest first, the
 // next stage in the opposite order starting with the index loaded last. The 0.5° file is another random patch, only
 // the 5° index matches the frame; the depth hint 4 leaves the first stage without quads, so the frame is solved in
@@ -578,7 +603,8 @@ static void blind_search_goes_stage_by_stage(void) {
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME, 0));
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME, 4));
 	clear_messages();
-	ASSERT_TRUE(solve_rendered_raw());
+	ASSERT_TRUE(solve_rendered_raw_capturing_index_log());
+	ASSERT_FALSE(message_seen(SOLVER ": Solving with index"));
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
 	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };
@@ -597,7 +623,8 @@ static void scaled_search_uses_fitting_index_first(void) {
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME, IMAGE_SCALE * RAD_TO_DEG));
 	ASSERT_TRUE(set_hint(AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME, 4));
 	clear_messages();
-	ASSERT_TRUE(solve_rendered_raw());
+	ASSERT_TRUE(solve_rendered_raw_capturing_index_log());
+	ASSERT_FALSE(message_seen(SOLVER ": Solving with index"));
 	ASSERT_TRUE(solution_matches_rendered_frame());
 	ASSERT_TRUE(number_value(AGENT_PLATESOLVER_WCS_PROPERTY_NAME, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME) == 5);
 	const char *order[] = { "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solving with index 0.5° Gaia DR3 (FOV 0.45° - 1°)", "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)", "Solved: " };

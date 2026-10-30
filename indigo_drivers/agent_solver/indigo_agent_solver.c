@@ -24,7 +24,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000018
+#define DRIVER_VERSION 0x03000019
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -596,7 +596,7 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 			indigo_solver_index_path(path, sizeof(path), base_dir, candidates[i]);
 			char label[INDIGO_VALUE_SIZE];
 			indigo_solver_index_label(candidates[i], label, sizeof(label));
-			indigo_send_message(device, IDLE_PROPERTY, "Solving with index %s...", label);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solving with index %s...", label);
 			if (!load_catalog(device, path)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
 				continue;

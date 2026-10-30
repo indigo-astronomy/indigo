@@ -240,6 +240,15 @@
       "authority": "Odložiť, index najprv",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
+    },
+    "solver_index_message_debug_deferral": {
+      "approved_by": "Rumen G. Bogdanovski, explicit conversation selection",
+      "date": "2026-10-30",
+      "task": "20261030113409-6069-solver-index-message-debug",
+      "scope": "Move the per-index 'Solving with index' message of the Solver Agent to the debug log only",
+      "authority": "Defer, do solver change",
+      "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
+      "resets_checkpoint": false
     }
   },
   "timezone": "Europe/Bratislava"
