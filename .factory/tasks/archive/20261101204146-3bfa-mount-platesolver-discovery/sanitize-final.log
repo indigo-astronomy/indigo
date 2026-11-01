@@ -1,0 +1,1596 @@
++ /usr/bin/clang -g -arch arm64 -mmacosx-version-min=10.10 -fPIC -O1 -isystem/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_libs -I/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_drivers -I/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I. -fsanitize=address,undefined -fno-omit-frame-pointer -Dtime=mount_test_time -Dindigo_usleep=mount_test_sleep -Dindigo_uni_open_tcp_server_socket_with_callback=mount_test_server -Dindigo_uni_read_available=mount_test_read -Dindigo_uni_write=mount_test_write -Dindigo_uni_close=mount_test_close -Dindigo_uni_set_socket_read_timeout=mount_test_read_timeout -c indigo_drivers/agent_mount/indigo_agent_mount.c -o /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_test/build/task-mount-sanitize/agent_mount_sanitize.o
+EXIT 0
++ /usr/bin/clang -g -arch arm64 -mmacosx-version-min=10.10 -fPIC -O1 -isystem/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_libs -I/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_drivers -I/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I. -fsanitize=address,undefined -fno-omit-frame-pointer indigo_test/integration/test_agent_mount.c indigo_test/build/integration/agent_mount_framework.o indigo_test/build/integration/agent_mount_filter.o /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_test/build/task-mount-sanitize/agent_mount_sanitize.o -o /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_test/build/task-mount-sanitize/test_agent_mount_sanitize -g -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib -fsanitize=address,undefined /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib/libindigo.a /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib/libindigocat.a /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib/libjpeg.a /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib/libtiff.a /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib
+EXIT 0
++ /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/indigo_test/build/task-mount-sanitize/test_agent_mount_sanitize
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  PASS filter legacy timer
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  PASS filter ordered restore
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  PASS filter site sync
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  PASS filter site async host
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS filter site unset
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  PASS filter site async source
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  PASS filter delayed enumeration
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Test Mount: Configuration restored, except 'GEOGRAPHIC_COORDINATES' which the driver did not accept
+  Mount Agent: Device configuration restore failed
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS filter restore failure
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Test Mount: Configuration restore failed or timed out
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS filter restore cancel
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS filter unrelated busy
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Device connection failed or was closed
+  Test Mount: Configuration restore failed or timed out
+  PASS filter restore disconnect
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Time limit reached
+  Mount Agent: Mount is parked
+  Mount Agent: Mount is unparked
+  Mount Agent: Time limit reached
+  Mount Agent: Mount is parked
+  Mount Agent: Mount is unparked
+  PASS time limit matrix
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Field derotation is active
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Synced
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Synced
+  PASS rotator sync wrap
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+22:07:15.544819 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+22:07:15.545364 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+22:07:15.545559 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+22:07:15.545737 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+22:07:15.545909 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+22:07:15.546067 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+22:07:15.546236 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+22:07:15.546393 Application: Failed to create /tmp/indigo_mount_test_SpbpTL/.indigo/Mount_Agent.config
+  PASS configuration failure
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Mount is parked
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is parked
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount failed to park
+  Mount Agent: Unpark failed or was interrupted
+  PASS unpark waits for park property
+Mount Agent integration: all tests passed
+  Mount Agent: Mount slew failed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Mount did not reach the target, it is 5044.2' away
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount did not reach the target, it is 422.8' away
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount did not start the slew
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Synced
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount slew failed
+  PASS slew target check
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Mount failed to park
+  Mount Agent: Dome failed to park
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Mount failed to park
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Sync failed
+  Mount Agent: Mount is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Mount failed to park
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Dome failed to park
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Mount failed to park
+  Mount Agent: Dome failed to park
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Device connection failed or was closed
+  Mount Agent: Dome slaving is inactive
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slaving is active
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Mount is unparked
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is slewing
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Dome is not slewing
+  PASS unpark failure
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Uncertain mount park state
+  Mount Agent: Uncertain dome park state
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Uncertain mount park state
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Sync failed
+  Mount Agent: Mount is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Uncertain mount park state
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Uncertain dome park state
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Uncertain mount park state
+  Mount Agent: Uncertain dome park state
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Mount is parked
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Device connection failed or was closed
+  Mount Agent: Dome slaving is inactive
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slaving is active
+  Mount Agent: Dome is parked
+  Mount Agent: Shutter is closed
+  Mount Agent: Unpark failed or was interrupted
+  Mount Agent: Shutter is closed
+  Mount Agent: Mount is unparked
+  Mount Agent: Dome is unparked
+  PASS unpark failure legacy
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS legacy dome slew
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount is tracking
+  Mount Agent: Dome slaving is active
+  Mount Agent: Dome is slewing
+  Mount Agent: Dome is not slewing
+  Mount Agent: Field derotation is active
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is inactive
+  PASS geometry and threshold
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS related discovery compatibility
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS related platesolver discovery
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS related solver filters
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS related INDIGO solver filter
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS related invalid filter
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS negative site fits
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 invalid coordinates
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 coordinate boundaries
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 degree separators
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Mount is slewing
+22:07:19.971798 Application: MOUNT_EQUATORIAL_COORDINATES didn't become OK in 180s
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount is slewing
+22:07:19.975224 Application: MOUNT_EQUATORIAL_COORDINATES didn't become OK in 180s
+  Mount Agent: Sync failed
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount failed to go home
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount tracking failed
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount tracking failed
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  PASS operation timeouts
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+  Mount Agent: Shutter is closed
+  Mount Agent: Dome is slewing
+  Mount Agent: Mount is slewing
+22:07:20.024381 Application: MOUNT_EQUATORIAL_COORDINATES didn't become OK in 180s
+22:07:20.024557 Application: DOME_HORIZONTAL_COORDINATES didn't become OK in 180s
+22:07:20.024727 Application: ROTATOR_POSITION didn't become OK in 180s
+  Mount Agent: Mount slew failed
+  PASS coupled timeouts
+Mount Agent integration: all tests passed
+  Mount Agent: Mount slew failed
+  Mount Agent: Dome slew failed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Synced
+  PASS immediate completion
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+  Mount Agent: Mount failed to park
+  Mount Agent: Dome failed to park
+  Mount Agent: Mount failed to park
+  Mount Agent: Dome failed to park
+  Mount Agent: Mount is unparked
+  Mount Agent: Dome is unparked
+  Mount Agent: Shutter is closed
+  Mount Agent: Dome is slewing
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  Mount Agent: Dome slew failed
+  PASS coupled abort
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during SLEW
+  Mount Agent: Shutter is closed
+  Mount Agent: Dome is slewing
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  Mount Agent: Dome slew failed
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during SYNC
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  Mount Agent: Sync failed
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during PARK
+  Mount Agent: Mount failed to park
+  Mount Agent: Dome failed to park
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during UNPARK
+  Mount Agent: Mount failed to park
+  Mount Agent: Dome failed to park
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during HOME
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount failed to go home
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount failed to go home
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during DOME_PARK
+  Mount Agent: Dome failed to park
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount failed to go home
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during DOME_UNPARK
+  Mount Agent: Dome failed to park
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount failed to go home
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during DOME_OPEN
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount failed to go home
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Uncertain dome open state
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome shutter operation failed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+Shutdown during DOME_CLOSE
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  PASS shutdown active
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  Mount Agent: Server finished
+  Mount Agent: Server started on 4030
+  Mount Agent: Server finished
+  Mount Agent: Server started on 4030
+  Mount Agent: Server finished
+  PASS shutdown server
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: No mount is selected
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Synced
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Synced
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  PASS all false start
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Mount is going to home position...
+  PASS home momentary
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount is parked
+  Mount Agent: Mount failed to park
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount failed to go home
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount tracking failed
+  Mount Agent: Dome is slewing
+  Mount Agent: Dome is slewing
+  Mount Agent: Dome slew failed
+  Mount Agent: Dome is parked
+  Mount Agent: Dome failed to park
+  Mount Agent: Dome is opened
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  PASS state lights
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+  Mount Agent: Dome slaving is inactive
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Field derotation is active
+  Mount Agent: Dome slaving is inactive
+  Mount Agent: Field derotation is inactive
+  PASS selection orders
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Mount slew failed
+  Mount Agent: Sync failed
+  Mount Agent: Uncertain mount park state
+  Mount Agent: Uncertain mount home state
+  Mount Agent: Uncertain dome park state
+  Mount Agent: Uncertain dome open state
+  Mount Agent: Uncertain dome open state
+  PASS immediate rejection
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 input matrix
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is opened
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is opened
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is parked
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is opened
+  PASS dome reselection
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is opened
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is opened
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is opened
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is parked
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is opened
+  PASS dome reselection modern
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is parked
+  PASS dome reselection legacy
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS feature persistence
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS persistent features
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 ack
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 positive zero
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 truncated command
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+  PASS lx200 command length
+Mount Agent integration: all tests passed
+  Mount Agent: Server finished
+Running Mount Agent integration
+  Mount Agent: Failed to start server on 4030
+  Mount Agent: Server started on 4030
+  Mount Agent: Server finished
+  Mount Agent: Failed to start server on 4030
+  PASS lx200 bind failure
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Failed to start server on 4030
+  Mount Agent: Server started on 4030
+  Mount Agent: Server finished
+  PASS lx200 idle stop
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Aborting Imager agent process due to slew
+  Mount Agent: Aborting Guider agent process due to slew
+  Mount Agent: Aborting Imager agent process due to slew
+  Mount Agent: Aborting Guider agent process due to slew
+  Mount Agent: Telescope is on east side of pier
+  PASS related agents
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS negative fits
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS rounded fits
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS negative zero fits
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Hour angle tracking limit reached
+  Mount Agent: Mount is parked
+  Mount Agent: Mount is unparked
+  Mount Agent: Hour angle tracking limit reached
+  Mount Agent: Mount is parked
+  Mount Agent: Mount is unparked
+  Mount Agent: Time limit reached
+  PASS limits
+Mount Agent integration: all tests passed
+  Mount Agent: Mount failed to park
+Running Mount Agent integration
+  PASS instances
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Selected mount does not support home
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount is at home position
+  Mount Agent: Selected mount does not support park
+  Mount Agent: Mount is unparked
+  Mount Agent: Selected mount does not support tracking
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount is tracking
+  Mount Agent: Selected dome does not support park
+  Mount Agent: Dome is unparked
+  Mount Agent: Selected dome does not support shutter
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is opened
+  Mount Agent: Selected mount does not support slew
+  Mount Agent: Selected mount does not support sync
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Synced
+  PASS stale capability
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Mount is slewing
+  Mount Agent: Device connection failed or was closed
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Mount is not slewing
+  PASS process deselection
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  PASS metadata
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: No mount is selected
+  Mount Agent: No mount is selected
+  Mount Agent: No mount is selected
+  Mount Agent: No mount is selected
+  Mount Agent: No mount is selected
+  Mount Agent: No mount is selected
+  Mount Agent: No mount is selected
+  Mount Agent: No dome is selected
+  Mount Agent: No dome is selected
+  Mount Agent: No dome is selected
+  Mount Agent: No dome is selected
+  PASS missing devices
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Selected mount does not support slew
+  Mount Agent: Selected mount does not support sync
+  Mount Agent: Selected mount does not support park
+  Mount Agent: Selected mount does not support park
+  Mount Agent: Selected mount does not support home
+  Mount Agent: Selected mount does not support tracking
+  Mount Agent: Selected mount does not support tracking
+  Mount Agent: Selected dome does not support park
+  Mount Agent: Selected dome does not support park
+  Mount Agent: Selected dome does not support shutter
+  Mount Agent: Selected dome does not support shutter
+  PASS missing capabilities
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  operation SLEW, legacy, terminal 1
+  operation SYNC, legacy, terminal 1
+  Mount Agent: Synced
+  operation PARK, legacy, terminal 1
+  Mount Agent: Mount is parked
+  operation UNPARK, legacy, terminal 1
+  Mount Agent: Mount is unparked
+  operation HOME, legacy, terminal 1
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount is at home position
+  operation TRACK_ON, legacy, terminal 1
+  Mount Agent: Mount is tracking
+  operation TRACK_OFF, legacy, terminal 1
+  Mount Agent: Mount is not tracking
+  operation DOME_PARK, legacy, terminal 1
+  Mount Agent: Dome is parked
+  operation DOME_UNPARK, legacy, terminal 1
+  Mount Agent: Dome is unparked
+  operation DOME_OPEN, legacy, terminal 1
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is opened
+  operation DOME_CLOSE, legacy, terminal 1
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is closed
+  PASS legacy success
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  operation SLEW, state lights, terminal 1
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  operation SYNC, state lights, terminal 1
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Synced
+  operation PARK, state lights, terminal 1
+  Mount Agent: Mount is parked
+  operation UNPARK, state lights, terminal 1
+  Mount Agent: Mount is unparked
+  operation HOME, state lights, terminal 1
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount is at home position
+  operation TRACK_ON, state lights, terminal 1
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount is tracking
+  operation TRACK_OFF, state lights, terminal 1
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount is not tracking
+  operation DOME_PARK, state lights, terminal 1
+  Mount Agent: Dome is parked
+  operation DOME_UNPARK, state lights, terminal 1
+  Mount Agent: Dome is unparked
+  operation DOME_OPEN, state lights, terminal 1
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is opened
+  operation DOME_CLOSE, state lights, terminal 1
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome is closed
+  PASS modern success
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  operation SLEW, legacy, terminal 3
+  Mount Agent: Mount slew failed
+  operation SYNC, legacy, terminal 3
+  Mount Agent: Sync failed
+  operation PARK, legacy, terminal 3
+  Mount Agent: Uncertain mount park state
+  operation UNPARK, legacy, terminal 3
+  operation HOME, legacy, terminal 3
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Uncertain mount home state
+  operation TRACK_ON, legacy, terminal 3
+  operation TRACK_OFF, legacy, terminal 3
+  operation DOME_PARK, legacy, terminal 3
+  Mount Agent: Uncertain dome park state
+  operation DOME_UNPARK, legacy, terminal 3
+  operation DOME_OPEN, legacy, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Uncertain dome open state
+  operation DOME_CLOSE, legacy, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Uncertain dome open state
+  PASS legacy failure
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  operation SLEW, state lights, terminal 3
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  Mount Agent: Mount slew failed
+  operation SYNC, state lights, terminal 3
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  Mount Agent: Sync failed
+  operation PARK, state lights, terminal 3
+  Mount Agent: Mount failed to park
+  operation UNPARK, state lights, terminal 3
+  Mount Agent: Mount failed to park
+  operation HOME, state lights, terminal 3
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount failed to go home
+  operation TRACK_ON, state lights, terminal 3
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount tracking failed
+  operation TRACK_OFF, state lights, terminal 3
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount tracking failed
+  operation DOME_PARK, state lights, terminal 3
+  Mount Agent: Dome failed to park
+  operation DOME_UNPARK, state lights, terminal 3
+  Mount Agent: Dome failed to park
+  operation DOME_OPEN, state lights, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  operation DOME_CLOSE, state lights, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  PASS modern failure
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  operation SLEW, legacy, terminal 3
+  operation SYNC, legacy, terminal 3
+  Mount Agent: Sync failed
+  operation PARK, legacy, terminal 3
+  Mount Agent: Uncertain mount park state
+  operation UNPARK, legacy, terminal 3
+  operation HOME, legacy, terminal 3
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Uncertain mount home state
+  operation TRACK_ON, legacy, terminal 3
+  operation TRACK_OFF, legacy, terminal 3
+  operation DOME_PARK, legacy, terminal 3
+  Mount Agent: Uncertain dome park state
+  operation DOME_UNPARK, legacy, terminal 3
+  operation DOME_OPEN, legacy, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Uncertain dome open state
+  operation DOME_CLOSE, legacy, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Uncertain dome open state
+  PASS legacy abort
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  operation SLEW, state lights, terminal 3
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  operation SYNC, state lights, terminal 3
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount slew failed
+  Mount Agent: Sync failed
+  operation PARK, state lights, terminal 3
+  Mount Agent: Mount failed to park
+  operation UNPARK, state lights, terminal 3
+  Mount Agent: Mount failed to park
+  operation HOME, state lights, terminal 3
+  Mount Agent: Mount is going to home position...
+  Mount Agent: Mount failed to go home
+  operation TRACK_ON, state lights, terminal 3
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount tracking failed
+  operation TRACK_OFF, state lights, terminal 3
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount tracking failed
+  operation DOME_PARK, state lights, terminal 3
+  Mount Agent: Dome failed to park
+  operation DOME_UNPARK, state lights, terminal 3
+  Mount Agent: Dome failed to park
+  operation DOME_OPEN, state lights, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  operation DOME_CLOSE, state lights, terminal 3
+  Mount Agent: Dome shutter is moving...
+  Mount Agent: Dome shutter operation failed
+  PASS modern abort
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Synced
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is parked
+  PASS coordinates and busy
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  PASS sites
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Warning! Valid values are 0 or 2000 only, value adjusted to 0
+  Mount Agent: Reset to defaults
+  PASS configuration
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+  Mount Agent: Shutter is closed
+  Mount Agent: Dome is slewing
+  Mount Agent: Mount is slewing
+  Mount Agent: Mount is not slewing
+  Mount Agent: Dome is not slewing
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Mount is parked
+  Mount Agent: Dome failed to park
+  PASS coupled motion
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Dome is not slewing
+  Mount Agent: Dome is unparked
+  Mount Agent: Dome is closed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Mount is tracking
+  Mount Agent: Mount is tracking
+  Mount Agent: Dome slaving is active
+  Mount Agent: Field derotation is active
+  Mount Agent: Dome is slewing
+  Mount Agent: Dome slew failed
+  Mount Agent: Field derotation is inactive
+  Mount Agent: Dome slaving is inactive
+  PASS slaving
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  joystick MOUNT_PARK.PARKED
+  Mount Agent: Mount is parked
+  joystick MOUNT_PARK.UNPARKED
+  Mount Agent: Mount is unparked
+  joystick MOUNT_TRACKING.ON
+  Mount Agent: Mount is tracking
+  joystick MOUNT_TRACKING.OFF
+  Mount Agent: Mount is not tracking
+  joystick MOUNT_HOME.HOME
+  Mount Agent: Mount is at home position
+  joystick MOUNT_SLEW_RATE.GUIDE
+  joystick MOUNT_SLEW_RATE.CENTERING
+  joystick MOUNT_SLEW_RATE.FIND
+  joystick MOUNT_SLEW_RATE.MAX
+  joystick MOUNT_MOTION_RA.WEST
+  joystick MOUNT_MOTION_RA.EAST
+  joystick MOUNT_MOTION_DEC.NORTH
+  joystick MOUNT_MOTION_DEC.SOUTH
+  joystick MOUNT_ABORT_MOTION.ABORT_MOTION
+  PASS joystick
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  axis MOUNT_MOTION_RA input WEST=0 EAST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input WEST=0 EAST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_RA input WEST=0 EAST=1 state=1
+    request WEST=0 EAST=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=0 EAST=1 state=1
+    request WEST=0 EAST=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=0 EAST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input WEST=0 EAST=1 state=1
+    request WEST=0 EAST=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input WEST=0 EAST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_RA input EAST=0 WEST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_RA input EAST=0 WEST=1 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input EAST=0 WEST=1 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input EAST=0 WEST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_RA input EAST=1 WEST=0 state=1
+    request WEST=0 EAST=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input EAST=1 WEST=0 state=1
+    request WEST=0 EAST=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input EAST=0 WEST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_RA input EAST=0 WEST=1 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input EAST=1 WEST=0 state=1
+    request WEST=0 EAST=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input EAST=0 WEST=1 state=1
+    request WEST=1 EAST=0
+    result WEST=1 EAST=0
+  axis MOUNT_MOTION_RA input EAST=0 WEST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  PASS joystick motion RA
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=1 state=1
+    request NORTH=0 SOUTH=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=1 state=1
+    request NORTH=0 SOUTH=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=1 state=1
+    request NORTH=0 SOUTH=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=1 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=1 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=1 NORTH=0 state=1
+    request NORTH=0 SOUTH=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input SOUTH=1 NORTH=0 state=1
+    request NORTH=0 SOUTH=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=1 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=1 NORTH=0 state=1
+    request NORTH=0 SOUTH=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=1 state=1
+    request NORTH=1 SOUTH=0
+    result NORTH=1 SOUTH=0
+  axis MOUNT_MOTION_DEC input SOUTH=0 NORTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  PASS joystick motion DEC
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: Mount is not slewing
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount not at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=0 EAST=1 state=1
+    request WEST=0 EAST=1
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=0
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=2
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=1 EAST=0 state=3
+    result WEST=0 EAST=1
+  axis MOUNT_MOTION_RA input WEST=0 EAST=0 state=1
+    request WEST=0 EAST=0
+    result WEST=0 EAST=0
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=1 state=1
+    request NORTH=0 SOUTH=1
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=0
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=2
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=1 SOUTH=0 state=3
+    result NORTH=0 SOUTH=1
+  axis MOUNT_MOTION_DEC input NORTH=0 SOUTH=0 state=1
+    request NORTH=0 SOUTH=0
+    result NORTH=0 SOUTH=0
+  PASS joystick motion gates
+Mount Agent integration: all tests passed
+Running Mount Agent integration
+  Mount Agent: Server started on 4030
+LX reply: indigo#1100:00:00#+00*00'00#
+  Mount Agent: Mount is unparked
+  Mount Agent: Mount is at home position
+  Mount Agent: Mount is not tracking
+  Mount Agent: Telescope is on west side of pier
+  Mount Agent: The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome
+  Mount Agent: Synced
+  Mount Agent: Server finished
+  PASS LX200 protocol
+Mount Agent integration: all tests passed
+Mount Agent: 79/79 cases passed (including cleanup)
+EXIT 0

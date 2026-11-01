@@ -25,7 +25,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0300001D
+#define DRIVER_VERSION 0x0300001E
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -275,6 +275,9 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 		return true;
 	}
 	if (!strncmp(info_property->device, "ASTAP Agent", 11)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Platesolver Agent", sizeof("Platesolver Agent") - 1)) {
 		return true;
 	}
 	if (!strncmp(info_property->device, "INDIGO Solver Agent", 19)) {

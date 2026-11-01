@@ -1,0 +1,16 @@
+Running Mount Agent integration
+change Mount Agent.FILTER_RELATED_AGENT_LIST.Platesolver Agent = 1
+DISCOVERY Platesolver Agent listed=1 selected=1
+DISCOVERY Platesolver Agent detached=1 absent=1
+change Mount Agent.FILTER_RELATED_AGENT_LIST.Platesolver Agent #2 = 1
+DISCOVERY Platesolver Agent #2 listed=1 selected=1
+DISCOVERY Platesolver Agent #2 detached=1 absent=1
+change Mount Agent.FILTER_RELATED_AGENT_LIST.Platesolver Agent @ remote = 1
+DISCOVERY Platesolver Agent @ remote listed=1 selected=1
+DISCOVERY Platesolver Agent @ remote detached=1 absent=1
+change Mount Agent.FILTER_RELATED_AGENT_LIST.Platesolver Agent #2 @ remote = 1
+DISCOVERY Platesolver Agent #2 @ remote listed=1 selected=1
+DISCOVERY Platesolver Agent #2 @ remote detached=1 absent=1
+  PASS related platesolver discovery
+Mount Agent integration: all tests passed
+Mount Agent: 1/1 cases passed (including cleanup)

@@ -2095,6 +2095,49 @@ static void related_invalid_filter(void) {
 	CHECK(isnan(value(AGENT, "FILTER_RELATED_AGENT_LIST", peer_names[6])));
 }
 
+static bool related_discovery_case(const char *name, bool accepted) {
+	peer_names[5] = name;
+	REQUIRE(attach_peer(5, false, false));
+	bool listed = !isnan(value(AGENT, "FILTER_RELATED_AGENT_LIST", name));
+	REQUIRE(listed == accepted);
+	if (accepted) {
+		REQUIRE(select_peer(5, false, false));
+		REQUIRE(value(AGENT, "FILTER_RELATED_AGENT_LIST", name) == 1);
+	}
+	if (getenv("INDIGO_TEST_TRACE")) {
+		fprintf(stderr, "DISCOVERY %s listed=%d selected=%d\n", name, listed, accepted);
+	}
+	REQUIRE(indigo_detach_device(&peers[5].device) == INDIGO_OK);
+	peers[5].attached = false;
+	REQUIRE(isnan(value(AGENT, "FILTER_RELATED_AGENT_LIST", name)));
+	if (getenv("INDIGO_TEST_TRACE")) {
+		fprintf(stderr, "DISCOVERY %s detached=1 absent=1\n", name);
+	}
+	for (int i = 0; i < peers[5].count; i++) {
+		indigo_release_property(peers[5].properties[i]);
+	}
+	memset(peers + 5, 0, sizeof(peers[5]));
+	return true;
+}
+
+static void related_discovery_compatibility(void) {
+	const char *accepted[] = { "Imager Agent", "Imager Agent #2 @ remote", "Guider Agent", "Guider Agent #2 @ remote", "Astrometry Agent", "Astrometry Agent #2 @ remote", "ASTAP Agent", "ASTAP Agent #2 @ remote", "INDIGO Solver Agent", "INDIGO Solver Agent #2 @ remote", "Solver Agent", "Solver Agent #2 @ remote" };
+	const char *rejected[] = { "Unrelated Agent", "Not Solver Agent", "solver Agent", "INDIGO Solver Agen", "Not Platesolver Agent", "platesolver Agent", "Platesolver Agen" };
+	for (int i = 0; i < ARRAY_SIZE(accepted); i++) {
+		CHECK(related_discovery_case(accepted[i], true));
+	}
+	for (int i = 0; i < ARRAY_SIZE(rejected); i++) {
+		CHECK(related_discovery_case(rejected[i], false));
+	}
+}
+
+static void related_platesolver_discovery(void) {
+	const char *names[] = { "Platesolver Agent", "Platesolver Agent #2", "Platesolver Agent @ remote", "Platesolver Agent #2 @ remote" };
+	for (int i = 0; i < ARRAY_SIZE(names); i++) {
+		CHECK(related_discovery_case(names[i], true));
+	}
+}
+
 static void negative_site_fits(void) {
 	CHECK(select_peer(5, false, false));
 	const double coordinates[] = { -0.5, -0.125, -12.125, 0, 0.125, 12.125 };
@@ -2435,6 +2478,8 @@ static const indigo_test_case tests[] = {
 	{ "unpark failure legacy", unpark_failure_legacy },
 	{ "legacy dome slew", legacy_dome_slew },
 	{ "geometry and threshold", geometry_and_threshold },
+	{ "related discovery compatibility", related_discovery_compatibility },
+	{ "related platesolver discovery", related_platesolver_discovery },
 	{ "related solver filters", related_solver_filters },
 	{ "related INDIGO solver filter", related_indigo_solver_filter },
 	{ "related invalid filter", related_invalid_filter },

@@ -1,0 +1,38 @@
+DISCOVERY Imager Agent listed=1 selected=1
+DISCOVERY Imager Agent detached=1 absent=1
+DISCOVERY Imager Agent #2 @ remote listed=1 selected=1
+DISCOVERY Imager Agent #2 @ remote detached=1 absent=1
+DISCOVERY Guider Agent listed=1 selected=1
+DISCOVERY Guider Agent detached=1 absent=1
+DISCOVERY Guider Agent #2 @ remote listed=1 selected=1
+DISCOVERY Guider Agent #2 @ remote detached=1 absent=1
+DISCOVERY Astrometry Agent listed=1 selected=1
+DISCOVERY Astrometry Agent detached=1 absent=1
+DISCOVERY Astrometry Agent #2 @ remote listed=1 selected=1
+DISCOVERY Astrometry Agent #2 @ remote detached=1 absent=1
+DISCOVERY ASTAP Agent listed=1 selected=1
+DISCOVERY ASTAP Agent detached=1 absent=1
+DISCOVERY ASTAP Agent #2 @ remote listed=1 selected=1
+DISCOVERY ASTAP Agent #2 @ remote detached=1 absent=1
+DISCOVERY INDIGO Solver Agent listed=1 selected=1
+DISCOVERY INDIGO Solver Agent detached=1 absent=1
+DISCOVERY INDIGO Solver Agent #2 @ remote listed=1 selected=1
+DISCOVERY INDIGO Solver Agent #2 @ remote detached=1 absent=1
+DISCOVERY Solver Agent listed=1 selected=1
+DISCOVERY Solver Agent detached=1 absent=1
+DISCOVERY Solver Agent #2 @ remote listed=1 selected=1
+DISCOVERY Solver Agent #2 @ remote detached=1 absent=1
+DISCOVERY Unrelated Agent listed=0 selected=0
+DISCOVERY Unrelated Agent detached=1 absent=1
+DISCOVERY Not Solver Agent listed=0 selected=0
+DISCOVERY Not Solver Agent detached=1 absent=1
+DISCOVERY solver Agent listed=0 selected=0
+DISCOVERY solver Agent detached=1 absent=1
+DISCOVERY INDIGO Solver Agen listed=0 selected=0
+DISCOVERY INDIGO Solver Agen detached=1 absent=1
+DISCOVERY Not Platesolver Agent listed=0 selected=0
+DISCOVERY Not Platesolver Agent detached=1 absent=1
+DISCOVERY platesolver Agent listed=0 selected=0
+DISCOVERY platesolver Agent detached=1 absent=1
+DISCOVERY Platesolver Agen listed=0 selected=0
+DISCOVERY Platesolver Agen detached=1 absent=1

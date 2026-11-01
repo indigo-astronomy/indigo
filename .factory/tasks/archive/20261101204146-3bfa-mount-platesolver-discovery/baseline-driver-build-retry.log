@@ -1,0 +1,8 @@
+Definition:
+Sources:    indigo_agent_mount.c
+Archive:    indigo_agent_mount.a
+SO library: indigo_agent_mount.dylib
+indigo_agent_mount.o
+
+/usr/bin/libtool -static -o /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/drivers/indigo_agent_mount.a indigo_agent_mount.o
+/usr/bin/clang -shared -o /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/drivers/indigo_agent_mount.dylib -Wl,-force_load /private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/drivers/indigo_agent_mount.a    -lindigo -g -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101204146-3bfa-mount-platesolver-discovery/build/lib -lusb-1.0

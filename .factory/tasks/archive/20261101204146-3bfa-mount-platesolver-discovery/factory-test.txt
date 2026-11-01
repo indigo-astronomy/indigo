@@ -1,0 +1,8 @@
+Working directory: /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+..............................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 190 tests in 107.958s
+
+OK
+Configured test commands passed. Assess coverage separately.

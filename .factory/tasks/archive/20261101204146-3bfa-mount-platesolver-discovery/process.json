@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "task": "20261101204146-3bfa-mount-platesolver-discovery",
+  "scope": [
+    "indigo_drivers/agent_mount/indigo_agent_mount.c",
+    "indigo_test/integration/test_agent_mount.c",
+    ".factory/completions/20261101204146-3bfa-mount-platesolver-discovery.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101204146-3bfa-mount-platesolver-discovery.json": [
+      "100644",
+      "blob",
+      "dfa3b516f6d80b9ceecaad2ff166de2fc5ecd1cc"
+    ],
+    "indigo_drivers/agent_mount/indigo_agent_mount.c": [
+      "100644",
+      "blob",
+      "3f9442660de7e51ff0a5435837df4ed3880e0ef1"
+    ],
+    "indigo_test/integration/test_agent_mount.c": [
+      "100644",
+      "blob",
+      "1a34112defd60eac07c46cc2620b56c7381c3af9"
+    ]
+  }
+}

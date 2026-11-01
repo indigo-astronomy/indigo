@@ -1,0 +1,7 @@
+Running Mount Agent integration
+integration/test_agent_mount.c:2102: listed == accepted
+integration/test_agent_mount.c:2137: related_discovery_case(names[i], true)
+  FAIL related platesolver discovery
+Mount Agent integration: 2 test(s) failed
+Failed case: related platesolver discovery (status 256)
+Mount Agent: 0/1 cases passed (including cleanup)
