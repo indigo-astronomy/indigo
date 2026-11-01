@@ -1,0 +1,47 @@
+21:07:57.139548 Application: Failed to open  (No such file or directory)
+21:08:02.440413 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count 0
+21:08:07.729630 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count 17
+21:08:13.018269 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count 207
+21:08:18.315513 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count -16
+Running Trutek wheel serial simulator integration tests
+Slot range 1..5
+  PASS metadata_and_property_completeness
+  PASS slot_count_comes_from_the_device
+STATE five_slot_wheel_is_reported 2 value=5 target=5
+STATE five_slot_wheel_is_reported 1 value=5 target=5
+  PASS five_slot_wheel_is_reported
+STATE moves_through_first_intermediate_and_last_slots 2 value=4 target=4
+STATE moves_through_first_intermediate_and_last_slots 1 value=4 target=4
+STATE moves_through_first_intermediate_and_last_slots 2 value=8 target=8
+STATE moves_through_first_intermediate_and_last_slots 1 value=8 target=8
+STATE moves_through_first_intermediate_and_last_slots 2 value=1 target=1
+STATE moves_through_first_intermediate_and_last_slots 1 value=1 target=1
+STATE moves_through_first_intermediate_and_last_slots 2 value=2 target=2
+STATE moves_through_first_intermediate_and_last_slots 1 value=2 target=2
+  PASS moves_through_first_intermediate_and_last_slots
+STATE reselecting_the_current_slot_completes 2 value=3 target=3
+STATE reselecting_the_current_slot_completes 1 value=3 target=3
+STATE reselecting_the_current_slot_completes 2 value=3 target=3
+STATE reselecting_the_current_slot_completes 1 value=3 target=3
+  PASS reselecting_the_current_slot_completes
+STATE stuck_wheel_alerts_after_the_move_deadline 2 value=3 target=3
+STATE stuck_wheel_alerts_after_the_move_deadline 3 value=0 target=3
+Stuck move ended in ALERT after 20.3 s
+STATE stuck_wheel_alerts_after_the_move_deadline 2 value=1 target=1
+STATE stuck_wheel_alerts_after_the_move_deadline 1 value=1 target=1
+  PASS stuck_wheel_alerts_after_the_move_deadline
+STATE disconnect_during_a_stuck_move_is_served 2 value=4 target=4
+Disconnect during a stuck move took 0.1 s
+STATE disconnect_during_a_stuck_move_is_served 2 value=1 target=1
+STATE disconnect_during_a_stuck_move_is_served 1 value=1 target=1
+  PASS disconnect_during_a_stuck_move_is_served
+STATE reconnect_rebuilds_the_slot_table 2 value=4 target=4
+STATE reconnect_rebuilds_the_slot_table 1 value=4 target=4
+STATE reconnect_rebuilds_the_slot_table 2 value=2 target=2
+STATE reconnect_rebuilds_the_slot_table 1 value=2 target=2
+  PASS reconnect_rebuilds_the_slot_table
+  PASS repeated_disconnect_is_tolerated
+  PASS silent_port_is_refused
+  PASS malformed_filter_count_is_refused
+  PASS largest_allocated_filter_count_is_accepted
+Trutek wheel serial simulator integration tests: all tests passed

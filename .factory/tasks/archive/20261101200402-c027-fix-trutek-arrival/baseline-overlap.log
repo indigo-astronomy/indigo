@@ -1,0 +1,3 @@
+Running Trutek wheel serial simulator integration tests
+  PASS overlapping_move_keeps_original_target
+Trutek wheel serial simulator integration tests: all tests passed

@@ -1,0 +1,70 @@
+In file included from indigo_test/integration/test_wheel_trutek_simulator.c:29:
+In file included from indigo_test/integration/serial_simulator_test_common.h:34:
+In file included from indigo_test/integration/simulator_test_common.h:33:
+indigo_test/integration/../test_runner.h:172:14: error: unused function 'indigo_test_mkdtemp_home' [-Werror,-Wunused-function]
+  172 | static char *indigo_test_mkdtemp_home(char *template_path) {
+      |              ^~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/../test_runner.h:182:13: error: unused function 'indigo_test_use_private_home' [-Werror,-Wunused-function]
+  182 | static bool indigo_test_use_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/../test_runner.h:192:13: error: unused function 'indigo_test_remove_private_home' [-Werror,-Wunused-function]
+  192 | static void indigo_test_remove_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/../test_runner.h:248:13: error: unused function 'indigo_test_plan' [-Werror,-Wunused-function]
+  248 | static void indigo_test_plan(const char *suite_name, int count, const char *filter) {
+      |             ^~~~~~~~~~~~~~~~
+In file included from indigo_test/integration/test_wheel_trutek_simulator.c:29:
+In file included from indigo_test/integration/serial_simulator_test_common.h:34:
+indigo_test/integration/simulator_test_common.h:152:12: error: unused function 'updates_without_define' [-Werror,-Wunused-function]
+  152 | static int updates_without_define(void) {
+      |            ^~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:351:15: error: unused function 'cached_number_value' [-Werror,-Wunused-function]
+  351 | static double cached_number_value(const char *property_name, const char *item_name) {
+      |               ^~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:359:13: error: unused function 'assert_switch_item_value' [-Werror,-Wunused-function]
+  359 | static void assert_switch_item_value(const char *property_name, const char *item_name, bool expected) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:369:13: error: unused function 'assert_any_light_item_active' [-Werror,-Wunused-function]
+  369 | static void assert_any_light_item_active(const char *property_name, const char * const *item_names, int count) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:401:13: error: unused function 'wait_for_property_state_seen_after' [-Werror,-Wunused-function]
+  401 | static bool wait_for_property_state_seen_after(const char *property_name, indigo_property_state state, unsigned int revision) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:411:13: error: unused function 'wait_for_property_not_busy' [-Werror,-Wunused-function]
+  411 | static bool wait_for_property_not_busy(const char *property_name) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:422:13: error: unused function 'wait_for_property_not_busy_after' [-Werror,-Wunused-function]
+  422 | static bool wait_for_property_not_busy_after(const char *property_name, unsigned int revision) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:540:13: error: unused function 'save_configuration' [-Werror,-Wunused-function]
+  540 | static bool save_configuration(void) {
+      |             ^~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:639:13: error: unused function 'assert_rejected_number_change' [-Werror,-Wunused-function]
+  639 | static bool assert_rejected_number_change(const char *property_name, const char *item_name, double value) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:643:13: error: unused function 'assert_rejected_switch_change' [-Werror,-Wunused-function]
+  643 | static bool assert_rejected_switch_change(const char *property_name, const char *item_name) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:686:13: error: unused function 'assert_simulator_driver_info' [-Werror,-Wunused-function]
+  686 | static void assert_simulator_driver_info(const simulator_driver_case *driver_case) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:697:13: error: unused function 'assert_simulator_properties' [-Werror,-Wunused-function]
+  697 | static void assert_simulator_properties(const simulator_driver_case *driver_case) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:729:13: error: unused function 'start_connected_simulator' [-Werror,-Wunused-function]
+  729 | static void start_connected_simulator(const simulator_driver_case *driver_case) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~
+indigo_test/integration/simulator_test_common.h:740:13: error: unused function 'stop_connected_simulator' [-Werror,-Wunused-function]
+  740 | static void stop_connected_simulator(const simulator_driver_case *driver_case) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~
+In file included from indigo_test/integration/test_wheel_trutek_simulator.c:29:
+indigo_test/integration/serial_simulator_test_common.h:59:12: error: unused function 'stable_descriptor_count' [-Werror,-Wunused-function]
+   59 | static int stable_descriptor_count(void) {
+      |            ^~~~~~~~~~~~~~~~~~~~~~~
+fatal error: too many errors emitted, stopping now [-ferror-limit=]
+20 errors generated.
+In file included from indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c:36:
+indigo_drivers/wheel_trutek/wheel_trutek_simulator/../../../indigo_test/simulator_common/serial_simulator_common.h:99:13: error: unused function 'serial_simulator_trace_line' [-Werror,-Wunused-function]
+   99 | static void serial_simulator_trace_line(bool trace, const char *prefix, const char *line) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.

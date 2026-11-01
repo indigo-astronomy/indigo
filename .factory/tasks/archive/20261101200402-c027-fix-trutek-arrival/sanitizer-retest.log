@@ -1,0 +1,28 @@
+21:12:11.629773 Application: Failed to open  (No such file or directory)
+21:12:16.939653 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 0
+21:12:22.239856 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 17
+21:12:27.552384 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 207
+21:12:32.886189 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count -16
+Running Trutek wheel serial simulator integration tests
+Slot range 1..5
+  PASS metadata_and_property_completeness
+  PASS slot_count_comes_from_the_device
+  PASS five_slot_wheel_is_reported
+  PASS moves_through_first_intermediate_and_last_slots
+  PASS reselecting_the_current_slot_completes
+Stuck move ended in ALERT after 20.2 s
+  PASS stuck_wheel_alerts_after_the_move_deadline
+Disconnect during a stuck move took 0.1 s
+  PASS disconnect_during_a_stuck_move_is_served
+  PASS reconnect_rebuilds_the_slot_table
+  PASS repeated_disconnect_is_tolerated
+  PASS silent_port_is_refused
+  PASS malformed_filter_count_is_refused
+  PASS largest_allocated_filter_count_is_accepted
+  PASS wrong_slot_acknowledgement_alerts
+  PASS wrong_slot_completion_alerts
+  PASS malformed_acknowledgement_preserves_last_slot
+  PASS malformed_completion_preserves_moving_slot
+  PASS matching_acknowledgement_completes
+  PASS overlapping_move_keeps_original_target
+Trutek wheel serial simulator integration tests: all tests passed

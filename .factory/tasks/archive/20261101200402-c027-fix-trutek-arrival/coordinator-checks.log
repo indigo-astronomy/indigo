@@ -1,0 +1,18 @@
+$ ./.factory/scripts/check
+Working directory: /private/tmp/indigo-20261101200402-c027-fix-trutek-arrival
+[check] git diff --check
+[check] python3 .factory/scripts/findings.py check
+Findings valid: 44 active, 211 archived; task evidence checks passed.
+[check] python3 .factory/scripts/decision_index.py --check
+Decision index current.
+[check] python3 .factory/scripts/validate_project.py
+Factory project boundaries valid.
+Configured check commands passed. Assess coverage separately.
+exit 0
+
+$ ./.factory/scripts/security
+Working directory: /private/tmp/indigo-20261101200402-c027-fix-trutek-arrival
+[security] python3 .factory/scripts/validate_project.py --security
+Factory local security boundaries valid.
+Configured security commands passed. Assess coverage separately.
+exit 0

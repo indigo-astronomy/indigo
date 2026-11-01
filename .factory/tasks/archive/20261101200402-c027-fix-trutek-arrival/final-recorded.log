@@ -1,0 +1,102 @@
++ make -C /private/tmp/indigo-20261101200402-c027-fix-trutek-arrival/indigo_drivers/wheel_trutek -f ../../Makefile.drv all
+Definition: indigo_wheel_trutek.driver
+Sources:    indigo_wheel_trutek.c indigo_wheel_trutek_main.c
+Archive:    indigo_wheel_trutek.a
+SO library: indigo_wheel_trutek.dylib
+indigo_wheel_trutek.o
+Executable: indigo_wheel_trutek
+
++ make check-lib build/integration/test_wheel_trutek_simulator
+make: `build/integration/test_wheel_trutek_simulator' is up to date.
++ ./build/integration/test_wheel_trutek_simulator
+21:10:11.845924 Application: Failed to open  (No such file or directory)
+21:10:17.139631 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 0
+21:10:22.448394 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 17
+21:10:27.739696 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 207
+21:10:33.024030 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count -16
+integration/test_wheel_trutek_simulator.c:357: assertion failed: fabs(slot->number.value - actual) < .001
+integration/test_wheel_trutek_simulator.c:357: assertion failed: fabs(slot->number.value - actual) < .001
+Running Trutek wheel serial simulator integration tests
+Slot range 1..5
+  PASS metadata_and_property_completeness
+  PASS slot_count_comes_from_the_device
+STATE five_slot_wheel_is_reported 2 value=5 target=5
+STATE five_slot_wheel_is_reported 1 value=5 target=5
+  PASS five_slot_wheel_is_reported
+STATE moves_through_first_intermediate_and_last_slots 2 value=4 target=4
+STATE moves_through_first_intermediate_and_last_slots 1 value=4 target=4
+STATE moves_through_first_intermediate_and_last_slots 2 value=8 target=8
+STATE moves_through_first_intermediate_and_last_slots 1 value=8 target=8
+STATE moves_through_first_intermediate_and_last_slots 2 value=1 target=1
+STATE moves_through_first_intermediate_and_last_slots 1 value=1 target=1
+STATE moves_through_first_intermediate_and_last_slots 2 value=2 target=2
+STATE moves_through_first_intermediate_and_last_slots 1 value=2 target=2
+  PASS moves_through_first_intermediate_and_last_slots
+STATE reselecting_the_current_slot_completes 2 value=3 target=3
+STATE reselecting_the_current_slot_completes 1 value=3 target=3
+STATE reselecting_the_current_slot_completes 2 value=3 target=3
+STATE reselecting_the_current_slot_completes 1 value=3 target=3
+  PASS reselecting_the_current_slot_completes
+STATE stuck_wheel_alerts_after_the_move_deadline 2 value=3 target=3
+STATE stuck_wheel_alerts_after_the_move_deadline 3 value=0 target=3
+Stuck move ended in ALERT after 20.3 s
+STATE stuck_wheel_alerts_after_the_move_deadline 2 value=1 target=1
+STATE stuck_wheel_alerts_after_the_move_deadline 1 value=1 target=1
+  PASS stuck_wheel_alerts_after_the_move_deadline
+STATE disconnect_during_a_stuck_move_is_served 2 value=4 target=4
+Disconnect during a stuck move took 0.1 s
+STATE disconnect_during_a_stuck_move_is_served 2 value=1 target=1
+STATE disconnect_during_a_stuck_move_is_served 1 value=1 target=1
+  PASS disconnect_during_a_stuck_move_is_served
+STATE reconnect_rebuilds_the_slot_table 2 value=4 target=4
+STATE reconnect_rebuilds_the_slot_table 1 value=4 target=4
+STATE reconnect_rebuilds_the_slot_table 2 value=2 target=2
+STATE reconnect_rebuilds_the_slot_table 1 value=2 target=2
+  PASS reconnect_rebuilds_the_slot_table
+  PASS repeated_disconnect_is_tolerated
+  PASS silent_port_is_refused
+  PASS malformed_filter_count_is_refused
+  PASS largest_allocated_filter_count_is_accepted
+STATE wrong_slot_acknowledgement_alerts 2 value=3 target=3
+STATE wrong_slot_acknowledgement_alerts 3 value=2 target=3
+STATE wrong_slot_acknowledgement_alerts 2 value=4 target=4
+STATE wrong_slot_acknowledgement_alerts 1 value=4 target=4
+  PASS wrong_slot_acknowledgement_alerts
+STATE wrong_slot_completion_alerts 2 value=3 target=3
+STATE wrong_slot_completion_alerts 3 value=2 target=3
+STATE wrong_slot_completion_alerts 2 value=4 target=4
+STATE wrong_slot_completion_alerts 1 value=4 target=4
+  PASS wrong_slot_completion_alerts
+STATE malformed_acknowledgement_preserves_last_slot 2 value=3 target=3
+STATE malformed_acknowledgement_preserves_last_slot 3 value=3 target=3
+STATE malformed_acknowledgement_preserves_last_slot 2 value=3 target=3
+STATE malformed_acknowledgement_preserves_last_slot 3 value=3 target=3
+  FAIL malformed_acknowledgement_preserves_last_slot
+STATE malformed_completion_preserves_moving_slot 2 value=3 target=3
+STATE malformed_completion_preserves_moving_slot 3 value=0 target=3
+STATE malformed_completion_preserves_moving_slot 2 value=4 target=4
+STATE malformed_completion_preserves_moving_slot 1 value=4 target=4
+STATE malformed_completion_preserves_moving_slot 2 value=3 target=3
+STATE malformed_completion_preserves_moving_slot 3 value=0 target=3
+STATE malformed_completion_preserves_moving_slot 2 value=4 target=4
+STATE malformed_completion_preserves_moving_slot 1 value=4 target=4
+STATE malformed_completion_preserves_moving_slot 2 value=3 target=3
+STATE malformed_completion_preserves_moving_slot 3 value=0 target=3
+STATE malformed_completion_preserves_moving_slot 2 value=4 target=4
+STATE malformed_completion_preserves_moving_slot 1 value=4 target=4
+  PASS malformed_completion_preserves_moving_slot
+STATE matching_acknowledgement_completes 2 value=3 target=3
+STATE matching_acknowledgement_completes 1 value=3 target=3
+STATE matching_acknowledgement_completes 2 value=4 target=4
+STATE matching_acknowledgement_completes 1 value=4 target=4
+  PASS matching_acknowledgement_completes
+STATE overlapping_move_keeps_original_target 2 value=5 target=5
+STATE overlapping_move_keeps_original_target 1 value=5 target=5
+  PASS overlapping_move_keeps_original_target
+Trutek wheel serial simulator integration tests: 2 test(s) failed
+144 driver(s) written to /private/tmp/indigo-20261101200402-c027-fix-trutek-arrival/TEST_SUMMARY.md
+
+FAILED: test_wheel_trutek_simulator
+wheel_trutek: 18/17 Failed
+recorded in indigo_drivers/wheel_trutek/README.md:
+2026-11-01 21:09 3.0.0.10 mac arm64 simulator 18/17 Failed

@@ -1,0 +1,14 @@
+21:07:50.206484 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count 0
+21:07:55.519005 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count 17
+21:08:00.812908 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count 207
+21:08:06.088904 Application: indigo_wheel_trutek[trutek_open:81]: Invalid filter count -16
+integration/test_wheel_trutek_simulator.c:354: assertion failed: wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected)
+integration/test_wheel_trutek_simulator.c:354: assertion failed: wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected)
+integration/test_wheel_trutek_simulator.c:354: assertion failed: wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected)
+integration/test_wheel_trutek_simulator.c:354: assertion failed: wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected)
+integration/test_wheel_trutek_simulator.c:354: assertion failed: wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected)
+Running Trutek wheel serial simulator integration tests
+  PASS malformed_filter_count_is_refused
+  FAIL malformed_acknowledgement_preserves_last_slot
+  FAIL malformed_completion_preserves_moving_slot
+Trutek wheel serial simulator integration tests: 5 test(s) failed

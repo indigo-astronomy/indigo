@@ -1,0 +1,6 @@
+integration/test_wheel_trutek_simulator.c:354: assertion failed: wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected)
+integration/test_wheel_trutek_simulator.c:354: assertion failed: wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected)
+Running Trutek wheel serial simulator integration tests
+  FAIL wrong_slot_acknowledgement_alerts
+  FAIL wrong_slot_completion_alerts
+Trutek wheel serial simulator integration tests: 2 test(s) failed
