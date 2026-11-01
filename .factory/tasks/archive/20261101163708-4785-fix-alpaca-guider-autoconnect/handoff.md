@@ -41,10 +41,10 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - 2026-11-01 security-reviewer → coordinator: pass; delivery pending owner approval.
 
 ## Final delivery
-Archive after this handoff; integration and publication recorded as pending until the owner confirms.
+Owner approved the commit on 2026-11-01. Task commit aabadb28b. Its committed-range process check failed on process.json only (the review verdicts were recorded in `reviews`, which the check reserves for version 1 cross-review packets, and the completion/finding paths were missing from `scope`); the sources were unchanged, so the correction is a second commit instead of a rewrite, per the repository rule against amending. Integration: fast-forward of local master after the corrected check passes; no push.
 
 ## Portable process evidence
-process.json: scope globs, version 2 content identities of the four staged files, check references to verification.md.
+process.json: scope globs, version 2 content identities of the four source files, check references to verification.md; review verdicts are in quality-review.md and security.md, `reviews` stays empty.
 
 ## Central findings handoff
 - FND-20261101163708-4785-fix-alpaca-guider-autoconnect-001, functional, medium, closed as fixed with evidence in verification.md

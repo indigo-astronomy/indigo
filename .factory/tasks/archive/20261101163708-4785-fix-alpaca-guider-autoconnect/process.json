@@ -4,7 +4,8 @@
   "scope": [
     "indigo_drivers/agent_alpaca/*",
     "indigo_test/integration/test_agent_alpaca_mapping.c",
-    ".factory/findings/*"
+    ".factory/findings/archive/FND-20261101163708-4785-fix-alpaca-guider-autoconnect-001.json",
+    ".factory/completions/20261101163708-4785-fix-alpaca-guider-autoconnect.json"
   ],
   "checks": [
     {
@@ -36,18 +37,7 @@
     }
   ],
   "risk_reviews": {},
-  "reviews": [
-    {
-      "role": "quality-reviewer",
-      "report": "quality-review.md",
-      "verdict": "pass"
-    },
-    {
-      "role": "security-reviewer",
-      "report": "security.md",
-      "verdict": "pass"
-    }
-  ],
+  "reviews": [],
   "reviewed_content": {
     "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": [
       "100644",
