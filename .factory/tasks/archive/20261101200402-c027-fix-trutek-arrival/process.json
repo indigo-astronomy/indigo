@@ -1,0 +1,91 @@
+{
+  "version": 2,
+  "task": "20261101200402-c027-fix-trutek-arrival",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo_drivers/wheel_trutek/README.md",
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.c",
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver",
+    "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c",
+    "indigo_test/integration/test_wheel_trutek_simulator.c",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-007.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-007.json",
+    ".factory/completions/20261101200402-c027-fix-trutek-arrival.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101200402-c027-fix-trutek-arrival.json": [
+      "100644",
+      "blob",
+      "99e6943334f7cfa6d2d446e755774b3aba7702d6"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-007.json": null,
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-007.json": [
+      "100644",
+      "blob",
+      "556b7c43e58fa8f6fe1479f7e0e21528eba606d3"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "274b00fb9b3c9070cfbca9aad44b06a1852e5fb6"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "ad00099c5f0372dee30356ae15bdf705f3c83a5a"
+    ],
+    "indigo_drivers/wheel_trutek/README.md": [
+      "100644",
+      "blob",
+      "28c9499bc26fa32c28832a1983a1dcb0b40d5d6a"
+    ],
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.c": [
+      "100644",
+      "blob",
+      "3ab95ced5b715f602eb1b0f7aa2c0b5e6a8f6915"
+    ],
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver": [
+      "100644",
+      "blob",
+      "7a7d301a2d5b28fdde947230e9d42b7fa7be1971"
+    ],
+    "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c": [
+      "100644",
+      "blob",
+      "c747a9eec74c4a256b7fb38d6ed2763fab9459be"
+    ],
+    "indigo_test/integration/test_wheel_trutek_simulator.c": [
+      "100644",
+      "blob",
+      "b23dfba4c0b3065d5eb705706dd10047014b1198"
+    ]
+  }
+}

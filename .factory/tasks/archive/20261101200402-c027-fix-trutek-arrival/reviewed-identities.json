@@ -1,0 +1,9 @@
+{
+  "MIGRATION_STATUS.md": "274b00fb9b3c9070cfbca9aad44b06a1852e5fb6",
+  "TEST_SUMMARY.md": "ad00099c5f0372dee30356ae15bdf705f3c83a5a",
+  "indigo_drivers/wheel_trutek/README.md": "28c9499bc26fa32c28832a1983a1dcb0b40d5d6a",
+  "indigo_drivers/wheel_trutek/indigo_wheel_trutek.c": "3ab95ced5b715f602eb1b0f7aa2c0b5e6a8f6915",
+  "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver": "7a7d301a2d5b28fdde947230e9d42b7fa7be1971",
+  "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c": "c747a9eec74c4a256b7fb38d6ed2763fab9459be",
+  "indigo_test/integration/test_wheel_trutek_simulator.c": "b23dfba4c0b3065d5eb705706dd10047014b1198"
+}

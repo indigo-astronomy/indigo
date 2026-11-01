@@ -53,6 +53,13 @@ static const char *const slot_offset_items[] = {
 	WHEEL_SLOT_OFFSET_7_ITEM_NAME, WHEEL_SLOT_OFFSET_8_ITEM_NAME
 };
 
+static indigo_result trutek_trace_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (getenv("INDIGO_SIMULATOR_TRACE_DIR") != NULL && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
+		printf("STATE %s %d value=%g target=%g\n", indigo_current_test_name, property->state, property->items[0].number.value, property->items[0].number.target);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
 static bool start_trutek(external_serial_simulator *simulator, const char **arguments) {
 	if (arguments == NULL) {
 		return start_external_serial_simulator(simulator, WHEEL_TRUTEK_SIMULATOR_EXECUTABLE);
@@ -336,7 +343,71 @@ cleanup:
 	tear_down_serial_driver(&trutek_wheel);
 }
 
+static void assert_move_reply(const char *option, const char *payload, indigo_property_state expected, double actual) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { option, payload, NULL };
+	SERIAL_CHECK_TRUE(start_trutek(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&trutek_wheel, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(request_slot(3));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, expected));
+	indigo_item *slot = find_cached_item(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME);
+	SERIAL_CHECK_TRUE(slot != NULL && fabs(slot->number.target - 3) < .001);
+	SERIAL_CHECK_TRUE(fabs(slot->number.value - actual) < .001);
+	// A subsequent valid transaction recovers without reconnecting.
+	SERIAL_CHECK_TRUE(select_slot(4));
+cleanup:
+	if (online) {
+		stop_serial_driver(&trutek_wheel);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
+static void wrong_slot_acknowledgement_alerts(void) {
+	assert_move_reply("--move-byte", "2", INDIGO_ALERT_STATE, 2);
+}
+
+static void wrong_slot_completion_alerts(void) {
+	assert_move_reply("--query-byte", "50", INDIGO_ALERT_STATE, 2);
+}
+
+static void malformed_acknowledgement_preserves_last_slot(void) {
+	assert_move_reply("--move-byte", "6", INDIGO_ALERT_STATE, 1);
+	assert_move_reply("--move-byte", "255", INDIGO_ALERT_STATE, 1);
+}
+
+static void malformed_completion_preserves_moving_slot(void) {
+	assert_move_reply("--query-byte", "47", INDIGO_ALERT_STATE, 0);
+	assert_move_reply("--query-byte", "54", INDIGO_ALERT_STATE, 0);
+	assert_move_reply("--query-byte", "255", INDIGO_ALERT_STATE, 0);
+}
+
+static void matching_acknowledgement_completes(void) {
+	assert_move_reply("--move-byte", "3", INDIGO_OK_STATE, 3);
+}
+
+static void overlapping_move_keeps_original_target(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_trutek(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&trutek_wheel, simulator.port));
+	online = true;
+	SERIAL_CHECK_TRUE(request_slot(5));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(request_slot(2));
+	SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_item *slot = find_cached_item(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME);
+	SERIAL_CHECK_TRUE(slot != NULL && fabs(slot->number.target - 5) < .001 && fabs(slot->number.value - 5) < .001);
+cleanup:
+	if (online) {
+		stop_serial_driver(&trutek_wheel);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
+	simulator_test_client.update_property = trutek_trace_update;
 	const indigo_test_case tests[] = {
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "slot_count_comes_from_the_device", slot_count_comes_from_the_device },
@@ -349,7 +420,13 @@ int main(void) {
 		{ "repeated_disconnect_is_tolerated", repeated_disconnect_is_tolerated },
 		{ "silent_port_is_refused", silent_port_is_refused },
 		{ "malformed_filter_count_is_refused", malformed_filter_count_is_refused },
-		{ "largest_allocated_filter_count_is_accepted", largest_allocated_filter_count_is_accepted }
+		{ "largest_allocated_filter_count_is_accepted", largest_allocated_filter_count_is_accepted },
+		{ "wrong_slot_acknowledgement_alerts", wrong_slot_acknowledgement_alerts },
+		{ "wrong_slot_completion_alerts", wrong_slot_completion_alerts },
+		{ "malformed_acknowledgement_preserves_last_slot", malformed_acknowledgement_preserves_last_slot },
+		{ "malformed_completion_preserves_moving_slot", malformed_completion_preserves_moving_slot },
+		{ "matching_acknowledgement_completes", matching_acknowledgement_completes },
+		{ "overlapping_move_keeps_original_target", overlapping_move_keeps_original_target }
 	};
 	return indigo_run_tests("Trutek wheel serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }

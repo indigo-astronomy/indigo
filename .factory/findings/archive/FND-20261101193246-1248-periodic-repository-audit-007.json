@@ -2,7 +2,7 @@
   "title": "Trutek wheel reports success at a slot different from its target",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-c027-fix-trutek-arrival",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Both movement acknowledgement and finalizer treat any nonzero slot as OK. Query decoding accepts an ASCII slot without range validation. For requested slot 3, a well-framed stopped status at slot 2 publishes OK with value 2 and target 3. This can let imaging proceed through the wrong filter. Require an in-range actual slot equal to the target for OK and report stopped-elsewhere as ALERT; test wrong-slot acknowledgement and completion. Source-contract confirmation only, no hardware run.",
   "evidence": "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver:84\u201395,112\u2013118; repository-review.md confirmed finding 7",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-c027-fix-trutek-arrival/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-007"
 }

@@ -1,0 +1,21 @@
+disconnect_during_a_stuck_move_is_served-0.events: IDENTICAL
+five_slot_wheel_is_reported-0.events: IDENTICAL
+largest_allocated_filter_count_is_accepted-0.events: IDENTICAL
+malformed_filter_count_is_refused-0.events: IDENTICAL
+malformed_filter_count_is_refused-1.events: IDENTICAL
+malformed_filter_count_is_refused-2.events: IDENTICAL
+malformed_filter_count_is_refused-3.events: IDENTICAL
+metadata_and_property_completeness-0.events: IDENTICAL
+moves_through_first_intermediate_and_last_slots-0.events: IDENTICAL
+reconnect_rebuilds_the_slot_table-0.events: IDENTICAL
+repeated_disconnect_is_tolerated-0.events: IDENTICAL
+reselecting_the_current_slot_completes-0.events: IDENTICAL
+silent_port_is_refused-0.events: IDENTICAL
+slot_count_comes_from_the_device-0.events: IDENTICAL
+stuck_wheel_alerts_after_the_move_deadline-0.events: IDENTICAL
+PUBLIC five_slot_wheel_is_reported: IDENTICAL
+PUBLIC moves_through_first_intermediate_and_last_slots: IDENTICAL
+PUBLIC reselecting_the_current_slot_completes: IDENTICAL
+PUBLIC stuck_wheel_alerts_after_the_move_deadline: IDENTICAL
+PUBLIC disconnect_during_a_stuck_move_is_served: IDENTICAL
+PUBLIC reconnect_rebuilds_the_slot_table: IDENTICAL
