@@ -1,0 +1,83 @@
+{
+  "version": 2,
+  "task": "20261101200402-fcb2-fix-solver-fits-header",
+  "scope": [
+    "TEST_SUMMARY.md",
+    "indigo_drivers/agent_solver/README.md",
+    "indigo_drivers/agent_solver/indigo_agent_solver.c",
+    "indigo_drivers/agent_solver/indigo_solver.c",
+    "indigo_test/unit/test_agent_solver_core.c",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-006.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-006.json",
+    ".factory/findings/active/FND-20261101200402-fcb2-fix-solver-fits-header-001.json",
+    ".factory/completions/20261101200402-fcb2-fix-solver-fits-header.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101200402-fcb2-fix-solver-fits-header.json": [
+      "100644",
+      "blob",
+      "290d8dd3a4b61b0657464b335cc8abe406a4cb50"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-006.json": null,
+    ".factory/findings/active/FND-20261101200402-fcb2-fix-solver-fits-header-001.json": [
+      "100644",
+      "blob",
+      "f8ee0b4208440eb7a8aa9e4648fbf4581a2183bf"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-006.json": [
+      "100644",
+      "blob",
+      "96df4d4faff79ba5ebe816b300431e29160eee9b"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "06b2114c005dcb42d0c8364951886f9d44da6bc3"
+    ],
+    "indigo_drivers/agent_solver/README.md": [
+      "100644",
+      "blob",
+      "8fc01692123bd9d37344f6def4e04926af1af4c6"
+    ],
+    "indigo_drivers/agent_solver/indigo_agent_solver.c": [
+      "100644",
+      "blob",
+      "02ea1d676ff2242c452c02e81de17a3a14a1d732"
+    ],
+    "indigo_drivers/agent_solver/indigo_solver.c": [
+      "100644",
+      "blob",
+      "691b24756053329c495a8faac9d4b5602398e691"
+    ],
+    "indigo_test/unit/test_agent_solver_core.c": [
+      "100644",
+      "blob",
+      "1cc6c291c1d27384726cebdfd3a284a3f64c7a65"
+    ]
+  }
+}

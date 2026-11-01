@@ -1,0 +1,4 @@
+Original passing cases: 19
+Final passing cases: 21
+Original cases missing in final: []
+New passing cases: ['PASS load_fits_rejects_malformed_header_integers', 'PASS load_fits_supported_header_values']

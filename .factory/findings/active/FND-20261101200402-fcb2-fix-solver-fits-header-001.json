@@ -1,0 +1,19 @@
+{
+  "title": "Catalog builder subtracts foreign star pointers before validating membership",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101200402-fcb2-fix-solver-fits-header",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_solver_catalog_build subtracts each quad star pointer from stars before checking range. Foreign-object subtraction is undefined; original and006-fixed sanitizer source both accept the outside pointer in index_file_roundtrip and fail its rejection assertion, while normal suite passes. Next: validate membership/alignment before arithmetic and retain regression across layouts. No exploitability claim.",
+  "evidence": "indigo_drivers/agent_solver/indigo_solver.c:1052\u20131058; findings.md and original/fixed sanitizer evidence in verification.md.",
+  "resolution": null,
+  "id": "FND-20261101200402-fcb2-fix-solver-fits-header-001"
+}

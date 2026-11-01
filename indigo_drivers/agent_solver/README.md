@@ -101,5 +101,5 @@ alignment workflows.
 
 ## Testing
 
-- 2026-10-29 20:47 3.0.0.22 mac arm64 simulator 154/154 OK
 - 2026-10-30 13:43 3.0.0.25 linux x64 simulator 154/154 OK
+- 2026-11-01 21:08 3.0.0.27 mac arm64 simulator 159/159 OK

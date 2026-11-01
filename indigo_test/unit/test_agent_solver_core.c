@@ -848,6 +848,64 @@ static uint16_t binned_value(const uint16_t *values, int width, int x, int y, in
 	return (uint16_t)(sum / (bin * bin));
 }
 
+static void test_load_fits_supported_header_values(void) {
+	const char *keywords[] = { "SIMPLE", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2", "NAXIS3" };
+	const char *formats[] = { "8", "16", "32", "-32", "-64" };
+	uint8_t pixels[8 * 8 * 3 * 8] = { 0 };
+	for (int i = 0; i < (int)(sizeof(formats) / sizeof(formats[0])); i++) {
+		const char *values[] = { "T", formats[i], "3", "8", "8", "3" };
+		long size;
+		char *fits = fits_file(keywords, values, (int)(sizeof(keywords) / sizeof(keywords[0])), pixels, sizeof(pixels), &size);
+		int bin = 0, width = 0, height = 0;
+		bool bayered = true;
+		const char *message = NULL;
+		indigo_raw_header *image = indigo_solver_load_image(fits, size, 1, &bin, &width, &height, &bayered, &message);
+		indigo_safe_free(fits);
+		ASSERT_TRUE(image != NULL);
+		ASSERT_EQ_INT(8, width);
+		ASSERT_EQ_INT(8, height);
+		ASSERT_EQ_INT(1, bin);
+		ASSERT_FALSE(bayered);
+		for (int j = 0; j < 8 * 8; j++) {
+			ASSERT_EQ_INT(0, ((uint16_t *)(image + 1))[j]);
+		}
+		indigo_safe_free(image);
+	}
+}
+
+static void test_load_fits_rejects_malformed_header_integers(void) {
+	const char *keywords[] = { "SIMPLE", "BITPIX", "NAXIS", "NAXIS1", "NAXIS2", "NAXIS3" };
+	const struct {
+		int field;
+		const char *value;
+	} invalid[] = {
+		{ 1, "nan" }, { 1, "inf" }, { 1, "-inf" }, { 1, "1e100" }, { 1, "8.5" }, { 1, "64" },
+		{ 3, "8.5" }, { 4, "8.5" }, { 5, "1.5" },
+		{ 2, "nan" }, { 2, "inf" }, { 2, "1e100" }, { 2, "2.5" },
+		{ 3, "nan" }, { 3, "inf" }, { 3, "-inf" }, { 3, "1e100" }, { 3, "65536" }, { 3, "0" },
+		{ 4, "nan" }, { 4, "inf" }, { 4, "-inf" }, { 4, "1e100" }, { 4, "65536" }, { 4, "0" },
+		{ 5, "nan" }, { 5, "inf" }, { 5, "-inf" }, { 5, "1e100" }, { 5, "17" }, { 5, "0" }
+	};
+	uint8_t pixels[8 * 8] = { 0 };
+	for (int i = 0; i < (int)(sizeof(invalid) / sizeof(invalid[0])); i++) {
+		const char *values[] = { "T", "8", "3", "8", "8", "1" };
+		values[invalid[i].field] = invalid[i].value;
+		long size;
+		char *fits = fits_file(keywords, values, (int)(sizeof(keywords) / sizeof(keywords[0])), pixels, sizeof(pixels), &size);
+		int bin = 0, width = 0, height = 0;
+		bool bayered = false;
+		const char *message = NULL;
+		printf("  rejecting %s=%s\n", keywords[invalid[i].field], invalid[i].value);
+		fflush(stdout);
+		indigo_raw_header *image = indigo_solver_load_image(fits, size, 1, &bin, &width, &height, &bayered, &message);
+		bool rejected = image == NULL;
+		indigo_safe_free(image);
+		indigo_safe_free(fits);
+		ASSERT_TRUE(rejected);
+		ASSERT_TRUE(message != NULL && strcmp(message, "Unsupported FITS image") == 0);
+	}
+}
+
 static void test_load_fits_16bit_binned_odd_size(void) {
 	const int width = 7, height = 5;
 	uint16_t values[7 * 5];
@@ -1030,6 +1088,8 @@ int main(void) {
 		{ "solve_rejects_unrelated_field", test_solve_rejects_unrelated_field },
 		{ "image_stars_noisy_frame", test_image_stars_noisy_frame },
 		{ "match_respects_limits_and_cone", test_match_respects_limits_and_cone },
+		{ "load_fits_supported_header_values", test_load_fits_supported_header_values },
+		{ "load_fits_rejects_malformed_header_integers", test_load_fits_rejects_malformed_header_integers },
 		{ "load_fits_16bit_binned_odd_size", test_load_fits_16bit_binned_odd_size },
 		{ "load_fits_16bit_without_bzero_wraps", test_load_fits_16bit_without_bzero_wraps },
 		{ "load_fits_scaled_binned_matches_full_size", test_load_fits_scaled_binned_matches_full_size },

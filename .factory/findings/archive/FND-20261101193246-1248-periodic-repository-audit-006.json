@@ -2,7 +2,7 @@
   "title": "Solver FITS dimensions and BITPIX convert nonfinite values to int",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-fcb2-fix-solver-fits-header",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "fits_card_value accepts strtod nan; dimension comparisons with NaN all evaluate false. BITPIX is cast before validating supported values. A current-source extracted header parser compiled with undefined/float-cast-overflow sanitizers accepts a valid 8x8 control, but NAXIS1=nan, BITPIX=nan and BITPIX=1e100 each abort at the conversion. Require finite integer header fields and validate BITPIX before conversion; reject malformed FITS without changing framework property validation.",
   "evidence": "indigo_drivers/agent_solver/indigo_solver.c:262\u2013271; repository-review.md confirmed finding 6",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-fcb2-fix-solver-fits-header/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-006"
 }

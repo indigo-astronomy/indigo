@@ -259,11 +259,11 @@ static bool fits_header(const void *data, long size, fits_layout *layout, bool *
 		}
 		offset += FITS_RECORD;
 	}
-	int bytes = (int)fabs(bitpix) / 8;
-	if ((bitpix != 8 && bitpix != 16 && bitpix != 32 && bitpix != -32 && bitpix != -64) || (naxis != 2 && naxis != 3) || naxis1 < 1 || naxis2 < 1 || naxis3 < 1 || naxis1 > 65535 || naxis2 > 65535 || naxis3 > 16) {
+	if ((bitpix != 8 && bitpix != 16 && bitpix != 32 && bitpix != -32 && bitpix != -64) || (naxis != 2 && naxis != 3) || !isfinite(naxis1) || !isfinite(naxis2) || !isfinite(naxis3) || naxis1 != floor(naxis1) || naxis2 != floor(naxis2) || naxis3 != floor(naxis3) || naxis1 < 1 || naxis2 < 1 || naxis3 < 1 || naxis1 > 65535 || naxis2 > 65535 || naxis3 > 16) {
 		*message = "Unsupported FITS image";
 		return false;
 	}
+	int bytes = (int)fabs(bitpix) / 8;
 	layout->bitpix = (int)bitpix;
 	layout->bytes = bytes;
 	layout->width = (int)naxis1;
