@@ -1,0 +1,65 @@
+exit=-6
+=================================================================
+==82625==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x61800000087e at pc 0x0001003c5670 bp 0x00016fa55730 sp 0x00016fa55728
+READ of size 2 at 0x61800000087e thread T0
+==82625==WARNING: external symbolizer didn't start up correctly!
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x1003c566c"
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x1003cafbc"
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x0001003c566c in indigo_find_stars_fast_threshold+0x37d0 (/private/tmp/indigo-detector-verify/current:arm64+0x10001d66c)
+    #1 0x0001003cafbc in main+0x368 (/private/tmp/indigo-detector-verify/current:arm64+0x100022fbc)
+    #2 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x61800000087e is located 2 bytes before 864-byte region [0x618000000880,0x618000000be0)
+allocated by thread T0 here:
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x100da9274"
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x1003c2078"
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x1003cafbc"
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x000100da9274 in malloc+0x78 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x0001003c2078 in indigo_find_stars_fast_threshold+0x1dc (/private/tmp/indigo-detector-verify/current:arm64+0x10001a078)
+    #2 0x0001003cafbc in main+0x368 (/private/tmp/indigo-detector-verify/current:arm64+0x100022fbc)
+    #3 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+==82625==WARNING: Can't read from symbolizer at fd 3
+==82625==WARNING: atos failed to symbolize address "0x1003c566c"
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/private/tmp/indigo-detector-verify/current:arm64+0x10001d66c) in indigo_find_stars_fast_threshold+0x37d0
+Shadow bytes around the buggy address:
+  0x618000000580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000780: 00 00 00 00 00 00 00 00 00 00 00 00 fa fa fa fa
+=>0x618000000800: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa[fa]
+  0x618000000880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000900: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==82625==ABORTING

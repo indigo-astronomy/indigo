@@ -1,0 +1,19 @@
+{
+  "title": "Star detectors overflow unchecked radius scratch-buffer arithmetic",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101185459-950f-verify-star-detectors",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Radius 32768 produces signed overflow 65537 * 65537 in precise and fast scratch allocations under UBSan. Precise now fails even on a constant empty image after allocation hoisting in 21d2af5c5; previous precise returns zero stars. Validate radius/geometry and checked allocation arithmetic, preserving radius 0.",
+  "evidence": "verification.md and sanitizer-verification.log; direct-source ASan/UBSan reproduction.",
+  "resolution": null,
+  "id": "FND-20261101185459-950f-verify-star-detectors-002"
+}

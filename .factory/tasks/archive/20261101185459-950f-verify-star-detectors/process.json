@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "task": "20261101185459-950f-verify-star-detectors",
+  "scope": [
+    ".factory/findings/active/FND-20261101185459-950f-verify-star-detectors-*.json",
+    ".factory/completions/20261101185459-950f-verify-star-detectors.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        ".factory/tasks/archive/20261101185459-950f-verify-star-detectors/run-verification.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101185459-950f-verify-star-detectors.json": [
+      "100644",
+      "blob",
+      "895f664a12e59fad2508f522826d460866ab4495"
+    ],
+    ".factory/findings/active/FND-20261101185459-950f-verify-star-detectors-001.json": [
+      "100644",
+      "blob",
+      "addd0f78a6f01e6b4af31d1d5fd02ced635eea7d"
+    ],
+    ".factory/findings/active/FND-20261101185459-950f-verify-star-detectors-002.json": [
+      "100644",
+      "blob",
+      "17745f7738a32152b5d85de79d8cc70407b8fc8e"
+    ]
+  }
+}

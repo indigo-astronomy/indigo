@@ -1,0 +1,122 @@
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '/Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c', '/Users/polakovic/Development/indigo/.factory/tasks/20261101185459-950f-verify-star-detectors/detector-review-fixture.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current']
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/before.c', '/Users/polakovic/Development/indigo/.factory/tasks/20261101185459-950f-verify-star-detectors/detector-review-fixture.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/before']
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current', 'edge']
+RETURN: -6 
+=================================================================
+==90552==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x61800000087e at pc 0x0001024ed670 bp 0x00016d92d6b0 sp 0x00016d92d6a8
+READ of size 2 at 0x61800000087e thread T0
+    #0 0x0001024ed66c  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x10001d66c)
+    #1 0x0001024f2fbc  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x100022fbc)
+    #2 0x000180d07e7c  (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x61800000087e is located 2 bytes before 864-byte region [0x618000000880,0x618000000be0)
+allocated by thread T0 here:
+    #0 0x000102f75274  (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x0001024ea078  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x10001a078)
+    #2 0x0001024f2fbc  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x100022fbc)
+    #3 0x000180d07e7c  (/usr/lib/dyld:arm64e+0x31e7c)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x10001d66c) 
+Shadow bytes around the buggy address:
+  0x618000000580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000780: 00 00 00 00 00 00 00 00 00 00 00 00 fa fa fa fa
+=>0x618000000800: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa[fa]
+  0x618000000880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000900: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==90552==ABORTING
+
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current', 'edge-precise']
+RETURN: -6 
+=================================================================
+==90594==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x61800000087e at pc 0x0001042c58a8 bp 0x00016bb51690 sp 0x00016bb51688
+READ of size 2 at 0x61800000087e thread T0
+    #0 0x0001042c58a4  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x1000198a4)
+    #1 0x0001042cefbc  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x100022fbc)
+    #2 0x000180d07e7c  (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x61800000087e is located 2 bytes before 864-byte region [0x618000000880,0x618000000be0)
+allocated by thread T0 here:
+    #0 0x000104d19274  (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x0001042c2818  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x100016818)
+    #2 0x0001042cefbc  (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x100022fbc)
+    #3 0x000180d07e7c  (/usr/lib/dyld:arm64e+0x31e7c)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/private/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current:arm64+0x1000198a4) 
+Shadow bytes around the buggy address:
+  0x618000000580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000700: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000780: 00 00 00 00 00 00 00 00 00 00 00 00 fa fa fa fa
+=>0x618000000800: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa[fa]
+  0x618000000880: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000900: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000980: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000a00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x618000000a80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==90594==ABORTING
+
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current', 'radius']
+RETURN: -6 
+/Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c:3275:51: runtime error: signed integer overflow: 65537 * 65537 cannot be represented in type 'int'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c:3275:51 
+
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/current', 'precise']
+RETURN: -6 
+/Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c:2859:51: runtime error: signed integer overflow: 65537 * 65537 cannot be represented in type 'int'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior /Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c:2859:51 
+
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/before', 'precise']
+RETURN: 0 
+result=0 count=0
+
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '-DCHECK_MEDIAN', '-DRAW_SOURCE="/Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c"', '/Users/polakovic/Development/indigo/.factory/tasks/20261101185459-950f-verify-star-detectors/compatibility-fixture.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/compat-current']
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/compat-current']
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '-DRAW_SOURCE="/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/before.c"', '/Users/polakovic/Development/indigo/.factory/tasks/20261101185459-950f-verify-star-detectors/compatibility-fixture.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/compat-before']
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e/compat-before']
+PASS: 5 expected reproduction outcomes; 8192 median cases; 288 precise image cases identical.
+Artifacts: /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-verify-nfw61q4e

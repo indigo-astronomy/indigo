@@ -1,0 +1,19 @@
+{
+  "title": "Star detectors read before luminance buffer on short images",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101185459-950f-verify-star-detectors",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Fast and precise scan image edges when height < 4; 144 x 3 MONO16 with bright pixel zero reproduces a 2-byte heap overread before the 864-byte luminance buffer under ASan. Ensure every scanned candidate has valid 8-neighbors or reject unsupported geometry; verify all formats and small dimensions.",
+  "evidence": "verification.md and sanitizer-verification.log; direct-source ASan/UBSan reproduction.",
+  "resolution": null,
+  "id": "FND-20261101185459-950f-verify-star-detectors-001"
+}
