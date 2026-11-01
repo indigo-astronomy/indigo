@@ -1,0 +1,19 @@
+{
+  "title": "Recycled inactive driver registration inherits stale initialized flag",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101183631-1a1e-solver-exclusive-init",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "After indigo_add_driver(first,true), remove_driver(first), add_driver(second,false), reused slot retains initialized=true even though second INIT never ran. Custom hosts may falsely report the second initialized or reject a conflicting agent. Normal server fresh static discovery and dynamic init=true are unaffected. Next: assign scoped loader reset fix and registry-slot regression; preserve current two-agent scope.",
+  "evidence": "Reproducer and exact command/result in task findings.md; indigo_libs/indigo_client.c add_driver and indigo_remove_driver at baseline e5e77e58edd20f102577a8f931651f802bdfc612.",
+  "resolution": null,
+  "id": "FND-20261101183631-1a1e-solver-exclusive-init-001"
+}

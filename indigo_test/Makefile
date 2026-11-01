@@ -2563,8 +2563,8 @@ test-agent-imager-guider-mount: check-lib $(INTEGRATION_BUILD)/test_agent_imager
 
 # The Solver agent with its native quad solver against a synthetic index written into INDIGO_CACHE_BASE;
 # no network access, the index download is not exercised.
-$(INTEGRATION_BUILD)/test_agent_solver: integration/test_agent_solver.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(TEST_LDFLAGS) -lindigocat
+$(INTEGRATION_BUILD)/test_agent_solver: integration/test_agent_solver.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a $(INTEGRATION_BUILD)/agent_astrometry_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(INTEGRATION_BUILD)/agent_astrometry_driver.o $(TEST_LDFLAGS) -lindigocat
 
 .PHONY: test-agent-solver
 test-agent-solver: check-lib $(INTEGRATION_BUILD)/test_agent_solver

@@ -1,0 +1,89 @@
+19:42:50.085285 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_solver is already loaded
+19:42:50.085785 Application: Driver indigo_agent_astrometry failed to initialise
+19:42:50.085977 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_solver is already loaded
+Running Solver agent
+  PASS solver_excludes_astrometry_and_allows_retry
+Solver agent: all tests passed
+19:42:50.138024 Application: indigo_agent_solver[indigo_agent_solver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+19:42:50.138480 Application: Driver indigo_agent_solver failed to initialise
+19:42:50.138688 Application: indigo_agent_solver[indigo_agent_solver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+Running Solver agent
+  PASS astrometry_excludes_solver_and_allows_retry
+Solver agent: all tests passed
+Running Solver agent
+  PASS inactive_astrometry_does_not_exclude_solver
+Solver agent: all tests passed
+Running Solver agent
+  PASS inactive_solver_does_not_exclude_astrometry
+Solver agent: all tests passed
+19:42:50.230266 Application: indigo_platesolver_validate_executable: solve-field not found
+19:42:50.230804 Application: Astrometry.net or curl is not available
+19:42:50.231008 Application: Driver indigo_agent_astrometry failed to initialise
+Running Solver agent
+  PASS failed_astrometry_initialization_does_not_exclude_solver
+Solver agent: all tests passed
+Running Solver agent
+  PASS index_property_reflects_installed_files
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_downsampled_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_without_selected_index_fails
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_float_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_mono8_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_rgb48_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_jpeg_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_with_position_hint
+Solver agent: all tests passed
+Running Solver agent
+  PASS wrong_position_hint_fails
+Solver agent: all tests passed
+Running Solver agent
+  PASS parity_hint_rejects_mirror
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_with_depth_hint
+Solver agent: all tests passed
+Running Solver agent
+  PASS blind_search_goes_stage_by_stage
+Solver agent: all tests passed
+Running Solver agent
+  PASS scaled_search_uses_fitting_index_first
+Solver agent: all tests passed
+Running Solver agent
+  PASS bayer_raw_is_binned
+Solver agent: all tests passed
+Running Solver agent
+  PASS bayer_fits_is_binned
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_rgb_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_colour_jpeg_image
+Solver agent: all tests passed
+19:42:59.744346 Application: [rc:-2] libraw_open_buffer failed: 'Unsupported file format or not RAW file'
+Running Solver agent
+  PASS unsupported_image_rejected
+Solver agent: all tests passed
+Running Solver agent
+  PASS deselecting_index_removes_file
+Solver agent: all tests passed
+Solver agent: 26 of 26 cases passed

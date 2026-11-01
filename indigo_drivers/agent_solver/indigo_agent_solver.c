@@ -24,7 +24,7 @@
  \file indigo_agent_solver.c
  */
 
-#define DRIVER_VERSION 0x03000019
+#define DRIVER_VERSION 0x0300001A
 #define DRIVER_NAME	"indigo_agent_solver"
 
 #include <stdio.h>
@@ -47,6 +47,7 @@
 #endif
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_client.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_raw_utils.h>
@@ -809,6 +810,10 @@ indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_inf
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT: {
+			if (indigo_driver_initialized("indigo_agent_astrometry")) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", "indigo_agent_astrometry");
+				return INDIGO_FAILED;
+			}
 			last_action = action;
 			char *env = getenv("INDIGO_CACHE_BASE");
 			if (env) {

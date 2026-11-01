@@ -1,0 +1,103 @@
+{
+  "version": 2,
+  "task": "20261101183631-1a1e-solver-exclusive-init",
+  "scope": [
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c",
+    "indigo_drivers/agent_solver/indigo_agent_solver.c",
+    "indigo_test/integration/test_agent_solver.c",
+    "indigo_test/Makefile",
+    "MIGRATION_STATUS.md",
+    ".factory/findings/active/FND-20261101183631-1a1e-solver-exclusive-init-001.json",
+    ".factory/findings/archive/FND-20261101183631-1a1e-solver-exclusive-init-002.json",
+    ".factory/completions/20261101183631-1a1e-solver-exclusive-init.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-solver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-astrometry"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101183631-1a1e-solver-exclusive-init.json": [
+      "100644",
+      "blob",
+      "915d8dac3cd4545b2c0a510dd5922c019a55293c"
+    ],
+    ".factory/findings/active/FND-20261101183631-1a1e-solver-exclusive-init-001.json": [
+      "100644",
+      "blob",
+      "68cae665891278fbaf331f1b269569d226228f0e"
+    ],
+    ".factory/findings/archive/FND-20261101183631-1a1e-solver-exclusive-init-002.json": [
+      "100644",
+      "blob",
+      "336d5d7fbfe11170be5ced5702805d21d7a8a6ce"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "b8ab3175e97896a6796b391de24a4d1168634c0b"
+    ],
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "2c80f63b49664c2ba45193375cf789ba9dfe2bd8"
+    ],
+    "indigo_drivers/agent_solver/indigo_agent_solver.c": [
+      "100644",
+      "blob",
+      "587c1d21dde487a86139209cbfd745ac0da1c185"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "a7ea27255af6073d641471b8f5554d8337778eca"
+    ],
+    "indigo_test/integration/test_agent_solver.c": [
+      "100644",
+      "blob",
+      "3949175837f3de5264d51af0dd8d238f84c2d0d7"
+    ]
+  }
+}

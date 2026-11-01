@@ -1,0 +1,24 @@
+{
+  "title": "Invalid-image test fixture converts byte values through signed char",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101183631-1a1e-solver-exclusive-init",
+      "report": "findings.md",
+      "revision": null
+    }
+  ],
+  "summary": "Malformed-image fixture now uses unsigned char storage and cast, preserving byte inputs and rejection assertions. Full synthetic Solver ASan/UBSan and ordinary suites both pass26/26. No production change was required for this fixture issue.",
+  "evidence": "Task findings.md sanitizer fixture issue; /tmp/solver-exclusive-sanitize.log reproduced out-of-range209.728 conversion. Source indigo_test/integration/test_agent_solver.c unsupported_image_rejected; production numerical solving unaffected.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task findings.md and verification.md: full26/26 sanitizer rerun after unsigned-byte fixture correction; assertions unchanged.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101183631-1a1e-solver-exclusive-init-002"
+}

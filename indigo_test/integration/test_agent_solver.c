@@ -36,9 +36,11 @@
 #include <jpeglib.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_client.h>
 #include <indigo/indigo_fits.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_platesolver.h>
+#include <indigo_drivers/agent_astrometry/indigo_agent_astrometry.h>
 #include <indigo_drivers/agent_solver/indigo_agent_solver.h>
 #include <indigo_drivers/agent_solver/indigo_solver.h>
 
@@ -73,6 +75,7 @@ static indigo_client observer;
 static char messages[65536];
 static bool bus_started, observer_attached, solver_started;
 static char cache_base[64];
+static indigo_driver_entry *registered_drivers[2];
 static char index_path[PATH_MAX], narrow_index_path[PATH_MAX];
 static float ra0, dec0, image_ra, image_dec;
 static uint32_t rng_state = 20261027;
@@ -155,12 +158,16 @@ static indigo_result message_received(indigo_client *client, indigo_device *devi
 	return INDIGO_OK;
 }
 
-static bool exists(const char *name) {
+static bool agent_property_exists(const char *agent, const char *name) {
 	pthread_mutex_lock(&cache_mutex);
-	observation *entry = find_observation(SOLVER, name);
+	observation *entry = find_observation(agent, name);
 	bool result = entry && entry->property;
 	pthread_mutex_unlock(&cache_mutex);
 	return result;
+}
+
+static bool exists(const char *name) {
+	return agent_property_exists(SOLVER, name);
 }
 
 static int state(const char *name) {
@@ -338,6 +345,12 @@ static bool setup(void) {
 }
 
 static void cleanup(void) {
+	for (int i = 1; i >= 0; i--) {
+		if (registered_drivers[i]) {
+			indigo_remove_driver(registered_drivers[i]);
+			registered_drivers[i] = NULL;
+		}
+	}
 	if (solver_started) {
 		indigo_agent_solver(INDIGO_DRIVER_SHUTDOWN, NULL);
 	}
@@ -349,6 +362,120 @@ static void cleanup(void) {
 	}
 	unlink(index_path);
 	unlink(narrow_index_path);
+	char path[PATH_MAX];
+	const char *tools[] = { "solve-field", "image2xy", "curl" };
+	for (unsigned i = 0; i < ARRAY_SIZE(tools); i++) {
+		snprintf(path, sizeof(path), "%s/bin/%s", cache_base, tools[i]);
+		unlink(path);
+	}
+	snprintf(path, sizeof(path), "%s/bin", cache_base);
+	rmdir(path);
+	snprintf(path, sizeof(path), "%s/astrometry", cache_base);
+	rmdir(path);
+}
+
+// Registry-managed lifecycle cases start with neither agent attached and controlled executable prerequisites.
+static bool prepare_driver_lifecycle(void) {
+	REQUIRE(indigo_agent_solver(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK);
+	solver_started = false;
+	REQUIRE(unlink(index_path) == 0);
+	REQUIRE(unlink(narrow_index_path) == 0);
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s/solver", cache_base);
+	REQUIRE(rmdir(path) == 0);
+	snprintf(path, sizeof(path), "%s/bin", cache_base);
+	REQUIRE(mkdir(path, 0700) == 0);
+	const char *tools[] = { "solve-field", "image2xy", "curl" };
+	for (unsigned i = 0; i < ARRAY_SIZE(tools); i++) {
+		snprintf(path, sizeof(path), "%s/bin/%s", cache_base, tools[i]);
+		FILE *file = fopen(path, "w");
+		REQUIRE(file != NULL);
+		fputs("#!/bin/sh\nexit 99\n", file);
+		REQUIRE(fclose(file) == 0);
+		REQUIRE(chmod(path, 0700) == 0);
+	}
+	snprintf(path, sizeof(path), "%s/bin", cache_base);
+	REQUIRE(setenv("PATH", path, 1) == 0);
+	REQUIRE(!agent_property_exists(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	return true;
+}
+
+static bool remove_registered_driver(int index) {
+	REQUIRE(registered_drivers[index] != NULL);
+	REQUIRE(indigo_remove_driver(registered_drivers[index]) == INDIGO_OK);
+	registered_drivers[index] = NULL;
+	return true;
+}
+
+static bool check_agent_exclusion(driver_entry_point first, const char *first_name, const char *first_agent, driver_entry_point second, const char *second_name, const char *second_agent, const char *second_cache) {
+	REQUIRE(prepare_driver_lifecycle());
+	REQUIRE(indigo_add_driver(first, true, &registered_drivers[0]) == INDIGO_OK);
+	REQUIRE(indigo_driver_initialized((char *)first_name));
+	REQUIRE(agent_property_exists(first_agent, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	REQUIRE(first(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+	indigo_driver_info info;
+	REQUIRE(first(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
+	REQUIRE(info.status == INDIGO_DRIVER_INIT);
+	REQUIRE(indigo_add_driver(second, true, &registered_drivers[1]) == INDIGO_FAILED);
+	REQUIRE(!indigo_driver_initialized((char *)second_name));
+	REQUIRE(!agent_property_exists(second_agent, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	char path[PATH_MAX];
+	snprintf(path, sizeof(path), "%s/%s", cache_base, second_cache);
+	REQUIRE(access(path, F_OK) != 0);
+	REQUIRE(second(INDIGO_DRIVER_INFO, &info) == INDIGO_OK);
+	REQUIRE(info.status == INDIGO_DRIVER_SHUTDOWN);
+	REQUIRE(setenv("PATH", "", 1) == 0);
+	REQUIRE(second(INDIGO_DRIVER_INIT, NULL) == INDIGO_FAILED);
+	snprintf(path, sizeof(path), "%s/bin", cache_base);
+	REQUIRE(setenv("PATH", path, 1) == 0);
+	snprintf(path, sizeof(path), "%s/%s", cache_base, second_cache);
+	REQUIRE(remove_registered_driver(0));
+	// The server keeps statically registered drivers and updates initialized after a successful retry.
+	REQUIRE(registered_drivers[1]->driver(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
+	registered_drivers[1]->initialized = true;
+	REQUIRE(indigo_driver_initialized((char *)second_name));
+	REQUIRE(agent_property_exists(second_agent, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	REQUIRE(!agent_property_exists(first_agent, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	REQUIRE(access(path, F_OK) == 0);
+	REQUIRE(remove_registered_driver(1));
+	return true;
+}
+
+static void solver_excludes_astrometry_and_allows_retry(void) {
+	ASSERT_TRUE(check_agent_exclusion(indigo_agent_solver, "indigo_agent_solver", SOLVER, indigo_agent_astrometry, "indigo_agent_astrometry", ASTROMETRY_AGENT_NAME, "astrometry"));
+}
+
+static void astrometry_excludes_solver_and_allows_retry(void) {
+	ASSERT_TRUE(check_agent_exclusion(indigo_agent_astrometry, "indigo_agent_astrometry", ASTROMETRY_AGENT_NAME, indigo_agent_solver, "indigo_agent_solver", SOLVER, "solver"));
+}
+
+static bool check_inactive_registered_agent(driver_entry_point inactive, const char *inactive_name, driver_entry_point active, const char *active_name, const char *active_agent) {
+	REQUIRE(prepare_driver_lifecycle());
+	REQUIRE(indigo_add_driver(inactive, false, &registered_drivers[0]) == INDIGO_OK);
+	REQUIRE(indigo_add_driver(active, true, &registered_drivers[1]) == INDIGO_OK);
+	REQUIRE(!indigo_driver_initialized((char *)inactive_name));
+	REQUIRE(indigo_driver_initialized((char *)active_name));
+	REQUIRE(agent_property_exists(active_agent, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	return true;
+}
+
+static void inactive_astrometry_does_not_exclude_solver(void) {
+	ASSERT_TRUE(check_inactive_registered_agent(indigo_agent_astrometry, "indigo_agent_astrometry", indigo_agent_solver, "indigo_agent_solver", SOLVER));
+}
+
+static void inactive_solver_does_not_exclude_astrometry(void) {
+	ASSERT_TRUE(check_inactive_registered_agent(indigo_agent_solver, "indigo_agent_solver", indigo_agent_astrometry, "indigo_agent_astrometry", ASTROMETRY_AGENT_NAME));
+}
+
+static void failed_astrometry_initialization_does_not_exclude_solver(void) {
+	ASSERT_TRUE(prepare_driver_lifecycle());
+	ASSERT_EQ_INT(0, setenv("PATH", "", 1));
+	ASSERT_EQ_INT(INDIGO_UNRESOLVED_DEPS, indigo_add_driver(indigo_agent_astrometry, true, &registered_drivers[0]));
+	ASSERT_FALSE(indigo_driver_initialized("indigo_agent_astrometry"));
+	ASSERT_FALSE(agent_property_exists(ASTROMETRY_AGENT_NAME, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_add_driver(indigo_agent_solver, true, &registered_drivers[1]));
+	ASSERT_TRUE(indigo_driver_initialized("indigo_agent_solver"));
+	ASSERT_TRUE(agent_property_exists(SOLVER, AGENT_PLATESOLVER_WCS_PROPERTY_NAME));
 }
 
 static bool select_use_index(void) {
@@ -877,9 +1004,9 @@ static void solve_jpeg_image(void) {
 // Data in no known format is refused, a FITS shorter than its header says is refused
 static void unsupported_image_rejected(void) {
 	ASSERT_TRUE(select_use_index());
-	char garbage[4096];
+	unsigned char garbage[4096];
 	for (int i = 0; i < (int)sizeof(garbage); i++) {
-		garbage[i] = (char)(frand() * 256);
+		garbage[i] = (unsigned char)(frand() * 256);
 	}
 	garbage[0] = 'X';
 	ASSERT_TRUE(solve_image(garbage, sizeof(garbage), ".bin"));
@@ -911,6 +1038,11 @@ static void deselecting_index_removes_file(void) {
 }
 
 static indigo_test_case tests[] = {
+	{ "solver_excludes_astrometry_and_allows_retry", solver_excludes_astrometry_and_allows_retry },
+	{ "astrometry_excludes_solver_and_allows_retry", astrometry_excludes_solver_and_allows_retry },
+	{ "inactive_astrometry_does_not_exclude_solver", inactive_astrometry_does_not_exclude_solver },
+	{ "inactive_solver_does_not_exclude_astrometry", inactive_solver_does_not_exclude_astrometry },
+	{ "failed_astrometry_initialization_does_not_exclude_solver", failed_astrometry_initialization_does_not_exclude_solver },
 	{ "index_property_reflects_installed_files", index_property_reflects_installed_files },
 	{ "solve_raw_image", solve_raw_image },
 	{ "solve_downsampled_image", solve_downsampled_image },
