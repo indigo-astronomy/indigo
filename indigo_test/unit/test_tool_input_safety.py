@@ -296,6 +296,29 @@ class GaiaCatalogSafety(unittest.TestCase):
 		self.assertIn(b"Catalog file path is too long", result.stderr)
 		self.assertNotIn(b"Cannot open", result.stderr)
 
+	def test_invalid_numeric_rows_are_skipped(self):
+		rows = []
+		for column in range(5):
+			for value in ["inf", "-inf", "nan", "1e999", "junk", "1junk"]:
+				fields = ["30", "-20", "10", "0", "0"]
+				fields[column] = value
+				rows.append(",".join(fields))
+		rows += ["30,-20,10,0", "30,-20,10,nullx,null", "30,-20,1e100,0,0", "30,-20,10,0,0,extra"]
+		(self.directory / "invalid.csv").write_text("ra,dec,mag,pmra,pmdec\n" + "\n".join(rows) + "\n30,-20,10,null,null\n")
+		result = self.run_gaia(self.directory)
+		self.assertEqual(0, result.returncode, result.stderr)
+		self.assertEqual(1, len(self.stars(result)), result.stdout)
+
+	def test_large_finite_ra_normalizes_in_bounded_time(self):
+		(self.directory / "large.csv").write_text("ra,dec,mag,pmra,pmdec\n1e300,20,10,0,0\n-390,20,10,0,0\n390,20,10,0,0\n-1e-300,20,10,0,0\n")
+		result = self.run_gaia(self.directory)
+		stars = self.stars(result)
+		self.assertEqual(4, len(stars), result.stdout)
+		self.assertEqual(0, stars[3][0])
+		self.assertTrue(0 <= stars[0][0] < 2 * 3.141592653589793)
+		self.assertAlmostEqual(330 * 3.141592653589793 / 180, stars[1][0], places=6)
+		self.assertAlmostEqual(30 * 3.141592653589793 / 180, stars[2][0], places=6)
+
 	def test_empty_directory(self):
 		result = self.run_gaia(self.directory)
 		self.assertEqual(0, result.returncode, result.stderr)

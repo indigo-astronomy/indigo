@@ -61,6 +61,7 @@ INDIGO_EXTERN void indigo_stretch_16(const uint16_t *input_buffer, int width, in
 INDIGO_EXTERN void indigo_stretch_24(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals);
 INDIGO_EXTERN void indigo_stretch_48(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals);
 
+// Bayer conversion uses in-bounds neighbours; for one-pixel-wide/high images, missing colors use the current raw sample.
 INDIGO_EXTERN void indigo_stretch_8_rggb(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals);
 INDIGO_EXTERN void indigo_stretch_8_gbrg(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals);
 INDIGO_EXTERN void indigo_stretch_8_grbg(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals);

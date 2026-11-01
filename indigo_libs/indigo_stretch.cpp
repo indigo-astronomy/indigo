@@ -42,6 +42,22 @@ const int max_threads = (std::thread::hardware_concurrency() > 0) ? std::thread:
 // red, gree, blue - debayered pixel as an mean value of 1 to 4 pixels
 
 template <typename T> static inline void debayer(T *raw, int index, int row, int column, int width, int height, int offsets, double &red, double &green, double &blue) {
+	if (width == 1 || height == 1) {
+		double sums[3] = { 0, 0, 0 };
+		int counts[3] = { 0, 0, 0 };
+		for (int y = std::max(0, row - 1); y <= std::min(height - 1, row + 1); y++) {
+			for (int x = std::max(0, column - 1); x <= std::min(width - 1, column + 1); x++) {
+				int color = offsets ^ ((x & 1) << 4 | (y & 1));
+				int channel = color == 0 ? 0 : color == 0x11 ? 2 : 1;
+				sums[channel] += raw[y * width + x];
+				counts[channel]++;
+			}
+		}
+		red = counts[0] ? sums[0] / counts[0] : raw[index];
+		green = counts[1] ? sums[1] / counts[1] : raw[index];
+		blue = counts[2] ? sums[2] / counts[2] : raw[index];
+		return;
+	}
 	switch (offsets ^ ((column & 1) << 4 | (row & 1))) {
 		case 0x00:
 			red = raw[index];

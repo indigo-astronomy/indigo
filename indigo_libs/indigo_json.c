@@ -368,6 +368,44 @@ static void* top_level_handler(parser_state state, char* name, char* value, indi
 	return top_level_handler;
 }
 
+static bool json_number_is_valid(const char *value) {
+	const char *p = value;
+	if (*p == '-') {
+		p++;
+	}
+	if (*p == '0') {
+		p++;
+	} else if (*p >= '1' && *p <= '9') {
+		do {
+			p++;
+		} while (*p >= '0' && *p <= '9');
+	} else {
+		return false;
+	}
+	if (*p == '.') {
+		p++;
+		if (*p < '0' || *p > '9') {
+			return false;
+		}
+		do {
+			p++;
+		} while (*p >= '0' && *p <= '9');
+	}
+	if (*p == 'e' || *p == 'E') {
+		p++;
+		if (*p == '+' || *p == '-') {
+			p++;
+		}
+		if (*p < '0' || *p > '9') {
+			return false;
+		}
+		do {
+			p++;
+		} while (*p >= '0' && *p <= '9');
+	}
+	return *p == 0;
+}
+
 void indigo_json_parse(indigo_device* device, indigo_client* client) {
 	indigo_adapter_context* context = (indigo_adapter_context*)client->client_context;
 	indigo_uni_handle* handle = context->input;
@@ -385,6 +423,7 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 	int depth = 0;
 	size_t request_size = 0;
 	bool is_escaped = false;
+	bool number_has_space = false;
 	parser_handler handler = top_level_handler;
 	parser_state state = IDLE_STATE;
 	while (true) {
@@ -486,6 +525,7 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> TEXT_VALUE", c));
 			} else if (isdigit(c) || c == '-') {
 				state = NUMBER_VALUE_STATE;
+				number_has_space = false;
 				value_pointer = value_buffer;
 				*value_pointer++ = c;
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> NUMBER_VALUE", c));
@@ -494,6 +534,8 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 				value_pointer = value_buffer;
 				*value_pointer++ = c;
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NAME2 -> LOGICAL_VALUE", c));
+			} else {
+				state = ERROR_STATE;
 			}
 			break;
 		case TEXT_VALUE_STATE:
@@ -522,16 +564,22 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 			}
 			break;
 		case NUMBER_VALUE_STATE:
-			if (isdigit(c) || c == '.' || c == 'e' || c == 'E' || c == '-') {
-				if (value_pointer - value_buffer >= JSON_BUFFER_SIZE) {
+			if (isdigit(c) || c == '.' || c == 'e' || c == 'E' || c == '-' || c == '+') {
+				if (number_has_space || value_pointer - value_buffer >= JSON_BUFFER_SIZE) {
 					state = ERROR_STATE;
 					break;
 				}
 				*value_pointer++ = c;
+			} else if (isspace((unsigned char)c)) {
+				number_has_space = true;
 			} else {
 				state = VALUE1_STATE;
 				pointer--;
 				*value_pointer = 0;
+				if (!json_number_is_valid(value_buffer) || !(c == ',' || c == '}' || c == ']')) {
+					state = ERROR_STATE;
+					break;
+				}
 				handler = handler(NUMBER_VALUE_STATE, name_buffer, value_buffer, &property, device, client, NULL);
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' NUMBER_VALUE -> VALUE1", c));
 			}

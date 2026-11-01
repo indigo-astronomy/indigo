@@ -2,7 +2,7 @@
   "title": "SER timestamp arithmetic narrows to 32-bit long on Windows",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-a12d-fix-core-audit-numerics",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Timestamp arithmetic uses long, which is 32 bits on Windows LLP64. The cast first narrows epoch seconds to long; subsequent multiplication by 10000000L can overflow signed long. The timezone multiplication likewise uses 32-bit long. The uint64_t serializer cannot repair prior truncation/overflow. Synthetic Unix seconds 1793563200 require 639291636000000000 ticks. Use explicit 64-bit epoch/tick and signed timezone arithmetic; assert serialized timestamps. Source-contract confirmed; Windows execution unavailable.",
   "evidence": "indigo_libs/indigo_ser.c:100\u2013103; repository-review.md confirmed finding 8",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-a12d-fix-core-audit-numerics/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-008"
 }

@@ -1,0 +1,11 @@
+{
+  "indigo_libs/indigo/indigo_stretch.h": "a1d50d9013f103883bdcee68e730e4cd633d58f2",
+  "indigo_libs/indigo_json.c": "086427419b6a03de7ef7a8687905ca02bc789738",
+  "indigo_libs/indigo_ser.c": "76f63f32cd799c664f71518b67b3add96c3d4459",
+  "indigo_libs/indigo_stretch.cpp": "b840ec7d7789816fa89e5eff10adbd5ae2d19192",
+  "indigo_test/unit/test_image_math.c": "29f95c6ba389f9105763c54b95e70ccff1ecb6c7",
+  "indigo_test/unit/test_protocol_json.c": "ece5829ab0bd2bcafea64f14c4f08c90fecfdfdf",
+  "indigo_test/unit/test_recording_io.c": "6bf105d1fe60f3633002837597487ca046d8c967",
+  "indigo_test/unit/test_tool_input_safety.py": "fdb6f4ca02c94b6b94d7b04961642aaeaa03ad8d",
+  "indigo_tools/indigo_solver_indexer.c": "b54ce2243b75138a9d81b3233bb18aa214b311fb"
+}

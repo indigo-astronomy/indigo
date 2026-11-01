@@ -1,0 +1,125 @@
+{
+  "version": 2,
+  "task": "20261101200402-a12d-fix-core-audit-numerics",
+  "scope": [
+    "indigo_libs/indigo/indigo_stretch.h",
+    "indigo_libs/indigo_json.c",
+    "indigo_libs/indigo_ser.c",
+    "indigo_libs/indigo_stretch.cpp",
+    "indigo_test/unit/test_image_math.c",
+    "indigo_test/unit/test_protocol_json.c",
+    "indigo_test/unit/test_recording_io.c",
+    "indigo_test/unit/test_tool_input_safety.py",
+    "indigo_tools/indigo_solver_indexer.c",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-002.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-002.json",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-008.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-008.json",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-009.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-009.json",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-010.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-010.json",
+    ".factory/completions/20261101200402-a12d-fix-core-audit-numerics.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101200402-a12d-fix-core-audit-numerics.json": [
+      "100644",
+      "blob",
+      "6faf4ec9808ce0ecf9416b0a5be188f3cb4dd90f"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-002.json": null,
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-008.json": null,
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-009.json": null,
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-010.json": null,
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "17eb5b9ec1e55cc3d7b8b27df8fde736a2a86c7b"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-008.json": [
+      "100644",
+      "blob",
+      "0b1071b8e39ad19d3d16fe27bac7412617fd3e59"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-009.json": [
+      "100644",
+      "blob",
+      "a40edd0e70dd5b587ddb13fd808bc9707c1da988"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-010.json": [
+      "100644",
+      "blob",
+      "f80e807bbd3c113a124afc9b0f35d964deb8e191"
+    ],
+    "indigo_libs/indigo/indigo_stretch.h": [
+      "100644",
+      "blob",
+      "a1d50d9013f103883bdcee68e730e4cd633d58f2"
+    ],
+    "indigo_libs/indigo_json.c": [
+      "100644",
+      "blob",
+      "086427419b6a03de7ef7a8687905ca02bc789738"
+    ],
+    "indigo_libs/indigo_ser.c": [
+      "100644",
+      "blob",
+      "76f63f32cd799c664f71518b67b3add96c3d4459"
+    ],
+    "indigo_libs/indigo_stretch.cpp": [
+      "100644",
+      "blob",
+      "b840ec7d7789816fa89e5eff10adbd5ae2d19192"
+    ],
+    "indigo_test/unit/test_image_math.c": [
+      "100644",
+      "blob",
+      "29f95c6ba389f9105763c54b95e70ccff1ecb6c7"
+    ],
+    "indigo_test/unit/test_protocol_json.c": [
+      "100644",
+      "blob",
+      "ece5829ab0bd2bcafea64f14c4f08c90fecfdfdf"
+    ],
+    "indigo_test/unit/test_recording_io.c": [
+      "100644",
+      "blob",
+      "6bf105d1fe60f3633002837597487ca046d8c967"
+    ],
+    "indigo_test/unit/test_tool_input_safety.py": [
+      "100644",
+      "blob",
+      "fdb6f4ca02c94b6b94d7b04961642aaeaa03ad8d"
+    ],
+    "indigo_tools/indigo_solver_indexer.c": [
+      "100644",
+      "blob",
+      "b54ce2243b75138a9d81b3233bb18aa214b311fb"
+    ]
+  }
+}

@@ -97,8 +97,8 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	result = result && write_exact(handle, zero, 40); // 42
 	result = result && write_exact(handle, zero, 40); // 82
 	result = result && write_exact(handle, zero, 40); // 122
-	long time_utc = (long)(time(NULL) + 62135600400L) * 10000000L;
-	long timezone_diff = (indigo_get_timezone() - (indigo_get_dst_state() ? 3600 : 0)) * 10000000L;
+	int64_t time_utc = ((int64_t)time(NULL) + INT64_C(62135600400)) * INT64_C(10000000);
+	int64_t timezone_diff = ((int64_t)indigo_get_timezone() - (indigo_get_dst_state() ? 3600 : 0)) * INT64_C(10000000);
 	result = result && write_long(handle, time_utc); // 162
 	result = result && write_long(handle, time_utc + timezone_diff); // 170
 	if (!result) {

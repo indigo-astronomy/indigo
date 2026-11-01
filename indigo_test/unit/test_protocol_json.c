@@ -353,8 +353,39 @@ static void json_parser_preserves_escaped_text(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+static void json_parser_validates_complete_numeric_tokens(void) {
+	const char *tokens[] = { "1e+2", "1E+2", "1e-2", "-1.25E+2", "0", "-0.5", "1e", "1e+", "1e-", "1.2.3", "01", "1-2", "1e+-2", "1junk", "-", "1.", "+1", ".1", "1 +2", "1 2", "1 e2" };
+	const double expected[] = { 100, 100, 0.01, -125, 0, -0.5 };
+	reset_context();
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(&test_device));
+	for (unsigned i = 0; i < sizeof(tokens) / sizeof(*tokens); i++) {
+		indigo_uni_handle *output = indigo_uni_create_file("build/unit/protocol_json_numbers.tmp", INDIGO_LOG_NONE);
+		ASSERT_TRUE(output != NULL);
+		indigo_uni_printf(output, "{\"newNumberVector\":{\"device\":\"%s\",\"name\":\"%s\",\"items\":[{\"name\":\"%s\",\"value\":%s}]}}\n", TEST_DEVICE_NAME, NUMBER_PROPERTY_NAME, NUMBER_ITEM_NAME, tokens[i]);
+		indigo_uni_close(&output);
+		int previous = context.change_count;
+		indigo_uni_handle *input = NULL;
+		indigo_client *client = new_input_adapter("build/unit/protocol_json_numbers.tmp", &input);
+		ASSERT_TRUE(client != NULL);
+		ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(client));
+		indigo_json_parse(NULL, client);
+		if (i < sizeof(expected) / sizeof(*expected)) {
+			ASSERT_EQ_INT(previous + 1, context.change_count);
+			ASSERT_NEAR(expected[i], context.last_number_value, 1e-12);
+		} else {
+			ASSERT_EQ_INT(previous, context.change_count);
+		}
+		ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(client));
+		close_input_adapter(client, &input);
+	}
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(&test_device));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "json_parser_validates_complete_numeric_tokens", json_parser_validates_complete_numeric_tokens },
 		{ "json_parser_preserves_escaped_text", json_parser_preserves_escaped_text },
 		{ "json_escape_handles_special_characters", json_escape_handles_special_characters },
 		{ "json_adapter_serializes_define_update_delete_and_blob_url", json_adapter_serializes_define_update_delete_and_blob_url },

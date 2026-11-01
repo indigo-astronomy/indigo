@@ -2,7 +2,7 @@
   "title": "Bayer interpolation reads outside images narrower than two pixels",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-a12d-fix-core-audit-numerics",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Public Bayer helpers have no documented minimum dimension or guard. For RGGB 1x1, interpolation reads raw[1] and raw[2]. A padded demonstration through an existing unrebuilt dylib changes output from [10,0,0] to [10,77,77] and [10,200,200] solely by changing bytes after the one logical pixel. Current source confirms those reads; library provenance is not attested. Define narrow-image handling in ordinary/stretched paths and test 1x1,1xN,Nx1. Driver-specific remote reachability is unestablished; solver preview uses no Bayer pattern.",
   "evidence": "indigo_libs/indigo_stretch.cpp:44\u201351; indigo_libs/indigo_ccd_driver.c:1079\u20131123; repository-review.md confirmed finding 9",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-a12d-fix-core-audit-numerics/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-009"
 }

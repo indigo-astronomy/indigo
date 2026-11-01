@@ -33,6 +33,8 @@
 #include <time.h>
 #include <errno.h>
 #include <limits.h>
+#include <float.h>
+#include <ctype.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
@@ -207,6 +209,31 @@ static int compare_catalog_names(const void *a, const void *b) {
 	return strcmp(*(const char * const *)a, *(const char * const *)b);
 }
 
+static bool parse_gaia_value(char **cursor, double *value, bool nullable, bool last) {
+	char *start = *cursor, *end;
+	errno = 0;
+	if (nullable && strncmp(start, "null", 4) == 0) {
+		*value = 0;
+		end = start + 4;
+	} else {
+		*value = strtod(start, &end);
+		if (end == start || errno == ERANGE || !isfinite(*value)) {
+			return false;
+		}
+	}
+	if (last) {
+		while (isspace((unsigned char)*end)) {
+			end++;
+		}
+		return *end == 0;
+	}
+	if (*end != ',') {
+		return false;
+	}
+	*cursor = end + 1;
+	return true;
+}
+
 // Loads a Gaia DR3 extract: every *.csv file of the directory with the columns ra, dec, phot_g_mean_mag, pmra, pmdec
 // (degrees, magnitudes, mas/yr, "null" allowed for the proper motions), as written by a TAP query on
 // gaiadr3.gaia_source; proper motion applied from the Gaia epoch to the current one
@@ -259,25 +286,15 @@ static uint32_t parse_gaia_catalog(const char *directory, indigo_solver_star *st
 				header = false;
 				continue;
 			}
-			char *p = line, *end;
-			double ra = strtod(p, &end) * DEG_TO_RAD;
-			if (end == p || *end != ',') {
+			char *p = line;
+			double ra, dec, magnitude, pm_ra, pm_dec;
+			if (!parse_gaia_value(&p, &ra, false, false) || !parse_gaia_value(&p, &dec, false, false) || !parse_gaia_value(&p, &magnitude, false, false) || !parse_gaia_value(&p, &pm_ra, true, false) || !parse_gaia_value(&p, &pm_dec, true, true) || fabs(magnitude) > FLT_MAX) {
 				continue;
 			}
-			p = end + 1;
-			double dec = strtod(p, &end) * DEG_TO_RAD;
-			if (end == p || *end != ',') {
-				continue;
-			}
-			p = end + 1;
-			float magnitude = strtod(p, &end);
-			if (end == p || *end != ',') {
-				continue;
-			}
-			p = end + 1;
-			double pm_ra = strtod(p, &end) * MAS_TO_RAD * years;
-			p = strchr(p, ',');
-			double pm_dec = p != NULL ? strtod(p + 1, &end) * MAS_TO_RAD * years : 0;
+			ra *= DEG_TO_RAD;
+			dec *= DEG_TO_RAD;
+			pm_ra *= MAS_TO_RAD * years;
+			pm_dec *= MAS_TO_RAD * years;
 			total_star_count++;
 			if (star_count == MAX_GAIA_STARS) {
 				fprintf(stderr, "More than %d stars, increase MAX_GAIA_STARS\n", MAX_GAIA_STARS);
@@ -289,11 +306,15 @@ static uint32_t parse_gaia_catalog(const char *directory, indigo_solver_star *st
 				ra += pm_ra / cos_dec;
 			}
 			dec += pm_dec;
-			while (ra < 0) {
+			if (!isfinite(ra) || !isfinite(dec) || !isfinite(pm_ra) || !isfinite(pm_dec)) {
+				continue;
+			}
+			ra = fmod(ra, 2 * M_PI);
+			if (ra < 0) {
 				ra += 2 * M_PI;
 			}
-			while (ra >= 2 * M_PI) {
-				ra -= 2 * M_PI;
+			if (ra >= 2 * M_PI) {
+				ra = 0;
 			}
 			memset(s, 0, sizeof(indigo_solver_star));
 			s->ra = ra;

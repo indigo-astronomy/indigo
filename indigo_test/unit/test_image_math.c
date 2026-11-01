@@ -138,17 +138,21 @@ static void donuts_rejects_unsupported_regions(void) {
 }
 
 typedef void (*debayer_8_fn)(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer);
+typedef void (*stretch_bayer_8_fn)(const uint8_t *, int, int, uint8_t *, double *, double *, double *, unsigned long *);
+typedef void (*stretch_bayer_16_fn)(const uint16_t *, int, int, uint8_t *, double *, double *, double *, unsigned long *);
 typedef void (*debayer_16_fn)(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer);
 
 static const struct {
 	const char *pattern;
 	debayer_8_fn debayer_8;
 	debayer_16_fn debayer_16;
+	stretch_bayer_8_fn stretch_8;
+	stretch_bayer_16_fn stretch_16;
 } debayer_patterns[] = {
-	{ "RGGB", indigo_debayer_8_rggb, indigo_debayer_16_rggb },
-	{ "GBRG", indigo_debayer_8_gbrg, indigo_debayer_16_gbrg },
-	{ "GRBG", indigo_debayer_8_grbg, indigo_debayer_16_grbg },
-	{ "BGGR", indigo_debayer_8_bggr, indigo_debayer_16_bggr }
+	{ "RGGB", indigo_debayer_8_rggb, indigo_debayer_16_rggb, indigo_stretch_8_rggb, indigo_stretch_16_rggb },
+	{ "GBRG", indigo_debayer_8_gbrg, indigo_debayer_16_gbrg, indigo_stretch_8_gbrg, indigo_stretch_16_gbrg },
+	{ "GRBG", indigo_debayer_8_grbg, indigo_debayer_16_grbg, indigo_stretch_8_grbg, indigo_stretch_16_grbg },
+	{ "BGGR", indigo_debayer_8_bggr, indigo_debayer_16_bggr, indigo_stretch_8_bggr, indigo_stretch_16_bggr }
 };
 
 static int bayer_channel(const char *pattern, int row, int column) {
@@ -174,11 +178,11 @@ static double bayer_reference(const double *raw, const char *pattern, int width,
 			}
 		}
 	}
-	return count ? sum / count : -1;
+	return count ? sum / count : raw[row * width + column];
 }
 
 static void debayer_uses_only_in_bounds_neighbours(void) {
-	const int sizes[][2] = { { 2, 2 }, { 4, 2 }, { 2, 4 }, { 4, 4 }, { 6, 4 }, { 5, 3 } };
+	const int sizes[][2] = { { 1, 1 }, { 1, 4 }, { 4, 1 }, { 2, 2 }, { 4, 2 }, { 2, 4 }, { 4, 4 }, { 6, 4 }, { 5, 3 } };
 	for (unsigned p = 0; p < sizeof(debayer_patterns) / sizeof(debayer_patterns[0]); p++) {
 		for (unsigned s = 0; s < sizeof(sizes) / sizeof(sizes[0]); s++) {
 			const int width = sizes[s][0], height = sizes[s][1], size = width * height;
@@ -186,7 +190,7 @@ static void debayer_uses_only_in_bounds_neighbours(void) {
 			uint8_t input_8[6 * 4 + 16];
 			uint16_t input_16[6 * 4 + 16];
 			double reference_8[6 * 4], reference_16[6 * 4];
-			uint8_t output_8[6 * 4 * 3], output_16[6 * 4 * 3];
+			uint8_t output_8[6 * 4 * 3], output_16[6 * 4 * 3], stretched_8[6 * 4 * 3], stretched_16[6 * 4 * 3];
 			for (int i = 0; i < size + 16; i++) {
 				input_8[i] = i < size ? (uint8_t)(10 + 7 * i) : 255;
 				input_16[i] = i < size ? (uint16_t)(2560 + 1792 * i) : 65535;
@@ -197,6 +201,9 @@ static void debayer_uses_only_in_bounds_neighbours(void) {
 			}
 			debayer_patterns[p].debayer_8(input_8, width, height, output_8);
 			debayer_patterns[p].debayer_16(input_16, width, height, output_16);
+			double shadows[3] = { 0, 0, 0 }, midtones[3] = { 0.5, 0.5, 0.5 }, highlights[3] = { 1, 1, 1 };
+			debayer_patterns[p].stretch_8(input_8, width, height, stretched_8, shadows, midtones, highlights, NULL);
+			debayer_patterns[p].stretch_16(input_16, width, height, stretched_16, shadows, midtones, highlights, NULL);
 			for (int row = 0; row < height; row++) {
 				for (int column = 0; column < width; column++) {
 					for (int channel = 0; channel < 3; channel++) {
@@ -208,6 +215,8 @@ static void debayer_uses_only_in_bounds_neighbours(void) {
 						}
 						ASSERT_EQ_INT(expected_8, output_8[index]);
 						ASSERT_EQ_INT(expected_16, output_16[index]);
+						ASSERT_NEAR(expected_8, stretched_8[index], 1);
+						ASSERT_NEAR(expected_16, stretched_16[index], 1);
 					}
 				}
 			}
@@ -215,8 +224,33 @@ static void debayer_uses_only_in_bounds_neighbours(void) {
 	}
 }
 
+static void debayer_single_pixel_uses_exact_input_allocation(void) {
+	uint8_t *input8 = malloc(sizeof(*input8));
+	uint16_t *input16 = malloc(sizeof(*input16));
+	ASSERT_TRUE(input8 != NULL && input16 != NULL);
+	*input8 = 10;
+	*input16 = 2560;
+	for (unsigned p = 0; p < sizeof(debayer_patterns) / sizeof(*debayer_patterns); p++) {
+		uint8_t output8[3], output16[3], stretched8[3], stretched16[3];
+		double shadows[3] = { 0, 0, 0 }, midtones[3] = { 0.5, 0.5, 0.5 }, highlights[3] = { 1, 1, 1 };
+		debayer_patterns[p].debayer_8(input8, 1, 1, output8);
+		debayer_patterns[p].debayer_16(input16, 1, 1, output16);
+		debayer_patterns[p].stretch_8(input8, 1, 1, stretched8, shadows, midtones, highlights, NULL);
+		debayer_patterns[p].stretch_16(input16, 1, 1, stretched16, shadows, midtones, highlights, NULL);
+		for (int channel = 0; channel < 3; channel++) {
+			ASSERT_EQ_INT(10, output8[channel]);
+			ASSERT_EQ_INT(10, output16[channel]);
+			ASSERT_NEAR(10, stretched8[channel], 1);
+			ASSERT_NEAR(10, stretched16[channel], 1);
+		}
+	}
+	free(input8);
+	free(input16);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "debayer_single_pixel_uses_exact_input_allocation", debayer_single_pixel_uses_exact_input_allocation },
 		{ "stretch_identity_and_limits", stretch_identity_and_limits },
 		{ "stretch_white_balance_ties_and_black", stretch_white_balance_ties_and_black },
 		{ "polar_alignment_symmetric_and_singular", polar_alignment_symmetric_and_singular },

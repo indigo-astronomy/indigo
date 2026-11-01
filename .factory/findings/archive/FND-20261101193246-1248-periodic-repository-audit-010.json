@@ -2,7 +2,7 @@
   "title": "JSON number parser silently misreads valid positive exponents",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-a12d-fix-core-audit-numerics",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "The numeric token state accepts e/E and minus but omits plus. A current-source parser linked with a capture-only indigo_change_property substitute parsed 100 as 100 and 1e-2 as 0.01, but valid JSON 1e+2 as 1. This silently changes requested values. Accept the complete JSON numeric grammar and reject malformed/truncated tokens; add both exponent-sign regressions.",
   "evidence": "indigo_libs/indigo_json.c:524\u2013535 NUMBER_VALUE_STATE; repository-review.md confirmed finding 10",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-a12d-fix-core-audit-numerics/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-010"
 }

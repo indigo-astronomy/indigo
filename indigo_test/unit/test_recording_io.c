@@ -26,8 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_avi.h>
 #include <indigo/indigo_ser.h>
@@ -87,6 +89,25 @@ typedef struct {
 	indigo_raw_header header;
 	uint8_t pixels[SER_WIDTH * SER_HEIGHT];
 } ser_frame;
+
+static uint64_t read_le64(const char *path, long offset) {
+	return read_le32(path, offset) | (uint64_t)read_le32(path, offset + 4) << 32;
+}
+
+static void ser_timestamps_preserve_full_epoch_and_timezone(void) {
+	ser_frame frame = { { INDIGO_RAW_MONO8, SER_WIDTH, SER_HEIGHT }, { 0 } };
+	const char *path = recording_file("timestamp.ser");
+	int64_t before = (int64_t)time(NULL);
+	indigo_ser *ser = indigo_ser_open(path, &frame);
+	int64_t after = (int64_t)time(NULL);
+	ASSERT_TRUE(ser != NULL);
+	ASSERT_TRUE(indigo_ser_close(ser));
+	uint64_t utc = read_le64(path, 162), local = read_le64(path, 170);
+	ASSERT_TRUE(utc >= (uint64_t)((before + INT64_C(62135600400)) * INT64_C(10000000)));
+	ASSERT_TRUE(utc <= (uint64_t)((after + INT64_C(62135600400)) * INT64_C(10000000)));
+	int64_t timezone_ticks = ((int64_t)indigo_get_timezone() - (indigo_get_dst_state() ? 3600 : 0)) * INT64_C(10000000);
+	ASSERT_TRUE((int64_t)local - (int64_t)utc == timezone_ticks);
+}
 
 static void ser_frame_write_failure_is_not_counted(void) {
 	ser_frame frame = { { INDIGO_RAW_MONO8, SER_WIDTH, SER_HEIGHT }, { 0 } };
@@ -182,6 +203,7 @@ int main(void) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "ser_timestamps_preserve_full_epoch_and_timezone", ser_timestamps_preserve_full_epoch_and_timezone },
 		{ "ser_frame_write_failure_is_not_counted", ser_frame_write_failure_is_not_counted },
 		{ "ser_close_seek_failure_is_reported", ser_close_seek_failure_is_reported },
 		{ "ser_complete_recording_counts_frames", ser_complete_recording_counts_frames },
