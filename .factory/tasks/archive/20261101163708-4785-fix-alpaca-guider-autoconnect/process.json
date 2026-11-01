@@ -39,6 +39,16 @@
   "risk_reviews": {},
   "reviews": [],
   "reviewed_content": {
+    ".factory/completions/20261101163708-4785-fix-alpaca-guider-autoconnect.json": [
+      "100644",
+      "blob",
+      "110483af475c9758470b617c7048b2aad40a0441"
+    ],
+    ".factory/findings/archive/FND-20261101163708-4785-fix-alpaca-guider-autoconnect-001.json": [
+      "100644",
+      "blob",
+      "70d0e75a5c30b48f6381792405e0776779fbf041"
+    ],
     "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": [
       "100644",
       "blob",
