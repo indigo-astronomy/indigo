@@ -1,0 +1,37 @@
+21:20:20.216930 Application: indigo_rotator_asi[rotator_position_handler:436]: CAACurDegree(0, 25.000000) = 7
+integration/test_rotator_asi_sdk.c:874: assertion failed: finish_motion(3000)
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  FAIL stopped poll failure releases command ownership
+ASI CAA SDK integration: 1 test(s) failed

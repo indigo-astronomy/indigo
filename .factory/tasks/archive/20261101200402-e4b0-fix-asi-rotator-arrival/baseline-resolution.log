@@ -1,0 +1,34 @@
+integration/test_rotator_asi_sdk.c:813: assertion failed: end_motion(actual[i], expected[i])
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  FAIL documented resolution bounds arrival
+ASI CAA SDK integration: 1 test(s) failed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed

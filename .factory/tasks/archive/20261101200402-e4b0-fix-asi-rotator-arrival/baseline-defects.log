@@ -1,0 +1,36 @@
+integration/test_rotator_asi_sdk.c:784: assertion failed: end_motion(3000, INDIGO_ALERT_STATE)
+integration/test_rotator_asi_sdk.c:800: assertion failed: end_motion(1500, INDIGO_ALERT_STATE)
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  FAIL stopped short absolute and recovery
+ASI CAA SDK integration: 1 test(s) failed
+Running ASI CAA SDK integration
+  FAIL stopped short relative preserves target
+ASI CAA SDK integration: 1 test(s) failed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+ASI CAA SDK integration: all tests passed

@@ -1,0 +1,16 @@
+/usr/bin/clang -arch arm64 -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -g -O1 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-function -fsanitize=address,undefined -fno-omit-frame-pointer -Iindigo_libs -Iindigo_drivers -Ibuild/include -Iindigo_drivers/rotator_asi/bin_externals/libCAA/include -I. -Dindigo_rotator_change_property=caa_test_base_change -Dlibusb_hotplug_register_callback_sim=caa_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=caa_test_usb_deregister_poll -Dindigo_save_property=caa_test_save -Dindigo_start_usb_event_handler=caa_test_usb_start -Dindigo_attach_device=caa_test_attach -Dindigo_detach_device=caa_test_detach -Dlibusb_hotplug_register_callback=caa_test_usb_register -Dlibusb_hotplug_deregister_callback=caa_test_usb_deregister -Dlibusb_ref_device=caa_test_usb_ref -Dlibusb_unref_device=caa_test_usb_unref -Dlibusb_get_device_descriptor=caa_test_usb_descriptor -c indigo_drivers/rotator_asi/indigo_rotator_asi.c -o indigo_test/build/integration/rotator_asi_sanitize.o
+In file included from indigo_drivers/rotator_asi/indigo_rotator_asi.c:39:
+indigo_libs/indigo/indigo_usb_utils.h:55:9: error: 'libusb_hotplug_register_callback' macro redefined [-Werror,-Wmacro-redefined]
+   55 | #define libusb_hotplug_register_callback libusb_hotplug_register_callback_sim
+      |         ^
+<command line>:11:9: note: previous definition is here
+   11 | #define libusb_hotplug_register_callback caa_test_usb_register
+      |         ^
+In file included from indigo_drivers/rotator_asi/indigo_rotator_asi.c:39:
+indigo_libs/indigo/indigo_usb_utils.h:56:9: error: 'libusb_hotplug_deregister_callback' macro redefined [-Werror,-Wmacro-redefined]
+   56 | #define libusb_hotplug_deregister_callback libusb_hotplug_deregister_callback_poll
+      |         ^
+<command line>:12:9: note: previous definition is here
+   12 | #define libusb_hotplug_deregister_callback caa_test_usb_deregister
+      |         ^
+2 errors generated.

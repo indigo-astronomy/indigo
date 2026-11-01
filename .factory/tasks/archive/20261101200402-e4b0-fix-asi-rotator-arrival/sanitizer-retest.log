@@ -1,0 +1,64 @@
+21:18:49.249269 Application: indigo_rotator_asi[asi_open:157]: CAAOpen(0) = 7
+21:18:49.967172 Application: indigo_rotator_asi[rotator_connection_handler:323]: CAAGetMaxDegree(0) = 7
+21:18:50.690328 Application: indigo_rotator_asi[rotator_connection_handler:328]: CAAGetDegree(0) = 7
+21:18:51.416766 Application: indigo_rotator_asi[rotator_connection_handler:333]: CAAGetReverse(0) = 7
+21:18:52.133207 Application: indigo_rotator_asi[rotator_connection_handler:338]: CAAGetBeep(0) = 7
+21:18:56.299095 Application: indigo_rotator_asi[rotator_start_move:295]: CAAMoveTo(0, 50.000000) = 7
+21:18:58.555674 Application: indigo_rotator_asi[rotator_read_position:200]: CAAGetDegree(0) = 7, position = 10.000000
+21:19:00.332956 Application: indigo_rotator_asi[rotator_position_handler:436]: CAACurDegree(0, 25.500000) = 7
+21:19:00.433771 Application: indigo_rotator_asi[rotator_read_position:200]: CAAGetDegree(0) = 7, position = 25.500000
+21:19:00.434038 Application: indigo_rotator_asi[rotator_position_handler:436]: CAACurDegree(0, 25.500000) = 0
+21:19:01.274668 Application: indigo_rotator_asi[rotator_abort_motion_handler:499]: CAAStop(0) = 7
+21:19:04.576316 Application: indigo_rotator_asi[rotator_limits_handler:454]: CAASetMaxDegree(0, 250.000000) = 7
+21:19:04.681316 Application: indigo_rotator_asi[rotator_limits_handler:460]: CAAGetMaxDegree(0) = 7
+21:19:05.101490 Application: indigo_rotator_asi[rotator_direction_handler:408]: CAASetReverse(0, 0) = 7
+21:19:05.206542 Application: indigo_rotator_asi[rotator_caa_beep_handler:511]: CAASetBeep(0, 0) = 7
+21:19:06.988333 Application: indigo_rotator_asi[rotator_caa_custom_suffix_handler:531]: CAASetID(0) = 7
+Running ASI CAA SDK integration
+  PASS metadata, schema and repeated connection
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS failed initialization releases SDK
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS fractional absolute/relative motion and overlap
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS move/status/position failures and polling recovery
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS sync command and readback failures
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS abort confirmation and hand controller
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS limits, settings, persistence and reconnect
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS suffix boundaries and rollback
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS disconnect/unplug with pending polling
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS discovery failures, capacity and multi-device removal
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS unplug queued during SDK probe
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS stopped short absolute and recovery
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS stopped short relative preserves target
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS documented resolution bounds arrival
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS mechanical angles do not wrap arrival
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS external motion is not a commanded target
+ASI CAA SDK integration: all tests passed

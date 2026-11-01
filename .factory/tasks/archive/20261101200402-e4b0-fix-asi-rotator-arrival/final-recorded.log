@@ -1,0 +1,120 @@
++ make -C /private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi -f ../../Makefile.drv all
+Definition: indigo_rotator_asi.driver
+Sources:    indigo_rotator_asi.c indigo_rotator_asi_main.c
+Archive:    indigo_rotator_asi.a
+SO library: indigo_rotator_asi.dylib
+indigo_rotator_asi.o
+Executable: indigo_rotator_asi
+Rules:      99-caa.rules
+SDK:        bin_externals/libCAA/lib/macOS/libCAA.a -Ibin_externals/libCAA/include -Lbin_externals/libCAA/lib/macOS/ -lCAA
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_libs -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -Ibin_externals/libCAA/include   -c -o indigo_rotator_asi.o indigo_rotator_asi.c
+/usr/bin/libtool -static -o /private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/drivers/indigo_rotator_asi.a indigo_rotator_asi.o
+/usr/bin/clang -shared -o /private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/drivers/indigo_rotator_asi.dylib -Wl,-force_load /private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/drivers/indigo_rotator_asi.a  -Lbin_externals/libCAA/lib/macOS/ -lCAA -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/lib -lstdc++ -lusb-1.0
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][2](CAA.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][3](CAA_API.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][4](hid_mac.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][6](XMLconfig.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][7](tinystr.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][8](tinyxml.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][9](tinyxmlerror.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][10](tinyxmlparser.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][2](CAA.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][3](CAA_API.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][4](hid_mac.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][6](tinystr.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][7](tinyxml.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][8](tinyxmlerror.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][9](tinyxmlparser.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][10](XMLconfig.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_libs -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -Ibin_externals/libCAA/include   -c -o indigo_rotator_asi_main.o indigo_rotator_asi_main.c
+/usr/bin/clang -o /private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/drivers/indigo_rotator_asi indigo_rotator_asi_main.o /private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/drivers/indigo_rotator_asi.a -Lbin_externals/libCAA/lib/macOS/ -lCAA -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/lib -lstdc++ -lusb-1.0
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][2](CAA.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][3](CAA_API.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][4](hid_mac.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][6](XMLconfig.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][7](tinystr.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][8](tinyxml.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][9](tinyxmlerror.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[x86_64][10](tinyxmlparser.o)) was built for newer 'macOS' version (10.12) than being linked (10.10)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][2](CAA.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][3](CAA_API.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][4](hid_mac.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][6](tinystr.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][7](tinyxml.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][8](tinyxmlerror.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][9](tinyxmlparser.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
+ld: warning: object file (/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS/libCAA.a[arm64][10](XMLconfig.o)) was built for newer 'macOS' version (15.0) than being linked (11.0)
++ make check-lib build/integration/test_rotator_asi_sdk
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_libs -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -I../indigo_drivers/rotator_asi/bin_externals/libCAA/include -Dindigo_rotator_change_property=caa_test_base_change -Dlibusb_hotplug_register_callback_sim=caa_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=caa_test_usb_deregister_poll -Dindigo_save_property=caa_test_save -Dindigo_start_usb_event_handler=caa_test_usb_start -Dindigo_attach_device=caa_test_attach -Dindigo_detach_device=caa_test_detach -Dlibusb_hotplug_register_callback=caa_test_usb_register -Dlibusb_hotplug_deregister_callback=caa_test_usb_deregister -Dlibusb_ref_device=caa_test_usb_ref -Dlibusb_unref_device=caa_test_usb_unref -Dlibusb_get_device_descriptor=caa_test_usb_descriptor -c ../indigo_drivers/rotator_asi/indigo_rotator_asi.c -o build/integration/rotator_asi_sdk_driver.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_libs -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -I../indigo_drivers/rotator_asi/bin_externals/libCAA/include integration/test_rotator_asi_sdk.c build/integration/rotator_asi_sdk_driver.o -o build/integration/test_rotator_asi_sdk -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/lib -Wl,-rpath,/private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/build/lib -lindigo -lm -lpthread -lusb-1.0
++ ./build/integration/test_rotator_asi_sdk
+21:18:17.108358 Application: indigo_rotator_asi[asi_open:157]: CAAOpen(0) = 7
+21:18:17.831173 Application: indigo_rotator_asi[rotator_connection_handler:323]: CAAGetMaxDegree(0) = 7
+21:18:18.540207 Application: indigo_rotator_asi[rotator_connection_handler:328]: CAAGetDegree(0) = 7
+21:18:19.262841 Application: indigo_rotator_asi[rotator_connection_handler:333]: CAAGetReverse(0) = 7
+21:18:19.985773 Application: indigo_rotator_asi[rotator_connection_handler:338]: CAAGetBeep(0) = 7
+21:18:24.171113 Application: indigo_rotator_asi[rotator_start_move:295]: CAAMoveTo(0, 50.000000) = 7
+21:18:26.433553 Application: indigo_rotator_asi[rotator_read_position:200]: CAAGetDegree(0) = 7, position = 10.000000
+21:18:28.227772 Application: indigo_rotator_asi[rotator_position_handler:436]: CAACurDegree(0, 25.500000) = 7
+21:18:28.332809 Application: indigo_rotator_asi[rotator_read_position:200]: CAAGetDegree(0) = 7, position = 25.500000
+21:18:28.332980 Application: indigo_rotator_asi[rotator_position_handler:436]: CAACurDegree(0, 25.500000) = 0
+21:18:29.283402 Application: indigo_rotator_asi[rotator_abort_motion_handler:499]: CAAStop(0) = 7
+21:18:32.613105 Application: indigo_rotator_asi[rotator_limits_handler:454]: CAASetMaxDegree(0, 250.000000) = 7
+21:18:32.718135 Application: indigo_rotator_asi[rotator_limits_handler:460]: CAAGetMaxDegree(0) = 7
+21:18:33.137095 Application: indigo_rotator_asi[rotator_direction_handler:408]: CAASetReverse(0, 0) = 7
+21:18:33.241868 Application: indigo_rotator_asi[rotator_caa_beep_handler:511]: CAASetBeep(0, 0) = 7
+21:18:35.030044 Application: indigo_rotator_asi[rotator_caa_custom_suffix_handler:531]: CAASetID(0) = 7
+Running ASI CAA SDK integration
+  PASS metadata, schema and repeated connection
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS failed initialization releases SDK
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS fractional absolute/relative motion and overlap
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS move/status/position failures and polling recovery
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS sync command and readback failures
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS abort confirmation and hand controller
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS limits, settings, persistence and reconnect
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS suffix boundaries and rollback
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS disconnect/unplug with pending polling
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS discovery failures, capacity and multi-device removal
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS unplug queued during SDK probe
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS stopped short absolute and recovery
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS stopped short relative preserves target
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS documented resolution bounds arrival
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS mechanical angles do not wrap arrival
+ASI CAA SDK integration: all tests passed
+Running ASI CAA SDK integration
+  PASS external motion is not a commanded target
+ASI CAA SDK integration: all tests passed
+144 driver(s) written to /private/tmp/indigo-20261101200402-e4b0-fix-asi-rotator-arrival/TEST_SUMMARY.md
+
+rotator_asi: 16/16 OK
+recorded in indigo_drivers/rotator_asi/README.md:
+2026-11-01 21:18 3.0.0.11 mac arm64 fake SDK 16/16 OK
