@@ -2,7 +2,7 @@
   "title": "Server leak check ignores failures in the exercised operations",
   "category": "quality",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-daf2-fix-audit-test-verdicts",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Server.tool ignores subprocess exit status; exercise ignores connection, operation and disconnect outcomes and skips absent properties. Startup accepts any nonempty device set after retry exhaustion. A clean Valgrind report can therefore exit 0 without exercising the intended paths. Require expected devices and successful state transitions, positive cycles and guaranteed cleanup on failure. Confirmed from complete source flow; no Valgrind execution or observed clean false-positive report is claimed.",
   "evidence": "indigo_test/leak/run_server_leak_check.py:86\u201389,108\u2013125,195\u2013218; repository-review.md confirmed finding 14",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-daf2-fix-audit-test-verdicts/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-014"
 }

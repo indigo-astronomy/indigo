@@ -1,0 +1,10 @@
+{
+  "indigo.xcodeproj/project.pbxproj": "344ec90786ead5539cdab958d39e4291ed638cf7",
+  "indigo_test/Makefile": "27d62d470ca6593b42b32d380174c11b7031c112",
+  "indigo_test/hardware/dome_hw_common.h": "e2bc9357bf95d11a40e2c4bd0505cb6ffc72159e",
+  "indigo_test/leak/run_server_leak_check.py": "ca0e3a81acc993995f40a3482d8812c28bcda1e6",
+  "indigo_test/test_runner.h": "ed7cd9d497edf9065fddc5deef9676d0eac53d53",
+  "indigo_test/unit/test_harness_verdicts.py": "3c625c59ce0bdfdb67501f4557c1b9edca725aeb",
+  "TEST_SUMMARY.md": "1bf64af593108015d50a132667daf9edf0d3278b",
+  "MIGRATION_STATUS.md": "f44a163eba80a594ab41b6b6b5b9e2f5982a0e62"
+}

@@ -2,7 +2,7 @@
   "title": "Dome hardware arrival assertion accepts missing or NaN azimuth",
   "category": "quality",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-daf2-fix-audit-test-verdicts",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Missing numeric data leaves current=NAN. The comparison distance > tolerance is false for NaN and dome_hw_at returns true. A temporary unchanged-header harness with empty cache and call dome_hw_at(0,90,0.1) exits 0 despite printing missing number item DOME_HORIZONTAL_COORDINATES.AZ. Actual callers include test_dome_baader_hw.c:127, test_dome_nexdome_hw.c:136 and test_dome_nexdome3_hw.c:142. Require successful item retrieval and finite inputs before accepting arrival. No hardware was operated.",
   "evidence": "indigo_test/hardware/dome_hw_common.h:30\u201338,90\u201396; repository-review.md confirmed finding 13",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-daf2-fix-audit-test-verdicts/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-013"
 }

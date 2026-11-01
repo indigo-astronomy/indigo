@@ -60,6 +60,27 @@ OPERATIONS = {
 	"Flat Panel Simulator": [("AUX_LIGHT_SWITCH.ON=ON", "OK"), ("AUX_LIGHT_SWITCH.OFF=ON", "OK")],
 }
 
+
+# All logical devices of the fixed simulator set, including devices without motion exercises.
+EXPECTED_DEVICES = frozenset(OPERATIONS) | {"GPS Simulator", "Polar Aligner Simulator", "PowerBox Simulator", "Weather Station Simulator", "SQM Simulator", "CCD Bahtinov Mask Simulator", "DSLR Simulator", "CCD File Simulator", "CCD Guider Simulator (AO)"}
+
+
+def wait_for_devices(server):
+	missing = EXPECTED_DEVICES
+	for _ in range(60):
+		if server.process.poll() is not None:
+			raise RuntimeError("the server exited during startup")
+		try:
+			devices = server.devices()
+		except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+			devices = []
+		missing = EXPECTED_DEVICES - set(devices)
+		if not missing:
+			return devices
+		time.sleep(5)
+	raise RuntimeError("missing expected simulator devices: " + ", ".join(sorted(missing)))
+
+
 # Frames that only pass the allocation on; the report names the first frame after them.
 ALLOCATORS = ("malloc", "calloc", "realloc", "strdup", "strndup", "posix_memalign", "aligned_alloc", "operator new", "indigo_safe_malloc", "indigo_safe_realloc", "indigo_safe_malloc_copy", "indigo_alloc_blob_buffer")
 
@@ -84,6 +105,7 @@ class Server:
 	def tool(self, *arguments, timeout=120):
 		command = [self.prop_tool, arguments[0], "-p", str(self.port)] + list(arguments[1:])
 		result = subprocess.run(command, env=self.environment, capture_output=True, text=True, timeout=timeout)
+		result.check_returncode()
 		return result.stdout
 
 	def devices(self):
@@ -93,8 +115,9 @@ class Server:
 		return self.tool("set", "-w", state, "-t", str(wait), "%s.%s" % (device, change), timeout=wait + 30)
 
 	def stop(self, timeout):
-		self.process.send_signal(signal.SIGINT)
 		try:
+			if self.process.poll() is None:
+				self.process.send_signal(signal.SIGINT)
 			self.process.wait(timeout)
 		except subprocess.TimeoutExpired:
 			self.process.kill()
@@ -102,7 +125,7 @@ class Server:
 			return False
 		finally:
 			self.log.close()
-		return True
+		return self.process.returncode == 0
 
 
 def exercise(server, devices, cycles, wait):
@@ -113,9 +136,9 @@ def exercise(server, devices, cycles, wait):
 		for device in devices:
 			defined = server.tool("list", "-t", "5", device)
 			for change, state in OPERATIONS.get(device, []):
-				# A device without the property (e.g. a model without a focuser) is only connected.
-				if "%s.%s." % (device, change.split(".")[0]) in defined:
-					server.set(device, change, state, wait)
+				if "%s.%s." % (device, change.split(".")[0]) not in defined:
+					raise RuntimeError("missing required exercise property: %s.%s" % (device, change.split(".")[0]))
+				server.set(device, change, state, wait)
 		for device in reversed(devices):
 			server.set(device, "CONNECTION.DISCONNECTED=ON", "OK", wait)
 
@@ -176,6 +199,8 @@ def main():
 	parser.add_argument("--wait", type=int, default=120, help="seconds to wait for each change under Valgrind (default 120)")
 	parser.add_argument("--keep", metavar="DIR", help="keep the Valgrind XML and server log in DIR")
 	options = parser.parse_args()
+	if options.cycles <= 0 or options.wait <= 0:
+		parser.error("--cycles and --wait must be positive")
 	root = Path(__file__).resolve().parents[2]
 	if shutil.which("valgrind") is None:
 		print("valgrind is not installed; the leak check did not run", file=sys.stderr)
@@ -191,21 +216,16 @@ def main():
 		home.mkdir()
 		xml_path = directory / "valgrind.xml"
 		server = Server(root, free_port(), home, xml_path, directory / "server.log")
-		devices = []
-		for _ in range(60):
-			if server.process.poll() is not None:
-				break
-			devices = server.devices()
-			if len(devices) >= len(DRIVERS):
-				break
-			time.sleep(5)
-		if not devices:
-			print("the server did not start; see %s" % (directory / "server.log"), file=sys.stderr)
-			server.stop(60)
+		try:
+			devices = wait_for_devices(server)
+			print("devices: %s" % ", ".join(devices), flush=True)
+			exercise(server, devices, options.cycles, options.wait)
+		except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+			print("simulator exercise did not complete: %s" % error, file=sys.stderr)
 			return 2
-		print("devices: %s" % ", ".join(devices), flush=True)
-		exercise(server, devices, options.cycles, options.wait)
-		if not server.stop(300):
+		finally:
+			stopped = server.stop(300)
+		if not stopped:
 			print("the server did not stop on SIGINT; Valgrind reported nothing", file=sys.stderr)
 			return 2
 		totals = report(parse(xml_path))

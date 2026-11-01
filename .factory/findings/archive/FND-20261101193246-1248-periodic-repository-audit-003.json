@@ -2,7 +2,7 @@
   "title": "Unmatched native test filter reports all tests passed with no execution",
   "category": "quality",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101200402-daf2-fix-audit-test-verdicts",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "A temporary harness including the unchanged header registered one failing case. Unfiltered invocation exits 1; INDIGO_TEST_CASE_FILTER=misspelled-case executes none, prints all tests passed and exits 0. Direct binaries/Makefile targets can falsely appear green. run_driver_test.py already rejects filtered recording. Preserve cross-suite filtering with explicit skips and an aggregate no-tests failure.",
   "evidence": "indigo_test/test_runner.h:258\u2013292; repository-review.md confirmed finding 3",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "20261101200402-daf2-fix-audit-test-verdicts/verification.md, security.md and quality-review.md: original characterization, scoped fix, full applicable regressions and independent review passed with documented platform/dependency limits.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-003"
 }

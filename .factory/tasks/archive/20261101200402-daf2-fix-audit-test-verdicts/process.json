@@ -1,0 +1,113 @@
+{
+  "version": 2,
+  "task": "20261101200402-daf2-fix-audit-test-verdicts",
+  "scope": [
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_test/Makefile",
+    "indigo_test/hardware/dome_hw_common.h",
+    "indigo_test/leak/run_server_leak_check.py",
+    "indigo_test/test_runner.h",
+    "indigo_test/unit/test_harness_verdicts.py",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-003.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-003.json",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-013.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-013.json",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-014.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-014.json",
+    "TEST_SUMMARY.md",
+    "MIGRATION_STATUS.md",
+    ".factory/completions/20261101200402-daf2-fix-audit-test-verdicts.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101200402-daf2-fix-audit-test-verdicts.json": [
+      "100644",
+      "blob",
+      "10ebce3dd7d737707ca967c3bbff83e015a35f4f"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-003.json": null,
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-013.json": null,
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-014.json": null,
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-003.json": [
+      "100644",
+      "blob",
+      "08cdfa4bdf7a195f6c5a4cd8fe4efbb8c2430d6b"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-013.json": [
+      "100644",
+      "blob",
+      "76f59d8765c4354224dc85857b4268f2c8b92bb6"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-014.json": [
+      "100644",
+      "blob",
+      "2aee34095ee700b695340abc62dab0a3fb5d9518"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "f44a163eba80a594ab41b6b6b5b9e2f5982a0e62"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "1bf64af593108015d50a132667daf9edf0d3278b"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "344ec90786ead5539cdab958d39e4291ed638cf7"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "27d62d470ca6593b42b32d380174c11b7031c112"
+    ],
+    "indigo_test/hardware/dome_hw_common.h": [
+      "100644",
+      "blob",
+      "e2bc9357bf95d11a40e2c4bd0505cb6ffc72159e"
+    ],
+    "indigo_test/leak/run_server_leak_check.py": [
+      "100644",
+      "blob",
+      "ca0e3a81acc993995f40a3482d8812c28bcda1e6"
+    ],
+    "indigo_test/test_runner.h": [
+      "100644",
+      "blob",
+      "ed7cd9d497edf9065fddc5deef9676d0eac53d53"
+    ],
+    "indigo_test/unit/test_harness_verdicts.py": [
+      "100644",
+      "blob",
+      "3c625c59ce0bdfdb67501f4557c1b9edca725aeb"
+    ]
+  }
+}

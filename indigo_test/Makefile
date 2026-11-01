@@ -332,7 +332,7 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-examples test-shell-compliance-framework test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup
+test: test-examples test-shell-compliance-framework test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup test-harness-verdicts
 
 # Client example regressions use isolated files, processes and loopback connections.
 .PHONY: test-examples
@@ -365,10 +365,15 @@ test-buildsystem:
 	python3 -B -m unittest discover -s buildsystem -p 'test_*.py'
 
 test-unit: check-lib $(UNIT_TESTS)
-	@for test in $(UNIT_TESTS); do \
+	@executed=0; \
+	for test in $(UNIT_TESTS); do \
 		printf "Running %s\n" "$$test"; \
-		"$$test" || exit $$?; \
-	done
+		status=0; "$$test" || status=$$?; \
+		if [ $$status -eq 77 ]; then continue; fi; \
+		if [ $$status -ne 0 ]; then exit $$status; fi; \
+		executed=$$((executed + 1)); \
+	done; \
+	if [ $$executed -eq 0 ]; then printf "No test suites executed\n"; exit 1; fi
 
 ifeq ($(OS_DETECTED),Darwin)
 INTEGRATION_TESTS += $(INTEGRATION_BUILD)/test_ccd_ptp_ica
@@ -396,10 +401,15 @@ OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_agent_solver_simulator
 
 test-integration: check-lib $(INTEGRATION_TESTS)
-	@for test in $(INTEGRATION_TESTS); do \
+	@executed=0; \
+	for test in $(INTEGRATION_TESTS); do \
 		printf "Running %s\n" "$$test"; \
-		"$$test" || exit $$?; \
-	done
+		status=0; "$$test" || status=$$?; \
+		if [ $$status -eq 77 ]; then continue; fi; \
+		if [ $$status -ne 0 ]; then exit $$status; fi; \
+		executed=$$((executed + 1)); \
+	done; \
+	if [ $$executed -eq 0 ]; then printf "No test suites executed\n"; exit 1; fi
 
 # Benchmarks measure timing, they do not pass or fail, so they are not part of
 # the test target. Results are comparable only between runs on the same machine.
@@ -3799,3 +3809,7 @@ test-ccd-pentax-hw: check-lib $(TEST_BUILD)/hardware/test_ccd_pentax_hw
 
 $(TEST_BUILD)/hardware/test_ccd_pentax_hw: hardware/test_ccd_pentax_hw.c hardware/hardware_device_record.h test_runner.h ../build/drivers/indigo_ccd_pentax.a | $(TEST_BUILD)/hardware
 	$(CC) $(TEST_CFLAGS) $< ../build/drivers/indigo_ccd_pentax.a -o $@ $(FRAMEWORK_TEST_LDFLAGS) -ljpeg -lraw -lstdc++
+
+.PHONY: test-harness-verdicts
+test-harness-verdicts: $(BUILD_LIB)/libindigo_client.a
+	python3 -B unit/test_harness_verdicts.py

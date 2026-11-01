@@ -1,0 +1,8 @@
+Working directory: /private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+..............................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 190 tests in 109.196s
+
+OK
+Configured test commands passed. Assess coverage separately.

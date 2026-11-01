@@ -1,0 +1,22 @@
+unit/test_test_runner.c:27: expected 1, got 1.2, tolerance 0.1
+unit/test_test_runner.c:27: expected -1, got 1, tolerance 1.5
+unit/test_test_runner.c:27: expected 1e+308, got -1e+308, tolerance 1e+300
+unit/test_test_runner.c:27: expected 1, got nan, tolerance 0.1
+unit/test_test_runner.c:27: expected nan, got 1, tolerance 0.1
+unit/test_test_runner.c:27: expected nan, got nan, tolerance 0.1
+unit/test_test_runner.c:27: expected 1, got 1, tolerance nan
+unit/test_test_runner.c:27: expected 1, got inf, tolerance 0.1
+unit/test_test_runner.c:27: expected 1, got -inf, tolerance 0.1
+unit/test_test_runner.c:27: expected inf, got 1, tolerance 0.1
+unit/test_test_runner.c:27: expected inf, got -inf, tolerance 0.1
+unit/test_test_runner.c:27: expected inf, got nan, tolerance 0.1
+unit/test_test_runner.c:27: expected 1, got 1, tolerance inf
+unit/test_test_runner.c:27: expected 1, got 1e+300, tolerance inf
+unit/test_test_runner.c:27: expected 1, got 1, tolerance -0.1
+Running Test runner assertions
+  PASS assert_near_accepts_finite_values_within_tolerance
+  PASS assert_near_rejects_finite_values_outside_tolerance
+  PASS assert_near_rejects_nan_operands
+  PASS assert_near_rejects_unmatched_infinities
+  PASS assert_near_rejects_invalid_tolerance
+Test runner assertions: all tests passed

@@ -1,0 +1,142 @@
+test_dome_accepts_finite_arrival_and_wrap (__main__.HelperVerdicts) ... ok
+test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) ... test_make_aggregates_skips_but_rejects_no_execution (__main__.HelperVerdicts) ... test_runner_filter_matches_and_failure_control (__main__.HelperVerdicts) ... ok
+test_unmatched_filter_is_explicit_skip_not_success (__main__.HelperVerdicts) ... FAIL
+test_main_positive_control_exercises_and_stops (__main__.LeakVerdicts) ... ok
+test_main_rejects_missing_required_property (__main__.LeakVerdicts) ... FAIL
+test_main_requires_complete_startup_and_stops (__main__.LeakVerdicts) ... FAIL
+test_main_stops_on_exercise_error (__main__.LeakVerdicts) ... ERROR
+test_nonpositive_cycle_count_is_rejected (__main__.LeakVerdicts) ... ERROR
+test_tool_rejects_failed_subprocess (__main__.LeakVerdicts) ... FAIL
+
+======================================================================
+ERROR: test_main_stops_on_exercise_error (__main__.LeakVerdicts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 183, in test_main_stops_on_exercise_error
+    self.assertEqual(2, self.run_main(server))
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 166, in run_main
+    return leak.main()
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/leak/run_server_leak_check.py", line 207, in main
+    exercise(server, devices, options.cycles, options.wait)
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/leak/run_server_leak_check.py", line 112, in exercise
+    server.set(device, "CONNECTION.CONNECTED=ON", "OK", wait)
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 149, in set
+    raise subprocess.CalledProcessError(1, ["prop_tool", "set"])
+subprocess.CalledProcessError: Command '['prop_tool', 'set']' returned non-zero exit status 1.
+
+======================================================================
+ERROR: test_nonpositive_cycle_count_is_rejected (__main__.LeakVerdicts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 201, in test_nonpositive_cycle_count_is_rejected
+    self.assertEqual(2, error.exception.code)
+AttributeError: '_AssertRaisesContext' object has no attribute 'exception'
+
+======================================================================
+FAIL: test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) (current='missing', target='90', tolerance='0.1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 131, in test_dome_rejects_missing_and_nonfinite_inputs
+    self.assertEqual(1, self.run_helper("dome", current, target, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) (current='nan', target='90', tolerance='0.1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 131, in test_dome_rejects_missing_and_nonfinite_inputs
+    self.assertEqual(1, self.run_helper("dome", current, target, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) (current='inf', target='90', tolerance='0.1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 131, in test_dome_rejects_missing_and_nonfinite_inputs
+    self.assertEqual(1, self.run_helper("dome", current, target, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) (current='90', target='nan', tolerance='0.1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 131, in test_dome_rejects_missing_and_nonfinite_inputs
+    self.assertEqual(1, self.run_helper("dome", current, target, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) (current='90', target='90', tolerance='nan')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 131, in test_dome_rejects_missing_and_nonfinite_inputs
+    self.assertEqual(1, self.run_helper("dome", current, target, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) (current='90', target='90', tolerance='inf')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 131, in test_dome_rejects_missing_and_nonfinite_inputs
+    self.assertEqual(1, self.run_helper("dome", current, target, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_make_aggregates_skips_but_rejects_no_execution (__main__.HelperVerdicts) (target='test-unit', selection=[PosixPath('/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-suite-status-p_mswcnq/skip'), PosixPath('/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-suite-status-p_mswcnq/pass')])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 121, in test_make_aggregates_skips_but_rejects_no_execution
+    self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+AssertionError: 0 != 2 : b'Running /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-suite-status-p_mswcnq/skip\nmake: *** [test-unit] Error 77\n'
+
+======================================================================
+FAIL: test_make_aggregates_skips_but_rejects_no_execution (__main__.HelperVerdicts) (target='test-integration', selection=[PosixPath('/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-suite-status-p_mswcnq/skip'), PosixPath('/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-suite-status-p_mswcnq/pass')])
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 121, in test_make_aggregates_skips_but_rejects_no_execution
+    self.assertEqual(expected, result.returncode, result.stdout + result.stderr)
+AssertionError: 0 != 2 : b'Running /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-suite-status-p_mswcnq/skip\nmake: *** [test-integration] Error 77\n'
+
+======================================================================
+FAIL: test_unmatched_filter_is_explicit_skip_not_success (__main__.HelperVerdicts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 104, in test_unmatched_filter_is_explicit_skip_not_success
+    self.assertEqual(77, result.returncode, result.stdout)
+AssertionError: 77 != 0 : b'Running Runner probe\nRunner probe: all tests passed\n'
+
+======================================================================
+FAIL: test_main_rejects_missing_required_property (__main__.LeakVerdicts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 188, in test_main_rejects_missing_required_property
+    self.assertEqual(2, self.run_main(server))
+AssertionError: 2 != 0
+
+======================================================================
+FAIL: test_main_requires_complete_startup_and_stops (__main__.LeakVerdicts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 177, in test_main_requires_complete_startup_and_stops
+    self.assertEqual(2, self.run_main(server))
+AssertionError: 2 != 0
+
+======================================================================
+FAIL: test_nonpositive_cycle_count_is_rejected (__main__.LeakVerdicts) (count='0')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 200, in test_nonpositive_cycle_count_is_rejected
+    self.run_main(FakeServer(), "--cycles", count)
+AssertionError: SystemExit not raised
+
+======================================================================
+FAIL: test_tool_rejects_failed_subprocess (__main__.LeakVerdicts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-daf2-fix-audit-test-verdicts/indigo_test/unit/test_harness_verdicts.py", line 173, in test_tool_rejects_failed_subprocess
+    server.tool("set")
+AssertionError: CalledProcessError not raised
+
+----------------------------------------------------------------------
+Ran 11 tests in 1.530s
+
+FAILED (failures=13, errors=2)

@@ -88,7 +88,10 @@ static bool dome_hw_goto(int d, double azimuth, indigo_property_state expected, 
 }
 
 static bool dome_hw_at(int d, double azimuth, double tolerance) {
-	double current = dome_hw_azimuth(d);
+	double current = NAN;
+	if (!hw_number_item(d, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, &current) || !isfinite(current) || !isfinite(azimuth) || !isfinite(tolerance) || tolerance < 0) {
+		return false;
+	}
 	if (dome_hw_azimuth_distance(current, azimuth) > tolerance) {
 		fprintf(stderr, "    azimuth %.2f, expected %.2f +/- %.2f\n", current, azimuth, tolerance);
 		return false;

@@ -1267,6 +1267,7 @@
 		53CB442E76523A5FB263A7CC /* indigo_ccd_libcamera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_libcamera.h; sourceTree = "<group>"; };
 		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
 		561E4947491CFD9C66C4B12F /* test_serial_port_loss.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_port_loss.c; sourceTree = "<group>"; };
+		C0DE20261101000000000314 /* test_harness_verdicts.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_harness_verdicts.py; sourceTree = "<group>"; };
 		56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_tool_input_safety.py; sourceTree = "<group>"; };
 		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
 		580FA96D0F1CB38FD7ED8D50 /* test_omnisim_startup.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_omnisim_startup.py; sourceTree = "<group>"; };
@@ -14229,6 +14230,7 @@
 				88D0F4F26BC61310EC0BADD6 /* test_mount_alignment_load.c */,
 				A057AA8EDAB3B5A82CF2F1B6 /* test_profile_selection.c */,
 				58D21354F48205219CDA34FB /* test_core_text_bounds.c */,
+				C0DE20261101000000000314 /* test_harness_verdicts.py */,
 				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
 				CA2B0F73C6A84C3DB07A918E /* test_driver_test_recording.py */,
 				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,
