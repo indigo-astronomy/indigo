@@ -1,16 +1,16 @@
 # Audit verification
 
-Verdict: changes required
+Verdict: pass
 
 Reviewed source: 42011325b8d3f9dcca2cc768594d42b385d4d481, clean at start; audit evidence and finding records are the only changes. Working directory for commands below: /Users/polakovic/Development/indigo. Host: macOS; exact model/effort unobservable. Separate component agents inspected current source; coordinator authored this reconciliation and independently reproduced FITS/MinGW defects. No product implementation was performed.
 
 ## Acceptance
 
-- AC1: partial. Discovery covers repository component classes, but mandatory semantic gaps remain in repository-review.md. No qualified full-audit assertion.
+- AC1: accepted partial scope under the owner closure amendment. Actual reviewed portions remain in repository-review.md and remaining gaps in unchecked-areas.md; no full-audit assertion.
 - AC2: pass for current records. Existing active summaries consulted; duplicates retained under their canonical IDs. Prior server T07 targeted history read solely to assess incomplete framing repair.
 - AC3: pass for registered observations, subject to independent evidence review; 14 new records plus reopened T07. No inferred risk acceptance.
-- AC4: partial. Safe checks below executed; editor baseline fails and platform/hardware validation is unavailable/unperformed.
-- AC5: pass. Task remains live, no completion/audit metadata or cadence reset; no merge/push.
+- AC4: pass for accurate bounded evidence/closure. Safe checks below executed; editor baseline remains failed and platform/hardware validation unavailable/unperformed. No successful product result is invented.
+- AC5: pass under owner amendment. Close with completion kindpartial-audit/auditnull, retain finding evidence and unchecked areas; no full/incremental checkpoint, product risk acceptance or master merge/push.
 
 ## Executed baseline and retests
 
@@ -44,7 +44,7 @@ Core supporting demonstrations against the existing dylib: a socketpair read aft
 
 ## Found defects and remediation state
 
-See repository-review.md and canonical records 001–014 plus T07. No product code was repaired. No assertion or test was weakened. The cache-lifetime stress example, server catalog capacity question and filter-format forwarding lead remain investigation questions; no confirmed production-path claim or finding was manufactured.
+See repository-review.md and canonical records 001–014 plus T07. The discovery pass made no product edits. Subsequent separate repair tasks closed selected11findings; canonical records retain exact repair evidence. No assertion or test was weakened by this closure. The cache-lifetime stress example, server catalog capacity question and filter-format forwarding lead remain investigation questions; no confirmed production-path claim or finding was manufactured.
 
 ## Final test summary
 
@@ -62,3 +62,8 @@ Coordinator reran the retained minimal harnesses after report drafting:
 - `./.factory/scripts/maintenance status`: still 64 uncovered work tasks and full_review_due true; no completion emitted.
 
 The probes are evidence of defects, not passing correctness tests. Their binaries and logs remain outside the repository. No source file or Xcode project was changed.
+
+## Final partial-closure acceptance
+Owner direct instruction on2026-11-01: change the rules as proposed and close this audit as partial, preserving findings and unchecked areas. This passing verdict concerns accurate evidence retention and administrative closure only; repository-review.md remains Verdict: partial. Original failed editor results and security findings remain explicit, not waived or converted to successes. Selected11origin findings are closed/fixed;004/005/011 andT07stayopen. No application/image-recognition rerun for closure. Final configured metadata, finding/maintenance and committed-range results will be retained with closure evidence; no original measurement is rerun or rewritten.
+
+Final closure metadata checks from /Users/polakovic/Development/indigo after policy integration: .factory/scripts/check and .factory/scripts/security exit0; archive-task emittedpartial-audit/auditnull; findingscheck afterarchive exit0,36active/220archived. No product tests rerun. Independent closure review PASS. Final committed process/maintenance results retained externally without self-referential report commits.

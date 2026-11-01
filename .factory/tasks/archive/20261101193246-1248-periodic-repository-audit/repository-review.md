@@ -3,7 +3,7 @@
 - Task: 20261101193246-1248-periodic-repository-audit
 - Date: 2026-11-01 (Europe/Bratislava).
 - Reviewed revision: 42011325b8d3f9dcca2cc768594d42b385d4d481; initial working tree clean. Only audit metadata/evidence has been written.
-- Verdict: partial — confirmed changes required; no full-audit checkpoint reset.
+- Verdict: partial
 - Independence: separate read-only component agents; coordinator reconciles records and independently checks selected source/proofs. Exact host model/effort unknown; no provider/model switch or external review invocation.
 
 ## Scope and method
@@ -20,7 +20,7 @@ Coordinator pass: current Factory startup/cadence/task/Git/findings/process/arch
 
 ## Confirmed findings
 
-All new records below are open and nonblocking follow-up records owned by coordinator; nonblocking classification does not accept security risk or approve release. Security-specific conclusions are in security.md. Functional records distinguish runtime demonstrations from source-contract evidence.
+The finding descriptions below retain the original discovery snapshot and source locations. Current dispositions supersede original next-action prose:001/002/003/006/007/008/009/010/012/013/014 are closed/fixed under their independent repair evidence;004/005/011 remain active/open. Reopened server-security-audit-007 remains active/open. Canonical records own status/evidence; nonblocking classification is not risk acceptance or release approval. See verification.md and the closure section below.
 
 ### FND-20261101193246-1248-periodic-repository-audit-001 — Gaia indexer evaluates shell substitutions in directory arguments
 
@@ -176,4 +176,7 @@ No new finding was based on suspected authorship or generic style. False success
 
 The current pass is partial. Remaining semantic gaps include complete parser/adapter/base-driver/math/browser coverage, most driver families, remaining tests/hardware harnesses/tools/scripts and documentation-to-source contracts. Tests on this macOS host do not establish Linux/Windows/hardware correctness, and existing library execution alone does not attest a rebuild of the reviewed commit. Component inventories and earlier reports cannot substitute for missing current-source inspection.
 
-New security observations remain open without owner risk acceptance; existing editor failures and incomplete full coverage prevent a passing completion claim. Do not archive this task, emit a qualified full-audit completion or reset cadence. Continue the same task/branch; no duplicate task is needed for role changes. See verification.md for actual checks and handoff.md for current assignment. Canonical finding records preserve ownership and evidence; no reports are pruned.
+The owner now accepts this bounded audit as partial. Existing editor failures and unresolved security records remain failed/open evidence; no product-security approval is implied. Close and archive the existing task with partial-audit completion only, preserving all findings/reports and [unchecked areas](unchecked-areas.md). Do not emit qualified full/incremental audit metadata or reset either actual checkpoint. See verification.md for actual checks and handoff.md for the owner authorization/delivery state.
+
+## Owner-approved partial closure
+Owner direct instruction on2026-11-01: change the rules as proposed and close this audit as partial, preserving findings and unchecked areas. The inspection outcome remains partial; scope gaps are retained in [unchecked areas](unchecked-areas.md). Prior live/no-archive instructions are superseded only for this accepted bounded outcome. Canonical findings and discovery/proof evidence are retained, no records pruned. Original reviewed source remains42011325b8d3f9dcca2cc768594d42b385d4d481; subsequent repair/rename tasks do not broaden this audit coverage. Independent closure review reconciles selected11fixed findings and004/005/011/T07open. Completion kindpartial-audit/auditnull is not a full or incremental checkpoint, risk acceptance or release certification.

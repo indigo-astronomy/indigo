@@ -1,0 +1,137 @@
+{
+  "version": 2,
+  "task": "20261101193246-1248-periodic-repository-audit",
+  "scope": [
+    ".factory/tasks/20261101193246-1248-periodic-repository-audit/*",
+    ".factory/tasks/archive/20261101193246-1248-periodic-repository-audit/*",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-*.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-*.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json",
+    ".factory/completions/20261101193246-1248-periodic-repository-audit.json",
+    ".factory/project.md"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101193246-1248-periodic-repository-audit.json": [
+      "100644",
+      "blob",
+      "07fe072cdde24499c3ca9593a2bd97b2d92c6900"
+    ],
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json": [
+      "100644",
+      "blob",
+      "e5310128c7bceaa405479a9d09368221522fb444"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-004.json": [
+      "100644",
+      "blob",
+      "90bd45043de3f3da41f35c8c7394c356f2efb11a"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-005.json": [
+      "100644",
+      "blob",
+      "8a6c3250ce245f32d5c1bf4046d57514ea02d489"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "ba1ac9c495f9a0a99aa01360a98eaed47fd107f9"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json": null,
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "bed37c0e7ef3b5db6e6b0a29b53c042104342911"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "17eb5b9ec1e55cc3d7b8b27df8fde736a2a86c7b"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-003.json": [
+      "100644",
+      "blob",
+      "08cdfa4bdf7a195f6c5a4cd8fe4efbb8c2430d6b"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-006.json": [
+      "100644",
+      "blob",
+      "96df4d4faff79ba5ebe816b300431e29160eee9b"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-007.json": [
+      "100644",
+      "blob",
+      "556b7c43e58fa8f6fe1479f7e0e21528eba606d3"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-008.json": [
+      "100644",
+      "blob",
+      "0b1071b8e39ad19d3d16fe27bac7412617fd3e59"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-009.json": [
+      "100644",
+      "blob",
+      "a40edd0e70dd5b587ddb13fd808bc9707c1da988"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-010.json": [
+      "100644",
+      "blob",
+      "f80e807bbd3c113a124afc9b0f35d964deb8e191"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-012.json": [
+      "100644",
+      "blob",
+      "1856b55f932251fa68f217b5c4d559f2f91279b3"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-013.json": [
+      "100644",
+      "blob",
+      "76f59d8765c4354224dc85857b4268f2c8b92bb6"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-014.json": [
+      "100644",
+      "blob",
+      "2aee34095ee700b695340abc62dab0a3fb5d9518"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "402d0dc39cb2013b51b0d5c04bfb9937d2f12e53"
+    ]
+  }
+}

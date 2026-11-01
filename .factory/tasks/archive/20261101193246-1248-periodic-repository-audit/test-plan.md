@@ -1,2 +1,4 @@
 # Verification plan
 No product behavior changes or new product tests are planned. Use source-contract inspection, targeted existing tests and safe Factory checks. Audit reports must identify exact checked revision and command outcomes. Inventory counts are discovery evidence, not proof of semantic review. Native tests are permitted only after reading test instructions and checking safe targets; no hardware or excluded suites. Verify findings schema, ADR index, whitespace and process evidence. No claim of Linux/Windows/hardware certification from this macOS host.
+
+Closure validation: preserve discovery/proof files and inventories; reconcile selected11closed and004/005/011/T07open against canonical records; validate unchecked-area carry-forward, partial completion kind/auditnull, retained fullcheckpoint, finding evidence and committed process scopes. No application or recognition rerun solely for policy/closure.

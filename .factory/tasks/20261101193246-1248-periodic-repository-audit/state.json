@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "active_task": "20261101193246-1248-periodic-repository-audit",
-  "phase": "verification",
-  "status": "active",
-  "assigned_role": "coordinator",
-  "next_action": "Continue the same audit task through remaining semantic coverage and coordinate focused finding remediation; no archive or cadence reset.",
-  "blocker": null
-}
