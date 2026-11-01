@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000022
+#define DRIVER_VERSION 0x02000023
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -54,6 +54,7 @@
 #endif
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_client.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_io.h>
@@ -1319,6 +1320,10 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
+			if (indigo_driver_initialized("indigo_agent_solver")) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", "indigo_agent_solver");
+				return INDIGO_FAILED;
+			}
 #if defined(INDIGO_WINDOWS)
 			if (!indigo_platesolver_validate_executable("solve-field") || !indigo_platesolver_validate_executable("image2xy")) {
 				indigo_error("Astrometry.net is not available");
