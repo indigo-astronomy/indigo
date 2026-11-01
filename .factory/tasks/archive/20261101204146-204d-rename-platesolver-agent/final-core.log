@@ -1,0 +1,67 @@
+21:50:18.252773 Application: indigo_solver_catalog_build: quad 1 references a star outside of the catalog
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: bad magic
+21:50:18.262146 Application: indigo_solver_select_index: no index-*deg-*.isix index file found in /tmp/indigo_test_solver_dir_AO6648
+21:50:18.401659 Application: map_index: /tmp/indigo_test_solver_damaged_13ptIw is corrupted (invalid header)
+indigo_solver_index_read_header: short read
+21:50:18.406108 Application: map_index: /tmp/indigo_test_solver_damaged_13ptIw is corrupted (invalid header)
+21:50:18.407097 Application: map_index: /tmp/indigo_test_solver_damaged_13ptIw is corrupted (invalid header)
+21:50:18.407984 Application: map_index: /tmp/indigo_test_solver_damaged_13ptIw is corrupted (invalid header)
+21:50:18.408843 Application: map_index: /tmp/indigo_test_solver_damaged_13ptIw is corrupted (invalid buckets)
+Running test_agent_platesolver_core
+  PASS tangent_plane_roundtrip
+  PASS hash_components_roundtrip
+  PASS quad_code_invariance
+  PASS quad_variants_canonical_first
+  PASS index_file_roundtrip
+  PASS index_selection
+  PASS solve_synthetic_field
+  PASS solve_synthetic_mirrored_field
+  PASS mapped_index_roundtrip
+  PASS mapped_index_rejects_damage
+  PASS compute_center_uses_astrometry_net_orientation
+  PASS solve_rejects_unrelated_field
+  PASS image_stars_noisy_frame
+  PASS match_respects_limits_and_cone
+  PASS load_fits_supported_header_values
+  rejecting BITPIX=nan
+  rejecting BITPIX=inf
+  rejecting BITPIX=-inf
+  rejecting BITPIX=1e100
+  rejecting BITPIX=8.5
+  rejecting BITPIX=64
+  rejecting NAXIS1=8.5
+  rejecting NAXIS2=8.5
+  rejecting NAXIS3=1.5
+  rejecting NAXIS=nan
+  rejecting NAXIS=inf
+  rejecting NAXIS=1e100
+  rejecting NAXIS=2.5
+  rejecting NAXIS1=nan
+  rejecting NAXIS1=inf
+  rejecting NAXIS1=-inf
+  rejecting NAXIS1=1e100
+  rejecting NAXIS1=65536
+  rejecting NAXIS1=0
+  rejecting NAXIS2=nan
+  rejecting NAXIS2=inf
+  rejecting NAXIS2=-inf
+  rejecting NAXIS2=1e100
+  rejecting NAXIS2=65536
+  rejecting NAXIS2=0
+  rejecting NAXIS3=nan
+  rejecting NAXIS3=inf
+  rejecting NAXIS3=-inf
+  rejecting NAXIS3=1e100
+  rejecting NAXIS3=17
+  rejecting NAXIS3=0
+  PASS load_fits_rejects_malformed_header_integers
+  PASS load_fits_16bit_binned_odd_size
+  PASS load_fits_16bit_without_bzero_wraps
+  PASS load_fits_scaled_binned_matches_full_size
+  PASS load_bayer_binning
+  PASS load_raw_mono16_binned
+test_agent_platesolver_core: all tests passed

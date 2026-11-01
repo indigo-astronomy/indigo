@@ -136,11 +136,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="indigo_solver.c" />
-    <ClCompile Include="..\indigo_drivers\agent_solver\indigo_solver.c">
+    <ClCompile Include="..\indigo_drivers\agent_platesolver\indigo_solver.c">
       <ObjectFileName>$(IntDir)indigo_solver_core.obj</ObjectFileName>
     </ClCompile>
-    <ClCompile Include="..\indigo_drivers\agent_solver\indigo_solver_utils.c" />
-    <ClCompile Include="..\indigo_drivers\agent_solver\indigo_solver_healpix.c" />
+    <ClCompile Include="..\indigo_drivers\agent_platesolver\indigo_solver_utils.c" />
+    <ClCompile Include="..\indigo_drivers\agent_platesolver\indigo_solver_healpix.c" />
     <ClCompile Include="..\indigo_libs\externals\libjpeg\jaricom.c" />
     <ClCompile Include="..\indigo_libs\externals\libjpeg\jcapimin.c" />
     <ClCompile Include="..\indigo_libs\externals\libjpeg\jcapistd.c" />
@@ -189,9 +189,9 @@
     <ClCompile Include="..\indigo_libs\externals\libjpeg\jutils.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\indigo_drivers\agent_solver\indigo_solver.h" />
-    <ClInclude Include="..\indigo_drivers\agent_solver\indigo_solver_utils.h" />
-    <ClInclude Include="..\indigo_drivers\agent_solver\indigo_solver_healpix.h" />
+    <ClInclude Include="..\indigo_drivers\agent_platesolver\indigo_solver.h" />
+    <ClInclude Include="..\indigo_drivers\agent_platesolver\indigo_solver_utils.h" />
+    <ClInclude Include="..\indigo_drivers\agent_platesolver\indigo_solver_healpix.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

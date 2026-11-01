@@ -1,0 +1,7 @@
+PASS: helper files and local Makefile.inc byte-identical to prerequisite
+PASS: Windows XML/path references indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj
+PASS: Windows XML/path references indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.filters
+PASS: Windows XML/path references indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.user
+PASS: Windows XML/path references indigo_tools/indigo_solver.vcxproj
+PASS: Windows XML/path references indigo_server/indigo_server.vcxproj
+PASS: new dynamic module loads, INFO reports new name/version and no old entrypoint exported

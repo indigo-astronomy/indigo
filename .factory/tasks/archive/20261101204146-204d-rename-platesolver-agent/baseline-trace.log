@@ -1,0 +1,322 @@
+21:48:14.141505 Application: Looked up driver indigo_agent_astrometry is NOT initialized
+21:48:14.142562 Application: indigo_agent_solver: 'INDIGO Solver Agent' attached
+21:48:14.145655 Application: indigo_solver_load_index: using 28 catalog stars and 21149 catalog quads from /tmp/indigo-agent-solver.AqywSf/solver/index-05deg-tyc2.isix (5°)
+21:48:14.158359 Application: filtered_image: noise sigma 12.6, 0 defective pixels replaced
+21:48:14.162655 Application: Selection: threshold = 1423.518, max = 21795.000, average = 1408.848, stddev = 2.934
+21:48:14.162859 Application: indigo_selection_frame_digest: centroid = [811.55, 555.51], signal = 382880.002, stddev_noise = 2.934, SNR = 130501.456889
+21:48:14.163023 Application: Selection: threshold = 1422.927, max = 21795.000, average = 1408.844, stddev = 2.817
+21:48:14.163174 Application: indigo_selection_frame_digest: centroid = [811.55, 555.51], signal = 382929.082, stddev_noise = 2.817, SNR = 135956.008926
+21:48:14.163331 Application: Selection: threshold = 1427.105, max = 21794.000, average = 1408.744, stddev = 3.672
+21:48:14.163478 Application: indigo_selection_frame_digest: centroid = [995.54, 190.51], signal = 382635.471, stddev_noise = 3.672, SNR = 104195.079747
+21:48:14.163625 Application: Selection: threshold = 1425.071, max = 21794.000, average = 1408.641, stddev = 3.286
+21:48:14.163772 Application: indigo_selection_frame_digest: centroid = [995.54, 190.51], signal = 382800.223, stddev_noise = 3.286, SNR = 116491.681371
+21:48:14.163929 Application: Selection: threshold = 1425.361, max = 21745.000, average = 1408.888, stddev = 3.295
+21:48:14.164075 Application: indigo_selection_frame_digest: centroid = [229.38, 229.44], signal = 382933.481, stddev_noise = 3.295, SNR = 116230.419498
+21:48:14.164220 Application: Selection: threshold = 1425.361, max = 21745.000, average = 1408.888, stddev = 3.295
+21:48:14.164365 Application: indigo_selection_frame_digest: centroid = [229.38, 229.44], signal = 382933.481, stddev_noise = 3.295, SNR = 116230.419498
+21:48:14.164522 Application: Selection: threshold = 1425.017, max = 21722.000, average = 1408.912, stddev = 3.221
+21:48:14.164667 Application: indigo_selection_frame_digest: centroid = [806.59, 871.37], signal = 383077.625, stddev_noise = 3.221, SNR = 118930.360167
+21:48:14.164811 Application: Selection: threshold = 1423.523, max = 21722.000, average = 1408.850, stddev = 2.934
+21:48:14.164957 Application: indigo_selection_frame_digest: centroid = [806.59, 871.37], signal = 383198.653, stddev_noise = 2.934, SNR = 130584.143253
+21:48:14.165108 Application: Selection: threshold = 1422.108, max = 21715.000, average = 1408.376, stddev = 2.747
+21:48:14.165253 Application: indigo_selection_frame_digest: centroid = [1436.34, 534.46], signal = 383365.453, stddev_noise = 2.747, SNR = 139582.033115
+21:48:14.165397 Application: Selection: threshold = 1422.108, max = 21715.000, average = 1408.376, stddev = 2.747
+21:48:14.165541 Application: indigo_selection_frame_digest: centroid = [1436.34, 534.46], signal = 383365.453, stddev_noise = 2.747, SNR = 139582.033115
+21:48:14.165692 Application: Selection: threshold = 1424.878, max = 21659.000, average = 1409.016, stddev = 3.173
+21:48:14.165837 Application: indigo_selection_frame_digest: centroid = [1065.68, 567.61], signal = 383087.743, stddev_noise = 3.173, SNR = 120751.893200
+21:48:14.165981 Application: Selection: threshold = 1427.094, max = 21659.000, average = 1409.013, stddev = 3.616
+21:48:14.166125 Application: indigo_selection_frame_digest: centroid = [1065.68, 567.61], signal = 382910.478, stddev_noise = 3.616, SNR = 105886.531829
+21:48:14.166280 Application: Selection: threshold = 1426.639, max = 21628.000, average = 1408.834, stddev = 3.561
+21:48:14.166425 Application: indigo_selection_frame_digest: centroid = [599.45, 796.73], signal = 383146.127, stddev_noise = 3.561, SNR = 107591.450926
+21:48:14.166572 Application: Selection: threshold = 1426.160, max = 21628.000, average = 1408.792, stddev = 3.473
+21:48:14.166716 Application: indigo_selection_frame_digest: centroid = [599.45, 796.73], signal = 383183.540, stddev_noise = 3.473, SNR = 110317.734804
+21:48:14.166878 Application: Selection: threshold = 1422.418, max = 21531.000, average = 1409.146, stddev = 2.654
+21:48:14.167022 Application: indigo_selection_frame_digest: centroid = [1380.21, 404.49], signal = 383451.555, stddev_noise = 2.654, SNR = 144458.238226
+21:48:14.167165 Application: Selection: threshold = 1422.418, max = 21531.000, average = 1409.146, stddev = 2.654
+21:48:14.167308 Application: indigo_selection_frame_digest: centroid = [1380.21, 404.49], signal = 383451.555, stddev_noise = 2.654, SNR = 144458.238226
+21:48:14.167460 Application: Selection: threshold = 1424.421, max = 21524.000, average = 1409.049, stddev = 3.074
+21:48:14.167605 Application: indigo_selection_frame_digest: centroid = [458.37, 540.24], signal = 383359.757, stddev_noise = 3.074, SNR = 124693.167488
+21:48:14.167778 Application: Selection: threshold = 1424.421, max = 21524.000, average = 1409.049, stddev = 3.074
+21:48:14.167940 Application: indigo_selection_frame_digest: centroid = [458.37, 540.24], signal = 383359.757, stddev_noise = 3.074, SNR = 124693.167488
+21:48:14.168118 Application: Selection: threshold = 1426.717, max = 21494.000, average = 1408.588, stddev = 3.626
+21:48:14.168275 Application: indigo_selection_frame_digest: centroid = [167.69, 872.26], signal = 383148.638, stddev_noise = 3.626, SNR = 105670.901840
+21:48:14.168422 Application: Selection: threshold = 1427.505, max = 21494.000, average = 1408.595, stddev = 3.782
+21:48:14.168579 Application: indigo_selection_frame_digest: centroid = [167.69, 872.26], signal = 383085.590, stddev_noise = 3.782, SNR = 101291.354852
+21:48:14.168736 Application: Selection: threshold = 1424.439, max = 21394.000, average = 1408.963, stddev = 3.095
+21:48:14.168880 Application: indigo_selection_frame_digest: centroid = [1284.62, 520.83], signal = 383364.325, stddev_noise = 3.095, SNR = 123860.464580
+21:48:14.169026 Application: Selection: threshold = 1424.668, max = 21394.000, average = 1409.012, stddev = 3.131
+21:48:14.169169 Application: indigo_selection_frame_digest: centroid = [1284.62, 520.83], signal = 383346.250, stddev_noise = 3.131, SNR = 122429.621737
+21:48:14.169325 Application: Selection: threshold = 1424.213, max = 21347.000, average = 1408.897, stddev = 3.063
+21:48:14.169468 Application: indigo_selection_frame_digest: centroid = [644.57, 561.87], signal = 383451.201, stddev_noise = 3.063, SNR = 125184.118052
+21:48:14.169612 Application: Selection: threshold = 1423.759, max = 21347.000, average = 1408.867, stddev = 2.978
+21:48:14.169754 Application: indigo_selection_frame_digest: centroid = [644.57, 561.87], signal = 383487.036, stddev_noise = 2.978, SNR = 128754.406778
+21:48:14.169909 Application: Selection: threshold = 1426.435, max = 21226.000, average = 1408.941, stddev = 3.499
+21:48:14.170053 Application: indigo_selection_frame_digest: centroid = [313.80, 663.80], signal = 383218.769, stddev_noise = 3.499, SNR = 109530.376514
+21:48:14.170196 Application: Selection: threshold = 1424.066, max = 21226.000, average = 1409.003, stddev = 3.013
+21:48:14.170338 Application: indigo_selection_frame_digest: centroid = [313.80, 663.80], signal = 383410.663, stddev_noise = 3.013, SNR = 127267.839521
+21:48:14.170490 Application: Selection: threshold = 1424.396, max = 21188.000, average = 1409.094, stddev = 3.060
+21:48:14.170633 Application: indigo_selection_frame_digest: centroid = [943.84, 375.78], signal = 383452.545, stddev_noise = 3.060, SNR = 125293.821914
+21:48:14.170777 Application: Selection: threshold = 1424.728, max = 21188.000, average = 1409.104, stddev = 3.125
+21:48:14.170921 Application: indigo_selection_frame_digest: centroid = [943.84, 375.78], signal = 383425.305, stddev_noise = 3.125, SNR = 122702.232974
+21:48:14.171081 Application: Selection: threshold = 8324.322, max = 21179.000, average = 1778.000, stddev = 1309.264
+21:48:14.171224 Application: indigo_selection_frame_digest: centroid = [623.35, 254.68], signal = 236796.154, stddev_noise = 1309.264, SNR = 180.861981
+21:48:14.171368 Application: Selection: threshold = 1813.239, max = 21179.000, average = 1797.928, stddev = 3.062
+21:48:14.171523 Application: indigo_selection_frame_digest: centroid = [623.34, 254.68], signal = 709687.704, stddev_noise = 3.062, SNR = 231759.647481
+21:48:14.171677 Application: Selection: threshold = 1426.406, max = 21158.000, average = 1409.030, stddev = 3.475
+21:48:14.171824 Application: indigo_selection_frame_digest: centroid = [590.79, 661.84], signal = 383216.747, stddev_noise = 3.475, SNR = 110276.818356
+21:48:14.171969 Application: Selection: threshold = 1425.170, max = 21158.000, average = 1409.042, stddev = 3.225
+21:48:14.172115 Application: indigo_selection_frame_digest: centroid = [590.79, 661.84], signal = 383318.088, stddev_noise = 3.225, SNR = 118840.483518
+21:48:14.172268 Application: Selection: threshold = 9944.976, max = 21179.000, average = 1769.671, stddev = 1635.061
+21:48:14.172413 Application: indigo_selection_frame_digest: centroid = [623.32, 254.66], signal = 176570.790, stddev_noise = 1635.061, SNR = 107.990341
+21:48:14.172558 Application: Selection: threshold = 1813.239, max = 21179.000, average = 1797.928, stddev = 3.062
+21:48:14.172711 Application: indigo_selection_frame_digest: centroid = [623.34, 254.68], signal = 709687.704, stddev_noise = 3.062, SNR = 231759.647481
+21:48:14.172868 Application: Selection: threshold = 1427.540, max = 21067.000, average = 1409.365, stddev = 3.635
+21:48:14.173018 Application: indigo_selection_frame_digest: centroid = [951.70, 650.07], signal = 383089.271, stddev_noise = 3.635, SNR = 105392.594757
+21:48:14.173165 Application: Selection: threshold = 1425.798, max = 21067.000, average = 1409.355, stddev = 3.288
+21:48:14.173312 Application: indigo_selection_frame_digest: centroid = [951.70, 650.07], signal = 383230.374, stddev_noise = 3.288, SNR = 116536.653808
+21:48:14.173470 Application: Selection: threshold = 1425.416, max = 21065.000, average = 1408.767, stddev = 3.330
+21:48:14.173628 Application: indigo_selection_frame_digest: centroid = [103.80, 580.88], signal = 383425.892, stddev_noise = 3.330, SNR = 115148.468189
+21:48:14.173777 Application: Selection: threshold = 1423.973, max = 21065.000, average = 1408.706, stddev = 3.053
+21:48:14.173928 Application: indigo_selection_frame_digest: centroid = [103.80, 580.88], signal = 383544.173, stddev_noise = 3.053, SNR = 125609.346433
+21:48:14.174119 Application: Selection: threshold = 1423.914, max = 21024.000, average = 1408.865, stddev = 3.010
+21:48:14.174285 Application: indigo_selection_frame_digest: centroid = [131.01, 310.42], signal = 383410.899, stddev_noise = 3.010, SNR = 127389.625969
+21:48:14.174428 Application: Selection: threshold = 1423.914, max = 21024.000, average = 1408.865, stddev = 3.010
+21:48:14.174571 Application: indigo_selection_frame_digest: centroid = [131.01, 310.42], signal = 383410.899, stddev_noise = 3.010, SNR = 127389.625969
+21:48:14.174726 Application: Selection: threshold = 1422.976, max = 21003.000, average = 1408.602, stddev = 2.875
+21:48:14.174871 Application: indigo_selection_frame_digest: centroid = [883.98, 1028.34], signal = 383609.949, stddev_noise = 2.875, SNR = 133445.807490
+21:48:14.175019 Application: Selection: threshold = 1423.904, max = 21003.000, average = 1408.604, stddev = 3.060
+21:48:14.175171 Application: indigo_selection_frame_digest: centroid = [883.98, 1028.34], signal = 383535.655, stddev_noise = 3.060, SNR = 125337.723199
+21:48:14.175330 Application: Selection: threshold = 1426.932, max = 20956.000, average = 1409.161, stddev = 3.554
+21:48:14.175473 Application: indigo_selection_frame_digest: centroid = [519.22, 351.94], signal = 383073.481, stddev_noise = 3.554, SNR = 107776.659642
+21:48:14.175616 Application: Selection: threshold = 1426.097, max = 20956.000, average = 1409.107, stddev = 3.398
+21:48:14.175759 Application: indigo_selection_frame_digest: centroid = [519.22, 351.94], signal = 383141.157, stddev_noise = 3.398, SNR = 112752.900464
+21:48:14.175914 Application: Selection: threshold = 1423.996, max = 20939.000, average = 1408.508, stddev = 3.098
+21:48:14.176073 Application: indigo_selection_frame_digest: centroid = [962.21, 407.06], signal = 383477.342, stddev_noise = 3.098, SNR = 123798.031255
+21:48:14.176225 Application: Selection: threshold = 1423.996, max = 20939.000, average = 1408.508, stddev = 3.098
+21:48:14.176390 Application: indigo_selection_frame_digest: centroid = [962.21, 407.06], signal = 383477.342, stddev_noise = 3.098, SNR = 123798.031255
+21:48:14.176566 Application: Selection: threshold = 1424.435, max = 20930.000, average = 1408.872, stddev = 3.113
+21:48:14.176734 Application: indigo_selection_frame_digest: centroid = [584.05, 689.22], signal = 383356.727, stddev_noise = 3.113, SNR = 123161.993540
+21:48:14.176881 Application: Selection: threshold = 1424.435, max = 20930.000, average = 1408.872, stddev = 3.113
+21:48:14.177041 Application: indigo_selection_frame_digest: centroid = [584.05, 689.22], signal = 383356.727, stddev_noise = 3.113, SNR = 123161.993540
+21:48:14.177212 Application: Selection: threshold = 1425.515, max = 20862.000, average = 1408.835, stddev = 3.336
+21:48:14.177358 Application: indigo_selection_frame_digest: centroid = [992.21, 414.96], signal = 383387.323, stddev_noise = 3.336, SNR = 114925.465055
+21:48:14.177501 Application: Selection: threshold = 1425.963, max = 20862.000, average = 1408.771, stddev = 3.438
+21:48:14.177643 Application: indigo_selection_frame_digest: centroid = [992.21, 414.96], signal = 383351.020, stddev_noise = 3.438, SNR = 111495.247777
+21:48:14.177796 Application: Selection: threshold = 1423.777, max = 20614.000, average = 1408.683, stddev = 3.019
+21:48:14.177939 Application: indigo_selection_frame_digest: centroid = [739.89, 956.98], signal = 383568.055, stddev_noise = 3.019, SNR = 127060.588026
+21:48:14.178082 Application: Selection: threshold = 1422.074, max = 20614.000, average = 1408.695, stddev = 2.676
+21:48:14.178224 Application: indigo_selection_frame_digest: centroid = [739.89, 956.98], signal = 383706.921, stddev_noise = 2.676, SNR = 143398.889019
+21:48:14.178377 Application: Selection: threshold = 1424.351, max = 20499.000, average = 1409.658, stddev = 2.938
+21:48:14.178520 Application: indigo_selection_frame_digest: centroid = [400.94, 998.98], signal = 383537.946, stddev_noise = 2.938, SNR = 130523.647106
+21:48:14.178668 Application: Selection: threshold = 1423.216, max = 20499.000, average = 1409.569, stddev = 2.729
+21:48:14.178813 Application: indigo_selection_frame_digest: centroid = [400.94, 998.98], signal = 383628.692, stddev_noise = 2.729, SNR = 140554.017349
+21:48:14.178953 Application: indigo_find_stars_fast_threshold(): evaluated 27 of 29 local maxima
+21:48:14.179098 Application: Selection: threshold = 8324.322, max = 21179.000, average = 1778.000, stddev = 1309.264
+21:48:14.179241 Application: indigo_selection_frame_digest: centroid = [623.35, 254.68], signal = 236796.154, stddev_noise = 1309.264, SNR = 180.861981
+21:48:14.179398 Application: Selection: threshold = 1813.239, max = 21179.000, average = 1797.928, stddev = 3.062
+21:48:14.179550 Application: indigo_selection_frame_digest: centroid = [623.34, 254.68], signal = 709687.704, stddev_noise = 3.062, SNR = 231759.647481
+21:48:14.179680 Application: HFD : background = 1019.382812, stddev = 3.06, threshold = 1025.51, max = 21179.00
+21:48:14.179815 Application: indigo_find_stars(): res = 0 hfd = 14.9 radius = 16 star precise position refined to (623.340232, 254.680885)
+21:48:14.179966 Application: Selection: threshold = 9944.976, max = 21179.000, average = 1769.671, stddev = 1635.061
+21:48:14.180111 Application: indigo_selection_frame_digest: centroid = [623.32, 254.66], signal = 176570.790, stddev_noise = 1635.061, SNR = 107.990341
+21:48:14.180256 Application: Selection: threshold = 1813.239, max = 21179.000, average = 1797.928, stddev = 3.062
+21:48:14.180402 Application: indigo_selection_frame_digest: centroid = [623.34, 254.68], signal = 709687.704, stddev_noise = 3.062, SNR = 231759.647481
+21:48:14.180533 Application: HFD : background = 1019.382812, stddev = 3.06, threshold = 1025.51, max = 21179.00
+21:48:14.180664 Application: indigo_find_stars(): res = 0 hfd = 14.9 radius = 16 star precise position refined to (623.340232, 254.680885)
+21:48:14.180807 Application: indigo_find_stars(): star (623.340232, 254.680885) skipped, duplicate of #1 = (623.340232, 254.680885)
+21:48:14.180954 Application: Selection: threshold = 1423.777, max = 20614.000, average = 1408.683, stddev = 3.019
+21:48:14.181100 Application: indigo_selection_frame_digest: centroid = [739.89, 956.98], signal = 383568.055, stddev_noise = 3.019, SNR = 127060.588026
+21:48:14.181245 Application: Selection: threshold = 1422.074, max = 20614.000, average = 1408.695, stddev = 2.676
+21:48:14.181391 Application: indigo_selection_frame_digest: centroid = [739.89, 956.98], signal = 383706.921, stddev_noise = 2.676, SNR = 143398.889019
+21:48:14.181538 Application: HFD : background = 1018.609375, stddev = 2.68, threshold = 1023.96, max = 20614.00
+21:48:14.181685 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (739.890730, 956.979780)
+21:48:14.181841 Application: Selection: threshold = 1424.351, max = 20499.000, average = 1409.658, stddev = 2.938
+21:48:14.182002 Application: indigo_selection_frame_digest: centroid = [400.94, 998.98], signal = 383537.946, stddev_noise = 2.938, SNR = 130523.647106
+21:48:14.182169 Application: Selection: threshold = 1423.216, max = 20499.000, average = 1409.569, stddev = 2.729
+21:48:14.182318 Application: indigo_selection_frame_digest: centroid = [400.94, 998.98], signal = 383628.692, stddev_noise = 2.729, SNR = 140554.017349
+21:48:14.182447 Application: HFD : background = 1020.835938, stddev = 2.73, threshold = 1026.29, max = 20499.00
+21:48:14.182575 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (400.939684, 998.976600)
+21:48:14.182718 Application: Selection: threshold = 1425.416, max = 21065.000, average = 1408.767, stddev = 3.330
+21:48:14.182861 Application: indigo_selection_frame_digest: centroid = [103.80, 580.88], signal = 383425.892, stddev_noise = 3.330, SNR = 115148.468189
+21:48:14.183004 Application: Selection: threshold = 1423.973, max = 21065.000, average = 1408.706, stddev = 3.053
+21:48:14.183146 Application: indigo_selection_frame_digest: centroid = [103.80, 580.88], signal = 383544.173, stddev_noise = 3.053, SNR = 125609.346433
+21:48:14.183273 Application: HFD : background = 1019.273438, stddev = 3.05, threshold = 1025.38, max = 21065.00
+21:48:14.183402 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (103.800228, 580.879307)
+21:48:14.183546 Application: Selection: threshold = 1422.976, max = 21003.000, average = 1408.602, stddev = 2.875
+21:48:14.183689 Application: indigo_selection_frame_digest: centroid = [883.98, 1028.34], signal = 383609.949, stddev_noise = 2.875, SNR = 133445.807490
+21:48:14.183831 Application: Selection: threshold = 1423.904, max = 21003.000, average = 1408.604, stddev = 3.060
+21:48:14.183974 Application: indigo_selection_frame_digest: centroid = [883.98, 1028.34], signal = 383535.655, stddev_noise = 3.060, SNR = 125337.723199
+21:48:14.184102 Application: HFD : background = 1018.664062, stddev = 3.06, threshold = 1024.78, max = 21003.00
+21:48:14.184230 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (883.977580, 1028.341741)
+21:48:14.184398 Application: Selection: threshold = 1424.213, max = 21347.000, average = 1408.897, stddev = 3.063
+21:48:14.184547 Application: indigo_selection_frame_digest: centroid = [644.57, 561.87], signal = 383451.201, stddev_noise = 3.063, SNR = 125184.118052
+21:48:14.184690 Application: Selection: threshold = 1423.759, max = 21347.000, average = 1408.867, stddev = 2.978
+21:48:14.184833 Application: indigo_selection_frame_digest: centroid = [644.57, 561.87], signal = 383487.036, stddev_noise = 2.978, SNR = 128754.406778
+21:48:14.184967 Application: HFD : background = 1019.562500, stddev = 2.98, threshold = 1025.52, max = 21347.00
+21:48:14.185099 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (644.567436, 561.870154)
+21:48:14.185245 Application: Selection: threshold = 1423.996, max = 20939.000, average = 1408.508, stddev = 3.098
+21:48:14.185387 Application: indigo_selection_frame_digest: centroid = [962.21, 407.06], signal = 383477.342, stddev_noise = 3.098, SNR = 123798.031255
+21:48:14.185529 Application: Selection: threshold = 1423.996, max = 20939.000, average = 1408.508, stddev = 3.098
+21:48:14.185678 Application: indigo_selection_frame_digest: centroid = [962.21, 407.06], signal = 383477.342, stddev_noise = 3.098, SNR = 123798.031255
+21:48:14.185808 Application: HFD : background = 1019.148438, stddev = 3.10, threshold = 1025.34, max = 20939.00
+21:48:14.185936 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (962.209177, 407.063935)
+21:48:14.186079 Application: Selection: threshold = 1422.418, max = 21531.000, average = 1409.146, stddev = 2.654
+21:48:14.186224 Application: indigo_selection_frame_digest: centroid = [1380.21, 404.49], signal = 383451.555, stddev_noise = 2.654, SNR = 144458.238226
+21:48:14.186369 Application: Selection: threshold = 1422.418, max = 21531.000, average = 1409.146, stddev = 2.654
+21:48:14.186513 Application: indigo_selection_frame_digest: centroid = [1380.21, 404.49], signal = 383451.555, stddev_noise = 2.654, SNR = 144458.238226
+21:48:14.186650 Application: HFD : background = 1019.281250, stddev = 2.65, threshold = 1024.59, max = 21531.00
+21:48:14.186782 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (1380.209536, 404.493960)
+21:48:14.186928 Application: Selection: threshold = 1424.396, max = 21188.000, average = 1409.094, stddev = 3.060
+21:48:14.187070 Application: indigo_selection_frame_digest: centroid = [943.84, 375.78], signal = 383452.545, stddev_noise = 3.060, SNR = 125293.821914
+21:48:14.187213 Application: Selection: threshold = 1424.728, max = 21188.000, average = 1409.104, stddev = 3.125
+21:48:14.187355 Application: indigo_selection_frame_digest: centroid = [943.84, 375.78], signal = 383425.305, stddev_noise = 3.125, SNR = 122702.232974
+21:48:14.187483 Application: HFD : background = 1019.968750, stddev = 3.12, threshold = 1026.22, max = 21188.00
+21:48:14.187612 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (943.840950, 375.777452)
+21:48:14.187765 Application: Selection: threshold = 1423.914, max = 21024.000, average = 1408.865, stddev = 3.010
+21:48:14.187910 Application: indigo_selection_frame_digest: centroid = [131.01, 310.42], signal = 383410.899, stddev_noise = 3.010, SNR = 127389.625969
+21:48:14.188052 Application: Selection: threshold = 1423.914, max = 21024.000, average = 1408.865, stddev = 3.010
+21:48:14.188195 Application: indigo_selection_frame_digest: centroid = [131.01, 310.42], signal = 383410.899, stddev_noise = 3.010, SNR = 127389.625969
+21:48:14.188323 Application: HFD : background = 1018.937500, stddev = 3.01, threshold = 1024.96, max = 21024.00
+21:48:14.188451 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (131.009436, 310.421416)
+21:48:14.188596 Application: Selection: threshold = 1426.435, max = 21226.000, average = 1408.941, stddev = 3.499
+21:48:14.188739 Application: indigo_selection_frame_digest: centroid = [313.80, 663.80], signal = 383218.769, stddev_noise = 3.499, SNR = 109530.376514
+21:48:14.188886 Application: Selection: threshold = 1424.066, max = 21226.000, average = 1409.003, stddev = 3.013
+21:48:14.189035 Application: indigo_selection_frame_digest: centroid = [313.80, 663.80], signal = 383410.663, stddev_noise = 3.013, SNR = 127267.839521
+21:48:14.189163 Application: HFD : background = 1019.453125, stddev = 3.01, threshold = 1025.48, max = 21226.00
+21:48:14.189291 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (313.800242, 663.802057)
+21:48:14.189435 Application: Selection: threshold = 1422.108, max = 21715.000, average = 1408.376, stddev = 2.747
+21:48:14.189577 Application: indigo_selection_frame_digest: centroid = [1436.34, 534.46], signal = 383365.453, stddev_noise = 2.747, SNR = 139582.033115
+21:48:14.189727 Application: Selection: threshold = 1422.108, max = 21715.000, average = 1408.376, stddev = 2.747
+21:48:14.189869 Application: indigo_selection_frame_digest: centroid = [1436.34, 534.46], signal = 383365.453, stddev_noise = 2.747, SNR = 139582.033115
+21:48:14.189997 Application: HFD : background = 1019.835938, stddev = 2.75, threshold = 1025.33, max = 21715.00
+21:48:14.190125 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (1436.340464, 534.464518)
+21:48:14.190269 Application: Selection: threshold = 1424.421, max = 21524.000, average = 1409.049, stddev = 3.074
+21:48:14.190411 Application: indigo_selection_frame_digest: centroid = [458.37, 540.24], signal = 383359.757, stddev_noise = 3.074, SNR = 124693.167488
+21:48:14.190553 Application: Selection: threshold = 1424.421, max = 21524.000, average = 1409.049, stddev = 3.074
+21:48:14.190696 Application: indigo_selection_frame_digest: centroid = [458.37, 540.24], signal = 383359.757, stddev_noise = 3.074, SNR = 124693.167488
+21:48:14.190824 Application: HFD : background = 1019.679688, stddev = 3.07, threshold = 1025.83, max = 21524.00
+21:48:14.190951 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (458.371409, 540.239452)
+21:48:14.191094 Application: Selection: threshold = 1424.435, max = 20930.000, average = 1408.872, stddev = 3.113
+21:48:14.191237 Application: indigo_selection_frame_digest: centroid = [584.05, 689.22], signal = 383356.727, stddev_noise = 3.113, SNR = 123161.993540
+21:48:14.191378 Application: Selection: threshold = 1424.435, max = 20930.000, average = 1408.872, stddev = 3.113
+21:48:14.191520 Application: indigo_selection_frame_digest: centroid = [584.05, 689.22], signal = 383356.727, stddev_noise = 3.113, SNR = 123161.993540
+21:48:14.191648 Application: HFD : background = 1019.195312, stddev = 3.11, threshold = 1025.42, max = 20930.00
+21:48:14.191777 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (584.052166, 689.223604)
+21:48:14.191920 Application: Selection: threshold = 1425.515, max = 20862.000, average = 1408.835, stddev = 3.336
+21:48:14.192063 Application: indigo_selection_frame_digest: centroid = [992.21, 414.96], signal = 383387.323, stddev_noise = 3.336, SNR = 114925.465055
+21:48:14.192205 Application: Selection: threshold = 1425.963, max = 20862.000, average = 1408.771, stddev = 3.438
+21:48:14.192348 Application: indigo_selection_frame_digest: centroid = [992.21, 414.96], signal = 383351.020, stddev_noise = 3.438, SNR = 111495.247777
+21:48:14.192475 Application: HFD : background = 1018.648438, stddev = 3.44, threshold = 1025.52, max = 20862.00
+21:48:14.192604 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (992.209854, 414.964147)
+21:48:14.192761 Application: indigo_find_stars(): star (992.209854, 414.964147), too close to #7 = (962.209177, 407.063935)
+21:48:14.192907 Application: Selection: threshold = 1424.439, max = 21394.000, average = 1408.963, stddev = 3.095
+21:48:14.193050 Application: indigo_selection_frame_digest: centroid = [1284.62, 520.83], signal = 383364.325, stddev_noise = 3.095, SNR = 123860.464580
+21:48:14.193192 Application: Selection: threshold = 1424.668, max = 21394.000, average = 1409.012, stddev = 3.131
+21:48:14.193334 Application: indigo_selection_frame_digest: centroid = [1284.62, 520.83], signal = 383346.250, stddev_noise = 3.131, SNR = 122429.621737
+21:48:14.193462 Application: HFD : background = 1019.976562, stddev = 3.13, threshold = 1026.24, max = 21394.00
+21:48:14.193590 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (1284.620818, 520.832797)
+21:48:14.193733 Application: Selection: threshold = 1426.406, max = 21158.000, average = 1409.030, stddev = 3.475
+21:48:14.193877 Application: indigo_selection_frame_digest: centroid = [590.79, 661.84], signal = 383216.747, stddev_noise = 3.475, SNR = 110276.818356
+21:48:14.194028 Application: Selection: threshold = 1425.170, max = 21158.000, average = 1409.042, stddev = 3.225
+21:48:14.194170 Application: indigo_selection_frame_digest: centroid = [590.79, 661.84], signal = 383318.088, stddev_noise = 3.225, SNR = 118840.483518
+21:48:14.194298 Application: HFD : background = 1020.101562, stddev = 3.23, threshold = 1026.55, max = 21158.00
+21:48:14.194425 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (590.794840, 661.842432)
+21:48:14.194554 Application: indigo_find_stars(): star (590.794840, 661.842432), too close to #14 = (584.052166, 689.223604)
+21:48:14.194699 Application: Selection: threshold = 1427.540, max = 21067.000, average = 1409.365, stddev = 3.635
+21:48:14.194841 Application: indigo_selection_frame_digest: centroid = [951.70, 650.07], signal = 383089.271, stddev_noise = 3.635, SNR = 105392.594757
+21:48:14.194983 Application: Selection: threshold = 1425.798, max = 21067.000, average = 1409.355, stddev = 3.288
+21:48:14.195126 Application: indigo_selection_frame_digest: centroid = [951.70, 650.07], signal = 383230.374, stddev_noise = 3.288, SNR = 116536.653808
+21:48:14.195253 Application: HFD : background = 1019.828125, stddev = 3.29, threshold = 1026.41, max = 21067.00
+21:48:14.195381 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (951.704627, 650.066143)
+21:48:14.195526 Application: Selection: threshold = 1425.017, max = 21722.000, average = 1408.912, stddev = 3.221
+21:48:14.195668 Application: indigo_selection_frame_digest: centroid = [806.59, 871.37], signal = 383077.625, stddev_noise = 3.221, SNR = 118930.360167
+21:48:14.195810 Application: Selection: threshold = 1423.523, max = 21722.000, average = 1408.850, stddev = 2.934
+21:48:14.195953 Application: indigo_selection_frame_digest: centroid = [806.59, 871.37], signal = 383198.653, stddev_noise = 2.934, SNR = 130584.143253
+21:48:14.196092 Application: HFD : background = 1019.617188, stddev = 2.93, threshold = 1025.49, max = 21722.00
+21:48:14.196223 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (806.591557, 871.372404)
+21:48:14.196369 Application: Selection: threshold = 1426.639, max = 21628.000, average = 1408.834, stddev = 3.561
+21:48:14.196512 Application: indigo_selection_frame_digest: centroid = [599.45, 796.73], signal = 383146.127, stddev_noise = 3.561, SNR = 107591.450926
+21:48:14.196661 Application: Selection: threshold = 1426.160, max = 21628.000, average = 1408.792, stddev = 3.473
+21:48:14.196804 Application: indigo_selection_frame_digest: centroid = [599.45, 796.73], signal = 383183.540, stddev_noise = 3.473, SNR = 110317.734804
+21:48:14.196932 Application: HFD : background = 1019.710938, stddev = 3.47, threshold = 1026.66, max = 21628.00
+21:48:14.197060 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (599.450242, 796.729950)
+21:48:14.197205 Application: Selection: threshold = 1426.932, max = 20956.000, average = 1409.161, stddev = 3.554
+21:48:14.197347 Application: indigo_selection_frame_digest: centroid = [519.22, 351.94], signal = 383073.481, stddev_noise = 3.554, SNR = 107776.659642
+21:48:14.197490 Application: Selection: threshold = 1426.097, max = 20956.000, average = 1409.107, stddev = 3.398
+21:48:14.197632 Application: indigo_selection_frame_digest: centroid = [519.22, 351.94], signal = 383141.157, stddev_noise = 3.398, SNR = 112752.900464
+21:48:14.197760 Application: HFD : background = 1019.507812, stddev = 3.40, threshold = 1026.30, max = 20956.00
+21:48:14.197888 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (519.223896, 351.937545)
+21:48:14.198040 Application: Selection: threshold = 1426.717, max = 21494.000, average = 1408.588, stddev = 3.626
+21:48:14.198182 Application: indigo_selection_frame_digest: centroid = [167.69, 872.26], signal = 383148.638, stddev_noise = 3.626, SNR = 105670.901840
+21:48:14.198339 Application: Selection: threshold = 1427.505, max = 21494.000, average = 1408.595, stddev = 3.782
+21:48:14.198483 Application: indigo_selection_frame_digest: centroid = [167.69, 872.26], signal = 383085.590, stddev_noise = 3.782, SNR = 101291.354852
+21:48:14.198613 Application: HFD : background = 1018.820312, stddev = 3.78, threshold = 1026.38, max = 21494.00
+21:48:14.198741 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (167.686829, 872.255645)
+21:48:14.198886 Application: Selection: threshold = 1425.361, max = 21745.000, average = 1408.888, stddev = 3.295
+21:48:14.199029 Application: indigo_selection_frame_digest: centroid = [229.38, 229.44], signal = 382933.481, stddev_noise = 3.295, SNR = 116230.419498
+21:48:14.199173 Application: Selection: threshold = 1425.361, max = 21745.000, average = 1408.888, stddev = 3.295
+21:48:14.199314 Application: indigo_selection_frame_digest: centroid = [229.38, 229.44], signal = 382933.481, stddev_noise = 3.295, SNR = 116230.419498
+21:48:14.199443 Application: HFD : background = 1019.429688, stddev = 3.29, threshold = 1026.02, max = 21745.00
+21:48:14.199573 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (229.384739, 229.438313)
+21:48:14.199717 Application: Selection: threshold = 1423.518, max = 21795.000, average = 1408.848, stddev = 2.934
+21:48:14.199883 Application: indigo_selection_frame_digest: centroid = [811.55, 555.51], signal = 382880.002, stddev_noise = 2.934, SNR = 130501.456889
+21:48:14.200044 Application: Selection: threshold = 1422.927, max = 21795.000, average = 1408.844, stddev = 2.817
+21:48:14.200190 Application: indigo_selection_frame_digest: centroid = [811.55, 555.51], signal = 382929.082, stddev_noise = 2.817, SNR = 135956.008926
+21:48:14.200318 Application: HFD : background = 1019.273438, stddev = 2.82, threshold = 1024.91, max = 21795.00
+21:48:14.200447 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (811.552581, 555.512026)
+21:48:14.200591 Application: Selection: threshold = 1424.878, max = 21659.000, average = 1409.016, stddev = 3.173
+21:48:14.200733 Application: indigo_selection_frame_digest: centroid = [1065.68, 567.61], signal = 383087.743, stddev_noise = 3.173, SNR = 120751.893200
+21:48:14.200876 Application: Selection: threshold = 1427.094, max = 21659.000, average = 1409.013, stddev = 3.616
+21:48:14.201035 Application: indigo_selection_frame_digest: centroid = [1065.68, 567.61], signal = 382910.478, stddev_noise = 3.616, SNR = 105886.531829
+21:48:14.201168 Application: HFD : background = 1020.031250, stddev = 3.62, threshold = 1027.26, max = 21659.00
+21:48:14.201308 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (1065.676408, 567.608958)
+21:48:14.201470 Application: Selection: threshold = 1427.105, max = 21794.000, average = 1408.744, stddev = 3.672
+21:48:14.201641 Application: indigo_selection_frame_digest: centroid = [995.54, 190.51], signal = 382635.471, stddev_noise = 3.672, SNR = 104195.079747
+21:48:14.201789 Application: Selection: threshold = 1425.071, max = 21794.000, average = 1408.641, stddev = 3.286
+21:48:14.201946 Application: indigo_selection_frame_digest: centroid = [995.54, 190.51], signal = 382800.223, stddev_noise = 3.286, SNR = 116491.681371
+21:48:14.202099 Application: HFD : background = 1019.148438, stddev = 3.29, threshold = 1025.72, max = 21794.00
+21:48:14.202232 Application: indigo_find_stars(): res = 0 hfd = 4.7 radius = 16 star precise position refined to (995.541134, 190.511458)
+21:48:14.202363 Application: indigo_find_stars_fast_threshold: Refined stars:
+21:48:14.202499 Application: indigo_find_stars_fast_threshold: star #1 = (623.340232, 254.680885), ncdist = 0.646473, lum = 709687.703902, close_to_other = 0, oversaturated = 0
+21:48:14.202626 Application: indigo_find_stars_fast_threshold: star #2 = (739.890730, 956.979780), ncdist = 0.603342, lum = 383706.920586, close_to_other = 0, oversaturated = 0
+21:48:14.202752 Application: indigo_find_stars_fast_threshold: star #3 = (400.939684, 998.976600), ncdist = 0.940496, lum = 383628.692042, close_to_other = 0, oversaturated = 0
+21:48:14.202881 Application: indigo_find_stars_fast_threshold: star #4 = (103.800228, 580.879307), ncdist = 1.160770, lum = 383544.173445, close_to_other = 0, oversaturated = 0
+21:48:14.203008 Application: indigo_find_stars_fast_threshold: star #5 = (883.977580, 1028.341741), ncdist = 0.727494, lum = 383535.654984, close_to_other = 0, oversaturated = 0
+21:48:14.203135 Application: indigo_find_stars_fast_threshold: star #6 = (644.567436, 561.870154), ncdist = 0.266735, lum = 383487.035760, close_to_other = 0, oversaturated = 0
+21:48:14.203261 Application: indigo_find_stars_fast_threshold: star #7 = (962.209177, 407.063935), ncdist = 0.420106, lum = 383477.342107, close_to_other = 1, oversaturated = 0
+21:48:14.203388 Application: indigo_find_stars_fast_threshold: star #8 = (1380.209536, 404.493960), ncdist = 1.020438, lum = 383451.555108, close_to_other = 0, oversaturated = 0
+21:48:14.203515 Application: indigo_find_stars_fast_threshold: star #9 = (943.840950, 375.777452), ncdist = 0.443991, lum = 383425.305341, close_to_other = 0, oversaturated = 0
+21:48:14.203642 Application: indigo_find_stars_fast_threshold: star #10 = (131.009436, 310.421416), ncdist = 1.214958, lum = 383410.898985, close_to_other = 0, oversaturated = 0
+21:48:14.203768 Application: indigo_find_stars_fast_threshold: star #11 = (313.800242, 663.802057), ncdist = 0.817280, lum = 383410.662501, close_to_other = 0, oversaturated = 0
+21:48:14.203895 Application: indigo_find_stars_fast_threshold: star #12 = (1436.340464, 534.464518), ncdist = 1.066177, lum = 383365.452543, close_to_other = 0, oversaturated = 0
+21:48:14.204022 Application: indigo_find_stars_fast_threshold: star #13 = (458.371409, 540.239452), ncdist = 0.578027, lum = 383359.757421, close_to_other = 0, oversaturated = 0
+21:48:14.204148 Application: indigo_find_stars_fast_threshold: star #14 = (584.052166, 689.223604), ncdist = 0.389424, lum = 383356.726945, close_to_other = 1, oversaturated = 0
+21:48:14.204276 Application: indigo_find_stars_fast_threshold: star #15 = (992.209854, 414.964147), ncdist = 0.444669, lum = 383351.020386, close_to_other = 1, oversaturated = 0
+21:48:14.204403 Application: indigo_find_stars_fast_threshold: star #16 = (1284.620818, 520.832797), ncdist = 0.818408, lum = 383346.250295, close_to_other = 0, oversaturated = 0
+21:48:14.204533 Application: indigo_find_stars_fast_threshold: star #17 = (590.794840, 661.842432), ncdist = 0.363590, lum = 383318.087798, close_to_other = 1, oversaturated = 0
+21:48:14.204659 Application: indigo_find_stars_fast_threshold: star #18 = (951.704627, 650.066143), ncdist = 0.266254, lum = 383230.373809, close_to_other = 0, oversaturated = 0
+21:48:14.204787 Application: indigo_find_stars_fast_threshold: star #19 = (806.591557, 871.372404), ncdist = 0.452421, lum = 383198.653065, close_to_other = 0, oversaturated = 0
+21:48:14.204914 Application: indigo_find_stars_fast_threshold: star #20 = (599.450242, 796.729950), ncdist = 0.468220, lum = 383183.540398, close_to_other = 0, oversaturated = 0
+21:48:14.205040 Application: indigo_find_stars_fast_threshold: star #21 = (519.223896, 351.937545), ncdist = 0.624434, lum = 383141.157470, close_to_other = 0, oversaturated = 0
+21:48:14.205167 Application: indigo_find_stars_fast_threshold: star #22 = (167.686829, 872.255645), ncdist = 1.147392, lum = 383085.590036, close_to_other = 0, oversaturated = 0
+21:48:14.205293 Application: indigo_find_stars_fast_threshold: star #23 = (229.384739, 229.438313), ncdist = 1.133968, lum = 382933.480804, close_to_other = 0, oversaturated = 0
+21:48:14.205419 Application: indigo_find_stars_fast_threshold: star #24 = (811.552581, 555.512026), ncdist = 0.076606, lum = 382929.081922, close_to_other = 0, oversaturated = 0
+21:48:14.205546 Application: indigo_find_stars_fast_threshold: star #25 = (1065.676408, 567.608958), ncdist = 0.446073, lum = 382910.477928, close_to_other = 0, oversaturated = 0
+21:48:14.205672 Application: indigo_find_stars_fast_threshold: star #26 = (995.541134, 190.511458), ncdist = 0.756302, lum = 382800.222892, close_to_other = 0, oversaturated = 0
+21:48:14.205800 Application: indigo_find_stars_fast_threshold: found 26 stars with threshold 3.5
+21:48:14.205927 Application: indigo_solver_image_stars: detected 26 image stars
+21:48:14.208483 Application: indigo_agent_solver[solver_solve:600]: Solving with index 5° Tycho-2 (FOV 4.5° - 10°)...
+21:48:14.209115 Application: indigo_solver_load_index: using 28 catalog stars and 21149 catalog quads from /tmp/indigo-agent-solver.AqywSf/solver/index-05deg-tyc2.isix (5°)
+21:48:14.210289 Application: indigo_solver_build_image_quads: 22 stars used to form 7315 quads
+21:48:14.210437 Application: indigo_agent_solver[solver_solve:623]: Stage 1: 26 brightest stars, 7315 quads, 21149 catalog quads
+21:48:14.210947 Application: indigo_solver_match_quads: 5986 quads matched by hash (tolerance +-1)
+21:48:14.287339 Application: indigo_solver_match_quads: 3605 votes for scale 2.00016
+21:48:14.287549 Application: indigo_solver_match_quads: 5986 quads matched by scale (tolerance 0.01)
+21:48:14.287888 Application: indigo_solver_match_stars: 22 stars matched
+21:48:14.288029 Application: indigo_solver_match_stars: 22 stars matched by votes
+21:48:14.288295 Application: indigo_solver_compute_center: RA = 97.999°, DEC = 5.049°, rotation = 20.00°, scale = 8.00"/pix, 21 of 22 matches, rms = 0.01"
+21:48:14.298139 Application: indigo_agent_solver: 'INDIGO Solver Agent' detached
+Running Solver agent
+  PASS solve_raw_image
+Solver agent: all tests passed
+Solver agent: 1 of 1 cases passed

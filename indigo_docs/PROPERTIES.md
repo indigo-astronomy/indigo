@@ -667,15 +667,15 @@ Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 | AGENT_PLATESOLVER_IMAGE_OUTPUT | blob | yes | IMAGE | Solver output image. |
 | CCD_PREVIEW, CCD_PREVIEW_IMAGE, CCD_JPEG_SETTINGS, CCD_JPEG_STRETCH_PRESETS | mixed | mixed | see CCD property sections | Reuses CCD preview and JPEG properties for plate-solver image preview. |
 
-Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_solver/indigo_agent_solver.c` and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
+Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c` and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
 
-### Solver agent
+### Platesolver Agent
 
 | Property name | Type | RO | Items | Comments |
 | ----- | ----- | ----- | ----- | ----- |
 | X_AGENT_SOLVER_INDEX | switch | no | INDEX_00_2DEG_GAIA, INDEX_00_5DEG_GAIA, INDEX_01DEG_TYC2, INDEX_02DEG_TYC2, INDEX_05DEG_TYC2, INDEX_10DEG_TYC2, INDEX_20DEG_TYC2 | Installed quad index management (Gaia DR3 for the 0.2° and 0.5° scales, Tycho-2 for the others), selecting an item downloads the `index-<scale>deg-gaia.isix` or `index-<scale>deg-tyc2.isix` file (scale zero padded, for example `index-05deg-tyc2.isix`), clearing it deletes the file. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
 
-Source: `indigo_drivers/agent_solver/indigo_agent_solver.c`.
+Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 
 ### Scripting agent
 

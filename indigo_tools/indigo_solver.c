@@ -19,7 +19,7 @@
 // version history
 // 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
-/** INDIGO quad based plate solver - command line tool solving an image file with the indexes of the Solver agent
+/** INDIGO quad based plate solver - command line tool solving an image file with the indexes of the Platesolver Agent
  \file indigo_solver.c
  */
 
@@ -36,11 +36,11 @@
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_uni_io.h>
 
-#include <agent_solver/indigo_solver.h>
+#include <agent_platesolver/indigo_solver.h>
 
 #define TOOL_NAME									"indigo_solver"
 
-// the same limits as the Solver agent
+// the same limits as the Platesolver Agent
 #define MAX_IMAGE_STAR_COUNT			500
 #define MAX_IMAGE_QUAD_COUNT			1000000
 #define MAX_QUAD_MATCH_COUNT			1000000
@@ -88,7 +88,7 @@ static void default_index_dir(char *path, size_t size) {
 static void print_usage(const char *name) {
 	char index_dir[PATH_MAX];
 	default_index_dir(index_dir, sizeof(index_dir));
-	printf("INDIGO Solver - plate solves an image file with the indexes of the Solver agent\n\n");
+	printf("INDIGO Solver - plate solves an image file with the indexes of the Platesolver Agent\n\n");
 	printf("Usage: %s [options] image_file\n\n", name);
 	printf("The image can be INDIGO RAW, FITS, JPEG or a camera raw file.\n\n");
 	printf("Options:\n");
@@ -379,7 +379,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 	float candidates[INDIGO_SOLVER_INDEX_FOV_COUNT];
 	int candidate_count = select_candidate_fovs(options, options->scale, full_width, full_height, candidates);
 	if (candidate_count == 0) {
-		message = "No index files found, download them with the Solver agent or select another index directory";
+		message = "No index files found, download them with the Platesolver Agent or select another index directory";
 		goto cleanup;
 	}
 	double hint_ra = options->ra, hint_dec = options->dec;

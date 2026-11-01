@@ -1,0 +1,98 @@
+Running Platesolver Agent
+  PASS platesolver_identity
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS platesolver_configuration_identity
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS legacy_configuration_is_not_imported
+Platesolver Agent: all tests passed
+21:59:09.212248 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_platesolver is already loaded
+21:59:09.212647 Application: Driver indigo_agent_astrometry failed to initialise
+21:59:09.212806 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_platesolver is already loaded
+Running Platesolver Agent
+  PASS solver_excludes_astrometry_and_allows_retry
+Platesolver Agent: all tests passed
+21:59:09.245334 Application: indigo_agent_platesolver[indigo_agent_platesolver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+21:59:09.245628 Application: Driver indigo_agent_platesolver failed to initialise
+21:59:09.245804 Application: indigo_agent_platesolver[indigo_agent_platesolver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+Running Platesolver Agent
+  PASS astrometry_excludes_solver_and_allows_retry
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS inactive_astrometry_does_not_exclude_solver
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS inactive_solver_does_not_exclude_astrometry
+Platesolver Agent: all tests passed
+21:59:09.295140 Application: indigo_platesolver_validate_executable: solve-field not found
+21:59:09.295480 Application: Astrometry.net or curl is not available
+21:59:09.295637 Application: Driver indigo_agent_astrometry failed to initialise
+Running Platesolver Agent
+  PASS failed_astrometry_initialization_does_not_exclude_solver
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS index_property_reflects_installed_files
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_raw_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_downsampled_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_without_selected_index_fails
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_fits_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_float_fits_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_mono8_raw_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_rgb48_raw_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_jpeg_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_with_position_hint
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS wrong_position_hint_fails
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS parity_hint_rejects_mirror
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_with_depth_hint
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS blind_search_goes_stage_by_stage
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS scaled_search_uses_fitting_index_first
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS bayer_raw_is_binned
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS bayer_fits_is_binned
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_rgb_fits_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_colour_jpeg_image
+Platesolver Agent: all tests passed
+21:59:11.942729 Application: [rc:-2] libraw_open_buffer failed: 'Unsupported file format or not RAW file'
+Running Platesolver Agent
+  PASS unsupported_image_rejected
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS deselecting_index_removes_file
+Platesolver Agent: all tests passed
+Platesolver Agent: 29 of 29 cases passed

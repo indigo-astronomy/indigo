@@ -1,0 +1,266 @@
+{
+  "version": 2,
+  "task": "20261101204146-204d-rename-platesolver-agent",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "Makefile",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_docs/SOLVER_INDEX_FORMAT.md",
+    "indigo_drivers/agent_platesolver/Makefile.inc",
+    "indigo_drivers/agent_platesolver/README.md",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.h",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.filters",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.user",
+    "indigo_drivers/agent_platesolver/indigo_solver.c",
+    "indigo_drivers/agent_platesolver/indigo_solver.h",
+    "indigo_drivers/agent_platesolver/indigo_solver_healpix.c",
+    "indigo_drivers/agent_platesolver/indigo_solver_healpix.h",
+    "indigo_drivers/agent_platesolver/indigo_solver_utils.c",
+    "indigo_drivers/agent_platesolver/indigo_solver_utils.h",
+    "indigo_drivers/agent_solver/Makefile.inc",
+    "indigo_drivers/agent_solver/README.md",
+    "indigo_drivers/agent_solver/indigo_agent_solver.c",
+    "indigo_drivers/agent_solver/indigo_agent_solver.h",
+    "indigo_drivers/agent_solver/indigo_agent_solver.vcxproj",
+    "indigo_drivers/agent_solver/indigo_agent_solver.vcxproj.filters",
+    "indigo_drivers/agent_solver/indigo_agent_solver.vcxproj.user",
+    "indigo_drivers/agent_solver/indigo_solver.c",
+    "indigo_drivers/agent_solver/indigo_solver.h",
+    "indigo_drivers/agent_solver/indigo_solver_healpix.c",
+    "indigo_drivers/agent_solver/indigo_solver_healpix.h",
+    "indigo_drivers/agent_solver/indigo_solver_utils.c",
+    "indigo_drivers/agent_solver/indigo_solver_utils.h",
+    "indigo_server/indigo_server.c",
+    "indigo_server/indigo_server.vcxproj",
+    "indigo_test/AGENTS.md",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_agent_platesolver.c",
+    "indigo_test/integration/test_agent_platesolver_simulator.c",
+    "indigo_test/integration/test_agent_solver.c",
+    "indigo_test/integration/test_agent_solver_simulator.c",
+    "indigo_test/integration/test_indigo_solver_tool.c",
+    "indigo_test/unit/test_agent_platesolver_core.c",
+    "indigo_test/unit/test_agent_solver_core.c",
+    "indigo_tools/Makefile",
+    "indigo_tools/indigo_solver.c",
+    "indigo_tools/indigo_solver.vcxproj",
+    "indigo_tools/indigo_solver_indexer.c",
+    "indigo_windows.sln",
+    ".factory/completions/20261101204146-204d-rename-platesolver-agent.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md",
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101204146-204d-rename-platesolver-agent.json": [
+      "100644",
+      "blob",
+      "3d2f59d85511a39fdb67531eb29553bdc0a97690"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "396b8414025d9c84b00bf2b4e4abfcf2b62cabcf"
+    ],
+    "Makefile": [
+      "100644",
+      "blob",
+      "50fef48fbbfd4fffa405d084a786dce5c13a40ef"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "414f7b65c5e87abb75e8e860fd536c63e7716c1e"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "cc25b028328de2133f7eb98e61c0fa4dd3064c87"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "ee4c07ae37c542b9f4e0cc666c255dd4b934c83a"
+    ],
+    "indigo_docs/SOLVER_INDEX_FORMAT.md": [
+      "100644",
+      "blob",
+      "d96edacf9e1f4af3ab23325663a5eebd19d637ab"
+    ],
+    "indigo_drivers/agent_platesolver/Makefile.inc": [
+      "100644",
+      "blob",
+      "938265bef935f1a333aa066733f91cfeeefd7389"
+    ],
+    "indigo_drivers/agent_platesolver/README.md": [
+      "100644",
+      "blob",
+      "3320014dbffe3e19c9cc894e5ba84e214a47fe52"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c": [
+      "100644",
+      "blob",
+      "38e580a5a020435f3bb3f99e7e921cc4bbf43ffd"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.h": [
+      "100644",
+      "blob",
+      "1e137dfc81d136eba58d4978c3977816fefc8274"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj": [
+      "100644",
+      "blob",
+      "324508349e363a96c9a171a39821b724741fed31"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.filters": [
+      "100644",
+      "blob",
+      "38e98c8bcf1602ee24d433f3257cc6abe6f4911d"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.user": [
+      "100644",
+      "blob",
+      "b9d4e5e21e9703f552b3c6f8a63fb174e1d62e9e"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver.c": [
+      "100644",
+      "blob",
+      "691b24756053329c495a8faac9d4b5602398e691"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver.h": [
+      "100644",
+      "blob",
+      "d83525167ebb73258e02bca762461066139b0229"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver_healpix.c": [
+      "100644",
+      "blob",
+      "fbc8444f64533d8e7e606c2dae4007008a5128ba"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver_healpix.h": [
+      "100644",
+      "blob",
+      "eb622078741777ffc85d66a41f01ee7862e052f6"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver_utils.c": [
+      "100644",
+      "blob",
+      "887ed14ca7ef604b1e01c78ae5bee1afcd1aeef5"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver_utils.h": [
+      "100644",
+      "blob",
+      "3e341fd0109b990cf02797029e309502f43fa7ce"
+    ],
+    "indigo_drivers/agent_solver/Makefile.inc": null,
+    "indigo_drivers/agent_solver/README.md": null,
+    "indigo_drivers/agent_solver/indigo_agent_solver.c": null,
+    "indigo_drivers/agent_solver/indigo_agent_solver.h": null,
+    "indigo_drivers/agent_solver/indigo_agent_solver.vcxproj": null,
+    "indigo_drivers/agent_solver/indigo_agent_solver.vcxproj.filters": null,
+    "indigo_drivers/agent_solver/indigo_agent_solver.vcxproj.user": null,
+    "indigo_drivers/agent_solver/indigo_solver.c": null,
+    "indigo_drivers/agent_solver/indigo_solver.h": null,
+    "indigo_drivers/agent_solver/indigo_solver_healpix.c": null,
+    "indigo_drivers/agent_solver/indigo_solver_healpix.h": null,
+    "indigo_drivers/agent_solver/indigo_solver_utils.c": null,
+    "indigo_drivers/agent_solver/indigo_solver_utils.h": null,
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "5239b0ac3a611f56656d42ee735c69af20d2b48f"
+    ],
+    "indigo_server/indigo_server.vcxproj": [
+      "100644",
+      "blob",
+      "17c68c05aca9afbdacc194cc4b272d6c39738f2a"
+    ],
+    "indigo_test/AGENTS.md": [
+      "100644",
+      "blob",
+      "7c3376f88ea01031248a50ca479256bd007319c2"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "3bef489ab0203d12f6ed5b63bba42033b8709506"
+    ],
+    "indigo_test/integration/test_agent_platesolver.c": [
+      "100644",
+      "blob",
+      "8ba943a9145c41baa44553de65fc1d15b90efb9c"
+    ],
+    "indigo_test/integration/test_agent_platesolver_simulator.c": [
+      "100644",
+      "blob",
+      "beb394da96c40971f7804f14a25de6088d24f50a"
+    ],
+    "indigo_test/integration/test_agent_solver.c": null,
+    "indigo_test/integration/test_agent_solver_simulator.c": null,
+    "indigo_test/integration/test_indigo_solver_tool.c": [
+      "100644",
+      "blob",
+      "2704fd37cc7f0b22f0814965ca314ccd1451f59c"
+    ],
+    "indigo_test/unit/test_agent_platesolver_core.c": [
+      "100644",
+      "blob",
+      "9f80e393cb3ec52726e8393b64e07c4b730e5d4f"
+    ],
+    "indigo_test/unit/test_agent_solver_core.c": null,
+    "indigo_tools/Makefile": [
+      "100644",
+      "blob",
+      "cc5595d0e4b18cdc118ffd3cc871a790e8b83d9a"
+    ],
+    "indigo_tools/indigo_solver.c": [
+      "100644",
+      "blob",
+      "703b19aaec39a5c5064b8183a8c7323d4cedab3a"
+    ],
+    "indigo_tools/indigo_solver.vcxproj": [
+      "100644",
+      "blob",
+      "33ae3e414c0c3e7e5513bbc54c81520c28f6757e"
+    ],
+    "indigo_tools/indigo_solver_indexer.c": [
+      "100644",
+      "blob",
+      "9d4186f7e073ad05e5417ed1dc62f8afdbf36cf0"
+    ],
+    "indigo_windows.sln": [
+      "100644",
+      "blob",
+      "3ab979eada1339e8dda2895d7560586d01f0c85a"
+    ]
+  }
+}

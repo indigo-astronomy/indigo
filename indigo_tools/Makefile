@@ -77,7 +77,7 @@ $(BUILD_BIN)/indigo_scan_drivers: indigo_scan_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_scan_drivers.o $(LDFLAGS) -lindigo
 
 # The index builder shares the quad code and index file format with the solver agent.
-SOLVER_AGENT_DIR = ../indigo_drivers/agent_solver
+SOLVER_AGENT_DIR = ../indigo_drivers/agent_platesolver
 
 # the tools are rebuilt when the shared solver headers change (the index scale list, the quad and index structures)
 indigo_solver.o indigo_solver_indexer.o: $(SOLVER_AGENT_DIR)/indigo_solver.h $(SOLVER_AGENT_DIR)/indigo_solver_utils.h $(SOLVER_AGENT_DIR)/indigo_solver_healpix.h

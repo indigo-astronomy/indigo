@@ -35,7 +35,7 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_fits.h>
 #include <indigo/indigo_align.h>
-#include <indigo_drivers/agent_solver/indigo_solver.h>
+#include <indigo_drivers/agent_platesolver/indigo_solver.h>
 
 #include "../test_runner.h"
 

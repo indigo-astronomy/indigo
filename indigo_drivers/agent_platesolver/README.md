@@ -1,4 +1,4 @@
-# Solver agent
+# Platesolver Agent
 
 INDIGO plate solver agent with a native quad based solver. It matches star quads found in the frame against
 Tycho-2 quad indexes and needs no external solver executables.
@@ -21,7 +21,9 @@ Peter Polakovic; index management, index optimization and performance optimizati
 
 ## Use
 
-indigo_server indigo_agent_solver indigo_agent_imager indigo_agent_mount indigo_ccd_... indigo_mount_...
+The driver is loaded as `indigo_agent_platesolver` and appears as `Platesolver Agent`. After upgrading, select the new driver and reselect it in related-agent lists. Configuration uses the new device name: existing `Platesolver Agent` configuration loads normally; old `INDIGO Solver Agent` configuration files remain untouched and are not imported automatically.
+
+indigo_server indigo_agent_platesolver indigo_agent_imager indigo_agent_mount indigo_ccd_... indigo_mount_...
 
 ## Status: Under development
 
@@ -68,9 +70,9 @@ in [Solver Index Format](../../indigo_docs/SOLVER_INDEX_FORMAT.md).
 
 ### Agent configuration
 
-1. in Solver Agent > Index management select the indexes fitting the field size produced by the camera
-2. in Solver Agent > Plate Solver select the indexes to use and the hints for subsequent plate solving
-3. in Solver Agent > Main select the related Imager or Guider agent and optionally the Mount Agent
+1. in Platesolver Agent > Index management select the indexes fitting the field size produced by the camera
+2. in Platesolver Agent > Plate Solver select the indexes to use and the hints for subsequent plate solving
+3. in Platesolver Agent > Main select the related Imager or Guider agent and optionally the Mount Agent
 4. if the Mount Agent is selected, configure also the Sync mode
 5. trigger the exposure
 

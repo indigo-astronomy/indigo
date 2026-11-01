@@ -41,7 +41,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_image_math \
 	$(UNIT_BUILD)/test_core_text_bounds \
 	$(UNIT_BUILD)/test_align_math \
-	$(UNIT_BUILD)/test_agent_solver_core \
+	$(UNIT_BUILD)/test_agent_platesolver_core \
 	$(UNIT_BUILD)/test_aux_math \
 	$(UNIT_BUILD)/test_base64 \
 	$(UNIT_BUILD)/test_bus_helpers \
@@ -151,7 +151,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_mount \
 	$(INTEGRATION_BUILD)/test_agent_config \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
-	$(INTEGRATION_BUILD)/test_agent_solver \
+	$(INTEGRATION_BUILD)/test_agent_platesolver \
 	$(INTEGRATION_BUILD)/test_indigo_solver_tool \
 	$(INTEGRATION_BUILD)/test_agent_scripting \
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer \
@@ -398,7 +398,7 @@ OPT_IN_DRIVER_TESTS = $(INTEGRATION_BUILD)/test_aux_dragonfly_simulator \
 	$(INTEGRATION_BUILD)/test_system_alpaca_http \
 	$(INTEGRATION_BUILD)/test_system_alpaca_simulator \
 	$(INTEGRATION_BUILD)/test_agent_astrometry_solver \
-	$(INTEGRATION_BUILD)/test_agent_solver_simulator
+	$(INTEGRATION_BUILD)/test_agent_platesolver_simulator
 
 test-integration: check-lib $(INTEGRATION_TESTS)
 	@executed=0; \
@@ -515,8 +515,8 @@ $(UNIT_BUILD)/test_aux_math: unit/test_aux_math.c test_runner.h | $(UNIT_BUILD)
 $(UNIT_BUILD)/test_align_math: unit/test_align_math.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS) -lindigocat
 
-$(UNIT_BUILD)/test_agent_solver_core: unit/test_agent_solver_core.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a | $(UNIT_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(TEST_LDFLAGS) -lindigocat
+$(UNIT_BUILD)/test_agent_platesolver_core: unit/test_agent_platesolver_core.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_platesolver.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_platesolver.a $(TEST_LDFLAGS) -lindigocat
 
 $(UNIT_BUILD)/test_test_runner: unit/test_test_runner.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
@@ -2576,14 +2576,14 @@ $(INTEGRATION_BUILD)/test_agent_imager_guider_mount: integration/test_agent_imag
 test-agent-imager-guider-mount: check-lib $(INTEGRATION_BUILD)/test_agent_imager_guider_mount
 	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount
 
-# The Solver agent with its native quad solver against a synthetic index written into INDIGO_CACHE_BASE;
+# The Platesolver Agent with its native quad solver against a synthetic index written into INDIGO_CACHE_BASE;
 # no network access, the index download is not exercised.
-$(INTEGRATION_BUILD)/test_agent_solver: integration/test_agent_solver.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a $(INTEGRATION_BUILD)/agent_astrometry_driver.o | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(INTEGRATION_BUILD)/agent_astrometry_driver.o $(TEST_LDFLAGS) -lindigocat
+$(INTEGRATION_BUILD)/test_agent_platesolver: integration/test_agent_platesolver.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_platesolver.a $(INTEGRATION_BUILD)/agent_astrometry_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_platesolver.a $(INTEGRATION_BUILD)/agent_astrometry_driver.o $(TEST_LDFLAGS) -lindigocat
 
-.PHONY: test-agent-solver
-test-agent-solver: check-lib $(INTEGRATION_BUILD)/test_agent_solver
-	$(INTEGRATION_BUILD)/test_agent_solver
+.PHONY: test-agent-platesolver
+test-agent-platesolver: check-lib $(INTEGRATION_BUILD)/test_agent_platesolver
+	$(INTEGRATION_BUILD)/test_agent_platesolver
 
 # The indigo_solver command line tool from indigo_tools, run as built on a synthetic index and synthetic frames in
 # a private directory. The tool is brought up to date by its own Makefile before every run of the test.
@@ -2591,25 +2591,25 @@ test-agent-solver: check-lib $(INTEGRATION_BUILD)/test_agent_solver
 indigo-solver-tool-binary:
 	$(MAKE) -C ../indigo_tools $(BUILD_BIN)/indigo_solver
 
-$(INTEGRATION_BUILD)/test_indigo_solver_tool: integration/test_indigo_solver_tool.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_solver.a | indigo-solver-tool-binary $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -DINDIGO_SOLVER_EXECUTABLE='"$(BUILD_BIN)/indigo_solver"' -o $@ $< $(BUILD_DRIVERS)/indigo_agent_solver.a $(TEST_LDFLAGS) -lindigocat
+$(INTEGRATION_BUILD)/test_indigo_solver_tool: integration/test_indigo_solver_tool.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_platesolver.a | indigo-solver-tool-binary $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -DINDIGO_SOLVER_EXECUTABLE='"$(BUILD_BIN)/indigo_solver"' -o $@ $< $(BUILD_DRIVERS)/indigo_agent_platesolver.a $(TEST_LDFLAGS) -lindigocat
 
 .PHONY: test-indigo-solver-tool
 test-indigo-solver-tool: check-lib $(INTEGRATION_BUILD)/test_indigo_solver_tool
 	$(INTEGRATION_BUILD)/test_indigo_solver_tool
 
-# The production Solver agent with its native quad solver and the real Tycho-2 indexes, the Imager and
+# The production Platesolver Agent with its native quad solver and the real Tycho-2 indexes, the Imager and
 # Guider agents and the CCD simulators: the Rosetta frame of the imager simulator and 120 simulation
 # setups of the guider simulator. Opt-in: the 2° and 5° indexes are taken from the persistent cache
 # $INDIGO_CACHE_BASE/solver (default ~/.indigo/solver) and downloaded there once when missing.
-SOLVER_SIMULATOR_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_solver.a $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_guider.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a
+SOLVER_SIMULATOR_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_platesolver.a $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_guider.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a
 
-$(INTEGRATION_BUILD)/test_agent_solver_simulator: integration/test_agent_solver_simulator.c test_runner.h $(SOLVER_SIMULATOR_ARCHIVES) | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/test_agent_platesolver_simulator: integration/test_agent_platesolver_simulator.c test_runner.h $(SOLVER_SIMULATOR_ARCHIVES) | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(SOLVER_SIMULATOR_ARCHIVES) $(TEST_LDFLAGS) -lindigocat
 
-.PHONY: test-agent-solver-simulator
-test-agent-solver-simulator: check-lib $(INTEGRATION_BUILD)/test_agent_solver_simulator
-	$(INTEGRATION_BUILD)/test_agent_solver_simulator
+.PHONY: test-agent-platesolver-simulator
+test-agent-platesolver-simulator: check-lib $(INTEGRATION_BUILD)/test_agent_platesolver_simulator
+	$(INTEGRATION_BUILD)/test_agent_platesolver_simulator
 
 # The production Astrometry agent with the real astrometry.net solver, the Imager, Guider and Mount agents
 # and the CCD and mount simulators. Opt-in: it needs solve-field and image2xy installed and

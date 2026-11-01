@@ -1,0 +1,7 @@
+Running Solver agent
+  PASS platesolver_identity
+Solver agent: all tests passed
+Running Solver agent
+  PASS platesolver_configuration_identity
+Solver agent: all tests passed
+Solver agent: 2 of 2 cases passed

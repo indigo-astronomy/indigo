@@ -1,0 +1,3 @@
+PASS: six source/header helper files and framework indigo_platesolver.c unchanged; assembled three compatibility sources match independently reviewed SHA256. No image recognition executed.
+Initial probe inadvertently included ignored indigo_solver.o and stopped before mutation; corrected source/header inventory only.
+Owned obsolete baseline output files removed: ["build/drivers/indigo_agent_solver.a", "build/drivers/indigo_agent_solver.dylib", "indigo_drivers/agent_platesolver/indigo_agent_solver.o", "indigo_test/build/integration/test_agent_solver", "indigo_test/build/unit/test_agent_solver_core"]

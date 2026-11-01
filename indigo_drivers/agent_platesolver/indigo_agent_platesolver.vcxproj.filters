@@ -27,7 +27,7 @@
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="indigo_agent_solver.c">
+    <ClCompile Include="indigo_agent_platesolver.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
     <ClCompile Include="indigo_solver.c">
@@ -179,7 +179,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="indigo_agent_solver.h">
+    <ClInclude Include="indigo_agent_platesolver.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="indigo_solver.h">

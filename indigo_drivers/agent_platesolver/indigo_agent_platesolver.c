@@ -21,11 +21,11 @@
 // 3.0 index management, index optimization and performance optimization by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO plate solver agent
- \file indigo_agent_solver.c
+ \file indigo_agent_platesolver.c
  */
 
-#define DRIVER_VERSION 0x0300001B
-#define DRIVER_NAME	"indigo_agent_solver"
+#define DRIVER_VERSION 0x0300001C
+#define DRIVER_NAME	"indigo_agent_platesolver"
 
 #include <stdio.h>
 #include <string.h>
@@ -55,7 +55,7 @@
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_uni_io.h>
 
-#include "indigo_agent_solver.h"
+#include "indigo_agent_platesolver.h"
 #include "indigo_solver.h"
 
 #define SOLVER_DEVICE_PRIVATE_DATA				((solver_private_data *)device->private_data)
@@ -189,7 +189,7 @@ static bool load_catalog(indigo_device *device, const char *path) {
 static bool download_index_file(indigo_device *device, const char *url, const char *part_path) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> GET %s", url);
 	bool res = false;
-	HINTERNET session = InternetOpenA("INDIGO Solver Agent", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	HINTERNET session = InternetOpenA("Platesolver Agent", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	if (session == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "InternetOpen() failed (%s)", indigo_last_windows_error());
 		return false;
@@ -780,9 +780,9 @@ static void kill_children() {
 	}
 }
 
-indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_agent_platesolver(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(
-		SOLVER_AGENT_NAME,
+		PLATESOLVER_AGENT_NAME,
 		agent_device_attach,
 		agent_enumerate_properties,
 		agent_change_property,
@@ -791,7 +791,7 @@ indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_inf
 	);
 
 	static indigo_client agent_client_template = {
-		SOLVER_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+		PLATESOLVER_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		indigo_platesolver_client_attach,
 		indigo_platesolver_define_property,
 		indigo_platesolver_update_property,
@@ -802,7 +802,7 @@ indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_inf
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, SOLVER_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, PLATESOLVER_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;

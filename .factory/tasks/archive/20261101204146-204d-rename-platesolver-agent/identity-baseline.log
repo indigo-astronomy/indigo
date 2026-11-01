@@ -1,0 +1,11 @@
+integration/test_agent_solver.c:503: assertion failed: !strcmp(info.name, "indigo_agent_platesolver")
+Running Solver agent
+  FAIL platesolver_identity
+Solver agent: 1 test(s) failed
+Failed case: platesolver_identity (status 256)
+integration/test_agent_solver.c:527: assertion failed: WAIT_UNTIL(number_value(AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME) == 17, 10)
+Running Solver agent
+  FAIL platesolver_configuration_identity
+Solver agent: 1 test(s) failed
+Failed case: platesolver_configuration_identity (status 256)
+Solver agent: 0 of 2 cases passed

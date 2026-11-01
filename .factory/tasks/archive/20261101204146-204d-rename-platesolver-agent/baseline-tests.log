@@ -1,0 +1,105 @@
+mkdir -p build/unit
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_agent_solver_core unit/test_agent_solver_core.c /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/drivers/indigo_agent_solver.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib -Wl,-rpath,/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib -lindigo -lm -lpthread -lindigocat
+mkdir -p build/integration
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_ASTROMETRY_TEST -c ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c -o build/integration/agent_astrometry_driver.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_agent_solver integration/test_agent_solver.c /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/drivers/indigo_agent_solver.a build/integration/agent_astrometry_driver.o -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib -Wl,-rpath,/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib -lindigo -lm -lpthread -lindigocat
+build/integration/test_agent_solver
+21:47:55.357172 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_solver is already loaded
+21:47:55.359882 Application: Driver indigo_agent_astrometry failed to initialise
+21:47:55.360062 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_solver is already loaded
+Running Solver agent
+  PASS solver_excludes_astrometry_and_allows_retry
+Solver agent: all tests passed
+21:47:55.433012 Application: indigo_agent_solver[indigo_agent_solver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+21:47:55.434163 Application: Driver indigo_agent_solver failed to initialise
+21:47:55.434336 Application: indigo_agent_solver[indigo_agent_solver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+Running Solver agent
+  PASS astrometry_excludes_solver_and_allows_retry
+Solver agent: all tests passed
+Running Solver agent
+  PASS inactive_astrometry_does_not_exclude_solver
+Solver agent: all tests passed
+Running Solver agent
+  PASS inactive_solver_does_not_exclude_astrometry
+Solver agent: all tests passed
+21:47:55.490894 Application: indigo_platesolver_validate_executable: solve-field not found
+21:47:55.491381 Application: Astrometry.net or curl is not available
+21:47:55.491534 Application: Driver indigo_agent_astrometry failed to initialise
+Running Solver agent
+  PASS failed_astrometry_initialization_does_not_exclude_solver
+Solver agent: all tests passed
+Running Solver agent
+  PASS index_property_reflects_installed_files
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_downsampled_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_without_selected_index_fails
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_float_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_mono8_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_rgb48_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_jpeg_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_with_position_hint
+Solver agent: all tests passed
+Running Solver agent
+  PASS wrong_position_hint_fails
+Solver agent: all tests passed
+Running Solver agent
+  PASS parity_hint_rejects_mirror
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_with_depth_hint
+Solver agent: all tests passed
+Running Solver agent
+  PASS blind_search_goes_stage_by_stage
+Solver agent: all tests passed
+Running Solver agent
+  PASS scaled_search_uses_fitting_index_first
+Solver agent: all tests passed
+Running Solver agent
+  PASS bayer_raw_is_binned
+Solver agent: all tests passed
+Running Solver agent
+  PASS bayer_fits_is_binned
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_rgb_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_colour_jpeg_image
+Solver agent: all tests passed
+21:47:58.159796 Application: [rc:-2] libraw_open_buffer failed: 'Unsupported file format or not RAW file'
+Running Solver agent
+  PASS unsupported_image_rejected
+Solver agent: all tests passed
+Running Solver agent
+  PASS deselecting_index_removes_file
+Solver agent: all tests passed
+Solver agent: 26 of 26 cases passed
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../indigo_tools /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/bin/indigo_solver
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned   -c -o indigo_solver.o indigo_solver.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -c -o indigo_solver_core.o ../indigo_drivers/agent_solver/indigo_solver.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -c -o indigo_solver_utils.o ../indigo_drivers/agent_solver/indigo_solver_utils.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -c -o indigo_solver_healpix.o ../indigo_drivers/agent_solver/indigo_solver_healpix.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned  -o /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/bin/indigo_solver indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib/libindigo.a /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib/libhidapi.a /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib/libjpeg.a /private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/lib/libraw.a -lz -ldl -lm -lstdc++ -lindigocat
+lipo: open() failed, errno=2 (No such file or directory) for '/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/bin/indigo_solver'
+clang: error: lipo command failed with exit code 1 (use -v to see invocation)
+make[1]: *** [/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/bin/indigo_solver] Error 1
+make: *** [indigo-solver-tool-binary] Error 2

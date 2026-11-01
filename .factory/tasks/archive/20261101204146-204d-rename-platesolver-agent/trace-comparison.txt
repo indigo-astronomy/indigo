@@ -1,0 +1,1 @@
+PASS: all37 ordered public definitions/updates, states, item names and numeric/switch values match exactly after only the owner-approved device-name normalization.

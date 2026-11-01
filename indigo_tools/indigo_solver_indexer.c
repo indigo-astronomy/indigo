@@ -39,9 +39,9 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
 
-#include <agent_solver/indigo_solver.h>
-#include <agent_solver/indigo_solver_utils.h>
-#include <agent_solver/indigo_solver_healpix.h>
+#include <agent_platesolver/indigo_solver.h>
+#include <agent_platesolver/indigo_solver_utils.h>
+#include <agent_platesolver/indigo_solver_healpix.h>
 
 #define MAX_MAGNITUDE			11.5
 

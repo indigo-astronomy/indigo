@@ -20,11 +20,11 @@
 // 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO plate solver agent
- \file indigo_agent_solver.h
+ \file indigo_agent_platesolver.h
  */
 
-#ifndef agent_solver_h
-#define agent_solver_h
+#ifndef agent_platesolver_h
+#define agent_platesolver_h
 
 #include <indigo/indigo_agent.h>
 
@@ -42,16 +42,16 @@
 extern "C" {
 #endif
 
-#define SOLVER_AGENT_NAME	"INDIGO Solver Agent"
+#define PLATESOLVER_AGENT_NAME	"Platesolver Agent"
 	
 /** Create solver agent instance
  */
 
-INDIGO_EXTERN indigo_result indigo_agent_solver(indigo_driver_action action, indigo_driver_info *info);
+INDIGO_EXTERN indigo_result indigo_agent_platesolver(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* agent_solver_h */
+#endif /* agent_platesolver_h */
 

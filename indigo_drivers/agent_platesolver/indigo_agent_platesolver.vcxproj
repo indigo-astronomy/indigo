@@ -22,7 +22,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{23E4CDD2-36C0-4DF2-8CB7-C42B9CE9129D}</ProjectGuid>
-    <RootNamespace>indigoagentsolver</RootNamespace>
+    <RootNamespace>indigoagentplatesolver</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
@@ -159,7 +159,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp" />
-    <ClCompile Include="indigo_agent_solver.c" />
+    <ClCompile Include="indigo_agent_platesolver.c" />
     <ClCompile Include="indigo_solver.c" />
     <ClCompile Include="indigo_solver_utils.c" />
     <ClCompile Include="indigo_solver_healpix.c" />
@@ -222,7 +222,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="indigo_agent_solver.h" />
+    <ClInclude Include="indigo_agent_platesolver.h" />
     <ClInclude Include="indigo_solver.h" />
     <ClInclude Include="indigo_solver_utils.h" />
     <ClInclude Include="indigo_solver_healpix.h" />

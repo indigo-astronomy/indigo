@@ -1,0 +1,6 @@
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_libs -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-204d-rename-platesolver-agent/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned   -c -o indigo_server.o indigo_server.c
+indigo_server.c:1822:13: fatal error: 'resource/mng.html.data' file not found
+ 1822 |                         #include "resource/mng.html.data"
+      |                                  ^~~~~~~~~~~~~~~~~~~~~~~~
+1 error generated.
+make: *** [indigo_server.o] Error 1

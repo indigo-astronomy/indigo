@@ -8,10 +8,10 @@ e-mail: *rumenastro@gmail.com*
 Co-authored by: **Claude** (Anthropic, Claude Opus 5.5)
 
 ## Overview
-The index files of the INDIGO Solver agent (`indigo_agent_solver`) and of the `indigo_solver` command line tool hold the
+The index files of the Platesolver Agent (`indigo_agent_platesolver`) and of the `indigo_solver` command line tool hold the
 stars of a catalogue and the quads (groups of four stars) built from them. The solver matches the quads it finds in an
 image against the quads of an index. The files are written by `indigo_solver_indexer` from `indigo_tools` and are read by
-`indigo_solver_load_index()` in `indigo_drivers/agent_solver/indigo_solver.c`.
+`indigo_solver_load_index()` in `indigo_drivers/agent_platesolver/indigo_solver.c`.
 
 The files are memory mapped and used as they are: an index opens at once and only the parts a solve touches are read
 from the disk. The current format is version 2; files of the former version 1 (packed records read into memory) are

@@ -1,0 +1,37 @@
+Running Platesolver Agent
+  PASS solve_raw_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_downsampled_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_without_selected_index_fails
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_fits_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_float_fits_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_mono8_raw_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_rgb48_raw_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_jpeg_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_with_position_hint
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_with_depth_hint
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_rgb_fits_image
+Platesolver Agent: all tests passed
+Running Platesolver Agent
+  PASS solve_colour_jpeg_image
+Platesolver Agent: all tests passed
+Platesolver Agent: 12 of 12 cases passed
