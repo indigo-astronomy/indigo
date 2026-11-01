@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261101213045-9647-scale-repository-audits",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Apply policy commit to originalaudit task and archive accepted partial outcome; verify final combined candidate.",
+  "blocker": null
+}

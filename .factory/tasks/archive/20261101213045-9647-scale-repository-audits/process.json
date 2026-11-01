@@ -1,0 +1,129 @@
+{
+  "version": 2,
+  "task": "20261101213045-9647-scale-repository-audits",
+  "scope": [
+    ".factory/maintenance.json",
+    ".factory/project.md",
+    ".factory/roles/coordinator.md",
+    ".factory/roles/repository-reviewer.md",
+    ".factory/routines/maintenance.md",
+    ".factory/routines/repository-review.md",
+    ".factory/routines/task-archive.md",
+    ".factory/scripts/maintenance.py",
+    ".factory/templates/repository-review.md",
+    ".factory/workflow.md",
+    "AGENTS.md",
+    "indigo_docs/decisions/ADR-004-scale-repository-audits.md",
+    "indigo_docs/decisions/README.md",
+    "indigo_test/factory/test_independent_records.py",
+    ".factory/completions/20261101213045-9647-scale-repository-audits.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_test/factory",
+        "-p",
+        "test_independent_records.py"
+      ],
+      "result": "pass",
+      "evidence": "developer-verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101213045-9647-scale-repository-audits.json": [
+      "100644",
+      "blob",
+      "640ded268d06deafd23524034f6af2dc0f021c77"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "65110e393b435e186eb2a52c659dff2ea0f13dec"
+    ],
+    ".factory/roles/coordinator.md": [
+      "100644",
+      "blob",
+      "c607c503a30bc62fbbe66b01daf4a3c3162a8031"
+    ],
+    ".factory/roles/repository-reviewer.md": [
+      "100644",
+      "blob",
+      "96b794fd212cc88acb214ac3d41f5266f90cd40b"
+    ],
+    ".factory/routines/maintenance.md": [
+      "100644",
+      "blob",
+      "3b62bd8f2cfa7b2cd31062255b9a697882eafd39"
+    ],
+    ".factory/routines/repository-review.md": [
+      "100644",
+      "blob",
+      "a35914f7bdcea56f36144a97aaca4c9042d7f2d0"
+    ],
+    ".factory/routines/task-archive.md": [
+      "100644",
+      "blob",
+      "082a80493c8140d2798159eda3db531eb89c5260"
+    ],
+    ".factory/scripts/maintenance.py": [
+      "100644",
+      "blob",
+      "4339830a076f29c378c9c71e56171157653c7f87"
+    ],
+    ".factory/templates/repository-review.md": [
+      "100644",
+      "blob",
+      "21248ae286ae603d68b8afcc6c5a49c8512b906e"
+    ],
+    ".factory/workflow.md": [
+      "100644",
+      "blob",
+      "dc8a7b10b6a663a88718ee7170e77be88c0db882"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "d59c00149a8dbb7e787c06f5b0a8555a3f5f6ff9"
+    ],
+    "indigo_docs/decisions/ADR-004-scale-repository-audits.md": [
+      "100644",
+      "blob",
+      "cf80c36a579c4611c569c64d6538ed7060537909"
+    ],
+    "indigo_docs/decisions/README.md": [
+      "100644",
+      "blob",
+      "d29c0224830b72bef2fec48d8eafa61c73c2e52f"
+    ],
+    "indigo_test/factory/test_independent_records.py": [
+      "100644",
+      "blob",
+      "dc63dde1aa27141cb6da275f7a95cce17e0c6b15"
+    ]
+  }
+}

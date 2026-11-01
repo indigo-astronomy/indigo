@@ -1,6 +1,6 @@
 # Repository review report
 
-- Scope: full repository
+- Scope: full | incremental (commit range and affected contracts) | partial
 - Task and date: TODO
 - Reviewer and independence: TODO
 - Revision and uncommitted state: TODO
@@ -18,8 +18,11 @@ For each coordinator-assigned FND-NNNNNN (category quality): path and lines, con
 ## Fix verification
 TODO — audit reinspection and references to verification.md for exact check/retest results. Route security findings to security.md; do not duplicate check tables.
 
+## Unchecked areas and follow-up
+Record concrete omitted components/contracts, owner and next bounded review trigger. Retain this list when an owner accepts partial closure; do not turn it into an unsupported full-audit declaration.
+
 ## Cadence decision
-TODO — reference the coordinator's cadence decision in handoff.md and checkpoints in maintenance.json. Record actual audit coverage here; only a complete audit may reset the checkpoint.
+TODO — reference the coordinator's cadence decision in handoff.md and derived checkpoints in completion records. Record actual audit coverage here; only a qualified full audit advances full cadence; incremental advances only incremental cadence and partial advances neither.
 
 ## Verdict and handoff
 TODO — scoped audit verdict, blocking findings and limitations; next assignment belongs in handoff.md. Missing checks are not passes.

@@ -1,0 +1,2 @@
+# Test plan
+Cover20-task incremental boundary,90-day full boundary, taskcount does not force fullaudit under newmode, legacy schema/output behavior, concurrent unseen completion retained, partial closure leaves lastfull unchanged, incomplete full report rejected, immutable migration baseline validates retained ancestor, no new aggregatecounter; future scoped incremental input and full input distinct. Use isolated repositories and synthetic dates; no product or recognition run.

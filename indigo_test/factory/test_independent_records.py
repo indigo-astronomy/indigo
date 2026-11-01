@@ -21,7 +21,7 @@
 """Independent finding records, derived audit coverage and reviewed metadata migration."""
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from datetime import date
+from datetime import date, timedelta
 import json
 from pathlib import Path
 import shutil
@@ -275,6 +275,157 @@ class IndependentRecordsTests(unittest.TestCase):
         older = dict(reviewed_on='2026-10-21', revision='b' * 40, covered_tasks=[])
         values = [event(A), event(C, '2026-10-22T12:00:00+00:00', 'audit', current), event(B, '2026-10-22T23:00:00+00:00', 'audit', older)]
         self.assertEqual(maintenance.status(self.policy, values, date(2026, 10, 22))['last_full_review_task'], C)
+
+    def scaled_policy(self, baseline=None):
+        policy = deepcopy(self.policy)
+        policy['repository_review'].update(full_review_every_completed_tasks=None, full_review_every_calendar_days=90, incremental_review_every_completed_tasks=20)
+        if baseline is not None:
+            policy['repository_review']['incremental_review_baseline'] = dict(revision=baseline, authority='Explicit synthetic owner instruction', report_task=C)
+        return policy
+
+    def test_incremental_twentieth_task_and_ninetieth_calendar_day_are_separate(self):
+        today = date(2026, 10, 22)
+        audit = dict(reviewed_on=today.isoformat(), revision='a' * 40, covered_tasks=[])
+        values = [event(C, kind='audit', audit=audit)] + [event('20261022120000-4444-work-' + str(i)) for i in range(19)]
+        policy = self.scaled_policy()
+        before = maintenance.status(policy, values, today)
+        self.assertFalse(before['incremental_review_due'])
+        self.assertFalse(before['full_review_due'])
+        values.append(event(A))
+        due = maintenance.status(policy, values, today)
+        self.assertTrue(due['incremental_review_due'])
+        self.assertFalse(due['full_review_due'])
+        self.assertEqual(due['completed_non_audit_tasks_since_full_review'], 20)
+        self.assertFalse(maintenance.status(policy, values, today + timedelta(days=89))['full_review_due'])
+        self.assertTrue(maintenance.status(policy, values, today + timedelta(days=90))['full_review_due'])
+
+    def test_partial_audit_is_not_work_and_cannot_claim_review_coverage(self):
+        full = dict(reviewed_on='2026-10-22', revision='a' * 40, covered_tasks=[])
+        values = [event(A), event(C, kind='audit', audit=full), event(B, '2026-10-22T14:00:00+00:00', kind='partial-audit')]
+        maintenance.validate(values[-1])
+        result = maintenance.status(self.scaled_policy(), values, date(2026, 10, 22))
+        self.assertEqual(result['last_full_review_task'], C)
+        self.assertEqual(result['uncovered_work_tasks'], [A])
+        self.assertEqual(result['uncovered_incremental_work_tasks'], [A])
+        with self.assertRaises(ValueError):
+            maintenance.validate(event(B, kind='partial-audit', audit=full))
+        with self.assertRaises(ValueError):
+            maintenance.validate(event(B, kind='incremental-audit'))
+
+    def test_incremental_reviews_preserve_prior_coverage_and_unseen_concurrent_work(self):
+        full_task = '20261022120000-4444-full'
+        next_review = '20261022120000-5555-next'
+        old = dict(reviewed_on='2026-10-21', revision='a' * 40, covered_tasks=[A])
+        first = dict(reviewed_on='2026-10-22', revision='b' * 40, covered_tasks=[B])
+        second = dict(reviewed_on='2026-10-23', revision='c' * 40, covered_tasks=[])
+        values = [event(A), event(B), event(C, '2026-10-21T08:00:00+00:00'), event(full_task, kind='audit', audit=old), event(next_review, kind='incremental-audit', audit=first), event('20261022120000-6666-next', kind='incremental-audit', audit=second)]
+        result = maintenance.status(self.scaled_policy(), values, date(2026, 10, 23))
+        self.assertEqual(result['uncovered_incremental_work_tasks'], [C])
+        self.assertEqual(set(result['uncovered_work_tasks']), {B, C})
+        self.assertEqual(result['last_full_review_task'], full_task)
+        self.assertEqual(result['last_full_review_date'], '2026-10-21')
+
+    def test_partial_archive_needs_partial_report_and_survives_pinned_retention(self):
+        self.task()
+        state = self.root / '.factory/tasks' / A / 'state.json'
+        data = json.loads(state.read_text())
+        data['completion'] = dict(kind='partial-audit', audit=None)
+        data.update(status='complete', phase='complete')
+        state.write_text(json.dumps(data))
+        self.put('.factory/tasks/' + A + '/repository-review.md', 'Verdict: pass\n')
+        self.call('archive_task.py', A, expected=2)
+        self.assertFalse((self.root / '.factory/completions' / (A + '.json')).exists())
+        self.put('.factory/tasks/' + A + '/repository-review.md', 'Verdict: partial\n\nUnchecked area retained.\n')
+        self.finish()
+        record = self.root / '.factory/completions' / (A + '.json')
+        data = json.loads(record.read_text())
+        self.assertEqual(data['kind'], 'partial-audit')
+        self.assertIsNone(data['audit'])
+        revision = self.commit()
+        data['evidence_revision'] = revision
+        record.write_text(json.dumps(data))
+        self.call('maintenance.py', 'check', '--prune-task', A)
+        shutil.rmtree(self.root / '.factory/tasks/archive' / A)
+        self.call('maintenance.py', 'check', '--prune-task', A)
+        result = json.loads(self.call('maintenance.py', 'status').stdout)
+        self.assertEqual(result['completed_non_audit_tasks_since_full_review'], 0)
+        self.assertIsNone(result['last_full_review_task'])
+
+    def test_incremental_archive_and_input_do_not_become_full_audits(self):
+        self.put('.factory/maintenance.json', json.dumps(self.scaled_policy()))
+        self.task(A)
+        self.finish(A)
+        reviewed = self.commit()
+        metadata = json.loads(self.call('maintenance.py', 'audit-input', '--scope', 'incremental', '--revision', reviewed, '--on', '2026-10-22').stdout)
+        self.assertEqual(metadata['kind'], 'incremental-audit')
+        self.assertEqual(metadata['audit']['covered_tasks'], [A])
+        self.assertEqual(json.loads(self.call('maintenance.py', 'audit-input', '--revision', reviewed, '--on', '2026-10-22').stdout)['kind'], 'audit')
+        self.task(C)
+        state = self.root / '.factory/tasks' / C / 'state.json'
+        data = json.loads(state.read_text())
+        data.update(status='complete', phase='complete', completion=metadata)
+        state.write_text(json.dumps(data))
+        self.put('.factory/tasks/' + C + '/repository-review.md', 'Verdict: partial\n')
+        self.call('archive_task.py', C, expected=2)
+        self.put('.factory/tasks/' + C + '/repository-review.md', 'Verdict: pass\n\nIncremental changed-path review.\n')
+        self.finish(C)
+        result = json.loads(self.call('maintenance.py', 'status', '--today', '2026-10-22').stdout)
+        self.assertEqual(result['last_incremental_review_task'], C)
+        self.assertIsNone(result['last_full_review_task'])
+        self.assertEqual(result['uncovered_incremental_work_tasks'], [])
+        self.assertEqual(result['uncovered_work_tasks'], [A])
+
+    def test_frozen_baseline_uses_snapshot_not_timestamps_or_claimed_coverage(self):
+        self.task(A)
+        self.finish(A)
+        self.commit()
+        self.task(C)
+        self.put('.factory/tasks/' + C + '/repository-review.md', 'Verdict: partial — remaining areas retained\n')
+        baseline = self.commit()
+        policy = self.scaled_policy(baseline)
+        self.put('.factory/maintenance.json', json.dumps(policy))
+        self.task(B)
+        self.finish(B)
+        record = self.root / '.factory/completions' / (B + '.json')
+        data = json.loads(record.read_text())
+        data['completed_at'] = '2026-10-21T08:00:00+00:00'
+        record.write_text(json.dumps(data))
+        reviewed = self.commit()
+        result = json.loads(self.call('maintenance.py', 'status').stdout)
+        self.assertEqual(result['uncovered_work_tasks'], [B, A])
+        self.assertEqual(result['uncovered_incremental_work_tasks'], [B])
+        self.assertEqual(result['incremental_review_baseline_task_count'], 1)
+        self.assertEqual(result['incremental_review_baseline_revision'], baseline)
+        self.assertIsNone(result['last_full_review_task'])
+        self.assertIsNone(result['last_incremental_review_task'])
+        metadata = json.loads(self.call('maintenance.py', 'audit-input', '--scope', 'incremental', '--revision', reviewed, '--on', '2026-10-22').stdout)
+        self.assertEqual(metadata['audit']['covered_tasks'], [B])
+        self.assertEqual(json.loads((self.root / '.factory/completions' / (A + '.json')).read_text())['audit'], None)
+        with self.assertRaises(ValueError):
+            maintenance.status(policy, [event(A)], date(2026, 10, 22))
+
+    def test_frozen_baseline_rejects_missing_report_authority_and_nonancestor(self):
+        self.task(C)
+        self.put('.factory/tasks/' + C + '/repository-review.md', 'Verdict: partial\n')
+        baseline = self.commit()
+        policy = self.scaled_policy(baseline)
+        policy['repository_review']['incremental_review_baseline']['report_task'] = A
+        self.put('.factory/maintenance.json', json.dumps(policy))
+        self.assertIn('verdict', self.call('maintenance.py', 'status', expected=2).stderr)
+        policy['repository_review']['incremental_review_baseline']['report_task'] = C
+        policy['repository_review']['incremental_review_baseline']['authority'] = ' '
+        self.put('.factory/maintenance.json', json.dumps(policy))
+        self.assertIn('authority', self.call('maintenance.py', 'status', expected=2).stderr)
+        policy = self.scaled_policy(baseline)
+        self.put('.factory/maintenance.json', json.dumps(policy))
+        self.commit()
+        self.git('switch', '--orphan', 'unrelated')
+        self.put('sentinel', 'unrelated retained commit\n')
+        unrelated = self.commit()
+        self.git('switch', 'task/' + C)
+        policy['repository_review']['incremental_review_baseline']['revision'] = unrelated
+        self.put('.factory/maintenance.json', json.dumps(policy))
+        self.assertIn('ancestry', self.call('maintenance.py', 'status', expected=2).stderr)
 
     def test_committed_gate_rejects_partial_task_without_completion_proof(self):
         base = self.git('rev-parse', 'HEAD')

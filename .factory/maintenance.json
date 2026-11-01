@@ -2,8 +2,8 @@
   "version": 2,
   "repository_review": {
     "review_every_task": true,
-    "full_review_every_completed_tasks": 20,
-    "full_review_every_calendar_days": 7,
+    "full_review_every_completed_tasks": null,
+    "full_review_every_calendar_days": 90,
     "initial_audit_deferral": {
       "approved_by": "Peter Polakovic, explicit conversation reply",
       "date": "2026-10-21",
@@ -89,7 +89,7 @@
       "date": "2026-10-23",
       "task": "20261023181250-5c67-fix-raw-fits-bounds",
       "scope": "Repair FND-20261023101753-bc8d-complete-repository-audit-005 alongside authorized repairs 039/026/006 before due audit; owner permits readiness-based integration order",
-      "authority": "Owner answered Áno, odložiť aj pre 005 to explicit extension question",
+      "authority": "Owner answered \u00c1no, odlo\u017ei\u0165 aj pre 005 to explicit extension question",
       "checkpoint": "After authorized repairs 039/026/006/005, before unrelated work or release",
       "resets_checkpoint": false
     },
@@ -144,7 +144,7 @@
       "date": "2026-10-25",
       "task": "20261025182421-7a16-exclude-factory-from-xcode",
       "scope": "Only remove .factory Xcode references and lifecycle synchronization in this adopter policy task",
-      "authority": "Áno, odložiť audit iba pre túto zmenu; potom zostáva splatný",
+      "authority": "\u00c1no, odlo\u017ei\u0165 audit iba pre t\u00fato zmenu; potom zost\u00e1va splatn\u00fd",
       "checkpoint": "After this change, before next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
     },
@@ -201,7 +201,7 @@
       "date": "2026-10-27",
       "task": "20261027192244-16bd-solver-hints-input-diagnostics",
       "scope": "Implement the Solver Agent hint, limit, input and message improvements only",
-      "authority": "Áno, odložiť audit pre túto úlohu; audit ostáva splatný po nej, pred ďalšou nesúvisiacou prácou alebo releasom.",
+      "authority": "\u00c1no, odlo\u017ei\u0165 audit pre t\u00fato \u00falohu; audit ost\u00e1va splatn\u00fd po nej, pred \u010fal\u0161ou nes\u00favisiacou pr\u00e1cou alebo releasom.",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
     },
@@ -228,7 +228,7 @@
       "date": "2026-10-27",
       "task": "20261027214032-3577-solver-index-0-5deg",
       "scope": "Create the 0.5 degree Tycho-2 index and add it to the Solver Agent only",
-      "authority": "Áno, odložiť audit aj pre úlohu 0.5° indexu; audit ostáva splatný po nej, pred ďalšou nesúvisiacou prácou alebo releasom.",
+      "authority": "\u00c1no, odlo\u017ei\u0165 audit aj pre \u00falohu 0.5\u00b0 indexu; audit ost\u00e1va splatn\u00fd po nej, pred \u010fal\u0161ou nes\u00favisiacou pr\u00e1cou alebo releasom.",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
     },
@@ -237,7 +237,7 @@
       "date": "2026-10-29",
       "task": "20261029191530-1288-solver-index-0-2deg",
       "scope": "Create the 0.2 degree Gaia DR3 index and add it to the Solver Agent only",
-      "authority": "Odložiť, index najprv",
+      "authority": "Odlo\u017ei\u0165, index najprv",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
     },
@@ -249,6 +249,12 @@
       "authority": "Defer, do solver change",
       "checkpoint": "After this task, before the next unrelated work or release; full repository audit remains due",
       "resets_checkpoint": false
+    },
+    "incremental_review_every_completed_tasks": 20,
+    "incremental_review_baseline": {
+      "revision": "2b040e9b6daa120b78459e3f91242b0848615716",
+      "authority": "Peter Polakovic, direct owner instruction on2026-11-01 approving the proposed cadence and closing current audit as partial; historical completions are cadence baseline only, not reviewed coverage.",
+      "report_task": "20261101193246-1248-periodic-repository-audit"
     }
   },
   "timezone": "Europe/Bratislava"

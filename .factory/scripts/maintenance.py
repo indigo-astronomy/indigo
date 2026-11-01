@@ -37,9 +37,22 @@ def config(root, snapshot=None):
     policy = value.get('repository_review')
     if not isinstance(policy, dict):
         raise ValueError('repository_review policy missing')
-    for key in ('full_review_every_completed_tasks', 'full_review_every_calendar_days'):
+    for key in ('full_review_every_completed_tasks', 'full_review_every_calendar_days', 'incremental_review_every_completed_tasks'):
+        if key == 'incremental_review_every_completed_tasks' and key not in policy:
+            continue
+        if key == 'full_review_every_completed_tasks' and policy.get(key) is None and key in policy:
+            continue
         if type(policy.get(key)) is not int or policy[key] < 1:
-            raise ValueError('positive maintenance threshold required')
+            raise ValueError('positive maintenance threshold required; only the full task threshold may be null')
+    baseline = policy.get('incremental_review_baseline')
+    if baseline is not None:
+        if 'incremental_review_every_completed_tasks' not in policy or not isinstance(baseline, dict) or set(baseline) != {'revision', 'authority', 'report_task'}:
+            raise ValueError('incremental migration baseline needs revision, authority and report_task')
+        if not isinstance(baseline['revision'], str) or not SHA.fullmatch(baseline['revision']):
+            raise ValueError('incremental baseline must reference a full retained commit')
+        if not isinstance(baseline['authority'], str) or not baseline['authority'].strip():
+            raise ValueError('incremental baseline needs explicit owner authority')
+        store.valid_task(baseline['report_task'])
     if not isinstance(value.get('timezone'), str) or not value['timezone']:
         raise ValueError('maintenance timezone required')
     forbidden = {'completed_non_audit_tasks_since_full_review', 'last_full_review_task',
@@ -63,14 +76,16 @@ def validate(record):
         raise ValueError('invalid completion record fields/version')
     store.valid_task(record['task'])
     moment(record['completed_at'])
-    if record['kind'] not in ('work', 'audit'):
-        raise ValueError('completion kind must be work or audit')
+    if record['kind'] not in ('work', 'audit', 'incremental-audit', 'partial-audit'):
+        raise ValueError('invalid completion kind')
     revision = record['evidence_revision']
     if revision is not None and (not isinstance(revision, str) or not SHA.fullmatch(revision)):
         raise ValueError('completion evidence revision must be a full commit or null')
     audit = record['audit']
-    if record['kind'] == 'audit' and audit is None:
-        raise ValueError('audit-only completion requires explicit full-audit metadata')
+    if record['kind'] in ('audit', 'incremental-audit') and audit is None:
+        raise ValueError('completed full/incremental audit requires explicit audit metadata')
+    if record['kind'] == 'partial-audit' and audit is not None:
+        raise ValueError('partial audit cannot declare completed review coverage')
     if audit is not None:
         if not isinstance(audit, dict) or set(audit) != {'reviewed_on', 'revision', 'covered_tasks'}:
             raise ValueError('invalid audit completion metadata')
@@ -117,19 +132,38 @@ def records(root, snapshot=None):
 
 
 
-def audit_report(root, task, snapshot=None):
+def audit_report(root, task, snapshot=None, verdict='pass', migration=False):
     reports = []
     for prefix in ('', 'archive/'):
         name = '.factory/tasks/' + prefix + task + '/repository-review.md'
         exists = snapshot.exists(name) if snapshot else store.local(root, root / name).exists()
         if exists:
             reports.append(snapshot.read(name) if snapshot else store.read(root, root / name).decode('utf-8'))
-    if len(reports) != 1 or re.findall(r'(?m)^(?:- )?Verdict:\s*(.*?)\s*$', reports[0]) != ['pass']:
-        raise ValueError('qualified audit needs exactly one passing repository-review.md report')
+    values = re.findall(r'(?m)^(?:- )?Verdict:\s*(.*?)\s*$', reports[0]) if len(reports) == 1 else []
+    accepted = values == [verdict]
+    if migration and len(values) == 1:
+        accepted = re.fullmatch(r'partial(?:\s+[—-].*)?', values[0]) is not None
+    if not accepted:
+        raise ValueError('audit needs exactly one repository-review.md verdict: ' + verdict)
+
+
+def baseline_tasks(root, policy, snapshot=None):
+    baseline = policy['repository_review'].get('incremental_review_baseline')
+    if baseline is None:
+        return set()
+    from git_snapshot import Snapshot
+    candidate = snapshot if snapshot is not None else Snapshot(root, 'HEAD')
+    if not candidate.ancestor(baseline['revision']):
+        raise ValueError('incremental baseline must remain in candidate ancestry')
+    source = candidate.at(baseline['revision'])
+    audit_report(root, baseline['report_task'], source, verdict='partial', migration=True)
+    return {r['task'] for r in records(root, source) if r['kind'] == 'work'}
 
 def check(root, snapshot=None, pruning=()):
-    if config(root, snapshot) is None:
+    policy = config(root, snapshot)
+    if policy is None:
         return []
+    baseline_tasks(root, policy, snapshot)
     values = records(root, snapshot)
     pins = {}
     def pinned(revision):
@@ -167,14 +201,24 @@ def check(root, snapshot=None, pruning=()):
         if record['audit']:
             audit_report(root, record['task'], source)
             pinned(record['audit']['revision'])
+        elif record['kind'] == 'partial-audit':
+            audit_report(root, record['task'], source, verdict='partial')
     return values
 
 
-def status(policy, values, today=None):
+def incremental_coverage(values, baseline):
+    covered = set(baseline)
+    for record in values:
+        if record['audit']:
+            covered.update(record['audit']['covered_tasks'])
+    return covered
+
+
+def status(policy, values, today=None, baseline=None):
     if today is None:
         today = datetime.now(timezone.utc if policy['timezone'] == 'UTC' else ZoneInfo(policy['timezone'])).date()
     ordered = sorted(values, key=lambda r: (moment(r['completed_at']), r['task']))
-    audits = sorted((r for r in ordered if r['audit']), key=lambda r: (date.fromisoformat(r['audit']['reviewed_on']), moment(r['completed_at']), r['task']))
+    audits = sorted((r for r in ordered if r['audit'] and r['kind'] != 'incremental-audit'), key=lambda r: (date.fromisoformat(r['audit']['reviewed_on']), moment(r['completed_at']), r['task']))
     latest = audits[-1] if audits else None
     covered = set(latest['audit']['covered_tasks']) if latest else set()
     outstanding = [r['task'] for r in ordered if r['kind'] == 'work' and r['task'] not in covered]
@@ -182,12 +226,27 @@ def status(policy, values, today=None):
     if elapsed is not None and elapsed < 0:
         raise ValueError('audit date is in the future relative to the requested date')
     rules = policy['repository_review']
-    return {'completed_tasks': len(values), 'completed_non_audit_tasks_since_full_review': len(outstanding),
+    threshold = rules['full_review_every_completed_tasks']
+    output = {'completed_tasks': len(values), 'completed_non_audit_tasks_since_full_review': len(outstanding),
             'uncovered_work_tasks': outstanding, 'last_full_review_task': latest['task'] if latest else None,
             'last_full_review_date': latest['audit']['reviewed_on'] if latest else None,
             'last_full_review_revision': latest['audit']['revision'] if latest else None,
             'last_task_review_task': ordered[-1]['task'] if ordered else None,
-            'full_review_due': latest is None or len(outstanding) >= rules['full_review_every_completed_tasks'] or elapsed >= rules['full_review_every_calendar_days']}
+            'full_review_due': latest is None or (threshold is not None and len(outstanding) >= threshold) or elapsed >= rules['full_review_every_calendar_days']}
+    if 'incremental_review_every_completed_tasks' in rules:
+        if rules.get('incremental_review_baseline') is not None and baseline is None:
+            raise ValueError('resolve the retained incremental baseline before deriving status')
+        baseline = set(baseline or ())
+        unseen = [r['task'] for r in ordered if r['kind'] == 'work' and r['task'] not in incremental_coverage(values, baseline)]
+        incremental = sorted((r for r in ordered if r['kind'] == 'incremental-audit'), key=lambda r: (date.fromisoformat(r['audit']['reviewed_on']), moment(r['completed_at']), r['task']))
+        last_incremental = incremental[-1] if incremental else None
+        output.update(completed_non_audit_tasks_since_incremental_review=len(unseen), uncovered_incremental_work_tasks=unseen,
+                      incremental_review_due=len(unseen) >= rules['incremental_review_every_completed_tasks'],
+                      last_incremental_review_task=last_incremental['task'] if last_incremental else None,
+                      last_incremental_review_date=last_incremental['audit']['reviewed_on'] if last_incremental else None,
+                      incremental_review_baseline_revision=rules.get('incremental_review_baseline', {}).get('revision'),
+                      incremental_review_baseline_task_count=len(baseline))
+    return output
 
 
 def completion_for_archive(root, task, state):
@@ -210,6 +269,8 @@ def completion_for_archive(root, task, state):
         raise ValueError('audit coverage refers to unknown task completions')
     if record['audit']:
         audit_report(root, task)
+    elif record['kind'] == 'partial-audit':
+        audit_report(root, task, verdict='partial')
     return path, (json.dumps(record, indent=2, allow_nan=False) + '\n').encode()
 
 
@@ -219,6 +280,7 @@ def main():
     parser.add_argument('--today', type=date.fromisoformat)
     parser.add_argument('--revision', help='reviewed source commit for audit-input')
     parser.add_argument('--on', type=date.fromisoformat, help='actual reviewed date for audit-input')
+    parser.add_argument('--scope', choices=('full', 'incremental'), default='full', help='scope for audit-input; full remains the legacy default')
     parser.add_argument('--prune-task', action='append', default=[])
     args = parser.parse_args()
     try:
@@ -233,11 +295,18 @@ def main():
             if not Snapshot(ROOT, 'HEAD').ancestor(args.revision):
                 raise ValueError('audit source must be retained in current ancestry')
             values = records(ROOT, snap)
-            output = {'kind': 'audit', 'audit': {'reviewed_on': args.on.isoformat(), 'revision': args.revision,
-                                               'covered_tasks': sorted(r['task'] for r in values)}}
+            if args.scope == 'incremental':
+                if 'incremental_review_every_completed_tasks' not in policy['repository_review']:
+                    raise ValueError('incremental review policy is not configured')
+                covered = incremental_coverage(values, baseline_tasks(ROOT, policy, snap))
+                tasks = sorted(r['task'] for r in values if r['kind'] == 'work' and r['task'] not in covered)
+            else:
+                tasks = sorted(r['task'] for r in values)
+            output = {'kind': 'incremental-audit' if args.scope == 'incremental' else 'audit',
+                      'audit': {'reviewed_on': args.on.isoformat(), 'revision': args.revision, 'covered_tasks': tasks}}
         else:
             values = check(ROOT, pruning=args.prune_task)
-            output = status(policy, values, args.today) if args.command == 'status' else {'valid': True, 'completed_tasks': len(values)}
+            output = status(policy, values, args.today, baseline_tasks(ROOT, policy)) if args.command == 'status' else {'valid': True, 'completed_tasks': len(values)}
         print(json.dumps(output, indent=2))
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as exc:
         print('Maintenance failed: ' + str(exc), file=sys.stderr)

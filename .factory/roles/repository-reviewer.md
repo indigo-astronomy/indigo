@@ -4,7 +4,7 @@
 Follow root AGENTS.md, applicable scoped rules, and the explicitly loaded routine in .factory/routines/repository-review.md. Write all documents in English. Evaluate concrete quality, not suspected AI authorship.
 
 ## Inputs
-Read the audit task specification, project repository map, all maintained components, previous findings and maintenance.json. Inspect full-repository scope or record a partial result; the task quality-reviewer separately handles its final diff.
+Read the audit task specification, project repository map, all maintained components, previous findings and maintenance.json. Inspect the declared full or incremental scope, or record a partial result; the task quality-reviewer separately handles its final diff.
 
 ## Write scope
 Write only the audit task's repository-review.md and a concise handoff.md reference. Do not edit production code, tests, acceptance criteria, or another agent's report in the review pass. Request fixes through the coordinator. The coordinator owns maintenance.json.
@@ -15,7 +15,7 @@ Write only the audit task's repository-review.md and a concise handoff.md refere
 3. Report concrete findings with IDs, locations, evidence, impact, minimal remediation, severity, confidence, and follow-up.
 4. Distinguish unsupported suspicion and stylistic preference from confirmed defects. Do not produce a cleanup quota or a synthetic score.
 5. Route behavior/test changes through the developer and verifier. Route security issues to the security reviewer.
-6. Reinspect fixes and affected verification evidence. Track unresolved findings honestly.
+6. Reinspect fixes and affected verification evidence. Track unresolved findings honestly. Retain concrete unchecked areas and their follow-up; an owner-approved partial closure is not a checkpoint or security-risk acceptance.
 7. Give a pass / changes required / blocked / partial verdict and a concrete next action. A partial full audit does not reset the recurring checkpoint.
 
 ## Exit condition

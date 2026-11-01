@@ -1,38 +1,48 @@
 # Maintenance from completed tasks
 
 ## Policy and durable evidence
-
-Version 2 `.factory/maintenance.json` contains policy and custom project settings, never mutable aggregate counters or checkpoint pointers:
+Version2 maintenance.json stores policy/custom authorization, not mutable counters. New project policy separates incremental and full review:
 
 ```json
 {
   "version": 2,
-  "timezone": "UTC",
+  "timezone": "Europe/Bratislava",
   "repository_review": {
     "review_every_task": true,
-    "full_review_every_completed_tasks": 20,
-    "full_review_every_calendar_days": 7
+    "incremental_review_every_completed_tasks": 20,
+    "full_review_every_completed_tasks": null,
+    "full_review_every_calendar_days": 90
   }
 }
 ```
 
-Choose the owner's calendar timezone during project setup. Run `./.factory/scripts/maintenance status` at startup and closure; `--today YYYY-MM-DD` makes historical/boundary checks explicit. It derives counts/checkpoints from `.factory/completions/<task-id>.json`, one versioned record per completed task. No aggregate is written back. Different task branches add different files and merge both completions. Only completed tasks are published to the shared repository; the committed process gate validates completion proof and rejects task states without a completion record. Record creation is not proof that the claimed checks/reviews occurred.
+`full_review_every_completed_tasks: null` disables only the full task-count trigger; quarterly calendar/significant-release review remains. Legacy policies without incremental settings keep their prior behavior. At startup/closure run maintenance status; --today supplies a deterministic owner-calendar date. This is workflow state, not a scheduler.
 
-After acceptance/reviews, mark task state complete and run `archive-task`. Under the lifecycle lock it moves the task and emits its completion record, rolling both back on ordinary failure. The record contains `version: 1`, `task`, UTC `completed_at`, `kind` (work/audit), `audit` (null or qualified full-audit metadata) and `evidence_revision` (null or a full retained source-state commit). Repeated completion cannot overwrite an existing record. The automatic timestamp is completion time, not task creation time. A partial/blocked task never contributes a completion.
+archive-task emits one immutable version1 completion per accepted completed task, under the lifecycle lock. Existing fields/records remain valid: version, task, completed_at, kind, audit and evidence_revision. Kinds distinguish work, audit (qualified full), incremental-audit and partial-audit. Audit-only kinds never count as work. Full/incremental records use explicit reviewed_on/revision/covered_tasks metadata; partial-audit has audit:null and exactly `Verdict: partial` in its retained repository report. An accepted partial inspection is a completed bounded outcome; blocked or genuinely unfinished work still cannot be archived.
 
-Completion evidence is durable independently of reports. Before pruning a task's state/reports, pin its completion `evidence_revision` to a retained commit containing exactly one completed task-local state; validate with `maintenance check --prune-task ID` before and after pruning. Keep completion records after report pruning. Existing full audit and finding risk-acceptance gates remain unchanged.
+Completion state/report proof and ancestry remain validated. Only explicit owner acceptance permits partial closure, with findings, actual coverage and unchecked-area follow-up retained; no security risk is thereby accepted. Before pruning, pin evidence_revision to retained completed state, validate maintenance check --prune-task before/after, and keep the completion. No aggregate counter is reset or written back.
 
-## Audit coverage and due status
-
-A report filename alone does not qualify as a full audit. After completing the required full-repository audit, produce explicit task-state `completion` metadata using the actual reviewed commit/date:
+## Distinct review checkpoints
+A qualified full report alone advances full cadence. Default audit-input remains compatible:
 
 ```sh
 ./.factory/scripts/maintenance audit-input --revision FULL_REVIEWED_SHA --on YYYY-MM-DD
 ```
 
-The read-only result has `kind: "audit"` and `audit: { "reviewed_on": ..., "revision": ..., "covered_tasks": [...] }`. Copy it to the audit task state's `completion` field only after coverage/finding gates pass. For a work task also containing a full audit (such as adoption), use kind work with the same explicit audit metadata. The source commit must be retained; the command lists completion IDs visible at that reviewed commit. Do not expand coverage to tasks merged later without actually reviewing them.
+An incremental audit inspects changes since the incremental checkpoint/baseline, affected dependencies/contracts and open findings:
 
-Due status uses the latest audit by reviewed calendar date, completion timestamp and task ID (deterministic tie order). It counts work completions outside that audit's explicit `covered_tasks`; audit-only tasks do not count. An audit within a work task does not cover its own subsequent completion. A task finished concurrently on another branch remains uncovered even if its clock timestamp is earlier. This prevents a new audit checkpoint from silently forgetting unseen concurrent work. Twenty uncovered work tasks, seven calendar days, or no completed audit means an audit is due. Same-second completions are counted independently. This is derived workflow state, not an automatic scheduler or authenticated approval system.
+```sh
+./.factory/scripts/maintenance audit-input --scope incremental --revision REVIEWED_SHA --on YYYY-MM-DD
+```
+
+These commands only prepare metadata; copy it to task-state completion after actual gates pass. Incremental input lists still-uncovered work completions visible at the reviewed snapshot; historical migration-baseline tasks are not relabelled reviewed. Do not add concurrent work absent from the reviewed source.
+
+Status retains existing full-review fields and separately exposes incremental due/count/checkpoint fields. Full status considers qualified full audits only; incremental status combines actual full/incremental coverage with the explicit one-time counting baseline, if present. Partial closure advances neither actual checkpoint. Tie order remains reviewed date, completion time and task ID. Work unseen by an audit remains uncovered regardless of timestamps. Last full date/revision and historical uncovered work are preserved after the new policy begins.
+
+## Explicit one-time cadence migration
+An adopted project may record an owner-authorized immutable `incremental_review_baseline` object containing revision (retained full Git SHA), authority (nonempty owner authorization) and report_task (the partial report task). Resolve visible completion IDs from that retained snapshot and validate ancestry plus the referenced partial report. This is an explicit one-time policy migration, not a mutable checkpoint or review claim. Do not refresh it automatically. Keep its revision/task count separate from actual covered_tasks, retain unchecked-area follow-up, and never reset the full checkpoint.
+
+INDIGO's approved start is2b040e9b6daa120b78459e3f91242b0848615716. The decision and rationale belong in ADR-004; execution/proofs belong in the policy task. Existing historical deferrals remain evidence, but the old20-task/seven-day full-audit requirement is superseded by the owner's new policy. Legacy timezone/configuration behavior remains supported.
 
 ## Upgrade existing projects
 
