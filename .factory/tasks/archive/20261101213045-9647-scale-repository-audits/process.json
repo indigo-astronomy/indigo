@@ -39,7 +39,7 @@
         "test_independent_records.py"
       ],
       "result": "pass",
-      "evidence": "developer-verification.md"
+      "evidence": "verification.md"
     },
     {
       "command": [
