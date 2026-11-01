@@ -1,0 +1,254 @@
++ make -C /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers/agent_astrometry -f ../../Makefile.drv all
+Definition:
+Sources:    indigo_agent_astrometry.c
+Archive:    indigo_agent_astrometry.a
+SO library: indigo_agent_astrometry.dylib
+indigo_agent_astrometry.o
+
++ make check-lib build/integration/test_agent_astrometry build/integration/test_agent_astrometry_solver
+make: `build/integration/test_agent_astrometry' is up to date.
+make: `build/integration/test_agent_astrometry_solver' is up to date.
++ ./build/integration/test_agent_astrometry
+Running Astrometry Agent integration
+  PASS schema and metadata
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS settings synchronization and reset
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS shared controls preview and image mirror
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS FITS solution and parsed WCS
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver hints and generated config
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver size units and parity
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS RAW1 RAW2 RAW3 RAW6 conversion
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS JPEG conversion
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+22:03:10.359947 Application: [rc:-100009] libraw_open_buffer failed: 'Input/output error'
+Premature end of JPEG file
+  PASS short truncated and broken images
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS invalid RAW dimensions
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+22:03:10.401750 Application: Failed to create /tmp/indigo_astrometry_test_VE8rNb/cache/astrometry/image_6AE7A90E_0x101521240
+22:03:10.406538 Application: Failed to create /tmp/indigo_astrometry_test_VE8rNb/cache/astrometry/astrometry.cfg
+  PASS image filesystem failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+22:03:11.474025 Application: indigo_agent_astrometry[process_execution_line:267]: solve-field: not found
+  PASS reported solver failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS child process exit status
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS empty image upload
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS host signal mask and child reaper
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS overlapping solve rejection and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS direct upload copies GOTO target
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS related Imager Agent capture
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+22:03:19.919581 Application: Mount Agent SYNC failed
+  PASS peer failures and Imager abort forwarding
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS Mount abort forwarding
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS missing image source
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS mount sync and center
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS precise GOTO
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+22:03:29.061222 Application: Mount Agent SLEW failed
+  PASS polar alignment failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS polar alignment and recalculation
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver filter list mirrored
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve with filter
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS current or same filter keeps wheel
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS capture failure restores filter
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve failure restores filter once
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS filter change failure
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort restores filter once
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort during filter change
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS polar alignment switches filter per exposure
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS filter list follows Imager Agent
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    reference 2 target 3.667199 h, 19.952910 deg in epoch 2000
+    reference 3 target 2.334754 h, 19.916103 deg in epoch 2000
+  PASS polar alignment targets J2000 mount
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    reference 2 target 3.666667 h, 20.000000 deg in epoch 0
+    reference 3 target 2.333333 h, 20.000000 deg in epoch 0
+  PASS polar alignment targets JNow mount
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    JNow mount at 5.000000 h, 20.000000 deg, J2000 hints expected at 4.973583 h, 19.960835 deg
+    mount target 0: 12.022940 h, -30.149394 deg, expected 12.022940 h, -30.149394 deg
+    mount target 1: 5.000000 h, 20.000000 deg, expected 5.000000 h, 20.000000 deg
+    mount target 2: 13.021712 h, 24.855807 deg, expected 13.021712 h, 24.855807 deg
+    mount target 3: 12.022940 h, -30.149394 deg, expected 12.022940 h, -30.149394 deg
+    mount target 4: 5.000000 h, 20.000000 deg, expected 5.000000 h, 20.000000 deg
+  PASS sync center and goto in mount epoch
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve without selected index
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index install and remove
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index install while downloading
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index download after idle abort
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS leftover partial index removed
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve rejected during index download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index change rejected during solve
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index download failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index remove failure and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS additional instances lifecycle
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS repeated driver lifecycle
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS shutdown during solve
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 54/54 passed (including cleanup)
++ ./build/integration/test_agent_astrometry_solver
+Running Astrometry agent with the astrometry.net solver
+  SOLVE finished in 2.5 s
+  solution: WCS RA 18.6000 h Dec 38.8001° angle -144.00° scale 11.99"/px parity 1 index 4112, rendered 18.6000 h 38.8000° rotation 36°, mount 18.6000 h 38.8000°
+  PASS solve only
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  SOLVE finished in 2.7 s
+  solution: WCS RA 0.8500 h Dec -27.1009° angle -144.01° scale 11.99"/px parity 1 index 4112, rendered 0.8500 h -27.1000° rotation 36°, mount 0.8500 h -27.1000°
+  PASS south galactic pole
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  SYNC finished in 4.4 s
+  solution: WCS RA 18.6000 h Dec 38.8001° angle -144.00° scale 11.99"/px parity 1 index 4112, rendered 18.6000 h 38.8000° rotation 36°, mount 18.6000 h 38.8001°
+  the mount reports 18.6000 h 38.8001°, 0.0005° from its pointing
+  PASS solve and sync
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  the mount reports 18.5500 h 39.8000° pointing 1.156° away from it
+  CENTER finished in 4.7 s
+  centered: WCS RA 18.6000 h Dec 38.8001° angle -144.00° scale 11.99"/px parity 1 index 4112, rendered 18.6000 h 38.8000° rotation 36°, mount 18.5500 h 39.8000°
+  the mount points 0.0005° from the target
+  PASS solve, sync and center
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  PRECISE_GOTO finished in 6.1 s
+  goto: WCS RA 17.9500 h Dec 29.4999° angle -144.00° scale 11.99"/px parity 1 index 4112, rendered 17.9500 h 29.5000° rotation 36°, mount 18.0000 h 30.0000°
+  target 18.0000 h +30.0000°, the mount points 0.0003° from it, angle error -0.00°
+  PASS precise goto
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  CALCULATE_PA_ERROR finished in 10.2 s
+  step 0: polar error  81.55' (alt  +48.00' az  -65.92'), simulator  81.61' (alt  +48.00' az  -66.00')
+  RECALCULATE_PA_ERROR finished in 2.5 s
+  step 1: polar error  24.45' (alt  +14.34' az  -19.80'), simulator  24.53' (alt  +14.40' az  -19.85')
+  RECALCULATE_PA_ERROR finished in 2.4 s
+  step 2: polar error   7.36' (alt   +4.34' az   -5.94'), simulator   7.41' (alt   +4.36' az   -5.99')
+  RECALCULATE_PA_ERROR finished in 2.5 s
+  step 3: polar error   2.21' (alt   +1.31' az   -1.78'), simulator   2.26' (alt   +1.32' az   -1.84')
+  RECALCULATE_PA_ERROR finished in 2.8 s
+  step 4: polar error   0.67' (alt   +0.36' az   -0.56'), simulator   0.72' (alt   +0.40' az   -0.59')
+  PASS polar alignment
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  abort took 0.0 s
+  SOLVE finished in 2.4 s
+  solution: WCS RA 18.5999 h Dec 38.7998° angle -144.00° scale 11.99"/px parity 1 index 4112, rendered 18.6000 h 38.8000° rotation 36°, mount 18.6000 h 38.8000°
+  PASS abort while solving
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  abort took 0.1 s
+  SOLVE finished in 2.5 s
+  solution: WCS RA 18.6000 h Dec 38.8001° angle -144.00° scale 11.99"/px parity 1 index 4112, rendered 18.6000 h 38.8000° rotation 36°, mount 18.6000 h 38.8000°
+  PASS abort while exposing
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  abort took 0.0 s
+  SOLVE finished in 2.4 s
+  solution: WCS RA 18.6000 h Dec 38.8001° angle -144.00° scale 11.99"/px parity 1 index 4112, rendered 18.6000 h 38.8000° rotation 36°, mount 18.6000 h 38.8000°
+  PASS abort while guider exposes
+Astrometry agent with the astrometry.net solver: all tests passed
+Running Astrometry agent with the astrometry.net solver
+  abort took 0.0 s

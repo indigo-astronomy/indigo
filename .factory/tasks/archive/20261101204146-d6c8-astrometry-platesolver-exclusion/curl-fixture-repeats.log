@@ -1,0 +1,112 @@
+cc -std=gnu11 -O3 -g -DINDIGO_ASTROMETRY_TEST -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_libs -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/include -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers/agent_astrometry -c /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/astro-original-9w8ymzda/original.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/astro-original-9w8ymzda/original.o
+cc -std=gnu11 -O3 -g -DINDIGO_ASTROMETRY_TEST -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_libs -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/include -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers/agent_astrometry /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_test/integration/test_agent_astrometry.c /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/astro-original-9w8ymzda/original.o -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/astro-original-9w8ymzda/test /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigo.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigocat.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libjpeg.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libtiff.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libraw.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libhidapi.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libusb-1.0.dylib -lz -lc++ -lm -lpthread -framework CoreFoundation -framework IOKit
+Original driver / corrected peer repeat 1
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 2
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 3
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 4
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 5
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 6
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 7
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 8
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 9
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)
+Original driver / corrected peer repeat 10
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 3/3 passed (including cleanup)

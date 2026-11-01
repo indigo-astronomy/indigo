@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "task": "20261101204146-d6c8-astrometry-platesolver-exclusion",
+  "scope": [
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c",
+    "indigo_test/integration/test_agent_astrometry.c",
+    ".factory/completions/20261101204146-d6c8-astrometry-platesolver-exclusion.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101204146-d6c8-astrometry-platesolver-exclusion.json": [
+      "100644",
+      "blob",
+      "3b0805f5add3a487c8fa2ad2720cdd4e97e54959"
+    ],
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "aca43390a18de635278741bfb440cc1f48871759"
+    ],
+    "indigo_test/integration/test_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "c71d160f1f39b59e907953894e957addab1bf3f8"
+    ]
+  }
+}

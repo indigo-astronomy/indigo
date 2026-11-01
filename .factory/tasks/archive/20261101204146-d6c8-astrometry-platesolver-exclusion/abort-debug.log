@@ -1,0 +1,16 @@
+21:56:45.697406 Application: Looked up driver indigo_agent_solver is NOT initialized
+21:56:45.701575 Application: indigo_platesolver_validate_executable: /tmp/indigo_astrometry_test_BdmYQe/bin/solve-field
+21:56:45.704393 Application: indigo_platesolver_validate_executable: /tmp/indigo_astrometry_test_BdmYQe/bin/image2xy
+21:56:45.707387 Application: indigo_platesolver_validate_executable: /tmp/indigo_astrometry_test_BdmYQe/bin/curl
+21:56:45.709278 Application: indigo_agent_astrometry: 'Astrometry Agent' attached
+Running Astrometry Agent integration
+21:56:45.710148 Application: indigo_agent_astrometry[execute_command:398]: > curl -L -s -o "/tmp/indigo_astrometry_test_BdmYQe/cache/astrometry/index-4207-00.fits.part" http://data.astrometry.net/4200/index-4207-00.fits
+21:56:45.787688 Application: indigo_agent_astrometry[execute_command:398]: > curl -L -s -o "/tmp/indigo_astrometry_test_BdmYQe/cache/astrometry/index-4207-01.fits.part" http://data.astrometry.net/4200/index-4207-01.fits
+21:56:45.795491 Application: indigo_agent_astrometry[execute_command:398]: > curl -L -s -o "/tmp/indigo_astrometry_test_BdmYQe/cache/astrometry/index-4207-02.fits.part" http://data.astrometry.net/4200/index-4207-02.fits
+21:56:45.803071 Application: indigo_agent_astrometry[execute_command:398]: > curl -L -s -o "/tmp/indigo_astrometry_test_BdmYQe/cache/astrometry/index-4207-03.fits.part" http://data.astrometry.net/4200/index-4207-03.fits
+21:56:45.811501 Application: Handler queue task for 'Queue Astrometry Agent' took 0.101s, longer than 0.100s limit
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+21:56:45.812027 Application: indigo_agent_astrometry: 'Astrometry Agent' detached
+Kept test output in /tmp/indigo_astrometry_test_BdmYQe
+Astrometry Agent: 1/1 passed (including cleanup)

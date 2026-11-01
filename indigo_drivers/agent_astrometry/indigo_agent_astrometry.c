@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000023
+#define DRIVER_VERSION 0x02000024
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -1320,8 +1320,8 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
-			if (indigo_driver_initialized("indigo_agent_solver")) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", "indigo_agent_solver");
+			if (indigo_driver_initialized("indigo_agent_platesolver")) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", "indigo_agent_platesolver");
 				return INDIGO_FAILED;
 			}
 #if defined(INDIGO_WINDOWS)

@@ -1,0 +1,2 @@
+# Platesolver identity compatibility
+Owner requests agent_solver→agent_platesolver and display Platesolver Agent concurrently with previous repairs. Latest steering explicitly revokes broad helper filename/symbol changes; avoid collision with existing indigo_platesolver.c. This task: Astrometry exclusivity uses indigo_agent_platesolver loader identity and rejects simultaneous initialized agents in both load orders; preserve unrelated lifecycle, discovery and solving behavior.

@@ -1,0 +1,18 @@
+cc -std=gnu11 -g -O1 -DINDIGO_ASTROMETRY_TEST -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_libs -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/include /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/astro-trace-build-471h5akm/trace.c /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_test/build/integration/agent_astrometry_driver.o -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/astro-trace-build-471h5akm/trace /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigo.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigocat.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libjpeg.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libtiff.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libraw.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libhidapi.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libusb-1.0.dylib -lz -lc++ -lm -lpthread -framework CoreFoundation -framework IOKit
+Running Astrometry Agent integration
+  PASS FITS solution and parsed WCS
+Astrometry Agent integration: all tests passed
+Kept test output in /tmp/indigo_astrometry_test_1U3Tp3
+Astrometry Agent: 1/1 passed (including cleanup)
+
+Running Astrometry Agent integration
+  PASS reported solver failures
+Astrometry Agent integration: all tests passed
+Kept test output in /tmp/indigo_astrometry_test_eRlwin
+Astrometry Agent: 1/1 passed (including cleanup)
+
+Running Astrometry Agent integration
+  PASS repeated driver lifecycle
+Astrometry Agent integration: all tests passed
+Kept test output in /tmp/indigo_astrometry_test_hVCiB1
+Astrometry Agent: 1/1 passed (including cleanup)

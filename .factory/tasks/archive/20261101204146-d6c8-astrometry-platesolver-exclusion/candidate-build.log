@@ -1,0 +1,9 @@
+Definition:
+Sources:    indigo_agent_astrometry.c
+Archive:    indigo_agent_astrometry.a
+SO library: indigo_agent_astrometry.dylib
+indigo_agent_astrometry.o
+
+/usr/bin/clang -g -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_libs -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_agent_astrometry.o indigo_agent_astrometry.c
+/usr/bin/libtool -static -o /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/drivers/indigo_agent_astrometry.a indigo_agent_astrometry.o
+/usr/bin/clang -shared -o /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/drivers/indigo_agent_astrometry.dylib -Wl,-force_load /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/drivers/indigo_agent_astrometry.a    -lindigo -g -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib -lusb-1.0

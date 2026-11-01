@@ -1,0 +1,409 @@
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_libs -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_ASTROMETRY_TEST -c ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c -o build/integration/agent_astrometry_driver_sanitize.o
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:770:12: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  770 |                         int t = sprintf(p, "SIMPLE  = %20c", 'T'); p[t] = ' ';
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:771:8: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  771 |                         t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
+      |                             ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:772:8: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  772 |                         t = sprintf(p += 80, "NAXIS   = %20d", 2); p[t] = ' ';
+      |                             ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:773:8: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  773 |                         t = sprintf(p += 80, "NAXIS1  = %20d", ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width); p[t] = ' ';
+      |                             ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:774:8: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  774 |                         t = sprintf(p += 80, "NAXIS2  = %20d", ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height); p[t] = ' ';
+      |                             ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:775:8: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  775 |                         t = sprintf(p += 80, "EXTEND  = %20c", 'T'); p[t] = ' ';
+      |                             ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:777:9: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  777 |                                 t = sprintf(p += 80, "BZERO   = %20d", 32768); p[t] = ' ';
+      |                                     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:778:9: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  778 |                                 t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
+      |                                     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:780:8: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  780 |                         t = sprintf(p += 80, "END"); p[t] = ' ';
+      |                             ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:869:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  869 |                         hints_index += sprintf(hints + hints_index, " -v");
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:872:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  872 |                         hints_index += sprintf(hints + hints_index, " -d %d", (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value);
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:882:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  882 |                         hints_index += sprintf(hints + hints_index, " --ra %g --dec %g --radius %g", AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value * 15, AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value);
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:885:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  885 |                         hints_index += sprintf(hints + hints_index, " --parity %s", AGENT_PLATESOLVER_HINTS_PARITY_ITEM->number.value > 0 ? "pos" : "neg");
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:888:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  888 |                         hints_index += sprintf(hints + hints_index, " --depth %d", (int)AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value);
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:891:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  891 |                         hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 0.85 * 3600, AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 1.15 * 3600);
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:893:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  893 |                         hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 0.85 * 3600, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 1.15 * 3600);
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:896:19: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  896 |                         hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value);
+      |                                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1147:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1147 |                         sprintf(name, "41%02d", i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1149:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1149 |                                 sprintf(label, "Index 41%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][0]);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1151:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1151 |                                 sprintf(label, "Index 41%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][0]);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1155:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1155 |                         sprintf((AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->items - (i - 19))->hints, "warn_on_clear:\"Delete Tycho-2 index 41%02d?\";", i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1168:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1168 |                         sprintf(name, "42%02d", i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1170:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1170 |                                 sprintf(label, "Index 42%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][1]);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1172:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1172 |                                 sprintf(label, "Index 42%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][1]);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c:1176:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1176 |                         sprintf((AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items - (i - 19))->hints, "warn_on_clear:\"Delete 2MASS index 42%02d?\";", i);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+25 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_libs -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_ASTROMETRY_TEST integration/test_agent_astrometry.c build/integration/agent_astrometry_driver_sanitize.o -o build/integration/test_agent_astrometry_sanitize -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib -arch arm64 -fsanitize=address,undefined -DINDIGO_ASTROMETRY_TEST /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigo.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigocat.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libjpeg.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libtiff.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=1 UBSAN_OPTIONS=halt_on_error=1 build/integration/test_agent_astrometry_sanitize
+Running Astrometry Agent integration
+  PASS schema and metadata
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS settings synchronization and reset
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS shared controls preview and image mirror
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS FITS solution and parsed WCS
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver hints and generated config
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver size units and parity
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS RAW1 RAW2 RAW3 RAW6 conversion
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS JPEG conversion
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:58:54.130027 Application: [rc:-100009] libraw_open_buffer failed: 'Input/output error'
+Premature end of JPEG file
+  PASS short truncated and broken images
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS invalid RAW dimensions
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:58:54.219897 Application: Failed to create /tmp/indigo_astrometry_test_1shjk7/cache/astrometry/image_6AE7A80E_0x617000000080
+21:58:54.230746 Application: Failed to create /tmp/indigo_astrometry_test_1shjk7/cache/astrometry/astrometry.cfg
+  PASS image filesystem failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:58:54.648944 Application: indigo_agent_astrometry[process_execution_line:267]: solve-field: not found
+  PASS reported solver failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS child process exit status
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS empty image upload
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS host signal mask and child reaper
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS overlapping solve rejection and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS direct upload copies GOTO target
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS related Imager Agent capture
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:58:58.937091 Application: Mount Agent SYNC failed
+  PASS peer failures and Imager abort forwarding
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS Mount abort forwarding
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS missing image source
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS mount sync and center
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS precise GOTO
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:59:06.117367 Application: Mount Agent SLEW failed
+  PASS polar alignment failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS polar alignment and recalculation
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver filter list mirrored
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve with filter
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS current or same filter keeps wheel
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS capture failure restores filter
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve failure restores filter once
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS filter change failure
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort restores filter once
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort during filter change
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS polar alignment switches filter per exposure
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS filter list follows Imager Agent
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    reference 2 target 3.667199 h, 19.952910 deg in epoch 2000
+    reference 3 target 2.334754 h, 19.916103 deg in epoch 2000
+  PASS polar alignment targets J2000 mount
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    reference 2 target 3.666667 h, 20.000000 deg in epoch 0
+    reference 3 target 2.333333 h, 20.000000 deg in epoch 0
+  PASS polar alignment targets JNow mount
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    JNow mount at 5.000000 h, 20.000000 deg, J2000 hints expected at 4.973583 h, 19.960835 deg
+    mount target 0: 12.022940 h, -30.149394 deg, expected 12.022940 h, -30.149394 deg
+    mount target 1: 5.000000 h, 20.000000 deg, expected 5.000000 h, 20.000000 deg
+    mount target 2: 13.021712 h, 24.855807 deg, expected 13.021712 h, 24.855807 deg
+    mount target 3: 12.022940 h, -30.149394 deg, expected 12.022940 h, -30.149394 deg
+    mount target 4: 5.000000 h, 20.000000 deg, expected 5.000000 h, 20.000000 deg
+  PASS sync center and goto in mount epoch
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve without selected index
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index install and remove
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index install while downloading
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index download after idle abort
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS leftover partial index removed
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve rejected during index download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index change rejected during solve
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index download failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index remove failure and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS additional instances lifecycle
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS repeated driver lifecycle
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS shutdown during solve
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 54/54 passed (including cleanup)

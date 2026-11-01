@@ -1,0 +1,4 @@
+curl -L -s -o <fixture>/cache/astrometry/index-4207-00.fits.part http://data.astrometry.net/4200/index-4207-00.fits
+curl -L -s -o <fixture>/cache/astrometry/index-4207-01.fits.part http://data.astrometry.net/4200/index-4207-01.fits
+curl -L -s -o <fixture>/cache/astrometry/index-4207-02.fits.part http://data.astrometry.net/4200/index-4207-02.fits
+curl -L -s -o <fixture>/cache/astrometry/index-4207-03.fits.part http://data.astrometry.net/4200/index-4207-03.fits

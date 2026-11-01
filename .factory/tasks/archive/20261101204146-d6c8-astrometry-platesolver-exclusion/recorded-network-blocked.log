@@ -1,0 +1,192 @@
++ make -C /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers/agent_astrometry -f ../../Makefile.drv all
+Definition:
+Sources:    indigo_agent_astrometry.c
+Archive:    indigo_agent_astrometry.a
+SO library: indigo_agent_astrometry.dylib
+indigo_agent_astrometry.o
+
++ make check-lib build/integration/test_agent_astrometry build/integration/test_agent_astrometry_solver
+/usr/bin/clang -g -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_libs -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/indigo_mac_drivers -I/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_ASTROMETRY_TEST integration/test_agent_astrometry.c build/integration/agent_astrometry_driver.o -o build/integration/test_agent_astrometry -g -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib -DINDIGO_ASTROMETRY_TEST /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigo.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libindigocat.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libjpeg.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libtiff.a /private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-20261101204146-d6c8-astrometry-platesolver-exclusion/build/lib
+make: `build/integration/test_agent_astrometry_solver' is up to date.
++ ./build/integration/test_agent_astrometry
+Running Astrometry Agent integration
+  PASS schema and metadata
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS settings synchronization and reset
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS shared controls preview and image mirror
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS FITS solution and parsed WCS
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver hints and generated config
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver size units and parity
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS RAW1 RAW2 RAW3 RAW6 conversion
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS JPEG conversion
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:59:09.921641 Application: [rc:-100009] libraw_open_buffer failed: 'Input/output error'
+Premature end of JPEG file
+  PASS short truncated and broken images
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS invalid RAW dimensions
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:59:09.965882 Application: Failed to create /tmp/indigo_astrometry_test_vCm9U2/cache/astrometry/image_6AE7A81D_0x10575bae0
+21:59:09.971864 Application: Failed to create /tmp/indigo_astrometry_test_vCm9U2/cache/astrometry/astrometry.cfg
+  PASS image filesystem failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:59:10.299492 Application: indigo_agent_astrometry[process_execution_line:267]: solve-field: not found
+  PASS reported solver failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS child process exit status
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS empty image upload
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS host signal mask and child reaper
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS overlapping solve rejection and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS direct upload copies GOTO target
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS related Imager Agent capture
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:59:14.178549 Application: Mount Agent SYNC failed
+  PASS peer failures and Imager abort forwarding
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS Mount abort forwarding
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS missing image source
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS mount sync and center
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS precise GOTO
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+21:59:21.316318 Application: Mount Agent SLEW failed
+  PASS polar alignment failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS polar alignment and recalculation
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solver filter list mirrored
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve with filter
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS current or same filter keeps wheel
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS capture failure restores filter
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve failure restores filter once
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS filter change failure
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort restores filter once
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS abort during filter change
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS polar alignment switches filter per exposure
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS filter list follows Imager Agent
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    reference 2 target 3.667199 h, 19.952910 deg in epoch 2000
+    reference 3 target 2.334754 h, 19.916103 deg in epoch 2000
+  PASS polar alignment targets J2000 mount
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    reference 2 target 3.666667 h, 20.000000 deg in epoch 0
+    reference 3 target 2.333333 h, 20.000000 deg in epoch 0
+  PASS polar alignment targets JNow mount
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+    JNow mount at 5.000000 h, 20.000000 deg, J2000 hints expected at 4.973583 h, 19.960835 deg
+    mount target 0: 12.022940 h, -30.149394 deg, expected 12.022940 h, -30.149394 deg
+    mount target 1: 5.000000 h, 20.000000 deg, expected 5.000000 h, 20.000000 deg
+    mount target 2: 13.021712 h, 24.855807 deg, expected 13.021712 h, 24.855807 deg
+    mount target 3: 12.022940 h, -30.149394 deg, expected 12.022940 h, -30.149394 deg
+    mount target 4: 5.000000 h, 20.000000 deg, expected 5.000000 h, 20.000000 deg
+  PASS sync center and goto in mount epoch
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve without selected index
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index install and remove
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index install while downloading
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort stops queued downloads
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index abort removes partial multi-file index
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index download after idle abort
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS leftover partial index removed
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS solve rejected during index download
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index change rejected during solve
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index download failures
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS index remove failure and recovery
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS additional instances lifecycle
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS repeated driver lifecycle
+Astrometry Agent integration: all tests passed
+Running Astrometry Agent integration
+  PASS shutdown during solve
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 54/54 passed (including cleanup)
++ ./build/integration/test_agent_astrometry_solver

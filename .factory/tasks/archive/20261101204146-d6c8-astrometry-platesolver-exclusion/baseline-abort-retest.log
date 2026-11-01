@@ -1,0 +1,11 @@
+Running Astrometry Agent integration
+  PASS index abort download
+Astrometry Agent integration: all tests passed
+Astrometry Agent: 1/1 passed (including cleanup)
+Running Astrometry Agent integration
+Timeout waiting for AGENT_ASTROMETRY_INDEX_42XX state 3 after 2; got 2 revision 2
+integration/test_agent_astrometry.c:1428: assertion failed: wait_state_after(INDEX_42, before, INDIGO_ALERT_STATE)
+  FAIL index abort removes partial multi-file index
+Astrometry Agent integration: 1 test(s) failed
+FAILED index abort removes partial multi-file index (status 256)
+Astrometry Agent: 0/1 passed (including cleanup)

@@ -338,8 +338,8 @@ static void create_fake_tools(void) {
 		"out=''\n"
 		"url=''\n"
 		"while [ $# -gt 0 ]; do if [ \"$1\" = '-o' ]; then shift; out=$1; else url=$1; fi; shift; done\n"
-		"case \"$ASTROMETRY_FAKE_MODE\" in curl_exit) exit 22 ;; curl_bad) printf 'ERROR' > \"$out\"; exit 0 ;; curl_slow) sleep 1 ;; curl_hang) printf 'SIMPLE' > \"$out\"; sleep 30 ;; esac\n"
-		"case \"$ASTROMETRY_FAKE_MODE:$url\" in curl_hang_4207_03:*index-4207-03.fits) printf 'SIMPLE' > \"$out\"; sleep 30 ;; esac\n"
+		"case \"$ASTROMETRY_FAKE_MODE\" in curl_exit) exit 22 ;; curl_bad) printf 'ERROR' > \"$out\"; exit 0 ;; curl_slow) sleep 1 ;; curl_hang) printf 'SIMPLE' > \"$out\"; exec sleep 30 ;; esac\n"
+		"case \"$ASTROMETRY_FAKE_MODE:$url\" in curl_hang_4207_03:*index-4207-03.fits) printf 'SIMPLE' > \"$out\"; exec sleep 30 ;; esac\n"
 		"printf 'SIMPLE' > \"$out\"\n"
 		"exit 0\n");
 }
