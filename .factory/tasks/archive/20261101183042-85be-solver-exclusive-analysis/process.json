@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "task": "20261101183042-85be-solver-exclusive-analysis",
+  "scope": [
+    ".factory/completions/20261101183042-85be-solver-exclusive-analysis.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101183042-85be-solver-exclusive-analysis.json": [
+      "100644",
+      "blob",
+      "18e60616b1d0fd607e4cbd2a6d889ac6e19842b1"
+    ]
+  }
+}
