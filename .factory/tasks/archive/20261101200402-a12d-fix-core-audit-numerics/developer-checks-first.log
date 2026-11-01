@@ -1,0 +1,331 @@
+55582bbc578dd19491c399b5ebb596b003b05d97f80c6b098c275e663119e033 /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c
+fbf9da7427928e12191a18eb764982351e86143669cbb29e584a3471f015e6ec /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_ser.c
+f47489785decde29371e031110a83410cc5db72aa4d0913a1c76571b07c69ae8 /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_stretch.cpp
+d39a0948f875429230735d32c78f5932b5da761d3ece3dda3cacad07400a735d /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_tools/indigo_solver_indexer.c
+89115330c7bdda5dd14790ee02db7c06f553f98c668f4993248ff70f2a3aad65 /Users/polakovic/Development/indigo/build/lib/libindigo.a
+043df4cd19b856a544d3f5160cef773b7799bc7c58456257cfabc1321e63e1dd /Users/polakovic/Development/indigo/build/lib/libindigo_client.a
+071913c5f51997a1f63da7af63e12a344d0de5c84961e8c6c7bf9054dba8ff7e /Users/polakovic/Development/indigo/build/lib/libhidapi.a
+7f9b86531d9947a7ac846a26e0161c62dab8ab71871104fcc4e5fceeee3af2e9 /Users/polakovic/Development/indigo/build/lib/libusb-1.0.dylib
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/json.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_ser.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/ser.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ c++ -std=c++11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_stretch.cpp -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/stretch.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_protocol_json.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+In file included from /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_protocol_json.c:29:
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:172:14: warning: unused function 'indigo_test_mkdtemp_home' [-Wunused-function]
+  172 | static char *indigo_test_mkdtemp_home(char *template_path) {
+      |              ^~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:182:13: warning: unused function 'indigo_test_use_private_home' [-Wunused-function]
+  182 | static bool indigo_test_use_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:192:13: warning: unused function 'indigo_test_remove_private_home' [-Wunused-function]
+  192 | static void indigo_test_remove_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:248:13: warning: unused function 'indigo_test_plan' [-Wunused-function]
+  248 | static void indigo_test_plan(const char *suite_name, int count, const char *filter) {
+      |             ^~~~~~~~~~~~~~~~
+4 warnings generated.
+$ c++ -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/json.o /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libhidapi.a -lz -ldl -lm -lpthread -framework IOKit -framework CoreFoundation -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/protocol_json (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/protocol_json (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test)
+21:09:25.594731 Application: JSON Parser: syntax error
+21:09:25.595350 Application: JSON Parser: syntax error
+21:09:25.595606 Application: JSON Parser: syntax error
+21:09:25.595848 Application: JSON Parser: syntax error
+21:09:25.596119 Application: JSON Parser: syntax error
+21:09:25.596373 Application: JSON Parser: syntax error
+21:09:25.596621 Application: JSON Parser: syntax error
+21:09:25.596857 Application: JSON Parser: syntax error
+21:09:25.597111 Application: JSON Parser: syntax error
+21:09:25.597358 Application: JSON Parser: syntax error
+21:09:25.597651 Application: JSON Parser: syntax error
+21:09:25.597910 Application: JSON Parser: syntax error
+21:09:25.598166 Application: JSON Parser: syntax error
+21:09:25.598410 Application: JSON Parser: syntax error
+21:09:25.598651 Application: JSON Parser: syntax error
+Running JSON protocol unit tests
+  PASS json_parser_validates_complete_numeric_tokens
+  PASS json_parser_preserves_escaped_text
+  PASS json_escape_handles_special_characters
+  PASS json_adapter_serializes_define_update_delete_and_blob_url
+  PASS json_adapter_escapes_device_and_item_names
+  PASS json_adapter_serializes_whole_long_text_value
+  PASS json_parser_routes_number_and_switch_fixtures
+  PASS json_parser_ignores_malformed_fixture_without_change
+JSON protocol unit tests: all tests passed
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_image_math.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+In file included from /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_image_math.c:21:
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:172:14: warning: unused function 'indigo_test_mkdtemp_home' [-Wunused-function]
+  172 | static char *indigo_test_mkdtemp_home(char *template_path) {
+      |              ^~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:182:13: warning: unused function 'indigo_test_use_private_home' [-Wunused-function]
+  182 | static bool indigo_test_use_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:192:13: warning: unused function 'indigo_test_remove_private_home' [-Wunused-function]
+  192 | static void indigo_test_remove_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:248:13: warning: unused function 'indigo_test_plan' [-Wunused-function]
+  248 | static void indigo_test_plan(const char *suite_name, int count, const char *filter) {
+      |             ^~~~~~~~~~~~~~~~
+4 warnings generated.
+$ c++ -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/stretch.o /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libhidapi.a -lz -ldl -lm -lpthread -framework IOKit -framework CoreFoundation -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/image_math (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/image_math (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test)
+Running Image math regressions
+  PASS stretch_identity_and_limits
+  PASS stretch_white_balance_ties_and_black
+  PASS polar_alignment_symmetric_and_singular
+  PASS contrast_empty_mask_and_valid_samples
+  PASS donuts_rejects_unsupported_regions
+  PASS debayer_uses_only_in_bounds_neighbours
+Image math regressions: all tests passed
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_recording_io.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+In file included from /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_recording_io.c:38:
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:172:14: warning: unused function 'indigo_test_mkdtemp_home' [-Wunused-function]
+  172 | static char *indigo_test_mkdtemp_home(char *template_path) {
+      |              ^~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:248:13: warning: unused function 'indigo_test_plan' [-Wunused-function]
+  248 | static void indigo_test_plan(const char *suite_name, int count, const char *filter) {
+      |             ^~~~~~~~~~~~~~~~
+2 warnings generated.
+$ c++ -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/ser.o /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libhidapi.a /Users/polakovic/Development/indigo/build/lib/libusb-1.0.dylib -lz -ldl -lm -lpthread -framework IOKit -framework CoreFoundation -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/recording_io (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/recording_io (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test)
+21:09:26.677750 Application: 2 <- // Failed to seek (Illegal seek)
+21:09:26.679072 Application: 5 <- // Failed to seek (Illegal seek)
+Running AVI and SER recording I/O
+  PASS ser_timestamps_preserve_full_epoch_and_timezone
+  PASS ser_frame_write_failure_is_not_counted
+  PASS ser_close_seek_failure_is_reported
+  PASS ser_complete_recording_counts_frames
+  PASS avi_frame_write_failure_is_not_counted
+  PASS avi_close_seek_failure_is_reported
+  PASS avi_complete_recording_grows_offsets_table
+AVI and SER recording I/O: all tests passed
+$ python3 -B /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_tool_input_safety.py (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+Invalid remote server
+Running Property tool input safety
+  PASS ordinary_requests
+  PASS field_boundaries
+  PASS item_count_boundaries
+  PASS malformed_requests
+INDIGO property manipulation tool v.3.0-9 built on Nov  1 2026 21:09:26.
+usage: indigo_prop_tool [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set_script [options] agent.property.SCRIPT=filename[;NAME=filename]
+       indigo_prop_tool get [options] device.property.item[;item;..]
+       indigo_prop_tool get_state [options] device.property
+       indigo_prop_tool list [options] [device[.property]]
+       indigo_prop_tool list_state [options] [device[.property]]
+       indigo_prop_tool discover [options]
+set write-only BLOBs:
+       indigo_prop_tool set [options] device.property.item=filename[;NAME=filename]
+options:
+       -h  | --help
+       -b  | --save-blobs
+       -l  | --use_legacy_blobs
+       -e  | --extended-info
+       -v  | --enable-log
+       -vv | --enable-debug
+       -vvv| --enable-trace
+       -r  | --remote-server host[:port]   (default: localhost)
+       -p  | --port port                   (default: 7624)
+       -T  | --token token
+       -t  | --time-to-wait seconds        (default: 2)
+       -w  | --wait OK|BUSY|ALERT|IDLE|ANY wait for property state (ANY=any update)
+       -s  | --track-states                print property state as string
+INDIGO property manipulation tool v.3.0-9 built on Nov  1 2026 21:09:26.
+usage: indigo_prop_tool [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set_script [options] agent.property.SCRIPT=filename[;NAME=filename]
+       indigo_prop_tool get [options] device.property.item[;item;..]
+       indigo_prop_tool get_state [options] device.property
+       indigo_prop_tool list [options] [device[.property]]
+       indigo_prop_tool list_state [options] [device[.property]]
+       indigo_prop_tool discover [options]
+set write-only BLOBs:
+       indigo_prop_tool set [options] device.property.item=filename[;NAME=filename]
+options:
+       -h  | --help
+       -b  | --save-blobs
+       -l  | --use_legacy_blobs
+       -e  | --extended-info
+       -v  | --enable-log
+       -vv | --enable-debug
+       -vvv| --enable-trace
+       -r  | --remote-server host[:port]   (default: localhost)
+       -p  | --port port                   (default: 7624)
+       -T  | --token token
+       -t  | --time-to-wait seconds        (default: 2)
+       -w  | --wait OK|BUSY|ALERT|IDLE|ANY wait for property state (ANY=any update)
+       -s  | --track-states                print property state as string
+INDIGO property manipulation tool v.3.0-9 built on Nov  1 2026 21:09:26.
+usage: indigo_prop_tool [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set_script [options] agent.property.SCRIPT=filename[;NAME=filename]
+       indigo_prop_tool get [options] device.property.item[;item;..]
+       indigo_prop_tool get_state [options] device.property
+       indigo_prop_tool list [options] [device[.property]]
+       indigo_prop_tool list_state [options] [device[.property]]
+       indigo_prop_tool discover [options]
+set write-only BLOBs:
+       indigo_prop_tool set [options] device.property.item=filename[;NAME=filename]
+options:
+       -h  | --help
+       -b  | --save-blobs
+       -l  | --use_legacy_blobs
+       -e  | --extended-info
+       -v  | --enable-log
+       -vv | --enable-debug
+       -vvv| --enable-trace
+       -r  | --remote-server host[:port]   (default: localhost)
+       -p  | --port port                   (default: 7624)
+       -T  | --token token
+       -t  | --time-to-wait seconds        (default: 2)
+       -w  | --wait OK|BUSY|ALERT|IDLE|ANY wait for property state (ANY=any update)
+       -s  | --track-states                print property state as string
+INDIGO property manipulation tool v.3.0-9 built on Nov  1 2026 21:09:26.
+usage: indigo_prop_toolInvalid remote server
+Invalid remote server
+Invalid remote server
+Invalid remote server
+Invalid remote server
+Invalid remote server
+Invalid remote server
+Invalid remote server
+Invalid remote server
+Invalid remote server
+ [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set_script [options] agent.property.SCRIPT=filename[;NAME=filename]
+       indigo_prop_tool get [options] device.property.item[;item;..]
+       indigo_prop_tool get_state [options] device.property
+       indigo_prop_tool list [options] [device[.property]]
+       indigo_prop_tool list_state [options] [device[.property]]
+       indigo_prop_tool discover [options]
+set write-only BLOBs:
+       indigo_prop_tool set [options] device.property.item=filename[;NAME=filename]
+options:
+       -h  | --help
+       -b  | --save-blobs
+       -l  | --use_legacy_blobs
+       -e  | --extended-info
+       -v  | --enable-log
+       -vv | --enable-debug
+       -vvv| --enable-trace
+       -r  | --remote-server host[:port]   (default: localhost)
+       -p  | --port port                   (default: 7624)
+       -T  | --token token
+       -t  | --time-to-wait seconds        (default: 2)
+       -w  | --wait OK|BUSY|ALERT|IDLE|ANY wait for property state (ANY=any update)
+       -s  | --track-states                print property state as string
+  PASS remote_endpoints
+Property tool input safety: all tests passed
+test_all_formats_exact_pixels_and_metadata (__main__.RawCropSafety) ... ok
+test_allocation_read_write_and_close_errors (__main__.RawCropSafety) ... ok
+test_full_image_origin_and_single_pixel (__main__.RawCropSafety) ... ok
+test_header_payload_dimensions_and_overflow (__main__.RawCropSafety) ... ok
+test_invalid_roi (__main__.RawCropSafety) ... ok
+test_output_open_error (__main__.RawCropSafety) ... ok
+test_empty_directory (__main__.GaiaCatalogSafety) ... ok
+test_invalid_numeric_rows_are_skipped (__main__.GaiaCatalogSafety) ... ok
+test_join_overflow_fails_before_opening_truncated_path (__main__.GaiaCatalogSafety) ... ok
+test_large_finite_ra_normalizes_in_bounded_time (__main__.GaiaCatalogSafety) ... ok
+test_literal_entries_filter_order_and_coordinates (__main__.GaiaCatalogSafety) ... ok
+test_literal_shell_directory (__main__.GaiaCatalogSafety) ... ok
+test_matching_unopenable_entry_fails (__main__.GaiaCatalogSafety) ... ok
+test_missing_non_directory_and_overlong_paths_fail (__main__.GaiaCatalogSafety) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.889s
+
+OK
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/json.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c:1031:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1031 |                 size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", indigo_json_escape(property->device));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c:1033:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1033 |                 size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", indigo_json_escape_b(0, property->device), indigo_json_escape_b(1, property->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c:1037:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1037 |                 size = sprintf(pnt, ", \"message\": \"%s\" } }", indigo_json_escape(message));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c:1039:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1039 |                 size = sprintf(pnt, " } }");
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c:1067:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1067 |                 size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, property->device), indigo_json_escape_b(2, property->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c:1069:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1069 |                 size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, device->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_json.c:1071:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1071 |                 size = sprintf(pnt, "{ \"message\": \"%s\" }", indigo_json_escape(message));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+7 warnings generated.
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_ser.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/ser.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ c++ -std=c++11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs/indigo_stretch.cpp -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/stretch.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ cc -std=gnu11 -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer -c /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_protocol_json.c -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+In file included from /private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/test_protocol_json.c:29:
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:172:14: warning: unused function 'indigo_test_mkdtemp_home' [-Wunused-function]
+  172 | static char *indigo_test_mkdtemp_home(char *template_path) {
+      |              ^~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:182:13: warning: unused function 'indigo_test_use_private_home' [-Wunused-function]
+  182 | static bool indigo_test_use_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:192:13: warning: unused function 'indigo_test_remove_private_home' [-Wunused-function]
+  192 | static void indigo_test_remove_private_home(void) {
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test/unit/../test_runner.h:248:13: warning: unused function 'indigo_test_plan' [-Wunused-function]
+  248 | static void indigo_test_plan(const char *suite_name, int count, const char *filter) {
+      |             ^~~~~~~~~~~~~~~~
+4 warnings generated.
+$ c++ -g -O1 -I/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_libs -Wall -Wextra -Wno-unused-parameter -fsanitize=address,undefined,float-cast-overflow -fno-omit-frame-pointer /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/test.o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/json.o /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libhidapi.a -lz -ldl -lm -lpthread -framework IOKit -framework CoreFoundation -o /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/protocol_json (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics)
+$ /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/protocol_json (cwd=/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/indigo_test)
+==1491==AddressSanitizer: detect_leaks is not supported on this platform.
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/.factory/tasks/20261101200402-a12d-fix-core-audit-numerics/developer-checks.py", line 33, in <module>
+    run([build / suite], cwd=ROOT / 'indigo_test', env=env)
+  File "/private/tmp/indigo-20261101200402-a12d-fix-core-audit-numerics/.factory/tasks/20261101200402-a12d-fix-core-audit-numerics/developer-checks.py", line 14, in run
+    subprocess.run(list(map(str, args)), cwd=cwd, env=env, check=True, timeout=120)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-numerics-a6j1f7z3/protocol_json']' died with <Signals.SIGABRT: 6>.
