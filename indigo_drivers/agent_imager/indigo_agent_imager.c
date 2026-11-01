@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000043
+#define DRIVER_VERSION 0x03000044
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -506,6 +506,9 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 		return true;
 	}
 	if (!strncmp(info_property->device, "ASTAP Agent", 11)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Platesolver Agent", sizeof("Platesolver Agent") - 1)) {
 		return true;
 	}
 	if (!strncmp(info_property->device, "INDIGO Solver Agent", 19)) {

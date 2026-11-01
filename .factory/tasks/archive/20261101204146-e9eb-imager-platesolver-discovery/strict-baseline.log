@@ -1,0 +1,18 @@
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_libs -I/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_drivers -I/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -Wall -Wextra -Werror -Wno-unused-parameter -fsyntax-only indigo_drivers/agent_imager/indigo_agent_imager.c
+indigo_drivers/agent_imager/indigo_agent_imager.c:3382:10: error: variable 'name' set but not used [-Werror,-Wunused-but-set-variable]
+ 3382 |                         char *name = NULL;
+      |                               ^
+indigo_drivers/agent_imager/indigo_agent_imager.c:3383:10: error: variable 'value' set but not used [-Werror,-Wunused-but-set-variable]
+ 3383 |                         char *value = NULL;
+      |                               ^
+indigo_drivers/agent_imager/indigo_agent_imager.c:3210:148: error: comparison of integers of different signs: 'size_t' (aka 'unsigned long') and 'off_t' (aka 'long long') [-Werror,-Wsign-compare]
+ 3210 |                                 if (DEVICE_PRIVATE_DATA->image_buffer && (DEVICE_PRIVATE_DATA->image_buffer_size < file_stat.st_size || DEVICE_PRIVATE_DATA->image_buffer_size > 2 * file_stat.st_size)) {
+      |                                                                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^ ~~~~~~~~~~~~~~~~~~~~~
+indigo_drivers/agent_imager/indigo_agent_imager.c:3210:86: error: comparison of integers of different signs: 'size_t' (aka 'unsigned long') and 'off_t' (aka 'long long') [-Werror,-Wsign-compare]
+ 3210 |                                 if (DEVICE_PRIVATE_DATA->image_buffer && (DEVICE_PRIVATE_DATA->image_buffer_size < file_stat.st_size || DEVICE_PRIVATE_DATA->image_buffer_size > 2 * file_stat.st_size)) {
+      |                                                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ^ ~~~~~~~~~~~~~~~~~
+indigo_drivers/agent_imager/indigo_agent_imager.c:3893:2: error: missing field 'force_property_updates' initializer [-Werror,-Wmissing-field-initializers]
+ 3893 |         };
+      |         ^
+5 errors generated.
+EXIT 1

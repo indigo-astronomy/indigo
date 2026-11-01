@@ -1,0 +1,16 @@
+Running Imager Agent integration
+RELATED attach Platesolver Agent listed=1 expected=1
+RELATED select Platesolver Agent state=OK selected=1
+RELATED detach Platesolver Agent listed=0
+RELATED attach Platesolver Agent #2 listed=1 expected=1
+RELATED select Platesolver Agent #2 state=OK selected=1
+RELATED detach Platesolver Agent #2 listed=0
+RELATED attach Platesolver Agent @ remote listed=1 expected=1
+RELATED select Platesolver Agent @ remote state=OK selected=1
+RELATED detach Platesolver Agent @ remote listed=0
+RELATED attach Platesolver Agent #2 @ remote listed=1 expected=1
+RELATED select Platesolver Agent #2 @ remote state=OK selected=1
+RELATED detach Platesolver Agent #2 @ remote listed=0
+  PASS platesolver agent discovery
+Imager Agent integration: all tests passed
+Imager Agent: 1/1 cases passed (including cleanup)

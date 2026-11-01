@@ -1,0 +1,6 @@
+Running Imager numerics and platesolver acceptance
+  PASS focus minima regressions
+  PASS exposure acceptance regressions
+  PASS image consumers reject malformed frames
+  PASS image consumers accept complete RAW formats
+Imager numerics and platesolver acceptance: all tests passed

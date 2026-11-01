@@ -1,0 +1,2 @@
+# Platesolver identity compatibility
+Owner requests agent_solver→agent_platesolver and display Platesolver Agent concurrently with previous repairs. Latest steering explicitly revokes broad helper filename/symbol changes; avoid collision with existing indigo_platesolver.c. This task: Imager related-agent discovery accepts Platesolver Agent and instances while retaining INDIGO Solver Agent/Solver Agent remote compatibility; preserve other filters and reject unrelated names.

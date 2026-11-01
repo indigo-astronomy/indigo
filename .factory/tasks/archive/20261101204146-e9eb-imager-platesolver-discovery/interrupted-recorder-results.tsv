@@ -1,0 +1,87 @@
+plan	4	Imager cleanup failure propagation
+pass	Imager cleanup failure propagation	CCD simulator shutdown
+pass	Imager cleanup failure propagation	observer detach
+pass	Imager cleanup failure propagation	bus stop
+pass	Imager cleanup failure propagation	conflicting case filters
+plan	4	Imager numerics and platesolver acceptance
+pass	Imager numerics and platesolver acceptance	focus minima regressions
+pass	Imager numerics and platesolver acceptance	exposure acceptance regressions
+pass	Imager numerics and platesolver acceptance	image consumers reject malformed frames
+pass	Imager numerics and platesolver acceptance	image consumers accept complete RAW formats
+plan	1	Imager Agent integration
+pass	Imager Agent integration	related agent discovery compatibility
+plan	1	Imager Agent integration
+pass	Imager Agent integration	platesolver agent discovery
+plan	1	Imager Agent integration
+pass	Imager Agent integration	empty start
+plan	1	Imager Agent integration
+pass	Imager Agent integration	platesolver empty start
+plan	1	Imager Agent integration
+pass	Imager Agent integration	default preview estimator
+plan	1	Imager Agent integration
+pass	Imager Agent integration	interframe delay abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	dither disabled dark and missing guider
+plan	1	Imager Agent integration
+pass	Imager Agent integration	autofocus failure policies and repeat
+plan	1	Imager Agent integration
+pass	Imager Agent integration	external shutter routing
+plan	1	Imager Agent integration
+pass	Imager Agent integration	streaming failure propagates
+plan	1	Imager Agent integration
+pass	Imager Agent integration	invalid image detection and recovery
+plan	1	Imager Agent integration
+pass	Imager Agent integration	independent instances and reselection
+plan	1	Imager Agent integration
+pass	Imager Agent integration	additional instance lifecycle
+plan	1	Imager Agent integration
+pass	Imager Agent integration	additional instance removal during publication
+plan	1	Imager Agent integration
+pass	Imager Agent integration	bahtinov preview and focus
+plan	1	Imager Agent integration
+pass	Imager Agent integration	configuration reload
+plan	1	Imager Agent integration
+pass	Imager Agent integration	shutdown while paused
+plan	1	Imager Agent integration
+pass	Imager Agent integration	camera disconnect and recover
+plan	1	Imager Agent integration
+pass	Imager Agent integration	selection regions binning and subframe
+plan	1	Imager Agent integration
+pass	Imager Agent integration	local batch and fits headers
+plan	1	Imager Agent integration
+pass	Imager Agent integration	dither cadence failure and abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	mount transit and solver coordination
+plan	1	Imager Agent integration
+pass	Imager Agent integration	additional instances and barrier
+plan	1	Imager Agent integration
+pass	Imager Agent integration	settings selection estimator and reset
+plan	1	Imager Agent integration
+pass	Imager Agent integration	stars statistics and format restoration
+plan	1	Imager Agent integration
+pass	Imager Agent integration	breakpoint PRE_BATCH resume and abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	breakpoint PRE_CAPTURE resume and abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	breakpoint POST_CAPTURE resume and abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	breakpoint PRE_DELAY resume and abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	breakpoint POST_DELAY resume and abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	breakpoint POST_BATCH resume and abort
+plan	1	Imager Agent integration
+pass	Imager Agent integration	pause resume and busy guards
+plan	1	Imager Agent integration
+pass	Imager Agent integration	wheel offsets and manual focus
+plan	1	Imager Agent integration
+pass	Imager Agent integration	bracketing returns to start
+plan	1	Imager Agent integration
+pass	Imager Agent integration	autofocus estimators
+plan	1	Imager Agent integration
+pass	Imager Agent integration	autofocus abort and failure
+plan	1	Imager Agent integration
+pass	Imager Agent integration	download listing payload delete
+plan	1	Imager Agent integration
+pass	Imager Agent integration	metadata and missing devices
+plan	1	Imager Agent integration

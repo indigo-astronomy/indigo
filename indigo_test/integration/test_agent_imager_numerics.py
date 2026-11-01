@@ -189,7 +189,8 @@ static struct property {
 		struct { bool value; } sw;
 		struct { void *value; long size; char format[32]; } blob;
 	} item;
-} props[8];
+} props[9];
+#define AGENT_START_PROCESS_PROPERTY (&props[8])
 #define AGENT_PAUSE_PROCESS_PROPERTY (&props[0])
 #define AGENT_PAUSE_PROCESS_ITEM (&props[0].item)
 #define AGENT_ABORT_PROCESS_PROPERTY (&props[1])
@@ -212,7 +213,14 @@ static struct {
 	unsigned char pixels[24];
 } raw_fixture;
 static long raw_fixture_size;
-static int bayer_calls, jpeg_calls, preview_updates;
+static int bayer_calls, jpeg_calls, preview_updates, filter_selections;
+
+static bool select_filter(indigo_device *device, const char *name) {
+	(void)device;
+	(void)name;
+	filter_selections++;
+	return true;
+}
 
 static bool indigo_download_blob(const char *url, void **image, long *size, void *format) {
 	(void)url;
@@ -288,6 +296,8 @@ static void focus_minima_regressions(void) {
 }
 
 static void exposure_acceptance_regressions(void) {
+	AGENT_START_PROCESS_PROPERTY->state = INDIGO_IDLE_STATE;
+	filter_selections = 0;
 	const indigo_property_state stale_states[] = { INDIGO_IDLE_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE };
 	const indigo_property_state reply_states[] = { INDIGO_OK_STATE, INDIGO_BUSY_STATE, INDIGO_ALERT_STATE };
 	for (source = 1; source <= 2; source++) {
@@ -323,6 +333,7 @@ static void exposure_acceptance_regressions(void) {
 		ASSERT_EQ_INT(1, aborted);
 		ASSERT_FALSE(data.abort_process_requested);
 	}
+	ASSERT_EQ_INT(0, filter_selections);
 }
 
 static void image_consumers_reject_malformed_frames(void) {

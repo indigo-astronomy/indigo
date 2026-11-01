@@ -1,0 +1,57 @@
+{
+  "version": 2,
+  "task": "20261101204146-e9eb-imager-platesolver-discovery",
+  "scope": [
+    "indigo_drivers/agent_imager/indigo_agent_imager.c",
+    "indigo_test/integration/test_agent_imager.c",
+    "indigo_test/integration/test_agent_imager_numerics.py",
+    ".factory/completions/20261101204146-e9eb-imager-platesolver-discovery.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101204146-e9eb-imager-platesolver-discovery.json": [
+      "100644",
+      "blob",
+      "052934fe5b64a3d12d995621aba3a6cc10fc5a6e"
+    ],
+    "indigo_drivers/agent_imager/indigo_agent_imager.c": [
+      "100644",
+      "blob",
+      "5b9a8118685c869c10925e3b9a1d543c444dd265"
+    ],
+    "indigo_test/integration/test_agent_imager.c": [
+      "100644",
+      "blob",
+      "b3073e6596e4c624c99fffae666cb80e8a182c53"
+    ],
+    "indigo_test/integration/test_agent_imager_numerics.py": [
+      "100644",
+      "blob",
+      "c953724e0b5a9ee813afa0d3c2bc65715b34a1c9"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
++ make -C /private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_drivers/agent_imager -f ../../Makefile.drv all
+Definition:
+Sources:    indigo_agent_imager.c
+Archive:    indigo_agent_imager.a
+SO library: indigo_agent_imager.dylib
+indigo_agent_imager.o
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_libs -I/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_drivers -I/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_agent_imager.o indigo_agent_imager.c
+/usr/bin/libtool -static -o /private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/build/drivers/indigo_agent_imager.a indigo_agent_imager.o
+/usr/bin/clang -shared -o /private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/build/drivers/indigo_agent_imager.dylib -Wl,-force_load /private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/build/drivers/indigo_agent_imager.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
++ make check-lib build/integration/test_agent_imager_cleanup build/integration/test_agent_imager_numerics build/integration/test_agent_imager build/integration/test_agent_imager_guider_mount build/integration/test_agent_imager_instances
+mkdir -p build/integration
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_libs -I/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_drivers -I/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_agent_imager_instances integration/test_agent_imager_instances.c /private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/build/drivers/indigo_agent_imager.a /private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/build/drivers/indigo_agent_guider.a /private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/build/drivers/indigo_ccd_simulator.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib -lindigo -lm -lpthread -lindigocat
+cp integration/test_agent_imager_cleanup.py build/integration/test_agent_imager_cleanup
+chmod +x build/integration/test_agent_imager_cleanup
+CC="/usr/bin/clang" python3 integration/test_agent_imager_numerics.py build/integration/test_agent_imager_numerics
+/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-agent-numerics-6ez4gsui/test.c:484:7: error: use of undeclared identifier 'AGENT_START_PROCESS_PROPERTY'
+  484 |                 if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && !select_filter(device, related_agent_name)) {
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-agent-numerics-6ez4gsui/test.c:484:68: error: call to undeclared function 'select_filter'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+  484 |                 if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && !select_filter(device, related_agent_name)) {
+      |                                                                                  ^
+2 errors generated.
+Traceback (most recent call last):
+  File "/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_test/integration/test_agent_imager_numerics.py", line 423, in <module>
+    subprocess.run(command, check=True)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 528, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/usr/bin/clang', '-std=c11', '-Wall', '-Wextra', '-Werror', '-Wno-unused-function', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-agent-numerics-6ez4gsui/test.c', '-o', '/private/tmp/indigo-20261101204146-e9eb-imager-platesolver-discovery/indigo_test/build/integration/test_agent_imager_numerics', '-lm', '-lpthread']' returned non-zero exit status 1.
+make: *** [build/integration/test_agent_imager_numerics] Error 1
+run_driver_test: building the tests failed

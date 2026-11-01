@@ -1,0 +1,19 @@
+Running Imager Agent instance coordination
+  PASS barrier keeps three instances in lockstep
+Imager Agent instance coordination: all tests passed
+Running Imager Agent instance coordination
+  PASS leader abort stops all members
+Imager Agent instance coordination: all tests passed
+Running Imager Agent instance coordination
+  PASS member abort aborts barrier group
+Imager Agent instance coordination: all tests passed
+Running Imager Agent instance coordination
+  PASS leader dithers with PRE_CAPTURE barrier
+Imager Agent instance coordination: all tests passed
+Running Imager Agent instance coordination
+  PASS leader dithers with POST_CAPTURE and PRE_CAPTURE barrier
+Imager Agent instance coordination: all tests passed
+Running Imager Agent instance coordination
+  PASS independent instances do not interfere
+Imager Agent instance coordination: all tests passed
+Imager Agent instance coordination: 6/6 cases passed (including cleanup)

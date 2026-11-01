@@ -1,0 +1,61 @@
+Running Imager Agent integration
+RELATED attach INDIGO Solver Agent listed=1 expected=1
+RELATED select INDIGO Solver Agent state=OK selected=1
+RELATED detach INDIGO Solver Agent listed=0
+RELATED attach INDIGO Solver Agent #2 @ legacy listed=1 expected=1
+RELATED select INDIGO Solver Agent #2 @ legacy state=OK selected=1
+RELATED detach INDIGO Solver Agent #2 @ legacy listed=0
+RELATED attach Solver Agent listed=1 expected=1
+RELATED select Solver Agent state=OK selected=1
+RELATED detach Solver Agent listed=0
+RELATED attach Solver Agent #2 @ legacy listed=1 expected=1
+RELATED select Solver Agent #2 @ legacy state=OK selected=1
+RELATED detach Solver Agent #2 @ legacy listed=0
+RELATED attach Imager Agent #3 listed=1 expected=1
+RELATED select Imager Agent #3 state=OK selected=1
+RELATED detach Imager Agent #3 listed=0
+RELATED attach Auxiliary Agent #2 listed=1 expected=1
+RELATED select Auxiliary Agent #2 state=OK selected=1
+RELATED detach Auxiliary Agent #2 listed=0
+RELATED attach Mount Agent #2 listed=1 expected=1
+RELATED select Mount Agent #2 state=OK selected=1
+RELATED detach Mount Agent #2 listed=0
+RELATED attach Guider Agent #2 listed=1 expected=1
+RELATED select Guider Agent #2 state=OK selected=1
+RELATED detach Guider Agent #2 listed=0
+RELATED attach Astrometry Agent #2 listed=1 expected=1
+RELATED select Astrometry Agent #2 state=OK selected=1
+RELATED detach Astrometry Agent #2 listed=0
+RELATED attach ASTAP Agent #2 listed=1 expected=1
+RELATED select ASTAP Agent #2 state=OK selected=1
+RELATED detach ASTAP Agent #2 listed=0
+RELATED attach Unrelated Agent listed=0 expected=0
+RELATED detach Unrelated Agent listed=0
+RELATED attach Platesolver Agen listed=0 expected=0
+RELATED detach Platesolver Agen listed=0
+RELATED attach PlateSolver Agent listed=0 expected=0
+RELATED detach PlateSolver Agent listed=0
+RELATED attach Other Platesolver Agent listed=0 expected=0
+RELATED detach Other Platesolver Agent listed=0
+RELATED attach Solver Agen listed=0 expected=0
+RELATED detach Solver Agen listed=0
+RELATED attach INDIGO Solver Agen listed=0 expected=0
+RELATED detach INDIGO Solver Agen listed=0
+  PASS related agent discovery compatibility
+Imager Agent integration: all tests passed
+Running Imager Agent integration
+RELATED attach Platesolver Agent listed=1 expected=1
+RELATED select Platesolver Agent state=OK selected=1
+RELATED detach Platesolver Agent listed=0
+RELATED attach Platesolver Agent #2 listed=1 expected=1
+RELATED select Platesolver Agent #2 state=OK selected=1
+RELATED detach Platesolver Agent #2 listed=0
+RELATED attach Platesolver Agent @ remote listed=1 expected=1
+RELATED select Platesolver Agent @ remote state=OK selected=1
+RELATED detach Platesolver Agent @ remote listed=0
+RELATED attach Platesolver Agent #2 @ remote listed=1 expected=1
+RELATED select Platesolver Agent #2 @ remote state=OK selected=1
+RELATED detach Platesolver Agent #2 @ remote listed=0
+  PASS platesolver agent discovery
+Imager Agent integration: all tests passed
+Imager Agent: 2/2 cases passed (including cleanup)

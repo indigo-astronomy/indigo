@@ -1,0 +1,8 @@
+Running Imager Agent integration
+RELATED attach Platesolver Agent listed=0 expected=1
+integration/test_agent_imager.c:477: listed == accepted
+integration/test_agent_imager.c:504: assertion failed: check_related_agent_discovery(accepted[i], true)
+  FAIL platesolver agent discovery
+Imager Agent integration: 2 test(s) failed
+Failed case: platesolver agent discovery (status 256)
+Imager Agent: 0/1 cases passed (including cleanup)

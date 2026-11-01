@@ -1,0 +1,38 @@
+Running Imager, Guider and Mount Agent cooperation
+21:50:27.838851 Application: Warning: Negative backlash -0.006px, set to 0
+  PASS guided batch dithers between frames
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+21:51:44.195249 Application: Warning: Negative backlash -0.019px, set to 0
+  PASS dither cadence skip and after last frame
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+  PASS imager abort while dithering
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+21:54:23.928951 Application: Warning: Negative backlash -0.009px, set to 0
+  PASS guider abort while dithering releases imager
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+  PASS dither request without guiding does not stall batch
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+  PASS guiding without mount
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+21:56:49.728651 Application: Warning: Negative backlash -0.021px, set to 0
+  PASS guiding without related mount
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+21:57:56.064917 Application: Warning: Negative backlash -0.017px, set to 0
+  PASS mount slew aborts imager and guider
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+21:59:07.682239 Application: Warning: Negative backlash -0.027px, set to 0
+  PASS mount park aborts imager and guider
+Imager, Guider and Mount Agent cooperation: all tests passed
+Running Imager, Guider and Mount Agent cooperation
+22:00:25.197627 Application: Warning: Negative backlash -0.032px, set to 0
+  PASS withdrawn permission keeps imager running
+Imager, Guider and Mount Agent cooperation: all tests passed
+Imager, Guider and Mount Agent cooperation: 10/10 cases passed (including cleanup)

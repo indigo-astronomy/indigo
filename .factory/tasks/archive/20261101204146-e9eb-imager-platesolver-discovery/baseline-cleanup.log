@@ -1,0 +1,5 @@
+Running Imager cleanup failure propagation
+  PASS CCD simulator shutdown
+  PASS observer detach
+  PASS bus stop
+  PASS conflicting case filters

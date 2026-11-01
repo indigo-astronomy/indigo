@@ -1,0 +1,1 @@
+CC="/usr/bin/clang" python3 integration/test_agent_imager_numerics.py build/integration/test_agent_imager_numerics

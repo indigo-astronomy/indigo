@@ -464,6 +464,47 @@ static void cleanup(void) {
 	}
 }
 
+static bool check_related_agent_discovery(const char *name, bool accepted) {
+	peer *p = peers;
+	*p = (peer) { 0 };
+	p->device = (indigo_device)INDIGO_DEVICE_INITIALIZER("", peer_attach, peer_enumerate, peer_change, NULL, peer_detach);
+	INDIGO_COPY_NAME(p->device.name, name);
+	p->device.private_data = p;
+	REQUIRE(indigo_attach_device(&p->device) == INDIGO_OK);
+	p->attached = true;
+	bool listed = !isnan(value(AGENT, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, name));
+	printf("RELATED attach %s listed=%d expected=%d\n", name, listed, accepted);
+	REQUIRE(listed == accepted);
+	if (accepted) {
+		REQUIRE(sw(AGENT, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, name, true, INDIGO_OK_STATE));
+		REQUIRE(value(AGENT, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, name) == 1);
+		printf("RELATED select %s state=OK selected=1\n", name);
+	}
+	REQUIRE(indigo_detach_device(&p->device) == INDIGO_OK);
+	p->attached = false;
+	REQUIRE(isnan(value(AGENT, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, name)));
+	printf("RELATED detach %s listed=0\n", name);
+	return true;
+}
+
+static void related_agent_discovery_compatibility(void) {
+	const char *accepted[] = { "INDIGO Solver Agent", "INDIGO Solver Agent #2 @ legacy", "Solver Agent", "Solver Agent #2 @ legacy", "Imager Agent #3", "Auxiliary Agent #2", "Mount Agent #2", "Guider Agent #2", "Astrometry Agent #2", "ASTAP Agent #2" };
+	const char *rejected[] = { "Unrelated Agent", "Platesolver Agen", "PlateSolver Agent", "Other Platesolver Agent", "Solver Agen", "INDIGO Solver Agen" };
+	for (int i = 0; i < ARRAY_SIZE(accepted); i++) {
+		ASSERT_TRUE(check_related_agent_discovery(accepted[i], true));
+	}
+	for (int i = 0; i < ARRAY_SIZE(rejected); i++) {
+		ASSERT_TRUE(check_related_agent_discovery(rejected[i], false));
+	}
+}
+
+static void platesolver_agent_discovery(void) {
+	const char *accepted[] = { "Platesolver Agent", "Platesolver Agent #2", "Platesolver Agent @ remote", "Platesolver Agent #2 @ remote" };
+	for (int i = 0; i < ARRAY_SIZE(accepted); i++) {
+		ASSERT_TRUE(check_related_agent_discovery(accepted[i], true));
+	}
+}
+
 static void metadata_and_missing_devices(void) {
 	const char *properties[] = { "AGENT_IMAGER_BATCH", "AGENT_IMAGER_FOCUS", "AGENT_IMAGER_FOCUS_FAILURE", "AGENT_IMAGER_FOCUS_ESTIMATOR", "AGENT_IMAGER_CAPTURE", "AGENT_START_PROCESS", "AGENT_PAUSE_PROCESS", "AGENT_ABORT_PROCESS", "AGENT_PROCESS_FEATURES", "AGENT_IMAGER_DOWNLOAD_FILE", "AGENT_IMAGER_DOWNLOAD_FILES", "AGENT_IMAGER_DOWNLOAD_IMAGE", "AGENT_IMAGER_DELETE_FILE", "AGENT_IMAGER_DISK_USAGE", "AGENT_WHEEL_FILTER", "AGENT_FOCUSER_CONTROL", "AGENT_IMAGER_STARS", "AGENT_IMAGER_SELECTION", "AGENT_IMAGER_SPIKES", "AGENT_IMAGER_STATS", "AGENT_IMAGER_BREAKPOINT", "AGENT_IMAGER_RESUME_CONDITION", "AGENT_IMAGER_BARRIER_STATE" };
 	for (int i = 0; i < ARRAY_SIZE(properties); i++) {
@@ -1346,6 +1387,8 @@ static void empty_start(void) {
 }
 
 static const indigo_test_case tests[] = {
+	{ "related agent discovery compatibility", related_agent_discovery_compatibility },
+	{ "platesolver agent discovery", platesolver_agent_discovery },
 	{ "empty start", empty_start },
 	{ "platesolver empty start", platesolver_empty_start },
 	{ "default preview estimator", default_preview_estimator },
