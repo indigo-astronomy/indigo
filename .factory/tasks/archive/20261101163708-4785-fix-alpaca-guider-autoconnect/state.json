@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261101163708-4785-fix-alpaca-guider-autoconnect",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archived; commit after owner approval, fast-forward master, delete task branch and worktree.",
+  "blocker": null
+}

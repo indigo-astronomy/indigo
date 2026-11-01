@@ -1,0 +1,73 @@
+{
+  "version": 2,
+  "task": "20261101163708-4785-fix-alpaca-guider-autoconnect",
+  "scope": [
+    "indigo_drivers/agent_alpaca/*",
+    "indigo_test/integration/test_agent_alpaca_mapping.c",
+    ".factory/findings/*"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-alpaca-mapping"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-alpaca-cache"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [
+    {
+      "role": "quality-reviewer",
+      "report": "quality-review.md",
+      "verdict": "pass"
+    },
+    {
+      "role": "security-reviewer",
+      "report": "security.md",
+      "verdict": "pass"
+    }
+  ],
+  "reviewed_content": {
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": [
+      "100644",
+      "blob",
+      "d50188b7bca53ec4eb757364375e83e0c1df3263"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_alpaca_common.c": [
+      "100644",
+      "blob",
+      "fd06c0e65edf144e0797f0769d338bace01e4dbf"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_alpaca_common.h": [
+      "100644",
+      "blob",
+      "83be53b63f88d5a4b6651b3c772b9ceedadf3072"
+    ],
+    "indigo_test/integration/test_agent_alpaca_mapping.c": [
+      "100644",
+      "blob",
+      "56b0752441f714877b04cb7180895476fc83141e"
+    ]
+  }
+}

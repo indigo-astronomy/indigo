@@ -86,11 +86,12 @@ static void connect_guider_handler(indigo_device *device, void *data) {
 	free(data);
 }
 
-// The guider follows the connection of its mount (alpaca_set_connected()). A driver may attach the guider only while the mount connects
-// (system_alpaca does), so the guider is connected when it pairs with a connected mount and when its mount becomes connected. The
+// The guider follows a connection of its mount requested by an Alpaca client (alpaca_set_connected()). A driver may attach the guider only
+// while the mount connects (system_alpaca does), so the guider is connected when it pairs with such a mount and when such a mount becomes
+// connected. A mount connected by anybody else leaves the guider alone, the Guider Agent can select only a guider that is not connected. The
 // request is sent from a timer, not from the bus callback, and carries the name, because the record may be gone by then.
 void indigo_alpaca_connect_paired_guider(indigo_alpaca_device *mount, indigo_alpaca_device *guider) {
-	if (mount->connected && !guider->connected && !guider->connection_busy) {
+	if (mount->connection_requested && mount->connected && !guider->connected && !guider->connection_busy) {
 		guider->connection_failed = false;
 		indigo_set_timer_with_data(indigo_agent_alpaca_device, 0, connect_guider_handler, NULL, indigo_safe_malloc_copy(strlen(guider->indigo_device) + 1, guider->indigo_device));
 	}
@@ -114,6 +115,9 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 			}
 		} else {
 			alpaca_device->connected = false;
+		}
+		if (!alpaca_device->connected && !alpaca_device->connection_busy) {
+			alpaca_device->connection_requested = false;
 		}
 		if (alpaca_device->guider_device != NULL && IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT)) {
 			indigo_alpaca_connect_paired_guider(alpaca_device, alpaca_device->guider_device);
@@ -295,6 +299,7 @@ static indigo_alpaca_error wait_for_connection(indigo_alpaca_device *device, boo
 static indigo_alpaca_error alpaca_set_connected(indigo_alpaca_device *device, int version, bool value) {
 	pthread_mutex_lock(&device->mutex);
 	device->connection_failed = false;
+	device->connection_requested = value;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, CONNECTION_PROPERTY_NAME, value ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true);
 	// guider of a mount is part of the Telescope device and follows its connection
 	indigo_alpaca_device *guider = device->guider_device;

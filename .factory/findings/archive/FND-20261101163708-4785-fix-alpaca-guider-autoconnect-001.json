@@ -1,0 +1,24 @@
+{
+  "title": "Alpaca Agent connects a mount's guider for any client, blocking the Guider Agent",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101163708-4785-fix-alpaca-guider-autoconnect",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "With indigo_agent_alpaca loaded, indigo_alpaca_connect_paired_guider() connected '<mount> (guider)' whenever the mount connected, regardless of the requesting client. The Guider Agent then refused the guider as busy or in use (forum thread t=1413). Fixed by connecting the guider only after an Alpaca client's PUT connected=true on the mount.",
+  "evidence": "Reproduced with indigo_server, mount_synscan serial simulator, agents mount/guider/alpaca: bus trace shows Change 'Mount SynScan (guider)'.'CONNECTION' from 'Alpaca Agent' 4 ms after the mount connected; selection in Guider Agent ended ALERT. See verification.md of the task.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261101163708-4785-fix-alpaca-guider-autoconnect verification.md: regression test paired_guider_follows_alpaca_client_only fails before and passes after the fix; server scenario with the SynScan simulator no longer connects the guider for the Mount Agent.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101163708-4785-fix-alpaca-guider-autoconnect-001"
+}

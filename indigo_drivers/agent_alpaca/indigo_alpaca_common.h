@@ -65,6 +65,7 @@ typedef struct indigo_alpaca_device_struct {
 	bool connected;
 	bool connection_failed;
 	bool connection_busy;
+	bool connection_requested;
 	char utcdate[64];
 	double latitude;
 	double longitude;

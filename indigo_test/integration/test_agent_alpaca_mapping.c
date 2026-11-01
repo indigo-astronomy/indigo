@@ -76,10 +76,156 @@ static void camera_bayer_capacity_and_rediscovery(void) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
 }
 
+#define PAIRED_MOUNT_NAME "Paired mount"
+#define PAIRED_GUIDER_NAME "Paired mount (guider)"
+
+static int guider_connect_requests;
+
+static void publish_connection(const char *name, indigo_property_state state, bool connected) {
+	indigo_property *connection = indigo_init_switch_property(NULL, name, CONNECTION_PROPERTY_NAME, "Test", "Connection", state, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	indigo_init_switch_item(connection->items, CONNECTION_CONNECTED_ITEM_NAME, "Connected", connected);
+	indigo_init_switch_item(connection->items + 1, CONNECTION_DISCONNECTED_ITEM_NAME, "Disconnected", !connected);
+	indigo_alpaca_update_property(get_alpaca_device(name, false), connection);
+	indigo_release_property(connection);
+}
+
+// Stands for a driver: a request completes at once and, as in a driver, repeating the current state changes nothing.
+static indigo_result paired_device_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+		bool connected = !strcmp(property->items[0].name, CONNECTION_CONNECTED_ITEM_NAME) == property->items[0].sw.value;
+		if (connected != get_alpaca_device(device->name, false)->connected) {
+			if (connected && !strcmp(device->name, PAIRED_GUIDER_NAME)) {
+				guider_connect_requests++;
+			}
+			publish_connection(device->name, INDIGO_OK_STATE, connected);
+		}
+	}
+	return INDIGO_OK;
+}
+
+// The stub completes the mount before the agent asks for the guider, so the agent timer may be pending too, let it finish.
+static void set_alpaca_connected(indigo_alpaca_device *mount, const char *value) {
+	char buffer[256];
+	indigo_alpaca_set_command(mount, 1, "connected", buffer, sizeof(buffer), (char *)value, NULL);
+	indigo_usleep(200000);
+}
+
+// A request of the agent timer arrives from another thread, leave it time to show up, or not.
+static void wait_for_guider_connect_requests(int expected) {
+	for (int i = 0; i < 100 && guider_connect_requests < expected; i++) {
+		indigo_usleep(10000);
+	}
+	indigo_usleep(200000);
+}
+
+static void paired_guider_follows_alpaca_client_only(void) {
+	indigo_device agent = { 0 };
+	indigo_device mount_device = { 0 };
+	indigo_device guider_device = { 0 };
+	indigo_client client = { 0 };
+	alpaca_agent_private_data data = { 0 };
+	INDIGO_COPY_NAME(agent.name, "Alpaca pairing test");
+	INDIGO_COPY_NAME(mount_device.name, PAIRED_MOUNT_NAME);
+	INDIGO_COPY_NAME(guider_device.name, PAIRED_GUIDER_NAME);
+	INDIGO_COPY_NAME(client.name, "Alpaca pairing client");
+	mount_device.change_property = paired_device_change_property;
+	guider_device.change_property = paired_device_change_property;
+	private_data = &data;
+	indigo_agent_alpaca_device = &agent;
+	indigo_agent_alpaca_client = &client;
+	guider_connect_requests = 0;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_start());
+	ASSERT_EQ_INT(INDIGO_OK, indigo_device_attach(&agent, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_client(&client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(&mount_device));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_attach_device(&guider_device));
+	indigo_alpaca_device *mount = get_alpaca_device(PAIRED_MOUNT_NAME, true);
+	indigo_alpaca_device *guider = get_alpaca_device(PAIRED_GUIDER_NAME, true);
+	mount->indigo_interface = INDIGO_INTERFACE_MOUNT;
+	guider->indigo_interface = INDIGO_INTERFACE_GUIDER;
+	pair_guider(mount);
+	ASSERT_TRUE(mount->guider_device == guider);
+	// a mount connected by another client, e.g. the Mount Agent, leaves the guider free for the Guider Agent
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, true);
+	wait_for_guider_connect_requests(1);
+	ASSERT_EQ_INT(0, guider_connect_requests);
+	// pairing with a mount connected that way does not connect it either
+	mount->guider_device = NULL;
+	pair_guider(mount);
+	wait_for_guider_connect_requests(1);
+	ASSERT_EQ_INT(0, guider_connect_requests);
+	// the Telescope of an Alpaca client includes the guider
+	set_alpaca_connected(mount, "Connected=true");
+	ASSERT_EQ_INT(1, guider_connect_requests);
+	ASSERT_TRUE(guider->connected);
+	set_alpaca_connected(mount, "Connected=false");
+	ASSERT_TRUE(!guider->connected);
+	// a guider attached while the Alpaca client connects the mount is connected too
+	mount->guider_device = NULL;
+	set_alpaca_connected(mount, "Connected=true");
+	ASSERT_EQ_INT(1, guider_connect_requests);
+	pair_guider(mount);
+	wait_for_guider_connect_requests(2);
+	ASSERT_EQ_INT(2, guider_connect_requests);
+	ASSERT_TRUE(guider->connected);
+	// as is a guider attached while the mount connection requested by the client is still in progress (system_alpaca)
+	set_alpaca_connected(mount, "Connected=false");
+	set_alpaca_connected(mount, "Connected=true");
+	ASSERT_EQ_INT(3, guider_connect_requests);
+	mount->guider_device = NULL;
+	publish_connection(PAIRED_GUIDER_NAME, INDIGO_OK_STATE, false);
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_BUSY_STATE, false);
+	pair_guider(mount);
+	wait_for_guider_connect_requests(4);
+	ASSERT_EQ_INT(3, guider_connect_requests);
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, true);
+	wait_for_guider_connect_requests(4);
+	ASSERT_EQ_INT(4, guider_connect_requests);
+	ASSERT_TRUE(guider->connected);
+	// the disconnect of the Alpaca client ends its claim on the guider
+	set_alpaca_connected(mount, "Connected=false");
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, true);
+	wait_for_guider_connect_requests(5);
+	ASSERT_EQ_INT(4, guider_connect_requests);
+	// so does a mount disconnected by anybody else
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, false);
+	set_alpaca_connected(mount, "Connected=true");
+	ASSERT_EQ_INT(5, guider_connect_requests);
+	publish_connection(PAIRED_GUIDER_NAME, INDIGO_OK_STATE, false);
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, false);
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, true);
+	wait_for_guider_connect_requests(6);
+	ASSERT_EQ_INT(5, guider_connect_requests);
+	// and a connection that failed
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, false);
+	set_alpaca_connected(mount, "Connected=true");
+	ASSERT_EQ_INT(6, guider_connect_requests);
+	publish_connection(PAIRED_GUIDER_NAME, INDIGO_OK_STATE, false);
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_ALERT_STATE, false);
+	publish_connection(PAIRED_MOUNT_NAME, INDIGO_OK_STATE, true);
+	wait_for_guider_connect_requests(7);
+	ASSERT_EQ_INT(6, guider_connect_requests);
+	while (alpaca_devices) {
+		indigo_alpaca_device *next = alpaca_devices->next;
+		pthread_mutex_destroy(&alpaca_devices->mutex);
+		indigo_safe_free(alpaca_devices);
+		alpaca_devices = next;
+	}
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(&guider_device));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_device(&mount_device));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_detach_client(&client));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_device_detach(&agent));
+	indigo_agent_alpaca_client = NULL;
+	indigo_agent_alpaca_device = NULL;
+	private_data = NULL;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_stop());
+}
+
 int main(void) {
 	indigo_test_use_private_home();
 	indigo_test_case tests[] = {
-		{ "camera_bayer_capacity_and_rediscovery", camera_bayer_capacity_and_rediscovery }
+		{ "camera_bayer_capacity_and_rediscovery", camera_bayer_capacity_and_rediscovery },
+		{ "paired_guider_follows_alpaca_client_only", paired_guider_follows_alpaca_client_only }
 	};
 	int result = indigo_run_tests("agent_alpaca mapping tests", tests, sizeof(tests) / sizeof(tests[0]));
 	indigo_test_remove_private_home();
