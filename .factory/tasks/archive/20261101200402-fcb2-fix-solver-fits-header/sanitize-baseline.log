@@ -1,0 +1,4 @@
+Running test_agent_solver_core
+  rejecting BITPIX=nan
+../indigo_drivers/agent_solver/indigo_solver.c:262:14: runtime error: nan is outside the range of representable values of type 'int'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior ../indigo_drivers/agent_solver/indigo_solver.c:262:14

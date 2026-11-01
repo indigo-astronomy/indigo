@@ -1,0 +1,27 @@
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../indigo_tools /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/bin/indigo_solver
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned   -c -o indigo_solver.o indigo_solver.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -c -o indigo_solver_core.o ../indigo_drivers/agent_solver/indigo_solver.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -c -o indigo_solver_utils.o ../indigo_drivers/agent_solver/indigo_solver_utils.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -c -o indigo_solver_healpix.o ../indigo_drivers/agent_solver/indigo_solver_healpix.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned  -o /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/bin/indigo_solver indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib/libindigo.a /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib/libhidapi.a /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib/libjpeg.a /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib/libraw.a -lz -ldl -lm -lstdc++ -lindigocat
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_SOLVER_EXECUTABLE='"/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/bin/indigo_solver"' -o build/integration/test_indigo_solver_tool integration/test_indigo_solver_tool.c /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_solver.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib -Wl,-rpath,/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib -lindigo -lm -lpthread -lindigocat
+build/integration/test_indigo_solver_tool
+Running indigo_solver tool
+  PASS help_lists_switches_and_defaults
+  PASS no_arguments_show_help
+  PASS solves_raw_frame
+  PASS solves_with_default_downsampling
+  PASS solves_fits_frame
+  PASS default_index_directory_follows_cache_base
+  PASS solves_with_scale_hint
+  PASS solves_with_position_hint
+  PASS wrong_position_hint_fails
+  PASS jnow_epoch_hint_and_solution
+  PASS parity_hint
+  PASS depth_hint_and_verbose_progress
+  PASS blind_search_goes_stage_by_stage
+  PASS scaled_search_uses_fitting_index_first
+  PASS index_selection_and_cpu_limit
+  PASS invalid_arguments_are_refused
+  PASS unreadable_and_unsupported_files_fail
+indigo_solver tool: all tests passed

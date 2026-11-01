@@ -1,0 +1,8 @@
+Definition:
+Sources:    indigo_agent_solver.c indigo_solver.c indigo_solver_healpix.c indigo_solver_utils.c
+Archive:    indigo_agent_solver.a
+SO library: indigo_agent_solver.dylib
+indigo_agent_solver.o indigo_solver.o indigo_solver_healpix.o indigo_solver_utils.o
+
+/usr/bin/libtool -static -o /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_solver.a indigo_agent_solver.o indigo_solver.o indigo_solver_healpix.o indigo_solver_utils.o
+/usr/bin/clang -shared -o /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_solver.dylib -Wl,-force_load /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_solver.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib -lindigocat -lusb-1.0

@@ -1,0 +1,989 @@
++ make -C /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers/agent_solver -f ../../Makefile.drv all
+Definition:
+Sources:    indigo_agent_solver.c indigo_solver.c indigo_solver_healpix.c indigo_solver_utils.c
+Archive:    indigo_agent_solver.a
+SO library: indigo_agent_solver.dylib
+indigo_agent_solver.o indigo_solver.o indigo_solver_healpix.o indigo_solver_utils.o
+
++ make check-lib build/integration/test_agent_solver build/integration/test_agent_solver_simulator
+mkdir -p build/integration
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DINDIGO_ASTROMETRY_TEST -c ../indigo_drivers/agent_astrometry/indigo_agent_astrometry.c -o build/integration/agent_astrometry_driver.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_agent_solver integration/test_agent_solver.c /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_solver.a build/integration/agent_astrometry_driver.o -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib -Wl,-rpath,/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib -lindigo -lm -lpthread -lindigocat
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_libs -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/indigo_mac_drivers -I/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_agent_solver_simulator integration/test_agent_solver_simulator.c /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_solver.a /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_imager.a /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_agent_guider.a /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/drivers/indigo_ccd_simulator.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib -Wl,-rpath,/private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_agent_solver
+21:08:36.339412 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_solver is already loaded
+21:08:36.340028 Application: Driver indigo_agent_astrometry failed to initialise
+21:08:36.340194 Application: indigo_agent_astrometry[indigo_agent_astrometry:1324]: Conflicting driver indigo_agent_solver is already loaded
+Running Solver agent
+  PASS solver_excludes_astrometry_and_allows_retry
+Solver agent: all tests passed
+21:08:36.375191 Application: indigo_agent_solver[indigo_agent_solver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+21:08:36.375563 Application: Driver indigo_agent_solver failed to initialise
+21:08:36.375743 Application: indigo_agent_solver[indigo_agent_solver:814]: Conflicting driver indigo_agent_astrometry is already loaded
+Running Solver agent
+  PASS astrometry_excludes_solver_and_allows_retry
+Solver agent: all tests passed
+Running Solver agent
+  PASS inactive_astrometry_does_not_exclude_solver
+Solver agent: all tests passed
+Running Solver agent
+  PASS inactive_solver_does_not_exclude_astrometry
+Solver agent: all tests passed
+21:08:36.422944 Application: indigo_platesolver_validate_executable: solve-field not found
+21:08:36.423319 Application: Astrometry.net or curl is not available
+21:08:36.423476 Application: Driver indigo_agent_astrometry failed to initialise
+Running Solver agent
+  PASS failed_astrometry_initialization_does_not_exclude_solver
+Solver agent: all tests passed
+Running Solver agent
+  PASS index_property_reflects_installed_files
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_downsampled_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_without_selected_index_fails
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_float_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_mono8_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_rgb48_raw_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_jpeg_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_with_position_hint
+Solver agent: all tests passed
+Running Solver agent
+  PASS wrong_position_hint_fails
+Solver agent: all tests passed
+Running Solver agent
+  PASS parity_hint_rejects_mirror
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_with_depth_hint
+Solver agent: all tests passed
+Running Solver agent
+  PASS blind_search_goes_stage_by_stage
+Solver agent: all tests passed
+Running Solver agent
+  PASS scaled_search_uses_fitting_index_first
+Solver agent: all tests passed
+Running Solver agent
+  PASS bayer_raw_is_binned
+Solver agent: all tests passed
+Running Solver agent
+  PASS bayer_fits_is_binned
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_rgb_fits_image
+Solver agent: all tests passed
+Running Solver agent
+  PASS solve_colour_jpeg_image
+Solver agent: all tests passed
+21:08:39.112248 Application: [rc:-2] libraw_open_buffer failed: 'Unsupported file format or not RAW file'
+Running Solver agent
+  PASS unsupported_image_rejected
+Solver agent: all tests passed
+Running Solver agent
+  PASS deselecting_index_removes_file
+Solver agent: all tests passed
+Solver agent: 26 of 26 cases passed
++ ./build/integration/test_agent_solver_simulator
+index cache: /Users/polakovic/.indigo/solver
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.8"
+  PASS rosetta full resolution
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.8"
+  PASS rosetta fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.8"
+  PASS rosetta jpeg
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52682 h Dec 5.0933° angle 0.82° scale 8.444"/px parity -1 index 2° size 3.753 x 2.815°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 6.6"
+  PASS rosetta downsampled
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52682 h Dec 5.0934° angle 0.82° scale 16.888"/px parity -1 index 2° size 3.753 x 2.815°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 16.880"/px, centre error 6.4"
+  PASS rosetta camera binned
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.80° scale 8.441"/px parity -1 index 2° size 2.345 x 1.758°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.7"
+  PASS rosetta subframe
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.55065 h Dec 5.0724° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.55067 h Dec 5.0740° angle 0.80° scale 8.440"/px, centre error 5.8"
+  PASS rosetta jnow
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.8"
+  PASS rosetta index 2 only
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52685 h Dec 5.0936° angle 0.81° scale 8.439"/px parity -1 index 5° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.3"
+  PASS rosetta index 5 only
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solution: WCS RA 6.52685 h Dec 5.0936° angle 0.81° scale 8.439"/px parity -1 index 5° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.3"
+  PASS rosetta wrong scale hint
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  solve 1 took 1.34 s
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.8"
+  solve 2 took 1.32 s
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.8"
+  solve 3 took 1.33 s
+  solution: WCS RA 6.52685 h Dec 5.0934° angle 0.81° scale 8.439"/px parity -1 index 2° size 3.751 x 2.813°
+  expected RA 6.52687 h Dec 5.0950° angle 0.80° scale 8.440"/px, centre error 5.8"
+  PASS rosetta repeated
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  index: 3839927 stars, 31293651 quads, mapped
+  field at RA 0.85000 h Dec -27.1000°: 14 index stars
+  solution: WCS RA 0.84997 h Dec -27.1001° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 0.85000 h Dec -27.1000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 1.50000 h Dec +45.0000°: 18 index stars
+  solution: WCS RA 1.49997 h Dec 44.9999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 1.50000 h Dec 45.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 3.00000 h Dec -30.0000°: 24 index stars
+  solution: WCS RA 2.99997 h Dec -30.0001° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 3.00000 h Dec -30.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 4.50000 h Dec +70.0000°: 15 index stars
+  solution: WCS RA 4.49993 h Dec 69.9999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 4.50000 h Dec 70.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 6.00000 h Dec +20.0000°: 22 index stars
+  solution: WCS RA 5.99998 h Dec 19.9999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 6.00000 h Dec 20.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 7.50000 h Dec -60.0000°: 21 index stars
+  solution: WCS RA 7.49995 h Dec -60.0001° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 7.50000 h Dec -60.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 9.00000 h Dec +40.0000°: 22 index stars
+  solution: WCS RA 8.99997 h Dec 39.9999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 9.00000 h Dec 40.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 12.85000 h Dec +27.1000°: 14 index stars
+  solution: WCS RA 12.84997 h Dec 27.0999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 12.85000 h Dec 27.1000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 15.00000 h Dec +10.0000°: 11 index stars
+  solution: WCS RA 14.99998 h Dec 9.9999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 15.00000 h Dec 10.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 17.76000 h Dec -29.0000°: 18 index stars
+  solution: WCS RA 17.75997 h Dec -29.0001° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 17.76000 h Dec -29.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  field at RA 19.50000 h Dec +30.0000°: 24 index stars
+  solution: WCS RA 19.49998 h Dec 29.9999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 19.50000 h Dec 30.0000° angle 30.00° scale 1.800"/px, centre error 1.2"
+  solved
+  field at RA 22.50000 h Dec +65.0000°: 19 index stars
+  solution: WCS RA 22.49995 h Dec 64.9999° angle 30.00° scale 1.800"/px parity -1 index 0.5° size 0.500 x 0.400°
+  expected RA 22.50000 h Dec 65.0000° angle 30.00° scale 1.800"/px, centre error 1.3"
+  solved
+  12 of 12 fields solved, 12 of 12 fields with at least 8 index stars solved
+  PASS index 0.5 self consistency
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  index: 11021325 stars, 40154197 quads, mapped
+  field at RA 0.85000 h Dec -27.1000°: 0 index stars
+  not solved
+  field at RA 1.50000 h Dec +45.0000°: 12 index stars
+  solution: WCS RA 1.49999 h Dec 45.0000° angle 30.00° scale 0.720"/px parity -1 index 0.2° size 0.200 x 0.160°
+  expected RA 1.50000 h Dec 45.0000° angle 30.00° scale 0.720"/px, centre error 0.5"
+  solved
+  field at RA 3.00000 h Dec -30.0000°: 8 index stars
+21:09:12.811944 Application: indigo_solver_compute_center: no consistent set of matches found (5 of 5)
+  not solved
+  field at RA 4.50000 h Dec +70.0000°: 11 index stars
+  solution: WCS RA 4.49997 h Dec 70.0000° angle 30.00° scale 0.720"/px parity -1 index 0.2° size 0.200 x 0.160°
+  expected RA 4.50000 h Dec 70.0000° angle 30.00° scale 0.720"/px, centre error 0.5"
+  solved
+  field at RA 6.00000 h Dec +20.0000°: 16 index stars
+  solution: WCS RA 5.99999 h Dec 20.0000° angle 30.00° scale 0.720"/px parity -1 index 0.2° size 0.200 x 0.160°
+  expected RA 6.00000 h Dec 20.0000° angle 30.00° scale 0.720"/px, centre error 0.5"
+  solved
+  field at RA 7.50000 h Dec -60.0000°: 13 index stars
+  solution: WCS RA 7.49998 h Dec -60.0000° angle 30.00° scale 0.720"/px parity -1 index 0.2° size 0.200 x 0.160°
+  expected RA 7.50000 h Dec -60.0000° angle 30.00° scale 0.720"/px, centre error 0.5"
+  solved
+  field at RA 9.00000 h Dec +40.0000°: 1 index stars
+  not solved
+  field at RA 12.85000 h Dec +27.1000°: 1 index stars
+  not solved
+  field at RA 15.00000 h Dec +10.0000°: 2 index stars
+  not solved
+  field at RA 17.76000 h Dec -29.0000°: 19 index stars
+  solution: WCS RA 17.75999 h Dec -29.0000° angle 30.00° scale 0.720"/px parity -1 index 0.2° size 0.200 x 0.160°
+  expected RA 17.76000 h Dec -29.0000° angle 30.00° scale 0.720"/px, centre error 0.5"
+  solved
+  field at RA 19.50000 h Dec +30.0000°: 21 index stars
+  solution: WCS RA 19.49999 h Dec 30.0000° angle 30.00° scale 0.720"/px parity -1 index 0.2° size 0.200 x 0.160°
+  expected RA 19.50000 h Dec 30.0000° angle 30.00° scale 0.720"/px, centre error 0.5"
+  solved
+  field at RA 22.50000 h Dec +65.0000°: 16 index stars
+  solution: WCS RA 22.49998 h Dec 65.0000° angle 30.00° scale 0.720"/px parity -1 index 0.2° size 0.200 x 0.160°
+  expected RA 22.50000 h Dec 65.0000° angle 30.00° scale 0.720"/px, centre error 0.5"
+  solved
+  7 of 12 fields solved, 6 of 6 fields with at least 12 index stars solved
+  PASS index 0.2 self consistency
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.00 h Dec +0.0° rotation 0° pier 0 1600 x 1200 mag 8.5 epoch 2000 noise 100 gradient 0.2 hot 0/0/0
+  solution: WCS RA 0.00003 h Dec -0.0002° angle 180.00° scale 12.002"/px parity 1 index 5° size 5.334 x 4.001°
+  expected RA 0.00000 h Dec 0.0000° angle 180.00° scale 12.000"/px, centre error 1.6"
+  PASS guider 001 RA 0.00 h Dec +0.0 rot 0 pier 0 1600x1200 mag 8.5 epoch 2000 noise 100 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 1.50 h Dec +45.0° rotation 36° pier 0 1200 x 1200 mag 8.5 epoch 0 noise 100 gradient 0.2 hot 0/0/0
+  solution: WCS RA 1.47333 h Dec 44.8617° angle 215.92° scale 12.000"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 1.47331 h Dec 44.8618° angle 215.92° scale 12.000"/px, centre error 1.0"
+  PASS guider 002 RA 1.50 h Dec +45.0 rot 36 pier 0 1200x1200 mag 8.5 epoch 0 noise 100 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 3.00 h Dec -30.0° rotation 90° pier 0 1920 x 1080 mag 8.5 epoch 2000 noise 150 gradient 0.2 hot 0/0/0
+  solution: WCS RA 3.00002 h Dec -30.0008° angle 270.00° scale 13.332"/px parity 1 index 5° size 7.110 x 3.999°
+  expected RA 3.00000 h Dec -30.0000° angle 270.00° scale 13.333"/px, centre error 3.1"
+  PASS guider 003 RA 3.00 h Dec -30.0 rot 90 pier 0 1920x1080 mag 8.5 epoch 2000 noise 150 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 4.50 h Dec +70.0° rotation 137° pier 0 1024 x 768 mag 9.5 epoch 0 noise 150 gradient 0.2 hot 0/0/0
+  solution: WCS RA 4.45183 h Dec 69.9417° angle 316.61° scale 18.750"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 4.45190 h Dec 69.9420° angle 316.60° scale 18.750"/px, centre error 1.7"
+  PASS guider 004 RA 4.50 h Dec +70.0 rot 137 pier 0 1024x768 mag 9.5 epoch 0 noise 150 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 6.00 h Dec +20.0° rotation 270° pier 0 1600 x 900 mag 9.5 epoch 2000 noise 250 gradient 0.2 hot 0/0/0
+  solution: WCS RA 6.00000 h Dec 20.0002° angle 90.00° scale 16.002"/px parity 1 index 2° size 7.112 x 4.000°
+  expected RA 6.00000 h Dec 20.0000° angle 450.00° scale 16.000"/px, centre error 0.6"
+  PASS guider 005 RA 6.00 h Dec +20.0 rot 270 pier 0 1600x900 mag 9.5 epoch 2000 noise 250 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 7.50 h Dec -60.0° rotation 0° pier 0 1280 x 960 mag 9.5 epoch 0 noise 250 gradient 0 hot 0/0/0
+  solution: WCS RA 7.49303 h Dec -59.9431° angle 179.72° scale 15.001"/px parity 1 index 2° size 5.334 x 4.000°
+  expected RA 7.49300 h Dec -59.9430° angle 179.72° scale 15.000"/px, centre error 0.8"
+  PASS guider 006 RA 7.50 h Dec -60.0 rot 0 pier 0 1280x960 mag 9.5 epoch 0 noise 250 grad 0 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 9.00 h Dec +40.0° rotation 36° pier 0 2000 x 1500 mag 9.0 epoch 2000 noise 400 gradient 0 hot 0/0/0
+  solution: WCS RA 9.00000 h Dec 39.9996° angle 216.00° scale 9.601"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 9.00000 h Dec 40.0000° angle 216.00° scale 9.600"/px, centre error 1.4"
+  PASS guider 007 RA 9.00 h Dec +40.0 rot 36 pier 0 2000x1500 mag 9.0 epoch 2000 noise 400 grad 0 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 10.50 h Dec -10.0° rotation 90° pier 0 1600 x 1200 mag 9.0 epoch 0 noise 400 gradient 0 hot 50/0/0
+  solution: WCS RA 10.47775 h Dec -9.8625° angle 269.94° scale 12.001"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 10.47775 h Dec -9.8621° angle 269.95° scale 12.000"/px, centre error 1.1"
+  PASS guider 008 RA 10.50 h Dec -10.0 rot 90 pier 0 1600x1200 mag 9.0 epoch 0 noise 400 grad 0 hot 50/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.00 h Dec +80.0° rotation 137° pier 0 1200 x 1200 mag 9.0 epoch 2000 noise 100 gradient 0 hot 50/0/0
+  solution: WCS RA 11.99987 h Dec 79.9999° angle 316.99° scale 11.999"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 12.00000 h Dec 80.0000° angle 317.00° scale 12.000"/px, centre error 1.3"
+  PASS guider 009 RA 12.00 h Dec +80.0 rot 137 pier 0 1200x1200 mag 9.0 epoch 2000 noise 100 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.85 h Dec +27.1° rotation 270° pier 0 1920 x 1080 mag 8.5 epoch 0 noise 100 gradient 0 hot 50/0/0
+  solution: WCS RA 12.82820 h Dec 27.2461° angle 90.03° scale 13.333"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 12.82819 h Dec 27.2458° angle 450.03° scale 13.333"/px, centre error 1.1"
+  PASS guider 010 RA 12.85 h Dec +27.1 rot 270 pier 0 1920x1080 mag 8.5 epoch 0 noise 100 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 13.50 h Dec -45.0° rotation 0° pier 0 1024 x 768 mag 8.5 epoch 2000 noise 150 gradient 0.5 hot 50/0/0
+  solution: WCS RA 13.50002 h Dec -45.0001° angle 180.00° scale 18.750"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 13.50000 h Dec -45.0000° angle 180.00° scale 18.750"/px, centre error 1.0"
+  PASS guider 011 RA 13.50 h Dec -45.0 rot 0 pier 0 1024x768 mag 8.5 epoch 2000 noise 150 grad 0.5 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 15.00 h Dec +10.0° rotation 36° pier 0 1600 x 900 mag 8.5 epoch 0 noise 150 gradient 0.5 hot 50/0/0
+  solution: WCS RA 14.97834 h Dec 10.1057° angle 216.11° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 14.97832 h Dec 10.1059° angle 216.10° scale 16.000"/px, centre error 1.3"
+  PASS guider 012 RA 15.00 h Dec +10.0 rot 36 pier 0 1600x900 mag 8.5 epoch 0 noise 150 grad 0.5 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 16.50 h Dec +55.0° rotation 90° pier 0 1280 x 960 mag 9.5 epoch 2000 noise 250 gradient 0.5 hot 50/0/0
+  solution: WCS RA 16.49999 h Dec 54.9997° angle 270.00° scale 14.999"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 16.50000 h Dec 55.0000° angle 270.00° scale 15.000"/px, centre error 1.0"
+  PASS guider 013 RA 16.50 h Dec +55.0 rot 90 pier 0 1280x960 mag 9.5 epoch 2000 noise 250 grad 0.5 hot 50/0/0 with hint
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 17.76 h Dec -29.0° rotation 137° pier 0 2000 x 1500 mag 9.5 epoch 0 noise 250 gradient 0.5 hot 50/0/0
+  solution: WCS RA 17.73157 h Dec -28.9901° angle 317.17° scale 9.601"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 17.73157 h Dec -28.9901° angle 317.16° scale 9.600"/px, centre error 0.2"
+  PASS guider 014 RA 17.76 h Dec -29.0 rot 137 pier 0 2000x1500 mag 9.5 epoch 0 noise 250 grad 0.5 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 19.50 h Dec +30.0° rotation 270° pier 0 1600 x 1200 mag 9.5 epoch 2000 noise 400 gradient 0.5 hot 200/600/800
+  solution: WCS RA 19.50000 h Dec 29.9998° angle 90.00° scale 11.999"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 19.50000 h Dec 30.0000° angle 450.00° scale 12.000"/px, centre error 0.8"
+  PASS guider 015 RA 19.50 h Dec +30.0 rot 270 pier 0 1600x1200 mag 9.5 epoch 2000 noise 400 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 20.50 h Dec +45.0° rotation 0° pier 0 1200 x 1200 mag 9.0 epoch 0 noise 400 gradient 0.2 hot 200/600/800
+  solution: WCS RA 20.48499 h Dec 44.9093° angle 180.17° scale 12.000"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 20.48498 h Dec 44.9093° angle 180.17° scale 12.000"/px, centre error 0.6"
+  PASS guider 016 RA 20.50 h Dec +45.0 rot 0 pier 0 1200x1200 mag 9.0 epoch 0 noise 400 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 21.00 h Dec -5.0° rotation 36° pier 0 1920 x 1080 mag 9.0 epoch 2000 noise 100 gradient 0.2 hot 200/600/800
+  solution: WCS RA 21.00002 h Dec -5.0003° angle 216.00° scale 13.333"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 21.00000 h Dec -5.0000° angle 216.00° scale 13.333"/px, centre error 1.5"
+  PASS guider 017 RA 21.00 h Dec -5.0 rot 36 pier 0 1920x1080 mag 9.0 epoch 2000 noise 100 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 22.50 h Dec +65.0° rotation 90° pier 0 1024 x 768 mag 9.0 epoch 0 noise 100 gradient 0.2 hot 200/600/800
+  solution: WCS RA 22.48527 h Dec 64.8616° angle 270.14° scale 18.750"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 22.48526 h Dec 64.8621° angle 270.13° scale 18.750"/px, centre error 1.7"
+  PASS guider 018 RA 22.50 h Dec +65.0 rot 90 pier 0 1024x768 mag 9.0 epoch 0 noise 100 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 23.00 h Dec -40.0° rotation 137° pier 0 1600 x 900 mag 8.5 epoch 2000 noise 150 gradient 0.2 hot 200/600/800
+  solution: WCS RA 22.99996 h Dec -40.0003° angle 316.99° scale 16.001"/px parity 1 index 2° size 7.112 x 4.000°
+  expected RA 23.00000 h Dec -40.0000° angle 317.00° scale 16.000"/px, centre error 1.9"
+  PASS guider 019 RA 23.00 h Dec -40.0 rot 137 pier 0 1600x900 mag 8.5 epoch 2000 noise 150 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 5.50 h Dec -35.0° rotation 270° pier 0 1280 x 960 mag 8.5 epoch 0 noise 150 gradient 0.2 hot 200/600/800
+  solution: WCS RA 5.48400 h Dec -35.0194° angle 89.82° scale 15.000"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 5.48399 h Dec -35.0198° angle 449.82° scale 15.000"/px, centre error 1.4"
+  PASS guider 020 RA 5.50 h Dec -35.0 rot 270 pier 0 1280x960 mag 8.5 epoch 0 noise 150 grad 0.2 hot 200/600/800 via guider agent
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.85 h Dec -27.1° rotation 0° pier 0 2000 x 1500 mag 8.5 epoch 2000 noise 250 gradient 0 hot 200/600/800
+  solution: WCS RA 0.85003 h Dec -27.1001° angle 180.01° scale 9.600"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 0.85000 h Dec -27.1000° angle 180.00° scale 9.600"/px, centre error 1.6"
+  PASS guider 021 RA 0.85 h Dec -27.1 rot 0 pier 0 2000x1500 mag 8.5 epoch 2000 noise 250 grad 0 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 2.00 h Dec +85.0° rotation 36° pier 0 1600 x 1200 mag 9.5 epoch 0 noise 250 gradient 0 hot 500/0/0
+  solution: WCS RA 1.92225 h Dec 84.8694° angle 215.17° scale 12.001"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 1.92189 h Dec 84.8699° angle 215.17° scale 12.000"/px, centre error 2.3"
+  PASS guider 022 RA 2.00 h Dec +85.0 rot 36 pier 0 1600x1200 mag 9.5 epoch 0 noise 250 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 14.00 h Dec -85.0° rotation 90° pier 0 1200 x 1200 mag 9.5 epoch 2000 noise 400 gradient 0 hot 500/0/0
+  solution: WCS RA 13.99993 h Dec -85.0003° angle 270.00° scale 11.999"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 14.00000 h Dec -85.0000° angle 270.00° scale 12.000"/px, centre error 1.2"
+  PASS guider 023 RA 14.00 h Dec -85.0 rot 90 pier 0 1200x1200 mag 9.5 epoch 2000 noise 400 grad 0 hot 500/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 18.84 h Dec +38.8° rotation 137° pier 0 1920 x 1080 mag 9.5 epoch 0 noise 400 gradient 0 hot 500/0/0
+  solution: WCS RA 18.82485 h Dec 38.7177° angle 317.19° scale 13.335"/px parity 1 index 5° size 7.112 x 4.000°
+  expected RA 18.82488 h Dec 38.7177° angle 317.18° scale 13.333"/px, centre error 1.1"
+  PASS guider 024 RA 18.84 h Dec +38.8 rot 137 pier 0 1920x1080 mag 9.5 epoch 0 noise 400 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.00 h Dec +0.0° rotation 270° pier 1 1024 x 768 mag 9.0 epoch 2000 noise 100 gradient 0 hot 500/0/0
+  solution: WCS RA 24.00000 h Dec -0.0006° angle 270.00° scale 18.748"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 0.00000 h Dec 0.0000° angle 270.00° scale 18.750"/px, centre error 2.1"
+  PASS guider 025 RA 0.00 h Dec +0.0 rot 270 pier 1 1024x768 mag 9.0 epoch 2000 noise 100 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 1.50 h Dec +45.0° rotation 0° pier 1 1600 x 900 mag 9.0 epoch 0 noise 100 gradient 0.5 hot 500/0/0
+  solution: WCS RA 1.47328 h Dec 44.8618° angle 359.92° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 1.47331 h Dec 44.8618° angle -0.08° scale 16.000"/px, centre error 0.9"
+  PASS guider 026 RA 1.50 h Dec +45.0 rot 0 pier 1 1600x900 mag 9.0 epoch 0 noise 100 grad 0.5 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 3.00 h Dec -30.0° rotation 36° pier 1 1280 x 960 mag 9.0 epoch 2000 noise 150 gradient 0.5 hot 500/0/0
+  solution: WCS RA 3.00001 h Dec -29.9998° angle 36.01° scale 14.999"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 3.00000 h Dec -30.0000° angle 36.00° scale 15.000"/px, centre error 0.9"
+  PASS guider 027 RA 3.00 h Dec -30.0 rot 36 pier 1 1280x960 mag 9.0 epoch 2000 noise 150 grad 0.5 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 4.50 h Dec +70.0° rotation 90° pier 1 2000 x 1500 mag 8.5 epoch 0 noise 150 gradient 0.5 hot 500/0/0
+  solution: WCS RA 4.45197 h Dec 69.9421° angle 89.60° scale 9.601"/px parity 1 index 5° size 5.334 x 4.001°
+  expected RA 4.45190 h Dec 69.9420° angle 89.60° scale 9.600"/px, centre error 1.4"
+  PASS guider 028 RA 4.50 h Dec +70.0 rot 90 pier 1 2000x1500 mag 8.5 epoch 0 noise 150 grad 0.5 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 6.00 h Dec +20.0° rotation 137° pier 1 1600 x 1200 mag 8.5 epoch 2000 noise 250 gradient 0.5 hot 0/0/0
+  solution: WCS RA 6.00001 h Dec 20.0000° angle 137.00° scale 12.001"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 6.00000 h Dec 20.0000° angle 137.00° scale 12.000"/px, centre error 0.3"
+  PASS guider 029 RA 6.00 h Dec +20.0 rot 137 pier 1 1600x1200 mag 8.5 epoch 2000 noise 250 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 7.50 h Dec -60.0° rotation 270° pier 1 1200 x 1200 mag 8.5 epoch 0 noise 250 gradient 0.5 hot 0/0/0
+  solution: WCS RA 7.49302 h Dec -59.9432° angle 269.72° scale 12.001"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 7.49300 h Dec -59.9430° angle 269.72° scale 12.000"/px, centre error 1.1"
+  PASS guider 030 RA 7.50 h Dec -60.0 rot 270 pier 1 1200x1200 mag 8.5 epoch 0 noise 250 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 9.00 h Dec +40.0° rotation 0° pier 1 1920 x 1080 mag 9.5 epoch 2000 noise 400 gradient 0.2 hot 0/0/0
+  solution: WCS RA 8.99997 h Dec 39.9998° angle 0.01° scale 13.333"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 9.00000 h Dec 40.0000° angle 0.00° scale 13.333"/px, centre error 1.3"
+  PASS guider 031 RA 9.00 h Dec +40.0 rot 0 pier 1 1920x1080 mag 9.5 epoch 2000 noise 400 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 10.50 h Dec -10.0° rotation 36° pier 1 1024 x 768 mag 9.5 epoch 0 noise 400 gradient 0.2 hot 0/0/0
+  solution: WCS RA 10.47773 h Dec -9.8620° angle 35.94° scale 18.752"/px parity 1 index 2° size 5.334 x 4.000°
+  expected RA 10.47775 h Dec -9.8621° angle 35.95° scale 18.750"/px, centre error 1.4"
+  PASS guider 032 RA 10.50 h Dec -10.0 rot 36 pier 1 1024x768 mag 9.5 epoch 0 noise 400 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.00 h Dec +80.0° rotation 90° pier 1 1600 x 900 mag 9.5 epoch 2000 noise 100 gradient 0.2 hot 0/0/0
+  solution: WCS RA 11.99999 h Dec 80.0002° angle 89.99° scale 16.001"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 12.00000 h Dec 80.0000° angle 90.00° scale 16.000"/px, centre error 0.9"
+  PASS guider 033 RA 12.00 h Dec +80.0 rot 90 pier 1 1600x900 mag 9.5 epoch 2000 noise 100 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.85 h Dec +27.1° rotation 137° pier 1 1280 x 960 mag 9.0 epoch 0 noise 100 gradient 0.2 hot 0/0/0
+  solution: WCS RA 12.82821 h Dec 27.2460° angle 137.04° scale 15.000"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 12.82819 h Dec 27.2458° angle 137.03° scale 15.000"/px, centre error 1.2"
+  PASS guider 034 RA 12.85 h Dec +27.1 rot 137 pier 1 1280x960 mag 9.0 epoch 0 noise 100 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 13.50 h Dec -45.0° rotation 270° pier 1 2000 x 1500 mag 9.0 epoch 2000 noise 150 gradient 0.2 hot 0/0/0
+  solution: WCS RA 13.49999 h Dec -45.0002° angle 270.00° scale 9.600"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 13.50000 h Dec -45.0000° angle 270.00° scale 9.600"/px, centre error 0.8"
+  PASS guider 035 RA 13.50 h Dec -45.0 rot 270 pier 1 2000x1500 mag 9.0 epoch 2000 noise 150 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 15.00 h Dec +10.0° rotation 0° pier 1 1600 x 1200 mag 9.0 epoch 0 noise 150 gradient 0 hot 50/0/0
+  solution: WCS RA 14.97832 h Dec 10.1059° angle 0.11° scale 11.999"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 14.97832 h Dec 10.1059° angle 0.10° scale 12.000"/px, centre error 0.2"
+  PASS guider 036 RA 15.00 h Dec +10.0 rot 0 pier 1 1600x1200 mag 9.0 epoch 0 noise 150 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 16.50 h Dec +55.0° rotation 36° pier 1 1200 x 1200 mag 8.5 epoch 2000 noise 250 gradient 0 hot 50/0/0
+  solution: WCS RA 16.49995 h Dec 55.0002° angle 36.02° scale 12.001"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 16.50000 h Dec 55.0000° angle 36.00° scale 12.000"/px, centre error 1.7"
+  PASS guider 037 RA 16.50 h Dec +55.0 rot 36 pier 1 1200x1200 mag 8.5 epoch 2000 noise 250 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 17.76 h Dec -29.0° rotation 90° pier 1 1920 x 1080 mag 8.5 epoch 0 noise 250 gradient 0 hot 50/0/0
+  solution: WCS RA 17.73155 h Dec -28.9896° angle 90.17° scale 13.334"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 17.73157 h Dec -28.9901° angle 90.16° scale 13.333"/px, centre error 1.9"
+  PASS guider 038 RA 17.76 h Dec -29.0 rot 90 pier 1 1920x1080 mag 8.5 epoch 0 noise 250 grad 0 hot 50/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 19.50 h Dec +30.0° rotation 137° pier 1 1024 x 768 mag 8.5 epoch 2000 noise 400 gradient 0 hot 50/0/0
+  solution: WCS RA 19.50004 h Dec 30.0003° angle 137.00° scale 18.749"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 19.50000 h Dec 30.0000° angle 137.00° scale 18.750"/px, centre error 2.1"
+  PASS guider 039 RA 19.50 h Dec +30.0 rot 137 pier 1 1024x768 mag 8.5 epoch 2000 noise 400 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 20.50 h Dec +45.0° rotation 270° pier 1 1600 x 900 mag 9.5 epoch 0 noise 400 gradient 0 hot 50/0/0
+  solution: WCS RA 20.48498 h Dec 44.9088° angle 270.17° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 20.48498 h Dec 44.9093° angle 270.17° scale 16.000"/px, centre error 1.7"
+  PASS guider 040 RA 20.50 h Dec +45.0 rot 270 pier 1 1600x900 mag 9.5 epoch 0 noise 400 grad 0 hot 50/0/0 via guider agent
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 21.00 h Dec -5.0° rotation 0° pier 1 1280 x 960 mag 9.5 epoch 2000 noise 100 gradient 0.5 hot 50/0/0
+  solution: WCS RA 20.99998 h Dec -5.0000° angle 0.00° scale 15.000"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 21.00000 h Dec -5.0000° angle 0.00° scale 15.000"/px, centre error 0.8"
+  PASS guider 041 RA 21.00 h Dec -5.0 rot 0 pier 1 1280x960 mag 9.5 epoch 2000 noise 100 grad 0.5 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 22.50 h Dec +65.0° rotation 36° pier 1 2000 x 1500 mag 9.5 epoch 0 noise 100 gradient 0.5 hot 50/0/0
+  solution: WCS RA 22.48525 h Dec 64.8622° angle 36.13° scale 9.600"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 22.48526 h Dec 64.8621° angle 36.13° scale 9.600"/px, centre error 0.4"
+  PASS guider 042 RA 22.50 h Dec +65.0 rot 36 pier 1 2000x1500 mag 9.5 epoch 0 noise 100 grad 0.5 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 23.00 h Dec -40.0° rotation 90° pier 1 1600 x 1200 mag 9.0 epoch 2000 noise 150 gradient 0.5 hot 200/600/800
+  solution: WCS RA 23.00000 h Dec -39.9998° angle 90.00° scale 12.002"/px parity 1 index 5° size 5.334 x 4.001°
+  expected RA 23.00000 h Dec -40.0000° angle 90.00° scale 12.000"/px, centre error 0.8"
+  PASS guider 043 RA 23.00 h Dec -40.0 rot 90 pier 1 1600x1200 mag 9.0 epoch 2000 noise 150 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 5.50 h Dec -35.0° rotation 137° pier 1 1200 x 1200 mag 9.0 epoch 0 noise 150 gradient 0.5 hot 200/600/800
+  solution: WCS RA 5.48400 h Dec -35.0196° angle 136.82° scale 12.000"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 5.48399 h Dec -35.0198° angle 136.82° scale 12.000"/px, centre error 0.9"
+  PASS guider 044 RA 5.50 h Dec -35.0 rot 137 pier 1 1200x1200 mag 9.0 epoch 0 noise 150 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.85 h Dec -27.1° rotation 270° pier 1 1920 x 1080 mag 9.0 epoch 2000 noise 250 gradient 0.5 hot 200/600/800
+  solution: WCS RA 0.85003 h Dec -27.1003° angle 270.00° scale 13.332"/px parity 1 index 5° size 7.110 x 4.000°
+  expected RA 0.85000 h Dec -27.1000° angle 270.00° scale 13.333"/px, centre error 1.8"
+  PASS guider 045 RA 0.85 h Dec -27.1 rot 270 pier 1 1920x1080 mag 9.0 epoch 2000 noise 250 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 2.00 h Dec +85.0° rotation 0° pier 1 1024 x 768 mag 8.5 epoch 0 noise 250 gradient 0.2 hot 200/600/800
+  solution: WCS RA 1.92177 h Dec 84.8698° angle 359.17° scale 18.750"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 1.92189 h Dec 84.8699° angle -0.83° scale 18.750"/px, centre error 0.7"
+  PASS guider 046 RA 2.00 h Dec +85.0 rot 0 pier 1 1024x768 mag 8.5 epoch 0 noise 250 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 14.00 h Dec -85.0° rotation 36° pier 1 1600 x 900 mag 8.5 epoch 2000 noise 400 gradient 0.2 hot 200/600/800
+  solution: WCS RA 13.99953 h Dec -84.9996° angle 36.02° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 14.00000 h Dec -85.0000° angle 36.00° scale 16.000"/px, centre error 2.6"
+  PASS guider 047 RA 14.00 h Dec -85.0 rot 36 pier 1 1600x900 mag 8.5 epoch 2000 noise 400 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 18.84 h Dec +38.8° rotation 90° pier 1 1280 x 960 mag 8.5 epoch 0 noise 400 gradient 0.2 hot 200/600/800
+  solution: WCS RA 18.82487 h Dec 38.7181° angle 90.19° scale 15.002"/px parity 1 index 2° size 5.334 x 4.000°
+  expected RA 18.82488 h Dec 38.7177° angle 90.18° scale 15.000"/px, centre error 1.5"
+  PASS guider 048 RA 18.84 h Dec +38.8 rot 90 pier 1 1280x960 mag 8.5 epoch 0 noise 400 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.00 h Dec +0.0° rotation 137° pier 0 2000 x 1500 mag 9.5 epoch 2000 noise 100 gradient 0.2 hot 200/600/800
+  solution: WCS RA 0.00001 h Dec -0.0003° angle 317.00° scale 9.600"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 0.00000 h Dec 0.0000° angle 317.00° scale 9.600"/px, centre error 1.2"
+  PASS guider 049 RA 0.00 h Dec +0.0 rot 137 pier 0 2000x1500 mag 9.5 epoch 2000 noise 100 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 1.50 h Dec +45.0° rotation 270° pier 0 1600 x 1200 mag 9.5 epoch 0 noise 100 gradient 0.2 hot 500/0/0
+  solution: WCS RA 1.47333 h Dec 44.8621° angle 89.92° scale 12.000"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 1.47331 h Dec 44.8618° angle 449.92° scale 12.000"/px, centre error 1.5"
+  PASS guider 050 RA 1.50 h Dec +45.0 rot 270 pier 0 1600x1200 mag 9.5 epoch 0 noise 100 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 3.00 h Dec -30.0° rotation 0° pier 0 1200 x 1200 mag 9.5 epoch 2000 noise 150 gradient 0 hot 500/0/0
+  solution: WCS RA 3.00005 h Dec -30.0002° angle 180.02° scale 11.997"/px parity 1 index 2° size 3.999 x 3.999°
+  expected RA 3.00000 h Dec -30.0000° angle 180.00° scale 12.000"/px, centre error 2.4"
+  PASS guider 051 RA 3.00 h Dec -30.0 rot 0 pier 0 1200x1200 mag 9.5 epoch 2000 noise 150 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 4.50 h Dec +70.0° rotation 36° pier 0 1920 x 1080 mag 9.0 epoch 0 noise 150 gradient 0 hot 500/0/0
+  solution: WCS RA 4.45199 h Dec 69.9418° angle 215.61° scale 13.335"/px parity 1 index 5° size 7.112 x 4.001°
+  expected RA 4.45190 h Dec 69.9420° angle 215.60° scale 13.333"/px, centre error 1.8"
+  PASS guider 052 RA 4.50 h Dec +70.0 rot 36 pier 0 1920x1080 mag 9.0 epoch 0 noise 150 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 6.00 h Dec +20.0° rotation 90° pier 0 1024 x 768 mag 9.0 epoch 2000 noise 250 gradient 0 hot 500/0/0
+  solution: WCS RA 5.99999 h Dec 19.9994° angle 270.00° scale 18.749"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 6.00000 h Dec 20.0000° angle 270.00° scale 18.750"/px, centre error 2.1"
+  PASS guider 053 RA 6.00 h Dec +20.0 rot 90 pier 0 1024x768 mag 9.0 epoch 2000 noise 250 grad 0 hot 500/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 7.50 h Dec -60.0° rotation 137° pier 0 1600 x 900 mag 9.0 epoch 0 noise 250 gradient 0 hot 500/0/0
+  solution: WCS RA 7.49299 h Dec -59.9430° angle 316.72° scale 15.999"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 7.49300 h Dec -59.9430° angle 316.72° scale 16.000"/px, centre error 0.2"
+  PASS guider 054 RA 7.50 h Dec -60.0 rot 137 pier 0 1600x900 mag 9.0 epoch 0 noise 250 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 9.00 h Dec +40.0° rotation 270° pier 0 1280 x 960 mag 8.5 epoch 2000 noise 400 gradient 0 hot 500/0/0
+  solution: WCS RA 8.99999 h Dec 40.0000° angle 90.00° scale 15.003"/px parity 1 index 2° size 5.335 x 4.001°
+  expected RA 9.00000 h Dec 40.0000° angle 450.00° scale 15.000"/px, centre error 0.4"
+  PASS guider 055 RA 9.00 h Dec +40.0 rot 270 pier 0 1280x960 mag 8.5 epoch 2000 noise 400 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 10.50 h Dec -10.0° rotation 0° pier 0 2000 x 1500 mag 8.5 epoch 0 noise 400 gradient 0.5 hot 500/0/0
+  solution: WCS RA 10.47777 h Dec -9.8622° angle 179.94° scale 9.600"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 10.47775 h Dec -9.8621° angle 179.95° scale 9.600"/px, centre error 1.2"
+  PASS guider 056 RA 10.50 h Dec -10.0 rot 0 pier 0 2000x1500 mag 8.5 epoch 0 noise 400 grad 0.5 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.00 h Dec +80.0° rotation 36° pier 0 1600 x 1200 mag 8.5 epoch 2000 noise 100 gradient 0.5 hot 0/0/0
+  solution: WCS RA 12.00004 h Dec 80.0000° angle 215.99° scale 11.999"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 12.00000 h Dec 80.0000° angle 216.00° scale 12.000"/px, centre error 0.4"
+  PASS guider 057 RA 12.00 h Dec +80.0 rot 36 pier 0 1600x1200 mag 8.5 epoch 2000 noise 100 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.85 h Dec +27.1° rotation 90° pier 0 1200 x 1200 mag 9.5 epoch 0 noise 100 gradient 0.5 hot 0/0/0
+  solution: WCS RA 12.82819 h Dec 27.2455° angle 270.04° scale 12.000"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 12.82819 h Dec 27.2458° angle 270.03° scale 12.000"/px, centre error 1.0"
+  PASS guider 058 RA 12.85 h Dec +27.1 rot 90 pier 0 1200x1200 mag 9.5 epoch 0 noise 100 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 13.50 h Dec -45.0° rotation 137° pier 0 1920 x 1080 mag 9.5 epoch 2000 noise 150 gradient 0.5 hot 0/0/0
+  solution: WCS RA 13.50001 h Dec -44.9994° angle 317.02° scale 13.335"/px parity 1 index 5° size 7.112 x 4.000°
+  expected RA 13.50000 h Dec -45.0000° angle 317.00° scale 13.333"/px, centre error 2.1"
+  PASS guider 059 RA 13.50 h Dec -45.0 rot 137 pier 0 1920x1080 mag 9.5 epoch 2000 noise 150 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 15.00 h Dec +10.0° rotation 270° pier 0 1024 x 768 mag 9.5 epoch 0 noise 150 gradient 0.5 hot 0/0/0
+  solution: WCS RA 14.97831 h Dec 10.1063° angle 90.11° scale 18.751"/px parity 1 index 2° size 5.334 x 4.000°
+  expected RA 14.97832 h Dec 10.1059° angle 450.10° scale 18.750"/px, centre error 1.4"
+  PASS guider 060 RA 15.00 h Dec +10.0 rot 270 pier 0 1024x768 mag 9.5 epoch 0 noise 150 grad 0.5 hot 0/0/0 via guider agent
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 16.50 h Dec +55.0° rotation 0° pier 0 1600 x 900 mag 9.0 epoch 2000 noise 250 gradient 0.2 hot 0/0/0
+  solution: WCS RA 16.50004 h Dec 55.0001° angle 180.00° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 16.50000 h Dec 55.0000° angle 180.00° scale 16.000"/px, centre error 1.4"
+  PASS guider 061 RA 16.50 h Dec +55.0 rot 0 pier 0 1600x900 mag 9.0 epoch 2000 noise 250 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 17.76 h Dec -29.0° rotation 36° pier 0 1280 x 960 mag 9.0 epoch 0 noise 250 gradient 0.2 hot 0/0/0
+  solution: WCS RA 17.73158 h Dec -28.9902° angle 216.17° scale 15.000"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 17.73157 h Dec -28.9901° angle 216.16° scale 15.000"/px, centre error 0.7"
+  PASS guider 062 RA 17.76 h Dec -29.0 rot 36 pier 0 1280x960 mag 9.0 epoch 0 noise 250 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 19.50 h Dec +30.0° rotation 90° pier 0 2000 x 1500 mag 9.0 epoch 2000 noise 400 gradient 0.2 hot 0/0/0
+  solution: WCS RA 19.50001 h Dec 29.9993° angle 270.01° scale 9.598"/px parity 1 index 5° size 5.332 x 3.999°
+  expected RA 19.50000 h Dec 30.0000° angle 270.00° scale 9.600"/px, centre error 2.6"
+  PASS guider 063 RA 19.50 h Dec +30.0 rot 90 pier 0 2000x1500 mag 9.0 epoch 2000 noise 400 grad 0.2 hot 0/0/0 with hint
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 20.50 h Dec +45.0° rotation 137° pier 0 1600 x 1200 mag 8.5 epoch 0 noise 400 gradient 0.2 hot 50/0/0
+  solution: WCS RA 20.48497 h Dec 44.9091° angle 317.17° scale 12.001"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 20.48498 h Dec 44.9093° angle 317.17° scale 12.000"/px, centre error 0.8"
+  PASS guider 064 RA 20.50 h Dec +45.0 rot 137 pier 0 1600x1200 mag 8.5 epoch 0 noise 400 grad 0.2 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 21.00 h Dec -5.0° rotation 270° pier 0 1200 x 1200 mag 8.5 epoch 2000 noise 100 gradient 0.2 hot 50/0/0
+  solution: WCS RA 21.00002 h Dec -4.9998° angle 90.00° scale 12.000"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 21.00000 h Dec -5.0000° angle 450.00° scale 12.000"/px, centre error 1.2"
+  PASS guider 065 RA 21.00 h Dec -5.0 rot 270 pier 0 1200x1200 mag 8.5 epoch 2000 noise 100 grad 0.2 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 22.50 h Dec +65.0° rotation 0° pier 0 1920 x 1080 mag 8.5 epoch 0 noise 100 gradient 0 hot 50/0/0
+  solution: WCS RA 22.48533 h Dec 64.8620° angle 180.14° scale 13.333"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 22.48526 h Dec 64.8621° angle 180.13° scale 13.333"/px, centre error 1.5"
+  PASS guider 066 RA 22.50 h Dec +65.0 rot 0 pier 0 1920x1080 mag 8.5 epoch 0 noise 100 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 23.00 h Dec -40.0° rotation 36° pier 0 1024 x 768 mag 9.5 epoch 2000 noise 150 gradient 0 hot 50/0/0
+  solution: WCS RA 23.00005 h Dec -40.0003° angle 216.00° scale 18.749"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 23.00000 h Dec -40.0000° angle 216.00° scale 18.750"/px, centre error 2.4"
+  PASS guider 067 RA 23.00 h Dec -40.0 rot 36 pier 0 1024x768 mag 9.5 epoch 2000 noise 150 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 5.50 h Dec -35.0° rotation 90° pier 0 1600 x 900 mag 9.5 epoch 0 noise 150 gradient 0 hot 50/0/0
+  solution: WCS RA 5.48398 h Dec -35.0201° angle 269.82° scale 16.001"/px parity 1 index 2° size 7.112 x 4.000°
+  expected RA 5.48399 h Dec -35.0198° angle 269.82° scale 16.000"/px, centre error 1.2"
+  PASS guider 068 RA 5.50 h Dec -35.0 rot 90 pier 0 1600x900 mag 9.5 epoch 0 noise 150 grad 0 hot 50/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.85 h Dec -27.1° rotation 137° pier 0 1280 x 960 mag 9.5 epoch 2000 noise 250 gradient 0 hot 50/0/0
+  solution: WCS RA 0.85001 h Dec -27.1001° angle 317.02° scale 14.998"/px parity 1 index 2° size 5.332 x 3.999°
+  expected RA 0.85000 h Dec -27.1000° angle 317.00° scale 15.000"/px, centre error 0.5"
+  PASS guider 069 RA 0.85 h Dec -27.1 rot 137 pier 0 1280x960 mag 9.5 epoch 2000 noise 250 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 2.00 h Dec +85.0° rotation 270° pier 0 2000 x 1500 mag 9.0 epoch 0 noise 250 gradient 0 hot 50/0/0
+  solution: WCS RA 1.92203 h Dec 84.8700° angle 89.17° scale 9.599"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 1.92189 h Dec 84.8699° angle 449.17° scale 9.600"/px, centre error 0.8"
+  PASS guider 070 RA 2.00 h Dec +85.0 rot 270 pier 0 2000x1500 mag 9.0 epoch 0 noise 250 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 14.00 h Dec -85.0° rotation 0° pier 0 1600 x 1200 mag 9.0 epoch 2000 noise 400 gradient 0.5 hot 200/600/800
+  solution: WCS RA 14.00007 h Dec -85.0001° angle 179.99° scale 12.001"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 14.00000 h Dec -85.0000° angle 180.00° scale 12.000"/px, centre error 0.4"
+  PASS guider 071 RA 14.00 h Dec -85.0 rot 0 pier 0 1600x1200 mag 9.0 epoch 2000 noise 400 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 18.84 h Dec +38.8° rotation 36° pier 0 1200 x 1200 mag 9.0 epoch 0 noise 400 gradient 0.5 hot 200/600/800
+  solution: WCS RA 18.82488 h Dec 38.7176° angle 216.19° scale 12.000"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 18.82488 h Dec 38.7177° angle 216.18° scale 12.000"/px, centre error 0.4"
+  PASS guider 072 RA 18.84 h Dec +38.8 rot 36 pier 0 1200x1200 mag 9.0 epoch 0 noise 400 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.00 h Dec +0.0° rotation 90° pier 1 1920 x 1080 mag 8.5 epoch 2000 noise 100 gradient 0.5 hot 200/600/800
+  solution: WCS RA 0.00001 h Dec 0.0001° angle 90.00° scale 13.334"/px parity 1 index 5° size 7.112 x 4.000°
+  expected RA 0.00000 h Dec 0.0000° angle 90.00° scale 13.333"/px, centre error 0.9"
+  PASS guider 073 RA 0.00 h Dec +0.0 rot 90 pier 1 1920x1080 mag 8.5 epoch 2000 noise 100 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 1.50 h Dec +45.0° rotation 137° pier 1 1024 x 768 mag 8.5 epoch 0 noise 100 gradient 0.5 hot 200/600/800
+  solution: WCS RA 1.47335 h Dec 44.8621° angle 136.92° scale 18.748"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 1.47331 h Dec 44.8618° angle 136.92° scale 18.750"/px, centre error 1.8"
+  PASS guider 074 RA 1.50 h Dec +45.0 rot 137 pier 1 1024x768 mag 8.5 epoch 0 noise 100 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 3.00 h Dec -30.0° rotation 270° pier 1 1600 x 900 mag 8.5 epoch 2000 noise 150 gradient 0.5 hot 200/600/800
+21:11:53.370728 Application: indigo_solver_compute_center: no consistent set of matches found (5 of 5)
+  solution: WCS RA 3.00002 h Dec -30.0008° angle 270.00° scale 15.997"/px parity 1 index 5° size 7.110 x 3.999°
+  expected RA 3.00000 h Dec -30.0000° angle 270.00° scale 16.000"/px, centre error 3.0"
+  PASS guider 075 RA 3.00 h Dec -30.0 rot 270 pier 1 1600x900 mag 8.5 epoch 2000 noise 150 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 4.50 h Dec +70.0° rotation 0° pier 1 1280 x 960 mag 9.5 epoch 0 noise 150 gradient 0.2 hot 200/600/800
+  solution: WCS RA 4.45181 h Dec 69.9419° angle 359.60° scale 15.000"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 4.45190 h Dec 69.9420° angle -0.40° scale 15.000"/px, centre error 1.8"
+  PASS guider 076 RA 4.50 h Dec +70.0 rot 0 pier 1 1280x960 mag 9.5 epoch 0 noise 150 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 6.00 h Dec +20.0° rotation 36° pier 1 2000 x 1500 mag 9.5 epoch 2000 noise 250 gradient 0.2 hot 200/600/800
+  solution: WCS RA 5.99999 h Dec 20.0000° angle 36.00° scale 9.601"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 6.00000 h Dec 20.0000° angle 36.00° scale 9.600"/px, centre error 0.7"
+  PASS guider 077 RA 6.00 h Dec +20.0 rot 36 pier 1 2000x1500 mag 9.5 epoch 2000 noise 250 grad 0.2 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 7.50 h Dec -60.0° rotation 90° pier 1 1600 x 1200 mag 9.5 epoch 0 noise 250 gradient 0.2 hot 500/0/0
+  solution: WCS RA 7.49296 h Dec -59.9420° angle 89.70° scale 11.998"/px parity 1 index 5° size 5.332 x 3.999°
+  expected RA 7.49300 h Dec -59.9430° angle 89.72° scale 12.000"/px, centre error 3.6"
+  PASS guider 078 RA 7.50 h Dec -60.0 rot 90 pier 1 1600x1200 mag 9.5 epoch 0 noise 250 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 9.00 h Dec +40.0° rotation 137° pier 1 1200 x 1200 mag 9.0 epoch 2000 noise 400 gradient 0.2 hot 500/0/0
+  solution: WCS RA 9.00000 h Dec 40.0000° angle 137.00° scale 12.001"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 9.00000 h Dec 40.0000° angle 137.00° scale 12.000"/px, centre error 0.2"
+  PASS guider 079 RA 9.00 h Dec +40.0 rot 137 pier 1 1200x1200 mag 9.0 epoch 2000 noise 400 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 10.50 h Dec -10.0° rotation 270° pier 1 1920 x 1080 mag 9.0 epoch 0 noise 400 gradient 0.2 hot 500/0/0
+  solution: WCS RA 10.47774 h Dec -9.8624° angle 269.95° scale 13.334"/px parity 1 index 5° size 7.112 x 4.000°
+  expected RA 10.47775 h Dec -9.8621° angle 269.95° scale 13.333"/px, centre error 0.9"
+  PASS guider 080 RA 10.50 h Dec -10.0 rot 270 pier 1 1920x1080 mag 9.0 epoch 0 noise 400 grad 0.2 hot 500/0/0 via guider agent
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.00 h Dec +80.0° rotation 0° pier 1 1024 x 768 mag 9.0 epoch 2000 noise 100 gradient 0 hot 500/0/0
+  solution: WCS RA 11.99980 h Dec 80.0000° angle 360.00° scale 18.750"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 12.00000 h Dec 80.0000° angle 0.00° scale 18.750"/px, centre error 1.9"
+  PASS guider 081 RA 12.00 h Dec +80.0 rot 0 pier 1 1024x768 mag 9.0 epoch 2000 noise 100 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.85 h Dec +27.1° rotation 36° pier 1 1600 x 900 mag 8.5 epoch 0 noise 100 gradient 0 hot 500/0/0
+  solution: WCS RA 12.82817 h Dec 27.2461° angle 36.04° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 12.82819 h Dec 27.2458° angle 36.03° scale 16.000"/px, centre error 1.3"
+  PASS guider 082 RA 12.85 h Dec +27.1 rot 36 pier 1 1600x900 mag 8.5 epoch 0 noise 100 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 13.50 h Dec -45.0° rotation 90° pier 1 1280 x 960 mag 8.5 epoch 2000 noise 150 gradient 0 hot 500/0/0
+  solution: WCS RA 13.49998 h Dec -44.9998° angle 90.00° scale 15.001"/px parity 1 index 2° size 5.334 x 4.000°
+  expected RA 13.50000 h Dec -45.0000° angle 90.00° scale 15.000"/px, centre error 1.0"
+  PASS guider 083 RA 13.50 h Dec -45.0 rot 90 pier 1 1280x960 mag 8.5 epoch 2000 noise 150 grad 0 hot 500/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 15.00 h Dec +10.0° rotation 137° pier 1 2000 x 1500 mag 8.5 epoch 0 noise 150 gradient 0 hot 500/0/0
+  solution: WCS RA 14.97833 h Dec 10.1061° angle 137.11° scale 9.599"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 14.97832 h Dec 10.1059° angle 137.10° scale 9.600"/px, centre error 0.8"
+  PASS guider 084 RA 15.00 h Dec +10.0 rot 137 pier 1 2000x1500 mag 8.5 epoch 0 noise 150 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 16.50 h Dec +55.0° rotation 270° pier 1 1600 x 1200 mag 9.5 epoch 2000 noise 250 gradient 0 hot 0/0/0
+  solution: WCS RA 16.50001 h Dec 54.9999° angle 270.00° scale 12.002"/px parity 1 index 5° size 5.334 x 4.001°
+  expected RA 16.50000 h Dec 55.0000° angle 270.00° scale 12.000"/px, centre error 0.4"
+  PASS guider 085 RA 16.50 h Dec +55.0 rot 270 pier 1 1600x1200 mag 9.5 epoch 2000 noise 250 grad 0 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 17.76 h Dec -29.0° rotation 0° pier 1 1200 x 1200 mag 9.5 epoch 0 noise 250 gradient 0.5 hot 0/0/0
+  solution: WCS RA 17.73154 h Dec -28.9901° angle 0.17° scale 12.001"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 17.73157 h Dec -28.9901° angle 0.16° scale 12.000"/px, centre error 1.2"
+  PASS guider 086 RA 17.76 h Dec -29.0 rot 0 pier 1 1200x1200 mag 9.5 epoch 0 noise 250 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 19.50 h Dec +30.0° rotation 36° pier 1 1920 x 1080 mag 9.5 epoch 2000 noise 400 gradient 0.5 hot 0/0/0
+  solution: WCS RA 19.49999 h Dec 29.9999° angle 36.00° scale 13.333"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 19.50000 h Dec 30.0000° angle 36.00° scale 13.333"/px, centre error 0.5"
+  PASS guider 087 RA 19.50 h Dec +30.0 rot 36 pier 1 1920x1080 mag 9.5 epoch 2000 noise 400 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 20.50 h Dec +45.0° rotation 90° pier 1 1024 x 768 mag 9.0 epoch 0 noise 400 gradient 0.5 hot 0/0/0
+  solution converted from JNow: RA 20.48498 h Dec 44.9098°, centre error 1.8"
+  PASS guider 088 RA 20.50 h Dec +45.0 rot 90 pier 1 1024x768 mag 9.0 epoch 0 noise 400 grad 0.5 hot 0/0/0 with hint
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 21.00 h Dec -5.0° rotation 137° pier 1 1600 x 900 mag 9.0 epoch 2000 noise 100 gradient 0.5 hot 0/0/0
+  solution: WCS RA 21.00001 h Dec -5.0001° angle 137.00° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 21.00000 h Dec -5.0000° angle 137.00° scale 16.000"/px, centre error 0.8"
+  PASS guider 089 RA 21.00 h Dec -5.0 rot 137 pier 1 1600x900 mag 9.0 epoch 2000 noise 100 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 22.50 h Dec +65.0° rotation 270° pier 1 1280 x 960 mag 9.0 epoch 0 noise 100 gradient 0.5 hot 0/0/0
+  solution: WCS RA 22.48527 h Dec 64.8617° angle 270.14° scale 15.000"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 22.48526 h Dec 64.8621° angle 270.13° scale 15.000"/px, centre error 1.4"
+  PASS guider 090 RA 22.50 h Dec +65.0 rot 270 pier 1 1280x960 mag 9.0 epoch 0 noise 100 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 23.00 h Dec -40.0° rotation 0° pier 1 2000 x 1500 mag 8.5 epoch 2000 noise 150 gradient 0.2 hot 0/0/0
+  solution: WCS RA 23.00000 h Dec -40.0000° angle 0.01° scale 9.599"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 23.00000 h Dec -40.0000° angle 0.00° scale 9.600"/px, centre error 0.1"
+  PASS guider 091 RA 23.00 h Dec -40.0 rot 0 pier 1 2000x1500 mag 8.5 epoch 2000 noise 150 grad 0.2 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 5.50 h Dec -35.0° rotation 36° pier 1 1600 x 1200 mag 8.5 epoch 0 noise 150 gradient 0.2 hot 50/0/0
+  solution: WCS RA 5.48397 h Dec -35.0196° angle 35.82° scale 12.000"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 5.48399 h Dec -35.0198° angle 35.82° scale 12.000"/px, centre error 1.0"
+  PASS guider 092 RA 5.50 h Dec -35.0 rot 36 pier 1 1600x1200 mag 8.5 epoch 0 noise 150 grad 0.2 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.85 h Dec -27.1° rotation 90° pier 1 1200 x 1200 mag 8.5 epoch 2000 noise 250 gradient 0.2 hot 50/0/0
+  solution: WCS RA 0.85004 h Dec -27.0996° angle 90.02° scale 11.997"/px parity 1 index 5° size 3.999 x 3.999°
+  expected RA 0.85000 h Dec -27.1000° angle 90.00° scale 12.000"/px, centre error 2.6"
+  PASS guider 093 RA 0.85 h Dec -27.1 rot 90 pier 1 1200x1200 mag 8.5 epoch 2000 noise 250 grad 0.2 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 2.00 h Dec +85.0° rotation 137° pier 1 1920 x 1080 mag 9.5 epoch 0 noise 250 gradient 0.2 hot 50/0/0
+  solution: WCS RA 1.92220 h Dec 84.8699° angle 136.17° scale 13.333"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 1.92189 h Dec 84.8699° angle 136.17° scale 13.333"/px, centre error 1.5"
+  PASS guider 094 RA 2.00 h Dec +85.0 rot 137 pier 1 1920x1080 mag 9.5 epoch 0 noise 250 grad 0.2 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 14.00 h Dec -85.0° rotation 270° pier 1 1024 x 768 mag 9.5 epoch 2000 noise 400 gradient 0.2 hot 50/0/0
+  solution: WCS RA 13.99994 h Dec -85.0006° angle 270.01° scale 18.750"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 14.00000 h Dec -85.0000° angle 270.00° scale 18.750"/px, centre error 2.1"
+  PASS guider 095 RA 14.00 h Dec -85.0 rot 270 pier 1 1024x768 mag 9.5 epoch 2000 noise 400 grad 0.2 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 18.84 h Dec +38.8° rotation 0° pier 1 1600 x 900 mag 9.5 epoch 0 noise 400 gradient 0 hot 50/0/0
+  solution: WCS RA 18.82483 h Dec 38.7176° angle 0.19° scale 15.997"/px parity 1 index 2° size 7.110 x 3.999°
+  expected RA 18.82488 h Dec 38.7177° angle 0.18° scale 16.000"/px, centre error 1.9"
+  PASS guider 096 RA 18.84 h Dec +38.8 rot 0 pier 1 1600x900 mag 9.5 epoch 0 noise 400 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.00 h Dec +0.0° rotation 36° pier 0 1280 x 960 mag 9.0 epoch 2000 noise 100 gradient 0 hot 50/0/0
+  solution: WCS RA 0.00003 h Dec -0.0005° angle 216.00° scale 15.001"/px parity 1 index 2° size 5.334 x 4.000°
+  expected RA 0.00000 h Dec 0.0000° angle 216.00° scale 15.000"/px, centre error 2.3"
+  PASS guider 097 RA 0.00 h Dec +0.0 rot 36 pier 0 1280x960 mag 9.0 epoch 2000 noise 100 grad 0 hot 50/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 1.50 h Dec +45.0° rotation 90° pier 0 2000 x 1500 mag 9.0 epoch 0 noise 100 gradient 0 hot 50/0/0
+  solution: WCS RA 1.47333 h Dec 44.8616° angle 269.92° scale 9.600"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 1.47331 h Dec 44.8618° angle 269.92° scale 9.600"/px, centre error 1.0"
+  PASS guider 098 RA 1.50 h Dec +45.0 rot 90 pier 0 2000x1500 mag 9.0 epoch 0 noise 100 grad 0 hot 50/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 3.00 h Dec -30.0° rotation 137° pier 0 1600 x 1200 mag 9.0 epoch 2000 noise 150 gradient 0 hot 200/600/800
+  solution: WCS RA 3.00001 h Dec -30.0005° angle 317.01° scale 11.997"/px parity 1 index 5° size 5.332 x 3.999°
+  expected RA 3.00000 h Dec -30.0000° angle 317.00° scale 12.000"/px, centre error 1.8"
+  PASS guider 099 RA 3.00 h Dec -30.0 rot 137 pier 0 1600x1200 mag 9.0 epoch 2000 noise 150 grad 0 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 4.50 h Dec +70.0° rotation 270° pier 0 1200 x 1200 mag 8.5 epoch 0 noise 150 gradient 0 hot 200/600/800
+  solution: WCS RA 4.45191 h Dec 69.9422° angle 89.60° scale 12.001"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 4.45190 h Dec 69.9420° angle 449.60° scale 12.000"/px, centre error 0.8"
+  PASS guider 100 RA 4.50 h Dec +70.0 rot 270 pier 0 1200x1200 mag 8.5 epoch 0 noise 150 grad 0 hot 200/600/800 via guider agent
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 6.00 h Dec +20.0° rotation 0° pier 0 1920 x 1080 mag 8.5 epoch 2000 noise 250 gradient 0.5 hot 200/600/800
+  solution: WCS RA 6.00002 h Dec 19.9999° angle 180.01° scale 13.334"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 6.00000 h Dec 20.0000° angle 180.00° scale 13.333"/px, centre error 0.9"
+  PASS guider 101 RA 6.00 h Dec +20.0 rot 0 pier 0 1920x1080 mag 8.5 epoch 2000 noise 250 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 7.50 h Dec -60.0° rotation 36° pier 0 1024 x 768 mag 8.5 epoch 0 noise 250 gradient 0.5 hot 200/600/800
+  solution: WCS RA 7.49305 h Dec -59.9432° angle 215.73° scale 18.750"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 7.49300 h Dec -59.9430° angle 215.72° scale 18.750"/px, centre error 1.6"
+  PASS guider 102 RA 7.50 h Dec -60.0 rot 36 pier 0 1024x768 mag 8.5 epoch 0 noise 250 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 9.00 h Dec +40.0° rotation 90° pier 0 1600 x 900 mag 9.5 epoch 2000 noise 400 gradient 0.5 hot 200/600/800
+  solution: WCS RA 8.99999 h Dec 39.9993° angle 270.00° scale 16.004"/px parity 1 index 2° size 7.113 x 4.001°
+  expected RA 9.00000 h Dec 40.0000° angle 270.00° scale 16.000"/px, centre error 2.5"
+  PASS guider 103 RA 9.00 h Dec +40.0 rot 90 pier 0 1600x900 mag 9.5 epoch 2000 noise 400 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 10.50 h Dec -10.0° rotation 137° pier 0 1280 x 960 mag 9.5 epoch 0 noise 400 gradient 0.5 hot 200/600/800
+  solution: WCS RA 10.47775 h Dec -9.8624° angle 316.94° scale 14.997"/px parity 1 index 2° size 5.332 x 3.999°
+  expected RA 10.47775 h Dec -9.8621° angle 316.95° scale 15.000"/px, centre error 0.9"
+  PASS guider 104 RA 10.50 h Dec -10.0 rot 137 pier 0 1280x960 mag 9.5 epoch 0 noise 400 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.00 h Dec +80.0° rotation 270° pier 0 2000 x 1500 mag 9.5 epoch 2000 noise 100 gradient 0.5 hot 200/600/800
+  solution: WCS RA 11.99994 h Dec 80.0003° angle 89.99° scale 9.600"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 12.00000 h Dec 80.0000° angle 450.00° scale 9.600"/px, centre error 1.3"
+  PASS guider 105 RA 12.00 h Dec +80.0 rot 270 pier 0 2000x1500 mag 9.5 epoch 2000 noise 100 grad 0.5 hot 200/600/800
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 12.85 h Dec +27.1° rotation 0° pier 0 1600 x 1200 mag 9.0 epoch 0 noise 100 gradient 0.2 hot 500/0/0
+  solution: WCS RA 12.82821 h Dec 27.2458° angle 180.04° scale 11.999"/px parity 1 index 5° size 5.333 x 4.000°
+  expected RA 12.82819 h Dec 27.2458° angle 180.03° scale 12.000"/px, centre error 0.9"
+  PASS guider 106 RA 12.85 h Dec +27.1 rot 0 pier 0 1600x1200 mag 9.0 epoch 0 noise 100 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 13.50 h Dec -45.0° rotation 36° pier 0 1200 x 1200 mag 9.0 epoch 2000 noise 150 gradient 0.2 hot 500/0/0
+  solution: WCS RA 13.50001 h Dec -45.0002° angle 216.00° scale 11.999"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 13.50000 h Dec -45.0000° angle 216.00° scale 12.000"/px, centre error 0.8"
+  PASS guider 107 RA 13.50 h Dec -45.0 rot 36 pier 0 1200x1200 mag 9.0 epoch 2000 noise 150 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 15.00 h Dec +10.0° rotation 90° pier 0 1920 x 1080 mag 9.0 epoch 0 noise 150 gradient 0.2 hot 500/0/0
+  solution: WCS RA 14.97828 h Dec 10.1058° angle 270.11° scale 13.328"/px parity 1 index 5° size 7.108 x 3.998°
+  expected RA 14.97832 h Dec 10.1059° angle 270.10° scale 13.333"/px, centre error 2.5"
+  PASS guider 108 RA 15.00 h Dec +10.0 rot 90 pier 0 1920x1080 mag 9.0 epoch 0 noise 150 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 16.50 h Dec +55.0° rotation 137° pier 0 1024 x 768 mag 8.5 epoch 2000 noise 250 gradient 0.2 hot 500/0/0
+  solution: WCS RA 16.49999 h Dec 55.0001° angle 317.01° scale 18.752"/px parity 1 index 2° size 5.334 x 4.001°
+  expected RA 16.50000 h Dec 55.0000° angle 317.00° scale 18.750"/px, centre error 0.6"
+  PASS guider 109 RA 16.50 h Dec +55.0 rot 137 pier 0 1024x768 mag 8.5 epoch 2000 noise 250 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 17.76 h Dec -29.0° rotation 270° pier 0 1600 x 900 mag 8.5 epoch 0 noise 250 gradient 0.2 hot 500/0/0
+  solution: WCS RA 17.73157 h Dec -28.9898° angle 90.17° scale 16.002"/px parity 1 index 2° size 7.112 x 4.000°
+  expected RA 17.73157 h Dec -28.9901° angle 450.16° scale 16.000"/px, centre error 1.0"
+  PASS guider 110 RA 17.76 h Dec -29.0 rot 270 pier 0 1600x900 mag 8.5 epoch 0 noise 250 grad 0.2 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 19.50 h Dec +30.0° rotation 0° pier 0 1280 x 960 mag 8.5 epoch 2000 noise 400 gradient 0 hot 500/0/0
+  solution: WCS RA 19.50003 h Dec 29.9999° angle 180.00° scale 15.000"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 19.50000 h Dec 30.0000° angle 180.00° scale 15.000"/px, centre error 1.3"
+  PASS guider 111 RA 19.50 h Dec +30.0 rot 0 pier 0 1280x960 mag 8.5 epoch 2000 noise 400 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 20.50 h Dec +45.0° rotation 36° pier 0 2000 x 1500 mag 9.5 epoch 0 noise 400 gradient 0 hot 500/0/0
+  solution: WCS RA 20.48500 h Dec 44.9091° angle 216.17° scale 9.600"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 20.48498 h Dec 44.9093° angle 216.17° scale 9.600"/px, centre error 1.0"
+  PASS guider 112 RA 20.50 h Dec +45.0 rot 36 pier 0 2000x1500 mag 9.5 epoch 0 noise 400 grad 0 hot 500/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 21.00 h Dec -5.0° rotation 90° pier 0 1600 x 1200 mag 9.5 epoch 2000 noise 100 gradient 0 hot 0/0/0
+  solution: WCS RA 21.00001 h Dec -5.0004° angle 269.99° scale 12.001"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 21.00000 h Dec -5.0000° angle 270.00° scale 12.000"/px, centre error 1.4"
+  PASS guider 113 RA 21.00 h Dec -5.0 rot 90 pier 0 1600x1200 mag 9.5 epoch 2000 noise 100 grad 0 hot 0/0/0 as fits
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 22.50 h Dec +65.0° rotation 137° pier 0 1200 x 1200 mag 9.5 epoch 0 noise 100 gradient 0 hot 0/0/0
+  solution: WCS RA 22.48523 h Dec 64.8619° angle 317.13° scale 12.000"/px parity 1 index 2° size 4.000 x 4.000°
+  expected RA 22.48526 h Dec 64.8621° angle 317.13° scale 12.000"/px, centre error 0.9"
+  PASS guider 114 RA 22.50 h Dec +65.0 rot 137 pier 0 1200x1200 mag 9.5 epoch 0 noise 100 grad 0 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 23.00 h Dec -40.0° rotation 270° pier 0 1920 x 1080 mag 9.0 epoch 2000 noise 150 gradient 0 hot 0/0/0
+  solution: WCS RA 23.00000 h Dec -39.9998° angle 90.01° scale 13.333"/px parity 1 index 5° size 7.111 x 4.000°
+  expected RA 23.00000 h Dec -40.0000° angle 450.00° scale 13.333"/px, centre error 0.9"
+  PASS guider 115 RA 23.00 h Dec -40.0 rot 270 pier 0 1920x1080 mag 9.0 epoch 2000 noise 150 grad 0 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 5.50 h Dec -35.0° rotation 0° pier 0 1024 x 768 mag 9.0 epoch 0 noise 150 gradient 0.5 hot 0/0/0
+  solution: WCS RA 5.48401 h Dec -35.0198° angle 179.82° scale 18.749"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 5.48399 h Dec -35.0198° angle 179.82° scale 18.750"/px, centre error 0.8"
+  PASS guider 116 RA 5.50 h Dec -35.0 rot 0 pier 0 1024x768 mag 9.0 epoch 0 noise 150 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 0.85 h Dec -27.1° rotation 36° pier 0 1600 x 900 mag 9.0 epoch 2000 noise 250 gradient 0.5 hot 0/0/0
+  solution: WCS RA 0.85005 h Dec -27.1002° angle 216.00° scale 16.000"/px parity 1 index 2° size 7.111 x 4.000°
+  expected RA 0.85000 h Dec -27.1000° angle 216.00° scale 16.000"/px, centre error 2.4"
+  PASS guider 117 RA 0.85 h Dec -27.1 rot 36 pier 0 1600x900 mag 9.0 epoch 2000 noise 250 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 2.00 h Dec +85.0° rotation 90° pier 0 1280 x 960 mag 8.5 epoch 0 noise 250 gradient 0.5 hot 0/0/0
+  solution: WCS RA 1.92192 h Dec 84.8695° angle 269.16° scale 14.999"/px parity 1 index 2° size 5.333 x 4.000°
+  expected RA 1.92189 h Dec 84.8699° angle 269.17° scale 15.000"/px, centre error 1.5"
+  PASS guider 118 RA 2.00 h Dec +85.0 rot 90 pier 0 1280x960 mag 8.5 epoch 0 noise 250 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 14.00 h Dec -85.0° rotation 137° pier 0 2000 x 1500 mag 8.5 epoch 2000 noise 400 gradient 0.5 hot 0/0/0
+  solution: WCS RA 13.99975 h Dec -85.0002° angle 317.01° scale 9.602"/px parity 1 index 5° size 5.334 x 4.001°
+  expected RA 14.00000 h Dec -85.0000° angle 317.00° scale 9.600"/px, centre error 1.4"
+  PASS guider 119 RA 14.00 h Dec -85.0 rot 137 pier 0 2000x1500 mag 8.5 epoch 2000 noise 400 grad 0.5 hot 0/0/0
+Solver agent with the CCD simulators: all tests passed
+Running Solver agent with the CCD simulators
+  rendering RA 18.84 h Dec +38.8° rotation 270° pier 0 1600 x 1200 mag 8.5 epoch 0 noise 400 gradient 0.5 hot 50/0/0
+  solution: WCS RA 18.82487 h Dec 38.7182° angle 90.19° scale 12.001"/px parity 1 index 5° size 5.334 x 4.000°
+  expected RA 18.82488 h Dec 38.7177° angle 450.18° scale 12.000"/px, centre error 1.8"
+  PASS guider 120 RA 18.84 h Dec +38.8 rot 270 pier 0 1600x1200 mag 8.5 epoch 0 noise 400 grad 0.5 hot 50/0/0 via guider agent
+Solver agent with the CCD simulators: all tests passed
+Solver agent with the CCD simulators: 133/133 cases passed (including cleanup)
+144 driver(s) written to /private/tmp/indigo-20261101200402-fcb2-fix-solver-fits-header/TEST_SUMMARY.md
+
+agent_solver: 159/159 OK
+recorded in indigo_drivers/agent_solver/README.md:
+2026-11-01 21:08 3.0.0.27 mac arm64 simulator 159/159 OK

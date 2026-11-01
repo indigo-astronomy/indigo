@@ -1,0 +1,34 @@
+21:06:59.893894 Application: indigo_solver_catalog_build: quad 1 references a star outside of the catalog
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: bad magic
+21:06:59.903479 Application: indigo_solver_select_index: no index-*deg-*.isix index file found in /tmp/indigo_test_solver_dir_jwGOVK
+21:07:00.084515 Application: map_index: /tmp/indigo_test_solver_damaged_u0GexD is corrupted (invalid header)
+indigo_solver_index_read_header: short read
+21:07:00.085865 Application: map_index: /tmp/indigo_test_solver_damaged_u0GexD is corrupted (invalid header)
+21:07:00.086791 Application: map_index: /tmp/indigo_test_solver_damaged_u0GexD is corrupted (invalid header)
+21:07:00.087702 Application: map_index: /tmp/indigo_test_solver_damaged_u0GexD is corrupted (invalid header)
+21:07:00.088580 Application: map_index: /tmp/indigo_test_solver_damaged_u0GexD is corrupted (invalid buckets)
+Running test_agent_solver_core
+  PASS tangent_plane_roundtrip
+  PASS hash_components_roundtrip
+  PASS quad_code_invariance
+  PASS quad_variants_canonical_first
+  PASS index_file_roundtrip
+  PASS index_selection
+  PASS solve_synthetic_field
+  PASS solve_synthetic_mirrored_field
+  PASS mapped_index_roundtrip
+  PASS mapped_index_rejects_damage
+  PASS compute_center_uses_astrometry_net_orientation
+  PASS solve_rejects_unrelated_field
+  PASS image_stars_noisy_frame
+  PASS match_respects_limits_and_cone
+  PASS load_fits_16bit_binned_odd_size
+  PASS load_fits_16bit_without_bzero_wraps
+  PASS load_fits_scaled_binned_matches_full_size
+  PASS load_bayer_binning
+  PASS load_raw_mono16_binned
+test_agent_solver_core: all tests passed

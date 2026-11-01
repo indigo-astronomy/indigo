@@ -1,0 +1,4 @@
+unit/test_agent_solver_core.c:188: assertion failed: !(indigo_solver_catalog_build(stars, 3, quads, 2, 5, &built))
+Running test_agent_solver_core
+  FAIL index_file_roundtrip
+test_agent_solver_core: 1 test(s) failed

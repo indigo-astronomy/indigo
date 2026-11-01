@@ -1,0 +1,9 @@
+Running test_agent_solver_core
+  PASS load_fits_supported_header_values
+  rejecting NAXIS1=8.5
+unit/test_agent_solver_core.c:904: assertion failed: rejected
+  FAIL load_fits_rejects_malformed_header_integers
+  PASS load_fits_16bit_binned_odd_size
+  PASS load_fits_16bit_without_bzero_wraps
+  PASS load_fits_scaled_binned_matches_full_size
+test_agent_solver_core: 1 test(s) failed
