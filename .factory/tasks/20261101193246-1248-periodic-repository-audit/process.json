@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "task": "20261101193246-1248-periodic-repository-audit",
+  "scope": [
+    ".factory/tasks/20261101193246-1248-periodic-repository-audit/*",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-*.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {}
+}

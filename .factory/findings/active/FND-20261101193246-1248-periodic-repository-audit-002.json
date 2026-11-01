@@ -1,0 +1,19 @@
+{
+  "title": "Gaia catalog infinite right ascension never completes normalization",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101193246-1248-periodic-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "strtod accepts inf and no finite-value check precedes repeated subtraction of 2\u03c0. Exact extracted parser with CSV 10,20,10,0,0 completes; inf,20,10,0,0 exceeds a two-second subprocess timeout. Validate conversion, finite propagated coordinates, magnitude and proper motion before bounded normalization.",
+  "evidence": "indigo_tools/indigo_solver_indexer.c:232\u2013265; repository-review.md confirmed finding 2",
+  "resolution": null,
+  "id": "FND-20261101193246-1248-periodic-repository-audit-002"
+}

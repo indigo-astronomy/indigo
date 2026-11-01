@@ -1,0 +1,19 @@
+{
+  "title": "MinGW property tool link races the import library build",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101193246-1248-periodic-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The executable depends only on its C source while linking libindigo_client.lib produced by the sibling DLL prerequisite of all. An isolated fixture used the unchanged Makefile and a synthetic delayed linker under make -j2: executable link started before the import library existed and make exited 2. Add an explicit dependency and correct directory ordering; test serial, parallel and direct executable targets.",
+  "evidence": "indigo_windows/gcc/Makefile:59,109\u2013110; repository-review.md confirmed finding 4",
+  "resolution": null,
+  "id": "FND-20261101193246-1248-periodic-repository-audit-004"
+}

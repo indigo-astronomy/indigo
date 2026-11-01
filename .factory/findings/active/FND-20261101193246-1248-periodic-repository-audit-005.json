@@ -1,0 +1,19 @@
+{
+  "title": "MinGW rebuild target depends on nonexistent build target",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101193246-1248-periodic-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "make -n -C indigo_windows/gcc rebuild exits 2: No rule to make target build, needed by rebuild. A real invocation first performs clean then fails. Point rebuild to the actual all target with safe ordering. No MinGW compiler or Windows runtime was executed.",
+  "evidence": "indigo_windows/gcc/Makefile:151; repository-review.md confirmed finding 5",
+  "resolution": null,
+  "id": "FND-20261101193246-1248-periodic-repository-audit-005"
+}

@@ -1,0 +1,19 @@
+{
+  "title": "Gaia indexer evaluates shell substitutions in directory arguments",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101193246-1248-periodic-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The -g directory is inserted into a double-quoted ls command passed to popen. Double quotes preserve command substitution. An exact-command synthetic marker printed before listing failed; this is distinct from metadata-extractor FND-000040. A directory copied from an untrusted source can execute with the invoking user privileges. Enumerate directories without a shell and check enumeration errors.",
+  "evidence": "indigo_tools/indigo_solver_indexer.c:210\u2013211; repository-review.md confirmed finding 1",
+  "resolution": null,
+  "id": "FND-20261101193246-1248-periodic-repository-audit-001"
+}

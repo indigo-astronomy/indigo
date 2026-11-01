@@ -1,0 +1,19 @@
+{
+  "title": "ASI rotator reports OK when motion stops short of requested angle",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101193246-1248-periodic-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "A stopped, non-aborted BUSY move is unconditionally completed OK after reading current angle, without comparing it to retained target_position. Successful CAAMoveTo(90), then CAAIsMoving=false and CAAGetDegree=30 reports OK at 30 with target 90. Require arrival within SDK-precision tolerance or ALERT; preserve manual-control, abort and overlap semantics. Current fake-SDK recovery test at integration/test_rotator_asi_sdk.c:444\u2013446 refuses an overlapping request to 60 as intended, but then accepts completion at 10 for the previously accepted retained target 50. Independently review that completion expectation before changing the test. Source-contract evidence only.",
+  "evidence": "indigo_drivers/rotator_asi/indigo_rotator_asi.driver:265\u2013267,294\u2013305; repository-review.md confirmed finding 12",
+  "resolution": null,
+  "id": "FND-20261101193246-1248-periodic-repository-audit-012"
+}
