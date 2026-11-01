@@ -1,0 +1,19 @@
+{
+  "title": "Trutek accepts replies with an invalid protocol checksum",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "Identity, position and movement replies validate size/opcode/payload but never the fourth-byte additive checksum, unlike the repository simulator protocol. A corrupted frame with a plausible target slot can be accepted and report success. Validate checksum before consuming all reply types; add malformed-checksum regressions. Source-contract confirmation, no hardware claim. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver:40-74,117-136; components/drivers-b.md B02",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-007"
+}

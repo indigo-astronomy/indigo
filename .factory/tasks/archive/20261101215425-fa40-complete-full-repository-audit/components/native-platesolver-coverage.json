@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "reviewer": "/root/full_driver_motion_platform",
+  "source_revision": "f3bb131e4f4b3b9460c85cec1f57c405c2f721d3",
+  "report": "native-platesolver.md",
+  "status": "assigned-source-contract-coverage-complete",
+  "semantic_paths": 14,
+  "excluded_paths": 3,
+  "missing_paths": [],
+  "source_writes": false,
+  "tests_executed": false,
+  "image_solving_executed": false,
+  "prior_archive_reuse": false,
+  "candidates": [
+    "NP01",
+    "NP02",
+    "NP03-consolidate-tools-family",
+    "NP04",
+    "NP05"
+  ],
+  "entries": [
+    {
+      "path": "indigo_drivers/agent_platesolver/Makefile.inc",
+      "git_blob": "938265bef935f1a333aa066733f91cfeeefd7389",
+      "line_count": 1,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-1"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/README.md",
+      "git_blob": "3320014dbffe3e19c9cc894e5ba84e214a47fe52",
+      "line_count": 107,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-107"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c",
+      "git_blob": "38e580a5a020435f3bb3f99e7e921cc4bbf43ffd",
+      "line_count": 858,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-858"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_agent_platesolver.h",
+      "git_blob": "1e137dfc81d136eba58d4978c3977816fefc8274",
+      "line_count": 57,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-57"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj",
+      "git_blob": "324508349e363a96c9a171a39821b724741fed31",
+      "line_count": 233,
+      "stage": "excluded-generated-project-boilerplate",
+      "reviewed_spans": [],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.filters",
+      "git_blob": "38e98c8bcf1602ee24d433f3257cc6abe6f4911d",
+      "line_count": 195,
+      "stage": "excluded-generated-project-boilerplate",
+      "reviewed_spans": [],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_agent_platesolver.vcxproj.user",
+      "git_blob": "b9d4e5e21e9703f552b3c6f8a63fb174e1d62e9e",
+      "line_count": 4,
+      "stage": "excluded-generated-project-boilerplate",
+      "reviewed_spans": [],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_solver.c",
+      "git_blob": "691b24756053329c495a8faac9d4b5602398e691",
+      "line_count": 1605,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-1605"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_solver.h",
+      "git_blob": "d83525167ebb73258e02bca762461066139b0229",
+      "line_count": 138,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-138"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_solver_healpix.c",
+      "git_blob": "fbc8444f64533d8e7e606c2dae4007008a5128ba",
+      "line_count": 316,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-316"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_solver_healpix.h",
+      "git_blob": "eb622078741777ffc85d66a41f01ee7862e052f6",
+      "line_count": 36,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-36"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_solver_utils.c",
+      "git_blob": "887ed14ca7ef604b1e01c78ae5bee1afcd1aeef5",
+      "line_count": 373,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-373"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_drivers/agent_platesolver/indigo_solver_utils.h",
+      "git_blob": "3e341fd0109b990cf02797029e309502f43fa7ce",
+      "line_count": 136,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-136"
+      ],
+      "evidence": "native-platesolver.md#actual-contracts-inspected",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_test/unit/test_agent_platesolver_core.c",
+      "git_blob": "9f80e393cb3ec52726e8393b64e07c4b730e5d4f",
+      "line_count": 1100,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-1100"
+      ],
+      "evidence": "native-platesolver.md#test-contracts-inspected-static-only",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_test/integration/test_agent_platesolver.c",
+      "git_blob": "8ba943a9145c41baa44553de65fc1d15b90efb9c",
+      "line_count": 1198,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-1198"
+      ],
+      "evidence": "native-platesolver.md#test-contracts-inspected-static-only",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_test/integration/test_agent_platesolver_simulator.c",
+      "git_blob": "beb394da96c40971f7804f14a25de6088d24f50a",
+      "line_count": 868,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-868"
+      ],
+      "evidence": "native-platesolver.md#test-contracts-inspected-static-only",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    },
+    {
+      "path": "indigo_test/integration/test_indigo_solver_tool.c",
+      "git_blob": "2704fd37cc7f0b22f0814965ca314ccd1451f59c",
+      "line_count": 595,
+      "stage": "semantic-source-contract-complete",
+      "reviewed_spans": [
+        "1-595"
+      ],
+      "evidence": "native-platesolver.md#test-contracts-inspected-static-only",
+      "limits": "No runtime/platform/image-solving certification; consumers outside assigned scope coordinated with root."
+    }
+  ],
+  "bounded_followup": "NP05 detector geometry failure and NP04 unchanged parity flow crosschecked against current shared consumer API; no decode/solve or huge allocation executed."
+}

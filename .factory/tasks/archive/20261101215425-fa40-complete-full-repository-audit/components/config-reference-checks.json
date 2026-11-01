@@ -1,0 +1,702 @@
+{
+  "source_revision": "f3bb131e4f4b3b9460c85cec1f57c405c2f721d3",
+  "json_xml_parse_errors": [
+    {
+      "path": ".vscode/launch.json",
+      "error": "Expecting property name enclosed in double quotes: line 2 column 5 (char 6)"
+    },
+    {
+      "path": "indigo_test/fixtures/protocol/malformed.json",
+      "error": "Expecting property name enclosed in double quotes: line 2 column 1 (char 57)"
+    }
+  ],
+  "xcode_factory_refs": [],
+  "property_source_notes": [
+    {
+      "line": 515,
+      "text": "Source: `indigo_drivers/agent_alpaca/indigo_agent_alpaca.c`."
+    },
+    {
+      "line": 524,
+      "text": "Source: `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`."
+    },
+    {
+      "line": 536,
+      "text": "Source: `indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c`."
+    },
+    {
+      "line": 550,
+      "text": "Source: `indigo_drivers/agent_config/indigo_agent_config.c`."
+    },
+    {
+      "line": 580,
+      "text": "Source: `indigo_drivers/agent_guider/indigo_agent_guider.c`."
+    },
+    {
+      "line": 615,
+      "text": "Source: `indigo_drivers/agent_imager/indigo_agent_imager.c`."
+    },
+    {
+      "line": 645,
+      "text": "Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`."
+    },
+    {
+      "line": 670,
+      "text": "Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c` and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`."
+    },
+    {
+      "line": 678,
+      "text": "Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`."
+    },
+    {
+      "line": 693,
+      "text": "Source: `indigo_drivers/agent_scripting/indigo_agent_scripting.c`."
+    },
+    {
+      "line": 703,
+      "text": "Source: `indigo_drivers/ao_sx/indigo_ao_sx.c`."
+    },
+    {
+      "line": 709,
+      "text": "Source: `indigo_drivers/aux_alto/indigo_aux_alto.c`."
+    },
+    {
+      "line": 715,
+      "text": "Source: `indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.driver`; generated output in `indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c`."
+    },
+    {
+      "line": 721,
+      "text": "Source: `indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c`."
+    },
+    {
+      "line": 729,
+      "text": "Sources: `indigo_linux_drivers/aux_asiair/indigo_aux_asiair.driver`, `indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c`."
+    },
+    {
+      "line": 739,
+      "text": "Source: `indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.driver`."
+    },
+    {
+      "line": 749,
+      "text": "Sources: `indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.driver`, `indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c`."
+    },
+    {
+      "line": 757,
+      "text": "Sources: `indigo_drivers/aux_dsusb/indigo_aux_dsusb.driver`, `indigo_drivers/aux_dsusb/indigo_aux_dsusb.c`."
+    },
+    {
+      "line": 765,
+      "text": "Source: `indigo_drivers/aux_fbc/indigo_aux_fbc.c`."
+    },
+    {
+      "line": 771,
+      "text": "Source: `indigo_drivers/aux_flatmaster/indigo_aux_flatmaster.c`."
+    },
+    {
+      "line": 779,
+      "text": "Source: `indigo_drivers/aux_flipflat/indigo_aux_flipflat.c`."
+    },
+    {
+      "line": 785,
+      "text": "Source: `indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c`."
+    },
+    {
+      "line": 793,
+      "text": "Source: `indigo_drivers/aux_giotto/indigo_aux_giotto.c`."
+    },
+    {
+      "line": 801,
+      "text": "Source: `indigo_drivers/aux_joystick/indigo_aux_joystick.c`."
+    },
+    {
+      "line": 813,
+      "text": "Source: `indigo_drivers/aux_mgbox/indigo_aux_mgbox.driver` (generated implementation: `indigo_aux_mgbox.c`)."
+    },
+    {
+      "line": 821,
+      "text": "Source: `indigo_drivers/aux_ppb/indigo_aux_ppb.c`."
+    },
+    {
+      "line": 829,
+      "text": "Sources: `indigo_linux_drivers/aux_rpio/indigo_aux_rpio.driver`, `indigo_linux_drivers/aux_rpio/shared/rpio_sysfs.c`."
+    },
+    {
+      "line": 835,
+      "text": "Source: `indigo_drivers/aux_rts/indigo_aux_rts.c`."
+    },
+    {
+      "line": 846,
+      "text": "Source: `indigo_drivers/aux_simulator/indigo_aux_simulator.driver`, `indigo_drivers/aux_simulator/indigo_aux_simulator.c`."
+    },
+    {
+      "line": 852,
+      "text": "Source: `indigo_drivers/aux_skyalert/indigo_aux_skyalert.c`."
+    },
+    {
+      "line": 858,
+      "text": "Source: `indigo_drivers/aux_sqm/indigo_aux_sqm.c`."
+    },
+    {
+      "line": 866,
+      "text": "Source: `indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.c`."
+    },
+    {
+      "line": 874,
+      "text": "Source: `indigo_drivers/aux_uch/indigo_aux_uch.c`."
+    },
+    {
+      "line": 882,
+      "text": "Source: `indigo_drivers/aux_upb/indigo_aux_upb.c`."
+    },
+    {
+      "line": 890,
+      "text": "Source: `indigo_drivers/aux_upb3/indigo_aux_upb3.c`."
+    },
+    {
+      "line": 898,
+      "text": "Source: `indigo_drivers/aux_usbdp/indigo_aux_usbdp.c`."
+    },
+    {
+      "line": 906,
+      "text": "Source: `indigo_drivers/aux_wbplusv3/indigo_aux_wbplusv3.c`."
+    },
+    {
+      "line": 914,
+      "text": "Source: `indigo_drivers/aux_wbprov3/indigo_aux_wbprov3.c`."
+    },
+    {
+      "line": 922,
+      "text": "Source: `indigo_drivers/aux_wcv4ec/indigo_aux_wcv4ec.c`."
+    },
+    {
+      "line": 930,
+      "text": "Source: `indigo_drivers/ccd_asi/indigo_ccd_asi.driver`."
+    },
+    {
+      "line": 938,
+      "text": "Source: `indigo_drivers/ccd_atik/indigo_ccd_atik.driver`."
+    },
+    {
+      "line": 944,
+      "text": "Source: `indigo_drivers/ccd_dsi/indigo_ccd_dsi.c`."
+    },
+    {
+      "line": 956,
+      "text": "Source: `indigo_drivers/ccd_fli/indigo_ccd_fli.driver`."
+    },
+    {
+      "line": 962,
+      "text": "Source: `indigo_drivers/ccd_iidc/indigo_ccd_iidc.driver`."
+    },
+    {
+      "line": 970,
+      "text": "Source: `indigo_linux_drivers/ccd_libcamera/indigo_ccd_libcamera.driver`."
+    },
+    {
+      "line": 976,
+      "text": "Source: `indigo_drivers/ccd_mi/indigo_ccd_mi.driver`."
+    },
+    {
+      "line": 986,
+      "text": "Source: `indigo_drivers/ccd_pentax/indigo_ccd_pentax.c`."
+    },
+    {
+      "line": 994,
+      "text": "Source: `indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver`, generated `indigo_drivers/ccd_playerone/indigo_ccd_playerone.c`."
+    },
+    {
+      "line": 1002,
+      "text": "Source: `indigo_drivers/ccd_ptp/indigo_ccd_ptp.c`, `indigo_drivers/ccd_ptp/indigo_ptp.c`, `indigo_libs/indigo_ccd_driver.c`."
+    },
+    {
+      "line": 1012,
+      "text": "Source: `indigo_drivers/ccd_qhy/indigo_ccd_qhy.driver` and `indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver`, with independently generated C++ implementations in the same directories."
+    },
+    {
+      "line": 1022,
+      "text": "Source: `indigo_drivers/ccd_qsi/indigo_ccd_qsi.driver`."
+    },
+    {
+      "line": 1030,
+      "text": "Source: `indigo_drivers/ccd_sbig/indigo_ccd_sbig.c`."
+    },
+    {
+      "line": 1036,
+      "text": "Source: `indigo_drivers/ccd_ssag/indigo_ccd_ssag.driver`."
+    },
+    {
+      "line": 1044,
+      "text": "Source: `indigo_drivers/ccd_svb/indigo_ccd_svb.driver`."
+    },
+    {
+      "line": 1052,
+      "text": "Source: `indigo_drivers/ccd_sx/indigo_ccd_sx.c`."
+    },
+    {
+      "line": 1060,
+      "text": "Source: `indigo_drivers/ccd_touptek/indigo_ccd_touptek.c`."
+    },
+    {
+      "line": 1066,
+      "text": "Source: `indigo_drivers/ccd_uvc/indigo_ccd_uvc.driver`."
+    },
+    {
+      "line": 1074,
+      "text": "Source: `indigo_drivers/dome_baader/indigo_dome_baader.driver`."
+    },
+    {
+      "line": 1082,
+      "text": "Source: `indigo_drivers/dome_beaver/indigo_dome_beaver.driver`."
+    },
+    {
+      "line": 1092,
+      "text": "Sources: `indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.driver`, `indigo_drivers/aux_dragonfly/shared/dragonfly_shared.c`."
+    },
+    {
+      "line": 1100,
+      "text": "Source: `indigo_drivers/dome_nexdome/indigo_dome_nexdome.driver` (generates `indigo_dome_nexdome.c`)."
+    },
+    {
+      "line": 1108,
+      "text": "Source: `indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.driver` (generates `indigo_dome_nexdome3.c`)."
+    },
+    {
+      "line": 1116,
+      "text": "Source: `indigo_drivers/dome_skyroof/indigo_dome_skyroof.c`."
+    },
+    {
+      "line": 1124,
+      "text": "Source: `indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.driver`."
+    },
+    {
+      "line": 1134,
+      "text": "Source: `indigo_drivers/focuser_asi/indigo_focuser_asi.driver` (generates `indigo_focuser_asi.c`)."
+    },
+    {
+      "line": 1146,
+      "text": "Source: `indigo_drivers/focuser_askar/indigo_focuser_askar.driver` (generates `indigo_focuser_askar.c`)."
+    },
+    {
+      "line": 1154,
+      "text": "Source: `indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.driver`."
+    },
+    {
+      "line": 1162,
+      "text": "Source: `indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.c`."
+    },
+    {
+      "line": 1170,
+      "text": "Source: `indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.c`."
+    },
+    {
+      "line": 1178,
+      "text": "Source: `indigo_drivers/focuser_dsd/indigo_focuser_dsd.driver`."
+    },
+    {
+      "line": 1186,
+      "text": "Source: `indigo_drivers/focuser_efa/indigo_focuser_efa.driver`."
+    },
+    {
+      "line": 1192,
+      "text": "Source: `indigo_drivers/focuser_fc3/indigo_focuser_fc3.c`."
+    },
+    {
+      "line": 1200,
+      "text": "Source: `indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c`."
+    },
+    {
+      "line": 1208,
+      "text": "Source: `indigo_drivers/focuser_fli/indigo_focuser_fli.driver`."
+    },
+    {
+      "line": 1218,
+      "text": "Source: `indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.driver`."
+    },
+    {
+      "line": 1226,
+      "text": "Source: `indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.driver`."
+    },
+    {
+      "line": 1234,
+      "text": "Source: `indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.driver`."
+    },
+    {
+      "line": 1244,
+      "text": "Source: `indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver`."
+    },
+    {
+      "line": 1258,
+      "text": "Source: `indigo_drivers/focuser_lunatico/indigo_focuser_lunatico.driver`, `indigo_drivers/rotator_lunatico/indigo_rotator_lunatico.driver`, `indigo_drivers/focuser_lunatico/shared/lunatico_shared.c`."
+    },
+    {
+      "line": 1266,
+      "text": "Source: `indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver`."
+    },
+    {
+      "line": 1274,
+      "text": "Source: `indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.driver`."
+    },
+    {
+      "line": 1284,
+      "text": "Source: `indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.driver`."
+    },
+    {
+      "line": 1292,
+      "text": "Source: `indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.driver`."
+    },
+    {
+      "line": 1300,
+      "text": "Source: `indigo_drivers/focuser_nstep/indigo_focuser_nstep.driver`."
+    },
+    {
+      "line": 1306,
+      "text": "Source: `indigo_drivers/focuser_optec/indigo_focuser_optec.driver`."
+    },
+    {
+      "line": 1318,
+      "text": "Source: `indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.driver`."
+    },
+    {
+      "line": 1326,
+      "text": "Source: `indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c`."
+    },
+    {
+      "line": 1334,
+      "text": "Source: `indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.driver`."
+    },
+    {
+      "line": 1340,
+      "text": "Source: `indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver`."
+    },
+    {
+      "line": 1348,
+      "text": "Source: `indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.driver`."
+    },
+    {
+      "line": 1358,
+      "text": "Source: `indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.driver`."
+    },
+    {
+      "line": 1366,
+      "text": "Source: `indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.c`."
+    },
+    {
+      "line": 1374,
+      "text": "Source: `indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.driver`."
+    },
+    {
+      "line": 1380,
+      "text": "Source: `indigo_drivers/gps_gpsd/indigo_gps_gpsd.driver`."
+    },
+    {
+      "line": 1388,
+      "text": "Source: `indigo_drivers/gps_nmea/indigo_gps_nmea.c`."
+    },
+    {
+      "line": 1394,
+      "text": "Source: `indigo_drivers/guider_asi/indigo_guider_asi.driver`."
+    },
+    {
+      "line": 1400,
+      "text": "Source: `indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.c`."
+    },
+    {
+      "line": 1406,
+      "text": "Source: `indigo_drivers/guider_gpusb/indigo_guider_gpusb.c`."
+    },
+    {
+      "line": 1414,
+      "text": "Source: `indigo_drivers/mount_asi/indigo_mount_asi.c`."
+    },
+    {
+      "line": 1422,
+      "text": "Source: `indigo_drivers/mount_ioptron/indigo_mount_ioptron.c`."
+    },
+    {
+      "line": 1448,
+      "text": "Source: `indigo_drivers/mount_lx200/indigo_mount_lx200.c`."
+    },
+    {
+      "line": 1454,
+      "text": "Source: `indigo_drivers/mount_mxhd/indigo_mount_mxhd.c`."
+    },
+    {
+      "line": 1466,
+      "text": "Source: `indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver`; generated output in `indigo_drivers/mount_nexstar/indigo_mount_nexstar.c`."
+    },
+    {
+      "line": 1472,
+      "text": "Source: `indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.c`."
+    },
+    {
+      "line": 1480,
+      "text": "Source: `indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver`; generated output in `indigo_drivers/mount_pmc8/indigo_mount_pmc8.c`."
+    },
+    {
+      "line": 1494,
+      "text": "Source: `indigo_drivers/mount_rainbow/indigo_mount_rainbow.c`."
+    },
+    {
+      "line": 1502,
+      "text": "Source: `indigo_drivers/mount_starbook/indigo_mount_starbook.driver`."
+    },
+    {
+      "line": 1510,
+      "text": "Source: `indigo_drivers/mount_synscan/indigo_mount_synscan.c`."
+    },
+    {
+      "line": 1518,
+      "text": "Source: `indigo_drivers/mount_temma/indigo_mount_temma.c`."
+    },
+    {
+      "line": 1528,
+      "text": "Sources: `indigo_drivers/rotator_asi/indigo_rotator_asi.driver`, generated `indigo_drivers/rotator_asi/indigo_rotator_asi.c`."
+    },
+    {
+      "line": 1534,
+      "text": "Source: `indigo_drivers/rotator_falcon/indigo_rotator_falcon.c`."
+    },
+    {
+      "line": 1542,
+      "text": "Source: `indigo_drivers/rotator_optec/indigo_rotator_optec.driver`; generated output in `indigo_drivers/rotator_optec/indigo_rotator_optec.c`."
+    },
+    {
+      "line": 1550,
+      "text": "Source: `indigo_drivers/rotator_wa/indigo_rotator_wa.driver`; generated output in `indigo_drivers/rotator_wa/indigo_rotator_wa.c`."
+    },
+    {
+      "line": 1584,
+      "text": "Sources: `indigo_drivers/system_alpaca/indigo_system_alpaca.c`, `indigo_drivers/system_alpaca/indigo_system_alpaca_private.h`, `indigo_drivers/system_alpaca/indigo_system_alpaca_ccd.c`, `indigo_drivers/system_alpaca/indigo_system_alpaca_mount.c`, `indigo_drivers/system_alpaca/indigo_system_alpaca_guider.c`, `indigo_drivers/system_alpaca/indigo_syst"
+    },
+    {
+      "line": 1592,
+      "text": "Source: `indigo_drivers/system_ascol/indigo_system_ascol.c`."
+    },
+    {
+      "line": 1602,
+      "text": "Source: `indigo_drivers/wheel_asi/indigo_wheel_asi.c`."
+    },
+    {
+      "line": 1610,
+      "text": "Source: `indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.driver` and generated `indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.c`."
+    },
+    {
+      "line": 1616,
+      "text": "Source: `indigo_drivers/wheel_atik/indigo_wheel_atik.c`."
+    },
+    {
+      "line": 1624,
+      "text": "Source: `indigo_drivers/wheel_fli/indigo_wheel_fli.driver`."
+    },
+    {
+      "line": 1630,
+      "text": "Source: `indigo_drivers/wheel_indigo/indigo_wheel_indigo.c`."
+    },
+    {
+      "line": 1636,
+      "text": "Source: `indigo_drivers/wheel_manual/indigo_wheel_manual.c`."
+    },
+    {
+      "line": 1644,
+      "text": "Source: `indigo_drivers/wheel_mi/indigo_wheel_mi.driver`."
+    },
+    {
+      "line": 1650,
+      "text": "Source: `indigo_drivers/wheel_optec/indigo_wheel_optec.c`."
+    },
+    {
+      "line": 1658,
+      "text": "Source: `indigo_drivers/wheel_playerone/indigo_wheel_playerone.driver`, generated `indigo_drivers/wheel_playerone/indigo_wheel_playerone.c`."
+    },
+    {
+      "line": 1666,
+      "text": "Source: `indigo_drivers/wheel_qhy/indigo_wheel_qhy.c`."
+    },
+    {
+      "line": 1672,
+      "text": "Source: `indigo_drivers/wheel_quantum/indigo_wheel_quantum.c`."
+    },
+    {
+      "line": 1678,
+      "text": "Source: `indigo_drivers/wheel_sx/indigo_wheel_sx.c`."
+    },
+    {
+      "line": 1684,
+      "text": "Source: `indigo_drivers/wheel_trutek/indigo_wheel_trutek.c`."
+    },
+    {
+      "line": 1690,
+      "text": "Source: `indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.c`."
+    }
+  ],
+  "literal_link_candidates": [
+    {
+      "path": "HOME.md",
+      "target": "Introduction%20to%20INDIGO.pdf"
+    },
+    {
+      "path": "HOME.md",
+      "target": "INDI-COMPARISON.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "MAKEFILE.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "PROTOCOLS.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "PROPERTIES.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "PROPERTY_MANIPULATION.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "DEVELOPMENT.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "INDIGO_SERVER_AND_DRIVERS_GUIDE.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "DRIVER_DEVELOPMENT_BASICS.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "CLIENT_DEVELOPMENT_BASICS.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "INDIGO_AGENTS.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_imager/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_mount/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_guider/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_auxiliary/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_astrometry/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../obsoleted_drivers/agent_astap/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_config/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_scripting/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../indigo_drivers/agent_alpaca/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../obsoleted_drivers/agent_snoop/README.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "INDIGO_RAW_IMAGE_FORMAT.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "CCD_DRIVER_SAVED_IMAGES.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "PROPERTIES.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "PROPERTY_MANIPULATION.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "SCRIPTING_BASICS.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "MULTI_INSTANCE_SUPPORT.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "IMAGING_AF_TUNING.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "POLAR_ALIGNMENT.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "PLATE_SOLVING.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "GUIDING_MISCONCEPTIONS.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "GUIDING_PI_CONTROLLER_TUNING.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../CHANGELOG.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../TODO.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../AUTHORS.md"
+    },
+    {
+      "path": "HOME.md",
+      "target": "../LICENSE.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_GENERATOR_BASICS.md",
+      "target": "../indigo_drivers/AGENTS.override.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_GENERATOR_BASICS.md",
+      "target": "../indigo_drivers/AGENTS.override.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_TESTING_BASICS.md",
+      "target": "../indigo_drivers/AGENTS.override.md"
+    },
+    {
+      "path": "indigo_docs/DRIVER_TESTING_BASICS.md",
+      "target": "../indigo_drivers/AGENTS.override.md"
+    }
+  ]
+}

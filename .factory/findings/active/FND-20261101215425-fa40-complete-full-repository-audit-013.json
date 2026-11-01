@@ -1,0 +1,19 @@
+{
+  "title": "RPi ROI control membership compares iterators from different temporary maps",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "GetControls returns its ControlInfoMap by value, but ROI code compares find from one temporary with end from another. That is not a valid same-container membership test and can select unsupported ScalerCrop instead of the full-frame fallback. Store one local map and compare its own iterators; test a camera profile lacking the control. No platform runtime executed. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp:516,1499; components/drivers-a.md item5",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-013"
+}

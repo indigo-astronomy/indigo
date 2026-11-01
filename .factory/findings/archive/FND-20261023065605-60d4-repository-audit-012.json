@@ -2,7 +2,7 @@
   "title": "Repository review routine retains obsolete findings storage instructions",
   "category": "quality",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261023065605-60d4-repository-audit",
       "report": "independent-review.md",
       "revision": null
+    },
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
     }
   ],
   "summary": "The routine prescribes global FND-NNNNNN allocation and findings/active.json although current canonical findings.md uses task-scoped per-record storage. Next: reconcile the procedural prose without changing the registry or audit gates.",
   "evidence": ".factory/routines/repository-review.md:41,43",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Already-merged policy commit6e2b8aa12ab3692f2295f174bba044f98ad2c273 corrects origin-task allocation and per-record active/ storage; current source independently reverified by this full audit, components/coordinator.md and components/final-coverage-review.md. No source change in this reinspection.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023065605-60d4-repository-audit-012"
 }

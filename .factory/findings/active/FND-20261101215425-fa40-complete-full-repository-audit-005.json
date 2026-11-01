@@ -1,0 +1,19 @@
+{
+  "title": "Documented macOS bootstrap executes unauthenticated HTTP sources",
+  "category": "security",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The documented bootstrap downloads GNU sources over plain HTTP without pinned authentication/integrity, executes configure/make and invokes sudo make install. A network intermediary can replace executable source. Use authenticated initial transport and verified artifact authenticity/integrity in a private workspace with fail-fast checks. Independently confirmed from source; no download or external probe, no risk acceptance. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "tools/cltools.sh:23,35,47; README.md cltools reference; components/tools-tests.md item5 and components/security-review.md",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-005"
+}

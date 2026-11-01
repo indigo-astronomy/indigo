@@ -1,0 +1,19 @@
+{
+  "title": "Sky v2 updater installs the wrong package for advertised 3.x versions",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The helper advertises indigo3 versions but install-version always requests indigo=VERSION, so a version available only for the intended3.x package cannot install. Preserve and allowlist package identity with the selected version; add synthetic apt argument regressions for both channels. No apt command ran. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "tools/rpi_ctrl_v2.sh:533-546; Makefile:45-55,283; components/tools-tests.md item4",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-004"
+}

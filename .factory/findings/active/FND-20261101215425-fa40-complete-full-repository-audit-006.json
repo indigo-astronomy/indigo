@@ -1,0 +1,19 @@
+{
+  "title": "Falcon motion publishes ALERT while still moving and occupies the handler queue",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "After an accepted MD move and settle delay falcon_move sets ALERT, then FD progress updates publish it while FR can still report moving. The synchronous polling loop holds the queue for up to120s, delaying queued disconnect; asynchronous abort flag remains serviced. Keep BUSY until bounded finalizer completion and preserve abort/disconnect ownership; add healthy-progress/timeout/disconnect cases. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver:158-188; components/drivers-b.md B01",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-006"
+}

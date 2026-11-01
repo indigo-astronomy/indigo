@@ -1,0 +1,23 @@
+{
+  "reviewed_revision": "f3bb131e4f4b3b9460c85cec1f57c405c2f721d3",
+  "maintained_paths": 2295,
+  "excluded_paths": 7051,
+  "component_ledgers": [
+    "drivers-a-coverage.json",
+    "drivers-b-coverage.json",
+    "tools-tests-coverage.json",
+    "ptp-pentax-coverage.json",
+    "native-platesolver-coverage.json",
+    "core-image-coverage.json",
+    "coordinator-coverage.json"
+  ],
+  "mandatory_source_scope_gaps": [],
+  "source_scope_verdict": "pass",
+  "post_inspection_metadata_changes": [
+    "24 new canonical finding records",
+    "Verified closure of existing60d4-012 without source edit",
+    "Project current full-audit snapshot",
+    "Task reports and durable full-audit completion"
+  ],
+  "runtime_limits": "No new application/image/driver hardware/Linux/Windows execution; no dependency internals/scientific truth/formal all-branch proof."
+}

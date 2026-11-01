@@ -1,0 +1,19 @@
+{
+  "title": "WeMacro Bluetooth valid zero batch count underflows the encoded count",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "COUNT advertises a minimum0 but the accepted batch encodes (uint32_t)count-1, turning0 into UINT32_MAX. This contradicts the bounded step-count contract and portable sibling minimum1. Set a correct minimum or define safe zero semantics before transmission and test zero/minimum/maximum encoding. Device execution was not measured. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:337,438; components/drivers-b.md B03",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-008"
+}

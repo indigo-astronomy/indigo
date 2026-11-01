@@ -1,0 +1,174 @@
+{
+  "version": 2,
+  "task": "20261101215425-fa40-complete-full-repository-audit",
+  "scope": [
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-*.json",
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-012.json",
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-012.json",
+    ".factory/project.md",
+    ".factory/completions/20261101215425-fa40-complete-full-repository-audit.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101215425-fa40-complete-full-repository-audit.json": [
+      "100644",
+      "blob",
+      "cc723d5937f1293a39c8397db17647e8a748101c"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-012.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "2325bfb67240511a1a07fcec9438df400d618dc2"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "536f42c27e4aff6e2c7f382b52c67217e271cf63"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-003.json": [
+      "100644",
+      "blob",
+      "00b124425a39e97f0fdf880756005d75f3d35fe3"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-004.json": [
+      "100644",
+      "blob",
+      "6426c4fbf2f3afdedc32db74b7c0bc82c723db6e"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-005.json": [
+      "100644",
+      "blob",
+      "2d769f3a6092f424b22fcc3496ac48b71bcfd5ca"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-006.json": [
+      "100644",
+      "blob",
+      "fee53a4428cc85dc4d552e739a72ccbaf5936ebf"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-007.json": [
+      "100644",
+      "blob",
+      "3a6bbc011ef696f325df4c79aa2356e43cc5c61e"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-008.json": [
+      "100644",
+      "blob",
+      "5e20097cae1ba7630f593388071c7076397393b6"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-009.json": [
+      "100644",
+      "blob",
+      "c46bd7e2ba93107e2918f02075e7616571931dee"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-010.json": [
+      "100644",
+      "blob",
+      "81991586b6a989b037329f97b393f0c1bc0ddfbd"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "eb34f464a5af09e1678583921b04e3c45dac08dd"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-012.json": [
+      "100644",
+      "blob",
+      "026274f2e71b36c2166ee5a3d1766607883534fa"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-013.json": [
+      "100644",
+      "blob",
+      "bc4eeeb694a19b116f4dd94d6e4efcc72f0d89cd"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-014.json": [
+      "100644",
+      "blob",
+      "54aab8624d857711ca0fbf308f1336563eea4ec4"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-015.json": [
+      "100644",
+      "blob",
+      "63d9536819685ceff0a89cf42e0b386835dda261"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-016.json": [
+      "100644",
+      "blob",
+      "a9028063a396c94df1382154d7b0bc0b2d2e911b"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-017.json": [
+      "100644",
+      "blob",
+      "3aba261d99a9934a61e4957804f7adb353abe222"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-018.json": [
+      "100644",
+      "blob",
+      "242edcf98a20c1a975974a6bb993abc467eca196"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-019.json": [
+      "100644",
+      "blob",
+      "faf2f9d5df8fe0bdcaaa597dffea22b068ff2ba3"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-020.json": [
+      "100644",
+      "blob",
+      "5d781862597aa6e40031d435dd0c59b9e7b8b75d"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-021.json": [
+      "100644",
+      "blob",
+      "89daa19adbc7ec267bdc66bb1085256f60ae5753"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-022.json": [
+      "100644",
+      "blob",
+      "b4e27fb05c65e0e16c3583c8cc5528b30d8de8c8"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-023.json": [
+      "100644",
+      "blob",
+      "e4c0a0cac26ea179b39ead6fb27cc4200241a467"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-024.json": [
+      "100644",
+      "blob",
+      "af210f37fa528988681c73997efa8f6a80506d15"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-012.json": [
+      "100644",
+      "blob",
+      "58e113bfc4a6aaf9564ca94910be2d2c63671f96"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "5308671b69369b7b4e936fcea4ba0f5735595e28"
+    ]
+  }
+}

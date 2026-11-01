@@ -1,0 +1,19 @@
+{
+  "title": "Wi-Fi client password guards execute text and continue destructive changes",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "Invalid password guards invoke a quoted message as a command instead of __ALERT. Exact isolated-function stubs show password x writes configuration/disables or deletes the old connection and returns OK despite command-not-found. Reject invalid length before mutations and test lower/upper bounds plus valid controls. No network/service/reboot was executed. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "tools/rpi_ctrl.sh:449-450; tools/rpi_ctrl_v2.sh:450-451; components/tools-tests.md item3",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-003"
+}

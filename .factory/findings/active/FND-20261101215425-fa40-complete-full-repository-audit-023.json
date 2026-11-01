@@ -1,0 +1,19 @@
+{
+  "title": "Public native solver header reverses the returned parity convention",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The public compute_center comment calls parity+1 normal/east-left and-1 mirrored, while implementation, helper convention, WCS assignment and independent CD-matrix assertion use+1mirror/east-right and-1sky/east-left. No wrapper flips the sign. Correct the header to match the actual public result and retained README convention; no algorithm or image-solving change required. Next: coordinator assigns focused remediation and relevant verification.",
+  "evidence": "indigo_drivers/agent_platesolver/indigo_solver.h:132-135; indigo_solver.c:1586-1593; indigo_solver_utils.c:95-98; components/native-platesolver.md NP04",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-023"
+}

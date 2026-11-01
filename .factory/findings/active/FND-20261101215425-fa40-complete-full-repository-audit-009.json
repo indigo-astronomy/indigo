@@ -1,0 +1,19 @@
+{
+  "title": "Astromechanics accepts malformed measurement replies as valid sky brightness",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "Any positive section read is converted by indigo_atod without complete numeric parse validation; garbage newline becomes0 and OK, and numeric-prefix junk becomes a plausible reading. Validate complete finite device payloads and preserve previous data/ALERT on corruption; add fake serial malformed-reply checks. This concerns transport input, not framework property input. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver:71-75; components/drivers-a.md item1",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-009"
+}

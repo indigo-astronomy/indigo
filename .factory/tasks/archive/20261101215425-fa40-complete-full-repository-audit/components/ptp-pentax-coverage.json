@@ -1,0 +1,293 @@
+{
+  "revision": "f3bb131e4f4b3b9460c85cec1f57c405c2f721d3",
+  "prior_review_revision": "9d45bc8ccadaf0c3aab6c454c38429fec21d1699",
+  "prior_review": ".factory/tasks/archive/20261024121920-3bd2-repository-audit/driver-ac-report.md deep closure wave and driver-ac-coverage.json",
+  "files": [
+    {
+      "path": "indigo_drivers/ccd_pentax/README.md",
+      "current_blob": "6b8c120bfb81faa283814647774864d0b776053a",
+      "sha256": "4cccf918222367a852ec1f2b6b0a0d121fb86cc84ef4134252b94b50cabe230a",
+      "prior_identity_equal": false,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c",
+      "current_blob": "8036ce27b6631100240860f528e509a80d69fae0",
+      "sha256": "b7b78630bfeb2855891ec1450885e5dd9d53736e9132bdf000ee3c4584651830",
+      "prior_identity_equal": false,
+      "treatment": "Complete current authored transport/capture/ownership/control/parser bodies reviewed plus prior qualified AC deep semantic closure",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.h",
+      "current_blob": "3c002ea0dac84767525562898172a3fc699dca45",
+      "sha256": "af0e25fea4de02a85c7fee07ff122e12e0df9aeef2c15749f4a4bd1dc237aded",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_pentax/indigo_ccd_pentax_main.c",
+      "current_blob": "1b5e1230bc6acfd01c45e5810c4c87f93625c9ec",
+      "sha256": "7313bc9bfcfc84624a264b18b0b2ea2db0664b772aa8994a483c0f50302f0b6e",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/Makefile",
+      "current_blob": "3bd7f20efe194b6bb8b2370acc63402aaac3456d",
+      "sha256": "f22d4109bf62136665e9dce89d3dc45e985cf0f5f464f34fa35cda15ea36ba47",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/README.md",
+      "current_blob": "3dd3ce0d45c81cb2c4fb6a52ac28c8d9a0a1788b",
+      "sha256": "10b3affadc3ff4751b1ffd33a53134bba9e2d77e438aff76df25231fa0c471e6",
+      "prior_identity_equal": false,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.c",
+      "current_blob": "3009f132c1643b06b67d2203ae018b9cc5d12ab8",
+      "sha256": "31b4c5820e10b297555b7f8fb6c0c10116f33789c0386c75dc3ba59c82e14ae1",
+      "prior_identity_equal": false,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.h",
+      "current_blob": "d182a642b7b79c5d49e83a376ee21e524f9113f0",
+      "sha256": "26daef1b51802e91c29e9793d5f1d914dfec668c84544ea0898b5ddd1c0a4b36",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp.m",
+      "current_blob": "4247c47bf6dcecbf62d7807f6bdfff80252a6756",
+      "sha256": "3c96e026636f6de58150b41795506346d55c678550cc9dc268e6733c6d0a500d",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ccd_ptp_main.c",
+      "current_blob": "c5f67e03f6b6e65be79a03b2978edf91471fd342",
+      "sha256": "ea70e33d5638c3ea3a3e66de65a70f341c31fb85bc1998f8306d74c34b7a048c",
+      "prior_identity_equal": true,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp.c",
+      "current_blob": "6179b13b60c08ac61f8e4daedf6527e8ada6a6cc",
+      "sha256": "49a372d3d0f5d5b412cf81dc8d67da82fe3c34b035d4a758849a3030819c7ebf",
+      "prior_identity_equal": false,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp.h",
+      "current_blob": "973fd8d49485aa38a386ac70f79dc6e291082c38",
+      "sha256": "34bfad282e6c32252127aa16d0defbf51974fa13fb8dbaeab15fec4ee2e373bd",
+      "prior_identity_equal": false,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp.m",
+      "current_blob": "f5790bdb481600b3b4cabc45ad8a0a4ab1800d25",
+      "sha256": "bd1efb63d0e0d9bb7f34562ce7ff1b7b61272c6796c14f0de9bed89f5ec229a1",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.c",
+      "current_blob": "1e750ff4194ff96daa068dad5dea4ca122c57916",
+      "sha256": "9984b5fa8da2e89a6bc84600530fbf896f2a29a1bdf29998b50fc6efbbae0205",
+      "prior_identity_equal": false,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.h",
+      "current_blob": "291f10898a7819d4e0e06e34e1515d105dc36d4c",
+      "sha256": "1fbf45eba56865cd4fdd594ba9e8fba6ba217ae39c13d27af4044d0c3ba8c24a",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_canon.m",
+      "current_blob": "6ad59254b464a7247bd346c4a9db75c7274ae4f1",
+      "sha256": "1b84fea3d3fb636af7fbc7a3aad7596c212edf4de8e1812f3f8ccf76a7187189",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c",
+      "current_blob": "fc69f7baeb7b44dc0718f74a9b79895ea6a6d6c9",
+      "sha256": "57e61879e85aac0f249d2192558f5d216775180f3ac5a15456a16254255ef973",
+      "prior_identity_equal": false,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.h",
+      "current_blob": "12a1c8a58ec3129414cd69b0b937909a0cfe4752",
+      "sha256": "e44648c309fb5bc414bc9d66eb79bd577c8cf941bbbda5a0fa877b91d936b217",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_fuji.m",
+      "current_blob": "82b1aebed17ab04f3371380c1d918fdda54b231b",
+      "sha256": "49f04a4c20af8a6af233589c700f7f068c9bcb5577f6ed3e16660c7f4017e27b",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_ica.h",
+      "current_blob": "4981ff13f67aeb260dfaab8f30c37a26782baa89",
+      "sha256": "98136263a25ff303f614c84a8c53999381e6d83b37d7644db0f8b9711c1b8067",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.c",
+      "current_blob": "52584d167046db9b5df0c3775f82cdbbc64b1a67",
+      "sha256": "bdcfbfb9ad5408192fbb85c9fd3611b6ff87cc968dd3fcabed37280e2d1635a4",
+      "prior_identity_equal": false,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.h",
+      "current_blob": "dcbfb188ddb908caae7655118a4f4ba5ae158da5",
+      "sha256": "21c7903f3e54a5232f4253484e0ed0864188afbe6bba93942becbd25f14ecf27",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_nikon.m",
+      "current_blob": "21f606491b9d8f832addaebfe1aaee4b534d8288",
+      "sha256": "07720390acb531d972642ddc1891e9e3100acafb8aa36b32cc9cdfc0c3717154",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.c",
+      "current_blob": "7110ece18b75a3a888c0ac86065d694fd7a10fa0",
+      "sha256": "517c88410c4baaef0ac3d3b2e399b76db67b441b370dd7153b7c2a176b4c0474",
+      "prior_identity_equal": false,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.h",
+      "current_blob": "d035c87d82ab668314143cd6c37571df0159b227",
+      "sha256": "611f02c6eed4e9073f7be2132c93ddcdf48cfa4fa7e1e5e31552708c676708ea",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_olympus.m",
+      "current_blob": "8dd668d9b055be24ace4f0ec1589a40813b32f69",
+      "sha256": "7314aae1223e31356b72c64a22af38b594c012c1583e9530ebacb39421e6e363",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.c",
+      "current_blob": "8c8159aeaf212245ba5abee3354c0e266c55963e",
+      "sha256": "91fd72cc5b642c2f3245f09514a863a47dec6a2f1f485097c5ec682dbfd4909c",
+      "prior_identity_equal": false,
+      "treatment": "Prior qualified AC deep semantic closure plus complete changed executable hunks and affected consumer contracts",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.h",
+      "current_blob": "1f25a02570376775d0b0301329edb7d88d858ef1",
+      "sha256": "b48dbd20495c71ebf5ccbe8a0b60eee8e8ada2067dd579ba064f1096d8f63815",
+      "prior_identity_equal": false,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/indigo_ptp_sony.m",
+      "current_blob": "cf24e4b842d3b4b203faec7dca2ee6b3c39e1eca",
+      "sha256": "5a81088511fd7e77abc107eae401c510b868dfc2f554ca91d19fe8dd90656810",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_drivers/ccd_ptp/ptp_camera_model.h",
+      "current_blob": "5a4de323756a3d2a9494113ac4f4df9a5bc6ca0d",
+      "sha256": "66ab6520bb92091e6ee04956ff634f4dcdb5e3c92f0dc9db2bf39dfc35c18d1c",
+      "prior_identity_equal": true,
+      "treatment": "ABI/wrapper/model mapping/build/documentation contract review; no vendor SDK or hardware certification",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_test/integration/test_ccd_pentax_usb.c",
+      "current_blob": "1d5b6670db871e75a7cf8c6a56d43e0e5e34e7e5",
+      "sha256": "07c8505e1e55f002e29742b056467e96a86e5494225ff2cef0158a7f99ca40c6",
+      "prior_identity_equal": false,
+      "treatment": "Suite lifecycle/fixture/registration/public assertion and current changed behavior contract review; prior repair evidence attributable, no new execution",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_test/integration/test_ccd_ptp_sdk.c",
+      "current_blob": "5734101f7dbd0633b01fb1eb6c79980462a2e853",
+      "sha256": "3989dd95dade46bcd193057bde9b364f9f0216c2520c3e9df07a50d93b42d08c",
+      "prior_identity_equal": false,
+      "treatment": "Suite lifecycle/fixture/registration/public assertion and current changed behavior contract review; prior repair evidence attributable, no new execution",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_test/integration/test_ccd_ptp_ica.m",
+      "current_blob": "1b0d7c47437498e1aaf21c788f6c9c5d7026a785",
+      "sha256": "a01157eccd79db4182220fb3f73d38d247f6cc208373de6114ae2cdc3c8dcd0a",
+      "prior_identity_equal": true,
+      "treatment": "Suite lifecycle/fixture/registration/public assertion and current changed behavior contract review; prior repair evidence attributable, no new execution",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_test/hardware/test_ccd_pentax_hw.c",
+      "current_blob": "f6d99cdb82ada5f53585cec6f9e494cda40b40df",
+      "sha256": "0532e0c8142db31a1536d4f346c9ff32592fb5ace1ba882024a62dc9232daf55",
+      "prior_identity_equal": false,
+      "treatment": "Suite lifecycle/fixture/registration/public assertion and current changed behavior contract review; prior repair evidence attributable, no new execution",
+      "evidence": "ptp-pentax.md"
+    },
+    {
+      "path": "indigo_test/hardware/test_ccd_ptp_hw.c",
+      "current_blob": "5d57980a9a198f3a9ff76d963599a652495db1c7",
+      "sha256": "0bcf9f17010895ab962fdf2333c01b2d237023b67a7dca0596133d00e0b907d4",
+      "prior_identity_equal": false,
+      "treatment": "Suite lifecycle/fixture/registration/public assertion and current changed behavior contract review; prior repair evidence attributable, no new execution",
+      "evidence": "ptp-pentax.md"
+    }
+  ],
+  "mandatory_source_scope_gaps": [],
+  "runtime_limits": [
+    "No hardware, image recognition or new suite execution.",
+    "Existing fake USB/ICA and Pentax repair logs are retained historical evidence, not current retests.",
+    "Camera timing/firmware/model mapping correctness, platform execution and residual known malformed-reply reads remain unverified."
+  ]
+}

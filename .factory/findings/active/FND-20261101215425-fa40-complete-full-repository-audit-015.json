@@ -1,0 +1,19 @@
+{
+  "title": "Andor enumeration exceeds the eight-device storage capacity",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The SDK count controls init/shutdown loops indexing devices[8] without a capacity bound; nine enumerated cameras can access outside the array. Cap before allocation and every array loop, ignoring/rejecting excess devices, then test with a fake SDK count9. Distinct from existing Andor mutex findings000019/000020. Local SDK/device prerequisite; no remote exploit or hardware execution claimed. Next action: coordinator assigns a focused repair and relevant regression.",
+  "evidence": "indigo_optional_drivers/ccd_andor/indigo_ccd_andor.c:1434-1435,1480-1574; components/drivers-a.md item6; components/security-review.md",
+  "resolution": null,
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-015"
+}
