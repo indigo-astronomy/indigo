@@ -1,0 +1,8 @@
+{
+  "MIGRATION_STATUS.md": "884b43f9448b68d3961975496e50a8da8590c2ff",
+  "TEST_SUMMARY.md": "5356d430596df77abf3fbce5254eaf8cf73d4a54",
+  "indigo_drivers/rotator_asi/README.md": "04add4351615f06c9567b0c07cc5065888cfcf01",
+  "indigo_drivers/rotator_asi/indigo_rotator_asi.c": "0daaa127fb40e30b39fc207987b2bb6008513d2a",
+  "indigo_drivers/rotator_asi/indigo_rotator_asi.driver": "50fb299a3f8acc97036c172e5c8f3287d3838d56",
+  "indigo_test/integration/test_rotator_asi_sdk.c": "81c78155b7ab3d9f4072ae7ece2c7d247f4a3830"
+}

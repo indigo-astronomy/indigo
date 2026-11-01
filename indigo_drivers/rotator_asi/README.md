@@ -36,4 +36,4 @@ Driver is developed and tested with:
 
 ## Testing
 
-- 2026-10-11 02:34 3.0.0.10 mac arm64 fake SDK 11/11 OK
+- 2026-11-01 21:20 3.0.0.11 mac arm64 fake SDK 17/17 OK

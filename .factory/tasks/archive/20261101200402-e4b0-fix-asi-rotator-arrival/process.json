@@ -1,0 +1,85 @@
+{
+  "version": 2,
+  "task": "20261101200402-e4b0-fix-asi-rotator-arrival",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo_drivers/rotator_asi/README.md",
+    "indigo_drivers/rotator_asi/indigo_rotator_asi.c",
+    "indigo_drivers/rotator_asi/indigo_rotator_asi.driver",
+    "indigo_test/integration/test_rotator_asi_sdk.c",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-012.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-012.json",
+    ".factory/completions/20261101200402-e4b0-fix-asi-rotator-arrival.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101200402-e4b0-fix-asi-rotator-arrival.json": [
+      "100644",
+      "blob",
+      "45c365d45c18544799fe92a4a626b79ee8f90b3c"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-012.json": null,
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-012.json": [
+      "100644",
+      "blob",
+      "1856b55f932251fa68f217b5c4d559f2f91279b3"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "884b43f9448b68d3961975496e50a8da8590c2ff"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "5356d430596df77abf3fbce5254eaf8cf73d4a54"
+    ],
+    "indigo_drivers/rotator_asi/README.md": [
+      "100644",
+      "blob",
+      "04add4351615f06c9567b0c07cc5065888cfcf01"
+    ],
+    "indigo_drivers/rotator_asi/indigo_rotator_asi.c": [
+      "100644",
+      "blob",
+      "0daaa127fb40e30b39fc207987b2bb6008513d2a"
+    ],
+    "indigo_drivers/rotator_asi/indigo_rotator_asi.driver": [
+      "100644",
+      "blob",
+      "50fb299a3f8acc97036c172e5c8f3287d3838d56"
+    ],
+    "indigo_test/integration/test_rotator_asi_sdk.c": [
+      "100644",
+      "blob",
+      "81c78155b7ab3d9f4072ae7ece2c7d247f4a3830"
+    ]
+  }
+}

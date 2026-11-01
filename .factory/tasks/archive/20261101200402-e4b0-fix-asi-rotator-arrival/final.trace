@@ -1,0 +1,1278 @@
+metadata, schema and repeated connection | CAAGetSDKVersion
+metadata, schema and repeated connection | CAAGetProductIDs output=NULL count=1
+metadata, schema and repeated connection | CAAGetProductIDs output=array count=1
+metadata, schema and repeated connection | CAAGetNum count=1
+metadata, schema and repeated connection | CAAGetID index=0 id=0 output=4
+metadata, schema and repeated connection | SDK op=0 id=0 fail=0 handle=0
+metadata, schema and repeated connection | SDK op=1 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetProperty id=0 output=72
+metadata, schema and repeated connection | CAAClose id=0
+metadata, schema and repeated connection | CAAGetSDKVersion
+metadata, schema and repeated connection | STATE CONNECTION 2
+metadata, schema and repeated connection | CAAGetNum count=1
+metadata, schema and repeated connection | CAAGetID index=0 id=0 output=4
+metadata, schema and repeated connection | SDK op=0 id=0 fail=0 handle=0
+metadata, schema and repeated connection | CAAGetMaxDegree id=0 value=360 output=4
+metadata, schema and repeated connection | SDK op=7 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetDegree id=0 value=10 output=4
+metadata, schema and repeated connection | SDK op=2 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetReverse id=0 value=0 output=1
+metadata, schema and repeated connection | SDK op=9 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetBeep id=0 value=0 output=1
+metadata, schema and repeated connection | SDK op=11 id=0 fail=0 handle=1
+metadata, schema and repeated connection | STATE CONNECTION 1
+metadata, schema and repeated connection | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+metadata, schema and repeated connection | SDK op=3 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetDegree id=0 value=10 output=4
+metadata, schema and repeated connection | SDK op=2 id=0 fail=0 handle=1
+metadata, schema and repeated connection | STATE CONNECTION 2
+metadata, schema and repeated connection | SDK op=6 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAClose id=0
+metadata, schema and repeated connection | STATE CONNECTION 1
+metadata, schema and repeated connection | STATE CONNECTION 2
+metadata, schema and repeated connection | CAAGetNum count=1
+metadata, schema and repeated connection | CAAGetID index=0 id=0 output=4
+metadata, schema and repeated connection | SDK op=0 id=0 fail=0 handle=0
+metadata, schema and repeated connection | CAAGetMaxDegree id=0 value=360 output=4
+metadata, schema and repeated connection | SDK op=7 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetDegree id=0 value=10 output=4
+metadata, schema and repeated connection | SDK op=2 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetReverse id=0 value=0 output=1
+metadata, schema and repeated connection | SDK op=9 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetBeep id=0 value=0 output=1
+metadata, schema and repeated connection | SDK op=11 id=0 fail=0 handle=1
+metadata, schema and repeated connection | STATE CONNECTION 1
+metadata, schema and repeated connection | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+metadata, schema and repeated connection | SDK op=3 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetDegree id=0 value=10 output=4
+metadata, schema and repeated connection | SDK op=2 id=0 fail=0 handle=1
+metadata, schema and repeated connection | STATE CONNECTION 2
+metadata, schema and repeated connection | SDK op=6 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAClose id=0
+metadata, schema and repeated connection | STATE CONNECTION 1
+metadata, schema and repeated connection | STATE CONNECTION 2
+metadata, schema and repeated connection | CAAGetNum count=1
+metadata, schema and repeated connection | CAAGetID index=0 id=0 output=4
+metadata, schema and repeated connection | SDK op=0 id=0 fail=0 handle=0
+metadata, schema and repeated connection | CAAGetMaxDegree id=0 value=360 output=4
+metadata, schema and repeated connection | SDK op=7 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetDegree id=0 value=10 output=4
+metadata, schema and repeated connection | SDK op=2 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetReverse id=0 value=0 output=1
+metadata, schema and repeated connection | SDK op=9 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetBeep id=0 value=0 output=1
+metadata, schema and repeated connection | SDK op=11 id=0 fail=0 handle=1
+metadata, schema and repeated connection | STATE CONNECTION 1
+metadata, schema and repeated connection | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+metadata, schema and repeated connection | SDK op=3 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAGetDegree id=0 value=10 output=4
+metadata, schema and repeated connection | SDK op=2 id=0 fail=0 handle=1
+metadata, schema and repeated connection | STATE CONNECTION 2
+metadata, schema and repeated connection | SDK op=6 id=0 fail=0 handle=1
+metadata, schema and repeated connection | CAAClose id=0
+metadata, schema and repeated connection | STATE CONNECTION 1
+failed initialization releases SDK | CAAGetSDKVersion
+failed initialization releases SDK | CAAGetProductIDs output=NULL count=1
+failed initialization releases SDK | CAAGetProductIDs output=array count=1
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | SDK op=1 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetProperty id=0 output=72
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | CAAGetSDKVersion
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=1 handle=0
+failed initialization releases SDK | STATE CONNECTION 3
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+failed initialization releases SDK | SDK op=3 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=1 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 3
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+failed initialization releases SDK | SDK op=3 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=1 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 3
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+failed initialization releases SDK | SDK op=3 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=1 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 3
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+failed initialization releases SDK | SDK op=3 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=1 handle=1
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 3
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | CAAGetNum count=1
+failed initialization releases SDK | CAAGetID index=0 id=0 output=4
+failed initialization releases SDK | SDK op=0 id=0 fail=0 handle=0
+failed initialization releases SDK | CAAGetMaxDegree id=0 value=360 output=4
+failed initialization releases SDK | SDK op=7 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetReverse id=0 value=0 output=1
+failed initialization releases SDK | SDK op=9 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetBeep id=0 value=0 output=1
+failed initialization releases SDK | SDK op=11 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 1
+failed initialization releases SDK | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+failed initialization releases SDK | SDK op=3 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAGetDegree id=0 value=10 output=4
+failed initialization releases SDK | SDK op=2 id=0 fail=0 handle=1
+failed initialization releases SDK | STATE CONNECTION 2
+failed initialization releases SDK | SDK op=6 id=0 fail=0 handle=1
+failed initialization releases SDK | CAAClose id=0
+failed initialization releases SDK | STATE CONNECTION 1
+fractional absolute/relative motion and overlap | CAAGetSDKVersion
+fractional absolute/relative motion and overlap | CAAGetProductIDs output=NULL count=1
+fractional absolute/relative motion and overlap | CAAGetProductIDs output=array count=1
+fractional absolute/relative motion and overlap | CAAGetNum count=1
+fractional absolute/relative motion and overlap | CAAGetID index=0 id=0 output=4
+fractional absolute/relative motion and overlap | SDK op=0 id=0 fail=0 handle=0
+fractional absolute/relative motion and overlap | SDK op=1 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetProperty id=0 output=72
+fractional absolute/relative motion and overlap | CAAClose id=0
+fractional absolute/relative motion and overlap | CAAGetSDKVersion
+fractional absolute/relative motion and overlap | STATE CONNECTION 2
+fractional absolute/relative motion and overlap | CAAGetNum count=1
+fractional absolute/relative motion and overlap | CAAGetID index=0 id=0 output=4
+fractional absolute/relative motion and overlap | SDK op=0 id=0 fail=0 handle=0
+fractional absolute/relative motion and overlap | CAAGetMaxDegree id=0 value=360 output=4
+fractional absolute/relative motion and overlap | SDK op=7 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=10 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetReverse id=0 value=0 output=1
+fractional absolute/relative motion and overlap | SDK op=9 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetBeep id=0 value=0 output=1
+fractional absolute/relative motion and overlap | SDK op=11 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE CONNECTION 1
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=10 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 2 actual=10 target=123.25
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=10 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAMoveTo id=0 value=123.25
+fractional absolute/relative motion and overlap | SDK op=4 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 2
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=1 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=123.25 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 2 actual=123.25 target=123.25
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=123.25 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 1 actual=123.25 target=123.25
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 1
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 2
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=123.25 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAMoveTo id=0 value=100
+fractional absolute/relative motion and overlap | SDK op=4 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 2 actual=123.25 target=100
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=100 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 1 actual=100 target=100
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 1
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 2
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=100 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAMoveTo id=0 value=112.5
+fractional absolute/relative motion and overlap | SDK op=4 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 2 actual=100 target=112.5
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=112.5 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 1 actual=112.5 target=112.5
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 1
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 2
+fractional absolute/relative motion and overlap | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+fractional absolute/relative motion and overlap | SDK op=3 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAGetDegree id=0 value=112.5 output=4
+fractional absolute/relative motion and overlap | SDK op=2 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | STATE ROTATOR_POSITION 3 actual=112.5 target=112.5
+fractional absolute/relative motion and overlap | STATE ROTATOR_RELATIVE_MOVE 3
+fractional absolute/relative motion and overlap | STATE CONNECTION 2
+fractional absolute/relative motion and overlap | SDK op=6 id=0 fail=0 handle=1
+fractional absolute/relative motion and overlap | CAAClose id=0
+fractional absolute/relative motion and overlap | STATE CONNECTION 1
+move/status/position failures and polling recovery | CAAGetSDKVersion
+move/status/position failures and polling recovery | CAAGetProductIDs output=NULL count=1
+move/status/position failures and polling recovery | CAAGetProductIDs output=array count=1
+move/status/position failures and polling recovery | CAAGetNum count=1
+move/status/position failures and polling recovery | CAAGetID index=0 id=0 output=4
+move/status/position failures and polling recovery | SDK op=0 id=0 fail=0 handle=0
+move/status/position failures and polling recovery | SDK op=1 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetProperty id=0 output=72
+move/status/position failures and polling recovery | CAAClose id=0
+move/status/position failures and polling recovery | CAAGetSDKVersion
+move/status/position failures and polling recovery | STATE CONNECTION 2
+move/status/position failures and polling recovery | CAAGetNum count=1
+move/status/position failures and polling recovery | CAAGetID index=0 id=0 output=4
+move/status/position failures and polling recovery | SDK op=0 id=0 fail=0 handle=0
+move/status/position failures and polling recovery | CAAGetMaxDegree id=0 value=360 output=4
+move/status/position failures and polling recovery | SDK op=7 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetReverse id=0 value=0 output=1
+move/status/position failures and polling recovery | SDK op=9 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetBeep id=0 value=0 output=1
+move/status/position failures and polling recovery | SDK op=11 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE CONNECTION 1
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 2 actual=10 target=50
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAMoveTo id=0 value=50
+move/status/position failures and polling recovery | SDK op=4 id=0 fail=1 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 3 actual=10 target=50
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 3
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 2 actual=10 target=50
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAMoveTo id=0 value=50
+move/status/position failures and polling recovery | SDK op=4 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 2
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=1 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=1 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 3 actual=10 target=50
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 3
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 2 actual=10 target=60
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=1 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 2 actual=10 target=50
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 2
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 3 actual=10 target=50
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 3
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 2 actual=10 target=50
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAMoveTo id=0 value=50
+move/status/position failures and polling recovery | SDK op=4 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 2
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=1 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=1 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 3 actual=10 target=50
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 3
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 2 actual=10 target=60
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=1 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 2 actual=10 target=50
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 2
+move/status/position failures and polling recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+move/status/position failures and polling recovery | SDK op=3 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAGetDegree id=0 value=10 output=4
+move/status/position failures and polling recovery | SDK op=2 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | STATE ROTATOR_POSITION 3 actual=10 target=50
+move/status/position failures and polling recovery | STATE ROTATOR_RELATIVE_MOVE 3
+move/status/position failures and polling recovery | STATE CONNECTION 2
+move/status/position failures and polling recovery | SDK op=6 id=0 fail=0 handle=1
+move/status/position failures and polling recovery | CAAClose id=0
+move/status/position failures and polling recovery | STATE CONNECTION 1
+sync command and readback failures | CAAGetSDKVersion
+sync command and readback failures | CAAGetProductIDs output=NULL count=1
+sync command and readback failures | CAAGetProductIDs output=array count=1
+sync command and readback failures | CAAGetNum count=1
+sync command and readback failures | CAAGetID index=0 id=0 output=4
+sync command and readback failures | SDK op=0 id=0 fail=0 handle=0
+sync command and readback failures | SDK op=1 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetProperty id=0 output=72
+sync command and readback failures | CAAClose id=0
+sync command and readback failures | CAAGetSDKVersion
+sync command and readback failures | STATE CONNECTION 2
+sync command and readback failures | CAAGetNum count=1
+sync command and readback failures | CAAGetID index=0 id=0 output=4
+sync command and readback failures | SDK op=0 id=0 fail=0 handle=0
+sync command and readback failures | CAAGetMaxDegree id=0 value=360 output=4
+sync command and readback failures | SDK op=7 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=10 output=4
+sync command and readback failures | SDK op=2 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetReverse id=0 value=0 output=1
+sync command and readback failures | SDK op=9 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetBeep id=0 value=0 output=1
+sync command and readback failures | SDK op=11 id=0 fail=0 handle=1
+sync command and readback failures | STATE CONNECTION 1
+sync command and readback failures | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+sync command and readback failures | SDK op=3 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=10 output=4
+sync command and readback failures | SDK op=2 id=0 fail=0 handle=1
+sync command and readback failures | STATE ROTATOR_POSITION 2 actual=10 target=25.5
+sync command and readback failures | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+sync command and readback failures | SDK op=3 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=10 output=4
+sync command and readback failures | SDK op=2 id=0 fail=0 handle=1
+sync command and readback failures | CAACurDegree id=0 value=25.5
+sync command and readback failures | SDK op=5 id=0 fail=1 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=10 output=4
+sync command and readback failures | SDK op=2 id=0 fail=0 handle=1
+sync command and readback failures | STATE ROTATOR_POSITION 3 actual=10 target=25.5
+sync command and readback failures | STATE ROTATOR_RELATIVE_MOVE 3
+sync command and readback failures | STATE ROTATOR_POSITION 2 actual=10 target=25.5
+sync command and readback failures | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+sync command and readback failures | SDK op=3 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=10 output=4
+sync command and readback failures | SDK op=2 id=0 fail=0 handle=1
+sync command and readback failures | CAACurDegree id=0 value=25.5
+sync command and readback failures | SDK op=5 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=25.5 output=4
+sync command and readback failures | SDK op=2 id=0 fail=1 handle=1
+sync command and readback failures | STATE ROTATOR_POSITION 3 actual=10 target=25.5
+sync command and readback failures | STATE ROTATOR_POSITION 2 actual=10 target=35.75
+sync command and readback failures | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+sync command and readback failures | SDK op=3 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=25.5 output=4
+sync command and readback failures | SDK op=2 id=0 fail=0 handle=1
+sync command and readback failures | CAACurDegree id=0 value=35.75
+sync command and readback failures | SDK op=5 id=0 fail=0 handle=1
+sync command and readback failures | CAAGetDegree id=0 value=35.75 output=4
+sync command and readback failures | SDK op=2 id=0 fail=0 handle=1
+sync command and readback failures | STATE ROTATOR_POSITION 1 actual=35.75 target=35.75
+sync command and readback failures | STATE ROTATOR_RELATIVE_MOVE 1
+sync command and readback failures | STATE CONNECTION 2
+sync command and readback failures | SDK op=6 id=0 fail=0 handle=1
+sync command and readback failures | CAAClose id=0
+sync command and readback failures | STATE CONNECTION 1
+abort confirmation and hand controller | CAAGetSDKVersion
+abort confirmation and hand controller | CAAGetProductIDs output=NULL count=1
+abort confirmation and hand controller | CAAGetProductIDs output=array count=1
+abort confirmation and hand controller | CAAGetNum count=1
+abort confirmation and hand controller | CAAGetID index=0 id=0 output=4
+abort confirmation and hand controller | SDK op=0 id=0 fail=0 handle=0
+abort confirmation and hand controller | SDK op=1 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetProperty id=0 output=72
+abort confirmation and hand controller | CAAClose id=0
+abort confirmation and hand controller | CAAGetSDKVersion
+abort confirmation and hand controller | STATE CONNECTION 2
+abort confirmation and hand controller | CAAGetNum count=1
+abort confirmation and hand controller | CAAGetID index=0 id=0 output=4
+abort confirmation and hand controller | SDK op=0 id=0 fail=0 handle=0
+abort confirmation and hand controller | CAAGetMaxDegree id=0 value=360 output=4
+abort confirmation and hand controller | SDK op=7 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=10 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetReverse id=0 value=0 output=1
+abort confirmation and hand controller | SDK op=9 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetBeep id=0 value=0 output=1
+abort confirmation and hand controller | SDK op=11 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE CONNECTION 1
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=10 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_POSITION 2 actual=10 target=70
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=10 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAMoveTo id=0 value=70
+abort confirmation and hand controller | SDK op=4 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_RELATIVE_MOVE 2
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 2
+abort confirmation and hand controller | SDK op=6 id=0 fail=1 handle=1
+abort confirmation and hand controller | CAAIsMoving id=0 motor=1 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=10 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 3
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 2
+abort confirmation and hand controller | SDK op=6 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=30 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_POSITION 3 actual=30 target=70
+abort confirmation and hand controller | STATE ROTATOR_RELATIVE_MOVE 3
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 1
+abort confirmation and hand controller | STATE ROTATOR_POSITION 2 actual=30 target=75
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=30 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAMoveTo id=0 value=75
+abort confirmation and hand controller | SDK op=4 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_RELATIVE_MOVE 2
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=75 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_POSITION 1 actual=75 target=75
+abort confirmation and hand controller | STATE ROTATOR_RELATIVE_MOVE 1
+abort confirmation and hand controller | STATE ROTATOR_POSITION 2 actual=75 target=80
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=1 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_POSITION 2 actual=75 target=75
+abort confirmation and hand controller | STATE ROTATOR_RELATIVE_MOVE 2
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 2
+abort confirmation and hand controller | SDK op=6 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=1 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=75 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 3
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=35 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_POSITION 3 actual=35 target=75
+abort confirmation and hand controller | STATE ROTATOR_RELATIVE_MOVE 3
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 2
+abort confirmation and hand controller | SDK op=6 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+abort confirmation and hand controller | SDK op=3 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAGetDegree id=0 value=35 output=4
+abort confirmation and hand controller | SDK op=2 id=0 fail=0 handle=1
+abort confirmation and hand controller | STATE ROTATOR_ABORT_MOTION 1
+abort confirmation and hand controller | STATE CONNECTION 2
+abort confirmation and hand controller | SDK op=6 id=0 fail=0 handle=1
+abort confirmation and hand controller | CAAClose id=0
+abort confirmation and hand controller | STATE CONNECTION 1
+limits, settings, persistence and reconnect | CAAGetSDKVersion
+limits, settings, persistence and reconnect | CAAGetProductIDs output=NULL count=1
+limits, settings, persistence and reconnect | CAAGetProductIDs output=array count=1
+limits, settings, persistence and reconnect | CAAGetNum count=1
+limits, settings, persistence and reconnect | CAAGetID index=0 id=0 output=4
+limits, settings, persistence and reconnect | SDK op=0 id=0 fail=0 handle=0
+limits, settings, persistence and reconnect | SDK op=1 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetProperty id=0 output=72
+limits, settings, persistence and reconnect | CAAClose id=0
+limits, settings, persistence and reconnect | CAAGetSDKVersion
+limits, settings, persistence and reconnect | STATE CONNECTION 2
+limits, settings, persistence and reconnect | CAAGetNum count=1
+limits, settings, persistence and reconnect | CAAGetID index=0 id=0 output=4
+limits, settings, persistence and reconnect | SDK op=0 id=0 fail=0 handle=0
+limits, settings, persistence and reconnect | CAAGetMaxDegree id=0 value=360 output=4
+limits, settings, persistence and reconnect | SDK op=7 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetDegree id=0 value=10 output=4
+limits, settings, persistence and reconnect | SDK op=2 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetReverse id=0 value=0 output=1
+limits, settings, persistence and reconnect | SDK op=9 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetBeep id=0 value=0 output=1
+limits, settings, persistence and reconnect | SDK op=11 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | STATE CONNECTION 1
+limits, settings, persistence and reconnect | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+limits, settings, persistence and reconnect | SDK op=3 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetDegree id=0 value=10 output=4
+limits, settings, persistence and reconnect | SDK op=2 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAASetMaxDegree id=0 value=200.5
+limits, settings, persistence and reconnect | SDK op=8 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetMaxDegree id=0 value=200.5 output=4
+limits, settings, persistence and reconnect | SDK op=7 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAASetMaxDegree id=0 value=250
+limits, settings, persistence and reconnect | SDK op=8 id=0 fail=1 handle=1
+limits, settings, persistence and reconnect | CAAGetMaxDegree id=0 value=200.5 output=4
+limits, settings, persistence and reconnect | SDK op=7 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAASetMaxDegree id=0 value=250
+limits, settings, persistence and reconnect | SDK op=8 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetMaxDegree id=0 value=250 output=4
+limits, settings, persistence and reconnect | SDK op=7 id=0 fail=1 handle=1
+limits, settings, persistence and reconnect | STATE ROTATOR_POSITION 2 actual=10 target=220
+limits, settings, persistence and reconnect | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+limits, settings, persistence and reconnect | SDK op=3 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | STATE ROTATOR_POSITION 3 actual=10 target=220
+limits, settings, persistence and reconnect | STATE ROTATOR_RELATIVE_MOVE 3
+limits, settings, persistence and reconnect | CAASetReverse id=0 value=1
+limits, settings, persistence and reconnect | SDK op=10 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAASetBeep id=0 value=1
+limits, settings, persistence and reconnect | SDK op=12 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAASetReverse id=0 value=0
+limits, settings, persistence and reconnect | SDK op=10 id=0 fail=1 handle=1
+limits, settings, persistence and reconnect | CAASetBeep id=0 value=0
+limits, settings, persistence and reconnect | SDK op=12 id=0 fail=1 handle=1
+limits, settings, persistence and reconnect | STATE CONNECTION 2
+limits, settings, persistence and reconnect | SDK op=6 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAClose id=0
+limits, settings, persistence and reconnect | STATE CONNECTION 1
+limits, settings, persistence and reconnect | STATE CONNECTION 2
+limits, settings, persistence and reconnect | CAAGetNum count=1
+limits, settings, persistence and reconnect | CAAGetID index=0 id=0 output=4
+limits, settings, persistence and reconnect | SDK op=0 id=0 fail=0 handle=0
+limits, settings, persistence and reconnect | CAAGetMaxDegree id=0 value=250 output=4
+limits, settings, persistence and reconnect | SDK op=7 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetDegree id=0 value=10 output=4
+limits, settings, persistence and reconnect | SDK op=2 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetReverse id=0 value=1 output=1
+limits, settings, persistence and reconnect | SDK op=9 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetBeep id=0 value=1 output=1
+limits, settings, persistence and reconnect | SDK op=11 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | STATE CONNECTION 1
+limits, settings, persistence and reconnect | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+limits, settings, persistence and reconnect | SDK op=3 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAGetDegree id=0 value=10 output=4
+limits, settings, persistence and reconnect | SDK op=2 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | STATE CONNECTION 2
+limits, settings, persistence and reconnect | SDK op=6 id=0 fail=0 handle=1
+limits, settings, persistence and reconnect | CAAClose id=0
+limits, settings, persistence and reconnect | STATE CONNECTION 1
+suffix boundaries and rollback | CAAGetSDKVersion
+suffix boundaries and rollback | CAAGetProductIDs output=NULL count=1
+suffix boundaries and rollback | CAAGetProductIDs output=array count=1
+suffix boundaries and rollback | CAAGetNum count=1
+suffix boundaries and rollback | CAAGetID index=0 id=0 output=4
+suffix boundaries and rollback | SDK op=0 id=0 fail=0 handle=0
+suffix boundaries and rollback | SDK op=1 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAAGetProperty id=0 output=72
+suffix boundaries and rollback | CAAClose id=0
+suffix boundaries and rollback | CAAGetSDKVersion
+suffix boundaries and rollback | STATE CONNECTION 2
+suffix boundaries and rollback | CAAGetNum count=1
+suffix boundaries and rollback | CAAGetID index=0 id=0 output=4
+suffix boundaries and rollback | SDK op=0 id=0 fail=0 handle=0
+suffix boundaries and rollback | CAAGetMaxDegree id=0 value=360 output=4
+suffix boundaries and rollback | SDK op=7 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAAGetDegree id=0 value=10 output=4
+suffix boundaries and rollback | SDK op=2 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAAGetReverse id=0 value=0 output=1
+suffix boundaries and rollback | SDK op=9 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAAGetBeep id=0 value=0 output=1
+suffix boundaries and rollback | SDK op=11 id=0 fail=0 handle=1
+suffix boundaries and rollback | STATE CONNECTION 1
+suffix boundaries and rollback | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+suffix boundaries and rollback | SDK op=3 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAAGetDegree id=0 value=10 output=4
+suffix boundaries and rollback | SDK op=2 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAASetID id=0 bytes=8
+suffix boundaries and rollback | SDK op=13 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAASetID id=0 bytes=8
+suffix boundaries and rollback | SDK op=13 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAASetID id=0 bytes=8
+suffix boundaries and rollback | SDK op=13 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAASetID id=0 bytes=8
+suffix boundaries and rollback | SDK op=13 id=0 fail=1 handle=1
+suffix boundaries and rollback | STATE CONNECTION 2
+suffix boundaries and rollback | SDK op=6 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAAClose id=0
+suffix boundaries and rollback | STATE CONNECTION 1
+suffix boundaries and rollback | CAAGetNum count=1
+suffix boundaries and rollback | CAAGetID index=0 id=0 output=4
+suffix boundaries and rollback | SDK op=0 id=0 fail=0 handle=0
+suffix boundaries and rollback | SDK op=1 id=0 fail=0 handle=1
+suffix boundaries and rollback | CAAGetProperty id=0 output=72
+suffix boundaries and rollback | CAAClose id=0
+suffix boundaries and rollback | CAAGetSDKVersion
+disconnect/unplug with pending polling | CAAGetSDKVersion
+disconnect/unplug with pending polling | CAAGetProductIDs output=NULL count=1
+disconnect/unplug with pending polling | CAAGetProductIDs output=array count=1
+disconnect/unplug with pending polling | CAAGetNum count=1
+disconnect/unplug with pending polling | CAAGetID index=0 id=0 output=4
+disconnect/unplug with pending polling | SDK op=0 id=0 fail=0 handle=0
+disconnect/unplug with pending polling | SDK op=1 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetProperty id=0 output=72
+disconnect/unplug with pending polling | CAAClose id=0
+disconnect/unplug with pending polling | CAAGetSDKVersion
+disconnect/unplug with pending polling | STATE CONNECTION 2
+disconnect/unplug with pending polling | CAAGetNum count=1
+disconnect/unplug with pending polling | CAAGetID index=0 id=0 output=4
+disconnect/unplug with pending polling | SDK op=0 id=0 fail=0 handle=0
+disconnect/unplug with pending polling | CAAGetMaxDegree id=0 value=360 output=4
+disconnect/unplug with pending polling | SDK op=7 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetDegree id=0 value=10 output=4
+disconnect/unplug with pending polling | SDK op=2 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetReverse id=0 value=0 output=1
+disconnect/unplug with pending polling | SDK op=9 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetBeep id=0 value=0 output=1
+disconnect/unplug with pending polling | SDK op=11 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | STATE CONNECTION 1
+disconnect/unplug with pending polling | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+disconnect/unplug with pending polling | SDK op=3 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetDegree id=0 value=10 output=4
+disconnect/unplug with pending polling | SDK op=2 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | STATE ROTATOR_POSITION 2 actual=10 target=100
+disconnect/unplug with pending polling | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+disconnect/unplug with pending polling | SDK op=3 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetDegree id=0 value=10 output=4
+disconnect/unplug with pending polling | SDK op=2 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAMoveTo id=0 value=100
+disconnect/unplug with pending polling | SDK op=4 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | STATE ROTATOR_RELATIVE_MOVE 2
+disconnect/unplug with pending polling | STATE CONNECTION 2
+disconnect/unplug with pending polling | SDK op=6 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAClose id=0
+disconnect/unplug with pending polling | STATE CONNECTION 1
+disconnect/unplug with pending polling | STATE CONNECTION 2
+disconnect/unplug with pending polling | CAAGetNum count=1
+disconnect/unplug with pending polling | CAAGetID index=0 id=0 output=4
+disconnect/unplug with pending polling | SDK op=0 id=0 fail=0 handle=0
+disconnect/unplug with pending polling | CAAGetMaxDegree id=0 value=360 output=4
+disconnect/unplug with pending polling | SDK op=7 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetDegree id=0 value=10 output=4
+disconnect/unplug with pending polling | SDK op=2 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetReverse id=0 value=0 output=1
+disconnect/unplug with pending polling | SDK op=9 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetBeep id=0 value=0 output=1
+disconnect/unplug with pending polling | SDK op=11 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | STATE CONNECTION 1
+disconnect/unplug with pending polling | CAAIsMoving id=0 motor=1 hand=0 output=1+1
+disconnect/unplug with pending polling | SDK op=3 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetDegree id=0 value=10 output=4
+disconnect/unplug with pending polling | SDK op=2 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | STATE ROTATOR_POSITION 2 actual=10 target=10
+disconnect/unplug with pending polling | STATE ROTATOR_RELATIVE_MOVE 2
+disconnect/unplug with pending polling | SDK op=6 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAClose id=0
+disconnect/unplug with pending polling | STATE CONNECTION 1
+disconnect/unplug with pending polling | CAAGetNum count=1
+disconnect/unplug with pending polling | CAAGetID index=0 id=0 output=4
+disconnect/unplug with pending polling | SDK op=0 id=0 fail=0 handle=0
+disconnect/unplug with pending polling | SDK op=1 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetProperty id=0 output=72
+disconnect/unplug with pending polling | CAAClose id=0
+disconnect/unplug with pending polling | CAAGetSDKVersion
+disconnect/unplug with pending polling | STATE CONNECTION 2
+disconnect/unplug with pending polling | CAAGetNum count=1
+disconnect/unplug with pending polling | CAAGetID index=0 id=0 output=4
+disconnect/unplug with pending polling | SDK op=0 id=0 fail=0 handle=0
+disconnect/unplug with pending polling | CAAGetMaxDegree id=0 value=360 output=4
+disconnect/unplug with pending polling | SDK op=7 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetDegree id=0 value=10 output=4
+disconnect/unplug with pending polling | SDK op=2 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetReverse id=0 value=0 output=1
+disconnect/unplug with pending polling | SDK op=9 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetBeep id=0 value=0 output=1
+disconnect/unplug with pending polling | SDK op=11 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | STATE CONNECTION 1
+disconnect/unplug with pending polling | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+disconnect/unplug with pending polling | SDK op=3 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAGetDegree id=0 value=10 output=4
+disconnect/unplug with pending polling | SDK op=2 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | STATE CONNECTION 2
+disconnect/unplug with pending polling | SDK op=6 id=0 fail=0 handle=1
+disconnect/unplug with pending polling | CAAClose id=0
+disconnect/unplug with pending polling | STATE CONNECTION 1
+discovery failures, capacity and multi-device removal | CAAGetSDKVersion
+discovery failures, capacity and multi-device removal | CAAGetProductIDs output=NULL count=1
+discovery failures, capacity and multi-device removal | CAAGetProductIDs output=array count=1
+discovery failures, capacity and multi-device removal | CAAGetNum count=1
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=0 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=0 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=0
+discovery failures, capacity and multi-device removal | CAAGetSDKVersion
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=-1 output=4
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=-2 output=4
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=128 output=4
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=1 fail=1 handle=0
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=1 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=1 fail=1 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=1 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=1
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=1 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=1 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=1 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=1
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=1 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=1 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=1 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=1
+discovery failures, capacity and multi-device removal | CAAGetSDKVersion
+discovery failures, capacity and multi-device removal | CAAGetNum count=2
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | CAAGetNum count=3
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=2 id=2 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=2 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=2 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=2 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=2
+discovery failures, capacity and multi-device removal | CAAGetSDKVersion
+discovery failures, capacity and multi-device removal | CAAGetNum count=4
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=2 id=2 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=3 id=3 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=3 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=3 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=3 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=3
+discovery failures, capacity and multi-device removal | CAAGetSDKVersion
+discovery failures, capacity and multi-device removal | CAAGetNum count=5
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=2 id=2 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=3 id=3 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=4 id=4 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=4 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=4 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=4 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=4
+discovery failures, capacity and multi-device removal | CAAGetSDKVersion
+discovery failures, capacity and multi-device removal | CAAGetNum count=6
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=2 id=2 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=3 id=3 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=4 id=4 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=5 id=5 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=5 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=5 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=5 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=5
+discovery failures, capacity and multi-device removal | CAAGetNum count=6
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=2 id=-1 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=3 id=3 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=4 id=4 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=5 id=5 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=5 fail=0 handle=0
+discovery failures, capacity and multi-device removal | SDK op=1 id=5 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetProperty id=5 output=72
+discovery failures, capacity and multi-device removal | CAAClose id=5
+discovery failures, capacity and multi-device removal | CAAGetSDKVersion
+discovery failures, capacity and multi-device removal | STATE CONNECTION 2
+discovery failures, capacity and multi-device removal | CAAGetNum count=6
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=0 fail=0 handle=0
+discovery failures, capacity and multi-device removal | CAAGetMaxDegree id=0 value=360 output=4
+discovery failures, capacity and multi-device removal | SDK op=7 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetDegree id=0 value=10 output=4
+discovery failures, capacity and multi-device removal | SDK op=2 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetReverse id=0 value=0 output=1
+discovery failures, capacity and multi-device removal | SDK op=9 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetBeep id=0 value=0 output=1
+discovery failures, capacity and multi-device removal | SDK op=11 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | STATE CONNECTION 1
+discovery failures, capacity and multi-device removal | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+discovery failures, capacity and multi-device removal | SDK op=3 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetDegree id=0 value=10 output=4
+discovery failures, capacity and multi-device removal | SDK op=2 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | STATE CONNECTION 2
+discovery failures, capacity and multi-device removal | CAAGetNum count=6
+discovery failures, capacity and multi-device removal | CAAGetID index=0 id=0 output=4
+discovery failures, capacity and multi-device removal | CAAGetID index=1 id=1 output=4
+discovery failures, capacity and multi-device removal | SDK op=0 id=1 fail=0 handle=0
+discovery failures, capacity and multi-device removal | CAAGetMaxDegree id=1 value=360 output=4
+discovery failures, capacity and multi-device removal | SDK op=7 id=1 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetDegree id=1 value=10 output=4
+discovery failures, capacity and multi-device removal | SDK op=2 id=1 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetReverse id=1 value=0 output=1
+discovery failures, capacity and multi-device removal | SDK op=9 id=1 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAGetBeep id=1 value=0 output=1
+discovery failures, capacity and multi-device removal | SDK op=11 id=1 fail=0 handle=1
+discovery failures, capacity and multi-device removal | STATE CONNECTION 1
+discovery failures, capacity and multi-device removal | SDK op=6 id=1 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAClose id=1
+discovery failures, capacity and multi-device removal | STATE CONNECTION 1
+discovery failures, capacity and multi-device removal | STATE CONNECTION 2
+discovery failures, capacity and multi-device removal | SDK op=6 id=0 fail=0 handle=1
+discovery failures, capacity and multi-device removal | CAAClose id=0
+discovery failures, capacity and multi-device removal | STATE CONNECTION 1
+unplug queued during SDK probe | CAAGetSDKVersion
+unplug queued during SDK probe | CAAGetProductIDs output=NULL count=1
+unplug queued during SDK probe | CAAGetProductIDs output=array count=1
+unplug queued during SDK probe | CAAGetNum count=1
+unplug queued during SDK probe | CAAGetID index=0 id=0 output=4
+unplug queued during SDK probe | SDK op=0 id=0 fail=0 handle=0
+unplug queued during SDK probe | SDK op=1 id=0 fail=0 handle=1
+unplug queued during SDK probe | CAAGetProperty id=0 output=72
+unplug queued during SDK probe | CAAClose id=0
+unplug queued during SDK probe | CAAGetSDKVersion
+unplug queued during SDK probe | CAAGetNum count=2
+unplug queued during SDK probe | CAAGetID index=0 id=0 output=4
+unplug queued during SDK probe | CAAGetID index=1 id=1 output=4
+unplug queued during SDK probe | SDK op=0 id=1 fail=0 handle=0
+unplug queued during SDK probe | SDK op=1 id=1 fail=0 handle=1
+unplug queued during SDK probe | CAAGetProperty id=1 output=72
+unplug queued during SDK probe | CAAClose id=1
+unplug queued during SDK probe | CAAGetSDKVersion
+stopped short absolute and recovery | CAAGetSDKVersion
+stopped short absolute and recovery | CAAGetProductIDs output=NULL count=1
+stopped short absolute and recovery | CAAGetProductIDs output=array count=1
+stopped short absolute and recovery | CAAGetNum count=1
+stopped short absolute and recovery | CAAGetID index=0 id=0 output=4
+stopped short absolute and recovery | SDK op=0 id=0 fail=0 handle=0
+stopped short absolute and recovery | SDK op=1 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetProperty id=0 output=72
+stopped short absolute and recovery | CAAClose id=0
+stopped short absolute and recovery | CAAGetSDKVersion
+stopped short absolute and recovery | STATE CONNECTION 2
+stopped short absolute and recovery | CAAGetNum count=1
+stopped short absolute and recovery | CAAGetID index=0 id=0 output=4
+stopped short absolute and recovery | SDK op=0 id=0 fail=0 handle=0
+stopped short absolute and recovery | CAAGetMaxDegree id=0 value=360 output=4
+stopped short absolute and recovery | SDK op=7 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetDegree id=0 value=10 output=4
+stopped short absolute and recovery | SDK op=2 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetReverse id=0 value=0 output=1
+stopped short absolute and recovery | SDK op=9 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetBeep id=0 value=0 output=1
+stopped short absolute and recovery | SDK op=11 id=0 fail=0 handle=1
+stopped short absolute and recovery | STATE CONNECTION 1
+stopped short absolute and recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short absolute and recovery | SDK op=3 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetDegree id=0 value=10 output=4
+stopped short absolute and recovery | SDK op=2 id=0 fail=0 handle=1
+stopped short absolute and recovery | STATE ROTATOR_POSITION 2 actual=10 target=90
+stopped short absolute and recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short absolute and recovery | SDK op=3 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetDegree id=0 value=10 output=4
+stopped short absolute and recovery | SDK op=2 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAMoveTo id=0 value=90
+stopped short absolute and recovery | SDK op=4 id=0 fail=0 handle=1
+stopped short absolute and recovery | STATE ROTATOR_RELATIVE_MOVE 2
+stopped short absolute and recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short absolute and recovery | SDK op=3 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetDegree id=0 value=30 output=4
+stopped short absolute and recovery | SDK op=2 id=0 fail=0 handle=1
+stopped short absolute and recovery | STATE ROTATOR_POSITION 3 actual=30 target=90
+stopped short absolute and recovery | STATE ROTATOR_RELATIVE_MOVE 3
+stopped short absolute and recovery | STATE ROTATOR_POSITION 2 actual=30 target=70
+stopped short absolute and recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short absolute and recovery | SDK op=3 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetDegree id=0 value=30 output=4
+stopped short absolute and recovery | SDK op=2 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAMoveTo id=0 value=70
+stopped short absolute and recovery | SDK op=4 id=0 fail=0 handle=1
+stopped short absolute and recovery | STATE ROTATOR_RELATIVE_MOVE 2
+stopped short absolute and recovery | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short absolute and recovery | SDK op=3 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAGetDegree id=0 value=70 output=4
+stopped short absolute and recovery | SDK op=2 id=0 fail=0 handle=1
+stopped short absolute and recovery | STATE ROTATOR_POSITION 1 actual=70 target=70
+stopped short absolute and recovery | STATE ROTATOR_RELATIVE_MOVE 1
+stopped short absolute and recovery | STATE CONNECTION 2
+stopped short absolute and recovery | SDK op=6 id=0 fail=0 handle=1
+stopped short absolute and recovery | CAAClose id=0
+stopped short absolute and recovery | STATE CONNECTION 1
+stopped short relative preserves target | CAAGetSDKVersion
+stopped short relative preserves target | CAAGetProductIDs output=NULL count=1
+stopped short relative preserves target | CAAGetProductIDs output=array count=1
+stopped short relative preserves target | CAAGetNum count=1
+stopped short relative preserves target | CAAGetID index=0 id=0 output=4
+stopped short relative preserves target | SDK op=0 id=0 fail=0 handle=0
+stopped short relative preserves target | SDK op=1 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAGetProperty id=0 output=72
+stopped short relative preserves target | CAAClose id=0
+stopped short relative preserves target | CAAGetSDKVersion
+stopped short relative preserves target | STATE CONNECTION 2
+stopped short relative preserves target | CAAGetNum count=1
+stopped short relative preserves target | CAAGetID index=0 id=0 output=4
+stopped short relative preserves target | SDK op=0 id=0 fail=0 handle=0
+stopped short relative preserves target | CAAGetMaxDegree id=0 value=360 output=4
+stopped short relative preserves target | SDK op=7 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAGetDegree id=0 value=10 output=4
+stopped short relative preserves target | SDK op=2 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAGetReverse id=0 value=0 output=1
+stopped short relative preserves target | SDK op=9 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAGetBeep id=0 value=0 output=1
+stopped short relative preserves target | SDK op=11 id=0 fail=0 handle=1
+stopped short relative preserves target | STATE CONNECTION 1
+stopped short relative preserves target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short relative preserves target | SDK op=3 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAGetDegree id=0 value=10 output=4
+stopped short relative preserves target | SDK op=2 id=0 fail=0 handle=1
+stopped short relative preserves target | STATE ROTATOR_RELATIVE_MOVE 2
+stopped short relative preserves target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short relative preserves target | SDK op=3 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAGetDegree id=0 value=10 output=4
+stopped short relative preserves target | SDK op=2 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAMoveTo id=0 value=30
+stopped short relative preserves target | SDK op=4 id=0 fail=0 handle=1
+stopped short relative preserves target | STATE ROTATOR_POSITION 2 actual=10 target=30
+stopped short relative preserves target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+stopped short relative preserves target | SDK op=3 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAGetDegree id=0 value=15 output=4
+stopped short relative preserves target | SDK op=2 id=0 fail=0 handle=1
+stopped short relative preserves target | STATE ROTATOR_POSITION 3 actual=15 target=30
+stopped short relative preserves target | STATE ROTATOR_RELATIVE_MOVE 3
+stopped short relative preserves target | STATE CONNECTION 2
+stopped short relative preserves target | SDK op=6 id=0 fail=0 handle=1
+stopped short relative preserves target | CAAClose id=0
+stopped short relative preserves target | STATE CONNECTION 1
+documented resolution bounds arrival | CAAGetSDKVersion
+documented resolution bounds arrival | CAAGetProductIDs output=NULL count=1
+documented resolution bounds arrival | CAAGetProductIDs output=array count=1
+documented resolution bounds arrival | CAAGetNum count=1
+documented resolution bounds arrival | CAAGetID index=0 id=0 output=4
+documented resolution bounds arrival | SDK op=0 id=0 fail=0 handle=0
+documented resolution bounds arrival | SDK op=1 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetProperty id=0 output=72
+documented resolution bounds arrival | CAAClose id=0
+documented resolution bounds arrival | CAAGetSDKVersion
+documented resolution bounds arrival | STATE CONNECTION 2
+documented resolution bounds arrival | CAAGetNum count=1
+documented resolution bounds arrival | CAAGetID index=0 id=0 output=4
+documented resolution bounds arrival | SDK op=0 id=0 fail=0 handle=0
+documented resolution bounds arrival | CAAGetMaxDegree id=0 value=360 output=4
+documented resolution bounds arrival | SDK op=7 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=10 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetReverse id=0 value=0 output=1
+documented resolution bounds arrival | SDK op=9 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetBeep id=0 value=0 output=1
+documented resolution bounds arrival | SDK op=11 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE CONNECTION 1
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=10 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 2 actual=10 target=123.25
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=10 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAMoveTo id=0 value=123.25
+documented resolution bounds arrival | SDK op=4 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 2
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.27 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 1 actual=123.27 target=123.25
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 2 actual=123.27 target=123.25
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.27 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAMoveTo id=0 value=123.25
+documented resolution bounds arrival | SDK op=4 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 2
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.28 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 3 actual=123.28 target=123.25
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 3
+documented resolution bounds arrival | STATE ROTATOR_POSITION 2 actual=123.28 target=123.25
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.28 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAMoveTo id=0 value=123.25
+documented resolution bounds arrival | SDK op=4 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 2
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.23 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 1 actual=123.23 target=123.25
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 2 actual=123.23 target=123.25
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.23 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAMoveTo id=0 value=123.25
+documented resolution bounds arrival | SDK op=4 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 2
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.22 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 3 actual=123.22 target=123.25
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 3
+documented resolution bounds arrival | CAASetMaxDegree id=0 value=480
+documented resolution bounds arrival | SDK op=8 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetMaxDegree id=0 value=480 output=4
+documented resolution bounds arrival | SDK op=7 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 2 actual=123.22 target=479.96
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=123.22 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAMoveTo id=0 value=479.95999
+documented resolution bounds arrival | SDK op=4 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 2
+documented resolution bounds arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+documented resolution bounds arrival | SDK op=3 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAGetDegree id=0 value=479.98001 output=4
+documented resolution bounds arrival | SDK op=2 id=0 fail=0 handle=1
+documented resolution bounds arrival | STATE ROTATOR_POSITION 1 actual=479.98001 target=479.96
+documented resolution bounds arrival | STATE ROTATOR_RELATIVE_MOVE 1
+documented resolution bounds arrival | STATE CONNECTION 2
+documented resolution bounds arrival | SDK op=6 id=0 fail=0 handle=1
+documented resolution bounds arrival | CAAClose id=0
+documented resolution bounds arrival | STATE CONNECTION 1
+mechanical angles do not wrap arrival | CAAGetSDKVersion
+mechanical angles do not wrap arrival | CAAGetProductIDs output=NULL count=1
+mechanical angles do not wrap arrival | CAAGetProductIDs output=array count=1
+mechanical angles do not wrap arrival | CAAGetNum count=1
+mechanical angles do not wrap arrival | CAAGetID index=0 id=0 output=4
+mechanical angles do not wrap arrival | SDK op=0 id=0 fail=0 handle=0
+mechanical angles do not wrap arrival | SDK op=1 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAGetProperty id=0 output=72
+mechanical angles do not wrap arrival | CAAClose id=0
+mechanical angles do not wrap arrival | CAAGetSDKVersion
+mechanical angles do not wrap arrival | STATE CONNECTION 2
+mechanical angles do not wrap arrival | CAAGetNum count=1
+mechanical angles do not wrap arrival | CAAGetID index=0 id=0 output=4
+mechanical angles do not wrap arrival | SDK op=0 id=0 fail=0 handle=0
+mechanical angles do not wrap arrival | CAAGetMaxDegree id=0 value=360 output=4
+mechanical angles do not wrap arrival | SDK op=7 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAGetDegree id=0 value=10 output=4
+mechanical angles do not wrap arrival | SDK op=2 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAGetReverse id=0 value=0 output=1
+mechanical angles do not wrap arrival | SDK op=9 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAGetBeep id=0 value=0 output=1
+mechanical angles do not wrap arrival | SDK op=11 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | STATE CONNECTION 1
+mechanical angles do not wrap arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+mechanical angles do not wrap arrival | SDK op=3 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAGetDegree id=0 value=10 output=4
+mechanical angles do not wrap arrival | SDK op=2 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | STATE ROTATOR_POSITION 2 actual=10 target=360
+mechanical angles do not wrap arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+mechanical angles do not wrap arrival | SDK op=3 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAGetDegree id=0 value=10 output=4
+mechanical angles do not wrap arrival | SDK op=2 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAMoveTo id=0 value=360
+mechanical angles do not wrap arrival | SDK op=4 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | STATE ROTATOR_RELATIVE_MOVE 2
+mechanical angles do not wrap arrival | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+mechanical angles do not wrap arrival | SDK op=3 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAGetDegree id=0 value=0 output=4
+mechanical angles do not wrap arrival | SDK op=2 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | STATE ROTATOR_POSITION 3 actual=0 target=360
+mechanical angles do not wrap arrival | STATE ROTATOR_RELATIVE_MOVE 3
+mechanical angles do not wrap arrival | STATE CONNECTION 2
+mechanical angles do not wrap arrival | SDK op=6 id=0 fail=0 handle=1
+mechanical angles do not wrap arrival | CAAClose id=0
+mechanical angles do not wrap arrival | STATE CONNECTION 1
+external motion is not a commanded target | CAAGetSDKVersion
+external motion is not a commanded target | CAAGetProductIDs output=NULL count=1
+external motion is not a commanded target | CAAGetProductIDs output=array count=1
+external motion is not a commanded target | CAAGetNum count=1
+external motion is not a commanded target | CAAGetID index=0 id=0 output=4
+external motion is not a commanded target | SDK op=0 id=0 fail=0 handle=0
+external motion is not a commanded target | SDK op=1 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetProperty id=0 output=72
+external motion is not a commanded target | CAAClose id=0
+external motion is not a commanded target | CAAGetSDKVersion
+external motion is not a commanded target | STATE CONNECTION 2
+external motion is not a commanded target | CAAGetNum count=1
+external motion is not a commanded target | CAAGetID index=0 id=0 output=4
+external motion is not a commanded target | SDK op=0 id=0 fail=0 handle=0
+external motion is not a commanded target | CAAGetMaxDegree id=0 value=360 output=4
+external motion is not a commanded target | SDK op=7 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetDegree id=0 value=10 output=4
+external motion is not a commanded target | SDK op=2 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetReverse id=0 value=0 output=1
+external motion is not a commanded target | SDK op=9 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetBeep id=0 value=0 output=1
+external motion is not a commanded target | SDK op=11 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE CONNECTION 1
+external motion is not a commanded target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+external motion is not a commanded target | SDK op=3 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetDegree id=0 value=10 output=4
+external motion is not a commanded target | SDK op=2 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE ROTATOR_POSITION 2 actual=10 target=70
+external motion is not a commanded target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+external motion is not a commanded target | SDK op=3 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetDegree id=0 value=10 output=4
+external motion is not a commanded target | SDK op=2 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAMoveTo id=0 value=70
+external motion is not a commanded target | SDK op=4 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE ROTATOR_RELATIVE_MOVE 2
+external motion is not a commanded target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+external motion is not a commanded target | SDK op=3 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetDegree id=0 value=70 output=4
+external motion is not a commanded target | SDK op=2 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE ROTATOR_POSITION 1 actual=70 target=70
+external motion is not a commanded target | STATE ROTATOR_RELATIVE_MOVE 1
+external motion is not a commanded target | STATE ROTATOR_POSITION 2 actual=70 target=80
+external motion is not a commanded target | CAAIsMoving id=0 motor=0 hand=1 output=1+1
+external motion is not a commanded target | SDK op=3 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE ROTATOR_POSITION 2 actual=70 target=70
+external motion is not a commanded target | STATE ROTATOR_RELATIVE_MOVE 2
+external motion is not a commanded target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+external motion is not a commanded target | SDK op=3 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetDegree id=0 value=30 output=4
+external motion is not a commanded target | SDK op=2 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE ROTATOR_POSITION 1 actual=30 target=70
+external motion is not a commanded target | STATE ROTATOR_RELATIVE_MOVE 1
+external motion is not a commanded target | STATE ROTATOR_POSITION 2 actual=30 target=60
+external motion is not a commanded target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+external motion is not a commanded target | SDK op=3 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetDegree id=0 value=30 output=4
+external motion is not a commanded target | SDK op=2 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAMoveTo id=0 value=60
+external motion is not a commanded target | SDK op=4 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE ROTATOR_RELATIVE_MOVE 2
+external motion is not a commanded target | CAAIsMoving id=0 motor=0 hand=0 output=1+1
+external motion is not a commanded target | SDK op=3 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAGetDegree id=0 value=60 output=4
+external motion is not a commanded target | SDK op=2 id=0 fail=0 handle=1
+external motion is not a commanded target | STATE ROTATOR_POSITION 1 actual=60 target=60
+external motion is not a commanded target | STATE ROTATOR_RELATIVE_MOVE 1
+external motion is not a commanded target | STATE CONNECTION 2
+external motion is not a commanded target | SDK op=6 id=0 fail=0 handle=1
+external motion is not a commanded target | CAAClose id=0
+external motion is not a commanded target | STATE CONNECTION 1

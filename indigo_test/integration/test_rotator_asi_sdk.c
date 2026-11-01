@@ -20,6 +20,7 @@
 
 #include <stdbool.h>
 #include <stdatomic.h>
+#include <stdarg.h>
 #include <CAA_API.h>
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_rotator_driver.h>
@@ -44,6 +45,24 @@ enum operation { OP_OPEN, OP_INFO, OP_POSITION, OP_STATUS, OP_MOVE, OP_SYNC, OP_
 static atomic_bool fail[OP_COUNT];
 static atomic_int calls[OP_COUNT];
 static const simulator_driver_case caa = { "ZWO CAA Rotator", "indigo_rotator_asi", "CAA SDK test 0", indigo_rotator_asi, true, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+
+static FILE *trace_file;
+static const char *trace_case;
+static pthread_mutex_t trace_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void caa_trace(const char *format, ...) {
+	if (trace_file != NULL) {
+		pthread_mutex_lock(&trace_mutex);
+		fprintf(trace_file, "%s | ", trace_case == NULL ? "startup" : trace_case);
+		va_list arguments;
+		va_start(arguments, format);
+		vfprintf(trace_file, format, arguments);
+		va_end(arguments);
+		fputc('\n', trace_file);
+		fflush(trace_file);
+		pthread_mutex_unlock(&trace_mutex);
+	}
+}
 
 static int device_index(const char *name) {
 	int id = -1;
@@ -73,6 +92,11 @@ static bool wait_flag(atomic_bool *value) {
 }
 
 static indigo_result caa_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
+		caa_trace("STATE %s %d actual=%.8g target=%.8g", property->name, property->state, property->items[0].number.value, property->items[0].number.target);
+	} else if (!strcmp(property->name, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) || !strcmp(property->name, ROTATOR_ABORT_MOTION_PROPERTY_NAME) || !strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+		caa_trace("STATE %s %d", property->name, property->state);
+	}
 	int id = device_index(property->device);
 	if (id >= 0 && id < DEVICE_COUNT && !strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state != INDIGO_BUSY_STATE) {
 		atomic_store(&connections[id], property->state == INDIGO_OK_STATE && property->items[0].sw.value);
@@ -157,10 +181,12 @@ int LIBUSB_CALL caa_test_usb_descriptor(libusb_device *device, struct libusb_dev
 }
 
 int CAAGetNum(void) {
+	caa_trace("CAAGetNum count=%d", atomic_load(&visible_count));
 	return atomic_load(&visible_count);
 }
 
 int CAAGetProductIDs(int *ids) {
+	caa_trace("CAAGetProductIDs output=%s count=1", ids == NULL ? "NULL" : "array");
 	if (ids != NULL) {
 		ids[0] = 0x1f10;
 	}
@@ -168,16 +194,19 @@ int CAAGetProductIDs(int *ids) {
 }
 
 const char *CAAGetSDKVersion(void) {
+	caa_trace("CAAGetSDKVersion");
 	return "test SDK";
 }
 
 CAA_ERROR_CODE CAAGetID(int index, int *id) {
 	*id = atomic_load(&sdk_ids[index]);
+	caa_trace("CAAGetID index=%d id=%d output=%zu", index, *id, sizeof(*id));
 	return *id == -1 ? CAA_ERROR_INVALID_ID : CAA_SUCCESS;
 }
 
 static CAA_ERROR_CODE sdk_call(int id, enum operation op) {
 	atomic_fetch_add(&calls[op], 1);
+	caa_trace("SDK op=%d id=%d fail=%d handle=%d", op, id, atomic_load(&fail[op]), id >= 0 && id < DEVICE_COUNT ? atomic_load(&sdk_handles[id]) : -1);
 	if (id < 0 || id >= DEVICE_COUNT || (op != OP_OPEN && atomic_load(&sdk_handles[id]) != 1)) {
 		atomic_fetch_add(&violations, 1);
 		return CAA_ERROR_CLOSED;
@@ -197,6 +226,7 @@ CAA_ERROR_CODE CAAOpen(int id) {
 }
 
 CAA_ERROR_CODE CAAClose(int id) {
+	caa_trace("CAAClose id=%d", id);
 	if (atomic_fetch_sub(&sdk_handles[id], 1) != 1) {
 		atomic_fetch_add(&violations, 1);
 	}
@@ -210,6 +240,7 @@ CAA_ERROR_CODE CAAGetProperty(int id, CAA_INFO *info) {
 		indigo_usleep(10000);
 	}
 	CAA_ERROR_CODE result = sdk_call(id, OP_INFO);
+	caa_trace("CAAGetProperty id=%d output=%zu", id, sizeof(*info));
 	memset(info, 0, sizeof(*info));
 	info->ID = id;
 	info->MaxStep = 480;
@@ -221,15 +252,18 @@ CAA_ERROR_CODE CAAGetProperty(int id, CAA_INFO *info) {
 
 CAA_ERROR_CODE CAAGetDegree(int id, float *value) {
 	*value = atomic_load(&position[id]) / 100.0f;
+	caa_trace("CAAGetDegree id=%d value=%.8g output=%zu", id, *value, sizeof(*value));
 	return sdk_call(id, OP_POSITION);
 }
 
 CAA_ERROR_CODE CAAGetMaxDegree(int id, float *value) {
 	*value = atomic_load(&maximum[id]) / 100.0f;
+	caa_trace("CAAGetMaxDegree id=%d value=%.8g output=%zu", id, *value, sizeof(*value));
 	return sdk_call(id, OP_MAX_READ);
 }
 
 CAA_ERROR_CODE CAASetMaxDegree(int id, float value) {
+	caa_trace("CAASetMaxDegree id=%d value=%.8g", id, value);
 	CAA_ERROR_CODE result = sdk_call(id, OP_MAX_WRITE);
 	if (result == CAA_SUCCESS) {
 		atomic_store(&maximum[id], lroundf(value * 100));
@@ -240,10 +274,12 @@ CAA_ERROR_CODE CAASetMaxDegree(int id, float value) {
 CAA_ERROR_CODE CAAIsMoving(int id, bool *moving, bool *hc) {
 	*moving = atomic_load(&motor[id]);
 	*hc = atomic_load(&hand_control[id]);
+	caa_trace("CAAIsMoving id=%d motor=%d hand=%d output=%zu+%zu", id, *moving, *hc, sizeof(*moving), sizeof(*hc));
 	return sdk_call(id, OP_STATUS);
 }
 
 CAA_ERROR_CODE CAAMoveTo(int id, float value) {
+	caa_trace("CAAMoveTo id=%d value=%.8g", id, value);
 	CAA_ERROR_CODE result = sdk_call(id, OP_MOVE);
 	if (result == CAA_SUCCESS) {
 		atomic_store(&requested[id], lroundf(value * 100));
@@ -253,6 +289,7 @@ CAA_ERROR_CODE CAAMoveTo(int id, float value) {
 }
 
 CAA_ERROR_CODE CAACurDegree(int id, float value) {
+	caa_trace("CAACurDegree id=%d value=%.8g", id, value);
 	CAA_ERROR_CODE result = sdk_call(id, OP_SYNC);
 	if (result == CAA_SUCCESS) {
 		atomic_store(&position[id], lroundf(value * 100));
@@ -270,10 +307,12 @@ CAA_ERROR_CODE CAAStop(int id) {
 
 CAA_ERROR_CODE CAAGetReverse(int id, bool *value) {
 	*value = atomic_load(&reverse[id]);
+	caa_trace("CAAGetReverse id=%d value=%d output=%zu", id, *value, sizeof(*value));
 	return sdk_call(id, OP_REVERSE_READ);
 }
 
 CAA_ERROR_CODE CAASetReverse(int id, bool value) {
+	caa_trace("CAASetReverse id=%d value=%d", id, value);
 	CAA_ERROR_CODE result = sdk_call(id, OP_REVERSE_WRITE);
 	if (result == CAA_SUCCESS) {
 		atomic_store(&reverse[id], value);
@@ -283,10 +322,12 @@ CAA_ERROR_CODE CAASetReverse(int id, bool value) {
 
 CAA_ERROR_CODE CAAGetBeep(int id, bool *value) {
 	*value = atomic_load(&beep[id]);
+	caa_trace("CAAGetBeep id=%d value=%d output=%zu", id, *value, sizeof(*value));
 	return sdk_call(id, OP_BEEP_READ);
 }
 
 CAA_ERROR_CODE CAASetBeep(int id, bool value) {
+	caa_trace("CAASetBeep id=%d value=%d", id, value);
 	CAA_ERROR_CODE result = sdk_call(id, OP_BEEP_WRITE);
 	if (result == CAA_SUCCESS) {
 		atomic_store(&beep[id], value);
@@ -295,6 +336,7 @@ CAA_ERROR_CODE CAASetBeep(int id, bool value) {
 }
 
 CAA_ERROR_CODE CAASetID(int id, CAA_ID alias) {
+	caa_trace("CAASetID id=%d bytes=%zu", id, sizeof(alias.id));
 	CAA_ERROR_CODE result = sdk_call(id, OP_SUFFIX);
 	if (result == CAA_SUCCESS) {
 		pthread_mutex_lock(&suffix_mutex);
@@ -443,7 +485,8 @@ static void failed_motion_and_polling(void) {
 		ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 60));
 		ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
 		ASSERT_EQ_INT(moves, atomic_load(&calls[OP_MOVE]));
-		ASSERT_TRUE(finish_motion(1000));
+		ASSERT_TRUE(end_motion(1000, INDIGO_ALERT_STATE));
+		ASSERT_NEAR(50, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
 	}
 }
 
@@ -734,6 +777,104 @@ static bool teardown(void) {
 	return result;
 }
 
+static void stopped_short_absolute_and_recovery(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 90));
+	ASSERT_TRUE(wait_atomic(&requested[0], 9000));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(end_motion(3000, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(90, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	indigo_usleep(1100000);
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	ASSERT_NEAR(90, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 70));
+	ASSERT_TRUE(wait_atomic(&requested[0], 7000));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion(7000));
+}
+
+static void stopped_short_relative_preserves_target(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 20));
+	ASSERT_TRUE(wait_atomic(&requested[0], 3000));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(end_motion(1500, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(30, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+}
+
+static void documented_resolution_bounds_arrival(void) {
+	ASSERT_TRUE(connection(true));
+	// Manufacturer resolution is 0.02 degrees/step; values straddle that bound.
+	const int actual[] = { 12327, 12328, 12323, 12322 };
+	const indigo_property_state expected[] = { INDIGO_OK_STATE, INDIGO_ALERT_STATE, INDIGO_OK_STATE, INDIGO_ALERT_STATE };
+	for (unsigned i = 0; i < ARRAY_SIZE(actual); i++) {
+		ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 123.25));
+		ASSERT_TRUE(wait_atomic(&requested[0], 12325));
+		ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+		ASSERT_TRUE(end_motion(actual[i], expected[i]));
+		ASSERT_NEAR(123.25, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	}
+	ASSERT_TRUE(set_number(ROTATOR_LIMITS_PROPERTY_NAME, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME, 480));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 479.96));
+	ASSERT_TRUE(wait_atomic(&requested[0], 47996));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion(47998));
+	ASSERT_NEAR(479.96, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+}
+
+static void mechanical_angles_do_not_wrap_arrival(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 360));
+	ASSERT_TRUE(wait_atomic(&requested[0], 36000));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(end_motion(0, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(360, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+}
+
+static void external_motion_is_not_a_commanded_target(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 70));
+	ASSERT_TRUE(wait_atomic(&requested[0], 7000));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion(7000));
+	atomic_store(&hand_control[0], true);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 80));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&calls[OP_MOVE]));
+	ASSERT_TRUE(finish_motion(3000));
+	ASSERT_NEAR(70, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 60));
+	ASSERT_TRUE(wait_atomic(&requested[0], 6000));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion(6000));
+}
+
+static void stopped_poll_failure_releases_command_ownership(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 50));
+	ASSERT_TRUE(wait_atomic(&requested[0], 5000));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	atomic_store(&fail[OP_STATUS], true);
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	atomic_store(&fail[OP_STATUS], false);
+	atomic_store(&motor[0], false);
+	ASSERT_TRUE(set_switch(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	atomic_store(&fail[OP_SYNC], true);
+	int sync_calls = atomic_load(&calls[OP_SYNC]);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 25));
+	ASSERT_TRUE(wait_atomic(&calls[OP_SYNC], sync_calls + 1));
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	atomic_store(&fail[OP_SYNC], false);
+	atomic_store(&hand_control[0], true);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 80));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&calls[OP_MOVE]));
+	ASSERT_TRUE(finish_motion(3000));
+	ASSERT_NEAR(50, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "metadata, schema and repeated connection", metadata_schema_and_reconnect },
@@ -746,13 +887,27 @@ int main(void) {
 		{ "suffix boundaries and rollback", suffix_boundaries_and_rollback },
 		{ "disconnect/unplug with pending polling", disconnect_and_unplug_polling },
 		{ "discovery failures, capacity and multi-device removal", discovery_failures_and_capacity },
-		{ "unplug queued during SDK probe", unplug_queued_during_probe }
+		{ "unplug queued during SDK probe", unplug_queued_during_probe },
+		{ "stopped short absolute and recovery", stopped_short_absolute_and_recovery },
+		{ "stopped short relative preserves target", stopped_short_relative_preserves_target },
+		{ "documented resolution bounds arrival", documented_resolution_bounds_arrival },
+		{ "mechanical angles do not wrap arrival", mechanical_angles_do_not_wrap_arrival },
+		{ "external motion is not a commanded target", external_motion_is_not_a_commanded_target },
+		{ "stopped poll failure releases command ownership", stopped_poll_failure_releases_command_ownership }
 	};
+	const char *trace_path = getenv("INDIGO_CAA_TRACE");
+	if (trace_path != NULL) {
+		trace_file = fopen(trace_path, "w");
+		if (trace_file == NULL) {
+			return 1;
+		}
+	}
 	indigo_start();
 	simulator_test_client.update_property = caa_client_update;
 	indigo_attach_client(&simulator_test_client);
 	int result = 0;
 	for (unsigned i = 0; i < ARRAY_SIZE(tests); i++) {
+		trace_case = tests[i].name;
 		reset_mock();
 		reset_simulator_context(&caa);
 		if (indigo_rotator_asi(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK || !wait_atomic(&attached_mask, 1)) {
@@ -767,5 +922,8 @@ int main(void) {
 	}
 	indigo_detach_client(&simulator_test_client);
 	indigo_stop();
+	if (trace_file != NULL) {
+		fclose(trace_file);
+	}
 	return result;
 }

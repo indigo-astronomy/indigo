@@ -1,0 +1,35 @@
+metadata, schema and repeated connection: IDENTICAL
+failed initialization releases SDK: IDENTICAL
+fractional absolute/relative motion and overlap: IDENTICAL
+move/status/position failures and polling recovery: DIFFERENT
+--- baseline
++++ final
+@@ -57,8 +57,8 @@
+ SDK op=3 id=0 fail=0 handle=1
+ CAAGetDegree id=0 value=10 output=4
+ SDK op=2 id=0 fail=0 handle=1
+-STATE ROTATOR_POSITION 1 actual=10 target=50
+-STATE ROTATOR_RELATIVE_MOVE 1
++STATE ROTATOR_POSITION 3 actual=10 target=50
++STATE ROTATOR_RELATIVE_MOVE 3
+ STATE ROTATOR_POSITION 2 actual=10 target=50
+ CAAIsMoving id=0 motor=0 hand=0 output=1+1
+ SDK op=3 id=0 fail=0 handle=1
+@@ -82,8 +82,8 @@
+ SDK op=3 id=0 fail=0 handle=1
+ CAAGetDegree id=0 value=10 output=4
+ SDK op=2 id=0 fail=0 handle=1
+-STATE ROTATOR_POSITION 1 actual=10 target=50
+-STATE ROTATOR_RELATIVE_MOVE 1
++STATE ROTATOR_POSITION 3 actual=10 target=50
++STATE ROTATOR_RELATIVE_MOVE 3
+ STATE CONNECTION 2
+ SDK op=6 id=0 fail=0 handle=1
+ CAAClose id=0
+sync command and readback failures: IDENTICAL
+abort confirmation and hand controller: IDENTICAL
+limits, settings, persistence and reconnect: IDENTICAL
+suffix boundaries and rollback: IDENTICAL
+disconnect/unplug with pending polling: IDENTICAL
+discovery failures, capacity and multi-device removal: IDENTICAL
+unplug queued during SDK probe: IDENTICAL

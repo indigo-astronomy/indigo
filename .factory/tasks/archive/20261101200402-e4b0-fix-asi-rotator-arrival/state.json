@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261101200402-e4b0-fix-asi-rotator-arrival",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive completed scoped repair, commit exact reviewed content and retain branch pending batch/integration gates.",
+  "blocker": null
+}
