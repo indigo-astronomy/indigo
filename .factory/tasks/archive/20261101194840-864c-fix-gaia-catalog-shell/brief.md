@@ -1,0 +1,2 @@
+# Remove shell evaluation from Gaia catalog enumeration
+Owner explicitly requests repair of FND-20261101193246-1248-periodic-repository-audit-001 and use of subagents. Replace shell-based CSV listing with portable filesystem enumeration, preserve ordinary catalog processing, prove the input path remains literal, and close only this finding after independent verification. Other findings and the due full audit remain open. No merge/push authorized.

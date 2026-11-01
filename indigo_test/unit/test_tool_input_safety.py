@@ -66,11 +66,86 @@ int test_fclose(FILE *file) {
 """
 
 
+# Include the real translation unit so tiny fixtures exercise its private parser
+# without running the index generator or allocating the production star catalog.
+GAIA_WRAPPER = r"""
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_uni_io.h>
+#include <limits.h>
+// Reverse real filesystem results to exercise sorting on hosts whose portable
+// helper already sorts; track their ownership even when the parser exits early.
+static char **scan_list;
+static void *owned_names[64];
+static int owned_count;
+static void check_released(void) {
+	if (scan_list != NULL) {
+		fprintf(stderr, "Enumeration list leaked\n");
+		_Exit(99);
+	}
+	for (int i = 0; i < owned_count; i++) {
+		if (owned_names[i] != NULL) {
+			fprintf(stderr, "Enumeration name leaked\n");
+			_Exit(99);
+		}
+	}
+}
+static int test_scandir(const char *directory, char ***list, bool (*filter)(const char *)) {
+	int count = indigo_uni_scandir(directory, list, filter);
+	atexit(check_released);
+	scan_list = *list;
+	if (count > 64) {
+		_Exit(98);
+	}
+	for (int i = 0; i < count / 2; i++) {
+		char *name = (*list)[i];
+		(*list)[i] = (*list)[count - i - 1];
+		(*list)[count - i - 1] = name;
+	}
+	for (int i = 0; i < count; i++) {
+		owned_names[owned_count++] = (*list)[i];
+	}
+	return count;
+}
+static void test_safe_free(void *pointer) {
+	for (int i = 0; i < owned_count; i++) {
+		if (pointer == owned_names[i]) {
+			owned_names[i] = NULL;
+		}
+	}
+	if (pointer == scan_list) {
+		scan_list = NULL;
+	}
+	indigo_safe_free(pointer);
+}
+#ifdef GAIA_TEST_PATH_MAX
+#undef PATH_MAX
+#define PATH_MAX GAIA_TEST_PATH_MAX
+#endif
+#define indigo_uni_scandir test_scandir
+#define indigo_safe_free test_safe_free
+#define main indigo_solver_indexer_main
+#include "indigo_tools/indigo_solver_indexer.c"
+#undef main
+int main(int argc, char **argv) {
+	indigo_solver_star stars[64];
+	if (argc != 2) {
+		return 2;
+	}
+	unsigned count = parse_gaia_catalog(argv[1], stars);
+	for (unsigned i = 0; i < count; i++) {
+		printf("STAR %.9f %.9f %.3f\n", stars[i].ra, stars[i].dec, stars[i].magnitude);
+	}
+	return 0;
+}
+"""
+
+
 def build_programs(directory):
 	compiler = shlex.split(os.environ.get("CC", "cc"))
 	flags = ["-std=gnu11", "-g", "-O1", "-I" + str(ROOT / "indigo_libs")]
 	if os.environ.get("SANITIZERS"):
 		flags += ["-fsanitize=" + os.environ["SANITIZERS"], "-fno-omit-frame-pointer"]
+	library = Path(os.environ.get("INDIGO_TEST_LIBRARY_DIR", ROOT / "build/lib"))
 	parser = directory / "parser"
 	crop = directory / "crop"
 	wrapper = directory / "crop_faults.c"
@@ -78,9 +153,15 @@ def build_programs(directory):
 	property_object, crop_object = directory / "property.o", directory / "crop.o"
 	subprocess.run(compiler + flags + ["-Dmain=indigo_prop_tool_main", "-c", str(ROOT / "indigo_tools/indigo_prop_tool.c"), "-o", str(property_object)], check=True)
 	subprocess.run(compiler + flags + ["-Dmalloc=test_malloc", "-Dfread=test_fread", "-Dfwrite=test_fwrite", "-Dfclose=test_fclose", "-c", str(ROOT / "indigo_tools/indigo_raw_crop.c"), "-o", str(crop_object)], check=True)
-	subprocess.run(compiler + flags + [str(ROOT / "indigo_test/unit/test_prop_tool_parser.c"), str(property_object), "-o", str(parser), str(ROOT / "build/lib/libindigo_client.a"), "-lz", "-ldl", "-lm", "-pthread"], check=True)
+	subprocess.run(compiler + flags + [str(ROOT / "indigo_test/unit/test_prop_tool_parser.c"), str(property_object), "-o", str(parser), str(library / "libindigo_client.a"), "-lz", "-ldl", "-lm", "-pthread"], check=True)
 	subprocess.run(compiler + flags + [str(wrapper), str(crop_object), "-o", str(crop)], check=True)
-	return parser, crop
+	gaia_source, gaia = directory / "gaia.c", directory / "gaia"
+	gaia_source.write_text(GAIA_WRAPPER)
+	dead_strip = ["-Wl,-dead_strip"] if os.uname().sysname == "Darwin" else ["-Wl,--gc-sections"]
+	subprocess.run(compiler + flags + ["-ffunction-sections", "-fdata-sections", "-I" + str(ROOT), "-I" + str(ROOT / "indigo_drivers"), str(gaia_source), "-o", str(gaia), *dead_strip, str(library / "libindigo_client.a"), "-lz", "-ldl", "-lm", "-pthread"], check=True)
+	short_gaia = directory / "gaia_short_path"
+	subprocess.run(compiler + flags + ["-DGAIA_TEST_PATH_MAX=256", "-ffunction-sections", "-fdata-sections", "-I" + str(ROOT), "-I" + str(ROOT / "indigo_drivers"), str(gaia_source), "-o", str(short_gaia), *dead_strip, str(library / "libindigo_client.a"), "-lz", "-ldl", "-lm", "-pthread"], check=True)
+	return parser, crop, gaia, short_gaia
 
 
 class RawCropSafety(unittest.TestCase):
@@ -154,11 +235,84 @@ class RawCropSafety(unittest.TestCase):
 				self.assertGreater(result.returncode, 0, result.stderr)
 
 
+class GaiaCatalogSafety(unittest.TestCase):
+	def setUp(self):
+		self.fixture = tempfile.TemporaryDirectory(dir=self.build)
+		self.directory = Path(self.fixture.name)
+		self.addCleanup(self.fixture.cleanup)
+
+	def csv(self, directory, name, ra=30):
+		(directory / name).write_text(f"ra,dec,phot_g_mean_mag,pmra,pmdec\n{ra},-20,10,0,0\n")
+
+	def run_gaia(self, directory, executable=None):
+		result = subprocess.run([str(executable or self.gaia), str(directory)], capture_output=True, timeout=5, cwd=self.directory)
+		self.assertNotIn(b"Sanitizer", result.stderr, result.stderr.decode(errors="replace"))
+		self.assertNotIn(b"leaked", result.stderr)
+		return result
+
+	def stars(self, result):
+		return [tuple(map(float, line.split()[1:])) for line in result.stdout.splitlines() if line.startswith(b"STAR ")]
+
+	def test_literal_shell_directory(self):
+		directory = self.directory / 'catalog $(touch SENTINEL) `touch BACKTICK` "quoted"; & space\nline'
+		directory.mkdir()
+		self.csv(directory, "ordinary.csv")
+		result = self.run_gaia(directory)
+		self.assertFalse((self.directory / "SENTINEL").exists(), result.stderr)
+		self.assertFalse((self.directory / "BACKTICK").exists(), result.stderr)
+		self.assertEqual(0, result.returncode, result.stderr)
+		self.assertEqual(1, len(self.stars(result)), result.stdout)
+
+	def test_literal_entries_filter_order_and_coordinates(self):
+		for name, ra in [("z.csv", 90), ('b space\n$(touch ENTRY);".csv', 60), ("a.csv", 30)]:
+			self.csv(self.directory, name, ra)
+		for name in [".hidden.csv", "ignored.CSV", "ignored.csv.bak", "ignored.txt"]:
+			self.csv(self.directory, name, 180)
+		result = self.run_gaia(self.directory)
+		self.assertEqual(0, result.returncode, result.stderr)
+		stars = self.stars(result)
+		self.assertEqual(3, len(stars), result.stdout)
+		for star, ra in zip(stars, [30, 60, 90]):
+			self.assertAlmostEqual(ra * 3.141592653589793 / 180, star[0], places=6)
+			self.assertAlmostEqual(-20 * 3.141592653589793 / 180, star[1], places=6)
+			self.assertEqual(10, star[2])
+		self.assertFalse((self.directory / "ENTRY").exists())
+
+	def test_missing_non_directory_and_overlong_paths_fail(self):
+		plain = self.directory / "plain"
+		plain.write_text("not a directory")
+		for path in [self.directory / "missing", plain, str(self.directory) + "/" + "a/" * 4096]:
+			with self.subTest(path=str(path)[:100]):
+				result = self.run_gaia(path)
+				self.assertGreater(result.returncode, 0, result.stdout)
+				self.assertTrue(result.stderr)
+
+	def test_join_overflow_fails_before_opening_truncated_path(self):
+		# A smaller compile-time path bound makes the real checked join reachable
+		# without depending on the host filesystem's maximum full path length.
+		self.csv(self.directory, "a" * 190 + ".csv")
+		result = self.run_gaia(self.directory, self.short_gaia)
+		self.assertGreater(result.returncode, 0, result.stdout)
+		self.assertIn(b"Catalog file path is too long", result.stderr)
+		self.assertNotIn(b"Cannot open", result.stderr)
+
+	def test_empty_directory(self):
+		result = self.run_gaia(self.directory)
+		self.assertEqual(0, result.returncode, result.stderr)
+		self.assertEqual([], self.stars(result))
+
+	def test_matching_unopenable_entry_fails(self):
+		(self.directory / "broken.csv").symlink_to(self.directory / "missing")
+		result = self.run_gaia(self.directory)
+		self.assertGreater(result.returncode, 0, result.stdout)
+		self.assertIn(b"Cannot open", result.stderr)
+
+
 class RecordedResult(unittest.TextTestResult):
 	def record(self, kind, name):
 		if os.environ.get("INDIGO_TEST_RESULTS"):
 			with open(os.environ["INDIGO_TEST_RESULTS"], "a") as file:
-				file.write(f"{kind}\tRAW crop input safety\t{name}\n")
+				file.write(f"{kind}\tTool input safety\t{name}\n")
 
 	def addSuccess(self, test):
 		super().addSuccess(test)
@@ -176,12 +330,13 @@ class RecordedResult(unittest.TextTestResult):
 if __name__ == "__main__":
 	with tempfile.TemporaryDirectory(prefix="indigo-tool-safety-") as temporary:
 		directory = Path(temporary)
-		parser, crop = build_programs(directory)
+		parser, crop, gaia, short_gaia = build_programs(directory)
 		subprocess.run([str(parser)], check=True, timeout=10)
 		RawCropSafety.build, RawCropSafety.crop = directory, crop
-		suite = unittest.defaultTestLoader.loadTestsFromTestCase(RawCropSafety)
+		GaiaCatalogSafety.build, GaiaCatalogSafety.gaia, GaiaCatalogSafety.short_gaia = directory, gaia, short_gaia
+		suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(case) for case in [RawCropSafety, GaiaCatalogSafety])
 		if os.environ.get("INDIGO_TEST_RESULTS"):
 			with open(os.environ["INDIGO_TEST_RESULTS"], "a") as file:
-				file.write(f"plan\t{suite.countTestCases()}\tRAW crop input safety\n")
+				file.write(f"plan\t{suite.countTestCases()}\tTool input safety\n")
 		result = unittest.TextTestRunner(verbosity=2, resultclass=RecordedResult).run(suite)
 		raise SystemExit(0 if result.wasSuccessful() else 1)

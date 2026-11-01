@@ -35,6 +35,7 @@
 #include <limits.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_uni_io.h>
 
 #include <agent_solver/indigo_solver.h>
 #include <agent_solver/indigo_solver_utils.h>
@@ -197,6 +198,15 @@ static uint32_t parse_catalog(indigo_solver_star *stars) {
 	return star_count;
 }
 
+static bool gaia_csv_filter(const char *name) {
+	size_t length = strlen(name);
+	return name[0] != '.' && length >= 4 && strcmp(name + length - 4, ".csv") == 0;
+}
+
+static int compare_catalog_names(const void *a, const void *b) {
+	return strcmp(*(const char * const *)a, *(const char * const *)b);
+}
+
 // Loads a Gaia DR3 extract: every *.csv file of the directory with the columns ra, dec, phot_g_mean_mag, pmra, pmdec
 // (degrees, magnitudes, mas/yr, "null" allowed for the proper motions), as written by a TAP query on
 // gaiadr3.gaia_source; proper motion applied from the Gaia epoch to the current one
@@ -206,20 +216,41 @@ static uint32_t parse_gaia_catalog(const char *directory, indigo_solver_star *st
 	uint32_t star_count = 0, total_star_count = 0;
 	char *line = NULL;
 	size_t size = 0;
-	char command[PATH_MAX + 32];
-	snprintf(command, sizeof(command), "ls \"%s\"/*.csv", directory);
-	FILE *list = popen(command, "r");
-	if (list == NULL) {
-		fprintf(stderr, "Cannot list %s\n", directory);
-		exit(1);
-	}
+	char **list = NULL;
+	int count = 0;
+	bool failed = true;
+	FILE *file = NULL;
 	char path[PATH_MAX];
-	while (fgets(path, sizeof(path), list) != NULL) {
-		path[strcspn(path, "\n")] = 0;
-		FILE *file = fopen(path, "r");
+	size_t scan_path_size = sizeof(path);
+#if defined(INDIGO_WINDOWS)
+	// The portable Windows scanner builds its search pattern in MAX_PATH bytes.
+	if (scan_path_size > MAX_PATH) {
+		scan_path_size = MAX_PATH;
+	}
+#endif
+	// Reserve the separator, wildcard or basename byte, and NUL before scanning.
+	if (strlen(directory) > scan_path_size - 3) {
+		fprintf(stderr, "Catalog directory path is too long: %s\n", directory);
+		goto cleanup;
+	}
+	count = indigo_uni_scandir(directory, &list, gaia_csv_filter);
+	if (count < 0) {
+		fprintf(stderr, "Cannot list %s\n", directory);
+		goto cleanup;
+	}
+	if (count > 1) {
+		qsort(list, count, sizeof(*list), compare_catalog_names);
+	}
+	for (int i = 0; i < count; i++) {
+		int length = snprintf(path, sizeof(path), "%s/%s", directory, list[i]);
+		if (length < 0 || (size_t)length >= sizeof(path)) {
+			fprintf(stderr, "Catalog file path is too long: %s/%s\n", directory, list[i]);
+			goto cleanup;
+		}
+		file = fopen(path, "r");
 		if (file == NULL) {
 			fprintf(stderr, "Cannot open %s: %s\n", path, strerror(errno));
-			exit(1);
+			goto cleanup;
 		}
 		printf("%s\n", path);
 		bool header = true;
@@ -250,7 +281,7 @@ static uint32_t parse_gaia_catalog(const char *directory, indigo_solver_star *st
 			total_star_count++;
 			if (star_count == MAX_GAIA_STARS) {
 				fprintf(stderr, "More than %d stars, increase MAX_GAIA_STARS\n", MAX_GAIA_STARS);
-				exit(1);
+				goto cleanup;
 			}
 			indigo_solver_star *s = stars + star_count;
 			double cos_dec = cos(dec);
@@ -270,10 +301,26 @@ static uint32_t parse_gaia_catalog(const char *directory, indigo_solver_star *st
 			s->magnitude = magnitude;
 			star_count++;
 		}
+		if (ferror(file)) {
+			fprintf(stderr, "Cannot read %s: %s\n", path, strerror(errno));
+			goto cleanup;
+		}
+		fclose(file);
+		file = NULL;
+	}
+	failed = false;
+cleanup:
+	if (file != NULL) {
 		fclose(file);
 	}
-	pclose(list);
+	for (int i = 0; i < count; i++) {
+		indigo_safe_free(list[i]);
+	}
+	indigo_safe_free(list);
 	indigo_safe_free(line);
+	if (failed) {
+		exit(1);
+	}
 	printf("Loaded %u out of %u stars\n\n", star_count, total_star_count);
 	return star_count;
 }

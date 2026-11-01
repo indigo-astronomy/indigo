@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "task": "20261101194840-864c-fix-gaia-catalog-shell",
+  "scope": [
+    "indigo_tools/indigo_solver_indexer.c",
+    "indigo_test/unit/test_tool_input_safety.py",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-001.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-001.json",
+    ".factory/completions/20261101194840-864c-fix-gaia-catalog-shell.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_tool_input_safety.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101194840-864c-fix-gaia-catalog-shell.json": [
+      "100644",
+      "blob",
+      "21cb85b0c9199cfc215306a652f1ed706ee7ed82"
+    ],
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-001.json": null,
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "bed37c0e7ef3b5db6e6b0a29b53c042104342911"
+    ],
+    "indigo_test/unit/test_tool_input_safety.py": [
+      "100644",
+      "blob",
+      "e12d48a3541ad0a4bb4cccfdbbca778377574b89"
+    ],
+    "indigo_tools/indigo_solver_indexer.c": [
+      "100644",
+      "blob",
+      "1e88874327f1e0a825490212669ddd36fad219c1"
+    ]
+  }
+}
