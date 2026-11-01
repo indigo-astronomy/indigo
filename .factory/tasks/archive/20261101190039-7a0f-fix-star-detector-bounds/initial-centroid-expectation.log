@@ -1,0 +1,6 @@
+indigo_test/unit/test_star_detection.c:122: assertion failed: fabs(stars[0].x - 48) < 0.1 && fabs(stars[0].y - 48) < 0.1
+Running Star detection
+  PASS small_images_have_safe_neighbor_scans
+  PASS invalid_radius_and_geometry_fail_before_reading
+  FAIL ordinary_stars_and_zero_radius_keep_their_behavior
+Star detection: 1 test(s) failed

@@ -61,6 +61,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_primalucelib \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image \
+	$(UNIT_BUILD)/test_star_detection \
 	$(UNIT_BUILD)/test_raw_to_fits \
 	$(UNIT_BUILD)/test_recording_io
 ifeq ($(OS_DETECTED),Darwin)
@@ -452,6 +453,10 @@ $(UNIT_BUILD)/test_token: unit/test_token.c test_runner.h | $(UNIT_BUILD)
 
 $(UNIT_BUILD)/test_raw_to_fits: unit/test_raw_to_fits.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+# Compile the implementation directly so sanitizer flags instrument the detector bodies.
+$(UNIT_BUILD)/test_star_detection: unit/test_star_detection.c ../indigo_libs/indigo_raw_utils.c ../indigo_libs/indigo/indigo_raw_utils.h test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< ../indigo_libs/indigo_raw_utils.c $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)

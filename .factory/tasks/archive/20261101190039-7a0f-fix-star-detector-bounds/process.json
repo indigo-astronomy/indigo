@@ -1,0 +1,85 @@
+{
+  "version": 2,
+  "task": "20261101190039-7a0f-fix-star-detector-bounds",
+  "scope": [
+    "indigo_libs/indigo_raw_utils.c",
+    "indigo_libs/indigo/indigo_raw_utils.h",
+    "indigo_test/unit/test_star_detection.c",
+    "indigo_test/Makefile",
+    ".factory/findings/active/FND-20261101185459-950f-verify-star-detectors-*.json",
+    ".factory/findings/archive/FND-20261101185459-950f-verify-star-detectors-*.json",
+    ".factory/completions/20261101190039-7a0f-fix-star-detector-bounds.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        ".factory/tasks/archive/20261101190039-7a0f-fix-star-detector-bounds/verify-sanitizers.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261101190039-7a0f-fix-star-detector-bounds.json": [
+      "100644",
+      "blob",
+      "31ae80011355f5f2f305987f37a71d91fcfedf75"
+    ],
+    ".factory/findings/active/FND-20261101185459-950f-verify-star-detectors-001.json": null,
+    ".factory/findings/active/FND-20261101185459-950f-verify-star-detectors-002.json": null,
+    ".factory/findings/archive/FND-20261101185459-950f-verify-star-detectors-001.json": [
+      "100644",
+      "blob",
+      "b7ccef2139cf63d02f1f74d852a6f2b2c1603358"
+    ],
+    ".factory/findings/archive/FND-20261101185459-950f-verify-star-detectors-002.json": [
+      "100644",
+      "blob",
+      "dc91398a97e6cdb343200d1383cfe4427067ca13"
+    ],
+    "indigo_libs/indigo/indigo_raw_utils.h": [
+      "100644",
+      "blob",
+      "1bb3cd1271a8899d3a3f472ad3680cd3ea409bae"
+    ],
+    "indigo_libs/indigo_raw_utils.c": [
+      "100644",
+      "blob",
+      "27f640d78b408432a3125037754c9a05d4f5e7a4"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "e7372b795747558edb708485118512c9f7860e11"
+    ],
+    "indigo_test/unit/test_star_detection.c": [
+      "100644",
+      "blob",
+      "e9228b285a394997b5e287e74b261475d739d3cb"
+    ]
+  }
+}

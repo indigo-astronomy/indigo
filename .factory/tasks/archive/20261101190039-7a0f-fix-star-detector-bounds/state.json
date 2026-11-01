@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261101190039-7a0f-fix-star-detector-bounds",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive and commit repair evidence; integration/publication pending authorization.",
+  "blocker": null
+}

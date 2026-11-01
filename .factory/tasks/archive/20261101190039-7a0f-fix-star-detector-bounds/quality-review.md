@@ -1,0 +1,13 @@
+# Independent task quality review
+
+Verdict: pass
+
+Reviewer: Codex subagent review_detector_fix, separate context from the parent implementer. Date: 2026-11-01. Reviewed base: 7ea8e5e5346dae1c773377110a36732d133527d0 and its uncommitted repair diff. Review covers indigo_libs/indigo_raw_utils.c, its public header, indigo_test/Makefile, new unit/test_star_detection.c, specification/plan/test plan, sanitizer runner and relevant historical fixture contracts. Product documentation is the public-header contract. Reinspection of the completed verification.md and public header found their behavioral claims, test counts and stated runtime limits consistent with the source and observed execution. Final test SHA-256: 67e5d088f18f8da105966a6d955e278569ddf59d9e3585d9d89c2fe65f516ce4; source SHA-256: 7a35192c266c72bdbaf568f8d68671c642b9c423364bc5f141a424c114445648.
+
+The shared geometry helper removes duplication across both detectors. Its early division checks precede signed multiplication and bound existing pixel/channel/grid indexes; scratch sizing is checked size_t arithmetic. The existing centroid radius ceiling supplies a concrete supported limit, while radius zero remains accepted. Scan clipping now leaves one pixel on every scanned edge. The additional size_t candidate-capacity bound also covers doubling on narrower size_t platforms. No unrelated source refactoring, dependency, generated output, property or driver change was introduced.
+
+Test review found two incorrect expectations in the newly authored Gaussian case. Radius one cannot satisfy the six-neighbors-above-local-median rule; the existing centroid convention places a Gaussian centered on index 48 at coordinate 48.5. Parent corrected the new expectations after baseline checks. I independently ran the original source from the reviewed base with the corrected ordinary-only fixture: pass. These corrections preserve existing behavior; no existing test was weakened. The final maximum-radius case verifies actual detection at radius 128, complementing clean failure tests above that limit.
+
+Independent final direct-source ASan/UBSan execution passed all four matrix groups. A separate full historical-comparison run passed 8,192 median checks and 288 precise output comparisons, plus original reproductions. See verification.md for the acceptance/check logs and security.md for independent execution scope. The test target compiles the changed translation unit directly, avoiding false confidence from an older library detector body.
+
+No unresolved blocking diff-quality findings. Scope excludes full-repository audit, agent end-to-end exploitability and other platforms' runtime behavior. The owner-authorized audit deferral remains separate; this review does not reset it.

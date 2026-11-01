@@ -118,6 +118,9 @@ INDIGO_EXTERN bool indigo_is_bayered_image(indigo_raw_header *header, size_t dat
 INDIGO_EXTERN indigo_result indigo_equalize_bayer_channels(indigo_raw_type raw_type, void *data, const int width, const int height);
 
 INDIGO_EXTERN indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found);
+/* Star detectors accept radius 0..128 (0 disables precise position refinement). Invalid radius or
+   geometry exceeding the internal int pixel/channel/grid index range returns INDIGO_FAILED.
+   Positive images without an interior scan area return zero stars. */
 INDIGO_EXTERN indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const int radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found);
 INDIGO_EXTERN indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, const void *data, const int radius, const double stddev_threshold_factor, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found);
 INDIGO_EXTERN indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const void *data, const int radius, const double stddev_threshold_factor, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found);

@@ -1,0 +1,3 @@
+Running Star detection
+  PASS ordinary_stars_and_zero_radius_keep_their_behavior
+Star detection: all tests passed

@@ -1,0 +1,5 @@
+format=0 detector=0 radius=1 count=0
+indigo_test/unit/test_star_detection.c:119: expected 1, got 0
+Running Star detection
+  FAIL ordinary_stars_and_zero_radius_keep_their_behavior
+Star detection: 1 test(s) failed

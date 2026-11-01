@@ -1,0 +1,27 @@
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '/Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c', '/Users/polakovic/Development/indigo/indigo_test/unit/test_star_detection.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/matrix']
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/matrix']
+Running Star detection
+  PASS small_images_have_safe_neighbor_scans
+  PASS invalid_radius_and_geometry_fail_before_reading
+  PASS ordinary_stars_and_zero_radius_keep_their_behavior
+  PASS maximum_supported_radius_detects_a_star
+Star detection: all tests passed
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '/Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c', '/Users/polakovic/Development/indigo/.factory/tasks/archive/20261101185459-950f-verify-star-detectors/detector-review-fixture.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/original']
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/original', 'edge']
+edge result=0 count=0
+
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/original', 'edge-precise']
+edge-precise result=0 count=0
+
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/original', 'radius']
+radius result=1 count=-1
+
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/original', 'precise']
+precise result=1 count=-1
+
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '-DCHECK_MEDIAN', '-DRAW_SOURCE="/Users/polakovic/Development/indigo/indigo_libs/indigo_raw_utils.c"', '/Users/polakovic/Development/indigo/.factory/tasks/archive/20261101185459-950f-verify-star-detectors/compatibility-fixture.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/current']
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/current']
+COMMAND: ['clang', '-g', '-O1', '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', '/Users/polakovic/Development/indigo/indigo_libs', '-DRAW_SOURCE="/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/before.c"', '/Users/polakovic/Development/indigo/.factory/tasks/archive/20261101185459-950f-verify-star-detectors/compatibility-fixture.c', '-L', '/Users/polakovic/Development/indigo/build/lib', '-lindigo', '-Wl,-rpath,/Users/polakovic/Development/indigo/build/lib', '-o', '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/before']
+COMMAND: ['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg/before']
+PASS: 3960 small-image calls; 192 invalid radius/geometry calls; 60 normal-image calls including radius128; original reproducers clean; 8192 medians; 288 precise outputs identical.
+Artifacts: /var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-detector-fix-1_asgyfg

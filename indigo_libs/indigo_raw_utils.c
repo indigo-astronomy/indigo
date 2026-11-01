@@ -2644,6 +2644,24 @@ typedef struct {
 	double value;
 } local_maximum;
 
+/* The scan, grid and format conversion loops use int indexes. Match the centroid radius limit. */
+static bool star_detection_geometry(const int radius, const int width, const int height, const int stars_max, size_t *local_pixels_bytes) {
+	if (radius < 0 || radius > MAX_RADIUS || width <= 0 || height <= 0 || stars_max <= 0) {
+		return false;
+	}
+	if (width > INT_MAX / FIND_STAR_GRID || height > INT_MAX / FIND_STAR_GRID || width > INT_MAX / 4 / height) {
+		return false;
+	}
+	/* Candidate capacity doubles when growing, so reserve room for up to twice the pixel count. */
+	size_t pixels = (size_t)width * height;
+	size_t side = 2 * (size_t)radius + 1;
+	if (pixels > SIZE_MAX / sizeof(uint16_t) || pixels > SIZE_MAX / sizeof(local_maximum) / 2 || (size_t)stars_max > SIZE_MAX / sizeof(local_maximum) || side > SIZE_MAX / side / sizeof(uint16_t)) {
+		return false;
+	}
+	*local_pixels_bytes = side * side * sizeof(uint16_t);
+	return true;
+}
+
 /* Comparator for qsort on local_maximum by value (descending) */
 static int local_maximum_comparator(const void *a, const void *b) {
 	const local_maximum *A = (const local_maximum *)a;
@@ -2661,11 +2679,14 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 /* With radius < 2, no precise star positins will be determined */
 indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, const void *data, const int radius, const double stddev_threshold_factor, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
-	if (width <= 0 || height <= 0 || stars_max <= 0) return INDIGO_FAILED;
+	size_t local_pixels_bytes;
+	if (!star_detection_geometry(radius, width, height, stars_max, &local_pixels_bytes)) {
+		return INDIGO_FAILED;
+	}
 
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
-	const int clip_edge = height >= FIND_STAR_EDGE_CLIPPING * 4 ? (int)FIND_STAR_EDGE_CLIPPING : (height / 4);
+	const int clip_edge = MAX(1, height >= FIND_STAR_EDGE_CLIPPING * 4 ? (int)FIND_STAR_EDGE_CLIPPING : (height / 4));
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
 	uint16_t max_luminance = 0;
@@ -2855,8 +2876,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
 	int num_candidates = 0;
 	/* the square around a candidate whose median is the local background */
-	int side = 2 * radius + 1;
-	uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
+	uint16_t *local_pixels = indigo_safe_malloc(local_pixels_bytes);
 
 	// Find all local maxima
 	for (int j = clip_edge; j < clip_height; j++) {
@@ -3077,11 +3097,14 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
    FIND_STAR_FAST_EVALUATION_FACTOR x stars_max of them pass, which avoids evaluating every local maximum of dense frames */
 indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const void *data, const int radius, const double stddev_threshold_factor, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
-	if (width <= 0 || height <= 0 || stars_max <= 0) return INDIGO_FAILED;
+	size_t local_pixels_bytes;
+	if (!star_detection_geometry(radius, width, height, stars_max, &local_pixels_bytes)) {
+		return INDIGO_FAILED;
+	}
 
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
-	const int clip_edge = height >= FIND_STAR_EDGE_CLIPPING * 4 ? (int)FIND_STAR_EDGE_CLIPPING : (height / 4);
+	const int clip_edge = MAX(1, height >= FIND_STAR_EDGE_CLIPPING * 4 ? (int)FIND_STAR_EDGE_CLIPPING : (height / 4));
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
 	uint16_t max_luminance = 0;
@@ -3271,8 +3294,7 @@ indigo_result indigo_find_stars_fast_threshold(indigo_raw_type raw_type, const v
 	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
 	int num_candidates = 0;
 	/* the square around a candidate whose median is the local background */
-	int side = 2 * radius + 1;
-	uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
+	uint16_t *local_pixels = indigo_safe_malloc(local_pixels_bytes);
 
 	// Find all local maxima
 	for (int j = clip_edge; j < clip_height; j++) {
