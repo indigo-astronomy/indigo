@@ -895,6 +895,34 @@ static void test_general_state_bounds(void) {
 	ASSERT_EQ_INT(1, read_calls);
 }
 
+static void test_hotplug_full_registry(void) {
+	reset_usb();
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		devices[i] = &test_device;
+	}
+	for (int i = 0; i < 3; i++) {
+		handle_live = true;
+		process_plug_event((libusb_device *)&token);
+	}
+	int full_refs = ref_calls;
+	int full_attaches = attach_calls;
+	bool unchanged = true;
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		unchanged = unchanged && devices[i] == &test_device;
+		devices[i] = NULL;
+	}
+	handle_live = true;
+	process_plug_event((libusb_device *)&token);
+	process_unplug_event((libusb_device *)&token);
+	ASSERT_TRUE(unchanged);
+	ASSERT_EQ_INT(0, full_refs);
+	ASSERT_EQ_INT(0, full_attaches);
+	ASSERT_EQ_INT(1, ref_calls);
+	ASSERT_EQ_INT(1, unref_calls);
+	ASSERT_EQ_INT(1, attach_calls);
+	ASSERT_EQ_INT(1, private_frees);
+}
+
 static void test_hotplug_descriptor_names(void) {
 	for (int mode = 0; mode < 3; mode++) {
 		reset_usb();
@@ -1784,6 +1812,7 @@ int main(int argc, char **argv) {
 		{ "general state boundaries", test_general_state_bounds },
 		{ "CSW integrity", test_csw_integrity },
 		{ "hotplug descriptor names", test_hotplug_descriptor_names },
+		{ "hotplug full registry preserves ownership", test_hotplug_full_registry },
 		{ "nonlegacy control argument batches", test_nonlegacy_control_argument_batches },
 		{ "legacy control argument offsets", test_legacy_control_argument_offsets },
 		{ "capture button and program commands", test_capture_buttons },

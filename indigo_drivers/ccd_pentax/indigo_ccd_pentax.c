@@ -26,7 +26,7 @@
  \file indigo_ccd_pentax.c
  */
 
-#define DRIVER_VERSION 0x03000005
+#define DRIVER_VERSION 0x03000006
 #define DRIVER_NAME "indigo_ccd_pentax"
 
 #include <stdlib.h>
@@ -1681,7 +1681,11 @@ static void process_plug_event(libusb_device *dev) {
 			}
 			libusb_close(handle);
 		}
-		if (endpoint_in != 0 && endpoint_out != 0) {
+		int slot = 0;
+		while (slot < MAX_DEVICES && devices[slot] != NULL) {
+			slot++;
+		}
+		if (endpoint_in != 0 && endpoint_out != 0 && slot < MAX_DEVICES) {
 			pentax_private_data *private_data = indigo_safe_malloc(sizeof(pentax_private_data));
 			libusb_ref_device(dev);
 			private_data->dev = dev;
@@ -1695,12 +1699,7 @@ static void process_plug_event(libusb_device *dev) {
 			indigo_make_name_unique(device->name, "%s", usb_path);
 			device->private_data = private_data;
 			device->master_device = master_device;
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] == NULL) {
-					indigo_attach_device(devices[j] = device);
-					break;
-				}
-			}
+			indigo_attach_device(devices[slot] = device);
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);

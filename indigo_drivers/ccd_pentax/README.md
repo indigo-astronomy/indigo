@@ -85,10 +85,10 @@ Driver is developed and tested with:
 ## Testing
 
 - 2026-10-26 23:38 3.0.0.3 mac arm64 PENTAX K-m 1/0 Failed
-- 2026-10-26 23:51 3.0.0.4 mac arm64 fake SDK 36/36 OK
 - 2026-10-27 18:24 3.0.0.4 linux arm64 PENTAX K-m (connection baseline) 1/1 OK
 - 2026-10-27 20:15 3.0.0.5 linux arm64 fake SDK 44/44 OK
 - 2026-10-27 20:49 3.0.0.5 linux arm64 PENTAX K-m 1/0 Failed
 - 2026-10-27 20:49 3.0.0.5 linux arm64 PENTAX K-m (bulb) 1/1 OK
 - 2026-10-27 20:50 3.0.0.5 linux arm64 PENTAX K-m DNG (single frame) 1/1 OK
 - 2026-10-27 20:50 3.0.0.5 linux arm64 PENTAX K-m PEF (single frame) 1/1 OK
+- 2026-11-02 18:38 3.0.0.6 mac arm64 fake SDK 45/45 OK
