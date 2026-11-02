@@ -25,7 +25,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000044
+#define DRIVER_VERSION 0x03000045
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1018,8 +1018,19 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 	return true;
 }
 
+static char *first_related_solver_agent(indigo_device *device) {
+	static char *solver_agents[] = { "Astrometry Agent", "ASTAP Agent", "Platesolver Agent", "INDIGO Solver Agent", "Solver Agent" };
+	for (int i = 0; i < (int)(sizeof(solver_agents) / sizeof(solver_agents[0])); i++) {
+		char *related_agent_name = indigo_filter_first_related_agent(device, solver_agents[i]);
+		if (related_agent_name) {
+			return related_agent_name;
+		}
+	}
+	return NULL;
+}
+
 static void disable_solver(indigo_device *device) {
-	char *related_agent_name = indigo_filter_first_related_agent_2(device, "Astrometry Agent", "ASTAP Agent");
+	char *related_agent_name = first_related_solver_agent(device);
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME, AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM_NAME, true);
 	}
