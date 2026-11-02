@@ -143,8 +143,7 @@
 				if (hostTime != null && hostTime.items[0].value == "") {
 					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() })
 				}
-				var platesolver = server["DRIVERS"].item("indigo_agent_platesolver");
-				if (INDIGO.devices["Astrometry Agent"] == null && INDIGO.devices["Platesolver Agent"] == null && (platesolver == null || !platesolver.value)) {
+				if (INDIGO.devices["Astrometry Agent"] == null && INDIGO.devices["Platesolver Agent"] == null && server["DRIVERS"] != null && (server["DRIVERS"].item("indigo_agent_platesolver") == null || !server["DRIVERS"].item("indigo_agent_platesolver").value)) {
 					console.log("No 'Astrometry Agent' or 'Platesolver Agent' device.");
 					if (server["DRIVERS"].item("indigo_agent_astrometry") == null) {
 						console.log("Trying to load 'indigo_agent_astrometry' driver.");

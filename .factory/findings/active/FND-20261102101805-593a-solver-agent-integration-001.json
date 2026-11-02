@@ -1,0 +1,19 @@
+{
+  "title": "Factory test suite fails when Python writes bytecode caches during the run",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102101805-593a-solver-agent-integration",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "On Linux arm64 with Python 3.13.5, ./.factory/scripts/test reports 12 failures (context export, process check record-content/CLI and task archive tests) because the helpers' __pycache__ directories appear between the before/after tree or git status snapshots the tests compare. With PYTHONDONTWRITEBYTECODE=1 all 197 tests pass. Pre-existing harness behaviour, not caused by the task diff. Next: make the configured test command or the fixtures ignore bytecode caches (e.g. set PYTHONDONTWRITEBYTECODE or exclude __pycache__ from snapshots).",
+  "evidence": "factory-test.txt (plain run, 12 failures) and factory-test-nobytecode.txt (197 passed) in this task; indigo_test/factory/test_context_export.py:93, indigo_test/factory/test_process_check.py:504.",
+  "resolution": null,
+  "id": "FND-20261102101805-593a-solver-agent-integration-001"
+}

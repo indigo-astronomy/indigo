@@ -1,0 +1,140 @@
+Working directory: <repo>
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+..............................F.........................................................................F..............F...................................FF..FFFFF.FF..............................
+======================================================================
+FAIL: test_selected_role_scope_and_no_source_export_or_mutation (test_context_export.ContextExportTests.test_selected_role_scope_and_no_source_export_or_mutation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_context_export.py", line 93, in test_selected_role_scope_and_no_source_export_or_mutation
+    self.assertEqual(before, after)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+AssertionError: {Posi[34671 chars]tory/tasks/001-demo/security.md'): b'REVIEW_EV[573 chars]E\n'} != {Posi[34671 chars]tory/scripts/__pycache__/findings.cpython-313.[114220 chars]E\n'}
+Diff is 925728 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_cli_exit_codes_and_shallow_history_fail_closed (test_process_check.ProcessCheckTests.test_cli_exit_codes_and_shallow_history_fail_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_process_check.py", line 339, in test_cli_exit_codes_and_shallow_history_fail_closed
+    self.assertEqual(run('--base', self.base).returncode, 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_record_content_cli_is_readonly_and_rejects_ambiguous_symlink_and_unmerged_inputs (test_process_check.ProcessCheckTests.test_record_content_cli_is_readonly_and_rejects_ambiguous_symlink_and_unmerged_inputs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_process_check.py", line 504, in test_record_content_cli_is_readonly_and_rejects_ambiguous_symlink_and_unmerged_inputs
+    self.assertEqual(self.git('status', '--porcelain'), before)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'A  .[584 chars]/001-example/verification.md\n?? .factory/scripts/__pycache__/' != 'A  .[584 chars]/001-example/verification.md'
+Diff is 669 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_dry_run_is_read_only_and_reports_link_plan (test_task_archive.TaskArchiveTests.test_dry_run_is_read_only_and_reports_link_plan)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 112, in test_dry_run_is_read_only_and_reports_link_plan
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67834 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67834 chars]tory/scripts/__pycache__/maintenance.cpython-3[111457 chars] b''}
+Diff is 1010194 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_existing_markdown_symlink_does_not_write_outside_repository (test_task_archive.TaskArchiveTests.test_existing_markdown_symlink_does_not_write_outside_repository)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 241, in test_existing_markdown_symlink_does_not_write_outside_repository
+    self.rejected(TASK)
+    ~~~~~~~~~~~~~^^^^^^
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 85, in rejected
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67821 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67821 chars]tory/scripts/__pycache__/task_store.cpython-31[38434 chars] b''}
+Diff is 432731 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_legacy_state_is_not_silently_reinitialized (test_task_archive.TaskArchiveTests.test_legacy_state_is_not_silently_reinitialized)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 235, in test_legacy_state_is_not_silently_reinitialized
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67752 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67752 chars]tory/scripts/__pycache__/task_store.cpython-31[38434 chars] b''}
+Diff is 432659 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_new_task_rejects_invalid_json_without_writes (test_task_archive.TaskArchiveTests.test_new_task_rejects_invalid_json_without_writes) (state='[]')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 229, in test_new_task_rejects_invalid_json_without_writes
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67552 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67552 chars]tory/scripts/__pycache__/task_store.cpython-31[38434 chars] b''}
+Diff is 432254 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_new_task_rejects_live_archived_reserved_and_historical_ids (test_task_archive.TaskArchiveTests.test_new_task_rejects_live_archived_reserved_and_historical_ids)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 211, in test_new_task_rejects_live_archived_reserved_and_historical_ids
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67586 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67586 chars]tory/scripts/__pycache__/task_store.cpython-31[38434 chars] b''}
+Diff is 432288 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_new_task_rejects_live_history_and_dangling_archive_entry (test_task_archive.TaskArchiveTests.test_new_task_rejects_live_history_and_dangling_archive_entry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 251, in test_new_task_rejects_live_history_and_dangling_archive_entry
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67586 chars]tory/templates/task/verification.md'): b'# Ver[11042 chars] b''} != {Posi[67586 chars]tory/scripts/__pycache__/task_store.cpython-31[38048 chars] b''}
+Diff is 431764 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_nonfinite_json_state_rejected_before_archiving (test_task_archive.TaskArchiveTests.test_nonfinite_json_state_rejected_before_archiving)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 170, in test_nonfinite_json_state_rejected_before_archiving
+    self.rejected(TASK)
+    ~~~~~~~~~~~~~^^^^^^
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 85, in rejected
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67749 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67749 chars]tory/scripts/__pycache__/task_store.cpython-31[38434 chars] b''}
+Diff is 432615 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_symlink_task_archive_parent_or_report_is_rejected (test_task_archive.TaskArchiveTests.test_symlink_task_archive_parent_or_report_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 176, in test_symlink_task_archive_parent_or_report_is_rejected
+    self.rejected(TASK)
+    ~~~~~~~~~~~~~^^^^^^
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 85, in rejected
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67752 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67752 chars]tory/scripts/__pycache__/task_store.cpython-31[38434 chars] b''}
+Diff is 432659 characters long. Set self.maxDiff to None to see it.
+
+======================================================================
+FAIL: test_unfinished_wrong_task_duplicate_and_malformed_state_rejected (test_task_archive.TaskArchiveTests.test_unfinished_wrong_task_duplicate_and_malformed_state_rejected) (state='{"version": 1, "active_task": "001-demo", "phase": "complete", "status": "active", "assigned_role": "coordinator", "next_action": "Archive after verified delivery.", "blocker": null, "custom": "keep"}')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 160, in test_unfinished_wrong_task_duplicate_and_malformed_state_rejected
+    self.rejected(TASK)
+    ~~~~~~~~~~~~~^^^^^^
+  File "<repo>/indigo_test/factory/test_task_archive.py", line 85, in rejected
+    self.assertEqual(before, self.snapshot())
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {Posi[67750 chars]tory/templates/task/verification.md'): b'# Ver[11428 chars] b''} != {Posi[67750 chars]tory/scripts/__pycache__/task_store.cpython-31[38434 chars] b''}
+Diff is 432616 characters long. Set self.maxDiff to None to see it.
+
+----------------------------------------------------------------------
+Ran 197 tests in 17.100s
+
+FAILED (failures=12)
+Command failed with exit code 1
+exit 1

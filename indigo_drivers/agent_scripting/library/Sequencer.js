@@ -715,7 +715,6 @@ var indigo_flipper = {
 
 	start: function(use_solver) {
 		var guider_agent = indigo_devices[this.devices[GUIDER_AGENT]];
-		this.devices[SOLVER_AGENT] = indigo_sequencer.devices[SOLVER_AGENT];
 		indigo_flipper.use_solver = use_solver;
 		indigo_event_handlers.indigo_flipper = indigo_flipper;
 		this.waiting_for_transit = false;

@@ -1,0 +1,24 @@
+{
+  "title": "Astrometry page skips the solver related-agent selection on first load",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102101805-593a-solver-agent-integration",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Commit ac3fdb9fb made checkState() in indigo_server/resource/astrometry.html read server[\"DRIVERS\"].item(...) on every call. checkState() runs first in onDefineProperty(); while the Server device exists without its DRIVERS property early in the page load the read throws, so onDefineProperty() stops before selecting Imager Agent and Mount Agent in the solver agent's FILTER_RELATED_AGENT_LIST. On a fresh server with Platesolver Agent the list stayed unselected for 40 s after the first page load. The previous code read DRIVERS only when no Astrometry Agent existed. Fix: read DRIVERS only when no solver agent exists and DRIVERS is defined.",
+  "evidence": "verification.md (first-load poll before and after the fix, web-ui-platesolver.txt, web-ui-astrometry.txt); indigo_server/resource/astrometry.html checkState().",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Guard added in astrometry.html checkState(); fresh-server first-load poll selects Imager and Mount Agent at 0.3 s (was unselected for 40 s); web-ui-platesolver.txt and web-ui-astrometry.txt 8/8 in verification.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261102101805-593a-solver-agent-integration-002"
+}

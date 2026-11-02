@@ -1,0 +1,24 @@
+{
+  "title": "Sequencer.md omits the fallbacks of solver agent selection",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102101805-593a-solver-agent-integration",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "Sequencer.md stated that the solver on the imager agent's host is used, but sequencer_solver_agent() also falls back to a solver on another host and finally to Astrometry Agent on the imager's host. Document both.",
+  "evidence": "Independent review Q2; indigo_drivers/agent_scripting/library/Sequencer.md start() paragraph; quality-review.md.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Sequencer.md start() paragraph documents same-host preference, other-host and default fallbacks; reinspected in quality-review.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261102101805-593a-solver-agent-integration-004"
+}

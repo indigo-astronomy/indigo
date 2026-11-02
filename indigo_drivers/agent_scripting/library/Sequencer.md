@@ -118,7 +118,7 @@ By default the per-step state of the loop body is reset on each iteration so the
 sequence.start();
 ```
 
-`start(imager_agent, mount_agent, guider_agent, solver_agent)` optionally accepts the device names of the agents to drive. When omitted they default to `"Imager Agent"`, `"Mount Agent"` and `"Guider Agent"` respectively. Solver agents are mutually exclusive, so when `solver_agent` is omitted the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent is used:
+`start(imager_agent, mount_agent, guider_agent, solver_agent)` optionally accepts the device names of the agents to drive. When omitted they default to `"Imager Agent"`, `"Mount Agent"` and `"Guider Agent"` respectively. Solver agents are mutually exclusive on one server, so when `solver_agent` is omitted the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent is used, otherwise one loaded on another host; with no solver agent `"Astrometry Agent"` on the host of the imager agent is assumed:
 
 ```js
 sequence.start("Imager Agent @ observatory", "Mount Agent @ observatory", "Guider Agent @ observatory");

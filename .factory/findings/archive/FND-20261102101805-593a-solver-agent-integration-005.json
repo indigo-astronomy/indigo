@@ -1,0 +1,24 @@
+{
+  "title": "Sequencer.js solver lookup misses the solver names of older servers",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102101805-593a-solver-agent-integration",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "sequencer_solver_agent() matched Platesolver/Astrometry/ASTAP only, while the Imager Agent and the stated intent include the older-server INDIGO Solver Agent and Solver Agent names; such remote solvers fell back to a nonexistent Astrometry Agent @ host. Add the names.",
+  "evidence": "Independent review Q3; indigo_drivers/agent_scripting/library/Sequencer.js sequencer_solver_agent(); quality-review.md.",
+  "resolution": {
+    "kind": "not_a_bug",
+    "evidence": "Owner (Rumen G. Bogdanovski, 2026-11-02): the INDIGO Solver Agent and Solver Agent names were temporary and never released, so they are irrelevant for Sequencer.js; no change made. Recorded in quality-review.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261102101805-593a-solver-agent-integration-005"
+}

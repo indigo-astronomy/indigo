@@ -768,6 +768,7 @@ static void remote_solver_orchestration(void) {
 	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ remote')==='Astrometry Agent @ remote' && sequencer_solver_agent('Imager Agent @ other')==='Astrometry Agent @ remote'"));
 }
 
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },

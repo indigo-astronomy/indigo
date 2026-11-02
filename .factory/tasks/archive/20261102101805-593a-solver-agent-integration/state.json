@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261102101805-593a-solver-agent-integration",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of the final task commit, then fast-forward master and delete the task branch; push not authorized.",
+  "blocker": null
+}

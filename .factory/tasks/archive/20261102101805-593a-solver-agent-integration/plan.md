@@ -1,0 +1,8 @@
+# Plan (as executed)
+
+1. Inventory where other agents, Sequencer.js and the web UI name solver agents (git grep; archives and off-limits drivers excluded). Result: solver side is generic (`indigo_libs/indigo_platesolver.c`); gaps in Imager Agent `disable_solver()`, Sequencer.js (fixed "Astrometry Agent" slot), astrometry/imager/mount pages. Mount and Guider agents need no change.
+2. Imager Agent: add `first_related_solver_agent()` covering all solver name prefixes, use it in `disable_solver()`, bump DRIVER_VERSION 0x03000044 → 0x03000045; add integration test "platesolver agent solving disabled" and confirm it fails against the previous source. Commit 07c373f20.
+3. Sequencer.js: introduce `SOLVER_AGENT` slot (alias `ASTROMETRY_AGENT`), resolve the solver at `Sequence.prototype.start()`, optional fourth argument, slot-based abort; document in Sequencer.md; add "platesolver orchestration" test. Commit f7f2b3257.
+4. Web UI: `window.solverAgent()` in astrometry.html, top-level wait condition independent of it (Vue mounts in components.js before the page script), no Astrometry load while Platesolver is enabled; add "Platesolver Agent" to imager/mount related selections. Browser check against a scratch indigo_server with each solver agent. Commit ac3fdb9fb.
+5. Remote solver: owner review found that "<name> @ <host>" solvers on another host than the imager agent were missed; scan `indigo_devices` by prefix with same-host preference and require `AGENT_PLATESOLVER_EXPOSURE` (stale empty device entries); add "remote solver orchestration" test. Commit 47f3d63a9.
+6. Retroactive Factory record (this task): rerun suites at 47f3d63a9, independent quality/security review, process evidence, archive.
