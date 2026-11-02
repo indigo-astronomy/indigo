@@ -809,7 +809,7 @@ static void refused_simulator_led_write_retains_state(void) {
 	SERIAL_CHECK_TRUE(primalucelib_get_state(&link));
 	SERIAL_CHECK_TRUE(!strcmp(primalucelib_reply_string(&link, PRIMALUCE_REPLY_LEDS), "on"));
 	SERIAL_CHECK_TRUE(fault("\"DIMLEDS\"", "reject"));
-	SERIAL_CHECK_TRUE(primalucelib_set_leds(&link, "off"));
+	SERIAL_CHECK_TRUE(primalucelib_request(&link, PRIMALUCE_REQUEST_SET_LEDS, "off"));
 	SERIAL_CHECK_TRUE(!strcmp(primalucelib_reply_string(&link, acknowledgement), "Error: invalid command"));
 	SERIAL_CHECK_TRUE(primalucelib_get_state(&link));
 	SERIAL_CHECK_TRUE(!strcmp(primalucelib_reply_string(&link, PRIMALUCE_REPLY_LEDS), "on"));
