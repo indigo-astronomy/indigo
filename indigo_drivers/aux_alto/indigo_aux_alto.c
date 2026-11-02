@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000007
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_alto"
 #define DRIVER_LABEL         "PrimaluceLab ALTO Cover"
 #define AUX_DEVICE_NAME      "PrimaluceLab ALTO"

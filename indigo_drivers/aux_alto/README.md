@@ -35,3 +35,4 @@ indigo_server indigo_aux_alto
 
 - 2026-10-24 16:49 3.0.0.1 linux x64 ALTO1 9/9 OK
 - 2026-10-25 03:18 3.0.0.7 linux x64 simulator 33/33 OK
+- 2026-11-02 19:00 3.0.0.8 mac arm64 simulator 34/34 OK

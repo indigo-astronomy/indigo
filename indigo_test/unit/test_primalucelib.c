@@ -494,6 +494,15 @@ cleanup:
 	stop_peer();
 }
 
+static void access_point_refusal_preserves_reason(void) {
+	CHECK(start_peer("{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"Error: disabled\"}}}\n", "{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"done\"}}}\n", NULL));
+	CHECK(!primalucelib_set_access_point(&test_link, false));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: disabled"));
+	CHECK(primalucelib_set_access_point(&test_link, true));
+cleanup:
+	stop_peer();
+}
+
 // A quoted string or broken JSON is an answer, but not an accepted one.
 static void garbage_is_an_answer_but_not_a_reply(void) {
 	CHECK(start_peer("\"Error: invalid cmd\"\n", "{\"res\":\n", "no json at all\n", NULL));
@@ -1089,6 +1098,7 @@ static void http_links_open_without_contact(void) {
 int main(void) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	const indigo_test_case tests[] = {
+		{ "access point refusal preserves reason", access_point_refusal_preserves_reason },
 		{ "WiFi credentials are escaped", wifi_credentials_are_escaped },
 		{ "WiFi credentials fit or send nothing", wifi_credentials_fit_or_send_nothing },
 		{ "golden requests match the original driver", golden_requests_match_the_original_driver },

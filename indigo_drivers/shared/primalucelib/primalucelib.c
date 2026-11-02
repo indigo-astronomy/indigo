@@ -710,7 +710,8 @@ bool primalucelib_get_wifi_status(primalucelib_link *link, primalucelib_wifi_sta
 }
 
 bool primalucelib_set_access_point(primalucelib_link *link, bool on) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_ACCESS_POINT, on ? PRIMALUCE_ACCESS_POINT_ON : PRIMALUCE_ACCESS_POINT_OFF);
+	char *acknowledgement[] = { "res", "cmd", PRIMALUCE_KEY_SET_ACCESS_POINT_STATUS, NULL };
+	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_ACCESS_POINT, on ? PRIMALUCE_ACCESS_POINT_ON : PRIMALUCE_ACCESS_POINT_OFF) && primalucelib_reply_is_acknowledged(link, acknowledgement);
 }
 
 static bool primalucelib_check_credentials(primalucelib_link *link, const char *ssid, const char *password, bool access_point) {

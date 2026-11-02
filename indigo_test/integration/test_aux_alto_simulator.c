@@ -25,6 +25,7 @@
 
 #include "serial_simulator_test_common.h"
 #include <indigo/indigo_usbserial_utils.h>
+#include "../../indigo_drivers/shared/primalucelib/primalucelib.h"
 #include <errno.h>
 #include <sys/wait.h>
 #include <pthread.h>
@@ -786,6 +787,11 @@ static void presets(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_PRESET_RECALL_PROPERTY_NAME, "PRESET_3", INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(message_seen("Error: empty preset"));
 	SERIAL_CHECK_TRUE(cover_is(50));
+	// Refused writes must not mutate the simulator's persistent state.
+	SERIAL_CHECK_TRUE(fault("\"NAME\"", "reject"));
+	SERIAL_CHECK_TRUE(text_change(X_PRESET_NAMES_PROPERTY_NAME, "PRESET_2", "Rejected", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(fault("\"M1POS\"", "reject"));
+	SERIAL_CHECK_TRUE(number_change(X_PRESETS_PROPERTY_NAME, "PRESET_2", 25, INDIGO_ALERT_STATE));
 	// The presets are read back after a reconnect.
 	disconnect_serial_device(&alto);
 	SERIAL_CHECK_TRUE(connect_alto());
@@ -793,6 +799,22 @@ static void presets(void) {
 	SERIAL_CHECK_TRUE(text_is(X_PRESET_NAMES_PROPERTY_NAME, "PRESET_2", "Half"));
 cleanup:
 	driver_stop();
+}
+
+static void refused_simulator_led_write_retains_state(void) {
+	primalucelib_link link = { 0 };
+	const char *error = NULL;
+	char *acknowledgement[] = { "res", "cmd", "DIMLEDS", NULL };
+	SERIAL_CHECK_TRUE(primalucelib_open(&link, "ALTO simulator contract", fixture.port, &error));
+	SERIAL_CHECK_TRUE(primalucelib_get_state(&link));
+	SERIAL_CHECK_TRUE(!strcmp(primalucelib_reply_string(&link, PRIMALUCE_REPLY_LEDS), "on"));
+	SERIAL_CHECK_TRUE(fault("\"DIMLEDS\"", "reject"));
+	SERIAL_CHECK_TRUE(primalucelib_set_leds(&link, "off"));
+	SERIAL_CHECK_TRUE(!strcmp(primalucelib_reply_string(&link, acknowledgement), "Error: invalid command"));
+	SERIAL_CHECK_TRUE(primalucelib_get_state(&link));
+	SERIAL_CHECK_TRUE(!strcmp(primalucelib_reply_string(&link, PRIMALUCE_REPLY_LEDS), "on"));
+cleanup:
+	primalucelib_close(&link);
 }
 
 static void leds(void) {
@@ -905,6 +927,11 @@ static void wifi_modes(void) {
 	disconnect_serial_device(&alto);
 	SERIAL_CHECK_TRUE(connect_alto());
 	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, true));
+	clear_messages();
+	SERIAL_CHECK_TRUE(fault("\"AP_SET_STATUS\"", "reject"));
+	SERIAL_CHECK_TRUE(switch_change(X_WIFI_PROPERTY_NAME, X_WIFI_AP_ITEM_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Error: invalid command"));
+	SERIAL_CHECK_TRUE(switch_is(X_WIFI_PROPERTY_NAME, OFF_ITEM_NAME, true));
 	// A refused mode ends ALERT with the cover's reason, keeps the mode and restarts nothing.
 	clear_messages();
 	SERIAL_CHECK_TRUE(fault("\"LANCFG\":\"sta\"", "reject"));
@@ -1012,6 +1039,7 @@ int main(void) {
 		{ "environment_polled", environment_polled, "normal" },
 		{ "presets", presets, "normal" },
 		{ "leds", leds, "normal" },
+		{ "refused_simulator_led_write_retains_state", refused_simulator_led_write_retains_state, "normal" },
 		{ "calibration", calibration, "normal" },
 		{ "wifi_credentials", wifi_credentials, "normal" },
 		{ "wifi_modes", wifi_modes, "normal" },

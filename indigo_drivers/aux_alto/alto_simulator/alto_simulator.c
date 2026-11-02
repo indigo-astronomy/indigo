@@ -27,6 +27,9 @@
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 #include "../../../indigo_test/simulator_common/serial_motion.h"
 
+// Version 2: refused preset and LED writes retain the previous state.
+#define ALTO_SIMULATOR_VERSION 2
+
 #define PRESET_COUNT     3
 #define MAX_TOKENS       256
 #define REPLY_SIZE       4096
@@ -501,10 +504,10 @@ static void set_preset(char *buffer, const char *json, const jsmntok_t *tokens, 
 	for (int i = 0; i < value->size; i++) {
 		const jsmntok_t *field = tokens + member;
 		const char *result = INVALID;
-		if (token_is(json, field, "NAME") && tokens[member + 1].type == JSMN_STRING && tokens[member + 1].end - tokens[member + 1].start < (int)sizeof(presets[0].name)) {
+		if (!refused && token_is(json, field, "NAME") && tokens[member + 1].type == JSMN_STRING && tokens[member + 1].end - tokens[member + 1].start < (int)sizeof(presets[0].name)) {
 			snprintf(presets[index].name, sizeof(presets[index].name), "%.*s", tokens[member + 1].end - tokens[member + 1].start, json + tokens[member + 1].start);
 			result = "done";
-		} else if (token_is(json, field, "M1POS") && presets[index].name[0] != 0) {
+		} else if (!refused && token_is(json, field, "M1POS") && presets[index].name[0] != 0) {
 			// A preset without a name refuses a position; NAME is applied first.
 			bool ok;
 			int steps = token_int(json, tokens + member + 1, &ok);
@@ -595,7 +598,9 @@ static void command(char *buffer, const char *json, const jsmntok_t *tokens, con
 	const jsmntok_t *value = tokens + 6;
 	bool ok;
 	if (token_is(json, key, "DIMLEDS") && value->type == JSMN_STRING) {
-		snprintf(leds, sizeof(leds), "%.*s", value->end - value->start < 15 ? value->end - value->start : 15, json + value->start);
+		if (!refused) {
+			snprintf(leds, sizeof(leds), "%.*s", value->end - value->start < 15 ? value->end - value->start : 15, json + value->start);
+		}
 		append(buffer, refused ? "{\"res\":{\"cmd\":{\"DIMLEDS\":\"" INVALID "\"}}}\n" : "{\"res\":{\"cmd\":{\"cmd\":\"done\"}}}\n");
 	} else if (token_is(json, key, "LOGLEVEL")) {
 		reply("[mLogs_DefaultSetup] \n");

@@ -43,6 +43,7 @@
 |  | 2026-09-30 18:14 | 3.0.0.15 | linux arm64 | StarlightXpress AO | 16 / 16 | ✅ OK |
 | aux_alto | 2026-10-24 16:49 | 3.0.0.1 | linux x64 | ALTO1 | 9 / 9 | ✅ OK |
 |  | 2026-10-25 03:18 | 3.0.0.7 | linux x64 | simulator | 33 / 33 | ✅ OK |
+|  | 2026-11-02 19:00 | 3.0.0.8 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | aux_arteskyflat | 2026-09-27 20:47 | 3.0.0.9 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 |  | 2026-10-09 13:18 | 3.0.0.9 | linux arm64 | Artesky Flat Box Arduino simulator (ESP32-S3) | 6 / 6 | ✅ OK |
 | aux_asiair | 2026-09-27 02:07 | 3.0.0.7 | linux x64 | fake SDK | 20 / 20 | ✅ OK |
@@ -68,6 +69,7 @@
 | aux_geoptikflat | 2026-09-27 20:50 | 3.0.0.9 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 | aux_giotto | 2026-10-24 14:31 | 3.0.0.1 | linux x64 | GIOTTO | 8 / 8 | ✅ OK |
 |  | 2026-10-25 03:16 | 3.0.0.7 | linux x64 | simulator | 30 / 30 | ✅ OK |
+|  | 2026-11-02 18:49 | 3.0.0.8 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | aux_joystick | 2026-10-19 09:53 | 3.0.0.10 | mac arm64 | fake SDK | 14 / 14 | ✅ OK |
 | aux_mgbox | 2026-09-27 07:47 | 3.0.0.13 | linux x64 | simulator | 35 / 35 | ✅ OK |
 |  | 2026-09-27 20:51 | 3.0.0.13 | mac arm64 | simulator | 35 / 35 | ✅ OK |
@@ -292,8 +294,8 @@
 |  | 2026-10-05 22:15 | 3.0.0.22 | mac arm64 | SESTOSENSO2 (WiFi) | 18 / 18 | ✅ OK |
 |  | 2026-10-11 09:56 | 3.0.0.25 | linux arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
 |  | 2026-10-23 21:07 | 3.0.0.34 | mac arm64 | SESTOSENSO2 | 18 / 18 | ✅ OK |
-|  | 2026-10-24 22:33 | 3.0.0.42 | mac arm64 | simulator | 76 / 76 | ✅ OK |
 |  | 2026-10-25 03:21 | 3.0.0.45 | linux x64 | simulator | 76 / 76 | ✅ OK |
+|  | 2026-11-02 18:51 | 3.0.0.46 | mac arm64 | simulator | 76 / 76 | ✅ OK |
 | focuser_prodigy | 2026-09-27 13:21 | 3.0.0.9 | linux x64 | simulator | 58 / 58 | ✅ OK |
 |  | 2026-10-09 21:53 | 3.0.0.11 | linux arm64 | Prodigy Arduino simulator (ESP32-S3) | 13 / 13 | ✅ OK |
 |  | 2026-10-10 03:54 | 3.0.0.12 | mac arm64 | simulator | 62 / 62 | ✅ OK |

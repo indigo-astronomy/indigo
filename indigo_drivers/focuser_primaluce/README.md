@@ -49,5 +49,5 @@ As PrimaluceLab never answered any email both simulator and driver are based onl
 - 2026-10-05 22:15 3.0.0.22 mac arm64 SESTOSENSO2 (WiFi) 18/18 OK
 - 2026-10-11 09:56 3.0.0.25 linux arm64 SESTOSENSO2 18/18 OK
 - 2026-10-23 21:07 3.0.0.34 mac arm64 SESTOSENSO2 18/18 OK
-- 2026-10-24 22:33 3.0.0.42 mac arm64 simulator 76/76 OK
 - 2026-10-25 03:21 3.0.0.45 linux x64 simulator 76/76 OK
+- 2026-11-02 18:51 3.0.0.46 mac arm64 simulator 76/76 OK
