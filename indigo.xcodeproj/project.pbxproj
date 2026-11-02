@@ -1268,6 +1268,8 @@
 		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
 		561E4947491CFD9C66C4B12F /* test_serial_port_loss.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_port_loss.c; sourceTree = "<group>"; };
 		C0DE20261101000000000314 /* test_harness_verdicts.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_harness_verdicts.py; sourceTree = "<group>"; };
+		C0DE20261102173234000001 /* test_custom_harness_integrity.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_custom_harness_integrity.py; sourceTree = "<group>"; };
+		C0DE20261102173234000002 /* test_generator_tokens.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_generator_tokens.py; sourceTree = "<group>"; };
 		56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_tool_input_safety.py; sourceTree = "<group>"; };
 		57EF51D50C114C36BDA05461 /* run_server_management_security.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_server_management_security.py; sourceTree = "<group>"; };
 		580FA96D0F1CB38FD7ED8D50 /* test_omnisim_startup.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_omnisim_startup.py; sourceTree = "<group>"; };
@@ -14234,6 +14236,8 @@
 				C0DE20261101204146000002 /* test_agent_platesolver_core.c */,
 				58D21354F48205219CDA34FB /* test_core_text_bounds.c */,
 				C0DE20261101000000000314 /* test_harness_verdicts.py */,
+				C0DE20261102173234000001 /* test_custom_harness_integrity.py */,
+				C0DE20261102173234000002 /* test_generator_tokens.py */,
 				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
 				CA2B0F73C6A84C3DB07A918E /* test_driver_test_recording.py */,
 				527B3EAB589A4725863028E6 /* test_prop_tool_parser.c */,

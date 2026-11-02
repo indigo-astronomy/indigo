@@ -3813,3 +3813,5 @@ $(TEST_BUILD)/hardware/test_ccd_pentax_hw: hardware/test_ccd_pentax_hw.c hardwar
 .PHONY: test-harness-verdicts
 test-harness-verdicts: $(BUILD_LIB)/libindigo_client.a
 	python3 -B unit/test_harness_verdicts.py
+	python3 -B unit/test_custom_harness_integrity.py
+	python3 -B unit/test_generator_tokens.py

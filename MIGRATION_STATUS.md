@@ -14,18 +14,18 @@
 | agent_platesolver       | 3️⃣ | ✅ Project | ⛔ N/A | ✅ Yes | ✅ Sim | 162 / 0 | |
 | agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Sim | 87 / 0 | |
 | ao_sx                   | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 16 | |
-| aux_alto                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 29 / 9 | |
+| aux_alto                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 34 / 9 | |
 | aux_arteskyflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
 | aux_asiair              | 3️⃣ | ⛔ N/A | ✅ Yes | ✅ Yes | ✅ HW  | 24 / 3 | ⛔ RPi only |
-| aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 6 / 0 | |
+| aux_astromechanics      | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 8 / 0 | |
 | aux_cloudwatcher        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | aux_dragonfly           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | aux_dsusb               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 11 / 11 | |
 | aux_fbc                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 13 / 0 | |
 | aux_flatmaster          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 8 / 0 | |
-| aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 16 / 0 | |
+| aux_flipflat            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 17 / 0 | |
 | aux_geoptikflat         | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 12 / 0 | |
-| aux_giotto              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 26 / 8 | |
+| aux_giotto              | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 30 / 8 | |
 | aux_joystick            | 3️⃣ | ❌ No  | ⛔ N/A | ✅ Yes | ✅ HW  | 14 / 2 | |
 | aux_mgbox               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 35 / 0 | |
 | aux_ppb                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 32 / 0 | |
@@ -46,7 +46,7 @@
 | ccd_apogee              | 2️⃣ | ❌ No  | ❌ No  | ❌ No  | ❌ No  | 0 / 0 | ⏰ TODO - make boost_regex and libapogee for Windows |
 | ccd_asi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 54 / 34 | |
 | ccd_atik                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 44 / 1 | |
-| ccd_atik2               | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 27 / 1 | ⛔ macOS only |
+| ccd_atik2               | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 29 / 1 | ⛔ macOS only |
 | ccd_baccam              | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_bresser             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_dsi                 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 0 / 0 | |
@@ -57,7 +57,7 @@
 | ccd_mi                  | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ✅ HW  | 18 / 1 | ⛔ Unix and Windows SDKs are not compatible |
 | ccd_ogma                | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
 | ccd_omegonpro           | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ HW  | 28 / 0 | ➡️ Touptek |
-| ccd_pentax              | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ Sim | 44 / 1 | |
+| ccd_pentax              | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ Sim | 45 / 1 | |
 | ccd_playerone           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 52 / 33 | |
 | ccd_ptp                 | 3️⃣ | ❌ No  | ❌ No  | ✅ Yes | ✅ HW  | 180 / 16 | |
 | ccd_qhy                 | 3️⃣ | ❌ No  | ✅ Yes | ✅ Yes | ⚠️ HW  | 39 / 10 | ⏰ TODO - make libqhy for Windows |
@@ -132,7 +132,7 @@
 | mount_temma             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 30 / 0 | |
 | polaralign_simulator    | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 11 / 0 | |
 | rotator_asi             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 0 | |
-| rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 14 / 0 | `test_rotator_falcon_simulator.c`, covers both protocol generations |
+| rotator_falcon          | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 16 / 0 | `test_rotator_falcon_simulator.c`, covers both protocol generations |
 | rotator_lunatico        | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 64 / 0 | |
 | rotator_optec           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 10 / 0 | |
 | rotator_simulator       | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Sim | 9 / 0 | |
@@ -150,7 +150,7 @@
 | wheel_qhy               | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 8 / 0 | |
 | wheel_quantum           | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 10 / 0 | |
 | wheel_sx                | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ HW  | 17 / 14 | ⏰ TODO - make hidapi for Windows |
-| wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 18 / 0 | |
+| wheel_trutek            | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 19 / 0 | |
 | wheel_xagyl             | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | 12 / 0 | |
 
 # COOKBOOK for migration to API 3.0 and Windows
