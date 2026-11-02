@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "task": "20261102110138-ff60-separate-factory-commits",
+  "scope": [
+    "AGENTS.md",
+    ".factory/completions/20261102110138-ff60-separate-factory-commits.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102110138-ff60-separate-factory-commits.json": [
+      "100644",
+      "blob",
+      "5e2172f57ec6723002f6c31e2c48700bc1efaaa1"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "debd64330a3b5e62652b432ab6661d208684bb52"
+    ]
+  }
+}
