@@ -1,0 +1,29 @@
+{
+  "title": "Driver editor omits the supported polaralign device class",
+  "category": "functional",
+  "severity": "medium",
+  "blocking": false,
+  "evidence": "indigo_tools/driver_editor/driver_format.py:26; editor.py:63-66; editor-fresh-generator-tests.log",
+  "summary": "Editor backend/frontend catalogs recognize polaralign. Structural editing and both maintained-definition previews/mapping succeed without touching definitions/generated repository output. Three new regressions pass; two unrelated existing catalog findings remain open.",
+  "status": "closed",
+  "owner": "coordinator",
+  "tasks": [
+    {
+      "id": "20261023065605-60d4-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102182442-b67b-fix-four-followup-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102182442-b67b-fix-four-followup-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261023065605-60d4-repository-audit-004"
+}

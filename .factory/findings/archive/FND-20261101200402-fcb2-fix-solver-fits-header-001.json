@@ -1,0 +1,29 @@
+{
+  "title": "Catalog builder subtracts foreign star pointers before validating membership",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101200402-fcb2-fix-solver-fits-header",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261102182529-3f77-fix-catalog-membership",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Catalog star references now pass numeric address, element boundary and range checks before index derivation, without unrelated-pointer subtraction. Optimized, sanitized and unoptimized controls pass; caller storage/provenance limits remain explicit.",
+  "evidence": "indigo_drivers/agent_solver/indigo_solver.c:1052\u20131058; findings.md and original/fixed sanitizer evidence in verification.md.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102182529-3f77-fix-catalog-membership/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101200402-fcb2-fix-solver-fits-header-001"
+}

@@ -1,0 +1,29 @@
+{
+  "id": "FND-20261102173307-8455-repair-serial-audit-findings-001",
+  "title": "PrimaLuce LED setter accepts nested command refusal as success",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102173307-8455-repair-serial-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261102182524-7d15-fix-primaluce-led-ack",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Named LED refusal/malformed acknowledgement now overrides legacy success; accepted named/generic firmware acknowledgements remain supported. Protocol and filtered consumer regressions pass, with qualified scope in repair verification.",
+  "evidence": "indigo_drivers/shared/primalucelib/primalucelib.c:577-579; indigo_drivers/aux_alto/indigo_aux_alto.driver:983-1001; task led-nested-ack-baseline.txt",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102182524-7d15-fix-primaluce-led-ack/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  }
+}

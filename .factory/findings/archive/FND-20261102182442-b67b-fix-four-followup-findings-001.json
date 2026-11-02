@@ -1,0 +1,29 @@
+{
+  "title": "GIOTTO simulator mutates LED state while refusing DIMLEDS",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102182442-b67b-fix-four-followup-findings",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261102182524-7d15-fix-primaluce-led-ack",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "GIOTTO simulator now mutates LED state only for accepted DIMLEDS requests. Configured-refusal and reconnect readback preserve the prior ON state; baseline confirmed by source, repaired behavior verified in scoped LED regression.",
+  "evidence": "indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c DIMLEDS branch at b6d3ee192; repair source bca08ca4e, settings_refused regression and LED task verification.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102182524-7d15-fix-primaluce-led-ack/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261102182442-b67b-fix-four-followup-findings-001"
+}

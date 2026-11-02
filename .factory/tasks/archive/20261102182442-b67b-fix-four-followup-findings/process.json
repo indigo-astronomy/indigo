@@ -1,0 +1,124 @@
+{
+  "version": 2,
+  "task": "20261102182442-b67b-fix-four-followup-findings",
+  "scope": [
+    "indigo_tools/driver_editor/*",
+    "indigo_tools/template.driver",
+    ".factory/project.md",
+    ".factory/completions/20261102182442-b67b-fix-four-followup-findings.json",
+    ".factory/findings/active/FND-20261102173307-8455-repair-serial-audit-findings-001.json",
+    ".factory/findings/archive/FND-20261102173307-8455-repair-serial-audit-findings-001.json",
+    ".factory/findings/active/FND-20261101200402-fcb2-fix-solver-fits-header-001.json",
+    ".factory/findings/archive/FND-20261101200402-fcb2-fix-solver-fits-header-001.json",
+    ".factory/findings/active/FND-20261101183631-1a1e-solver-exclusive-init-001.json",
+    ".factory/findings/archive/FND-20261101183631-1a1e-solver-exclusive-init-001.json",
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-004.json",
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-004.json",
+    ".factory/findings/active/FND-20261102182442-b67b-fix-four-followup-findings-001.json",
+    ".factory/findings/archive/FND-20261102182442-b67b-fix-four-followup-findings-001.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "indigo_tools/driver_editor",
+        "-p",
+        "test_editor.py",
+        "-k",
+        "polaralign",
+        "-v"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102182442-b67b-fix-four-followup-findings.json": [
+      "100644",
+      "blob",
+      "4b28f2d1d0aab0229c6b11ca454fd533cb425f0b"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-004.json": null,
+    ".factory/findings/active/FND-20261101183631-1a1e-solver-exclusive-init-001.json": null,
+    ".factory/findings/active/FND-20261101200402-fcb2-fix-solver-fits-header-001.json": null,
+    ".factory/findings/active/FND-20261102173307-8455-repair-serial-audit-findings-001.json": null,
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-004.json": [
+      "100644",
+      "blob",
+      "05d059d4a6b7a93dca7fb707587e05196ac292fd"
+    ],
+    ".factory/findings/archive/FND-20261101183631-1a1e-solver-exclusive-init-001.json": [
+      "100644",
+      "blob",
+      "42aeb2404fe1f75ed1b5c65c9eb17de5389a111e"
+    ],
+    ".factory/findings/archive/FND-20261101200402-fcb2-fix-solver-fits-header-001.json": [
+      "100644",
+      "blob",
+      "9ef8f8901e4b2b0f607f8c929739b9d38bad2e4c"
+    ],
+    ".factory/findings/archive/FND-20261102173307-8455-repair-serial-audit-findings-001.json": [
+      "100644",
+      "blob",
+      "0910060994303fc7228eef9f39d9f7a9af32db59"
+    ],
+    ".factory/findings/archive/FND-20261102182442-b67b-fix-four-followup-findings-001.json": [
+      "100644",
+      "blob",
+      "54a6fe98145699d79d32e605440d07e54af917c9"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "b7d1ef0b93ea917ebf45339896820a33b763bf7f"
+    ],
+    "indigo_tools/driver_editor/driver_format.py": [
+      "100644",
+      "blob",
+      "8cac7806fe7d98a951a3504bb44b57d792230106"
+    ],
+    "indigo_tools/driver_editor/static/app.js": [
+      "100644",
+      "blob",
+      "4c1a2716739b4425fdd8a28d3deb8c30361610f7"
+    ],
+    "indigo_tools/driver_editor/test_editor.py": [
+      "100644",
+      "blob",
+      "cd008da8d279cd3c1ebcf05186449dcaff936a35"
+    ],
+    "indigo_tools/template.driver": [
+      "100644",
+      "blob",
+      "e5718badac79821667c52d596ff93284b30548e1"
+    ]
+  }
+}

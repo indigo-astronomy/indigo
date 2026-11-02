@@ -1,0 +1,8 @@
+test_polaralign_repository_previews_and_mapping (test_editor.MappingTests) ... ok
+test_polaralign_is_in_backend_and_frontend_device_catalogs (test_editor.ParserTests) ... ok
+test_polaralign_structural_editing (test_editor.ParserTests) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.040s
+
+OK

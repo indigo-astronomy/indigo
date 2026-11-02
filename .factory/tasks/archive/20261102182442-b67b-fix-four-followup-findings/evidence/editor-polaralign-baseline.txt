@@ -1,0 +1,49 @@
+test_polaralign_repository_previews_and_mapping (test_editor.MappingTests) ... test_polaralign_is_in_backend_and_frontend_device_catalogs (test_editor.ParserTests) ... FAIL
+test_polaralign_structural_editing (test_editor.ParserTests) ... ERROR
+
+======================================================================
+ERROR: test_polaralign_repository_previews_and_mapping (test_editor.MappingTests) (driver='polaralign_mlastro')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 483, in test_polaralign_repository_previews_and_mapping
+    outputs, _ = generate(source.decode(), path.name, root, GENERATOR, ROOT, 10)
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+ERROR: test_polaralign_repository_previews_and_mapping (test_editor.MappingTests) (driver='polaralign_simulator')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 483, in test_polaralign_repository_previews_and_mapping
+    outputs, _ = generate(source.decode(), path.name, root, GENERATOR, ROOT, 10)
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/editor.py", line 71, in generate
+    names = output_names(root)
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/editor.py", line 66, in output_names
+    raise GenerationError('The definition must contain at least one supported device')
+editor.GenerationError: The definition must contain at least one supported device
+
+======================================================================
+ERROR: test_polaralign_structural_editing (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 82, in test_polaralign_structural_editing
+    source, root, device = structure(source, root, root['id'], 'add', 'polaralign')
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/driver_format.py", line 196, in structure
+    raise ValueError('This child type is not supported here')
+ValueError: This child type is not supported here
+
+======================================================================
+FAIL: test_polaralign_is_in_backend_and_frontend_device_catalogs (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 73, in test_polaralign_is_in_backend_and_frontend_device_catalogs
+    self.assertIn('polaralign', DEVICES)
+AssertionError: 'polaralign' not found in {'focuser', 'rotator', 'dome', 'guider', 'wheel', 'aux', 'mount', 'gps', 'ccd', 'ao'}
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.011s
+
+FAILED (failures=1, errors=3)

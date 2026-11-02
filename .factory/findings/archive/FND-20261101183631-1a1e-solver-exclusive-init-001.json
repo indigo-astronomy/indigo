@@ -1,0 +1,29 @@
+{
+  "title": "Recycled inactive driver registration inherits stale initialized flag",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101183631-1a1e-solver-exclusive-init",
+      "report": "findings.md",
+      "revision": null
+    },
+    {
+      "id": "20261102182537-fcec-fix-driver-registration-state",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "New/recycled registration starts uninitialized, and successful removal clears the flag; refused shutdown preserves initialized state. Exact inactive replacement, failed-init and legacy loader controls pass normally and under sanitizers.",
+  "evidence": "Reproducer and exact command/result in task findings.md; indigo_libs/indigo_client.c add_driver and indigo_remove_driver at baseline e5e77e58edd20f102577a8f931651f802bdfc612.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102182537-fcec-fix-driver-registration-state/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101183631-1a1e-solver-exclusive-init-001"
+}
