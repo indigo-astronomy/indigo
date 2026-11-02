@@ -24,7 +24,7 @@ driver atik2 {
 	label = "Atik (legacy) Camera";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 18;
+	version = 19;
 	max_devices = 16;
 	multi_device_support = true;
 	include {
@@ -424,7 +424,6 @@ driver atik2 {
 				GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.target = 0;
 			}
 			on_change {
-				indigo_cancel_pending_handler(device, guider_ra_finalizer);
 				unsigned short mask = PRIVATE_DATA->relay_mask & ~(ATIK_GUIDE_EAST | ATIK_GUIDE_WEST);
 				double duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 				if (duration > 0) {
@@ -435,6 +434,7 @@ driver atik2 {
 				if (!libatik_guide_relays(PRIVATE_DATA->device_context, mask)) {
 					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
+					indigo_cancel_pending_handler(device, guider_ra_finalizer);
 					PRIVATE_DATA->relay_mask = mask;
 					GUIDER_GUIDE_RA_PROPERTY->state = duration > 0 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					if (duration > 0) {
@@ -453,7 +453,6 @@ driver atik2 {
 				GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
 			}
 			on_change {
-				indigo_cancel_pending_handler(device, guider_dec_finalizer);
 				unsigned short mask = PRIVATE_DATA->relay_mask & ~(ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH);
 				double duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 				if (duration > 0) {
@@ -464,6 +463,7 @@ driver atik2 {
 				if (!libatik_guide_relays(PRIVATE_DATA->device_context, mask)) {
 					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
+					indigo_cancel_pending_handler(device, guider_dec_finalizer);
 					PRIVATE_DATA->relay_mask = mask;
 					GUIDER_GUIDE_DEC_PROPERTY->state = duration > 0 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 					if (duration > 0) {

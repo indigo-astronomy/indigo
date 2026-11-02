@@ -54,6 +54,7 @@ typedef struct {
 } observed_device;
 
 static mock_camera cameras[CAMERAS];
+static double relay_on[4], relay_off[4];
 static observed_device observed[LOGICAL_DEVICES];
 static indigo_device *logical[LOGICAL_DEVICES];
 static int request_revisions[LOGICAL_DEVICES][PROPERTIES];
@@ -578,7 +579,19 @@ bool libatik_guide_relays(libatik_device_context *context, unsigned short mask) 
 	mock_camera *camera = sdk_enter(context, __func__);
 	bool result = camera && !failed(__func__);
 	if (result) {
+		pthread_mutex_lock(&observation_mutex);
+		unsigned short previous = atomic_load(&camera->relay);
+		const unsigned short bits[] = { ATIK_GUIDE_EAST, ATIK_GUIDE_WEST, ATIK_GUIDE_NORTH, ATIK_GUIDE_SOUTH };
+		double now = indigo_monotonic_time();
+		for (int i = 0; i < 4; i++) {
+			if ((mask & bits[i]) && !(previous & bits[i])) {
+				relay_on[i] = now;
+			} else if (!(mask & bits[i]) && (previous & bits[i])) {
+				relay_off[i] = now;
+			}
+		}
 		atomic_store(&camera->relay, mask);
+		pthread_mutex_unlock(&observation_mutex);
 	}
 	sdk_leave();
 	return result;
@@ -1021,6 +1034,59 @@ static void guider_operations(void) {
 	ASSERT_TRUE(request_number(1, "GUIDER_GUIDE_RA", "EAST", 20, INDIGO_OK_STATE));
 }
 
+static void guider_pulse_software_timing(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_TRUE(connect_device(1, true));
+	const char *items[] = { "EAST", "WEST", "NORTH", "SOUTH" };
+	const double durations[] = { 20, 100, 500 };
+	for (int workload = 0; workload < 2; workload++) {
+		if (workload) {
+			ASSERT_TRUE(request_number(0, "CCD_EXPOSURE", "EXPOSURE", 60, INDIGO_BUSY_STATE));
+			ASSERT_TRUE(wait_count(&cameras[0].starts, 1));
+		}
+		for (int direction = 0; direction < 4; direction++) {
+			for (int duration = 0; duration < ARRAY_SIZE(durations); duration++) {
+				for (int sample = 0; sample < 4; sample++) {
+					ASSERT_TRUE(request_number(1, direction < 2 ? "GUIDER_GUIDE_RA" : "GUIDER_GUIDE_DEC", items[direction], durations[duration], INDIGO_OK_STATE));
+					pthread_mutex_lock(&observation_mutex);
+					double actual = (relay_off[direction] - relay_on[direction]) * 1000;
+					pthread_mutex_unlock(&observation_mutex);
+					ASSERT_TRUE(isfinite(actual) && actual > 0);
+					if (sample > 0) {
+						printf("GUIDE_TIMING %s %s %.0f %.6f\n", workload ? "acquisition" : "idle", items[direction], durations[duration], actual);
+					}
+				}
+			}
+		}
+	}
+	ASSERT_TRUE(request_switch(0, "CCD_ABORT_EXPOSURE", "ABORT_EXPOSURE", INDIGO_OK_STATE));
+}
+
+static void guider_failed_replacement_preserves_stop(void) {
+	ASSERT_TRUE(connect_device(1, true));
+	const char *properties[] = { "GUIDER_GUIDE_RA", "GUIDER_GUIDE_DEC" };
+	const char *initial[] = { "EAST", "NORTH" };
+	const char *replacement[] = { "WEST", "SOUTH" };
+	const unsigned short masks[] = { ATIK_GUIDE_EAST, ATIK_GUIDE_NORTH };
+	for (int axis = 0; axis < 2; axis++) {
+		int other = 1 - axis;
+		ASSERT_TRUE(request_number(1, properties[other], initial[other], 1500, INDIGO_BUSY_STATE));
+		ASSERT_TRUE(wait_count(&cameras[0].relay, masks[other]));
+		ASSERT_TRUE(request_number(1, properties[axis], initial[axis], 300, INDIGO_BUSY_STATE));
+		ASSERT_TRUE(wait_count(&cameras[0].relay, masks[axis] | masks[other]));
+		ASSERT_EQ_INT(masks[axis] | masks[other], cameras[0].relay);
+		fail_call = "libatik_guide_relays";
+		bool rejected = request_number(1, properties[axis], replacement[axis], 2000, INDIGO_ALERT_STATE);
+		fail_call = NULL;
+		ASSERT_TRUE(rejected);
+		ASSERT_EQ_INT(masks[axis] | masks[other], cameras[0].relay);
+		ASSERT_TRUE(wait_state(1, properties[axis], INDIGO_OK_STATE));
+		ASSERT_EQ_INT(masks[other], cameras[0].relay);
+		ASSERT_TRUE(request_number(1, properties[other], initial[other], 0, INDIGO_OK_STATE));
+		ASSERT_EQ_INT(0, cameras[0].relay);
+	}
+}
+
 static void guider_failures_and_disconnect(void) {
 	fail_call = "libatik_guide_relays";
 	ASSERT_TRUE(request_switch(1, "CONNECTION", "CONNECTED", INDIGO_ALERT_STATE));
@@ -1305,6 +1371,8 @@ int main(int argc, char **argv) {
 		{ "queued_cooler_request_is_not_published_by_the_poll", queued_cooler_request_is_not_published_by_the_poll },
 		{ "guider_operations", guider_operations },
 		{ "guider_failures_and_disconnect", guider_failures_and_disconnect },
+		{ "guider_failed_replacement_preserves_stop", guider_failed_replacement_preserves_stop },
+		{ "guider_pulse_software_timing", guider_pulse_software_timing },
 		{ "wheel_operations", wheel_operations },
 		{ "wheel_initialization_failures", wheel_initialization_failures },
 		{ "hotplug_and_capacity", hotplug_and_capacity },

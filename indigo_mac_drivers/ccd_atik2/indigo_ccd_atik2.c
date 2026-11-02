@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000012
+#define DRIVER_VERSION       0x03000013
 #define DRIVER_NAME          "indigo_ccd_atik2"
 #define DRIVER_LABEL         "Atik (legacy) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -599,7 +599,6 @@ static void guider_connection_handler(indigo_device *device) {
 
 static void guider_guide_ra_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_RA.on_change
-	indigo_cancel_pending_handler(device, guider_ra_finalizer);
 	unsigned short mask = PRIVATE_DATA->relay_mask & ~(ATIK_GUIDE_EAST | ATIK_GUIDE_WEST);
 	double duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
@@ -610,6 +609,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	if (!libatik_guide_relays(PRIVATE_DATA->device_context, mask)) {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
+		indigo_cancel_pending_handler(device, guider_ra_finalizer);
 		PRIVATE_DATA->relay_mask = mask;
 		GUIDER_GUIDE_RA_PROPERTY->state = duration > 0 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		if (duration > 0) {
@@ -622,7 +622,6 @@ static void guider_guide_ra_handler(indigo_device *device) {
 
 static void guider_guide_dec_handler(indigo_device *device) {
 	//+ guider.GUIDER_GUIDE_DEC.on_change
-	indigo_cancel_pending_handler(device, guider_dec_finalizer);
 	unsigned short mask = PRIVATE_DATA->relay_mask & ~(ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH);
 	double duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
@@ -633,6 +632,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	if (!libatik_guide_relays(PRIVATE_DATA->device_context, mask)) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
+		indigo_cancel_pending_handler(device, guider_dec_finalizer);
 		PRIVATE_DATA->relay_mask = mask;
 		GUIDER_GUIDE_DEC_PROPERTY->state = duration > 0 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		if (duration > 0) {
