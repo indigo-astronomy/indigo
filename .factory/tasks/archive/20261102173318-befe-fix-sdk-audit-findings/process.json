@@ -50,6 +50,11 @@
   "risk_reviews": {},
   "reviews": [],
   "reviewed_content": {
+    ".factory/completions/20261102173318-befe-fix-sdk-audit-findings.json": [
+      "100644",
+      "blob",
+      "d3a17981dab4568f7f72ff3fcefd2a21bd91e69b"
+    ],
     "indigo_drivers/ccd_pentax/README.md": [
       "100644",
       "blob",
