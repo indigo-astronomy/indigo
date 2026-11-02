@@ -32,4 +32,4 @@ Tested with a real device.
 
 ## Testing
 
-- 2026-09-27 22:41 3.0.0.10 mac arm64 simulator 13/13 OK
+- 2026-11-02 18:40 3.0.0.14 mac arm64 simulator 16/16 OK

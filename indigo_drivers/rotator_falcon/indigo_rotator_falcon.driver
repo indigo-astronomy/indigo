@@ -26,7 +26,7 @@ driver falcon {
 	label = "PegasusAstro Falcon rotator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2026 CloudMakers, s. r. o.";
-	version = 13;
+	version = 14;
 	multi_device_support = true;
 	serial {
 		pattern {
@@ -40,7 +40,7 @@ driver falcon {
 	}
 	data {
 		char response[128];
-		bool abort;
+		double move_deadline;
 		bool reversed;
 	}
 	code {
@@ -142,6 +142,12 @@ driver falcon {
 				}
 			}
 		}
+		on_disconnect {
+			if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+				falcon_command(device, "FH");
+				falcon_finish_motion(device, INDIGO_ALERT_STATE);
+			}
+		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
@@ -156,37 +162,40 @@ driver falcon {
 			#define POLL_DELAY		0.1
 			#define MOVE_TIMEOUT		120
 
-			static void falcon_move(indigo_device *device) {
-				PRIVATE_DATA->abort = false;
-				if (!(falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3))) {
-					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					return;
-				}
-				indigo_sleep(SETTLE_DELAY);
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				time_t deadline = time(NULL) + MOVE_TIMEOUT;
-				while (true) {
-					if (PRIVATE_DATA->abort) {
-						falcon_command(device, "FH");
-						break;
-					}
-					if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
-						ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
-						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-					}
-					if (falcon_command(device, "FR") && !strcmp(PRIVATE_DATA->response, "FR:0")) {
-						ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-						break;
-					}
-					if (time(NULL) >= deadline) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator failed to reach %.2f in %d seconds", ROTATOR_POSITION_ITEM->number.target, MOVE_TIMEOUT);
-						break;
-					}
-					indigo_sleep(POLL_DELAY);
-				}
+			static void falcon_finish_motion(indigo_device *device, indigo_property_state state) {
 				if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
 					ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
 				}
+				INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, state, NULL);
+				if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_RELATIVE_MOVE_PROPERTY, state, NULL);
+				}
+			}
+
+			static void falcon_move_finalizer(indigo_device *device) {
+				if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+					ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+				}
+				if (falcon_command(device, "FR") && !strcmp(PRIVATE_DATA->response, "FR:0")) {
+					falcon_finish_motion(device, INDIGO_OK_STATE);
+				} else if (indigo_monotonic_time() >= PRIVATE_DATA->move_deadline) {
+					falcon_command(device, "FH");
+					falcon_finish_motion(device, INDIGO_ALERT_STATE);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator failed to reach %.2f in %d seconds", ROTATOR_POSITION_ITEM->number.target, MOVE_TIMEOUT);
+				} else {
+					indigo_execute_handler_in(device, POLL_DELAY, falcon_move_finalizer);
+				}
+			}
+
+			static void falcon_move(indigo_device *device) {
+				if (!(falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3))) {
+					falcon_finish_motion(device, INDIGO_ALERT_STATE);
+					return;
+				}
+				PRIVATE_DATA->move_deadline = indigo_monotonic_time() + SETTLE_DELAY + MOVE_TIMEOUT;
+				INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+				indigo_execute_handler_in(device, SETTLE_DELAY, falcon_move_finalizer);
 			}
 
 			static void falcon_sync(indigo_device *device) {
@@ -236,10 +245,14 @@ driver falcon {
 			}
 		}
 		inherited ROTATOR_ABORT_MOTION {
-			asynchronous_change = false;
 			on_change {
-				PRIVATE_DATA->abort = true;
+				indigo_cancel_pending_handler(device, falcon_move_finalizer);
+				if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					falcon_command(device, "FH");
+					falcon_finish_motion(device, INDIGO_ALERT_STATE);
+				}
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+				INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 		}
 		inherited ROTATOR_RELATIVE_MOVE {
@@ -260,7 +273,9 @@ driver falcon {
 				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 				falcon_move(device);
 				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-				ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
+				if (ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+					ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
+				}
 			}
 		}
 	}

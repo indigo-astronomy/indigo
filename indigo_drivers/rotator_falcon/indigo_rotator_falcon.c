@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_rotator_falcon"
 #define DRIVER_LABEL         "PegasusAstro Falcon rotator"
 #define ROTATOR_DEVICE_NAME  "Pegasus Falcon rotator"
@@ -44,7 +44,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	//+ data
 	char response[128];
-	bool abort;
+	double move_deadline;
 	bool reversed;
 	//- data
 } falcon_private_data;
@@ -113,37 +113,40 @@ static void falcon_close(indigo_device *device) {
 #define POLL_DELAY           0.1
 #define MOVE_TIMEOUT         120
 
-static void falcon_move(indigo_device *device) {
-	PRIVATE_DATA->abort = false;
-	if (!(falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3))) {
-		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		return;
-	}
-	indigo_sleep(SETTLE_DELAY);
-	ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-	time_t deadline = time(NULL) + MOVE_TIMEOUT;
-	while (true) {
-		if (PRIVATE_DATA->abort) {
-			falcon_command(device, "FH");
-			break;
-		}
-		if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
-			ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-		}
-		if (falcon_command(device, "FR") && !strcmp(PRIVATE_DATA->response, "FR:0")) {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			break;
-		}
-		if (time(NULL) >= deadline) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator failed to reach %.2f in %d seconds", ROTATOR_POSITION_ITEM->number.target, MOVE_TIMEOUT);
-			break;
-		}
-		indigo_sleep(POLL_DELAY);
-	}
+static void falcon_finish_motion(indigo_device *device, indigo_property_state state) {
 	if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
 		ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
 	}
+	INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, state, NULL);
+	if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_RELATIVE_MOVE_PROPERTY, state, NULL);
+	}
+}
+
+static void falcon_move_finalizer(indigo_device *device) {
+	if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+		ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	}
+	if (falcon_command(device, "FR") && !strcmp(PRIVATE_DATA->response, "FR:0")) {
+		falcon_finish_motion(device, INDIGO_OK_STATE);
+	} else if (indigo_monotonic_time() >= PRIVATE_DATA->move_deadline) {
+		falcon_command(device, "FH");
+		falcon_finish_motion(device, INDIGO_ALERT_STATE);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator failed to reach %.2f in %d seconds", ROTATOR_POSITION_ITEM->number.target, MOVE_TIMEOUT);
+	} else {
+		indigo_execute_handler_in(device, POLL_DELAY, falcon_move_finalizer);
+	}
+}
+
+static void falcon_move(indigo_device *device) {
+	if (!(falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3))) {
+		falcon_finish_motion(device, INDIGO_ALERT_STATE);
+		return;
+	}
+	PRIVATE_DATA->move_deadline = indigo_monotonic_time() + SETTLE_DELAY + MOVE_TIMEOUT;
+	INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_POSITION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+	indigo_execute_handler_in(device, SETTLE_DELAY, falcon_move_finalizer);
 }
 
 static void falcon_sync(indigo_device *device) {
@@ -231,6 +234,12 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ rotator.on_disconnect
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			falcon_command(device, "FH");
+			falcon_finish_motion(device, INDIGO_ALERT_STATE);
+		}
+		//- rotator.on_disconnect
 		// Cancelled change handlers must not leave properties BUSY: a new session starts in a clean state.
 		indigo_property *cancelled_properties[] = {
 			ROTATOR_POSITION_PROPERTY,
@@ -280,12 +289,15 @@ static void rotator_direction_handler(indigo_device *device) {
 }
 
 static void rotator_abort_motion_handler(indigo_device *device) {
-	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_ABORT_MOTION.on_change
-	PRIVATE_DATA->abort = true;
+	indigo_cancel_pending_handler(device, falcon_move_finalizer);
+	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		falcon_command(device, "FH");
+		falcon_finish_motion(device, INDIGO_ALERT_STATE);
+	}
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+	INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
 	//- rotator.ROTATOR_ABORT_MOTION.on_change
-	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 }
 
 static void rotator_relative_move_handler(indigo_device *device) {
@@ -303,7 +315,9 @@ static void rotator_relative_move_handler(indigo_device *device) {
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	falcon_move(device);
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-	ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
+	if (ROTATOR_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+		ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
+	}
 	//- rotator.ROTATOR_RELATIVE_MOVE.on_change
 	indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
 }
@@ -353,7 +367,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_DIRECTION_PROPERTY, rotator_direction_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
+		INDIGO_COPY_VALUES_PROCESS_URGENT_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_RELATIVE_MOVE_PROPERTY, property)) {
 		INDIGO_REJECT_CHANGE_IF(ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE, ROTATOR_RELATIVE_MOVE_PROPERTY, "Another motion operation is pending");

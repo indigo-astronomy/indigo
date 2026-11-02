@@ -34,10 +34,10 @@
 |  | 2026-10-24 20:43 | 3.0.0.66 | mac arm64 | simulator | 63 / 63 | ✅ OK |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
 |  | 2026-10-19 11:54 | 3.0.0.28 | mac arm64 | simulator | 76 / 76 | ✅ OK |
-| agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
-|  | 2026-10-24 20:08 | 3.0.0.14 | mac arm64 | simulator | 63 / 63 | ✅ OK |
 | agent_platesolver | 2026-10-30 13:43 | 3.0.0.25 | linux x64 | simulator | 154 / 154 | ✅ OK |
 |  | 2026-11-01 21:08 | 3.0.0.27 | mac arm64 | simulator | 159 / 159 | ✅ OK |
+| agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
+|  | 2026-10-24 20:08 | 3.0.0.14 | mac arm64 | simulator | 63 / 63 | ✅ OK |
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 |  | 2026-09-27 21:22 | 3.0.0.15 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-30 18:14 | 3.0.0.15 | linux arm64 | StarlightXpress AO | 16 / 16 | ✅ OK |
@@ -400,7 +400,7 @@
 |  | 2026-09-27 22:40 | 3.0.0.6 | mac arm64 | simulator | 29 / 29 | ✅ OK |
 | polaralign_simulator | 2026-09-27 22:42 | 3.0.0.5 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 | rotator_asi | 2026-11-01 21:20 | 3.0.0.11 | mac arm64 | fake SDK | 17 / 17 | ✅ OK |
-| rotator_falcon | 2026-09-27 22:41 | 3.0.0.10 | mac arm64 | simulator | 13 / 13 | ✅ OK |
+| rotator_falcon | 2026-11-02 18:40 | 3.0.0.14 | mac arm64 | simulator | 16 / 16 | ✅ OK |
 | rotator_lunatico | 2026-10-26 21:33 | 3.0.0.20 | mac arm64 | simulator | 64 / 64 | ✅ OK |
 | rotator_optec | 2026-10-09 22:42 | 3.0.0.6 | mac arm64 | simulator | 12 / 12 | ✅ OK |
 |  | 2026-10-09 22:45 | 3.0.0.6 | linux arm64 | Pyxis Arduino simulator (ESP32-S3) | 9 / 9 | ✅ OK |

@@ -455,8 +455,53 @@ cleanup:
 	tear_down_serial_driver(&falcon_rotator);
 }
 
+static void progress_stays_busy_and_disconnect_is_prompt(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_falcon(&simulator, NULL));
+	SERIAL_CHECK_TRUE(start_serial_driver(&falcon_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(0));
+	SERIAL_CHECK_TRUE(request_position(350));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	indigo_usleep(1200000);
+	SERIAL_CHECK_EQ_INT(INDIGO_BUSY_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
+	double started = indigo_monotonic_time();
+	disconnect_serial_device(&falcon_rotator);
+	SERIAL_CHECK_TRUE(!context.connected);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - started < 3);
+	SERIAL_CHECK_TRUE(connect_serial_device(&falcon_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+cleanup:
+	stop_serial_driver(&falcon_rotator);
+	stop_external_serial_simulator(&simulator);
+}
+
+static void stalled_motion_times_out_and_stops(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--stalled", NULL };
+	SERIAL_CHECK_TRUE(start_falcon(&simulator, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&falcon_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(0));
+	SERIAL_CHECK_TRUE(request_position(90));
+	SERIAL_CHECK_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	double started = indigo_monotonic_time();
+	while (indigo_monotonic_time() - started < 125 && find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state == INDIGO_BUSY_STATE) {
+		indigo_usleep(100000);
+	}
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state);
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - started >= 119);
+	// Timeout halts the motor; a new session must not inherit moving state.
+	disconnect_serial_device(&falcon_rotator);
+	SERIAL_CHECK_TRUE(connect_serial_device(&falcon_rotator, simulator.port));
+	SERIAL_CHECK_TRUE(find_cached_property(ROTATOR_POSITION_PROPERTY_NAME)->state != INDIGO_BUSY_STATE);
+cleanup:
+	stop_serial_driver(&falcon_rotator);
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "progress_stays_busy_and_disconnect_is_prompt", progress_stays_busy_and_disconnect_is_prompt },
+		{ "stalled_motion_times_out_and_stops", stalled_motion_times_out_and_stops },
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "both_protocol_generations_are_identified", both_protocol_generations_are_identified },
 		{ "disconnect_clears_the_identity", disconnect_clears_the_identity },

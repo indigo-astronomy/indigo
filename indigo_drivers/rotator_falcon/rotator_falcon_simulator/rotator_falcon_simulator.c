@@ -79,6 +79,7 @@ static int direction = 0;
 static char id[32] = "AA000000";
 static char fw[32] = "1.5";
 static const char *direction_fault = NULL;
+static bool stalled;
 
 static void signal_handler(int sig) {
 	(void)sig;
@@ -93,7 +94,9 @@ static void *background(void *arg) {
 	(void)arg;
 	while (running) {
 		pthread_mutex_lock(&state_mutex);
-		if (fabs(target - position) <= 0.01) {
+		if (stalled) {
+			// Keep the motor active until an explicit halt.
+		} else if (fabs(target - position) <= 0.01) {
 			position = target;
 		} else if (target < position) {
 			position -= 0.01;
@@ -143,6 +146,8 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			snprintf(id, sizeof(id), "%s", argv[i]);
+		} else if (!strcmp(argv[i], "--stalled")) {
+			stalled = true;
 		} else if (!strcmp(argv[i], "--fault-direction")) {
 			if (++i == argc || (strcmp(argv[i], "err") && strcmp(argv[i], "silent"))) {
 				fprintf(stderr, "--fault-direction requires err or silent\n");
