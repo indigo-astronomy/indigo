@@ -930,7 +930,27 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 	return source;
 }
 
-uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_property *target) {
+// Determine the complete wire value before any field is decoded or copied.
+uint8_t *ptp_skip_property_value(uint8_t *source, uint8_t *end, ptp_type type) {
+	if (source == NULL || end == NULL || source > end) {
+		return NULL;
+	}
+	size_t length = ptp_type_size(type);
+	if (type == ptp_str_type) {
+		if (source == end) {
+			return NULL;
+		}
+		length = 1 + 2 * (size_t)*source;
+	} else if (type != ptp_undef_type && length == 0) {
+		return NULL;
+	}
+	return (size_t)(end - source) >= length ? source + length : NULL;
+}
+
+uint8_t *ptp_decode_property_value(uint8_t *source, uint8_t *end, indigo_device *device, ptp_property *target) {
+	if (ptp_skip_property_value(source, end, target->type) == NULL) {
+		return NULL;
+	}
 	switch (target->type) {
 		case ptp_undef_type: {
 			return source;

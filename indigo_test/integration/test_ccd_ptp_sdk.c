@@ -79,6 +79,9 @@ static bool combined_transfer_profile;
 static uint16_t canon_transfer_event, canon_transfer_format = 0xB108;
 static const char *canon_transfer_filename = "IMG_778.CR3";
 static int canon_transfer_fault;
+static int canon_format_reply_fault;
+static int sony_property_reply_fault;
+static atomic_int sony_bounds_done;
 static bool canon_transfer_large;
 static atomic_int canon_transfer_received, canon_transfer_first_request, canon_transfer_protocol_errors;
 static char canon_transfer_blob_format[16];
@@ -534,6 +537,13 @@ static void prepare(fake_camera *c) {
 				continue;
 			}
 			if (c->properties[i] == ptp_property_canon_ImageFormat) {
+				if (canon_format_reply_fault == 1) {
+					word32(&p, 16);
+					word32(&p, ptp_event_canon_PropValueChanged);
+					word32(&p, c->properties[i]);
+					word32(&p, 2);
+					continue;
+				}
 				word32(&p, 48);
 				word32(&p, ptp_event_canon_PropValueChanged);
 				word32(&p, c->properties[i]);
@@ -550,6 +560,25 @@ static void prepare(fake_camera *c) {
 			word32(&p, ptp_event_canon_PropValueChanged);
 			word32(&p, c->properties[i]);
 			word32(&p, c->values[i]);
+		}
+		if (canon_format_reply_fault >= 2) {
+			word32(&p, canon_format_reply_fault == 2 ? 24 : canon_format_reply_fault == 3 ? 76 : 44);
+			word32(&p, ptp_event_canon_AvailListChanged);
+			word32(&p, ptp_property_canon_ImageFormat);
+			word32(&p, 3);
+			word32(&p, canon_format_reply_fault == 2 ? 1 : 2);
+			if (canon_format_reply_fault != 2) {
+				word32(&p, 1);
+				for (int j = 0; j < 4; j++) {
+					word32(&p, j + 1);
+				}
+			}
+			word32(&p, 2);
+			if (canon_format_reply_fault == 3) {
+				for (int j = 0; j < 8; j++) {
+					word32(&p, j + 1);
+				}
+			}
 		}
 		if (destination_profile) {
 			unsigned count = destination_profile == 1 ? 2 : 1;
@@ -618,6 +647,28 @@ static void prepare(fake_camera *c) {
 			word16(&p, c->properties[i]);
 		}
 	} else if (code == ptp_operation_sony_GetAllDevicePropData) {
+		if (sony_property_reply_fault) {
+			if (sony_property_reply_fault == 1) {
+				*p++ = 1;
+				*p++ = 0;
+				*p++ = 0;
+			} else {
+				word32(&p, 1);
+				word32(&p, 0);
+				if (sony_property_reply_fault >= 3) {
+					word16(&p, ptp_property_sony_ShutterSpeed);
+					word16(&p, ptp_str_type);
+					*p++ = 1;
+					*p++ = 0;
+					*p++ = sony_property_reply_fault == 3 ? 255 : 0;
+					if (sony_property_reply_fault == 4) {
+						*p++ = 255;
+					}
+				}
+			}
+			c->input_size = p - c->input;
+			return;
+		}
 		if (sony_late_write_target && indigo_monotonic_time() >= sony_late_write_at) {
 			*sony_late_write_target = sony_late_write_value;
 			sony_late_write_target = NULL;
@@ -3413,6 +3464,153 @@ static void finish_bounds_case(void) {
 	ASSERT_EQ_INT(0, atomic_load(&cameras[0].refs));
 }
 
+static void property_value_reply_bounds(void) {
+	const ptp_type types[] = { ptp_uint8_type, ptp_int8_type, ptp_uint16_type, ptp_int16_type, ptp_uint32_type, ptp_int32_type, ptp_uint64_type, ptp_int64_type, ptp_uint128_type, ptp_int128_type, ptp_str_type };
+	for (unsigned t = 0; t < ARRAY_SIZE(types); t++) {
+		uint8_t wire[16] = { 42 };
+		size_t length = ptp_type_size(types[t]);
+		if (types[t] == ptp_str_type) {
+			const uint8_t text[] = { 3, 'A', 0, 'B', 0, 0, 0 };
+			memcpy(wire, text, sizeof(text));
+			length = sizeof(text);
+		}
+		ptp_property before = { 0 }, target;
+		before.type = types[t];
+		strcpy(before.value.text.value, "unchanged");
+		for (size_t cut = 0; cut < length; cut++) {
+			uint8_t *buffer = malloc(cut ? cut : 1);
+			memcpy(buffer, wire, cut);
+			target = before;
+			ASSERT_TRUE(ptp_decode_property_value(buffer, buffer + cut, NULL, &target) == NULL);
+			ASSERT_TRUE(memcmp(&before, &target, sizeof(target)) == 0);
+			free(buffer);
+		}
+		target = before;
+		ASSERT_TRUE(ptp_decode_property_value(wire, wire + length, NULL, &target) == wire + length);
+		if (types[t] == ptp_str_type) {
+			ASSERT_TRUE(!strcmp(target.value.text.value, "AB"));
+		} else if (length <= 8) {
+			ASSERT_EQ_INT(42, target.value.number.value);
+		}
+	}
+}
+
+static void sony_bounded_refresh_handler(indigo_device *device) {
+	ptp_property *property = ptp_property_supported(device, ptp_property_sony_ShutterSpeed);
+	bool ok = property != NULL;
+	for (int fault = 1; ok && fault <= 4; fault++) {
+		int64_t before = property->value.number.value;
+		sony_property_reply_fault = fault;
+		ok = !ptp_sony_refresh_properties(device) && property->value.number.value == before;
+	}
+	sony_property_reply_fault = 0;
+	ok = ptp_sony_refresh_properties(device) && ok;
+	atomic_store(&sony_bounds_done, ok ? 1 : -1);
+}
+
+static void sony_property_reply_bounds(void) {
+	ptp_private_data *private_data = calloc(1, sizeof(ptp_private_data));
+	sony_private_data sony = { 0 };
+	private_data->vendor_private_data = &sony;
+	indigo_device device = { .private_data = private_data };
+	const ptp_type types[] = { ptp_uint8_type, ptp_int16_type, ptp_uint32_type, ptp_int64_type, ptp_uint128_type, ptp_str_type };
+	for (int api = 0; api < 2; api++) {
+		sony.api_version = api ? 300 : 0;
+		for (unsigned t = 0; t < ARRAY_SIZE(types); t++) {
+			for (unsigned form = ptp_none_form; form <= ptp_enum_form; form++) {
+				if ((types[t] == ptp_str_type && form == ptp_range_form) || (types[t] == ptp_uint128_type && form == ptp_enum_form)) {
+					continue;
+				}
+				uint8_t wire[256], *out = wire, value[16] = { 42 };
+				size_t length = ptp_type_size(types[t]);
+				if (types[t] == ptp_str_type) {
+					const uint8_t text[] = { 2, 'A', 0, 0, 0 };
+					memcpy(value, text, sizeof(text));
+					length = sizeof(text);
+				}
+				word16(&out, 0xdffe);
+				word16(&out, types[t]);
+				*out++ = 1;
+				*out++ = 0;
+				for (int i = 0; i < 2; i++) {
+					memcpy(out, value, length);
+					out += length;
+				}
+				*out++ = form;
+				if (form == ptp_range_form) {
+					for (int i = 0; i < 3; i++) {
+						memcpy(out, value, length);
+						out += length;
+					}
+				} else if (form == ptp_enum_form) {
+					word16(&out, 2);
+					for (int i = 0; i < 2; i++) {
+						memcpy(out, value, length);
+						out += length;
+					}
+					if (api) {
+						word16(&out, 1);
+						memcpy(out, value, length);
+						out += length;
+					}
+				}
+				size_t size = out - wire;
+				for (size_t cut = 0; cut < size; cut++) {
+					uint8_t *buffer = malloc(cut ? cut : 1);
+					memcpy(buffer, wire, cut);
+					ASSERT_TRUE(ptp_sony_decode_property(buffer, buffer + cut, &device) == NULL);
+					free(buffer);
+				}
+				// An unknown but complete record is skipped without a dummy property publication.
+				ASSERT_TRUE(ptp_sony_decode_property(wire, out, &device) == out);
+				ASSERT_EQ_INT(0, private_data->info_properties_supported[0]);
+			}
+		}
+	}
+	free(private_data);
+	const uint16_t products[] = { 0x0ccc, 0x0d18 };
+	for (unsigned i = 0; i < ARRAY_SIZE(products); i++) {
+		ASSERT_TRUE(begin_profile(0x054c, products[i]));
+		atomic_store(&sony_bounds_done, 0);
+		indigo_execute_handler(logical[0], sony_bounded_refresh_handler);
+		double deadline = indigo_monotonic_time() + 10;
+		while (atomic_load(&sony_bounds_done) == 0 && indigo_monotonic_time() < deadline) {
+			indigo_usleep(10000);
+		}
+		bool completed = atomic_load(&sony_bounds_done) != 0;
+		int result = atomic_load(&sony_bounds_done);
+		end_profile();
+		ASSERT_TRUE(completed);
+		ASSERT_EQ_INT(1, result);
+		ASSERT_EQ_INT(0, atomic_load(&bus_io));
+		ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	}
+}
+
+static void canon_image_format_reply_bounds(void) {
+	for (int fault = 1; fault <= 4; fault++) {
+		dual_profile = true;
+		canon_format_reply_fault = fault;
+		if (!begin_profile(0x04a9, 0x3218)) {
+			end_profile();
+			dual_profile = false;
+			canon_format_reply_fault = 0;
+			ASSERT_TRUE(false);
+		}
+		ptp_property *prop = ptp_property_supported(logical[0], ptp_property_canon_ImageFormat);
+		bool valid = prop != NULL && (fault == 3 ? prop->count == 2 : prop->count == 0);
+		if (fault == 1) {
+			valid = valid && ((canon_private_data *)ptp_data()->vendor_private_data)->image_format == 0;
+		}
+		end_profile();
+		dual_profile = false;
+		canon_format_reply_fault = 0;
+		ASSERT_TRUE(valid);
+		ASSERT_EQ_INT(0, atomic_load(&bus_io));
+		ASSERT_EQ_INT(0, atomic_load(&calls_after_close));
+	}
+}
+
 static void device_info_truncated(void) {
 	device_info_fault = 1;
 	PTP_CHECK(begin_profile(0x04b0, 0x0421));
@@ -3720,6 +3918,9 @@ int main(void) {
 		indigo_set_log_level(INDIGO_LOG_DEBUG);
 	}
 	const indigo_test_case tests[] = {
+		{ "property_value_reply_bounds", property_value_reply_bounds },
+		{ "sony_property_reply_bounds", sony_property_reply_bounds },
+		{ "canon_image_format_reply_bounds", canon_image_format_reply_bounds },
 		{ "device_info_truncated", device_info_truncated },
 		{ "device_info_exact_buffer", device_info_exact_buffer },
 		{ "device_info_short_array", device_info_short_array },

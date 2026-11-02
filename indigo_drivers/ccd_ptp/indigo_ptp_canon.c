@@ -804,8 +804,15 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 	return ptp_property_value_code_label(device, property, code);
 }
 
-static uint8_t *ptp_copy_image_format(uint8_t *source, uint64_t *target) {
+static uint8_t *ptp_copy_image_format(uint8_t *source, uint8_t *end, uint64_t *target) {
+	if (source == NULL || source > end || end - source < 4) {
+		return NULL;
+	}
 	uint32_t count, size, format, quality, compression;
+	ptp_decode_uint32(source, &count);
+	if (end - source < (count == 2 ? 36 : 20)) {
+		return NULL;
+	}
 	source = ptp_decode_uint32(source, &count);
 	source = ptp_decode_uint32(source, &size);
 	source = ptp_decode_uint32(source, &format);
@@ -1028,7 +1035,12 @@ static void ptp_canon_get_event(indigo_device *device) {
 								case ptp_property_canon_ImageFormatSD:
 								case ptp_property_canon_ImageFormatExtHD: {
 									uint64_t value = 0;
-									source = ptp_copy_image_format(source, &value);
+									source = ptp_copy_image_format(source, record + size, &value);
+									if (source == NULL) {
+										PRIVATE_DATA->last_error = ptp_response_GeneralError;
+										property = NULL;
+										break;
+									}
 									property->value.number.value = value;
 									CANON_PRIVATE_DATA->image_format = value;
 									break;
@@ -1178,11 +1190,22 @@ static void ptp_canon_get_event(indigo_device *device) {
 					if (count >= PTP_MAX_ELEMENTS || count > (size - 20) / (type == 1 ? 2 : 4)) {
 						break;
 					}
+					if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
+						uint8_t *check = source;
+						uint64_t value;
+						for (uint32_t i = 0; i < count && check != NULL; i++) {
+							check = ptp_copy_image_format(check, record + size, &value);
+						}
+						if (check == NULL) {
+							PRIVATE_DATA->last_error = ptp_response_GeneralError;
+							break;
+						}
+					}
 					if (count > 0) {
 						property->count = count;
 						if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
 							for (int i = 0; i < count; i++) {
-								source = ptp_copy_image_format(source, (uint64_t *)&property->value.sw.values[i]);
+								source = ptp_copy_image_format(source, record + size, (uint64_t *)&property->value.sw.values[i]);
 							}
 						} else {
 							if (type == 1) {

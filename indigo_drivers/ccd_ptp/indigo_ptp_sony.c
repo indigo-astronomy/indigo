@@ -900,7 +900,61 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 	return ptp_property_value_code_label(device, property, code);
 }
 
-uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
+static uint8_t *ptp_sony_skip_enum(uint8_t *source, uint8_t *end, ptp_type type) {
+	if (source == NULL || source > end || end - source < 2) {
+		return NULL;
+	}
+	uint16_t count;
+	source = ptp_decode_uint16(source, &count);
+	if (type == ptp_str_type) {
+		for (unsigned i = 0; i < count && source != NULL; i++) {
+			source = ptp_skip_property_value(source, end, type);
+		}
+		return source;
+	}
+	size_t length = ptp_type_size(type);
+	if (length == 0 || length > 8 || count > (size_t)(end - source) / length) {
+		return NULL;
+	}
+	return source + count * length;
+}
+
+// Validate both values, the form and the optional new-API enumeration before publishing a record.
+static uint8_t *ptp_sony_property_end(uint8_t *source, uint8_t *end, bool new_api) {
+	if (source == NULL || end == NULL || source > end || end - source < 6) {
+		return NULL;
+	}
+	uint16_t type;
+	ptp_decode_uint16(source + 2, &type);
+	if (type == ptp_undef_type) {
+		return NULL;
+	}
+	source = ptp_skip_property_value(source + 6, end, type);
+	source = ptp_skip_property_value(source, end, type);
+	if (source == NULL || source == end) {
+		return NULL;
+	}
+	uint8_t form = *source++;
+	if (form == ptp_range_form && type != ptp_str_type) {
+		for (int i = 0; i < 3 && source != NULL; i++) {
+			source = ptp_skip_property_value(source, end, type);
+		}
+	} else if (form == ptp_enum_form) {
+		source = ptp_sony_skip_enum(source, end, type);
+		if (new_api) {
+			source = ptp_sony_skip_enum(source, end, type);
+		}
+	} else if (form != ptp_none_form) {
+		return NULL;
+	}
+	return source;
+}
+
+uint8_t *ptp_sony_decode_property(uint8_t *source, uint8_t *end, indigo_device *device) {
+	uint8_t *property_end = ptp_sony_property_end(source, end, SONY_PRIVATE_DATA->api_version == SONY_NEW_API);
+	if (property_end == NULL) {
+		return NULL;
+	}
 	uint16_t code;
 	source = ptp_decode_uint16(source, &code);
 	ptp_property dummy, *target = &dummy;
@@ -909,6 +963,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			target = PRIVATE_DATA->properties + i;
 			break;
 		}
+	}
+	if (target == &dummy) {
+		return property_end;
 	}
 	target->code = code;
 	source = ptp_decode_uint16(source, &target->type);
@@ -1325,6 +1382,24 @@ static void ptp_check_event(indigo_device *device) {
 	}
 }
 
+static bool ptp_sony_decode_properties(uint8_t *buffer, uint32_t size, indigo_device *device) {
+	if (buffer == NULL || size < 8) {
+		PRIVATE_DATA->last_error = ptp_response_GeneralError;
+		return false;
+	}
+	uint8_t *source = buffer + 8, *end = buffer + size;
+	uint32_t count;
+	ptp_decode_uint32(buffer, &count);
+	for (uint32_t i = 0; i < count; i++) {
+		source = ptp_sony_decode_property(source, end, device);
+		if (source == NULL) {
+			PRIVATE_DATA->last_error = ptp_response_GeneralError;
+			return false;
+		}
+	}
+	return true;
+}
+
 bool ptp_sony_initialise(indigo_device *device) {
 	DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
 	DSLR_DELETE_IMAGE_PROPERTY->hidden = true;
@@ -1401,15 +1476,7 @@ bool ptp_sony_initialise(indigo_device *device) {
 				}
 			}
 			if (ptp_transaction_0_0_i(device, ptp_operation_sony_GetAllDevicePropData, &buffer, &size)) {
-				uint8_t *source = buffer;
-				source = ptp_decode_uint32(source, &count);
-				source += sizeof(uint32_t);
-				for (int i = 0; i < count; i++) {
-					source = ptp_sony_decode_property(source, device);
-					if (source == NULL) {
-						break;
-					}
-				}
+				ptp_sony_decode_properties(buffer, size, device);
 				free(buffer);
 				buffer = NULL;
 			}
@@ -1427,18 +1494,10 @@ bool ptp_sony_initialise(indigo_device *device) {
 
 bool ptp_sony_refresh_properties(indigo_device *device) {
 	void *buffer = NULL;
-	uint32_t size, count;
+	uint32_t size;
 	bool result = ptp_transaction_0_0_i(device, ptp_operation_sony_GetAllDevicePropData, &buffer, &size);
 	if (result) {
-		uint8_t *source = buffer;
-		source = ptp_decode_uint32(source, &count);
-		source += sizeof(uint32_t);
-		for (int i = 0; i < count; i++) {
-			source = ptp_sony_decode_property(source, device);
-			if (source == NULL) {
-				break;
-			}
-		}
+		result = ptp_sony_decode_properties(buffer, size, device);
 	}
 	free(buffer);
 	return result;

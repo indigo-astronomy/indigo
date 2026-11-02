@@ -339,9 +339,12 @@ static void ptp_fuji_get_event(indigo_device *device) {
 			if (code == 0xd212) {
 				continue;
 			}
-			ptp_decode_property_value(buffer, device, prop);
-			ptp_fuji_fix_property(device, prop);
-			ptp_update_property(device, prop);
+			if (buffer != NULL && ptp_decode_property_value(buffer, (uint8_t *)buffer + size, device, prop) != NULL) {
+				ptp_fuji_fix_property(device, prop);
+				ptp_update_property(device, prop);
+			} else {
+				PRIVATE_DATA->last_error = ptp_response_GeneralError;
+			}
 		}
 		if (buffer) {
 			free(buffer);

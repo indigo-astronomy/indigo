@@ -33,7 +33,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 							0x0300003D
+#define DRIVER_VERSION 							0x0300003E
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -488,7 +488,8 @@ extern uint8_t *ptp_decode_uint32_array(uint8_t *source, uint8_t *end, uint32_t 
 extern uint8_t *ptp_decode_device_info(uint8_t *source, uint32_t size, indigo_device *device);
 extern bool ptp_decode_object_info(void *buffer, uint32_t size, uint32_t *object_size, char *filename);
 extern uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *device, ptp_property *target);
-extern uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_property *target);
+extern uint8_t *ptp_skip_property_value(uint8_t *source, uint8_t *end, ptp_type type);
+extern uint8_t *ptp_decode_property_value(uint8_t *source, uint8_t *end, indigo_device *device, ptp_property *target);
 
 extern uint8_t *ptp_encode_string(char *source, uint8_t *target);
 extern uint8_t *ptp_encode_uint8(uint8_t source, uint8_t *target);
