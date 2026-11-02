@@ -1,0 +1,88 @@
+{
+  "version": 2,
+  "task": "20261102173318-befe-fix-sdk-audit-findings",
+  "scope": [
+    "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver",
+    "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.c",
+    "indigo_mac_drivers/ccd_atik2/README.md",
+    "indigo_test/integration/test_ccd_atik2_sdk.c",
+    "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c",
+    "indigo_drivers/ccd_pentax/README.md",
+    "indigo_test/integration/test_ccd_pentax_usb.c"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_atik2",
+        "--no-build"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_pentax",
+        "--no-build"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "factory-check.log"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "factory-security.log"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    "indigo_drivers/ccd_pentax/README.md": [
+      "100644",
+      "blob",
+      "e3e499b188a183884f15c6ae13ad977a332ba773"
+    ],
+    "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c": [
+      "100644",
+      "blob",
+      "30f00b05d094c79cb03316312f280f62a26f0eee"
+    ],
+    "indigo_mac_drivers/ccd_atik2/README.md": [
+      "100644",
+      "blob",
+      "852eedc293a0c15f2a617490100707bcc9bc8291"
+    ],
+    "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.c": [
+      "100644",
+      "blob",
+      "5cffe69f3922a9f5122899bf2f65c7c47ba515ad"
+    ],
+    "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver": [
+      "100644",
+      "blob",
+      "11c9f13fe7df22c7514699e71f72c0caaa218d76"
+    ],
+    "indigo_test/integration/test_ccd_atik2_sdk.c": [
+      "100644",
+      "blob",
+      "340f0c509b23f2fc522700da0b3f58ea367b01db"
+    ],
+    "indigo_test/integration/test_ccd_pentax_usb.c": [
+      "100644",
+      "blob",
+      "01f9ec4732e695600406faeb0604d7bd790d7bd7"
+    ]
+  }
+}
