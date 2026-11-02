@@ -23,7 +23,7 @@
  \file indigo_focuser_mjkzz_bt.m
  */
 
-#define DRIVER_VERSION 0x02000002
+#define DRIVER_VERSION 0x02000003
 #define DRIVER_NAME "indigo_focuser_mjkzz_bt"
 
 #include <stdlib.h>
@@ -206,12 +206,14 @@ static indigo_result focuser_detach(indigo_device *device);
 }
 
 -(void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
-	if (characteristic.value.length < sizeof(mjkzz_message))
+	if (error != nil || characteristic.value.length < sizeof(mjkzz_message)) {
 		return;
+	}
 	mjkzz_message *message = (mjkzz_message *)characteristic.value.bytes;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %02x%02x%02x%02x%02x%02x%02x%02x", message->ucADD, message->ucCMD, message->ucIDX, message->ucMSG[0], message->ucMSG[1], message->ucMSG[2], message->ucMSG[3], message->ucSUM);
-	if (message->ucADD == 0x81) {
-		int value = ((((((int32_t)message->ucMSG[0] << 8) + (int32_t)message->ucMSG[1]) << 8) + (int32_t)message->ucMSG[2]) << 8) + (int32_t)message->ucMSG[3];
+	uint8_t checksum = (uint8_t)(message->ucADD + message->ucCMD + message->ucIDX + message->ucMSG[0] + message->ucMSG[1] + message->ucMSG[2] + message->ucMSG[3]);
+	if (message->ucADD == 0x81 && (message->ucCMD & 0x80) != 0 && message->ucSUM == checksum) {
+		int32_t value = (int32_t)(((uint32_t)message->ucMSG[0] << 24) | ((uint32_t)message->ucMSG[1] << 16) | ((uint32_t)message->ucMSG[2] << 8) | message->ucMSG[3]);
 		switch (message->ucCMD & 0x7F) {
 			case CMD_GPOS: {
 				FOCUSER_POSITION_ITEM->number.value =value;
