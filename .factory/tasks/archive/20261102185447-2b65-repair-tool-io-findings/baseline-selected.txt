@@ -1,0 +1,47 @@
+test_upload_exact_bytes_rewind_termination_and_cleanup (tool_tests.ToolIOTests) ... FAIL
+test_raw_file_partial_write_interrupt_and_truncation (tool_tests.ToolIOTests) ... FAIL
+test_make_inventory_is_consistent (tool_tests.ToolIOTests) ... ERROR
+test_generator_failures_and_valid_definition (tool_tests.ToolIOTests) ... FAIL
+
+======================================================================
+ERROR: test_make_inventory_is_consistent (tool_tests.ToolIOTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-tool-io/indigo_test/unit/test_tool_io_failures.py", line 256, in test_make_inventory_is_consistent
+    for name in names:self.assertEqual(name,(installed/name).read_text())
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1256, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1242, in open
+    return io.open(self, mode, buffering, encoding, errors, newline,
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1110, in _opener
+    return self._accessor.open(self, flags, mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-tool-io-tests-dsr6225g/make-stage/install/indigo_drivers'
+
+======================================================================
+FAIL: test_upload_exact_bytes_rewind_termination_and_cleanup (tool_tests.ToolIOTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-tool-io/indigo_test/unit/test_tool_io_failures.py", line 182, in test_upload_exact_bytes_rewind_termination_and_cleanup
+    self.assertEqual(0,self.run_tool('upload',env=env).returncode)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_raw_file_partial_write_interrupt_and_truncation (tool_tests.ToolIOTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-tool-io/indigo_test/unit/test_tool_io_failures.py", line 211, in test_raw_file_partial_write_interrupt_and_truncation
+    output.write_bytes(b'old trailing contents');result=self.run_tool('rawio',[input,output],fault);self.assertEqual(0,result.returncode,result.stderr);self.assertEqual(input.read_bytes(),output.read_bytes())
+AssertionError: b'abcdef' != b'abcdefailing contents'
+
+======================================================================
+FAIL: test_generator_failures_and_valid_definition (tool_tests.ToolIOTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-tool-io/indigo_test/unit/test_tool_io_failures.py", line 231, in test_generator_failures_and_valid_definition
+    result=self.run_tool('generator',[path],fault);self.assertNotEqual(0,result.returncode);self.assertIn('Generator resource failure:',result.stderr)
+AssertionError: 'Generator resource failure:' not found in 'Reading probe.driver ...\n'
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.985s
+
+FAILED (failures=3, errors=1)

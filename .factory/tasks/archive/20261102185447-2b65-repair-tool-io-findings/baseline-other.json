@@ -1,0 +1,29 @@
+[
+  {
+    "case": "legacy fits params",
+    "exit": 0,
+    "unexpected_success": true
+  },
+  {
+    "case": "legacy fits read",
+    "exit": 0,
+    "unexpected_success": true
+  },
+  {
+    "case": "legacy fits bitpix",
+    "exit": 0,
+    "unexpected_success": true
+  },
+  {
+    "case": "legacy fits close",
+    "exit": 0,
+    "unexpected_success": true
+  },
+  {
+    "case": "legacy metadata shell",
+    "exit": 0,
+    "injected_files": [
+      "INJECTED.c"
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261102185447-2b65-repair-tool-io-findings",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive retained evidence, bind staged identities, commit Factory records and run immutable process gate; parent owns integration/publication.",
+  "blocker": null
+}

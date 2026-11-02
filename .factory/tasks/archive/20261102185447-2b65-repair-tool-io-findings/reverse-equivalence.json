@@ -1,0 +1,12 @@
+[
+  {
+    "source": "indigo_drivers/wheel_manual/indigo_wheel_manual.c",
+    "byte_identical": true,
+    "size": 1864
+  },
+  {
+    "source": "indigo_drivers/aux_dsusb/indigo_aux_dsusb.c",
+    "byte_identical": true,
+    "size": 7358
+  }
+]

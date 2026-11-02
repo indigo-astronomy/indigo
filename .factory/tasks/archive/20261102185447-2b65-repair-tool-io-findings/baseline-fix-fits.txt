@@ -1,0 +1,66 @@
+=================================================================
+==23716==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x602000002170 at pc 0x00010304f4b4 bp 0x00016d7764d0 sp 0x00016d775c68
+READ of size 1 at 0x602000002170 thread T0
+==23716==WARNING: external symbolizer didn't start up correctly!
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x10304f4b0"
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x10268910c"
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x00010304f4b0 in strncmp+0x504 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x174b0)
+    #1 0x00010268910c in main+0x510 (/private/tmp/indigo-tool-baseline/fix_fits:arm64+0x10000110c)
+    #2 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x602000002170 is located 5751 bytes after 9-byte region [0x602000000af0,0x602000000af9)
+allocated by thread T0 here:
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x103079274"
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x10268891c"
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x102688ee0"
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x000103079274 in malloc+0x78 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x00010268891c in read_file+0xc4 (/private/tmp/indigo-tool-baseline/fix_fits:arm64+0x10000091c)
+    #2 0x000102688ee0 in main+0x2e4 (/private/tmp/indigo-tool-baseline/fix_fits:arm64+0x100000ee0)
+    #3 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x10304f4b0"
+==23716==WARNING: Can't read from symbolizer at fd 3
+==23716==WARNING: atos failed to symbolize address "0x10268910c"
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/private/tmp/indigo-tool-baseline/fix_fits:arm64+0x10000110c) in main+0x510
+Shadow bytes around the buggy address:
+  0x602000001e80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000001f00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000001f80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002000: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+=>0x602000002100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa[fa]fa
+  0x602000002180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002300: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002380: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==23716==ABORTING

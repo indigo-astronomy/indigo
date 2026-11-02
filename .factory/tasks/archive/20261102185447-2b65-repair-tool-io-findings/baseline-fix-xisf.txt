@@ -1,0 +1,75 @@
+=================================================================
+==44212==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x603000001ea0 at pc 0x000105328094 bp 0x00016b4659e0 sp 0x00016b465180
+READ of size 2432 at 0x603000001ea0 thread T0
+==44212==WARNING: external symbolizer didn't start up correctly!
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x105328090"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x180f69db8"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x180f86614"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x10531e6d0"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x104999ce0"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x000105328090 in memcpy+0x248 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x90090)
+    #1 0x000180f69db8 in __sfvwrite+0xd0 (/usr/lib/system/libsystem_c.dylib:arm64e+0x4db8)
+    #2 0x000180f86614 in fwrite+0x128 (/usr/lib/system/libsystem_c.dylib:arm64e+0x21614)
+    #3 0x00010531e6d0 in fwrite+0x30 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x866d0)
+    #4 0x000104999ce0 in main+0xe78 (/private/tmp/indigo-tool-baseline/fix_xisf:arm64+0x100001ce0)
+    #5 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x603000001ea0 is located 2856 bytes after 24-byte region [0x603000001360,0x603000001378)
+allocated by thread T0 here:
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x1052d9274"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x104998b88"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x104999178"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x0001052d9274 in malloc+0x78 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x000104998b88 in read_file+0xc4 (/private/tmp/indigo-tool-baseline/fix_xisf:arm64+0x100000b88)
+    #2 0x000104999178 in main+0x310 (/private/tmp/indigo-tool-baseline/fix_xisf:arm64+0x100001178)
+    #3 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x105328090"
+==44212==WARNING: Can't read from symbolizer at fd 4
+==44212==WARNING: atos failed to symbolize address "0x180f69db8"
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/usr/lib/system/libsystem_c.dylib:arm64e+0x4db8) in __sfvwrite+0xd0
+Shadow bytes around the buggy address:
+  0x603000001c00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000001c80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000001d00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000001d80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000001e00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+=>0x603000001e80: fa fa fa fa[fa]fa fa fa fa fa fa fa fa fa fa fa
+  0x603000001f00: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000001f80: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000002000: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000002080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x603000002100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==44212==ABORTING

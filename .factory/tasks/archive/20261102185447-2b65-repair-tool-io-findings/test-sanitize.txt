@@ -1,0 +1,15 @@
+test_file_read_and_allocation_failures_do_not_overwrite (__main__.ToolIOTests) ... ok
+test_fits_status_geometry_and_supported_layouts (__main__.ToolIOTests) ... ok
+test_generator_failures_and_valid_definition (__main__.ToolIOTests) ... ok
+test_make_inventory_is_consistent (__main__.ToolIOTests) ... ok
+test_metadata_paths_are_literal_and_process_failures_fail (__main__.ToolIOTests) ... ok
+test_raw_cli_expands_each_pattern_once (__main__.ToolIOTests) ... ok
+test_raw_file_partial_write_interrupt_and_truncation (__main__.ToolIOTests) ... ok
+test_repair_small_files_are_rejected_without_mutation (__main__.ToolIOTests) ... ok
+test_repairs_preserve_payload_and_report_write_failure (__main__.ToolIOTests) ... ok
+test_upload_exact_bytes_rewind_termination_and_cleanup (__main__.ToolIOTests) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 5.021s
+
+OK

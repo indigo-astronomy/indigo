@@ -1,0 +1,112 @@
+{
+  "version": 2,
+  "task": "20261102185447-2b65-repair-tool-io-findings",
+  "scope": [
+    "indigo_tools/Makefile",
+    "indigo_tools/fits_to_raw.c",
+    "indigo_tools/fix_fits.c",
+    "indigo_tools/fix_xisf.c",
+    "indigo_tools/indigo_generator.c",
+    "indigo_tools/indigo_metadata_extractor.c",
+    "indigo_tools/indigo_prop_tool.c",
+    "indigo_tools/indigo_raw_to_fits.c",
+    "indigo_tools/tool_file_io.h",
+    "indigo_test/unit/test_tool_io_failures.py",
+    ".factory/completions/20261102185447-2b65-repair-tool-io-findings.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_tool_io_failures.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "SANITIZERS=address,undefined",
+        "python3",
+        "-B",
+        "indigo_test/unit/test_tool_io_failures.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102185447-2b65-repair-tool-io-findings.json": [
+      "100644",
+      "blob",
+      "32ca4c6e0f5e93334daab2b06afe6a4132d08605"
+    ],
+    "indigo_test/unit/test_tool_io_failures.py": [
+      "100644",
+      "blob",
+      "809f14262ba3ffb195a2037e56b328d22e9126b3"
+    ],
+    "indigo_tools/Makefile": [
+      "100644",
+      "blob",
+      "0d642d593aad1ce45f3685525cad75317452cd1b"
+    ],
+    "indigo_tools/fits_to_raw.c": [
+      "100644",
+      "blob",
+      "0f3db96b6f6eb50b560ca192077d405275ac6c7f"
+    ],
+    "indigo_tools/fix_fits.c": [
+      "100644",
+      "blob",
+      "7dd977aae777a00f1a0aff124bf88735ae3c8016"
+    ],
+    "indigo_tools/fix_xisf.c": [
+      "100644",
+      "blob",
+      "912bc8fa6abc9c484effa9d040316c59f1acf733"
+    ],
+    "indigo_tools/indigo_generator.c": [
+      "100644",
+      "blob",
+      "f090dc02a0c978a80738e5fdad7362da314da286"
+    ],
+    "indigo_tools/indigo_metadata_extractor.c": [
+      "100644",
+      "blob",
+      "9a63127a3480b43f3b8acd243ca5474763bdcc01"
+    ],
+    "indigo_tools/indigo_prop_tool.c": [
+      "100644",
+      "blob",
+      "ca99a8ab86c3589a8a23f8196f75763c5ebdda15"
+    ],
+    "indigo_tools/indigo_raw_to_fits.c": [
+      "100644",
+      "blob",
+      "b85dccd4e0da29b60cabbc3715452106757ea377"
+    ],
+    "indigo_tools/tool_file_io.h": [
+      "100644",
+      "blob",
+      "e5efbf7f9553a21bc495e334078245d05b32f133"
+    ]
+  }
+}

@@ -1,0 +1,3 @@
+# Specification
+
+AC-1 file uploads return exact bytes, texttermination and close every failure. AC-2 converters reject bad/unsupported/truncated geometry/status and propagate I/O failures. AC-3 repair utilities bound offsets and never report success after failed writes. AC-4 metadata preprocessing passes paths as arguments, no shell, checks process failures. AC-5 generator handles allocation/path/input/output failures deterministically with nonzero diagnostics, preserving valid output. AC-6 built helpertools have coherent install/uninstall/clean policy. High complexity/error-path security; no externalprocesses beyond local compiler, no hardware or recognition.

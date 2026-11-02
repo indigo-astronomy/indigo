@@ -1,0 +1,15 @@
+[
+  {
+    "case": "real RAW mono16 to FITS overwrites/truncates output",
+    "exit": 0,
+    "size": 5760
+  },
+  {
+    "case": "unmatched glob fails",
+    "exit": 1
+  },
+  {
+    "case": "truncated input fails",
+    "exit": 1
+  }
+]
