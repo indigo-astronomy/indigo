@@ -1,0 +1,6 @@
+test_reply_integrity_and_signed_values (__main__.MJKZZNotifications) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.757s
+
+OK

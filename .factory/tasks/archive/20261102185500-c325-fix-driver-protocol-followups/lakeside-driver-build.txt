@@ -1,0 +1,14 @@
+Definition: indigo_focuser_lakeside.driver
+Sources:    indigo_focuser_lakeside.c indigo_focuser_lakeside_main.c
+Archive:    indigo_focuser_lakeside.a
+SO library: indigo_focuser_lakeside.dylib
+indigo_focuser_lakeside.o
+Executable: indigo_focuser_lakeside
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../indigo_tools /private/tmp/indigo-driver-protocol-followups/build/bin/indigo_generator
+/usr/bin/clang indigo_generator.c -o /private/tmp/indigo-driver-protocol-followups/build/bin/indigo_generator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-driver-protocol-followups/indigo_libs -I/private/tmp/indigo-driver-protocol-followups/indigo_drivers -I/private/tmp/indigo-driver-protocol-followups/indigo_mac_drivers -I/private/tmp/indigo-driver-protocol-followups/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_focuser_lakeside.o indigo_focuser_lakeside.c
+/usr/bin/libtool -static -o /private/tmp/indigo-driver-protocol-followups/build/drivers/indigo_focuser_lakeside.a indigo_focuser_lakeside.o
+/usr/bin/clang -shared -o /private/tmp/indigo-driver-protocol-followups/build/drivers/indigo_focuser_lakeside.dylib -Wl,-force_load /private/tmp/indigo-driver-protocol-followups/build/drivers/indigo_focuser_lakeside.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-driver-protocol-followups/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-driver-protocol-followups/indigo_libs -I/private/tmp/indigo-driver-protocol-followups/indigo_drivers -I/private/tmp/indigo-driver-protocol-followups/indigo_mac_drivers -I/private/tmp/indigo-driver-protocol-followups/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_focuser_lakeside_main.o indigo_focuser_lakeside_main.c
+/usr/bin/clang -o /private/tmp/indigo-driver-protocol-followups/build/drivers/indigo_focuser_lakeside indigo_focuser_lakeside_main.o /private/tmp/indigo-driver-protocol-followups/build/drivers/indigo_focuser_lakeside.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-driver-protocol-followups/build/lib -lusb-1.0

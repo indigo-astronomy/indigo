@@ -1,0 +1,6 @@
+test_unexpected_disconnect_allows_repeated_reconnect (__main__.WeMacroReconnect) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.525s
+
+OK

@@ -1,0 +1,6 @@
+test_firmware_boundaries (__main__.AOFirmware) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.388s
+
+OK

@@ -1,0 +1,56 @@
+[
+  {
+    "command": [
+      "clang",
+      "-g",
+      "-arch",
+      "x86_64",
+      "-arch",
+      "arm64",
+      "-mmacosx-version-min=10.10",
+      "-fPIC",
+      "-fno-common",
+      "-O3",
+      "-fobjc-arc",
+      "-isystem/private/tmp/indigo-driver-protocol-followups/indigo_libs",
+      "-I/private/tmp/indigo-driver-protocol-followups/indigo_drivers",
+      "-I/private/tmp/indigo-driver-protocol-followups/indigo_mac_drivers",
+      "-I/private/tmp/indigo-driver-protocol-followups/build/include",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-Wobjc-property-no-attribute",
+      "-c",
+      "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m",
+      "-o",
+      "/tmp/focuser_wemacro_bt-fixed.o"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-g",
+      "-arch",
+      "x86_64",
+      "-arch",
+      "arm64",
+      "-mmacosx-version-min=10.10",
+      "-fPIC",
+      "-fno-common",
+      "-O3",
+      "-fobjc-arc",
+      "-isystem/private/tmp/indigo-driver-protocol-followups/indigo_libs",
+      "-I/private/tmp/indigo-driver-protocol-followups/indigo_drivers",
+      "-I/private/tmp/indigo-driver-protocol-followups/indigo_mac_drivers",
+      "-I/private/tmp/indigo-driver-protocol-followups/build/include",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-Wobjc-property-no-attribute",
+      "-c",
+      "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m",
+      "-o",
+      "/tmp/focuser_mjkzz_bt-fixed.o"
+    ],
+    "exit": 0
+  }
+]

@@ -1,0 +1,9 @@
++ make check-lib build/integration/test_focuser_lakeside_simulator
+make: `build/integration/test_focuser_lakeside_simulator' is up to date.
++ ./build/integration/test_focuser_lakeside_simulator
+Running Lakeside
+  PASS disconnect_motion
+Lakeside: all tests passed
+Lakeside: 0 failing scenarios
+
+focuser_lakeside: 1/1 OK

@@ -1,0 +1,9 @@
++ make check-lib build/integration/test_focuser_lakeside_simulator
+make: `build/integration/test_focuser_lakeside_simulator' is up to date.
++ ./build/integration/test_focuser_lakeside_simulator
+Running Lakeside
+FAIL frozen_motion (status 14)
+Lakeside: 1 failing scenarios
+
+FAILED: test_focuser_lakeside_simulator
+focuser_lakeside: 1/0 Failed

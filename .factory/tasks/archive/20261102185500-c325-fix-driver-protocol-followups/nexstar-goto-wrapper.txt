@@ -1,0 +1,27 @@
++ make check-lib build/integration/test_mount_nexstar_simulator build/integration/test_mount_nexstar_deadline TEST_CFLAGS=-g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-driver-protocol-followups/indigo_libs -I/private/tmp/indigo-driver-protocol-followups/indigo_drivers -I/private/tmp/indigo-driver-protocol-followups/indigo_mac_drivers -I/private/tmp/indigo-driver-protocol-followups/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DNEXSTAR_GOTO_TIMEOUT=1
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-driver-protocol-followups/indigo_libs -I/private/tmp/indigo-driver-protocol-followups/indigo_drivers -I/private/tmp/indigo-driver-protocol-followups/indigo_mac_drivers -I/private/tmp/indigo-driver-protocol-followups/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DNEXSTAR_GOTO_TIMEOUT=1 -o build/integration/test_mount_nexstar_simulator integration/test_mount_nexstar_simulator.c /private/tmp/indigo-driver-protocol-followups/build/drivers/indigo_mount_nexstar.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-driver-protocol-followups/build/lib -Wl,-rpath,/private/tmp/indigo-driver-protocol-followups/build/lib -lindigo -lm -lpthread ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-driver-protocol-followups/indigo_libs -I/private/tmp/indigo-driver-protocol-followups/indigo_drivers -I/private/tmp/indigo-driver-protocol-followups/indigo_mac_drivers -I/private/tmp/indigo-driver-protocol-followups/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DNEXSTAR_GOTO_TIMEOUT=1 -DINDIGO_TEST_MOTION_DEADLINE -DNEXSTAR_PARK_TIMEOUT=1 -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o build/integration/test_mount_nexstar_deadline integration/test_mount_nexstar_simulator.c ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-driver-protocol-followups/build/lib -Wl,-rpath,/private/tmp/indigo-driver-protocol-followups/build/lib -lindigo -lm -lpthread ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat
++ ./build/integration/test_mount_nexstar_simulator
+20:08:27.728883 Application: indigo_mount_nexstar[nexstar_set_coordinates:616]: tc_check_align(5) = -1 (Value too large to be stored in data type)
+20:08:33.333281 Application: indigo_mount_nexstar[nexstar_set_coordinates:628]: tc_goto_rade_p(5) = -1 (Value too large to be stored in data type)
+20:08:40.398784 Application: indigo_mount_nexstar[nexstar_set_coordinates:628]: tc_sync_rade_p(5) = -1 (Value too large to be stored in data type)
+20:08:44.308843 Application: indigo_mount_nexstar[nexstar_update_position:479]: GOTO ended 28.1908 / 15.0000 degrees from the target
+20:09:00.270121 Application: indigo_mount_nexstar[nexstar_set_coordinates:628]: tc_goto_rade_p(5) = -1 (Value too large to be stored in data type)
+Running NexStar mount serial simulator integration tests
+  PASS nexstar_goto_refusals_stop_the_sequence
+    messages: Mount stopped short of the target
+  PASS nexstar_goto_completion_follows_slew_status
+    1 results published for one GOTO
+  PASS nexstar_poll_in_flight_does_not_complete_goto
+    stop commands sent on disconnect during GOTO: 1
+    RA stops sent on disconnect during manual motion: 1
+  PASS nexstar_disconnect_stops_goto_and_motion
+    pulse ran 8003 ms with a GOTO requested during it
+  PASS nexstar_goto_during_guide_pulse
+NexStar mount serial simulator integration tests: all tests passed
++ ./build/integration/test_mount_nexstar_deadline
+Running NexStar mount serial simulator integration tests
+  PASS nexstar_goto_deadline_stops_and_recovers
+NexStar mount serial simulator integration tests: all tests passed
+
+mount_nexstar: 6/6 OK

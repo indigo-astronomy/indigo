@@ -1,0 +1,24 @@
+{
+  "title": "MJKZZ Bluetooth signed-value assembly overflows signed shifts",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102185500-c325-fix-driver-protocol-followups",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Related notification decoder used signedleftshifts that can overflow for valid negativepositions (source confirmation only). Fixed by unsigned byte assembly followed by int32 cast, matching portable MJKZZ; actual callback validnegativeframe passes ASan/UBSan. No oldnegative runtime reproduction, hardware or exploitability claim.",
+  "evidence": "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m notification decode; baseline9557ca85e, test_focuser_mjkzz_bt.py negative frame sanitizer control.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102185500-c325-fix-driver-protocol-followups/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261102185500-c325-fix-driver-protocol-followups-001"
+}

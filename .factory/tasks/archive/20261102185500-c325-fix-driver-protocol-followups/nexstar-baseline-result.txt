@@ -1,0 +1,4 @@
+integration/test_mount_nexstar_simulator.c:2023: assertion failed: wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision)
+Running NexStar mount serial simulator integration tests
+  FAIL nexstar_goto_deadline_stops_and_recovers
+NexStar mount serial simulator integration tests: 1 test(s) failed

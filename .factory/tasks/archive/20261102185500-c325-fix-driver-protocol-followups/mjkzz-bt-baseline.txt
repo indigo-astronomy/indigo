@@ -1,0 +1,15 @@
+test_reply_integrity_and_signed_values (__main__.MJKZZNotifications) ... FAIL
+
+======================================================================
+FAIL: test_reply_integrity_and_signed_values (__main__.MJKZZNotifications)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-driver-protocol-followups/indigo_test/unit/test_focuser_mjkzz_bt.py", line 77, in test_reply_integrity_and_signed_values
+    self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+AssertionError: 0 != -6 : Assertion failed: (updates==0&&position_item.number.value==42), function main, file probe.m, line 91.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.654s
+
+FAILED (failures=1)

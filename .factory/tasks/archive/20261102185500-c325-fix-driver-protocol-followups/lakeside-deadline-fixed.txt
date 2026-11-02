@@ -1,0 +1,6 @@
+test_deadline_depends_on_time_not_report_count (__main__.LakesideDeadline) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.468s
+
+OK

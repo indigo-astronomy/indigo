@@ -1,0 +1,15 @@
+test_unexpected_disconnect_allows_repeated_reconnect (__main__.WeMacroReconnect) ... FAIL
+
+======================================================================
+FAIL: test_unexpected_disconnect_allows_repeated_reconnect (__main__.WeMacroReconnect)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-driver-protocol-followups/indigo_test/unit/test_focuser_wemacro_bt.py", line 80, in test_unexpected_disconnect_allows_repeated_reconnect
+    self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+AssertionError: 0 != -6 : Assertion failed: (private_data.device_count==0), function main, file probe.m, line 58.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 1.247s
+
+FAILED (failures=1)

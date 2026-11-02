@@ -1,0 +1,15 @@
+test_standby_speed_and_configuration_contract (__main__.ManualTemma) ... FAIL
+
+======================================================================
+FAIL: test_standby_speed_and_configuration_contract (__main__.ManualTemma)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-driver-protocol-followups/indigo_test/unit/test_mount_temma_manual.py", line 55, in test_standby_speed_and_configuration_contract
+    result=run_probe(source,'.cpp',('-std=c++11',),{'Arduino.h':ARDUINO});self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+AssertionError: 0 != -6 : Assertion failed: (command("STN-ON")=="stn-on\r\n"), function main, file probe.cpp, line 5.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.599s
+
+FAILED (failures=1)

@@ -1,0 +1,6 @@
+test_standby_speed_and_configuration_contract (__main__.ManualTemma) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.666s
+
+OK

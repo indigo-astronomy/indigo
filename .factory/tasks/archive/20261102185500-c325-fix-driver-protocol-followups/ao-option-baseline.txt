@@ -1,0 +1,15 @@
+test_firmware_boundaries (__main__.AOFirmware) ... FAIL
+
+======================================================================
+FAIL: test_firmware_boundaries (__main__.AOFirmware)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-driver-protocol-followups/indigo_test/unit/test_ao_sx_simulator_options.py", line 46, in test_firmware_boundaries
+    result=run_probe(source);self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+AssertionError: 0 != -6 : Assertion failed: (!parse_args(3,bad)), function main, file probe.c, line 55.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.382s
+
+FAILED (failures=1)

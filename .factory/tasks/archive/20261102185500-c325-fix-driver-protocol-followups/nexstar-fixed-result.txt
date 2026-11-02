@@ -1,0 +1,4 @@
+Running NexStar mount serial simulator integration tests
+  PASS nexstar_park_deadline_stops_and_recovers
+  PASS nexstar_goto_deadline_stops_and_recovers
+NexStar mount serial simulator integration tests: all tests passed

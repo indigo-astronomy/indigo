@@ -1,0 +1,12 @@
+{
+  "outputs": 6,
+  "identical": true,
+  "sha256": {
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c": "45ddc1df18cc7d302ea7f69d0bffc4416f7bdac272083ee61c85ac1d911e7e2e",
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.h": "63db646915b22feabf320b1624edf31e347a7675aac9495d45aefab5684a493d",
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside_main.c": "7c121bc1cec628c0f5ad65524e6cdeac1ad48df51b1c053bc50010caf3e4cc62",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.c": "8603cfb8f68aeb0a1027ba6b4e4657171c5de13de276e9eb6f4a1a80b764451d",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.h": "dc826819305e84525f9b6781b6a5da4683dad24c5cce1dca2056aca178ff956f",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar_main.c": "81dfc62522e9b5404abb40a444f569058a8728895ad1fc5bd2a9dc23e5b08b5d"
+  }
+}

@@ -1,0 +1,178 @@
+{
+  "version": 2,
+  "task": "20261102185500-c325-fix-driver-protocol-followups",
+  "scope": [
+    "indigo_mac_drivers/focuser_wemacro_bt/*",
+    "indigo_mac_drivers/focuser_mjkzz_bt/*",
+    "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino",
+    "indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c",
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.*",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.*",
+    "indigo_test/integration/test_focuser_lakeside_simulator.c",
+    "indigo_test/integration/test_mount_nexstar_simulator.c",
+    "indigo_test/unit/driver_source_probe.py",
+    "indigo_test/unit/test_focuser_wemacro_bt.py",
+    "indigo_test/unit/test_focuser_mjkzz_bt.py",
+    "indigo_test/unit/test_mount_temma_manual.py",
+    "indigo_test/unit/test_ao_sx_simulator_options.py",
+    "indigo_test/unit/test_focuser_lakeside_deadline.py",
+    ".factory/findings/active/FND-20261102185500-c325-fix-driver-protocol-followups-001.json",
+    ".factory/findings/archive/FND-20261102185500-c325-fix-driver-protocol-followups-001.json",
+    ".factory/completions/20261102185500-c325-fix-driver-protocol-followups.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_focuser_wemacro_bt.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_focuser_mjkzz_bt.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_mount_temma_manual.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_ao_sx_simulator_options.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "indigo_test/unit/test_focuser_lakeside_deadline.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102185500-c325-fix-driver-protocol-followups.json": [
+      "100644",
+      "blob",
+      "6931766092da6ca46ce53ea37bdf939dc877321b"
+    ],
+    ".factory/findings/archive/FND-20261102185500-c325-fix-driver-protocol-followups-001.json": [
+      "100644",
+      "blob",
+      "4b1bf5d2b892fdff71c42d2e6817f3bf89cf3762"
+    ],
+    "indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c": [
+      "100644",
+      "blob",
+      "070d7bada0e6ee35d88f22fe3edeba6213948642"
+    ],
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c": [
+      "100644",
+      "blob",
+      "d64447ccfddcfb6984b29d1b07908bbc28f8d8c1"
+    ],
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver": [
+      "100644",
+      "blob",
+      "58b136b85ac23588d1c125b0d139fb539edb7aa5"
+    ],
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.c": [
+      "100644",
+      "blob",
+      "486c150aaede3942e7339c9913dbc5fa82d32f4a"
+    ],
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver": [
+      "100644",
+      "blob",
+      "3ed581347e39813a54e06150b7080b07f0ecec94"
+    ],
+    "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino": [
+      "100644",
+      "blob",
+      "40aa025dee4db1f9c72a39e034bc6f5c0bf1100c"
+    ],
+    "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m": [
+      "100644",
+      "blob",
+      "cfbccfad1938bf31a7a11b60a911daa1d0187b42"
+    ],
+    "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m": [
+      "100644",
+      "blob",
+      "82988f753f43c6126ec18df1cbf3c2456352e5d6"
+    ],
+    "indigo_test/integration/test_focuser_lakeside_simulator.c": [
+      "100644",
+      "blob",
+      "7ff21631b58a230e3c5ccae9a17d2f3fd3865e86"
+    ],
+    "indigo_test/integration/test_mount_nexstar_simulator.c": [
+      "100644",
+      "blob",
+      "b607950076d3bd30a62e3670025af9829675aac0"
+    ],
+    "indigo_test/unit/driver_source_probe.py": [
+      "100644",
+      "blob",
+      "43560a96214f301df6f1b823679b6d7ebf492b44"
+    ],
+    "indigo_test/unit/test_ao_sx_simulator_options.py": [
+      "100644",
+      "blob",
+      "663a8cd8d0e4c612b3592f2d6edd0579af8cdf57"
+    ],
+    "indigo_test/unit/test_focuser_lakeside_deadline.py": [
+      "100644",
+      "blob",
+      "e5b0b7b17eab010f818eb1215c315dd51ae4adf2"
+    ],
+    "indigo_test/unit/test_focuser_mjkzz_bt.py": [
+      "100644",
+      "blob",
+      "ff436fc488c0719c0a5860cf42a78bcb41612bce"
+    ],
+    "indigo_test/unit/test_focuser_wemacro_bt.py": [
+      "100644",
+      "blob",
+      "41f9c2c2c8529b193e87f59c96251d92b7f727a4"
+    ],
+    "indigo_test/unit/test_mount_temma_manual.py": [
+      "100644",
+      "blob",
+      "24756b003a09051e01a36d3f8eaed02525eb01ab"
+    ]
+  }
+}

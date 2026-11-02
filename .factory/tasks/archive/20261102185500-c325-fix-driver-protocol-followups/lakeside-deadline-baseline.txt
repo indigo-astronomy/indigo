@@ -1,0 +1,15 @@
+test_deadline_depends_on_time_not_report_count (__main__.LakesideDeadline) ... FAIL
+
+======================================================================
+FAIL: test_deadline_depends_on_time_not_report_count (__main__.LakesideDeadline)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-driver-protocol-followups/indigo_test/unit/test_focuser_lakeside_deadline.py", line 67, in test_deadline_depends_on_time_not_report_count
+    result=run_probe('#include <stdio.h>\n'+source);self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+AssertionError: 0 != -6 : Assertion failed: (private_data.active&&stops==0), function main, file probe.c, line 104.
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.439s
+
+FAILED (failures=1)
