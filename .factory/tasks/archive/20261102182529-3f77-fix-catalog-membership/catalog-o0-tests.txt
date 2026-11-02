@@ -1,0 +1,27 @@
+19:30:32.175181 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.176029 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.176389 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.176725 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.177037 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.177364 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.177672 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.177989 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.178294 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.178612 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.178945 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.179251 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.179546 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:30:32.179844 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+Running test_agent_platesolver_core
+  PASS catalog_rejects_invalid_star_references
+  PASS catalog_preserves_valid_star_indices
+test_agent_platesolver_core: all tests passed
+19:30:32.193456 Application: indigo_solver_catalog_build: quad 1 references a star outside of the catalog
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: bad magic
+Running test_agent_platesolver_core
+  PASS index_file_roundtrip
+test_agent_platesolver_core: all tests passed

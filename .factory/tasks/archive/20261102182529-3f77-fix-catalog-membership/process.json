@@ -1,0 +1,71 @@
+{
+  "version": 2,
+  "task": "20261102182529-3f77-fix-catalog-membership",
+  "scope": [
+    "indigo_drivers/agent_platesolver/indigo_solver.c",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c",
+    "indigo_test/unit/test_agent_platesolver_core.c",
+    ".factory/completions/20261102182529-3f77-fix-catalog-membership.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_drivers/agent_platesolver",
+        "-f",
+        "../../Makefile.drv",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "INDIGO_TEST_CASE_FILTER=catalog",
+        "indigo_test/build/unit/test_agent_platesolver_core"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102182529-3f77-fix-catalog-membership.json": [
+      "100644",
+      "blob",
+      "1e80d6df64f06fd1d92e252ed6051ecb4af4ea03"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c": [
+      "100644",
+      "blob",
+      "2465ea38e4be4a3fc4a0d549d6d8c582dab3db72"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver.c": [
+      "100644",
+      "blob",
+      "ba6194eb84d810dbc9e282220341f0d4b80b4377"
+    ],
+    "indigo_test/unit/test_agent_platesolver_core.c": [
+      "100644",
+      "blob",
+      "0ab624d79b70204d8d360652be149dd1c47fa5c9"
+    ]
+  }
+}

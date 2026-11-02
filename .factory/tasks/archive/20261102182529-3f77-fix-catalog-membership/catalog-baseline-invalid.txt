@@ -1,0 +1,18 @@
+19:28:03.449751 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:28:03.450286 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:28:03.450500 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:28:03.450693 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:28:03.450872 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+Catalog accepted invalid reference 5 in storage 0
+19:28:03.451392 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:28:03.451574 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+19:28:03.451740 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+Catalog accepted invalid reference 2 in storage 1
+Catalog accepted invalid reference 3 in storage 1
+19:28:03.452553 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+Catalog accepted invalid reference 5 in storage 1
+19:28:03.453051 Application: indigo_solver_catalog_build: quad 0 references a star outside of the catalog
+unit/test_agent_platesolver_core.c:187: assertion failed: rejected_all
+Running test_agent_platesolver_core
+  FAIL catalog_rejects_invalid_star_references
+test_agent_platesolver_core: 1 test(s) failed

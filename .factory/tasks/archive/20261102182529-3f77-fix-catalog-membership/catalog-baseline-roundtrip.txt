@@ -1,0 +1,9 @@
+19:28:03.449823 Application: indigo_solver_catalog_build: quad 1 references a star outside of the catalog
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 1 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: unsupported index version 99 (expected 2)
+indigo_solver_index_read_header: bad magic
+Running test_agent_platesolver_core
+  PASS index_file_roundtrip
+test_agent_platesolver_core: all tests passed
