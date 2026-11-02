@@ -1,0 +1,24 @@
+{
+  "severity": "low",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102123603-6a7f-select-solver-agent",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Sequencer.md now names the imager agent given to start() and states that a select_imager_agent() step does not change the solver agent; quality-review.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "title": "Sequencer.md implies a select_imager_agent step moves automatic solver selection",
+  "category": "quality",
+  "status": "closed",
+  "summary": "The text said the solver on the host of the imager agent is used, but the choice uses the name given to start() and a select_imager_agent() step does not change it. Document this.",
+  "evidence": "Sequencer.md start() paragraph; Sequencer.js Sequence.prototype.start; quality-review.md.",
+  "id": "FND-20261102123603-6a7f-select-solver-agent-002"
+}
