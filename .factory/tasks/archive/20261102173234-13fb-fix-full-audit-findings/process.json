@@ -72,7 +72,9 @@
       "evidence": "verification.md"
     }
   ],
-  "risk_reviews": {},
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
   "reviews": [],
   "reviewed_content": {
     ".factory/completions/20261102173234-13fb-fix-full-audit-findings.json": [
