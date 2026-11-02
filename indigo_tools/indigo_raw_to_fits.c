@@ -34,47 +34,47 @@
 
 #define MAX_EXTRA_KEYWORDS 3
 
+#include "tool_file_io.h"
+
 int save_file(char *file_name, char *data, int size) {
+	if (size < 0) {
+		errno = EINVAL;
+		return -1;
+	}
 #if defined(INDIGO_WINDOWS)
-	int handle = open(file_name, O_CREAT | O_WRONLY | O_BINARY, 0);
+	int handle = open(file_name, O_CREAT | O_WRONLY | O_TRUNC | O_BINARY, 0);
 #else
-	int handle = open(file_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+	int handle = open(file_name, O_CREAT | O_WRONLY | O_TRUNC, S_IRUSR | S_IWUSR);
 #endif
 	if (handle < 0) {
 		return -1;
 	}
-	int res = write(handle, data, size);
-	if (res < size) {
-		close(handle);
-		return -1;
+	int offset = 0;
+	while (offset < size) {
+		ssize_t written = write(handle, data + offset, (size_t)(size - offset));
+		if (written < 0 && errno == EINTR) {
+			continue;
+		}
+		if (written <= 0) {
+			close(handle);
+			return -1;
+		}
+		offset += (int)written;
 	}
-	close(handle);
-	return 0;
+	return close(handle) == 0 ? 0 : -1;
 }
 
 int open_file(const char *file_name, char **data, int *size) {
-	int image_size = 0;
-	if (file_name[0] == '\0') {
-		errno = ENOENT;
+	char *replacement = NULL;
+	size_t length;
+	*size = 0;
+	if (!tool_read_file(file_name, &replacement, &length, INT_MAX)) {
 		return -1;
 	}
-	FILE *file;
-	file = fopen(file_name, "rb");
-	if (file) {
-		fseek(file, 0, SEEK_END);
-		image_size = (size_t)ftell(file);
-		fseek(file, 0, SEEK_SET);
-		if (*data == NULL) {
-			*data = (char *)malloc(image_size + 1);
-		} else {
-			*data = (char *)realloc(*data, image_size + 1);
-		}
-		*size = fread(*data, image_size, 1, file);
-		fclose(file);
-		*size = image_size;
-		return 0;
-	}
-	return -1;
+	free(*data);
+	*data = replacement;
+	*size = (int)length;
+	return 0;
 }
 
 static void print_help(const char *name) {
@@ -157,12 +157,12 @@ int main(int argc, char *argv[]) {
 	int succeeded = 0;
 	int failed = 0;
 	for (int i = arg_base; i < argc; i++) {
-		glob_t globlist;
-		if (glob(argv[i], 0, NULL, &globlist) == GLOB_NOSPACE || glob(argv[i], 0, NULL, &globlist) == GLOB_NOMATCH) {
-			fprintf(stderr,"Pattern '%s' did not match any files\n", argv[i]);
-			continue;
-		}
-		if (glob(argv[i], 0, NULL, &globlist) == GLOB_ABORTED) {
+		glob_t globlist = { 0 };
+		int glob_result = glob(argv[i], 0, NULL, &globlist);
+		if (glob_result != 0) {
+			fprintf(stderr, "Cannot expand pattern '%s'\n", argv[i]);
+			globfree(&globlist);
+			failed++;
 			continue;
 		}
 
@@ -173,7 +173,12 @@ int main(int argc, char *argv[]) {
 			int out_data_size = 0, in_data_size = 0;
 			char infile_name[PATH_MAX];
 
-			strncpy(infile_name, globlist.gl_pathv[k], PATH_MAX);
+			if (snprintf(infile_name, sizeof(infile_name), "%s", globlist.gl_pathv[k]) >= sizeof(infile_name)) {
+				fprintf(stderr, "Input path is too long\n");
+				failed++;
+				k++;
+				continue;
+			}
 			int res = open_file(globlist.gl_pathv[k], &in_data, &in_data_size);
 			if (res != 0) {
 				fprintf(stderr, "Can not open '%s' : %s\n", infile_name, strerror(errno));
@@ -193,14 +198,22 @@ int main(int argc, char *argv[]) {
 			}
 
 			char outfile_name[PATH_MAX];
-			strncpy(outfile_name, infile_name, PATH_MAX);
-			/* relace replace suffix with .fits */
-			char *dot = strrchr(outfile_name, '.');
-			if (dot) {
-				strcpy(dot, ".fits");
-			} else {
-				snprintf(outfile_name, PATH_MAX, "%s.fits", infile_name);
+			char *dot = strrchr(infile_name, '.');
+			char *slash = strrchr(infile_name, '/');
+			if (dot != NULL && slash != NULL && dot < slash) {
+				dot = NULL;
 			}
+			size_t stem = dot != NULL ? (size_t)(dot - infile_name) : strlen(infile_name);
+			if (stem > sizeof(outfile_name) - sizeof(".fits")) {
+				fprintf(stderr, "Output path is too long\n");
+				free(in_data);
+				free(out_data);
+				failed++;
+				k++;
+				continue;
+			}
+			memcpy(outfile_name, infile_name, stem);
+			memcpy(outfile_name + stem, ".fits", sizeof(".fits"));
 
 			res = save_file(outfile_name, out_data, out_data_size);
 			if (res != 0) {

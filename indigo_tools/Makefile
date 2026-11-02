@@ -30,24 +30,23 @@ else
 	INDIGO_CLIENT_LIBS = $(BUILD_LIB)/libindigo_client.a -lz -ldl -lm
 endif
 
-all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_scan_drivers $(BUILD_BIN)/indigo_solver_indexer $(BUILD_BIN)/indigo_solver
+TOOL_NAMES = indigo_prop_tool indigo_list_usbserial indigo_raw_to_fits indigo_raw_crop indigo_drivers indigo_driver_metadata indigo_generator indigo_scan_drivers indigo_solver_indexer indigo_solver
+TOOL_BINARIES = $(addprefix $(BUILD_BIN)/, $(TOOL_NAMES))
+
+all: $(TOOL_BINARIES)
 
 install: all
-	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
-	cp $(BUILD_BIN)/indigo_list_usbserial $(INSTALL_BIN)
-	cp $(BUILD_BIN)/indigo_raw_to_fits $(INSTALL_BIN)
-	cp $(BUILD_BIN)/indigo_raw_crop $(INSTALL_BIN)
-	cp $(BUILD_BIN)/indigo_solver $(INSTALL_BIN)
+	cp $(TOOL_BINARIES) $(INSTALL_BIN)
 	cp ./indigo_log_analyzer.pl $(INSTALL_BIN)/indigo_log_analyzer
 
 uninstall:
-	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(INSTALL_BIN)/indigo_raw_crop $(INSTALL_BIN)/indigo_log_analyzer $(INSTALL_BIN)/indigo_list_usbserial $(INSTALL_BIN)/indigo_solver
+	rm -f $(addprefix $(INSTALL_BIN)/, $(TOOL_NAMES)) $(INSTALL_BIN)/indigo_log_analyzer
 
 status:
 	@printf "\nindigo_tools -------------------------\n\n"
 
 clean: status
-	rm -f *.o $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_solver_indexer $(BUILD_BIN)/indigo_solver
+	rm -f *.o $(TOOL_BINARIES)
 
 clean-all: status
 	git clean -dfx

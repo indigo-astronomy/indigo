@@ -23,6 +23,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
+#include <stdint.h>
+#include <limits.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -41,11 +46,48 @@ typedef struct driver_meta {
 driver_meta *drivers[MAX_DRIVERS] = { NULL };
 int last_driver = 0;
 
+static bool extraction_failed;
+
+static FILE *preprocess(const char *path, pid_t *child) {
+	int descriptors[2];
+	if (pipe(descriptors) != 0) {
+		return NULL;
+	}
+	*child = fork();
+	if (*child == 0) {
+		close(descriptors[0]);
+		if (dup2(descriptors[1], STDOUT_FILENO) < 0) {
+			_exit(127);
+		}
+		close(descriptors[1]);
+		int errors = open("/dev/null", O_WRONLY);
+		if (errors >= 0) {
+			dup2(errors, STDERR_FILENO);
+			close(errors);
+		}
+		execlp("clang", "clang", "-E", "--", path, (char *)NULL);
+		_exit(127);
+	}
+	close(descriptors[1]);
+	if (*child < 0) {
+		close(descriptors[0]);
+		return NULL;
+	}
+	FILE *stream = fdopen(descriptors[0], "r");
+	if (stream == NULL) {
+		close(descriptors[0]);
+		while (waitpid(*child, NULL, 0) < 0 && errno == EINTR) {
+		}
+	}
+	return stream;
+}
+
 void process_base_folder(const char *path) {
 	struct dirent *entry;
 	DIR *dp = opendir(path);
 	if (dp == NULL) {
 		perror("opendir");
+		extraction_failed = true;
 		return;
 	}
 	while ((entry = readdir(dp)) != NULL) {
@@ -55,12 +97,17 @@ void process_base_folder(const char *path) {
 		if (strncmp(entry->d_name, "agent_", 6) && strncmp(entry->d_name, "ao_", 3) && strncmp(entry->d_name, "aux_", 4) && strncmp(entry->d_name, "ccd_", 4) && strncmp(entry->d_name, "dome_", 5) && strncmp(entry->d_name, "focuser_", 8) && strncmp(entry->d_name, "gps_", 4) && strncmp(entry->d_name, "guider_", 7) && strncmp(entry->d_name, "mount_", 6) && strncmp(entry->d_name, "rotator_", 8) && strncmp(entry->d_name, "system_", 7) && strncmp(entry->d_name, "wheel_", 6)) {
 			continue;
 		}
-		driver_meta *driver = malloc(sizeof(driver_meta));
+		driver_meta *driver = calloc(1, sizeof(driver_meta));
+		if (driver == NULL) {
+			extraction_failed = true;
+			break;
+		}
 		snprintf(driver->name, sizeof(driver->name), "%s", entry->d_name);
 		snprintf(driver->root, sizeof(driver->root), "%s/%s", path, driver->name);
 		snprintf(driver->id, sizeof(driver->id), "%s", strchr(driver->name, '_') + 1);
 		struct stat statbuf;
 		if (stat(driver->root, &statbuf) == -1) {
+			free(driver);
 			continue;
 		}
 		if (!S_ISDIR(statbuf.st_mode)) {
@@ -80,8 +127,15 @@ void process_base_folder(const char *path) {
 				}
 			}
 		}
-		snprintf(line, sizeof(line), "clang -E %s 2>/dev/null", driver_path);
-		FILE *pipe = popen(line, "r");
+		pid_t child;
+		FILE *pipe = preprocess(driver_path, &child);
+		if (pipe == NULL) {
+			perror("Cannot start preprocessor");
+			free(driver);
+			extraction_failed = true;
+			continue;
+		}
+		bool found = false;
 		while (fgets(line, sizeof(line), pipe) != NULL) {
 			char *driver_info = strstr(line, "SET_DRIVER_INFO");
 			if (driver_info) {
@@ -89,11 +143,25 @@ void process_base_folder(const char *path) {
 					if ((driver->version & 0xFFFF000000) == 0) {
 						driver->version |= 0x02000000;
 					}
-					drivers[last_driver++] = driver;
+					found = true;
 				}
 			}
 		}
-		pclose(pipe);
+		bool read_ok = !ferror(pipe);
+		if (fclose(pipe) != 0) {
+			read_ok = false;
+		}
+		int status;
+		pid_t waited;
+		do {
+			waited = waitpid(child, &status, 0);
+		} while (waited < 0 && errno == EINTR);
+		if (read_ok && waited == child && WIFEXITED(status) && WEXITSTATUS(status) == 0 && found && last_driver < MAX_DRIVERS) {
+			drivers[last_driver++] = driver;
+		} else {
+			free(driver);
+			extraction_failed = true;
+		}
 	}
 	closedir(dp);
 }
@@ -104,7 +172,7 @@ int comparator(const void *a, const void *b) {
 	return strcmp(driver_a->name, driver_b->name);
 }
 
-int main(int argc, char **argv) {
+int main(void) {
 	process_base_folder("indigo_drivers");
 	process_base_folder("indigo_mac_drivers");
 	process_base_folder("indigo_linux_drivers");
@@ -112,6 +180,7 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < last_driver; i++) {
 		driver_meta *driver = drivers[i];
 		printf("\"%s\", \"%s\", %08x\n", driver->name, driver->label, driver->version);
-
+		free(driver);
 	}
+	return extraction_failed ? 1 : 0;
 }

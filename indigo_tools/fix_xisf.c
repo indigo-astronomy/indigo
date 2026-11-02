@@ -24,29 +24,18 @@
 #include <stdlib.h>
 #include <libgen.h>
 
-void *memfind(const char *haystack, size_t haystacklen, const char *needle, size_t needlelen) {
-	for(int offset = 0; offset < haystacklen-needlelen; offset++) {
-   		if(!memcmp(needle, haystack + offset, needlelen)) {
+#include "tool_file_io.h"
+
+static const char *memfind(const char *haystack, size_t haystacklen, const char *needle, size_t needlelen) {
+	if (needlelen > haystacklen) {
+		return NULL;
+	}
+	for (size_t offset = 0; offset <= haystacklen - needlelen; offset++) {
+		if (!memcmp(needle, haystack + offset, needlelen)) {
 			return haystack + offset;
 		}
-    }
-	return NULL;
-}
-
-int read_file(char *filename, char **data) {
-	FILE *f = fopen(filename, "rb");
-	if (f == 0) {
-		return -1;
 	}
-	fseek(f, 0, SEEK_END);
-	long fsize = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	*data = malloc(fsize + 1);
-	int count = fread(*data, 1, fsize, f);
-	fclose(f);
-	(*data)[fsize] = 0;
-	return count;
+	return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -56,48 +45,35 @@ int main(int argc, char *argv[]) {
 		printf("usage: %s filename.xisf\n", basename(argv[0]));
 		return 1;
 	}
-	int size = read_file(argv[1], &data);
-	if (size < 0) {
-		printf("error reading: %s\n", argv[1]);
+	size_t size;
+	if (!tool_read_file(argv[1], &data, &size, SIZE_MAX - 1) || size < 2880 || size > SIZE_MAX - 2880) {
+		fprintf(stderr, "Invalid or unreadable XISF image\n");
+		free(data);
 		return 1;
 	}
-
-	char header_end[] = "</xisf>";
-	char *ptr = memfind(data, size, header_end, strlen(header_end));
-	if (ptr == NULL) {
-		printf("does not appear to be a XISF image\n");
+	const char *end = memfind(data, 2880, "</xisf>", 7);
+	const char *attachment = memfind(data, end != NULL ? (size_t)(end - data) : 0, "attachment:2880", 15);
+	if (end == NULL || attachment == NULL) {
+		fprintf(stderr, "Not a supported broken XISF image\n");
+		free(data);
 		return 1;
 	}
-	ptr = ptr + strlen(header_end);
-	int header_len = ptr - data;
-
-	char to_find[] = "attachment:2880";
-	ptr = memfind(data, size, to_find, strlen(to_find));
-	if (ptr == NULL) {
-		printf("can not find attachment position, maybe fixed?\n");
+	size_t header_len = (size_t)(end - data) + 7, output_size = size + 2880;
+	char *output = calloc(1, output_size);
+	if (output == NULL) {
+		free(data);
 		return 1;
 	}
-	ptr[11] = '5';
-	ptr[12] = '7';
-	ptr[13] = '6';
-	ptr[14] = '0';
-
-	FILE *f = fopen(argv[1], "wb");
-	if (f == 0) {
-		printf("can not overwrite: %s\n", argv[1]);
-		return 1;
-	}
-	fwrite(data, header_len, 1, f);
-
-	for (int i = 0; i < 5760 - header_len; i++) {
-		fputc(0, f);
-	}
-
-	int data_len = size - header_len;
-	fwrite(data + 2880, 1, size - 2880, f);
-
-	printf("fixed: %s\n", argv[1]);
-	fclose(f);
+	memcpy(output, data, header_len);
+	memcpy(output + (attachment - data) + 11, "5760", 4);
+	memcpy(output + 5760, data + 2880, size - 2880);
+	bool ok = tool_write_file(argv[1], output, output_size);
+	free(output);
 	free(data);
+	if (!ok) {
+		fprintf(stderr, "Failed to overwrite %s\n", argv[1]);
+		return 1;
+	}
+	printf("fixed: %s\n", argv[1]);
 	return 0;
 }

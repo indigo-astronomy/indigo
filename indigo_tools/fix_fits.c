@@ -26,21 +26,7 @@
 
 #define BROKEN_FITS_OFFSET (2880*2)
 
-int read_file(char *filename, char **data) {
-	FILE *f = fopen(filename, "rb");
-	if (f == 0) {
-		return -1;
-	}
-	fseek(f, 0, SEEK_END);
-	long fsize = ftell(f);
-	fseek(f, 0, SEEK_SET);
-
-	*data = malloc(fsize + 1);
-	int count = fread(*data, 1, fsize, f);
-	fclose(f);
-	(*data)[fsize] = 0;
-	return count;
-}
+#include "tool_file_io.h"
 
 int main(int argc, char *argv[]) {
 	char *data;
@@ -49,32 +35,23 @@ int main(int argc, char *argv[]) {
 		printf("usage: %s filename.fits\n", basename(argv[0]));
 		return 1;
 	}
-	int size = read_file(argv[1], &data);
-	if (size < 0) {
+	size_t size;
+	if (!tool_read_file(argv[1], &data, &size, SIZE_MAX - 1)) {
 		printf("error reading: %s\n", argv[1]);
 		return 1;
 	}
 
-	if (strncmp(data, "SIMPLE", 6)) {
-		printf("does not appear to be a FITS image\n");
+	if (size < BROKEN_FITS_OFFSET + 6 || memcmp(data, "SIMPLE", 6) || memcmp(data + BROKEN_FITS_OFFSET, "SIMPLE", 6)) {
+		fprintf(stderr, "Not a supported broken FITS image\n");
+		free(data);
 		return 1;
 	}
-
-	if (strncmp(data + BROKEN_FITS_OFFSET, "SIMPLE", 6)) {
-		printf("can not find true start position, maybe fixed?\n");
-		return 1;
-	}
-
-	FILE *f = fopen(argv[1], "wb");
-	if (f == 0) {
-		printf("can not overwrite: %s\n", argv[1]);
-		return 1;
-	}
-
-	fwrite(data + BROKEN_FITS_OFFSET, 1, size - BROKEN_FITS_OFFSET, f);
-
-	printf("fixed: %s\n", argv[1]);
-	fclose(f);
+	bool ok = tool_write_file(argv[1], data + BROKEN_FITS_OFFSET, size - BROKEN_FITS_OFFSET);
 	free(data);
+	if (!ok) {
+		fprintf(stderr, "Failed to overwrite %s\n", argv[1]);
+		return 1;
+	}
+	printf("fixed: %s\n", argv[1]);
 	return 0;
 }

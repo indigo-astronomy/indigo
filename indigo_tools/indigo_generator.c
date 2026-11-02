@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <libgen.h>
 #include <limits.h>
+#include <stdint.h>
 
 #pragma mark - typedefs
 
@@ -143,10 +144,67 @@ int line = 1, column = 1;
 
 #pragma mark - helpers
 
-void *allocate(int size) {
+static void resource_error(const char *operation) {
+	fprintf(stderr, "Generator resource failure: %s%s%s\n", operation, errno ? ": " : "", errno ? strerror(errno) : "");
+	exit(EXIT_FAILURE);
+}
+
+void *allocate(size_t size) {
 	void *result = malloc(size);
+	if (result == NULL) {
+		resource_error("allocation");
+	}
 	memset(result, 0, size);
 	return result;
+}
+
+static void *resize_buffer(void *old, size_t size) {
+	void *replacement = realloc(old, size);
+	if (replacement == NULL) {
+		resource_error("buffer growth");
+	}
+	return replacement;
+}
+
+static FILE *generated_output;
+
+static FILE *output_stream(void) {
+	return generated_output != NULL ? generated_output : stdout;
+}
+
+static void finish_output(void) {
+	FILE *output = output_stream();
+	if (ferror(output) || fflush(output) != 0) {
+		resource_error("writing output");
+	}
+}
+
+static void redirect_stream(const char *path, const char *mode, FILE *stream) {
+	if (stream == stdout) {
+		if (generated_output != NULL) {
+			finish_output();
+			if (fclose(generated_output) != 0) {
+				resource_error("closing output");
+			}
+		}
+		generated_output = fopen(path, mode);
+		if (generated_output == NULL) {
+			resource_error(path);
+		}
+	} else if (freopen(path, mode, stream) == NULL) {
+		resource_error(path);
+	}
+}
+
+static void checked_path(char *path, size_t capacity, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	int length = vsnprintf(path, capacity, format, args);
+	va_end(args);
+	if (length < 0 || (size_t)length >= capacity) {
+		errno = ENAMETOOLONG;
+		resource_error("file path");
+	}
 }
 
 void make_upper_case(char *name) {
@@ -1236,16 +1294,23 @@ bool parse_driver_block(void) {
 #pragma mark - code generator
 
 void read_definition_source(void) {
-	int max_size = 16 * 1024;
+	size_t max_size = 16 * 1024;
 	current = definition_source = allocate(max_size);
 	int c;
 	while ((c = getchar()) != -1) {
 		*current++ = c;
-		long size = current - definition_source;
+		size_t size = (size_t)(current - definition_source);
 		if (size == max_size - 1) {
-			definition_source = realloc(definition_source, max_size *= 2);
+			if (max_size > INT_MAX / 2) {
+				resource_error("definition is too large");
+			}
+			max_size *= 2;
+			definition_source = resize_buffer(definition_source, max_size);
 			current = definition_source + size;
 		}
+	}
+	if (ferror(stdin)) {
+		resource_error("reading definition");
 	}
 	*current = 0;
 	current = definition_source;
@@ -1260,8 +1325,8 @@ void write_line(const char *format, ...) {
 	}
 	va_list args;
 	va_start(args, format);
-	vprintf(format, args);
-	putchar('\n');
+	vfprintf(output_stream(), format, args);
+	fputc('\n', output_stream());
 	va_end(args);
 	empty_line = *format == 0;
 }
@@ -1332,7 +1397,7 @@ void write_code_block(code_type *code, int indentation) {
 					while (*pnt && *pnt != ' ' && *pnt != '\t' && *pnt != '\n') {
 						pnt++;
 					}
-					printf("#define %-20.*s ", (int)(pnt - name), name);
+					fprintf(output_stream(), "#define %-20.*s ", (int)(pnt - name), name);
 					while (*pnt && (*pnt == ' ' || *pnt == '\t')) {
 						pnt++;
 					}
@@ -1345,23 +1410,23 @@ void write_code_block(code_type *code, int indentation) {
 				}
 			} else {
 				for (int i = 0; i < indentation; i++) {
-					putchar('\t');
+					fputc('\t', output_stream());
 				}
 			}
 			if (c) {
-				putchar(c);
+				fputc(c, output_stream());
 			}
 			while (pnt - text < size) {
-				putchar(c = *pnt++);
+				fputc(c = *pnt++, output_stream());
 				if (c == '\n') {
 					break;
 				}
 			}
 		} else {
-			putchar(c);
+			fputc(c, output_stream());
 		}
 	}
-	putchar('\n');
+	fputc('\n', output_stream());
 }
 
 void write_c_code_blocks(code_type *code, int indentation, char *format, ...) {
@@ -2862,7 +2927,7 @@ void parse_base_code(void) {
 	for (device_type *device = driver.devices; device; device = device->next) {
 		char path[PATH_MAX];
 		debug(0, "Searching for hidden properties %s", device->type);
-		snprintf(path, sizeof(path), "../../indigo_libs/indigo_%s_driver.c", device->type);
+		checked_path(path, sizeof(path), "../../indigo_libs/indigo_%s_driver.c", device->type);
 		FILE *f = fopen(path, "r");
 		if (f) {
 			char line[1024];
@@ -2878,7 +2943,10 @@ void parse_base_code(void) {
 					}
 				}
 			}
-			fclose(f);
+			bool read_ok = !ferror(f);
+			if (fclose(f) != 0 || !read_ok) {
+				resource_error("reading base driver");
+			}
 		}
 	}
 }
@@ -2902,7 +2970,8 @@ void read_c_source(void) {
 		if (strncmp(line, "// ", 3) == 0 || strncmp(line, "//\n", 3) == 0) {
 			if (strncmp(line, "// TODO:", 8) == 0) {
 				code_type *todo = allocate(sizeof(code_type));
-				todo->text = strdup(line);
+				todo->text = allocate(strlen(line) + 1);
+				strcpy(todo->text, line);
 				append((void **)&todos, todo);
 			}
 			if (sscanf(line, "// device_id: %127s type: %127s", s1, s2) == 2) {
@@ -2926,7 +2995,7 @@ void read_c_source(void) {
 			code_type *code = allocate(sizeof(code_type));
 			int current_length = 0;
 			int current_size = 1024;
-			code->text = malloc(current_size);
+			code->text = allocate(current_size);
 			while (fgets(line, sizeof(line), stdin)) {
 				if (strstr(line, "//-")) {
 					break;
@@ -2935,8 +3004,12 @@ void read_c_source(void) {
 				if (line_length == 1 && current_length == 0) {
 					continue;
 				}
-				if (current_length + line_length >= current_size) {
-					code->text = realloc(code->text, current_size += 1024);
+				if (line_length >= current_size - current_length) {
+					if (current_size > INT_MAX - 1024) {
+						resource_error("source block is too large");
+					}
+					current_size += 1024;
+					code->text = resize_buffer(code->text, current_size);
 				}
 				strcpy(code->text + current_length, line);
 				current_length += line_length;
@@ -3575,10 +3648,15 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "indigo_generator [-h|--help] [-v|--verbose] [-c|--create] definition_file\n");
 		return 1;
 	}
-	definition_source_basename = basename(definition_file);
-	definition_source_dirname = dirname(definition_file);
+	char definition_path[PATH_MAX], basename_path[PATH_MAX], dirname_path[PATH_MAX];
+	checked_path(definition_path, sizeof(definition_path), "%s", definition_file);
+	checked_path(basename_path, sizeof(basename_path), "%s", definition_path);
+	checked_path(dirname_path, sizeof(dirname_path), "%s", definition_path);
+	definition_file = definition_path;
+	definition_source_basename = basename(basename_path);
+	definition_source_dirname = dirname(dirname_path);
 	if (!create && access(definition_file, F_OK) == 0) {
-		freopen(definition_file, "r", stdin);
+		redirect_stream(definition_file, "r", stdin);
 		fprintf(stderr, "Reading %s ...\n", definition_source_basename);
 		read_definition_source();
 		debug(0, "Parsing ...\n\n");
@@ -3589,27 +3667,31 @@ int main(int argc, char **argv) {
 		parse_base_code();
 		if (driver.devices) {
 			char file_name[PATH_MAX];
-			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.h", definition_source_dirname, driver.devices->type, driver.name);
+			checked_path(file_name, sizeof(file_name), "%s/indigo_%s_%s.h", definition_source_dirname, driver.devices->type, driver.name);
 			fprintf(stderr, "Writing %s ...\n", file_name);
-			freopen(file_name, "w", stdout);
+			redirect_stream(file_name, "w", stdout);
 			write_h_source();
-			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s_main.c", definition_source_dirname, driver.devices->type, driver.name);
+			checked_path(file_name, sizeof(file_name), "%s/indigo_%s_%s_main.c", definition_source_dirname, driver.devices->type, driver.name);
 			fprintf(stderr, "Writing %s ...\n", file_name);
-			freopen(file_name, "w", stdout);
+			redirect_stream(file_name, "w", stdout);
 			write_c_main_source();
-			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.%s", definition_source_dirname, driver.devices->type, driver.name, driver.cpp ? "cpp" : "c");
+			checked_path(file_name, sizeof(file_name), "%s/indigo_%s_%s.%s", definition_source_dirname, driver.devices->type, driver.name, driver.cpp ? "cpp" : "c");
 			fprintf(stderr, "Writing %s ...\n", file_name);
-			freopen(file_name, "w", stdout);
+			redirect_stream(file_name, "w", stdout);
 			write_c_source();
 		}
 	} else {
 		debug(0, "Creating %s", definition_source_basename);
 		char source_file[PATH_MAX];
-		strcpy(source_file, definition_file);
+		checked_path(source_file, sizeof(source_file), "%s", definition_file);
 		char *ext = strrchr(source_file, '.');
 		if (ext == NULL) {
 			report_error("No extension in definition file name");
 			return 1;
+		}
+		if ((size_t)(ext - source_file) > sizeof(source_file) - sizeof(".cpp")) {
+			errno = ENAMETOOLONG;
+			resource_error("source path");
 		}
 		strcpy(ext, ".c");
 		if (access(source_file, F_OK) != 0) {
@@ -3620,9 +3702,17 @@ int main(int argc, char **argv) {
 			}
 		}
 		driver.cpp = strcmp(ext, ".cpp") == 0;
-		freopen(source_file, "r", stdin);
-		freopen(definition_file, "w", stdout);
+		redirect_stream(source_file, "r", stdin);
+		redirect_stream(definition_file, "w", stdout);
 		read_c_source();
+		if (ferror(stdin)) {
+			resource_error("reading source");
+		}
 		write_definition_source();
 	}
+	finish_output();
+	if (generated_output != NULL && fclose(generated_output) != 0) {
+		resource_error("closing output");
+	}
+	return 0;
 }

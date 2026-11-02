@@ -90,20 +90,26 @@ void stop_waiting_if_requested(indigo_property_state property_state) {
 }
 
 int read_file(const char *file_name, char **file_data) {
+	*file_data = NULL;
 	indigo_uni_handle *handle = indigo_uni_open_file(file_name, INDIGO_LOG_ERROR);
-	if (handle) {
-		long size = indigo_uni_seek(handle, 0, SEEK_END);
-		*file_data = indigo_safe_malloc(size + 1);
-		if (indigo_uni_read(handle, *file_data, size) != size) {
-			indigo_safe_free(*file_data);
-			*file_data = NULL;
-			return -2;
-		}
-		indigo_uni_close(&handle);
-		return (int)size;
+	if (handle == NULL) {
+		return -1;
 	}
-	
-	return -1;
+	long size = indigo_uni_seek(handle, 0, SEEK_END);
+	if (size < 0 || size > INT_MAX || indigo_uni_seek(handle, 0, SEEK_SET) != 0) {
+		indigo_uni_close(&handle);
+		return -2;
+	}
+	*file_data = indigo_safe_malloc((size_t)size + 1);
+	if (indigo_uni_read(handle, *file_data, size) != size) {
+		indigo_safe_free(*file_data);
+		*file_data = NULL;
+		indigo_uni_close(&handle);
+		return -2;
+	}
+	(*file_data)[size] = 0;
+	indigo_uni_close(&handle);
+	return (int)size;
 }
 
 
