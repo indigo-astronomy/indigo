@@ -23,7 +23,7 @@
 import re
 from dataclasses import dataclass
 
-DEVICES = set('ccd wheel focuser mount guider rotator dome gps ao aux'.split())
+DEVICES = set('ccd wheel focuser mount guider rotator dome gps ao aux polaralign'.split())
 PROPERTIES = set('inherited switch text number light'.split())
 CODE = set('include define data code on_init on_shutdown on_timer on_attach on_detach on_connect on_disconnect on_change on_change_request plug unplug unplug_match'.split())
 

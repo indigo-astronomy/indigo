@@ -34,7 +34,7 @@ import unittest
 from unittest.mock import patch
 
 from driver_editor import Server
-from driver_format import FormatError, attributes, code_schema, edit, parse, schema, structure, walk
+from driver_format import DEVICES, FormatError, attributes, code_schema, edit, parse, schema, structure, walk
 from editor import Conflict, Editor, GenerationError, ROOT, generate, output_names
 from source_map import build_mapping
 
@@ -68,9 +68,33 @@ def selected_text(mapping, identity, text):
 	lines = text.splitlines()
 	return '\n'.join(lines[number - 1] for block in mapping['ranges'][identity] for number in range(block['startLine'], block['endLine'] + 1))
 
+def maintained_driver_paths():
+	excluded = {'ccd_apogee', 'ccd_sbig', 'mount_asi', 'mount_mxhd', 'system_ascol', 'externals', 'bin_externals'}
+	base = ROOT / 'indigo_drivers'
+	return [path for path in sorted(base.rglob('*.driver')) if not excluded.intersection(path.relative_to(base).parts)]
+
 class ParserTests(unittest.TestCase):
+	def test_polaralign_is_in_backend_and_frontend_device_catalogs(self):
+		self.assertIn('polaralign', DEVICES)
+		javascript = (ROOT / 'indigo_tools/driver_editor/static/app.js').read_text()
+		declaration = re.search(r'const devices = new Set\(\[(.*?)\]\);', javascript)
+		self.assertIsNotNone(declaration)
+		self.assertEqual(DEVICES, set(re.findall(r"'([^']+)'", declaration.group(1))))
+
+	def test_polaralign_structural_editing(self):
+		source = 'driver sample { version = 1; }'
+		root = parse(source)
+		source, root, device = structure(source, root, root['id'], 'add', 'polaralign')
+		source, root, prop = structure(source, root, device, 'add', 'number', 'X_RESULT')
+		source, root, item = structure(source, root, prop, 'add', 'item', 'VALUE')
+		self.assertEqual(named(root, 'polaralign')['id'], device)
+		self.assertEqual(named(root, 'VALUE')['id'], item)
+		source, root, selected = structure(source, root, device, 'remove')
+		self.assertEqual(root['id'], selected)
+		self.assertNotIn('polaralign', source)
+
 	def test_repository_corpus_and_template(self):
-		paths = list((ROOT / 'indigo_drivers').rglob('*.driver')) + [ROOT / 'indigo_tools/template.driver']
+		paths = maintained_driver_paths() + [ROOT / 'indigo_tools/template.driver']
 		self.assertGreaterEqual(len(paths), 61)
 		for path in paths:
 			with self.subTest(file=path.name):
@@ -453,6 +477,24 @@ class EditorTests(unittest.TestCase):
 
 @unittest.skipUnless(GENERATOR.is_file(), 'Build indigo_generator first')
 class MappingTests(unittest.TestCase):
+	def test_polaralign_repository_previews_and_mapping(self):
+		for driver in ('polaralign_mlastro', 'polaralign_simulator'):
+			with self.subTest(driver=driver):
+				path = ROOT / 'indigo_drivers' / driver / ('indigo_' + driver + '.driver')
+				source = path.read_bytes()
+				outputs_before = {name: (path.parent / name).read_bytes() for name in ('indigo_' + driver + extension for extension in ('.c', '.h', '_main.c'))}
+				root = parse(source.decode())
+				outputs, _ = generate(source.decode(), path.name, root, GENERATOR, ROOT, 10)
+				self.assertEqual({'indigo_' + driver + extension for extension in ('.c', '.h', '_main.c')}, set(outputs))
+				text = outputs['indigo_' + driver + '.c'].decode()
+				mapping = build_mapping(root, text)
+				device = named(root, 'polaralign')
+				self.assertTrue(mapping['ranges'][device['id']])
+				self.assertIn('indigo_polaralign_attach', text)
+				self.assertEqual(source, path.read_bytes())
+				for name, content in outputs_before.items():
+					self.assertEqual(content, (path.parent / name).read_bytes())
+
 	def test_serial_patterns_parent_union_and_no_output(self):
 		source = FIXTURE.replace('version = 1;', 'version = 1; serial { pattern { vendor = "One"; } pattern { product = "Two"; } pattern; }')
 		root = parse(source)
@@ -567,7 +609,7 @@ class MappingTests(unittest.TestCase):
 
 	def test_all_real_drivers_generate_without_modification(self):
 		generator_hash = hashlib.sha256(GENERATOR.read_bytes()).hexdigest()
-		for path in sorted((ROOT / 'indigo_drivers').rglob('*.driver')):
+		for path in maintained_driver_paths():
 			with self.subTest(file=path.name):
 				before = path.read_bytes()
 				source = before.decode('utf-8')

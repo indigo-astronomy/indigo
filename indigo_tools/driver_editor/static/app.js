@@ -21,7 +21,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const properties = new Set(['inherited', 'switch', 'text', 'number', 'light']);
-const devices = new Set(['ccd', 'wheel', 'focuser', 'mount', 'guider', 'rotator', 'dome', 'gps', 'ao', 'aux']);
+const devices = new Set(['ccd', 'wheel', 'focuser', 'mount', 'guider', 'rotator', 'dome', 'gps', 'ao', 'aux', 'polaralign']);
 const fragment = new URLSearchParams(location.hash.slice(1));
 const token = fragment.get('token') || sessionStorage.getItem('editor-token') || '';
 sessionStorage.setItem('editor-token', token);
