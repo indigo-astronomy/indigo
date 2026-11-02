@@ -1,0 +1,91 @@
+mkdir -p build/security
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-http-acl/indigo_libs -I/private/tmp/indigo-http-acl/indigo_drivers -I/private/tmp/indigo-http-acl/indigo_mac_drivers -I/private/tmp/indigo-http-acl/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_HEADER_PROGRESS_TIMEOUT=0.2 -DINDIGO_HTTP_HEADER_TOTAL_TIMEOUT=1.0 -c ../indigo_libs/indigo_bus.c -o build/security/indigo_bus.o
+../indigo_libs/indigo_bus.c:2754:2: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2754 |         sprintf(str, "%.10g", value);
+      |         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+1 warning generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-http-acl/indigo_libs -I/private/tmp/indigo-http-acl/indigo_drivers -I/private/tmp/indigo-http-acl/indigo_mac_drivers -I/private/tmp/indigo-http-acl/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_HEADER_PROGRESS_TIMEOUT=0.2 -DINDIGO_HTTP_HEADER_TOTAL_TIMEOUT=1.0 -c ../indigo_libs/indigo_xml.c -o build/security/indigo_xml.o
+../indigo_libs/indigo_xml.c:1989:3: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1989 |                 sprintf(token, " token='%llx'", property->access_token);
+      |                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+1 warning generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-http-acl/indigo_libs -I/private/tmp/indigo-http-acl/indigo_drivers -I/private/tmp/indigo-http-acl/indigo_mac_drivers -I/private/tmp/indigo-http-acl/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_HEADER_PROGRESS_TIMEOUT=0.2 -DINDIGO_HTTP_HEADER_TOTAL_TIMEOUT=1.0 -c ../indigo_libs/indigo_json.c -o build/security/indigo_json.o
+../indigo_libs/indigo_json.c:1031:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1031 |                 size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", indigo_json_escape(property->device));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1033:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1033 |                 size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", indigo_json_escape_b(0, property->device), indigo_json_escape_b(1, property->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1037:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1037 |                 size = sprintf(pnt, ", \"message\": \"%s\" } }", indigo_json_escape(message));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1039:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1039 |                 size = sprintf(pnt, " } }");
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1067:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1067 |                 size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, property->device), indigo_json_escape_b(2, property->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1069:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1069 |                 size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, device->name));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_json.c:1071:10: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 1071 |                 size = sprintf(pnt, "{ \"message\": \"%s\" }", indigo_json_escape(message));
+      |                        ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+7 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-http-acl/indigo_libs -I/private/tmp/indigo-http-acl/indigo_drivers -I/private/tmp/indigo-http-acl/indigo_mac_drivers -I/private/tmp/indigo-http-acl/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_HEADER_PROGRESS_TIMEOUT=0.2 -DINDIGO_HTTP_HEADER_TOTAL_TIMEOUT=1.0 -Dindigo_uni_printf=http_test_printf -Dindigo_uni_open_file=http_test_open_file -Dindigo_uni_close=http_test_close -Dindigo_uni_read_available=http_test_read_available -Dindigo_uni_write=http_test_write -Dindigo_uni_compress=http_test_compress -c ../indigo_libs/indigo_server_tcp.c -o build/security/indigo_server_tcp_http.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-http-acl/indigo_libs -I/private/tmp/indigo-http-acl/indigo_drivers -I/private/tmp/indigo-http-acl/indigo_mac_drivers -I/private/tmp/indigo-http-acl/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_HEADER_PROGRESS_TIMEOUT=0.2 -DINDIGO_HTTP_HEADER_TOTAL_TIMEOUT=1.0 -Dindigo_async=http_test_async -c ../indigo_libs/indigo_uni_io.c -o build/security/indigo_uni_io_http.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-http-acl/indigo_libs -I/private/tmp/indigo-http-acl/indigo_drivers -I/private/tmp/indigo-http-acl/indigo_mac_drivers -I/private/tmp/indigo-http-acl/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_HEADER_PROGRESS_TIMEOUT=0.2 -DINDIGO_HTTP_HEADER_TOTAL_TIMEOUT=1.0 -DINDIGO_HTTP_FAULT_INJECTION -o build/security/test_transport_http_security integration/test_transport_http_security.c build/security/indigo_bus.o build/security/indigo_xml.o build/security/indigo_json.o build/security/indigo_server_tcp_http.o build/security/indigo_uni_io_http.o -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/private/tmp/indigo-http-acl/build/lib -arch arm64 -fsanitize=address,undefined /private/tmp/indigo-http-acl/build/lib/libindigo.a /private/tmp/indigo-http-acl/build/lib/libjpeg.a /private/tmp/indigo-http-acl/build/lib/libtiff.a /private/tmp/indigo-http-acl/build/lib/libraw.a -lusb-1.0 -lhidapi -lz -lstdc++ -lm -lpthread -Wl,-rpath,/private/tmp/indigo-http-acl/build/lib

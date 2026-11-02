@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261102185510-e875-fix-http-deadlines-acl",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Archive and commit Factory evidence, run immutableprocessgate; root integrates source/evidence and closes findings.",
+  "blocker": null
+}

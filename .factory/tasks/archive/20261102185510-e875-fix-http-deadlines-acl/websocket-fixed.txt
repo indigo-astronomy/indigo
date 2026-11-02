@@ -1,0 +1,7 @@
+Running server WebSocket handshake integration tests
+  PASS sha1_binary_blocks_and_tail
+  PASS rfc6455_sample_key_upgrades_with_derived_accept
+  PASS longest_fitting_key_still_upgrades
+  PASS key_one_byte_too_long_is_refused
+  PASS over_long_key_is_refused_and_server_keeps_serving
+server WebSocket handshake integration tests: all tests passed

@@ -1,0 +1,4 @@
+integration/test_transport_http_security.c:508: assertion failed: partial_http_expires("G", false, true)
+Running transport HTTP security
+  FAIL progressing HTTP framing total deadline
+transport HTTP security: 1 test(s) failed

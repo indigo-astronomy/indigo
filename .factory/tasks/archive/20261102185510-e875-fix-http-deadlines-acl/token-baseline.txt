@@ -1,0 +1,66 @@
+indigo_libs/indigo_token.c:171:11: runtime error: index -1 out of bounds for type 'char[562]'
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior indigo_libs/indigo_token.c:171:11
+=================================================================
+==29371==ERROR: AddressSanitizer: stack-buffer-underflow on address 0x00016b65e3df at pc 0x0001047a2c0c bp 0x00016b65e3b0 sp 0x00016b65e3a8
+READ of size 1 at 0x00016b65e3df thread T0
+==29371==WARNING: external symbolizer didn't start up correctly!
+==29371==WARNING: Can't read from symbolizer at fd 4
+==29371==WARNING: atos failed to symbolize address "0x1047a2c08"
+==29371==WARNING: Can't read from symbolizer at fd 4
+==29371==WARNING: atos failed to symbolize address "0x1047a0df0"
+==29371==WARNING: Can't read from symbolizer at fd 4
+==29371==WARNING: atos failed to symbolize address "0x1047a0b1c"
+==29371==WARNING: Can't read from symbolizer at fd 4
+==29371==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x0001047a2c08 in indigo_load_device_tokens_from_file+0x5c4 (/private/tmp/token-baseline:arm64+0x100002c08)
+    #1 0x0001047a0df0 in acl_blank_and_whitespace_lines_preserve_records+0x170 (/private/tmp/token-baseline:arm64+0x100000df0)
+    #2 0x0001047a0b1c in main+0x18c (/private/tmp/token-baseline:arm64+0x100000b1c)
+    #3 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+Address 0x00016b65e3df is located in stack of thread T0 at offset 31 in frame
+==29371==WARNING: Can't read from symbolizer at fd 4
+==29371==WARNING: atos failed to symbolize address "0x1047a2650"
+    #0 0x0001047a2650 in indigo_load_device_tokens_from_file+0xc (/private/tmp/token-baseline:arm64+0x100002650)
+
+  This frame has 3 object(s):
+    [32, 594) 'buffer' (line 147) <== Memory access at offset 31 underflows this variable
+    [736, 864) 'device' (line 158)
+    [896, 904) 'token' (line 159)
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+==29371==WARNING: Can't read from symbolizer at fd 4
+==29371==WARNING: atos failed to symbolize address "0x1047a2c08"
+SUMMARY: AddressSanitizer: stack-buffer-underflow (/private/tmp/token-baseline:arm64+0x100002c08) in indigo_load_device_tokens_from_file+0x5c4
+Shadow bytes around the buggy address:
+  0x00016b65e100: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e180: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e200: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e280: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e300: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x00016b65e380: 00 00 00 00 00 00 00 00 f1 f1 f1[f1]00 00 00 00
+  0x00016b65e400: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e500: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e580: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x00016b65e600: 00 00 02 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==29371==ABORTING
+Running token unit tests

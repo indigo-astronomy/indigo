@@ -1,0 +1,4 @@
+integration/test_transport_http_security.c:502: assertion failed: partial_http_expires("G", false, false)
+Running transport HTTP security
+  FAIL partial HTTP request and headers expire
+transport HTTP security: 1 test(s) failed

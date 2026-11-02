@@ -1,0 +1,7 @@
+20:01:28.193460 Application: ACL: Error in ACL file '/tmp/indigo-acl-invalid-4BrP5k' at line 3
+Running token unit tests
+  PASS ACL blank and whitespace lines
+  PASS string_to_token_accepts_hex_and_rejects_invalid_input
+  PASS device_tokens_can_be_added_updated_and_removed
+  PASS device_or_master_token_falls_back_to_master
+token unit tests: all tests passed

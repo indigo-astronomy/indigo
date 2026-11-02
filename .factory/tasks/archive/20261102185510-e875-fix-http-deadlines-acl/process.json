@@ -1,0 +1,84 @@
+{
+  "version": 2,
+  "task": "20261102185510-e875-fix-http-deadlines-acl",
+  "scope": [
+    "indigo_libs/indigo_server_tcp.c",
+    "indigo_libs/indigo_token.c",
+    "indigo_test/integration/test_transport_http_security.c",
+    "indigo_test/unit/test_token.c",
+    ".factory/completions/20261102185510-e875-fix-http-deadlines-acl.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "indigo_test/build/security/test_transport_http_security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/http-normal/test_transport_http_security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/tmp/token-fixed"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_server_websocket_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102185510-e875-fix-http-deadlines-acl.json": [
+      "100644",
+      "blob",
+      "2d1497e2a1f947cf43d627d3f2ca455dac5ee4dc"
+    ],
+    "indigo_libs/indigo_server_tcp.c": [
+      "100644",
+      "blob",
+      "13abc9d08cd2a59a8ff8e50e6fb7488435ecc913"
+    ],
+    "indigo_libs/indigo_token.c": [
+      "100644",
+      "blob",
+      "bee4d123c0631c62c3473e7505e369e391acca56"
+    ],
+    "indigo_test/integration/test_transport_http_security.c": [
+      "100644",
+      "blob",
+      "fae21264c6564cda523f7c667c339c7b7f37bf77"
+    ],
+    "indigo_test/unit/test_token.c": [
+      "100644",
+      "blob",
+      "900564c33448ae8554a4c264d332d73c0663475c"
+    ]
+  }
+}
