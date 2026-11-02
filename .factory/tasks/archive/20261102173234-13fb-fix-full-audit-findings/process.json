@@ -1,0 +1,241 @@
+{
+  "version": 2,
+  "task": "20261102173234-13fb-fix-full-audit-findings",
+  "scope": [
+    "indigo_drivers/agent_platesolver/*",
+    "indigo_test/unit/test_agent_platesolver_core.c",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/project.md",
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-*.json",
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-*.json",
+    ".factory/completions/20261102173234-13fb-fix-full-audit-findings.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_drivers/agent_platesolver",
+        "-f",
+        "../../Makefile.drv",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-harness-verdicts"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "ALTO_TEST_FILTER=refused_simulator_led_write_retains_state",
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto",
+        "--no-build",
+        "--no-record"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102173234-13fb-fix-full-audit-findings.json": [
+      "100644",
+      "blob",
+      "1faf7232c7e4d3e662350c220e5d67d4c4aa4673"
+    ],
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-002.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-006.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-007.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-009.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-010.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-011.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-012.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-014.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-016.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-017.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-018.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-019.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-020.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-021.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-022.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-023.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-024.json": null,
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-002.json": [
+      "100644",
+      "blob",
+      "68730159f21e14114aa3b46f310d2ffe4acc8d52"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-006.json": [
+      "100644",
+      "blob",
+      "35bed913da25e661e555b9c885ec983e09f10b10"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-007.json": [
+      "100644",
+      "blob",
+      "9b9b580d104f5a99439f43e5232bf1843583787e"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-009.json": [
+      "100644",
+      "blob",
+      "2eb463c720f78230f095d435b46387e2db28a7e5"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-010.json": [
+      "100644",
+      "blob",
+      "df910fbe1fe06a89b29608622129870b1a0811a5"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "5c516b248440e637875c57a65ddac5b352ba20f4"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-012.json": [
+      "100644",
+      "blob",
+      "617021c53ef1fc4e240305a3cfec6f656d92d2b8"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-014.json": [
+      "100644",
+      "blob",
+      "db92e33afa3c02410ac39a26c13b222c5a53890e"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-016.json": [
+      "100644",
+      "blob",
+      "c1920896b680564d5ab365aff8a669cfa6263876"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-017.json": [
+      "100644",
+      "blob",
+      "37cf3ae5fe286ad527a7453fc86792272bb31465"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-018.json": [
+      "100644",
+      "blob",
+      "25a4bba7da6d7dbd2a7ca7b4fcd196168bc1c7ef"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-019.json": [
+      "100644",
+      "blob",
+      "2af5b13055f40c3b590511ecc62fa41a76847758"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-020.json": [
+      "100644",
+      "blob",
+      "a64052226d9a016faebabb38646260a465e346f0"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-021.json": [
+      "100644",
+      "blob",
+      "4ea84634685cc8d864915d9d24db62191a984042"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-022.json": [
+      "100644",
+      "blob",
+      "75b9d69731441912bf2cca5d54fc530449043568"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-023.json": [
+      "100644",
+      "blob",
+      "cadb0a84eddf77c1791877ac5d07c2a3956d8c98"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-024.json": [
+      "100644",
+      "blob",
+      "3c2ac10730733f315bf2b11b82d859fcfabb3ac9"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "650b8564241377c9d316139ad9efa968ff857f81"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "86d2c9e291bf7da0a5d62e1196692f878bc19028"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "9dda1fbf8e3aea89ee2c36a6841c5131b885b71c"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "96669d598bdd0c9045c080aef0f9fad286a54a68"
+    ],
+    "indigo_drivers/agent_platesolver/README.md": [
+      "100644",
+      "blob",
+      "db324086bee838b25f01e65d29be8037f9c8ac1b"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c": [
+      "100644",
+      "blob",
+      "958285e355a6eeab92ef6034f02da61bc8eb19d9"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver.c": [
+      "100644",
+      "blob",
+      "4ae48db5de155a55747260eca43fbeadcbde0212"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver.h": [
+      "100644",
+      "blob",
+      "3899f28828f5061685cdd8bb921cebba16bf367b"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "ee726f5bd1a20ab973569c6a7f9534376a911e77"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "c9e9b68cbe0dd6fdf7b76669b908ab1974c34635"
+    ],
+    "indigo_test/unit/test_agent_platesolver_core.c": [
+      "100644",
+      "blob",
+      "aadb18c2a899d2deb8e1da62f415de63d879b232"
+    ]
+  }
+}

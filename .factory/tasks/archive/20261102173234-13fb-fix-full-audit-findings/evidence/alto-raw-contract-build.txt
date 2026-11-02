@@ -1,0 +1,19 @@
+Definition: indigo_aux_alto.driver
+Sources:    indigo_aux_alto.c indigo_aux_alto_main.c
+Archive:    indigo_aux_alto.a
+SO library: indigo_aux_alto.dylib
+indigo_aux_alto.o
+Executable: indigo_aux_alto
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../shared/primalucelib all
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../indigo_tools /Users/polakovic/Development/indigo/build/bin/indigo_generator
+/usr/bin/clang indigo_generator.c -o /Users/polakovic/Development/indigo/build/bin/indigo_generator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_alto.o indigo_aux_alto.c
+/usr/bin/libtool -static -o /Users/polakovic/Development/indigo/build/drivers/indigo_aux_alto.a indigo_aux_alto.o
+/usr/bin/clang -shared -o /Users/polakovic/Development/indigo/build/drivers/indigo_aux_alto.dylib -Wl,-force_load /Users/polakovic/Development/indigo/build/drivers/indigo_aux_alto.a  /Users/polakovic/Development/indigo/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+/usr/bin/clang -o /Users/polakovic/Development/indigo/build/drivers/indigo_aux_alto indigo_aux_alto_main.o /Users/polakovic/Development/indigo/build/drivers/indigo_aux_alto.a /Users/polakovic/Development/indigo/build/lib/libprimalucelib.a /Users/polakovic/Development/indigo/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lusb-1.0
+ld: warning: ignoring duplicate libraries: '/Users/polakovic/Development/indigo/build/lib/libprimalucelib.a'
+ld: warning: ignoring duplicate libraries: '/Users/polakovic/Development/indigo/build/lib/libprimalucelib.a'
+mkdir -p build/integration
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/alto_simulator ../indigo_drivers/aux_alto/alto_simulator/alto_simulator.c -lm
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_alto_simulator integration/test_aux_alto_simulator.c /Users/polakovic/Development/indigo/build/drivers/indigo_aux_alto.a /Users/polakovic/Development/indigo/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib -lindigo -lm -lpthread -lindigocat

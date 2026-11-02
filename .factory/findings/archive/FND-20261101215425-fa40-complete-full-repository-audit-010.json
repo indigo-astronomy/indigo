@@ -1,0 +1,29 @@
+{
+  "title": "FlipFlat accepts a foreign operation acknowledgement as success",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173307-8455-repair-serial-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The command helper accepts any positive reply beginning with *, so a delayed status or malformed acknowledgement can make light/intensity requests report OK without confirming the requested operation. Repository simulator defines distinct operation acknowledgements. Validate echoed opcode/shape/payload and test stale/wrong-operation replies; no hardware execution. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver:41-53; components/drivers-a.md item2",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173307-8455-repair-serial-audit-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-010"
+}

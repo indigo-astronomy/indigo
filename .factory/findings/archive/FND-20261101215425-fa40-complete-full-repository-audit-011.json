@@ -1,0 +1,29 @@
+{
+  "title": "PrimaLuce AP mode ignores a negative command acknowledgement",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173307-8455-repair-serial-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "set_access_point returns transport/verb success even for nested AP_SET_STATUS Error text. GIOTTO/ALTO/focuser consumers memoize the requested switch and publish OK while readback only changes separate status. Validate named acknowledgement and retain rejection error before memoizing state; use existing simulator refusal fixtures. Related credential/reboot acknowledgement handling is follow-up within this family. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_drivers/shared/primalucelib/primalucelib.c:302-305,652-667,712-714; components/drivers-a.md item3",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173307-8455-repair-serial-audit-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-011"
+}

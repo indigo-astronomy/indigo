@@ -1,0 +1,42 @@
+python3 -B unit/test_harness_verdicts.py
+test_dome_accepts_finite_arrival_and_wrap (__main__.HelperVerdicts) ... ok
+test_dome_rejects_missing_and_nonfinite_inputs (__main__.HelperVerdicts) ... ok
+test_make_aggregates_skips_but_rejects_no_execution (__main__.HelperVerdicts) ... ok
+test_runner_filter_matches_and_failure_control (__main__.HelperVerdicts) ... ok
+test_unmatched_filter_is_explicit_skip_not_success (__main__.HelperVerdicts) ... ok
+test_unregistered_suite_is_an_error (__main__.HelperVerdicts) ... ok
+test_main_positive_control_exercises_and_stops (__main__.LeakVerdicts) ... ok
+test_main_rejects_missing_required_property (__main__.LeakVerdicts) ... ok
+test_main_rejects_unsuccessful_server_shutdown (__main__.LeakVerdicts) ... ok
+test_main_requires_complete_startup_and_stops (__main__.LeakVerdicts) ... ok
+test_main_stops_on_exercise_error (__main__.LeakVerdicts) ... ok
+test_nonpositive_cycle_count_is_rejected (__main__.LeakVerdicts) ... ok
+test_stop_kills_and_reaps_timed_out_owned_process (__main__.LeakVerdicts) ... ok
+test_stop_reaps_exited_process_and_rejects_failure (__main__.LeakVerdicts) ... ok
+test_tool_rejects_failed_subprocess (__main__.LeakVerdicts) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 1.504s
+
+OK
+python3 -B unit/test_custom_harness_integrity.py
+test_imager_no_match_is_skip_even_with_missing_child (__main__.CustomHarnessIntegrity) ... ok
+test_number_comparison_contract (__main__.CustomHarnessIntegrity) ... ok
+test_platesolver_no_match_is_skip_without_starting_child (__main__.CustomHarnessIntegrity) ... ok
+test_restore_attempts_every_step_and_counts_each_failure (__main__.CustomHarnessIntegrity) ... ok
+test_trace_open_write_and_close_failures (__main__.CustomHarnessIntegrity) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 1.589s
+
+OK
+python3 -B unit/test_generator_tokens.py
+test_boolean_prefix_is_not_a_boolean (__main__.GeneratorTokens) ... ok
+test_keyword_prefix_is_not_a_keyword (__main__.GeneratorTokens) ... ok
+test_unsupported_byte_rejected_with_position (__main__.GeneratorTokens) ... ok
+test_valid_definition_still_generates (__main__.GeneratorTokens) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.335s
+
+OK

@@ -1,0 +1,51 @@
+Running test_agent_platesolver_core
+  PASS load_fits_supported_header_values
+  rejecting BITPIX=nan
+  rejecting BITPIX=inf
+  rejecting BITPIX=-inf
+  rejecting BITPIX=1e100
+  rejecting BITPIX=8.5
+  rejecting BITPIX=64
+  rejecting NAXIS1=8.5
+  rejecting NAXIS2=8.5
+  rejecting NAXIS3=1.5
+  rejecting NAXIS=nan
+  rejecting NAXIS=inf
+  rejecting NAXIS=1e100
+  rejecting NAXIS=2.5
+  rejecting NAXIS1=nan
+  rejecting NAXIS1=inf
+  rejecting NAXIS1=-inf
+  rejecting NAXIS1=1e100
+  rejecting NAXIS1=65536
+  rejecting NAXIS1=0
+  rejecting NAXIS2=nan
+  rejecting NAXIS2=inf
+  rejecting NAXIS2=-inf
+  rejecting NAXIS2=1e100
+  rejecting NAXIS2=65536
+  rejecting NAXIS2=0
+  rejecting NAXIS3=nan
+  rejecting NAXIS3=inf
+  rejecting NAXIS3=-inf
+  rejecting NAXIS3=1e100
+  rejecting NAXIS3=17
+  rejecting NAXIS3=0
+  PASS load_fits_rejects_malformed_header_integers
+  PASS load_fits_16bit_binned_odd_size
+  PASS load_fits_16bit_without_bzero_wraps
+  PASS load_fits_scaled_binned_matches_full_size
+  PASS load_bayer_binning
+  PASS load_raw_mono16_binned
+  PASS load_raw_tiny_binning_rejected
+  PASS load_raw_geometry_rejected
+  PASS load_tiny_fits_binning_rejected
+  PASS load_raw_bayer_large_downsample_rejected
+  PASS load_raw_supported_formats
+test_agent_platesolver_core: all tests passed
+Running test_agent_platesolver_core
+  PASS image_stars_invalid_input
+test_agent_platesolver_core: all tests passed
+Running test_agent_platesolver_core
+  PASS compute_center_uses_astrometry_net_orientation
+test_agent_platesolver_core: all tests passed

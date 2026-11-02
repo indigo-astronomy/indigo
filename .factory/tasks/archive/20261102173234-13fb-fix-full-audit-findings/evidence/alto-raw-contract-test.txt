@@ -1,0 +1,4 @@
+Running PrimaluceLab ALTO
+  PASS refused_simulator_led_write_retains_state
+PrimaluceLab ALTO: all tests passed
+PrimaluceLab ALTO: 0 failing scenarios

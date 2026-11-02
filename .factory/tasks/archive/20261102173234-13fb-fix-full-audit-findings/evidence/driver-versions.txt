@@ -1,0 +1,10 @@
+indigo_drivers/agent_platesolver/indigo_agent_platesolver.c: 0x0300001c -> 0x0300001d PASS
+indigo_drivers/rotator_falcon/indigo_rotator_falcon.c: 0x0300000d -> 0x0300000e PASS
+indigo_drivers/wheel_trutek/indigo_wheel_trutek.c: 0x0300000a -> 0x0300000b PASS
+indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c: 0x03000009 -> 0x0300000a PASS
+indigo_drivers/aux_flipflat/indigo_aux_flipflat.c: 0x0300000d -> 0x0300000e PASS
+indigo_drivers/aux_alto/indigo_aux_alto.c: 0x03000007 -> 0x03000008 PASS
+indigo_drivers/aux_giotto/indigo_aux_giotto.c: 0x03000007 -> 0x03000008 PASS
+indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c: 0x0300002d -> 0x0300002e PASS
+indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.c: 0x03000012 -> 0x03000013 PASS
+indigo_drivers/ccd_pentax/indigo_ccd_pentax.c: 0x03000005 -> 0x03000006 PASS

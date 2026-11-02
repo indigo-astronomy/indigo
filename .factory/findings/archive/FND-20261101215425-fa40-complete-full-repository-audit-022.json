@@ -1,0 +1,29 @@
+{
+  "title": "Solver radius documentation promises a stricter boundary than implemented",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173234-13fb-fix-full-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The README says a field outside the radius is not solved, but native solving uses radius plus half-field extent only to select catalogue stars and never checks fitted-center angular distance against the requested radius. A solve center may lie outside the stated boundary. Clarify the intended hint contract or enforce the documented fitted-center bound and test a near-boundary field. Source mismatch only; no recognition rerun. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_drivers/agent_platesolver/README.md:82; indigo_agent_platesolver.c:611-637,629-661; components/native-platesolver.md NP02",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173234-13fb-fix-full-audit-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-022"
+}

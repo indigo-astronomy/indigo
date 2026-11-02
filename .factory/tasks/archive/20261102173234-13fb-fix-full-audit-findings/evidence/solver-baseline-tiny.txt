@@ -1,0 +1,4 @@
+unit/test_agent_platesolver_core.c:1081: assertion failed: rejected
+Running test_agent_platesolver_core
+  FAIL load_raw_tiny_binning_rejected
+test_agent_platesolver_core: 1 test(s) failed

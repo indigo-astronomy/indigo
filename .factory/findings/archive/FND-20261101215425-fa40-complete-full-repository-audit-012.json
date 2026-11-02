@@ -1,0 +1,29 @@
+{
+  "title": "Atik2 failed replacement guide pulse removes the original relay stop",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173318-befe-fix-sdk-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Supported accept_while_busy replacement cancels the old axis finalizer before the SDK relay write. If replacement write fails, the old relay mask remains but no original stop is rescheduled, so the previous pulse may persist until another command/disconnect. Preserve/rearm its deadline or confirm safe stop, with a failed-replacement fake SDK regression. ANYTIME generated branch was independently checked; no physical relay claim. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_mac_drivers/ccd_atik2/indigo_ccd_atik2.driver:420-478; components/drivers-a.md item4; components/security-review.md",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173318-befe-fix-sdk-audit-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-012"
+}

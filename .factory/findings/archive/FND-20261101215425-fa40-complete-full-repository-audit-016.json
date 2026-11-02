@@ -1,0 +1,29 @@
+{
+  "title": "Pentax hotplug leaks allocations and a USB reference when registry is full",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173318-befe-fix-sdk-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The plug callback allocates device/private data and acquires a libusb reference before searching the ten-slot registry, then loses their ownership if no slot exists. Reserve a slot before allocation or clean up all acquired resources on the full-registry path; fake repeated over-capacity hotplug should retain allocations/reference counts. Existing bulb timing and PTP decoder records stay separate. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:1684-1704; components/ptp-pentax.md PP01",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173318-befe-fix-sdk-audit-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-016"
+}

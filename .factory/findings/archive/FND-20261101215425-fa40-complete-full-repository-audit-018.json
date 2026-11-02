@@ -1,0 +1,29 @@
+{
+  "title": "Custom Imager and Platesolver filters report success with zero executed cases",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173322-3b15-fix-test-integrity",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "An unmatched Imager environment filter records plan0/exits0, even with a nonexistent child binary; native Platesolver unmatched argv filter likewise selects0 and returns0. The prior common native runner repair did not cover these bespoke runners. Return explicit skip and aggregate no-execution failure consistently, retaining genuine selected-case behavior; add direct no-match regressions. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_test/integration/test_agent_imager_cleanup.py main; indigo_test/integration/test_agent_platesolver.c:1154-1197; components/tools-tests.md item7",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173322-3b15-fix-test-integrity/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-018"
+}

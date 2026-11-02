@@ -1,0 +1,29 @@
+{
+  "title": "QSI fake trace writer claims success after output errors",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173322-3b15-fix-test-integrity",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "qsi_fake_trace_write returns file!=NULL after unchecked fprintf/fclose although its header promises false on I/O failure. A disk-full/write/close failure after successful open can be reported as a captured normalized migration trace. Check ferror and close status, with an injected write/close-error regression; no actual full-device or trace-output probe performed. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_test/integration/qsi_fake_sdk.cpp:340-362; components/drivers-a.md QSI trace candidate",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173322-3b15-fix-test-integrity/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-020"
+}

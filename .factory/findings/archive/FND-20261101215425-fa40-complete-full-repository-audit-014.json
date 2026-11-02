@@ -1,0 +1,29 @@
+{
+  "title": "ALTO simulator mutates state while returning a command refusal",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173307-8455-repair-serial-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "set_preset applies NAME/M1POS before checking the configured refusal, then reports Error; DIMLEDS similarly changes state before rejecting. This undermines failure/rollback regression fidelity. Apply mutations only when accepted and assert rejected writes retain prior state. Source proof only, no simulator execution. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c:497-519,596; components/drivers-a.md item7",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173307-8455-repair-serial-audit-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-014"
+}

@@ -1,0 +1,29 @@
+{
+  "title": "Generator tokenizer hangs on an unsupported DSL byte",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173322-3b15-fix-test-integrity",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The tokenizer could hang on unsupported bytes and accept keyword prefixes such as driverXYZ. The owner approved the concrete tokenizer/exact-keyword repair on2026-11-02. Unsupported tokens now fail with position diagnostics and exact keywords are required. Four bounded regressions pass; generated output remains byte-identical for120 valid maintained driver definitions. See linked repair verification for approval, commands and limits.",
+  "evidence": "indigo_tools/indigo_generator.c:340-411,426; components/tools-tests.md item2",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173322-3b15-fix-test-integrity/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-002"
+}

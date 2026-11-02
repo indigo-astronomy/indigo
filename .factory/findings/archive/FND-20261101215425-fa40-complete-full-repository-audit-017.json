@@ -1,0 +1,29 @@
+{
+  "title": "ALTO hardware restoration can fail without failing the test run",
+  "category": "quality",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261101215425-fa40-complete-full-repository-audit",
+      "report": "repository-review.md",
+      "revision": null
+    },
+    {
+      "id": "20261102173322-3b15-fix-test-integrity",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Restoration ignores move_to/hw_set failures, while those helpers return bool without incrementing the global failure count. Exact extracted restore function with all four calls false still exits0/failures0, leaving changed state while reporting success. Aggregate restoration outcomes and propagate failure while retaining cleanup; no hardware was operated. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.",
+  "evidence": "indigo_test/hardware/test_aux_alto_hw.c restore_initial_state; components/tools-tests.md item6",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102173322-3b15-fix-test-integrity/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261101215425-fa40-complete-full-repository-audit-017"
+}
