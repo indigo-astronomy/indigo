@@ -21,17 +21,29 @@ function Sequence(name) {
 	this.warn_wait_until_12 = true;
 }
 
-// solver agents are mutually exclusive, the one loaded on the host of the imager agent is used
+function sequencer_agent_host(agent) {
+	var at = agent.indexOf(" @ ");
+	return at < 0 ? "" : agent.substring(at);
+}
+
+// solver agents are mutually exclusive on one server, the one on the host of the imager agent is preferred, then one on any other host
 function sequencer_solver_agent(imager_agent) {
-	var at = imager_agent.indexOf(" @ ");
-	var host = at < 0 ? "" : imager_agent.substring(at);
+	var host = sequencer_agent_host(imager_agent);
 	var names = [ "Platesolver Agent", "Astrometry Agent", "ASTAP Agent" ];
-	for (var i = 0; i < names.length; i++) {
-		if (indigo_devices[names[i] + host] != null) {
-			return names[i] + host;
+	var other = null;
+	for (var device in indigo_devices) {
+		for (var i = 0; i < names.length; i++) {
+			if (device.startsWith(names[i]) && indigo_devices[device].AGENT_PLATESOLVER_EXPOSURE != null) {
+				if (sequencer_agent_host(device) == host) {
+					return device;
+				}
+				if (other == null) {
+					other = device;
+				}
+			}
 		}
 	}
-	return "Astrometry Agent" + host;
+	return other != null ? other : "Astrometry Agent" + host;
 }
 
 function sequencer_string(value) {

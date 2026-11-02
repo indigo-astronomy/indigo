@@ -752,6 +752,22 @@ static void platesolver_orchestration(void) {
 	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
 }
 
+static void remote_solver_orchestration(void) {
+	ASSERT_TRUE(rename_solver_peer("Astrometry Agent @ remote"));
+	ASSERT_TRUE(check_js("(indigo_devices['Astrometry Agent'] == null || indigo_devices['Astrometry Agent'].AGENT_PLATESOLVER_EXPOSURE == null) && indigo_devices['Astrometry Agent @ remote'] != null"));
+	int before = atomic_load(&orchestration_changes);
+	ASSERT_TRUE(run_js("var s=new Sequence('remote solver'); s.precise_goto(0.3,7,30); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent @ remote'"));
+	ASSERT_EQ_INT(before + 3, atomic_load(&orchestration_changes));
+	indigo_property *property = snapshot("Astrometry Agent @ remote", "AGENT_PLATESOLVER_GOTO_SETTINGS");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_NEAR(7, property->items[0].number.value, 0.001);
+	ASSERT_NEAR(30, property->items[1].number.value, 0.001);
+	indigo_release_property(property);
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ remote')==='Astrometry Agent @ remote' && sequencer_solver_agent('Imager Agent @ other')==='Astrometry Agent @ remote'"));
+}
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
@@ -780,7 +796,8 @@ static const indigo_test_case tests[] = {
 	{ "custom agent arguments", custom_agent_arguments },
 	{ "configuration and driver orchestration", configuration_and_driver_orchestration },
 	{ "astrometry orchestration", astrometry_orchestration },
-	{ "platesolver orchestration", platesolver_orchestration }
+	{ "platesolver orchestration", platesolver_orchestration },
+	{ "remote solver orchestration", remote_solver_orchestration }
 };
 
 int main(int argc, char **argv) {
