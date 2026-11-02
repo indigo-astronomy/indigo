@@ -239,7 +239,7 @@ static bool text_change(const char *property, const char *item, const char *valu
 
 static bool number_is(const char *property_name, const char *item_name, double expected, double tolerance) {
 	indigo_item *item = find_cached_item(property_name, item_name);
-	if (item == NULL || fabs(item->number.value - expected) > tolerance) {
+	if (item == NULL || !isfinite(tolerance) || tolerance < 0 || (expected != item->number.value && (!isfinite(expected) || !isfinite(item->number.value) || fabs(item->number.value - expected) > tolerance))) {
 		fprintf(stderr, "%s.%s: expected %g, received %g\n", property_name, item_name, expected, item == NULL ? NAN : item->number.value);
 		return false;
 	}

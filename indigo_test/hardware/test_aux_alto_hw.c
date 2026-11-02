@@ -67,11 +67,23 @@ static void restore_initial_state(void) {
 	if (cover < 0 || !state_captured || !hw_connected(cover)) {
 		return;
 	}
-	move_to(initial_position);
-	hw_set_switch(cover, "X_LEDS", initial_leds, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	if (!move_to(initial_position)) {
+		fprintf(stderr, "Failed to restore ALTO cover position\n");
+		indigo_test_failures++;
+	}
+	if (!hw_set_switch(cover, "X_LEDS", initial_leds, INDIGO_OK_STATE, SHORT_TIMEOUT)) {
+		fprintf(stderr, "Failed to restore ALTO LEDs\n");
+		indigo_test_failures++;
+	}
 	// A preset takes a position only while it has a name, so the position goes first.
-	hw_set_number(cover, "X_PRESETS", USED_PRESET, 0, INDIGO_OK_STATE, SHORT_TIMEOUT);
-	hw_set_text(cover, "X_PRESET_NAMES", USED_PRESET, initial_used_name, INDIGO_OK_STATE, SHORT_TIMEOUT);
+	if (!hw_set_number(cover, "X_PRESETS", USED_PRESET, 0, INDIGO_OK_STATE, SHORT_TIMEOUT)) {
+		fprintf(stderr, "Failed to restore ALTO preset position\n");
+		indigo_test_failures++;
+	}
+	if (!hw_set_text(cover, "X_PRESET_NAMES", USED_PRESET, initial_used_name, INDIGO_OK_STATE, SHORT_TIMEOUT)) {
+		fprintf(stderr, "Failed to restore ALTO preset name\n");
+		indigo_test_failures++;
+	}
 }
 
 static void alto_publishes_the_property_contract(void) {

@@ -86,6 +86,9 @@ def main():
 	if case_filter is not None:
 		record(f"filter\t{case_filter}")
 	record(f"plan\t{len(selected)}\t{SUITE}")
+	if not selected:
+		print("SKIP " + SUITE + ": no test cases matched the filter", flush=True)
+		return 77
 	failures = 0
 	for name, operation, conflicting_filter in selected:
 		try:

@@ -381,11 +381,11 @@ bool get_token(void) {
 				FORWARD(1);
 				last_token = TOKEN_STRING;
 				return true;
-			} else if (strncmp(current, "true", 4) == 0) {
+			} else if (strncmp(current, "true", 4) == 0 && !isalnum((unsigned char)current[4]) && current[4] != '_') {
 				FORWARD(4);
 				last_token = TOKEN_TRUE;
 				return true;
-			} else if (strncmp(current, "false", 5) == 0) {
+			} else if (strncmp(current, "false", 5) == 0 && !isalnum((unsigned char)current[5]) && current[5] != '_') {
 				FORWARD(5);
 				last_token = TOKEN_FALSE;
 				return true;
@@ -407,6 +407,9 @@ bool get_token(void) {
 				end = current;
 				last_token = TOKEN_NUMBER;
 				return true;
+			} else {
+				report_error("Unsupported byte 0x%02X", (unsigned char)*current);
+				return false;
 			}
 		}
 	}
@@ -423,7 +426,7 @@ bool match(token_type token, char *value) {
 		return false;
 	}
 	if (value != NULL) {
-		bool result = strncmp(value, begin, strlen(value)) == 0;
+		bool result = (size_t)(end - begin) == strlen(value) && strncmp(value, begin, strlen(value)) == 0;
 		if (result) {
 			last_token = TOKEN_NONE;
 		}

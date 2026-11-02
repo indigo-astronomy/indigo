@@ -343,6 +343,7 @@ static bool continues_poll_run(const char *line) {
 extern "C" bool qsi_fake_trace_write(const char *path) {
 	lock();
 	FILE *file = fopen(path, "w");
+	bool ok = file != NULL;
 	if (file != NULL) {
 		bool in_poll = false;
 		for (int i = 0; i < trace_count; i++) {
@@ -356,9 +357,11 @@ extern "C" bool qsi_fake_trace_write(const char *path) {
 			in_poll = false;
 			fprintf(file, "%s\n", trace[i]);
 		}
-		fclose(file);
+		ok = !ferror(file);
+		if (fclose(file) != 0) {
+			ok = false;
+		}
 	}
-	bool ok = file != NULL;
 	unlock();
 	return ok;
 }

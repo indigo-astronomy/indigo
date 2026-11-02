@@ -1158,6 +1158,11 @@ int main(int argc, char **argv) {
 		}
 	}
 	indigo_test_plan(SUITE, selected, filter);
+	if (selected == 0) {
+		indigo_test_plan_recorded = false;
+		printf("SKIP %s: no test cases matched the filter\n", SUITE);
+		return INDIGO_TEST_SKIP;
+	}
 	for (int i = 0; i < (int)ARRAY_SIZE(tests); i++) {
 		if (filter != NULL && !strstr(tests[i].name, filter)) {
 			continue;
