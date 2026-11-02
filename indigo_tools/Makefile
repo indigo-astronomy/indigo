@@ -57,6 +57,8 @@ $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
 $(BUILD_BIN)/indigo_list_usbserial: indigo_list_usbserial.o
 	$(CC) $(CFLAGS)  -o $@ indigo_list_usbserial.o $(LDFLAGS) $(INDIGO_LIBS)
 
+indigo_raw_to_fits.o: tool_file_io.h
+
 $(BUILD_BIN)/indigo_raw_to_fits: indigo_raw_to_fits.o
 	$(CC) $(CFLAGS)  -o $@ indigo_raw_to_fits.o $(LDFLAGS) $(INDIGO_LIBS)
 

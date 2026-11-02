@@ -51,7 +51,7 @@ int save_file(char *file_name, char *data, int size) {
 	}
 	int offset = 0;
 	while (offset < size) {
-		ssize_t written = write(handle, data + offset, (size_t)(size - offset));
+		int written = (int)write(handle, data + offset, (size_t)(size - offset));
 		if (written < 0 && errno == EINTR) {
 			continue;
 		}

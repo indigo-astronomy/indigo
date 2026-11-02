@@ -248,7 +248,7 @@ int main(int argc,char **argv) { int result=raw_application_main(argc,argv);retu
 	def test_generator_failures_and_valid_definition(self):
 		path=self.directory/'probe.driver';path.write_text('driver probe { label = "Probe"; version = 1; aux { } }\n')
 		self.assertEqual(0,self.run_tool('generator',[path]).returncode)
-		for fault in ({'FAIL_ALLOC':'1'},{'FAIL_REDIRECT':'1'},{'FAIL_OPEN':'1'},{'FAIL_FLUSH':'1'},{'FAIL_CLOSE_AT':'1'}):
+		for fault in ({'FAIL_ALLOC':'1'},{'FAIL_REDIRECT':'1'},{'FAIL_OPEN':'1'},{'FAIL_FLUSH':'1'},{'FAIL_CLOSE_AT':'1'},{'FAIL_CLOSE_AT':'3'}):
 			result=self.run_tool('generator',[path],fault);self.assertNotEqual(0,result.returncode);self.assertIn('Generator resource failure:',result.stderr)
 		path.write_text('//'+('x'*20000)+'\ndriver probe { label = "Probe"; version = 1; aux { } }\n')
 		result=self.run_tool('generator',[path],{'FAIL_REALLOC':'1'});self.assertNotEqual(0,result.returncode);self.assertIn('buffer growth',result.stderr)

@@ -52,6 +52,7 @@ static inline bool tool_read_file(const char *name, char **data, size_t *size, s
 	}
 	return ok;
 }
+
 static inline bool tool_write_file(const char *name, const void *data, size_t size) {
 	FILE *file = fopen(name, "wb");
 	if (file == NULL) {
