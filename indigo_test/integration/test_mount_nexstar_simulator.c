@@ -1747,7 +1747,7 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
-// GOTO completion comes from the controller's slew status: frozen readback keeps it BUSY, and a slew the controller
+// GOTO completion comes from the controller's slew status: frozen readback stays BUSY before its deadline, and a slew the controller
 // ends short of the target ends ALERT.
 static void nexstar_goto_completion_follows_slew_status(void) {
 	external_serial_simulator simulator = { 0 };
@@ -2010,6 +2010,28 @@ cleanup:
 }
 
 #ifdef INDIGO_TEST_MOTION_DEADLINE
+
+static void nexstar_goto_deadline_stops_and_recovers(void) {
+	external_serial_simulator simulator = { 0 };
+	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
+	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
+	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "stall", "r"));
+	unsigned revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
+	record_messages();
+	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(count_simulator_events(&simulator, "4D") > 0);
+	SERIAL_CHECK_TRUE(strstr(recorded_messages, "GOTO timed out") != NULL);
+	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .001));
+	SERIAL_CHECK_TRUE(goto_and_arrive(3.001, 20.001));
+cleanup:
+	stop_recording_messages();
+	if (context.connected) {
+		stop_serial_driver(&nexstar_mount);
+	}
+	stop_external_serial_simulator(&simulator);
+}
 
 static void nexstar_park_deadline_stops_and_recovers(void) {
 	external_serial_simulator simulator = { 0 };
@@ -2403,7 +2425,8 @@ cleanup:
 int main(void) {
 	const indigo_test_case tests[] = {
 #ifdef INDIGO_TEST_MOTION_DEADLINE
-		{ "nexstar_park_deadline_stops_and_recovers", nexstar_park_deadline_stops_and_recovers }
+		{ "nexstar_park_deadline_stops_and_recovers", nexstar_park_deadline_stops_and_recovers },
+		{ "nexstar_goto_deadline_stops_and_recovers", nexstar_goto_deadline_stops_and_recovers }
 #else
 		{ "nexstar_mount_connects_both_protocol_dialects", nexstar_mount_connects_both_protocol_dialects },
 		{ "nexstar_skywatcher_executes_coordinates_tracking_and_motion", nexstar_skywatcher_executes_coordinates_tracking_and_motion },

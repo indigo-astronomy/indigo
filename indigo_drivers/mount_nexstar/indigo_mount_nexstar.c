@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000032
+#define DRIVER_VERSION       0x03000033
 #define DRIVER_NAME          "indigo_mount_nexstar"
 #define DRIVER_LABEL         "Nexstar Mount"
 #define MOUNT_DEVICE_NAME    "Mount Nexstar"
@@ -68,6 +68,9 @@
 #define NEXSTAR_AVX_MODEL_ID 20
 #define NEXSTAR_CGX_MODEL_ID 23
 #define NEXSTAR_MODERN_EQ_MODEL(id) ((id) == NEXSTAR_AVX_MODEL_ID || (id) == NEXSTAR_CGX_MODEL_ID)
+#ifndef NEXSTAR_GOTO_TIMEOUT
+#define NEXSTAR_GOTO_TIMEOUT (300)
+#endif
 #define GOTO_TOLERANCE       (0.25)
 #define WARN_PARKED_MSG      "Mount is parked, please unpark!"
 #define WARN_PARKING_PROGRESS_MSG "Mount parking is in progress, please wait until complete!"
@@ -110,7 +113,7 @@ typedef struct {
 	int model_id;
 	bool parked;
 	bool park_in_progress;
-	double park_deadline;
+	double park_deadline, goto_deadline;
 	int slew_rate;
 	int st4_ra_rate, st4_dec_rate;
 	int vendor_id;
@@ -362,7 +365,16 @@ static void nexstar_update_position(indigo_device *device) {
 	bool position_valid = false;
 	bool location_valid = false;
 	bool time_valid = false;
+	bool goto_timed_out = false;
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	if (PRIVATE_DATA->goto_active && indigo_monotonic_time() >= PRIVATE_DATA->goto_deadline) {
+		int result = tc_goto_cancel(dev_id);
+		if (result != RC_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Timed-out GOTO stop failed (%d)", result);
+		}
+		PRIVATE_DATA->goto_active = false;
+		goto_timed_out = true;
+	}
 	if (!PRIVATE_DATA->guiding_in_progress) {
 		goto_in_progress = tc_goto_in_progress(dev_id);
 		if (goto_in_progress < 0) {
@@ -438,7 +450,7 @@ static void nexstar_update_position(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	if (!PRIVATE_DATA->guiding_in_progress) {
+	if (!PRIVATE_DATA->guiding_in_progress || goto_timed_out) {
 		const char *message = NULL;
 		// A request copied but not handled yet owns the BUSY state, a poll in flight must not complete it.
 		bool request_pending = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE && !PRIVATE_DATA->goto_active && !PRIVATE_DATA->coordinates_busy;
@@ -446,7 +458,11 @@ static void nexstar_update_position(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		}
-		if (request_pending) {
+		if (goto_timed_out) {
+			PRIVATE_DATA->coordinates_busy = false;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			message = "Mount GOTO timed out";
+		} else if (request_pending) {
 			// The handler publishes the result.
 		} else if (!position_valid) {
 			PRIVATE_DATA->coordinates_busy = false;
@@ -617,6 +633,7 @@ static bool nexstar_set_coordinates(indigo_device *device) {
 		PRIVATE_DATA->goto_ra = h2d(ra);
 		PRIVATE_DATA->goto_dec = dec;
 		PRIVATE_DATA->goto_active = true;
+		PRIVATE_DATA->goto_deadline = indigo_monotonic_time() + NEXSTAR_GOTO_TIMEOUT;
 	}
 	return true;
 }
