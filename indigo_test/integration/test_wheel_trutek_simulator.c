@@ -406,9 +406,35 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void corrupted_reply_checksums_are_refused(void) {
+	const char *commands[] = { "131", "130", "129" };
+	for (int i = 0; i < ARRAY_SIZE(commands); i++) {
+		external_serial_simulator simulator = { 0 };
+		const char *arguments[] = { "--bad-checksum", commands[i], NULL };
+		SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, WHEEL_TRUTEK_SIMULATOR_EXECUTABLE, arguments));
+		if (i < 2) {
+			SERIAL_CHECK_TRUE(!start_serial_driver(&trutek_wheel, simulator.port));
+		} else {
+			SERIAL_CHECK_TRUE(start_serial_driver(&trutek_wheel, simulator.port));
+			SERIAL_CHECK_TRUE(request_slot(3));
+			SERIAL_CHECK_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+			SERIAL_CHECK_TRUE(fabs(cached_number_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME) - 1) < .001);
+			SERIAL_CHECK_TRUE(select_slot(4));
+		}
+		stop_serial_driver(&trutek_wheel);
+		stop_external_serial_simulator(&simulator);
+		continue;
+cleanup:
+		stop_serial_driver(&trutek_wheel);
+		stop_external_serial_simulator(&simulator);
+		return;
+	}
+}
+
 int main(void) {
 	simulator_test_client.update_property = trutek_trace_update;
 	const indigo_test_case tests[] = {
+		{ "corrupted_reply_checksums_are_refused", corrupted_reply_checksums_are_refused },
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "slot_count_comes_from_the_device", slot_count_comes_from_the_device },
 		{ "five_slot_wheel_is_reported", five_slot_wheel_is_reported },

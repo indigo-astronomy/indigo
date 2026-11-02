@@ -35,7 +35,7 @@
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
-#define TRUTEK_SIMULATOR_VERSION 2
+#define TRUTEK_SIMULATOR_VERSION 3
 // Version 2 adds one-shot raw reply faults and ordered protocol capture.
 
 // ----------------------------------------------------------------- options
@@ -49,6 +49,7 @@ typedef struct {
 	bool stuck;
 	int move_byte;
 	int query_byte;
+	int bad_checksum;
 } simulator_options;
 
 static simulator_options options = {
@@ -59,7 +60,8 @@ static simulator_options options = {
 	.count_byte = -1,
 	.stuck = false,
 	.move_byte = -1,
-	.query_byte = -1
+	.query_byte = -1,
+	.bad_checksum = -1
 };
 
 static const char *simulator_name = "wheel_trutek";
@@ -97,6 +99,10 @@ static bool parse_args(int argc, char *argv[]) {
 			options.trace = false;
 		} else if (!strcmp(argv[i], "--ready-file") && i + 1 < argc) {
 			options.ready_file = argv[++i];
+		} else if (!strcmp(argv[i], "--bad-checksum") && i + 1 < argc) {
+			if (!parse_int(argv[++i], 129, 131, &options.bad_checksum)) {
+				return false;
+			}
 		} else if (!strcmp(argv[i], "--stuck")) {
 			options.stuck = true;
 		} else if (!strcmp(argv[i], "--move-byte") && i + 1 < argc) {
@@ -161,6 +167,10 @@ static void advance_filter(void) {
 static bool write_frame(int fd, uint8_t command, uint8_t value) {
 	uint8_t frame[4] = { 0xA5, command, value, 0 };
 	frame[3] = checksum(frame[0], frame[1], frame[2]);
+	if (command == options.bad_checksum) {
+		frame[3] ^= 1;
+		options.bad_checksum = -1;
+	}
 	trace_frame("<", frame);
 	return serial_simulator_write_all(fd, (const char *)frame, sizeof(frame));
 }

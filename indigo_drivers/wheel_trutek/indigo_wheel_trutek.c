@@ -32,7 +32,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000A
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_wheel_trutek"
 #define DRIVER_LABEL         "Trutek Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Trutek Filter Wheel"
@@ -62,7 +62,7 @@ typedef struct {
 
 static bool trutek_query(indigo_device *device) {
 	unsigned char buffer[4] = { 0xA5, 0x02, 0x20, 0xA5 + 0x02 + 0x20 };
-	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x82) {
+	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x82 && buffer[3] == (unsigned char)(buffer[0] + buffer[1] + buffer[2])) {
 		int slot = buffer[2] - 0x30;
 		if (slot < 0 || slot > WHEEL_SLOT_ITEM->number.max) {
 			return false;
@@ -78,7 +78,7 @@ static bool trutek_open(indigo_device *device, const char **error_message) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial2(name, INDIGO_LOG_DEBUG | BINARY_LOG, error_message);
 	if (PRIVATE_DATA->handle != NULL) {
 		unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
-		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x83) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x83 && buffer[3] == (unsigned char)(buffer[0] + buffer[1] + buffer[2])) {
 			int count = buffer[2] - 0x30;
 			// The slot properties cannot hold more items than they were allocated with.
 			if (count < 1 || count > WHEEL_SLOT_NAME_PROPERTY->allocated_count || count > WHEEL_SLOT_OFFSET_PROPERTY->allocated_count) {
@@ -170,7 +170,7 @@ static void wheel_slot_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else {
 		unsigned char buffer[4] = { 0xA5, 0x01, slot, 0xA5 + 0x01 + slot };
-		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x81 && buffer[2] <= WHEEL_SLOT_ITEM->number.max) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x81 && buffer[2] <= WHEEL_SLOT_ITEM->number.max && buffer[3] == (unsigned char)(buffer[0] + buffer[1] + buffer[2])) {
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2];
 			if (PRIVATE_DATA->slot == 0) {
 				PRIVATE_DATA->move_deadline = indigo_monotonic_time() + TRUTEK_MOVE_TIMEOUT;
