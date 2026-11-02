@@ -1,0 +1,92 @@
+test_boolean_prefix_is_not_a_boolean (__main__.GeneratorTokens) ... ok
+test_keyword_prefix_is_not_a_keyword (__main__.GeneratorTokens) ... FAIL
+test_unsupported_byte_rejected_with_position (__main__.GeneratorTokens) ... test_valid_definition_still_generates (__main__.GeneratorTokens) ... ok
+
+======================================================================
+ERROR: test_unsupported_byte_rejected_with_position (__main__.GeneratorTokens) (token='@')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 62, in test_unsupported_byte_rejected_with_position
+    result = self.generate(VALID.replace("version = 1;", "version = 1; " + token))
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 51, in generate
+    return subprocess.run([str(self.binary), path.name], cwd=self.directory, capture_output=True, text=True, timeout=2)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 507, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1134, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1980, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1178, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-generator-tokens-xobykbog/indigo_generator', 'probe.driver']' timed out after 2 seconds
+
+======================================================================
+ERROR: test_unsupported_byte_rejected_with_position (__main__.GeneratorTokens) (token='?')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 62, in test_unsupported_byte_rejected_with_position
+    result = self.generate(VALID.replace("version = 1;", "version = 1; " + token))
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 51, in generate
+    return subprocess.run([str(self.binary), path.name], cwd=self.directory, capture_output=True, text=True, timeout=2)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 507, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1134, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1980, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1178, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-generator-tokens-xobykbog/indigo_generator', 'probe.driver']' timed out after 2 seconds
+
+======================================================================
+ERROR: test_unsupported_byte_rejected_with_position (__main__.GeneratorTokens) (token='\x01')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 62, in test_unsupported_byte_rejected_with_position
+    result = self.generate(VALID.replace("version = 1;", "version = 1; " + token))
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 51, in generate
+    return subprocess.run([str(self.binary), path.name], cwd=self.directory, capture_output=True, text=True, timeout=2)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 507, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1134, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1980, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1178, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-generator-tokens-xobykbog/indigo_generator', 'probe.driver']' timed out after 2 seconds
+
+======================================================================
+ERROR: test_unsupported_byte_rejected_with_position (__main__.GeneratorTokens) (token='é')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 62, in test_unsupported_byte_rejected_with_position
+    result = self.generate(VALID.replace("version = 1;", "version = 1; " + token))
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 51, in generate
+    return subprocess.run([str(self.binary), path.name], cwd=self.directory, capture_output=True, text=True, timeout=2)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 507, in run
+    stdout, stderr = process.communicate(input, timeout=timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1134, in communicate
+    stdout, stderr = self._communicate(input, endtime, timeout)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1980, in _communicate
+    self._check_timeout(endtime, orig_timeout, stdout, stderr)
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/subprocess.py", line 1178, in _check_timeout
+    raise TimeoutExpired(
+subprocess.TimeoutExpired: Command '['/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/indigo-generator-tokens-xobykbog/indigo_generator', 'probe.driver']' timed out after 2 seconds
+
+======================================================================
+FAIL: test_keyword_prefix_is_not_a_keyword (__main__.GeneratorTokens)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_generator_tokens.py", line 68, in test_keyword_prefix_is_not_a_keyword
+    self.assertNotEqual(0, result.returncode, result.stderr)
+AssertionError: 0 == 0 : Reading probe.driver ...
+Writing ./indigo_aux_probe.h ...
+Writing ./indigo_aux_probe_main.c ...
+Writing ./indigo_aux_probe.c ...
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 8.461s
+
+FAILED (failures=1, errors=4)

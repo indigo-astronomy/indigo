@@ -1,0 +1,9 @@
+test_boolean_prefix_is_not_a_boolean (__main__.GeneratorTokens) ... ok
+test_keyword_prefix_is_not_a_keyword (__main__.GeneratorTokens) ... ok
+test_unsupported_byte_rejected_with_position (__main__.GeneratorTokens) ... ok
+test_valid_definition_still_generates (__main__.GeneratorTokens) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.348s
+
+OK

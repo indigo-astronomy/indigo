@@ -1,0 +1,118 @@
+test_imager_no_match_is_skip_even_with_missing_child (__main__.CustomHarnessIntegrity) ... FAIL
+test_number_comparison_contract (__main__.CustomHarnessIntegrity) ... test_platesolver_no_match_is_skip_without_starting_child (__main__.CustomHarnessIntegrity) ... FAIL
+test_restore_attempts_every_step_and_counts_each_failure (__main__.CustomHarnessIntegrity) ... test_trace_open_write_and_close_failures (__main__.CustomHarnessIntegrity) ... FAIL
+
+======================================================================
+FAIL: test_imager_no_match_is_skip_even_with_missing_child (__main__.CustomHarnessIntegrity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 168, in test_imager_no_match_is_skip_even_with_missing_child
+    self.assertEqual(77, result.returncode, result.stdout + result.stderr)
+AssertionError: 77 != 0 : Running Imager cleanup failure propagation
+
+
+======================================================================
+FAIL: test_number_comparison_contract (__main__.CustomHarnessIntegrity) (actual='nan', expected='1', tolerance='.2')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 155, in test_number_comparison_contract
+    self.assertEqual(status, self.run_helper("number", actual, expected, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_number_comparison_contract (__main__.CustomHarnessIntegrity) (actual='1', expected='nan', tolerance='.2')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 155, in test_number_comparison_contract
+    self.assertEqual(status, self.run_helper("number", actual, expected, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_number_comparison_contract (__main__.CustomHarnessIntegrity) (actual='1', expected='1', tolerance='nan')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 155, in test_number_comparison_contract
+    self.assertEqual(status, self.run_helper("number", actual, expected, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_number_comparison_contract (__main__.CustomHarnessIntegrity) (actual='1', expected='1', tolerance='inf')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 155, in test_number_comparison_contract
+    self.assertEqual(status, self.run_helper("number", actual, expected, tolerance).returncode)
+AssertionError: 1 != 0
+
+======================================================================
+FAIL: test_platesolver_no_match_is_skip_without_starting_child (__main__.CustomHarnessIntegrity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 159, in test_platesolver_no_match_is_skip_without_starting_child
+    self.assertEqual(77, result.returncode, result.stdout + result.stderr)
+AssertionError: 77 != 0 : Platesolver custom runner probe: 0 of 0 cases passed
+
+
+======================================================================
+FAIL: test_restore_attempts_every_step_and_counts_each_failure (__main__.CustomHarnessIntegrity) (failure=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 150, in test_restore_attempts_every_step_and_counts_each_failure
+    self.assertEqual("4 1", self.run_helper("restore", str(failure)).stdout.strip())
+AssertionError: '4 1' != '4 0'
+- 4 1
+?   ^
++ 4 0
+?   ^
+
+
+======================================================================
+FAIL: test_restore_attempts_every_step_and_counts_each_failure (__main__.CustomHarnessIntegrity) (failure=1)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 150, in test_restore_attempts_every_step_and_counts_each_failure
+    self.assertEqual("4 1", self.run_helper("restore", str(failure)).stdout.strip())
+AssertionError: '4 1' != '4 0'
+- 4 1
+?   ^
++ 4 0
+?   ^
+
+
+======================================================================
+FAIL: test_restore_attempts_every_step_and_counts_each_failure (__main__.CustomHarnessIntegrity) (failure=2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 150, in test_restore_attempts_every_step_and_counts_each_failure
+    self.assertEqual("4 1", self.run_helper("restore", str(failure)).stdout.strip())
+AssertionError: '4 1' != '4 0'
+- 4 1
+?   ^
++ 4 0
+?   ^
+
+
+======================================================================
+FAIL: test_restore_attempts_every_step_and_counts_each_failure (__main__.CustomHarnessIntegrity) (failure=3)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 150, in test_restore_attempts_every_step_and_counts_each_failure
+    self.assertEqual("4 1", self.run_helper("restore", str(failure)).stdout.strip())
+AssertionError: '4 1' != '4 0'
+- 4 1
+?   ^
++ 4 0
+?   ^
+
+
+======================================================================
+FAIL: test_trace_open_write_and_close_failures (__main__.CustomHarnessIntegrity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/indigo-fix-test-integrity/indigo_test/unit/test_custom_harness_integrity.py", line 176, in test_trace_open_write_and_close_failures
+    self.assertEqual(1, self.run_helper("trace", "1", output).returncode)
+AssertionError: 1 != 0
+
+----------------------------------------------------------------------
+Ran 5 tests in 1.866s
+
+FAILED (failures=11)

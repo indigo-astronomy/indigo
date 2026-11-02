@@ -1,0 +1,10 @@
+test_imager_no_match_is_skip_even_with_missing_child (__main__.CustomHarnessIntegrity) ... ok
+test_number_comparison_contract (__main__.CustomHarnessIntegrity) ... ok
+test_platesolver_no_match_is_skip_without_starting_child (__main__.CustomHarnessIntegrity) ... ok
+test_restore_attempts_every_step_and_counts_each_failure (__main__.CustomHarnessIntegrity) ... ok
+test_trace_open_write_and_close_failures (__main__.CustomHarnessIntegrity) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 1.755s
+
+OK

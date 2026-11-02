@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261102173322-3b15-fix-test-integrity",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Parent coordinator integrates scoped code and Factory evidence, registers shared test files, reconciles findings, and verifies combined candidate.",
+  "blocker": null
+}

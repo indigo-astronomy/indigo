@@ -1,0 +1,77 @@
+{
+  "version": 2,
+  "task": "20261102173322-3b15-fix-test-integrity",
+  "scope": [
+    "indigo_tools/indigo_generator.c",
+    "indigo_test/hardware/test_aux_alto_hw.c",
+    "indigo_test/integration/qsi_fake_sdk.cpp",
+    "indigo_test/integration/test_agent_imager_cleanup.py",
+    "indigo_test/integration/test_agent_platesolver.c",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "indigo_test/unit/test_custom_harness_integrity.py",
+    "indigo_test/unit/test_generator_tokens.py",
+    ".factory/completions/20261102173322-3b15-fix-test-integrity.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "indigo_test/unit/test_custom_harness_integrity.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "indigo_test/unit/test_generator_tokens.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    "indigo_test/hardware/test_aux_alto_hw.c": [
+      "100644",
+      "blob",
+      "f0733aee9f9903d4410fe2a4b1f1950ca1f33a2d"
+    ],
+    "indigo_test/integration/qsi_fake_sdk.cpp": [
+      "100644",
+      "blob",
+      "7e24b07d6f5006ab2a4cbf27e9c8add6946951a3"
+    ],
+    "indigo_test/integration/test_agent_imager_cleanup.py": [
+      "100644",
+      "blob",
+      "92ea19fff10c5f2010470597e2f46c8dd728d166"
+    ],
+    "indigo_test/integration/test_agent_platesolver.c": [
+      "100644",
+      "blob",
+      "c14ce712efa90e5122d0b7608cfb8f4fa3a56b7a"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "5c7a75d59b55cd683c555f660ab936aa7d613bad"
+    ],
+    "indigo_test/unit/test_custom_harness_integrity.py": [
+      "100644",
+      "blob",
+      "e505f0eac1f72fa943decd37ccd16ce999853aaa"
+    ],
+    "indigo_test/unit/test_generator_tokens.py": [
+      "100644",
+      "blob",
+      "77b780756e04e922dc0be2e3d445260e0061801a"
+    ],
+    "indigo_tools/indigo_generator.c": [
+      "100644",
+      "blob",
+      "cb45c6712ad2901d6718a4cb4759906f34b0f6ed"
+    ]
+  }
+}
