@@ -1,0 +1,6 @@
+python3 -B -m unittest discover -s buildsystem -p 'test_*.py'
+............
+----------------------------------------------------------------------
+Ran 12 tests in 6.082s
+
+OK

@@ -1,0 +1,19 @@
+{
+  "baseline": "af219db21a07cf3610ad91da5693462b0fbd8930",
+  "checks": [
+    {
+      "file": "indigo_docs/DRIVER_GENERATOR_BASICS.md",
+      "old_links": 2,
+      "old_target_exists": false,
+      "new_target_exists": true
+    },
+    {
+      "file": "indigo_docs/DRIVER_TESTING_BASICS.md",
+      "old_links": 2,
+      "old_target_exists": false,
+      "new_target_exists": true
+    }
+  ],
+  "replaced_links": 4,
+  "remaining_old_names": 0
+}

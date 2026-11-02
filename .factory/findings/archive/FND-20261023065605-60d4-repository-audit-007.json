@@ -5,15 +5,25 @@
   "blocking": false,
   "evidence": "indigo_docs/DRIVER_GENERATOR_BASICS.md:21,423; indigo_docs/DRIVER_TESTING_BASICS.md:18,86,367; static-inventory-checks.json",
   "summary": "Five developer-facing relative links still name indigo_drivers/AGENTS.override.md, which does not exist after consolidation to AGENTS.md. Readers cannot reach the instructions the guides designate as authoritative. Next: coordinator assigns a scoped link/label update and verifies all affected local destinations.",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "tasks": [
     {
       "id": "20261023065605-60d4-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261102201622-853f-fix-editor-build-doc-findings",
+      "report": "docs-verification.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102201622-853f-fix-editor-build-doc-findings/docs-verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023065605-60d4-repository-audit-007"
 }

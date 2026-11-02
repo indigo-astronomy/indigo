@@ -1,0 +1,14 @@
+{
+  "baseline": "af219db21",
+  "generator_accept_while_busy": "boolean",
+  "missing_catalog_contexts": [
+    "inherited",
+    "switch",
+    "text",
+    "number",
+    "light"
+  ],
+  "impact": "Editor does not offer the valid per-property accept_while_busy option; pre-existing all-attributes contract failure remains.",
+  "severity": "low",
+  "production_files_unchanged": "indigo_tools/indigo_generator.c"
+}

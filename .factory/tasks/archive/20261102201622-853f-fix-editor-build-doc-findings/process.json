@@ -1,0 +1,157 @@
+{
+  "version": 2,
+  "task": "20261102201622-853f-fix-editor-build-doc-findings",
+  "scope": [
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-005.json",
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-007.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-042.json",
+    ".factory/findings/active/FND-20261026172255-587a-fix-selected-audit-findings-001.json",
+    "AGENTS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/DRIVER_GENERATOR_BASICS.md",
+    "indigo_docs/DRIVER_TESTING_BASICS.md",
+    "indigo_tools/driver_editor/driver_format.py",
+    "indigo_tools/driver_editor/test_editor.py",
+    "indigo_tools/template.driver",
+    "tools/make_indigo_build.sh",
+    "indigo_test/buildsystem/test_build_revision.py",
+    ".factory/completions/20261102201622-853f-fix-editor-build-doc-findings.json",
+    ".factory/findings/active/FND-20261102201622-853f-fix-editor-build-doc-findings-001.json",
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-005.json",
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-007.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-042.json",
+    ".factory/findings/archive/FND-20261026172255-587a-fix-selected-audit-findings-001.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-buildsystem"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "test_editor.ParserTests.test_template_code_blocks_match_generator_contexts",
+        "test_editor.ParserTests.test_catalog_device_id_can_be_added_without_changing_device_code",
+        "test_editor.ParserTests.test_catalog_sdk_discover_can_be_added_edited_and_removed",
+        "test_editor.EditorTests.test_sdk_discover_and_device_id_generate_in_isolated_preview"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "process-policy": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102201622-853f-fix-editor-build-doc-findings.json": [
+      "100644",
+      "blob",
+      "5b2b74025e682f586721450c73e62156be7d9556"
+    ],
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-005.json": null,
+    ".factory/findings/active/FND-20261023065605-60d4-repository-audit-007.json": null,
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-042.json": null,
+    ".factory/findings/active/FND-20261026172255-587a-fix-selected-audit-findings-001.json": null,
+    ".factory/findings/active/FND-20261102201622-853f-fix-editor-build-doc-findings-001.json": [
+      "100644",
+      "blob",
+      "2629942e28bc0a2b00933231b89e0cd243d7a441"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-005.json": [
+      "100644",
+      "blob",
+      "b330742455773f3efd61d203c5ecbc343fea5cc1"
+    ],
+    ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-007.json": [
+      "100644",
+      "blob",
+      "d98938180211368d9d59b63d7c9d54fe0c9d06aa"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-042.json": [
+      "100644",
+      "blob",
+      "7dd25d3d4305b73aa3c2dda1d48db071d51dd462"
+    ],
+    ".factory/findings/archive/FND-20261026172255-587a-fix-selected-audit-findings-001.json": [
+      "100644",
+      "blob",
+      "af816b5d075d85ff0a136007375818b19595a018"
+    ],
+    "AGENTS.md": [
+      "100644",
+      "blob",
+      "5cc5f3f662b83ad4b22520c183fcd587a4d5c061"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "fc6d70f5b95f29976f7c2eedebe2decb33ba79c0"
+    ],
+    "indigo_docs/DRIVER_GENERATOR_BASICS.md": [
+      "100644",
+      "blob",
+      "ef52f057e829be3b47627e648e287475f77aa8ee"
+    ],
+    "indigo_docs/DRIVER_TESTING_BASICS.md": [
+      "100644",
+      "blob",
+      "55aa6418ab3d200d132e1bb56bb2dbd077685bd8"
+    ],
+    "indigo_test/buildsystem/test_build_revision.py": [
+      "100644",
+      "blob",
+      "fa05648eae2a22eff09e0b081bc4304b4f446155"
+    ],
+    "indigo_tools/driver_editor/driver_format.py": [
+      "100644",
+      "blob",
+      "8085441565977312cf78a67ed8429ea22782fe76"
+    ],
+    "indigo_tools/driver_editor/test_editor.py": [
+      "100644",
+      "blob",
+      "32fc27277c3ee88d14199a4335f2afc489b5c824"
+    ],
+    "indigo_tools/template.driver": [
+      "100644",
+      "blob",
+      "89bfb801db855ee47207366d5e500bc379e1813a"
+    ],
+    "tools/make_indigo_build.sh": [
+      "100644",
+      "blob",
+      "c84932752e9c721094d989d9c8c7c662c92babbc"
+    ]
+  }
+}

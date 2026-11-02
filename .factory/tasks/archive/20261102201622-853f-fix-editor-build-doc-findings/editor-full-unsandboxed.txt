@@ -1,0 +1,73 @@
+test_actual_timeout_reaps_process_and_removes_workspace (test_editor.EditorTests) ... ok
+test_add_rename_generate_remove_nodes (test_editor.EditorTests) ... ok
+test_code_block_add_edit_generate_remove (test_editor.EditorTests) ... ok
+test_cpp_preview_publish_and_conflict_with_existing_c (test_editor.EditorTests) ... ok
+test_disk_conflict_and_failed_atomic_save (test_editor.EditorTests) ... ok
+test_edit_during_generation_discards_old_result (test_editor.EditorTests) ... ok
+test_edits_stay_in_memory_and_save_round_trip (test_editor.EditorTests) ... ok
+test_failed_generation_retains_last_preview_and_recovers (test_editor.EditorTests) ... ok
+test_generation_isolated_publish_and_reopen (test_editor.EditorTests) ... ok
+test_incomplete_repository_is_reported (test_editor.EditorTests) ... ok
+test_missing_generator_timeout_and_failed_output (test_editor.EditorTests) ... ok
+test_publish_conflict_and_rollback (test_editor.EditorTests) ... ok
+test_sdk_discover_and_device_id_generate_in_isolated_preview (test_editor.EditorTests) ... ok
+test_stale_revision_and_invalid_edit_leave_state_untouched (test_editor.EditorTests) ... ok
+test_assets_state_and_traversal (test_editor.HTTPTests) ... ok
+test_open_driver_listing_empty_session_and_conflicts (test_editor.HTTPTests) ... ok
+test_origin_token_host_and_revision (test_editor.HTTPTests) ... ok
+test_all_ccd_simulator_logical_devices_map_exposure (test_editor.MappingTests) ... ok
+test_all_real_drivers_generate_without_modification (test_editor.MappingTests) ... ok
+test_duplicate_property_names_are_scoped_and_references_excluded (test_editor.MappingTests) ... ok
+test_explicit_ccd_identities_scope_lifecycle_properties_and_markers (test_editor.MappingTests) ... ok
+test_polaralign_repository_previews_and_mapping (test_editor.MappingTests) ... ok
+test_preview_matches_normal_generator_working_directory (test_editor.MappingTests) ... ok
+test_property_lifecycle_and_detach_marker (test_editor.MappingTests) ... ok
+test_repeated_code_blocks_report_shared_mapping (test_editor.MappingTests) ... ok
+test_serial_patterns_parent_union_and_no_output (test_editor.MappingTests) ... ok
+test_add_multiple_patterns_and_remove_one (test_editor.ParserTests) ... ok
+test_catalog_device_id_can_be_added_without_changing_device_code (test_editor.ParserTests) ... ok
+test_catalog_sdk_discover_can_be_added_edited_and_removed (test_editor.ParserTests) ... ok
+test_continued_line_comment_does_not_close_code_block (test_editor.ParserTests) ... ok
+test_delete_attribute_preserves_neighbors_and_can_be_added_again (test_editor.ParserTests) ... ok
+test_invalid_structure_reports_position (test_editor.ParserTests) ... ok
+test_lossless_attribute_and_code_edit_with_unicode_crlf (test_editor.ParserTests) ... ok
+test_polaralign_is_in_backend_and_frontend_device_catalogs (test_editor.ParserTests) ... ok
+test_polaralign_structural_editing (test_editor.ParserTests) ... ok
+test_repository_corpus_and_template (test_editor.ParserTests) ... ok
+test_shorthand_and_repeated_nodes (test_editor.ParserTests) ... ok
+test_strings_comments_nested_expressions_and_code (test_editor.ParserTests) ... ok
+test_structural_contexts_shorthand_and_preservation (test_editor.ParserTests) ... ok
+test_template_catalog_includes_all_attributes_and_current_extensions (test_editor.ParserTests) ... ok
+test_template_code_blocks_match_generator_contexts (test_editor.ParserTests) ... ok
+test_template_matches_generator_attribute_contexts (test_editor.ParserTests) ... FAIL
+test_unknown_content_preserved_and_source_edits (test_editor.ParserTests) ... ok
+
+======================================================================
+FAIL: test_template_matches_generator_attribute_contexts (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 279, in test_template_matches_generator_attribute_contexts
+    self.assertEqual({name: entry['type'] for name, entry in catalog[kind].items()}, expected)
+AssertionError: {'lab[145 chars]n', 'hidden': 'expression', 'perm': 'expressio[84 chars]ean'} != {'lab[145 chars]n', 'preserve_values': 'boolean', 'pass_throug[116 chars]ion'}
++ {'accept_while_busy': 'boolean',
+- {'asynchronous_change': 'boolean',
+? ^
+
++  'asynchronous_change': 'boolean',
+? ^
+
+   'handle': 'expression',
+   'handler': 'expression',
+   'hidden': 'expression',
+   'label': 'expression',
+   'name': 'expression',
+   'pass_through_change': 'boolean',
+   'perm': 'expression',
+   'persistent': 'boolean',
+   'preserve_values': 'boolean',
+   'rule': 'expression'}
+
+----------------------------------------------------------------------
+Ran 43 tests in 7.475s
+
+FAILED (failures=1)

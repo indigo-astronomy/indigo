@@ -1,0 +1,3 @@
+# Test plan
+
+Editor: reproduce existing attribute/code catalog contract failures; cover device id and SDK discover structural actions and run editor suite. Build helper: disposable ordinary Git checkout, linked worktree (.git regular file), tracked modification and clean export including export nested in unrelated Git parent; verify generated C identifier and timestamp without altering real repository build products. Docs: inspect five affected links, validate intended local targets, no broad repository sweep. Required Factory/check/security and independent source/artifact review. No hardware/application driver or image-recognition suites.

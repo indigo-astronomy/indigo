@@ -1,0 +1,28 @@
+FF
+======================================================================
+FAIL: test_template_matches_generator_attribute_contexts (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 240, in test_template_matches_generator_attribute_contexts
+    self.assertEqual({name: entry['type'] for name, entry in catalog[context].items()}, accepted('parse_' + context + '_block'))
+AssertionError: {'attach_if': 'expression', 'name_value': '[91 chars]ion'} != {'id': 'identifier', 'attach_if': 'expressi[111 chars]ean'}
+  {'additional_instances': 'boolean',
+   'attach_if': 'expression',
++  'id': 'identifier',
+   'interface': 'expression',
+   'name': 'expression',
+   'name_value': 'expression'}
+
+======================================================================
+FAIL: test_template_code_blocks_match_generator_contexts (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 260, in test_template_code_blocks_match_generator_contexts
+    self.assertEqual(set(catalog[context]), set(re.findall(r'parse_code_block\("([^"]+)"', body)))
+AssertionError: Items in the second set but not the first:
+'discover'
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.006s
+
+FAILED (failures=2)

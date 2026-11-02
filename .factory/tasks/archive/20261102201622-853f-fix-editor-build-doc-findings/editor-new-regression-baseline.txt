@@ -1,0 +1,23 @@
+EE
+======================================================================
+ERROR: test_catalog_device_id_can_be_added_without_changing_device_code (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 235, in test_catalog_device_id_can_be_added_without_changing_device_code
+    self.assertEqual(catalog['device']['id']['type'], 'identifier')
+KeyError: 'id'
+
+======================================================================
+ERROR: test_catalog_sdk_discover_can_be_added_edited_and_removed (test_editor.ParserTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/test_editor.py", line 249, in test_catalog_sdk_discover_can_be_added_edited_and_removed
+    updated, root, selected = structure(source, root, named(root, 'sdk')['id'], 'add', 'discover', code_catalog=catalog)
+  File "/Users/polakovic/Development/indigo/indigo_tools/driver_editor/driver_format.py", line 196, in structure
+    raise ValueError('This child type is not supported here')
+ValueError: This child type is not supported here
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.006s
+
+FAILED (errors=2)

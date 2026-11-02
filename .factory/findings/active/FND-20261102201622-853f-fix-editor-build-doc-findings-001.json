@@ -1,0 +1,19 @@
+{
+  "title": "Editor property catalog omits generator-supported accept_while_busy",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102201622-853f-fix-editor-build-doc-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The current generator accepts accept_while_busy:boolean for inherited, switch, text, number and light properties, but the template-derived editor catalog omits it in all five contexts. This is source-confirmed on baseline af219db21 before this task and remains the single full editor attribute-contract failure after requested device-id/SDK-discover fixes. Next: scoped template/catalog correction with property context tests; no generator change or risk acceptance.",
+  "evidence": ".factory/tasks/archive/20261102201622-853f-fix-editor-build-doc-findings/editor-preexisting-attribute-mismatch.json; editor full suite 42/43, unchanged ParserTests.test_template_matches_generator_attribute_contexts",
+  "resolution": null,
+  "id": "FND-20261102201622-853f-fix-editor-build-doc-findings-001"
+}

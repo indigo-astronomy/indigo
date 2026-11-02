@@ -1,0 +1,16 @@
+..F..
+======================================================================
+FAIL: test_linked_worktree_and_tracked_changes (__main__.BuildRevisionTests)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/polakovic/Development/indigo/indigo_test/buildsystem/test_build_revision.py", line 73, in test_linked_worktree_and_tracked_changes
+    self.assertEqual(self.stamp(worktree), self.commit)
+AssertionError: 'production' != 'e93547b'
+- production
++ e93547b
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.386s
+
+FAILED (failures=1)
