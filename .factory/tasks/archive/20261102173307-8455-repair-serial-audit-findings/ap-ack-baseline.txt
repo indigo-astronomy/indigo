@@ -1,0 +1,4 @@
+unit/test_primalucelib.c:499: assertion failed: !primalucelib_set_access_point(&test_link, false)
+Running PrimaLuce Lab protocol library
+  FAIL access point refusal preserves reason
+PrimaLuce Lab protocol library: 1 test(s) failed

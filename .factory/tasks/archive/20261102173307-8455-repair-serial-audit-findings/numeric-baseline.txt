@@ -1,0 +1,4 @@
+integration/test_aux_astromechanics_simulator.c:211: assertion failed: wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE)
+Running ASTROMECHANICS LPM serial simulator integration tests
+  FAIL malformed_measurements_are_rejected
+ASTROMECHANICS LPM serial simulator integration tests: 1 test(s) failed

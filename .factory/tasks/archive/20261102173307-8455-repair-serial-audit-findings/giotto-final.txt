@@ -1,0 +1,134 @@
++ make -C /private/tmp/indigo-serial-audit/indigo_drivers/aux_giotto -f ../../Makefile.drv all
+Definition: indigo_aux_giotto.driver
+Sources:    indigo_aux_giotto.c indigo_aux_giotto_main.c
+Archive:    indigo_aux_giotto.a
+SO library: indigo_aux_giotto.dylib
+indigo_aux_giotto.o
+Executable: indigo_aux_giotto
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../shared/primalucelib all
+make[1]: Nothing to be done for `all'.
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_giotto.o indigo_aux_giotto.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_giotto.a indigo_aux_giotto.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_giotto.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_giotto.a  /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_giotto_main.o indigo_aux_giotto_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_giotto indigo_aux_giotto_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_giotto.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
++ make check-lib build/integration/test_aux_giotto_simulator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/giotto_simulator ../indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_giotto_simulator integration/test_aux_giotto_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_giotto.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_aux_giotto_simulator
+Running PrimaluceLab GIOTTO
+  PASS metadata
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS usb_match_pattern
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS property_contract
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS connect_reads_the_panel
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS long_firmware
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:49:47.825032 Application: indigo_aux_giotto[giotto_open:334]: 'ALTO' is not a GIOTTO
+  PASS unsupported_device
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:49:58.049212 Application: indigo_aux_giotto[giotto_open:331]: No brightness range in the panel state
+18:50:03.094075 Application: indigo_aux_giotto[giotto_open:331]: No brightness range in the panel state
+  PASS no_brightness_range
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:50:18.309629 Application: indigo_aux_giotto[giotto_open:337]: No reply to the model request
+  PASS handshake_timeout
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS needs_calibration
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS repeated_init_shutdown
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS shutdown_rejected_while_connected
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS reconnect
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS disconnect_switches_the_light_off
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS light_switch
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:50:26.267948 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS light_switch_refused
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS intensity
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:50:31.184935 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS intensity_refused
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS intensity_unanswered
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS external_change_polled
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS request_versus_poll
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS poll_failure
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS environment_polled
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:51:10.230128 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+  PASS presets
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:51:10.672701 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:51:11.078969 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:51:11.181426 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS presets_refused
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS settings
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:51:12.670763 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:51:12.773495 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS settings_refused
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:51:18.567737 Application: indigo_aux_giotto[primalucelib_check_credentials:730]: The access point password needs at least 8 characters
+18:51:18.871422 Application: indigo_aux_giotto[primalucelib_check_credentials:730]: The access point password needs at least 8 characters
+  PASS wifi_credentials
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+  PASS wifi_modes
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:51:32.675364 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS wifi_mode_refused
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+18:51:33.216393 Application: 0 <- // Failed to write (Input/output error)
+18:51:33.418547 Application: indigo_aux_giotto[aux_connection_handler:529]: Failed to switch the light off
+  PASS transport_loss
+PrimaluceLab GIOTTO: all tests passed
+PrimaluceLab GIOTTO: 0 failing scenarios
+144 driver(s) written to /private/tmp/indigo-serial-audit/TEST_SUMMARY.md
+
+aux_giotto: 30/30 OK
+recorded in indigo_drivers/aux_giotto/README.md:
+2026-11-02 18:49 3.0.0.8 mac arm64 simulator 30/30 OK

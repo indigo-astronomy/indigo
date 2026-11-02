@@ -1,0 +1,273 @@
++ make -C /private/tmp/indigo-serial-audit/indigo_drivers/focuser_primaluce -f ../../Makefile.drv all
+Definition: indigo_focuser_primaluce.driver
+Sources:    indigo_focuser_primaluce.c indigo_focuser_primaluce_main.c
+Archive:    indigo_focuser_primaluce.a
+SO library: indigo_focuser_primaluce.dylib
+indigo_focuser_primaluce.o
+Executable: indigo_focuser_primaluce
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../shared/primalucelib all
+make[1]: Nothing to be done for `all'.
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_focuser_primaluce.o indigo_focuser_primaluce.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_focuser_primaluce.a indigo_focuser_primaluce.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_focuser_primaluce.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_focuser_primaluce.a  /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_focuser_primaluce_main.o indigo_focuser_primaluce_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_focuser_primaluce indigo_focuser_primaluce_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_focuser_primaluce.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
++ make check-lib build/integration/test_focuser_primaluce_motion build/integration/test_focuser_primaluce_simulator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/focuser_primaluce_simulator ../indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DTEST_ENTRY=indigo_focuser_primaluce -DTEST_NAME='"PrimaluceLab Focuser"' -DTEST_SIMULATOR='"build/integration/focuser_primaluce_simulator"' integration/test_focuser_motion.c -o build/integration/test_focuser_primaluce_motion /private/tmp/indigo-serial-audit/build/drivers/indigo_focuser_primaluce.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_focuser_primaluce_simulator integration/test_focuser_primaluce_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_focuser_primaluce.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_focuser_primaluce_motion
+Running PrimaluceLab Focuser
+  PASS measured motion progress, completion, abort and pending disconnect
+PrimaluceLab Focuser: all tests passed
++ ./build/integration/test_focuser_primaluce_simulator
+Running PrimaluceLab
+  PASS metadata
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS usb_match_pattern
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS property_contract
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS esatto_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS esatto_home_reset
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS esatto_needs_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_uncalibrated
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+Calibrated to 1942, stopped at 1942
+  PASS sestosenso3_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_calibration_restart
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_calibration_lost_position
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+18:53:23.668488 Application: indigo_focuser_primaluce[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+18:53:24.174474 Application: indigo_focuser_primaluce[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+  PASS sestosenso3_field_errors
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_abort_during_restart
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS no_abs_pos_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS no_speed_profile
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+18:53:52.537885 Application: indigo_focuser_primaluce[primaluce_open:518]: Unsupported device
+18:53:57.582795 Application: indigo_focuser_primaluce[primaluce_open:518]: Unsupported device
+  PASS unsupported_device
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS handshake_timeout
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS old_firmware
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS long_application_firmware
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS long_web_firmware
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS long_combined_firmware
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS wifi_escaped_credentials
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS needs_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS repeated_init_shutdown
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS shutdown_rejected_while_connected
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS reconnect
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS absolute_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS relative_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS relative_move_clamped
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS calibrated_travel
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS motor_without_power
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+Aborted at 18101 of 90000
+  PASS abort_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS abort_while_idle
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS overlap_rejected
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+18:56:13.233419 Application: indigo_focuser_primaluce[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+18:56:13.464273 Application: indigo_focuser_primaluce[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+  PASS move_command_failures
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS external_motion_observed
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS disconnect_during_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+18:56:42.480622 Application: indigo_focuser_primaluce[primalucelib_check_credentials:730]: The access point password needs at least 8 characters
+  PASS controller_settings
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS led_middle
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS stored_positions
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+18:57:04.266181 Application: indigo_focuser_primaluce[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+  PASS wifi_station_mode
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS run_preset
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS settings_reported_failures
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS focuser_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS calibration_end_without_run
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS move_not_started
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS status_polling
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+18:58:52.618420 Application: 0 <- // Failed to write (Input/output error)
+  PASS transport_loss
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS no_probe
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS position_poll_failure
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS hand_keypad_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS stalled_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS move_readback_failures
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+19:00:07.033811 Application: indigo_focuser_primaluce[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+19:00:07.036482 Application: indigo_focuser_primaluce[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+  PASS abort_refused
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS abort_overtakes_queued_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS request_versus_poll
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS refusal_keeps_queued_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS refusal_while_move_queued
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS settings_during_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+19:01:01.871070 Application: 0 <- // Failed to write (Input/output error)
+  PASS transport_loss_during_motion
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS controller_restart_refused_with_sibling
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_metadata
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_lifecycle
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS shared_connection
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_relative_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_rotator_relative_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_rotator_move
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+19:02:07.714744 Application: indigo_focuser_primaluce[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+  PASS sestosenso3_rotator_sync
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_rotator_needs_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS sestosenso3_arco_stays_calibrated
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_abort
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_calibration
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+19:02:57.977275 Application: indigo_focuser_primaluce[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+  PASS rotator_sync
+PrimaluceLab: all tests passed
+Running PrimaluceLab
+  PASS rotator_move_failure
+PrimaluceLab: all tests passed
+PrimaluceLab: 0 failing scenarios
+144 driver(s) written to /private/tmp/indigo-serial-audit/TEST_SUMMARY.md
+
+focuser_primaluce: 76/76 OK
+recorded in indigo_drivers/focuser_primaluce/README.md:
+2026-11-02 18:51 3.0.0.46 mac arm64 simulator 76/76 OK

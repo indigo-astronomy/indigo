@@ -1,0 +1,312 @@
+{
+  "version": 2,
+  "task": "20261102173307-8455-repair-serial-audit-findings",
+  "scope": [
+    "TEST_SUMMARY.md",
+    "indigo_drivers/aux_alto/README.md",
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c",
+    "indigo_drivers/aux_alto/indigo_aux_alto.c",
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver",
+    "indigo_drivers/aux_astromechanics/README.md",
+    "indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c",
+    "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c",
+    "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver",
+    "indigo_drivers/aux_flipflat/README.md",
+    "indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.c",
+    "indigo_drivers/aux_flipflat/indigo_aux_flipflat.c",
+    "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver",
+    "indigo_drivers/aux_giotto/README.md",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.driver",
+    "indigo_drivers/focuser_primaluce/README.md",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver",
+    "indigo_drivers/rotator_falcon/README.md",
+    "indigo_drivers/rotator_falcon/indigo_rotator_falcon.c",
+    "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver",
+    "indigo_drivers/rotator_falcon/rotator_falcon_simulator/rotator_falcon_simulator.c",
+    "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "indigo_drivers/wheel_trutek/README.md",
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.c",
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver",
+    "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "indigo_test/integration/test_aux_astromechanics_simulator.c",
+    "indigo_test/integration/test_aux_flipflat_simulator.c",
+    "indigo_test/integration/test_rotator_falcon_simulator.c",
+    "indigo_test/integration/test_wheel_trutek_simulator.c",
+    "indigo_test/unit/test_primalucelib.c",
+    ".factory/findings/active/FND-20261102173307-8455-repair-serial-audit-findings-001.json",
+    ".factory/completions/20261102173307-8455-repair-serial-audit-findings.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "rotator_falcon"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "wheel_trutek"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_astromechanics"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_flipflat"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_giotto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_primaluce"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102173307-8455-repair-serial-audit-findings.json": [
+      "100644",
+      "blob",
+      "43b81c44c9c52d79f00be435a5024419fbfa3ed3"
+    ],
+    ".factory/findings/active/FND-20261102173307-8455-repair-serial-audit-findings-001.json": [
+      "100644",
+      "blob",
+      "44134c7c29ec53f3cad03e18c463ba851ac0b95b"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "63cbb3c99fed8d494b4682f562da4d6ee1ccfee7"
+    ],
+    "indigo_drivers/aux_alto/README.md": [
+      "100644",
+      "blob",
+      "d18e00c5c7f702e44c17045ee3dab482c56d129c"
+    ],
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c": [
+      "100644",
+      "blob",
+      "67dded2edfc45b4957f10a95337034049c05066f"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": [
+      "100644",
+      "blob",
+      "4c44d26c1d98bf09c47b8bdbf3479ce81faf60e7"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver": [
+      "100644",
+      "blob",
+      "cfb439ed48ec6faaba3efc16ff536a77fbfdc720"
+    ],
+    "indigo_drivers/aux_astromechanics/README.md": [
+      "100644",
+      "blob",
+      "8fe1eb62d794769322b9f39eaaa713389759401d"
+    ],
+    "indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c": [
+      "100644",
+      "blob",
+      "0e444bc5729bc486195c093cfd82dd15c7e805c9"
+    ],
+    "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c": [
+      "100644",
+      "blob",
+      "5a2675a6e68137026b8e5d0d37ac1b26d7eac1be"
+    ],
+    "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver": [
+      "100644",
+      "blob",
+      "50e11fdca6e58ded2013d8299f153b2eb11c15e6"
+    ],
+    "indigo_drivers/aux_flipflat/README.md": [
+      "100644",
+      "blob",
+      "e4f200d6664a57c4556ee4556c267eadfc79605a"
+    ],
+    "indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.c": [
+      "100644",
+      "blob",
+      "d81378b02e2f90f3db0a660caa6ca6dba0dc5841"
+    ],
+    "indigo_drivers/aux_flipflat/indigo_aux_flipflat.c": [
+      "100644",
+      "blob",
+      "8c785d1ba675cc8bf1d72139a3f05adfb51813dc"
+    ],
+    "indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver": [
+      "100644",
+      "blob",
+      "188a0c9093fafefb15094ac88d340a8cb4a75a7c"
+    ],
+    "indigo_drivers/aux_giotto/README.md": [
+      "100644",
+      "blob",
+      "622be6c6a6605994a50aa26c3bf6020a92a99350"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c": [
+      "100644",
+      "blob",
+      "682bce8a8503dbdd6289db5328e8d47c2eb62399"
+    ],
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.driver": [
+      "100644",
+      "blob",
+      "a596be888048ed10010bface78558ca8e34d0d4e"
+    ],
+    "indigo_drivers/focuser_primaluce/README.md": [
+      "100644",
+      "blob",
+      "96238c6219e47fc442b8b5b500e542a5022cb984"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": [
+      "100644",
+      "blob",
+      "13a87c1f85037a678f1ff79f17560c9ec56ac8b0"
+    ],
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver": [
+      "100644",
+      "blob",
+      "9a276b3ce5111d4285a36346cb54708db5932327"
+    ],
+    "indigo_drivers/rotator_falcon/README.md": [
+      "100644",
+      "blob",
+      "a2055244f56511af0aec9d185109bcacdaf76b8e"
+    ],
+    "indigo_drivers/rotator_falcon/indigo_rotator_falcon.c": [
+      "100644",
+      "blob",
+      "e34d1121a109087ef8380da7ba61104a5e80c0f9"
+    ],
+    "indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver": [
+      "100644",
+      "blob",
+      "562f05f8ad3784bdf8f3ff08f85b353efb59e84f"
+    ],
+    "indigo_drivers/rotator_falcon/rotator_falcon_simulator/rotator_falcon_simulator.c": [
+      "100644",
+      "blob",
+      "59850b23ce4cb208036724b7f4e1bb74d45733ee"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "5aa7363d808d5d3227a77b147aeda2aebb062121"
+    ],
+    "indigo_drivers/wheel_trutek/README.md": [
+      "100644",
+      "blob",
+      "909f5965e5430d26c479eb932350295837350bb0"
+    ],
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.c": [
+      "100644",
+      "blob",
+      "6f8149411b8be972ed19c82298cea168a4997a43"
+    ],
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver": [
+      "100644",
+      "blob",
+      "95e5659f8a0b7191360cfb2f2b56c650fd41835c"
+    ],
+    "indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c": [
+      "100644",
+      "blob",
+      "300b9d88fa116aa9c4c133bccd17ce1d44689fbe"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "45a586435c7056a2ce82ea7fac7b8015a49e9bef"
+    ],
+    "indigo_test/integration/test_aux_astromechanics_simulator.c": [
+      "100644",
+      "blob",
+      "32c25299345f634283c0a41de39f66578f81f5aa"
+    ],
+    "indigo_test/integration/test_aux_flipflat_simulator.c": [
+      "100644",
+      "blob",
+      "8ea3a740c09a4df2b561e64001be73c532c7c017"
+    ],
+    "indigo_test/integration/test_rotator_falcon_simulator.c": [
+      "100644",
+      "blob",
+      "4e9a9a940bf3618575c80581dc632591b8d20b23"
+    ],
+    "indigo_test/integration/test_wheel_trutek_simulator.c": [
+      "100644",
+      "blob",
+      "3acae41bd6200c802702a128865d8aa00fdeff6f"
+    ],
+    "indigo_test/unit/test_primalucelib.c": [
+      "100644",
+      "blob",
+      "55ca548bf5023e9a87b1dcd5a11586172f66af13"
+    ]
+  }
+}

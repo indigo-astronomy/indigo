@@ -1,0 +1,36 @@
+{
+  "generator": "unchanged baseline binary",
+  "commands": [
+    "build/bin/indigo_generator indigo_drivers/rotator_falcon/indigo_rotator_falcon.driver",
+    "build/bin/indigo_generator indigo_drivers/wheel_trutek/indigo_wheel_trutek.driver",
+    "build/bin/indigo_generator indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.driver",
+    "build/bin/indigo_generator indigo_drivers/aux_flipflat/indigo_aux_flipflat.driver",
+    "build/bin/indigo_generator indigo_drivers/aux_alto/indigo_aux_alto.driver",
+    "build/bin/indigo_generator indigo_drivers/aux_giotto/indigo_aux_giotto.driver",
+    "build/bin/indigo_generator indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.driver"
+  ],
+  "reproducible": true,
+  "sha256": {
+    "indigo_drivers/rotator_falcon/indigo_rotator_falcon.c": "d349c9eefae2dc3dac5dd29cb2ec0fe688693fa36a3d483f4ce9488e87b5b435",
+    "indigo_drivers/rotator_falcon/indigo_rotator_falcon_main.c": "e0cafd2da95efd56103e6ea35c5c2f2b49593fc80b715979872377d24ebe2f6b",
+    "indigo_drivers/rotator_falcon/indigo_rotator_falcon.h": "0d41b336572478753b92dcae2a0f79a780736b1dd4cb327d25c004e8df55af7a",
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.c": "0aed25e72cfe52ece768a3fc88db0011371c6fbbad6670c3a917f8662030b19f",
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek_main.c": "522681931da9d026e385c86c6eb58a53979904f04fc3981bce9066f4efd477aa",
+    "indigo_drivers/wheel_trutek/indigo_wheel_trutek.h": "c7877b4906d8a199450114caa991cd860874c555ba5ffc69b57ead726e4a7c42",
+    "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics_main.c": "1aa457a334ec275f5923475b5bbc2cad346235ac10cb88d0143fcd4432a76047",
+    "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.h": "3b2e4636c7704d0bd5bfa7555d0e17bda31b47979212bfe19b13a4b2658b94c9",
+    "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c": "26bdbd156393d2e9a2410920e7bb4d55822f95a64591183191204f7cc3621e94",
+    "indigo_drivers/aux_flipflat/indigo_aux_flipflat.h": "e9315738d9ca164219b8f7c555f8e1e1022f01f6c6956ae570f847f7292e41b0",
+    "indigo_drivers/aux_flipflat/indigo_aux_flipflat_main.c": "15f857111bbf825737bb2eacfe2f32a1d4b10109332f70172f79f22f8dd211ab",
+    "indigo_drivers/aux_flipflat/indigo_aux_flipflat.c": "2676bed037d1043cc64c036491032e53a3bb9a424e7268ea4a6ae115d8408eb8",
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": "4b0b4a63320b01144be22f242437aa634cda810daafb096fcff79706d5f2a942",
+    "indigo_drivers/aux_alto/indigo_aux_alto_main.c": "f77ac535ea41c6fdd60741ceb2c4d5755358bc638e73af2856ac207c06310cc8",
+    "indigo_drivers/aux_alto/indigo_aux_alto.h": "2caa18c71385a14333e801f46a1d93853d7f4aaca90031e225c59f82fd6e6a9c",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.h": "e756a58e991730bc31ebece6304c932926403680ec996425af2bb9bcfd6a74f8",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c": "30a5acee6be77e15d94f3853b57eca616c73347d456f8d2800ac3175109679ea",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto_main.c": "5fa033ebfa08a044cfd71e913ef59674734310ec38e2fca6e3fb8e2a051df225",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h": "89cce576d1b7615c392f57b5ffbb8fd68d19e12e34498e083b1019d2d503dd3f",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce_main.c": "044acef5ce50d9dcb671f016ca3caf2386b582100e728a538d05b84c902c79e3",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": "b6eca1e75c72b6f1c9e81bccbd40cc668cd49af6b5d9700ed89a55163982de81"
+  }
+}

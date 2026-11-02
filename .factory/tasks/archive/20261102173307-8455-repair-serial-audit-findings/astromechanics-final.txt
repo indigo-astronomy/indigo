@@ -1,0 +1,43 @@
++ make -C /private/tmp/indigo-serial-audit/indigo_drivers/aux_astromechanics -f ../../Makefile.drv all
+Definition: indigo_aux_astromechanics.driver
+Sources:    indigo_aux_astromechanics.c indigo_aux_astromechanics_main.c
+Archive:    indigo_aux_astromechanics.a
+SO library: indigo_aux_astromechanics.dylib
+indigo_aux_astromechanics.o
+Executable: indigo_aux_astromechanics
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_astromechanics.o indigo_aux_astromechanics.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a indigo_aux_astromechanics.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_astromechanics_main.o indigo_aux_astromechanics_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics indigo_aux_astromechanics_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
++ make check-lib build/integration/test_aux_astromechanics_simulator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_astromechanics_simulator integration/test_aux_astromechanics_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_aux_astromechanics_simulator
+18:44:47.974534 Application: Failed to open  (No such file or directory)
+Running ASTROMECHANICS LPM serial simulator integration tests
+  PASS malformed_measurements_are_rejected
+  PASS metadata_and_property_completeness
+Sky brightness 17.34, Bortle 8
+  PASS default_reading_is_published_with_its_bortle_class
+Reading 22.00 -> brightness 22, Bortle 1 (expected 1)
+Reading 21.70 -> brightness 21.7, Bortle 2 (expected 2)
+Reading 21.40 -> brightness 21.4, Bortle 3 (expected 3)
+Reading 21.00 -> brightness 21, Bortle 4 (expected 4)
+Reading 20.50 -> brightness 20.5, Bortle 4.5 (expected 4.5)
+Reading 19.50 -> brightness 19.5, Bortle 5 (expected 5)
+Reading 18.75 -> brightness 18.75, Bortle 6 (expected 6)
+Reading 18.25 -> brightness 18.25, Bortle 7 (expected 7)
+Reading 17.50 -> brightness 17.5, Bortle 8 (expected 8)
+Reading 16.00 -> brightness 16, Bortle 9 (expected 9)
+  PASS bortle_class_follows_the_reported_brightness
+  PASS a_long_measurement_is_waited_for
+  PASS reconnect_resumes_polling
+  PASS repeated_disconnect_is_tolerated
+  PASS vanished_port_is_refused
+ASTROMECHANICS LPM serial simulator integration tests: all tests passed
+144 driver(s) written to /private/tmp/indigo-serial-audit/TEST_SUMMARY.md
+
+aux_astromechanics: 8/8 OK
+recorded in indigo_drivers/aux_astromechanics/README.md:
+2026-11-02 18:44 3.0.0.10 mac arm64 simulator 8/8 OK

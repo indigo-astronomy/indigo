@@ -1,0 +1,5 @@
+--- a/indigo_test/integration/test_aux_alto_simulator.c
++++ b/indigo_test/integration/test_aux_alto_simulator.c
+@@ -824 +824 @@
+-	SERIAL_CHECK_TRUE(fault("\"DIMLEDS\"", "silent"));
++	SERIAL_CHECK_TRUE(fault("\"DIMLEDS\"", "reject"));

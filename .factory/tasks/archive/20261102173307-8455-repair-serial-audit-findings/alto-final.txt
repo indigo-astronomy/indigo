@@ -1,0 +1,143 @@
++ make -C /private/tmp/indigo-serial-audit/indigo_drivers/aux_alto -f ../../Makefile.drv all
+Definition: indigo_aux_alto.driver
+Sources:    indigo_aux_alto.c indigo_aux_alto_main.c
+Archive:    indigo_aux_alto.a
+SO library: indigo_aux_alto.dylib
+indigo_aux_alto.o
+Executable: indigo_aux_alto
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../shared/primalucelib all
+make[1]: Nothing to be done for `all'.
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_alto.o indigo_aux_alto.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a indigo_aux_alto.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a  /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_alto_main.o indigo_aux_alto_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto indigo_aux_alto_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
++ make check-lib build/integration/test_aux_alto_simulator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/alto_simulator ../indigo_drivers/aux_alto/alto_simulator/alto_simulator.c -lm
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_alto_simulator integration/test_aux_alto_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_aux_alto_simulator
+Running PrimaluceLab ALTO
+  PASS metadata
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS usb_match_pattern
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS property_contract
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS connect_closed
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS long_firmware
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:46:59.849276 Application: indigo_aux_alto[alto_open:457]: 'GIOTTO' is not an ALTO
+  PASS unsupported_device
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:47:15.080177 Application: indigo_aux_alto[alto_open:460]: No reply to the model request
+  PASS handshake_timeout
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS needs_calibration
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS uncalibrated
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS repeated_init_shutdown
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS shutdown_rejected_while_connected
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS reconnect
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS close_and_open
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS partial_position
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+Aborted at 78 of 0
+  PASS abort_motion
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS abort_while_idle
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:47:45.942936 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS abort_refused
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:47:49.314608 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS move_refused
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS stalled_move
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS motion_readback_failures
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS external_motion_observed
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS request_versus_poll
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS overlap_refused
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS disconnect_during_motion
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS poll_failure
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS environment_polled
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:49:00.922452 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:49:03.756855 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+18:49:03.858984 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:49:03.960439 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS presets
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS leds
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS refused_simulator_led_write_retains_state
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS calibration
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:49:16.519009 Application: indigo_aux_alto[primalucelib_check_credentials:730]: The access point password needs at least 8 characters
+18:49:16.619869 Application: indigo_aux_alto[primalucelib_check_credentials:730]: The access point needs an SSID
+  PASS wifi_credentials
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:49:31.903972 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:49:32.004687 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS wifi_modes
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS wifi_restart_waits_for_the_cover
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:49:37.757523 Application: 0 <- // Failed to write (Input/output error)
+  PASS transport_loss
+PrimaluceLab ALTO: all tests passed
+PrimaluceLab ALTO: 0 failing scenarios
+144 driver(s) written to /private/tmp/indigo-serial-audit/TEST_SUMMARY.md
+
+aux_alto: 34/34 OK
+recorded in indigo_drivers/aux_alto/README.md:
+2026-11-02 18:46 3.0.0.8 mac arm64 simulator 34/34 OK

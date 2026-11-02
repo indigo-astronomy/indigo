@@ -1,0 +1,19 @@
+{
+  "id": "FND-20261102173307-8455-repair-serial-audit-findings-001",
+  "title": "PrimaLuce LED setter accepts nested command refusal as success",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102173307-8455-repair-serial-audit-findings",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "primalucelib_set_leds returns request transport/verb success without inspecting nested DIMLEDS acknowledgement. ALTO X_LEDS memoizes the requested switch and reports OK when the simulator returns Error: invalid command. A targeted rejection variant of the existing LED test reproduced missing ALERT; retained in led-nested-ack-baseline.txt. Shared GIOTTO/focuser consumers use this helper too. Scope remains separate from requested AP finding fa40-011 and simulator atomicity fa40-014. Next: coordinator assigns focused acknowledgement validation and regression.",
+  "evidence": "indigo_drivers/shared/primalucelib/primalucelib.c:577-579; indigo_drivers/aux_alto/indigo_aux_alto.driver:983-1001; task led-nested-ack-baseline.txt",
+  "resolution": null
+}

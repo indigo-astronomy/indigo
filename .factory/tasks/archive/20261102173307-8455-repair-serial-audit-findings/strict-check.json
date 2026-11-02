@@ -1,0 +1,162 @@
+[
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/rotator_falcon/indigo_rotator_falcon.c"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/wheel_trutek/indigo_wheel_trutek.c"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/aux_flipflat/indigo_aux_flipflat.c"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/aux_alto/indigo_aux_alto.c"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/aux_giotto/indigo_aux_giotto.c"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c"
+    ],
+    "exit": 0
+  },
+  {
+    "command": [
+      "clang",
+      "-fsyntax-only",
+      "-std=gnu11",
+      "-DINDIGO_MACOS",
+      "-D_GNU_SOURCE",
+      "-Iindigo_libs",
+      "-Ibuild/include",
+      "-Iindigo_drivers",
+      "-Wall",
+      "-Wextra",
+      "-Werror=format",
+      "-Werror=return-type",
+      "-Werror=implicit-function-declaration",
+      "-Werror=incompatible-pointer-types",
+      "indigo_drivers/shared/primalucelib/primalucelib.c"
+    ],
+    "exit": 0
+  }
+]

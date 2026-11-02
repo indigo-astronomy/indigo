@@ -1,0 +1,4 @@
+integration/test_wheel_trutek_simulator.c:413: assertion failed: !start_serial_driver(&trutek_wheel, simulator.port)
+Running Trutek wheel serial simulator integration tests
+  FAIL corrupted_identity_checksum_is_refused
+Trutek wheel serial simulator integration tests: 1 test(s) failed

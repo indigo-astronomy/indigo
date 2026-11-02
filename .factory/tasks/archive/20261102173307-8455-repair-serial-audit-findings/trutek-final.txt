@@ -1,0 +1,50 @@
++ make -C /private/tmp/indigo-serial-audit/indigo_drivers/wheel_trutek -f ../../Makefile.drv all
+Definition: indigo_wheel_trutek.driver
+Sources:    indigo_wheel_trutek.c indigo_wheel_trutek_main.c
+Archive:    indigo_wheel_trutek.a
+SO library: indigo_wheel_trutek.dylib
+indigo_wheel_trutek.o
+Executable: indigo_wheel_trutek
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_wheel_trutek.o indigo_wheel_trutek.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a indigo_wheel_trutek.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_wheel_trutek_main.o indigo_wheel_trutek_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek indigo_wheel_trutek_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
++ make check-lib build/integration/test_wheel_trutek_simulator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_wheel_trutek_simulator integration/test_wheel_trutek_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_wheel_trutek_simulator
+18:43:54.448829 Application: Failed to open  (No such file or directory)
+18:43:59.785019 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 0
+18:44:05.108338 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 17
+18:44:10.419441 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 207
+18:44:15.699457 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count -16
+Running Trutek wheel serial simulator integration tests
+  PASS corrupted_reply_checksums_are_refused
+Slot range 1..5
+  PASS metadata_and_property_completeness
+  PASS slot_count_comes_from_the_device
+  PASS five_slot_wheel_is_reported
+  PASS moves_through_first_intermediate_and_last_slots
+  PASS reselecting_the_current_slot_completes
+Stuck move ended in ALERT after 20.2 s
+  PASS stuck_wheel_alerts_after_the_move_deadline
+Disconnect during a stuck move took 0.1 s
+  PASS disconnect_during_a_stuck_move_is_served
+  PASS reconnect_rebuilds_the_slot_table
+  PASS repeated_disconnect_is_tolerated
+  PASS silent_port_is_refused
+  PASS malformed_filter_count_is_refused
+  PASS largest_allocated_filter_count_is_accepted
+  PASS wrong_slot_acknowledgement_alerts
+  PASS wrong_slot_completion_alerts
+  PASS malformed_acknowledgement_preserves_last_slot
+  PASS malformed_completion_preserves_moving_slot
+  PASS matching_acknowledgement_completes
+  PASS overlapping_move_keeps_original_target
+Trutek wheel serial simulator integration tests: all tests passed
+144 driver(s) written to /private/tmp/indigo-serial-audit/TEST_SUMMARY.md
+
+wheel_trutek: 19/19 OK
+recorded in indigo_drivers/wheel_trutek/README.md:
+2026-11-02 18:42 3.0.0.11 mac arm64 simulator 19/19 OK

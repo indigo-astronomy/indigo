@@ -1,0 +1,92 @@
++ make -C /private/tmp/indigo-serial-audit/indigo_drivers/aux_flipflat -f ../../Makefile.drv all
+Definition: indigo_aux_flipflat.driver
+Sources:    indigo_aux_flipflat.c indigo_aux_flipflat_main.c
+Archive:    indigo_aux_flipflat.a
+SO library: indigo_aux_flipflat.dylib
+indigo_aux_flipflat.o
+Executable: indigo_aux_flipflat
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_flipflat.o indigo_aux_flipflat.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a indigo_aux_flipflat.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_flipflat_main.o indigo_aux_flipflat_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat indigo_aux_flipflat_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
++ make check-lib build/integration/test_aux_flipflat_simulator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_flipflat_simulator integration/test_aux_flipflat_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_aux_flipflat_simulator
+18:44:55.004225 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:44:55.108732 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:44:57.620431 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:44:57.726132 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:00.025805 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:00.131663 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:02.430774 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:02.536409 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:04.842992 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:04.948547 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:07.233038 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:07.337728 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:21.734109 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:21.836471 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:24.150913 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:24.256893 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:26.566556 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:26.671394 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:28.983717 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:29.088407 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:35.527982 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:35.633428 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:45.994335 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:46.100033 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:48.261600 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:48.366669 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:45:50.676342 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:45:50.782152 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:23.315084 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:23.420873 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:25.912787 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:26.016214 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:28.279489 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:28.385582 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:30.653103 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:30.759016 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:33.030709 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:33.137027 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:35.437607 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:35.538963 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:39.897559 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:39.999441 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:42.317250 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:46:42.423023 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:46:44.727742 Application: Failed to open  (No such file or directory)
+Running FlipFlat serial simulator integration tests
+  PASS foreign_acknowledgements_are_rejected
+Model 'Flip-Flat' firmware '123'
+  PASS flip_flat_exposes_cover_light_and_intensity
+  PASS flat_man_hides_the_cover
+  PASS dust_cover_hides_the_light
+  PASS dust_cover_state_is_read_at_connect
+  PASS a_slow_cover_is_waited_for
+  PASS unknown_model_exposes_every_control
+  PASS flat_man_xl_and_l_are_recognised
+  PASS cover_opens_and_closes
+Light served 0.10 s into the cover motion
+  PASS light_is_served_while_the_cover_moves
+Disconnected 0.10 s into the cover motion
+  PASS disconnect_while_the_cover_moves_is_prompt
+Cover gave up after 30.23 s
+  PASS a_stuck_cover_times_out
+  PASS light_switches_on_and_off
+Requested 0% read back 0%
+Requested 50% read back 49.8039%
+Requested 100% read back 100%
+  PASS intensity_round_trips_through_the_device_scale
+  PASS connect_reads_back_the_device_state
+  PASS repeated_disconnect_is_tolerated
+  PASS silent_port_is_refused
+FlipFlat serial simulator integration tests: all tests passed
+144 driver(s) written to /private/tmp/indigo-serial-audit/TEST_SUMMARY.md
+
+aux_flipflat: 17/17 OK
+recorded in indigo_drivers/aux_flipflat/README.md:
+2026-11-02 18:44 3.0.0.14 mac arm64 simulator 17/17 OK

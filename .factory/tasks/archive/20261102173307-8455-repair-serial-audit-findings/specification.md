@@ -1,0 +1,3 @@
+# Specification
+
+Baseline5324bf633. Preserve valid protocol and public property contracts. Reject corrupt Trutek checksums, malformed Astromechanics numeric replies, foreign FlipFlat acknowledgements and PrimaLuce negative AP acknowledgement. Preserve refused ALTO preset/LED state. Falcon stays BUSY during accepted motion and uses bounded queue finalizers so disconnect is serviced. Driver architecture is generated .driver source with portable transport and serialized handlers. Existing PTY simulators cover hardware-free lifecycle and protocol behavior; no physical hardware, Linux or Windows host available. No property additions/removals.

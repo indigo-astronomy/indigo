@@ -1,0 +1,433 @@
+Definition: indigo_rotator_falcon.driver
+Sources:    indigo_rotator_falcon.c indigo_rotator_falcon_main.c
+Archive:    indigo_rotator_falcon.a
+SO library: indigo_rotator_falcon.dylib
+indigo_rotator_falcon.o
+Executable: indigo_rotator_falcon
+Rules:      99-indigo_rotator_falcon.rules
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../indigo_tools /private/tmp/indigo-serial-audit/build/bin/indigo_generator
+/usr/bin/clang indigo_generator.c -o /private/tmp/indigo-serial-audit/build/bin/indigo_generator
+/private/tmp/indigo-serial-audit/build/bin/indigo_generator indigo_rotator_falcon.driver
+Reading indigo_rotator_falcon.driver ...
+Warning: ROTATOR_DIRECTION_PROPERTY->hidden set to false
+Warning: ROTATOR_RELATIVE_MOVE_PROPERTY->hidden set to false
+Writing ./indigo_rotator_falcon.h ...
+Writing ./indigo_rotator_falcon_main.c ...
+Writing ./indigo_rotator_falcon.c ...
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_rotator_falcon.o indigo_rotator_falcon.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_rotator_falcon.a indigo_rotator_falcon.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_rotator_falcon.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_rotator_falcon.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_rotator_falcon_main.o indigo_rotator_falcon_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_rotator_falcon indigo_rotator_falcon_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_rotator_falcon.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+Definition: indigo_wheel_trutek.driver
+Sources:    indigo_wheel_trutek.c indigo_wheel_trutek_main.c
+Archive:    indigo_wheel_trutek.a
+SO library: indigo_wheel_trutek.dylib
+indigo_wheel_trutek.o
+Executable: indigo_wheel_trutek
+
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_wheel_trutek.o indigo_wheel_trutek.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a indigo_wheel_trutek.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_wheel_trutek_main.o indigo_wheel_trutek_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek indigo_wheel_trutek_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+Definition: indigo_aux_astromechanics.driver
+Sources:    indigo_aux_astromechanics.c indigo_aux_astromechanics_main.c
+Archive:    indigo_aux_astromechanics.a
+SO library: indigo_aux_astromechanics.dylib
+indigo_aux_astromechanics.o
+Executable: indigo_aux_astromechanics
+
+/private/tmp/indigo-serial-audit/build/bin/indigo_generator indigo_aux_astromechanics.driver
+Reading indigo_aux_astromechanics.driver ...
+Writing ./indigo_aux_astromechanics.h ...
+Writing ./indigo_aux_astromechanics_main.c ...
+Writing ./indigo_aux_astromechanics.c ...
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_astromechanics.o indigo_aux_astromechanics.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a indigo_aux_astromechanics.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_astromechanics_main.o indigo_aux_astromechanics_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics indigo_aux_astromechanics_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+Definition: indigo_aux_flipflat.driver
+Sources:    indigo_aux_flipflat.c indigo_aux_flipflat_main.c
+Archive:    indigo_aux_flipflat.a
+SO library: indigo_aux_flipflat.dylib
+indigo_aux_flipflat.o
+Executable: indigo_aux_flipflat
+
+/private/tmp/indigo-serial-audit/build/bin/indigo_generator indigo_aux_flipflat.driver
+Reading indigo_aux_flipflat.driver ...
+Writing ./indigo_aux_flipflat.h ...
+Writing ./indigo_aux_flipflat_main.c ...
+Writing ./indigo_aux_flipflat.c ...
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_flipflat.o indigo_aux_flipflat.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a indigo_aux_flipflat.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_flipflat_main.o indigo_aux_flipflat_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat indigo_aux_flipflat_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+Definition: indigo_aux_alto.driver
+Sources:    indigo_aux_alto.c indigo_aux_alto_main.c
+Archive:    indigo_aux_alto.a
+SO library: indigo_aux_alto.dylib
+indigo_aux_alto.o
+Executable: indigo_aux_alto
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../shared/primalucelib all
+/private/tmp/indigo-serial-audit/build/bin/indigo_generator indigo_aux_alto.driver
+Reading indigo_aux_alto.driver ...
+Writing ./indigo_aux_alto.h ...
+Writing ./indigo_aux_alto_main.c ...
+Writing ./indigo_aux_alto.c ...
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_alto.o indigo_aux_alto.c
+/usr/bin/libtool -static -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a indigo_aux_alto.o
+/usr/bin/clang -shared -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.dylib -Wl,-force_load /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a  /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_aux_alto_main.o indigo_aux_alto_main.c
+/usr/bin/clang -o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto indigo_aux_alto_main.o /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -lusb-1.0
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
+ld: warning: ignoring duplicate libraries: '/private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a'
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/unit/test_primalucelib unit/test_primalucelib.c /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_rotator_falcon_simulator integration/test_rotator_falcon_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_rotator_falcon.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_wheel_trutek_simulator integration/test_wheel_trutek_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_wheel_trutek.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_astromechanics_simulator integration/test_aux_astromechanics_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_astromechanics.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_flipflat_simulator integration/test_aux_flipflat_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_flipflat.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-serial-audit/indigo_libs -I/private/tmp/indigo-serial-audit/indigo_drivers -I/private/tmp/indigo-serial-audit/indigo_mac_drivers -I/private/tmp/indigo-serial-audit/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_aux_alto_simulator integration/test_aux_alto_simulator.c /private/tmp/indigo-serial-audit/build/drivers/indigo_aux_alto.a /private/tmp/indigo-serial-audit/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-serial-audit/build/lib -Wl,-rpath,/private/tmp/indigo-serial-audit/build/lib -lindigo -lm -lpthread -lindigocat
+18:34:32.757286 Application: test_primalucelib[primalucelib_check_credentials:729]: The SSID has more than 32 characters
+18:34:32.758921 Application: test_primalucelib[primalucelib_check_credentials:729]: The password has more than 63 characters
+18:34:33.284946 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+18:34:33.285488 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: bad value
+18:34:33.285867 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: unknown key
+18:34:33.286227 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: again
+18:34:43.906355 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.113910 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.114528 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.114887 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:44.115228 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+18:34:45.030976 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+18:34:45.032089 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+18:34:45.137222 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+18:34:45.240999 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+18:34:45.562013 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: no ARCO
+18:34:46.485429 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: no panel
+18:34:46.591760 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:46.593462 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:46.595214 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+18:34:46.804387 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:46.805642 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:46.807514 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+18:34:46.808557 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:47.525888 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+18:34:48.136681 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:34:48.240911 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+18:34:48.344574 Application: test_primalucelib[primalucelib_check_credentials:729]: The access point password needs at least 8 characters
+18:34:48.345923 Application: test_primalucelib[primalucelib_check_credentials:729]: The access point needs an SSID
+18:34:48.346651 Application: test_primalucelib[primalucelib_check_credentials:729]: The password has more than 63 characters
+18:34:48.347272 Application: test_primalucelib[primalucelib_check_credentials:729]: The SSID has more than 32 characters
+18:34:48.450113 Application: test_primalucelib[primalucelib_open:149]: Malformed URL 'http://'
+Running PrimaLuce Lab protocol library
+  PASS WiFi credentials are escaped
+  PASS WiFi credentials fit or send nothing
+  PASS golden requests match the original driver
+  PASS reply values are found by path
+  PASS reply keys require full names
+  PASS diagnostic lines are skipped
+  PASS refusals fail with their reason
+  PASS garbage is an answer but not a reply
+  PASS silence marks the link failed
+  PASS a duplicate reply is discarded
+  PASS a late reply is skipped
+  PASS SESTO SENSO 3 log line before LOGLEVEL
+  PASS only stale replies fail the request
+  PASS a restarting link refuses requests until probed
+  PASS debug text before a reply is skipped
+  PASS field errors refuse calibration requests
+  PASS moves return their acknowledgement
+  PASS focuser stop falls back to a decelerated stop
+  PASS settings need done
+  PASS stored positions guard their values
+  PASS positions and angles need their field
+  PASS environment needs the external probe field
+  PASS restart waits for the controller
+  PASS SESTO SENSO 3 extras
+  PASS flat panel commands
+  PASS flat panel state, presets and settings
+  PASS cover commands
+  PASS cover motion, presets and refusals
+  PASS lookups stay within a full token array
+  PASS LAN mode restarts only on a change
+  PASS WiFi modes select the LAN mode first
+  PASS WiFi status shows where the controller is
+  PASS WiFi credentials are checked before sending
+  PASS models are recognized by prefix
+  PASS HTTP URLs are split into host and port
+  PASS HTTP links open without contact
+PrimaLuce Lab protocol library: all tests passed
+Direction fault err
+Direction fault silent
+18:35:11.450287 Application: Failed to open  (No such file or directory)
+Running PegasusAstro Falcon rotator serial simulator integration tests
+  PASS metadata_and_property_completeness
+Model 'falcon2' reported as 'Falcon Rotator v2', firmware '4.2'
+Model 'falcon1' reported as 'Falcon Rotator', firmware '4.2'
+  PASS both_protocol_generations_are_identified
+  PASS disconnect_clears_the_identity
+Final position 3.00 deg
+  PASS goto_reaches_the_requested_angle
+  PASS goto_to_the_current_angle_completes
+Sync to 304 deg took 0 s
+  PASS sync_redefines_the_angle_without_moving
+355 + 8 aims at 3.00 deg
+3 - 8 aims at 355.00 deg
+10 + 5 reached 15.00 deg
+  PASS relative_move_wraps_around_the_turn
+Aborted at 11.56 deg on the way to 90
+  PASS abort_stops_a_move_short
+  PASS the_two_motion_properties_refuse_to_overlap
+  PASS direction_is_written_and_read_back
+  PASS refused_direction_change_keeps_the_flag
+Angle after reconnect 123.45 deg
+  PASS reconnect_adopts_the_rotator_angle
+  PASS repeated_disconnect_is_tolerated
+  PASS vanished_port_is_refused
+PegasusAstro Falcon rotator serial simulator integration tests: all tests passed
+integration/test_wheel_trutek_simulator.c:413: assertion failed: !start_serial_driver(&trutek_wheel, simulator.port)
+18:35:55.970975 Application: Failed to open  (No such file or directory)
+18:36:01.321846 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 0
+18:36:06.626531 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 17
+18:36:11.989346 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count 207
+18:36:17.298667 Application: indigo_wheel_trutek[trutek_open:85]: Invalid filter count -16
+Running Trutek wheel serial simulator integration tests
+  FAIL corrupted_identity_checksum_is_refused
+Slot range 1..5
+  PASS metadata_and_property_completeness
+  PASS slot_count_comes_from_the_device
+  PASS five_slot_wheel_is_reported
+  PASS moves_through_first_intermediate_and_last_slots
+  PASS reselecting_the_current_slot_completes
+Stuck move ended in ALERT after 20.2 s
+  PASS stuck_wheel_alerts_after_the_move_deadline
+Disconnect during a stuck move took 0.1 s
+  PASS disconnect_during_a_stuck_move_is_served
+  PASS reconnect_rebuilds_the_slot_table
+  PASS repeated_disconnect_is_tolerated
+  PASS silent_port_is_refused
+  PASS malformed_filter_count_is_refused
+  PASS largest_allocated_filter_count_is_accepted
+  PASS wrong_slot_acknowledgement_alerts
+  PASS wrong_slot_completion_alerts
+  PASS malformed_acknowledgement_preserves_last_slot
+  PASS malformed_completion_preserves_moving_slot
+  PASS matching_acknowledgement_completes
+  PASS overlapping_move_keeps_original_target
+Trutek wheel serial simulator integration tests: 1 test(s) failed
+integration/test_aux_astromechanics_simulator.c:211: assertion failed: wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE)
+18:36:55.761909 Application: Failed to open  (No such file or directory)
+Running ASTROMECHANICS LPM serial simulator integration tests
+  FAIL malformed_measurements_are_rejected
+  PASS metadata_and_property_completeness
+Sky brightness 17.34, Bortle 8
+  PASS default_reading_is_published_with_its_bortle_class
+Reading 22.00 -> brightness 22, Bortle 1 (expected 1)
+Reading 21.70 -> brightness 21.7, Bortle 2 (expected 2)
+Reading 21.40 -> brightness 21.4, Bortle 3 (expected 3)
+Reading 21.00 -> brightness 21, Bortle 4 (expected 4)
+Reading 20.50 -> brightness 20.5, Bortle 4.5 (expected 4.5)
+Reading 19.50 -> brightness 19.5, Bortle 5 (expected 5)
+Reading 18.75 -> brightness 18.75, Bortle 6 (expected 6)
+Reading 18.25 -> brightness 18.25, Bortle 7 (expected 7)
+Reading 17.50 -> brightness 17.5, Bortle 8 (expected 8)
+Reading 16.00 -> brightness 16, Bortle 9 (expected 9)
+  PASS bortle_class_follows_the_reported_brightness
+  PASS a_long_measurement_is_waited_for
+  PASS reconnect_resumes_polling
+  PASS repeated_disconnect_is_tolerated
+  PASS vanished_port_is_refused
+ASTROMECHANICS LPM serial simulator integration tests: 1 test(s) failed
+18:37:01.908311 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:02.014783 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:04.513364 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:04.616303 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:06.902366 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:07.005900 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:09.312773 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:09.418292 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:11.729469 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:11.834101 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:14.146341 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:14.250634 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:28.688917 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:28.791802 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:31.088781 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:31.194661 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:33.493399 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:33.599338 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:35.888311 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:35.991115 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:42.392114 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:42.493983 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:52.850478 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:52.953603 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:55.135673 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:55.239634 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:37:57.529375 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:37:57.632236 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:30.083717 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:30.184960 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:32.708779 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:32.809926 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:35.091841 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:35.199499 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:37.462245 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:37.566479 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:39.826995 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:39.928336 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:42.242710 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:42.343880 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:46.678528 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:46.782208 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:49.071269 Application: Failed to set DTR (Inappropriate ioctl for device)
+18:38:49.176959 Application: Failed to clear RTS (Inappropriate ioctl for device)
+18:38:51.483005 Application: Failed to open  (No such file or directory)
+Running FlipFlat serial simulator integration tests
+  PASS foreign_acknowledgements_are_rejected
+Model 'Flip-Flat' firmware '123'
+  PASS flip_flat_exposes_cover_light_and_intensity
+  PASS flat_man_hides_the_cover
+  PASS dust_cover_hides_the_light
+  PASS dust_cover_state_is_read_at_connect
+  PASS a_slow_cover_is_waited_for
+  PASS unknown_model_exposes_every_control
+  PASS flat_man_xl_and_l_are_recognised
+  PASS cover_opens_and_closes
+Light served 0.10 s into the cover motion
+  PASS light_is_served_while_the_cover_moves
+Disconnected 0.11 s into the cover motion
+  PASS disconnect_while_the_cover_moves_is_prompt
+Cover gave up after 30.16 s
+  PASS a_stuck_cover_times_out
+  PASS light_switches_on_and_off
+Requested 0% read back 0%
+Requested 50% read back 49.8039%
+Requested 100% read back 100%
+  PASS intensity_round_trips_through_the_device_scale
+  PASS connect_reads_back_the_device_state
+  PASS repeated_disconnect_is_tolerated
+  PASS silent_port_is_refused
+FlipFlat serial simulator integration tests: all tests passed
+Running PrimaluceLab ALTO
+  PASS metadata
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS usb_match_pattern
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS property_contract
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS connect_closed
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS long_firmware
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:39:04.321613 Application: indigo_aux_alto[alto_open:457]: 'GIOTTO' is not an ALTO
+  PASS unsupported_device
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:39:19.554592 Application: indigo_aux_alto[alto_open:460]: No reply to the model request
+  PASS handshake_timeout
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS needs_calibration
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS uncalibrated
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS repeated_init_shutdown
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS shutdown_rejected_while_connected
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS reconnect
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS close_and_open
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS partial_position
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+Aborted at 78 of 0
+  PASS abort_motion
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS abort_while_idle
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:39:50.429304 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS abort_refused
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:39:53.791159 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS move_refused
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS stalled_move
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS motion_readback_failures
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS external_motion_observed
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS request_versus_poll
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS overlap_refused
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS disconnect_during_motion
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS poll_failure
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS environment_polled
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:41:05.239072 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:41:08.066568 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+18:41:08.167756 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:41:08.268323 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS presets
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+X_LEDS never published state 3 (current 1)
+integration/test_aux_alto_simulator.c:808: assertion failed: switch_change(X_LEDS_PROPERTY_NAME, OFF_ITEM_NAME, INDIGO_ALERT_STATE)
+  FAIL leds
+PrimaluceLab ALTO: 1 test(s) failed
+FAIL: leds (exit=1, signal=0)
+Running PrimaluceLab ALTO
+  PASS calibration
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:41:25.581415 Application: indigo_aux_alto[primalucelib_check_credentials:730]: The access point password needs at least 8 characters
+18:41:25.682330 Application: indigo_aux_alto[primalucelib_check_credentials:730]: The access point needs an SSID
+  PASS wifi_credentials
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:41:40.938840 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+18:41:41.040667 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS wifi_modes
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+  PASS wifi_restart_waits_for_the_cover
+PrimaluceLab ALTO: all tests passed
+Running PrimaluceLab ALTO
+18:41:46.747728 Application: 0 <- // Failed to write (Input/output error)
+  PASS transport_loss
+PrimaluceLab ALTO: all tests passed
+PrimaluceLab ALTO: 1 failing scenarios
