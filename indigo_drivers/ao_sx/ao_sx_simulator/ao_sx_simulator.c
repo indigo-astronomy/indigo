@@ -37,6 +37,8 @@
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
+#define AO_SX_SIMULATOR_VERSION 2
+
 // ----------------------------------------------------------------- options
 
 typedef struct {
@@ -58,7 +60,7 @@ static simulator_options options = {
 static const char *simulator_name = "ao_sx";
 
 static void usage(const char *name) {
-	printf("StarlightXpress AO simulator\n");
+	printf("StarlightXpress AO simulator v%d\n", AO_SX_SIMULATOR_VERSION);
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
@@ -87,6 +89,10 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (!strcmp(argv[i], "--firmware")) {
 			if (++i == argc) {
 				fprintf(stderr, "--firmware requires a version\n");
+				return false;
+			}
+			if (strlen(argv[i]) > 6) {
+				fprintf(stderr, "--firmware must fit in six bytes\n");
 				return false;
 			}
 			options.firmware = argv[i];
@@ -230,7 +236,7 @@ static void dispatch_command(int fd, char command) {
 		case 'V': {
 			char buffer[8];
 			int length = snprintf(buffer, sizeof(buffer), "V%s", options.firmware);
-			if (length > 0) {
+			if (length > 0 && (size_t)length < sizeof(buffer)) {
 				sim_send(fd, buffer, (size_t)length);
 			}
 			break;
