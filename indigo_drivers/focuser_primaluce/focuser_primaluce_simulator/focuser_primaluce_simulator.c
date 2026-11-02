@@ -404,6 +404,10 @@ static void dispatch_command(int handle, const char *command) {
 	const char *fault = pending_fault(command);
 	// A refusal in the field of the parameter, as the SESTO SENSO 3 protocol v1.0 describes it.
 	if (fault != NULL && !strcmp(fault, "fielderror")) {
+		if (strstr(command, "\"DIMLEDS\"") != NULL) {
+			sim_printf(handle, "{\"res\":{\"cmd\":{\"DIMLEDS\":\"Error: invalid parameter\"}}}\n");
+			return;
+		}
 		const char *verb = "cmd", *motor = strstr(command, "\"MOT2\"") != NULL ? "MOT2" : "MOT1", *key = "GOTO";
 		if (strstr(command, "\"CAL_FOCUSER\"") != NULL) {
 			key = "CAL_FOCUSER";

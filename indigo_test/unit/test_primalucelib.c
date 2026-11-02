@@ -494,6 +494,18 @@ cleanup:
 	stop_peer();
 }
 
+static void led_acknowledgements_are_validated(void) {
+	CHECK(start_peer("{\"res\":{\"cmd\":{\"DIMLEDS\":\"Error: disabled\",\"cmd\":\"done\"}}}\n", "{\"res\":{\"cmd\":{\"DIMLEDS\":\"done\"}}}\n", "{\"res\":{\"cmd\":{\"cmd\":\"done\"}}}\n", "{\"res\":{\"cmd\":{}}}\n", "{\"res\":{\"cmd\":{\"DIMLEDS\":42,\"cmd\":\"done\"}}}\n", NULL));
+	CHECK(!primalucelib_set_leds(&test_link, PRIMALUCE_LEDS_OFF));
+	CHECK(!strcmp(primalucelib_last_error(&test_link), "Error: disabled"));
+	CHECK(primalucelib_set_leds(&test_link, PRIMALUCE_LEDS_LOW));
+	CHECK(primalucelib_set_leds(&test_link, PRIMALUCE_LEDS_ON));
+	CHECK(!primalucelib_set_leds(&test_link, PRIMALUCE_LEDS_OFF));
+	CHECK(!primalucelib_set_leds(&test_link, PRIMALUCE_LEDS_OFF));
+cleanup:
+	stop_peer();
+}
+
 static void access_point_refusal_preserves_reason(void) {
 	CHECK(start_peer("{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"Error: disabled\"}}}\n", "{\"res\":{\"cmd\":{\"AP_SET_STATUS\":\"done\"}}}\n", NULL));
 	CHECK(!primalucelib_set_access_point(&test_link, false));
@@ -1099,6 +1111,7 @@ int main(void) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	const indigo_test_case tests[] = {
 		{ "access point refusal preserves reason", access_point_refusal_preserves_reason },
+		{ "LED acknowledgements are validated", led_acknowledgements_are_validated },
 		{ "WiFi credentials are escaped", wifi_credentials_are_escaped },
 		{ "WiFi credentials fit or send nothing", wifi_credentials_fit_or_send_nothing },
 		{ "golden requests match the original driver", golden_requests_match_the_original_driver },

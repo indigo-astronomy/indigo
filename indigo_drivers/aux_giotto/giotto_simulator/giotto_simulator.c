@@ -25,6 +25,7 @@
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
+#define GIOTTO_SIMULATOR_VERSION 2
 #define PRESET_COUNT 9
 #define MAX_TOKENS   256
 #define REPLY_SIZE   4096
@@ -69,7 +70,7 @@ static struct {
 } presets[PRESET_COUNT];
 
 static void usage(const char *name) {
-	printf("PrimaLuceLab GIOTTO simulator\n");
+	printf("PrimaLuceLab GIOTTO simulator v%d\n", GIOTTO_SIMULATOR_VERSION);
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
@@ -559,7 +560,9 @@ static void dispatch_command(const char *json) {
 		bool ok;
 		if (token_is(json, key, "DIMLEDS") && value->type == JSMN_STRING) {
 			// The panel acknowledges DIMLEDS under the key "cmd" (firmware 1.03.09).
-			snprintf(leds, sizeof(leds), "%.*s", value->end - value->start < 15 ? value->end - value->start : 15, json + value->start);
+			if (!refused) {
+				snprintf(leds, sizeof(leds), "%.*s", value->end - value->start < 15 ? value->end - value->start : 15, json + value->start);
+			}
 			reply(refused ? "{\"res\":{\"cmd\":{\"DIMLEDS\":\"" INVALID "\"}}}\n" : "{\"res\":{\"cmd\":{\"cmd\":\"done\"}}}\n");
 		} else if (token_is(json, key, "LOGLEVEL")) {
 			reply("[mLogs_DefaultSetup] \n");

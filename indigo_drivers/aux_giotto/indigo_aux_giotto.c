@@ -39,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_aux_giotto"
 #define DRIVER_LABEL         "PrimaluceLab GIOTTO Flat Panel"
 #define AUX_DEVICE_NAME      "PrimaluceLab GIOTTO"

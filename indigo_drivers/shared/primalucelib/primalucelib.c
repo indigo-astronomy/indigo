@@ -575,7 +575,10 @@ double primalucelib_reply_motor_temperature(primalucelib_link *link) {
 }
 
 bool primalucelib_set_leds(primalucelib_link *link, const char *mode) {
-	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_LEDS, mode);
+	char *acknowledgement[] = { "res", "cmd", PRIMALUCE_KEY_LEDS, NULL };
+	char *legacy_acknowledgement[] = { "res", "cmd", "cmd", NULL };
+	// GIOTTO and SESTO SENSO 3 acknowledge accepted DIMLEDS under "cmd"; a named refusal takes precedence.
+	return primalucelib_request(link, PRIMALUCE_REQUEST_SET_LEDS, mode) && primalucelib_reply_is_acknowledged(link, primalucelib_reply_has(link, acknowledgement) ? acknowledgement : legacy_acknowledgement);
 }
 
 char *primalucelib_get_lan_config(primalucelib_link *link) {
