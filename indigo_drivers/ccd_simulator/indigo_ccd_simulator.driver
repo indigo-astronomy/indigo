@@ -20,7 +20,7 @@ driver simulator {
 	label = "Camera Simulator";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
-	version = 45;
+	version = 46;
 	multi_device_support = true;
 	include {
 		#include <limits.h>
@@ -635,7 +635,7 @@ driver simulator {
 				for (int i = 0; i <= IMAGE_HOTPIXELS_ITEM->number.target; i++) {
 					int x = PRIVATE_DATA->hotpixel_x[i] / horizontal_bin - frame_left;
 					int y = PRIVATE_DATA->hotpixel_y[i] / vertical_bin - frame_top;
-					if (x < 0 || x >= frame_width || y < 0 || y > frame_height) {
+					if (x < 0 || x >= frame_width || y < 0 || y >= frame_height) {
 						continue;
 					}
 					if (i) {

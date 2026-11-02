@@ -5009,6 +5009,7 @@
 		59FA7BF0301D386600A35CFB /* test_md5.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_md5.c; sourceTree = "<group>"; };
 		59FA7BF1301D386600A35CFB /* test_polynomial_fit.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_polynomial_fit.c; sourceTree = "<group>"; };
 		59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_bus_lifecycle.c; sourceTree = "<group>"; };
+		D209CCD00000000000000001 /* ccd_simulator_test_driver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ccd_simulator_test_driver.c; sourceTree = "<group>"; };
 		59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_simulator.c; sourceTree = "<group>"; };
 		59FA7BF6301D3F5A00A35CFB /* simulator_test_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = simulator_test_common.h; sourceTree = "<group>"; };
 		59FA7BF7301D3F5A00A35CFB /* test_dome_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_simulator.c; sourceTree = "<group>"; };
@@ -14378,6 +14379,7 @@
 				C0DE20260915A0B000000001 /* test_ccd_ptp_sdk.c */,
 				C0DE20260912000100000002 /* test_ccd_qhy_sdk.cpp */,
 				C0DE20260911000800000001 /* test_ccd_rising_sdk.c */,
+				D209CCD00000000000000001 /* ccd_simulator_test_driver.c */,
 				59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */,
 				C0DE20260913000610000001 /* test_ccd_ssag_usb.c */,
 				AF82C981A2394703A6F65B83 /* test_ccd_pentax_usb.c */,

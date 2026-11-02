@@ -534,6 +534,10 @@ static void ccd_ao_passes_compliance_checks(void) {
 	stop_connected_simulator(&ccd_ao_simulator);
 }
 
+indigo_device *sim_test_imager_device(void);
+void sim_test_prepare_hotpixel_edges(indigo_device *device);
+bool sim_test_hotpixel_guard_intact(indigo_device *device);
+
 static bool sim_fast_temperature;
 static indigo_timer **sim_temperature_timer;
 
@@ -714,6 +718,29 @@ static void simulator_imager_binning_averages_the_bin_block(void) {
 		SIM_CHECK(sim_number("CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ BIN_REGION_LEFT, BIN_REGION_TOP, BIN_REGION_WIDTH, BIN_REGION_HEIGHT }, INDIGO_OK_STATE));
 		SIM_CHECK(sim_expose());
 		SIM_CHECK(sim_imager_bins_average_the_block(bin));
+	}
+cleanup:
+	atomic_store(&sim_capture, false);
+	free(sim_image);
+	sim_image = NULL;
+	sim_end(&ccd_imager_simulator);
+}
+
+static void simulator_hot_pixels_respect_subframe_edges(void) {
+	sim_begin(&ccd_imager_simulator);
+	atomic_store(&sim_capture, true);
+	indigo_device *device = sim_test_imager_device();
+	SIM_CHECK(device != NULL);
+	for (int bin = 1; bin <= 4; bin *= 2) {
+		SIM_CHECK(sim_number("CCD_BIN", 2, (const char *[]){ "HORIZONTAL", "VERTICAL" }, (double []){ bin, bin }, INDIGO_OK_STATE));
+		SIM_CHECK(sim_number("CCD_FRAME", 4, (const char *[]){ "LEFT", "TOP", "WIDTH", "HEIGHT" }, (double []){ 128, 128, 64, 64 }, INDIGO_OK_STATE));
+		sim_test_prepare_hotpixel_edges(device);
+		SIM_CHECK(sim_expose());
+		int width = 64 / bin, height = 64 / bin;
+		SIM_CHECK(sim_image != NULL && atomic_load(&sim_width) == width && atomic_load(&sim_height) == height);
+		SIM_CHECK(sim_image[(height - 1) * width + 1] == 0xFFFF);
+		SIM_CHECK(sim_image[5] == 0xFFFF && sim_image[width * height - 1] == 0xFFFF);
+		SIM_CHECK(sim_test_hotpixel_guard_intact(device));
 	}
 cleanup:
 	atomic_store(&sim_capture, false);
@@ -1641,6 +1668,7 @@ int main(int argc, char **argv) {
 		{ "simulator_fractional_exposure_and_finite_stream_timing", simulator_fractional_exposure_and_finite_stream_timing },
 		{ "simulator_guider_replacement_and_simultaneous_axes", simulator_guider_replacement_and_simultaneous_axes },
 		{ "simulator_raw_geometry_and_bins", simulator_raw_geometry_and_bins },
+		{ "simulator_hot_pixels_respect_subframe_edges", simulator_hot_pixels_respect_subframe_edges },
 		{ "simulator_imager_binning_averages_the_bin_block", simulator_imager_binning_averages_the_bin_block },
 		{ "simulator_guider_binning_scales_the_star_profile", simulator_guider_binning_scales_the_star_profile },
 		{ "simulator_stream_abort_and_reconnect", simulator_stream_abort_and_reconnect },

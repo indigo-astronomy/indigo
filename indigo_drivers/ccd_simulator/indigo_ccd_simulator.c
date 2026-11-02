@@ -54,7 +54,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002D
+#define DRIVER_VERSION       0x0300002E
 #define DRIVER_NAME          "indigo_ccd_simulator"
 #define DRIVER_LABEL         "Camera Simulator"
 #define IMAGER_CCD_DEVICE_NAME "CCD Imager Simulator"
@@ -854,7 +854,7 @@ static void create_frame(indigo_device *device) {
 		for (int i = 0; i <= IMAGE_HOTPIXELS_ITEM->number.target; i++) {
 			int x = PRIVATE_DATA->hotpixel_x[i] / horizontal_bin - frame_left;
 			int y = PRIVATE_DATA->hotpixel_y[i] / vertical_bin - frame_top;
-			if (x < 0 || x >= frame_width || y < 0 || y > frame_height) {
+			if (x < 0 || x >= frame_width || y < 0 || y >= frame_height) {
 				continue;
 			}
 			if (i) {
