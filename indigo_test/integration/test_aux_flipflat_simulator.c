@@ -381,8 +381,23 @@ cleanup:
 	tear_down_serial_driver(&flipflat);
 }
 
+static void foreign_acknowledgements_are_rejected(void) {
+	external_serial_simulator simulator = { 0 };
+	const char *arguments[] = { "--foreign-ack", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_FLIPFLAT_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(start_serial_driver(&flipflat, simulator.port));
+	SERIAL_CHECK_TRUE(switch_on(AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_LIGHT_SWITCH_ON_ITEM_NAME));
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_SWITCH_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(indigo_change_number_property_1(&simulator_test_client, flipflat.device_name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_LIGHT_INTENSITY_ITEM_NAME, 25) == INDIGO_OK);
+	SERIAL_CHECK_TRUE(wait_for_property_state(AUX_LIGHT_INTENSITY_PROPERTY_NAME, INDIGO_ALERT_STATE));
+cleanup:
+	stop_serial_driver(&flipflat);
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "foreign_acknowledgements_are_rejected", foreign_acknowledgements_are_rejected },
 		{ "flip_flat_exposes_cover_light_and_intensity", flip_flat_exposes_cover_light_and_intensity },
 		{ "flat_man_hides_the_cover", flat_man_hides_the_cover },
 		{ "dust_cover_hides_the_light", dust_cover_hides_the_light },

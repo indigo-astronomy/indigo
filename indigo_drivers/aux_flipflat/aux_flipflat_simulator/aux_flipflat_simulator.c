@@ -68,6 +68,8 @@ static void usage(const char *name) {
 	printf("  -h, --help              Show this help and exit\n");
 }
 
+static bool foreign_ack;
+
 static int cover = 1;         // 1 = closed, 2 = open
 static int cover_time_ms = 2000;
 
@@ -87,6 +89,8 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--foreign-ack")) {
+			foreign_ack = true;
 		} else if (!strcmp(argv[i], "--device-id")) {
 			if (++i == argc) {
 				fprintf(stderr, "--device-id requires an id\n");
@@ -204,7 +208,9 @@ static int sim_read_command(int fd, char *buffer, size_t length) {
 
 static void dispatch_command(int fd, const char *buffer) {
 	int id = options.device_id;
-	if (!strcmp(buffer, ">POOO")) {
+	if (foreign_ack && (buffer[1] == 'L' || buffer[1] == 'B')) {
+		sim_printf(fd, "*S%02d001\n", id);
+	} else if (!strcmp(buffer, ">POOO")) {
 		sim_printf(fd, "*P%02dOOO\n", id);
 	} else if (!strcmp(buffer, ">OOOO")) {
 		cover = 2;

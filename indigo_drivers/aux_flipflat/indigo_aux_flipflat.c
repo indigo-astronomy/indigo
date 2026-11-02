@@ -24,6 +24,13 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+
+//+ include
+
+#include <ctype.h>
+
+//- include
+
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -32,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000D
+#define DRIVER_VERSION       0x0300000E
 #define DRIVER_NAME          "indigo_aux_flipflat"
 #define DRIVER_LABEL         "Alnitak Astrosystems FlipFlat"
 #define AUX_DEVICE_NAME      "FlipFlat"
@@ -78,17 +85,39 @@ typedef struct {
 //+ code
 
 static bool flipflat_command(indigo_device *device, char *command, ...) {
+	char request[16];
+	va_list args, copy;
+	va_start(args, command);
+	va_copy(copy, args);
+	vsnprintf(request, sizeof(request), command, copy);
+	va_end(copy);
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
-		va_list args;
-		va_start(args, command);
 		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\r");
-		va_end(args);
 		if (result > 0) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n", "\n", INDIGO_DELAY(1));
 		}
 	}
-	return result > 0 && PRIVATE_DATA->response[0] == '*';
+	va_end(args);
+	if (result < 5 || (request[1] != 'V' && result != 7) || PRIVATE_DATA->response[0] != '*' || PRIVATE_DATA->response[1] != request[1] || !isdigit((unsigned char)PRIVATE_DATA->response[2]) || !isdigit((unsigned char)PRIVATE_DATA->response[3])) {
+		return false;
+	}
+	int type = (PRIVATE_DATA->response[2] - '0') * 10 + PRIVATE_DATA->response[3] - '0';
+	if (request[1] != 'P' && type != PRIVATE_DATA->type) {
+		return false;
+	}
+	if (request[1] == 'V') {
+		return true;
+	}
+	if (strchr("POLDC", request[1]) != NULL) {
+		return !strcmp(PRIVATE_DATA->response + 4, "OOO");
+	}
+	for (int i = 4; i < 7; i++) {
+		if (!isdigit((unsigned char)PRIVATE_DATA->response[i])) {
+			return false;
+		}
+	}
+	return request[1] != 'B' || !strcmp(PRIVATE_DATA->response + 4, request + 2);
 }
 
 static bool flipflat_open(indigo_device *device, const char **error_message) {
