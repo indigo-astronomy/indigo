@@ -29,6 +29,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <limits.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_timer.h>
@@ -1070,6 +1071,87 @@ static void test_load_raw_mono16_binned(void) {
 	indigo_safe_free(raw);
 }
 
+static void test_load_raw_tiny_binning_rejected(void) {
+	struct { indigo_raw_header header; uint16_t pixel; } raw = { { INDIGO_RAW_MONO16, 1, 1 }, 123 };
+	int bin, width, height;
+	bool bayered;
+	const char *message = NULL;
+	indigo_raw_header *image = indigo_solver_load_image(&raw, sizeof(indigo_raw_header) + sizeof(uint16_t), 2, &bin, &width, &height, &bayered, &message);
+	bool rejected = image == NULL;
+	indigo_safe_free(image);
+	ASSERT_TRUE(rejected);
+	ASSERT_TRUE(message != NULL);
+}
+
+static void test_load_tiny_fits_binning_rejected(void) {
+	uint16_t pixel = 123;
+	long size;
+	char *fits = fits_16bit(1, 1, &pixel, false, &size);
+	int bin, width, height;
+	bool bayered;
+	const char *message = NULL;
+	indigo_raw_header *image = indigo_solver_load_image(fits, size, 2, &bin, &width, &height, &bayered, &message);
+	bool rejected = image == NULL;
+	indigo_safe_free(image);
+	indigo_safe_free(fits);
+	ASSERT_TRUE(rejected);
+	ASSERT_TRUE(message != NULL);
+}
+
+static void test_load_raw_bayer_large_downsample_rejected(void) {
+	struct { indigo_raw_header header; uint16_t pixels[4]; char extension[16]; } raw = { { INDIGO_RAW_MONO16, 2, 2 }, { 0 }, "BAYERPAT='RGGB'" };
+	int bin, width, height;
+	bool bayered;
+	const char *message = NULL;
+	ASSERT_TRUE(indigo_solver_load_image(&raw, sizeof(raw), INT_MAX, &bin, &width, &height, &bayered, &message) == NULL);
+	ASSERT_TRUE(bayered);
+	ASSERT_TRUE(message != NULL);
+}
+
+static void test_load_raw_geometry_rejected(void) {
+	const uint32_t signatures[] = { INDIGO_RAW_MONO8, INDIGO_RAW_MONO16, INDIGO_RAW_RGB24, INDIGO_RAW_RGB48 };
+	const uint32_t dimensions[][2] = { { 0x80000000u, 0x80000000u }, { UINT32_MAX, UINT32_MAX }, { 0, 1 }, { 1, 0 }, { 65536, 1 }, { 1, 65536 }, { 65535, 65535 }, { 2, 2 } };
+	for (size_t i = 0; i < sizeof(signatures) / sizeof(signatures[0]); i++) {
+		for (size_t j = 0; j < sizeof(dimensions) / sizeof(dimensions[0]); j++) {
+			indigo_raw_header raw = { signatures[i], dimensions[j][0], dimensions[j][1] };
+			int bin, width, height;
+			bool bayered;
+			const char *message = NULL;
+			ASSERT_TRUE(indigo_solver_load_image(&raw, sizeof(raw), 1, &bin, &width, &height, &bayered, &message) == NULL);
+			ASSERT_TRUE(message != NULL);
+		}
+	}
+}
+
+static void test_load_raw_supported_formats(void) {
+	const uint32_t signatures[] = { INDIGO_RAW_MONO8, INDIGO_RAW_MONO16, INDIGO_RAW_RGB24, INDIGO_RAW_RGB48 };
+	const int bytes[] = { 1, 2, 3, 6 };
+	for (int i = 0; i < 4; i++) {
+		struct { indigo_raw_header header; uint16_t pixels[12]; } raw = { { signatures[i], 2, 2 }, { 0 } };
+		memset(raw.pixels, 0xff, sizeof(raw.pixels));
+		int bin, width, height;
+		bool bayered;
+		const char *message = NULL;
+		indigo_raw_header *image = indigo_solver_load_image(&raw, sizeof(indigo_raw_header) + 4 * bytes[i], 1, &bin, &width, &height, &bayered, &message);
+		ASSERT_TRUE(image != NULL);
+		ASSERT_EQ_INT(2, image->width);
+		ASSERT_EQ_INT(2, image->height);
+		ASSERT_EQ_INT(65535, ((uint16_t *)(image + 1))[0]);
+		indigo_safe_free(image);
+	}
+}
+
+static void test_image_stars_invalid_input(void) {
+	indigo_solver_star stars[2] = { { 0 } };
+	indigo_raw_header raw = { INDIGO_RAW_MONO16, 0, 0 };
+	ASSERT_EQ_INT(0, indigo_solver_image_stars(&raw, stars, 2));
+	raw.width = raw.height = 1;
+	raw.signature = 0;
+	ASSERT_EQ_INT(0, indigo_solver_image_stars(&raw, stars, 2));
+	ASSERT_EQ_INT(0, indigo_solver_image_stars(&raw, stars, 0));
+	ASSERT_EQ_INT(0, indigo_solver_image_stars(&raw, stars, -1));
+}
+
 // --------------------------------------------------------------------------------
 
 int main(void) {
@@ -1095,6 +1177,12 @@ int main(void) {
 		{ "load_fits_scaled_binned_matches_full_size", test_load_fits_scaled_binned_matches_full_size },
 		{ "load_bayer_binning", test_load_bayer_binning },
 		{ "load_raw_mono16_binned", test_load_raw_mono16_binned },
+		{ "load_raw_tiny_binning_rejected", test_load_raw_tiny_binning_rejected },
+		{ "load_raw_geometry_rejected", test_load_raw_geometry_rejected },
+		{ "load_tiny_fits_binning_rejected", test_load_tiny_fits_binning_rejected },
+		{ "load_raw_bayer_large_downsample_rejected", test_load_raw_bayer_large_downsample_rejected },
+		{ "load_raw_supported_formats", test_load_raw_supported_formats },
+		{ "image_stars_invalid_input", test_image_stars_invalid_input },
 	};
 	return indigo_run_tests("test_agent_platesolver_core", cases, sizeof(cases) / sizeof(cases[0]));
 }

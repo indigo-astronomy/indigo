@@ -580,7 +580,7 @@ static bool raw_bayer_keyword(const char *extension, size_t length) {
 static int image_bin(int downsample, bool bayered) {
 	int bin = downsample < 1 ? 1 : downsample;
 	if (bayered && (bin < 2 || bin % 2)) {
-		bin = bin < 2 ? 2 : bin + 1;
+		bin = bin < 2 ? 2 : bin == INT_MAX ? INT_MAX - 1 : bin + 1;
 	}
 	return bin;
 }
@@ -588,14 +588,22 @@ static int image_bin(int downsample, bool bayered) {
 indigo_raw_header *indigo_solver_load_image(const void *data, long size, int downsample, int *bin, int *full_width, int *full_height, bool *bayered, const char **message) {
 	uint32_t signature = 0;
 	*bayered = false;
+	if (data == NULL || size < 0) {
+		*message = "Invalid image data";
+		return NULL;
+	}
 	if (size >= (long)sizeof(signature)) {
 		memcpy(&signature, data, sizeof(signature));
 	}
 	if (signature == INDIGO_RAW_MONO8 || signature == INDIGO_RAW_MONO16 || signature == INDIGO_RAW_RGB24 || signature == INDIGO_RAW_RGB48) {
 		const indigo_raw_header *header = (const indigo_raw_header *)data;
 		int bytes = signature == INDIGO_RAW_MONO8 ? 1 : signature == INDIGO_RAW_MONO16 ? 2 : signature == INDIGO_RAW_RGB24 ? 3 : 6;
-		if (size < (long)sizeof(indigo_raw_header) || header->width < 1 || header->height < 1 || size - (long)sizeof(indigo_raw_header) < (long)((size_t)header->width * header->height * bytes)) {
-			*message = "Truncated RAW image";
+		if (!indigo_validate_raw_image(data, size)) {
+			*message = "Invalid or truncated RAW image";
+			return NULL;
+		}
+		if (header->width > 65535 || header->height > 65535 || header->width > INT_MAX / 4 / header->height) {
+			*message = "Unsupported RAW image geometry";
 			return NULL;
 		}
 		size_t pixels = (size_t)header->width * header->height;
@@ -604,6 +612,10 @@ indigo_raw_header *indigo_solver_load_image(const void *data, long size, int dow
 			*bayered = raw_bayer_keyword((const char *)data + data_size, size - data_size);
 		}
 		*bin = image_bin(downsample, *bayered);
+		if (header->width / *bin == 0 || header->height / *bin == 0) {
+			*message = "Image is too small for downsampling";
+			return NULL;
+		}
 		*full_width = header->width;
 		*full_height = header->height;
 		indigo_raw_header *image;
@@ -641,6 +653,10 @@ indigo_raw_header *indigo_solver_load_image(const void *data, long size, int dow
 			return NULL;
 		}
 		*bin = image_bin(downsample, *bayered);
+		if (layout.width / *bin == 0 || layout.height / *bin == 0) {
+			*message = "Image is too small for downsampling";
+			return NULL;
+		}
 		*full_width = layout.width;
 		*full_height = layout.height;
 		return fits_image(&layout, *bin);
@@ -652,6 +668,11 @@ indigo_raw_header *indigo_solver_load_image(const void *data, long size, int dow
 	}
 	*bin = image_bin(downsample, *bayered);
 	if (image != NULL) {
+		if (image->width / *bin == 0 || image->height / *bin == 0) {
+			indigo_safe_free(image);
+			*message = "Image is too small for downsampling";
+			return NULL;
+		}
 		*full_width = image->width;
 		*full_height = image->height;
 		indigo_solver_bin_image(image, *bin);
@@ -816,14 +837,22 @@ static uint16_t *filtered_image(const indigo_raw_header *image) {
 }
 
 int indigo_solver_image_stars(indigo_raw_header *image, indigo_solver_star *stars, int max_star_count) {
+	if (image == NULL || stars == NULL || max_star_count <= 0 || (size_t)max_star_count > SIZE_MAX / sizeof(indigo_star_detection) || image->width == 0 || image->height == 0 || image->width > 65535 || image->height > 65535 || image->width > INT_MAX / 4 / image->height) {
+		return 0;
+	}
 	indigo_star_detection *all_stars = indigo_safe_malloc(sizeof(indigo_star_detection) * max_star_count);
-	int stars_found, count = 0;
+	int stars_found = 0, count = 0;
+	indigo_result result;
 	uint16_t *filtered = filtered_image(image);
 	if (filtered != NULL) {
-		indigo_find_stars_fast_threshold(INDIGO_RAW_MONO16, filtered, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+		result = indigo_find_stars_fast_threshold(INDIGO_RAW_MONO16, filtered, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
 		indigo_safe_free(filtered);
 	} else {
-		indigo_find_stars_fast_threshold(image->signature, image + 1, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+		result = indigo_find_stars_fast_threshold(image->signature, image + 1, 16, 3.5, image->width, image->height, max_star_count, all_stars, &stars_found);
+	}
+	if (result != INDIGO_OK || stars_found < 0 || stars_found > max_star_count) {
+		indigo_safe_free(all_stars);
+		return 0;
 	}
 	for (int i = 0; i < stars_found; i++) {
 		indigo_star_detection *as = all_stars + i;

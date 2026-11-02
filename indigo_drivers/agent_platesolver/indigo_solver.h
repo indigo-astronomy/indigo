@@ -129,8 +129,8 @@ typedef struct {
 extern int indigo_solver_cone_catalog(const indigo_solver_catalog *catalog, float ra, float dec, float radius, indigo_solver_catalog *cone);
 extern int indigo_solver_match_quads(indigo_solver_quad *image_quads, int image_quad_count, const indigo_solver_catalog *catalog, indigo_solver_quad_match *matches, int max_match_count, indigo_solver_limits *limits);
 extern int indigo_solver_match_stars(indigo_solver_quad_match *quad_matches, int quad_match_count, indigo_solver_star_match *star_matches, int max_star_match_count, indigo_solver_limits *limits);
-/** Fits the image centre; ra, dec, rotation in radians, scale in radians per pixel, parity 1 for a normal
- (north up, east left) image orientation and -1 for a mirrored one; matched is the number of consistent matches of
+/** Fits the image centre; ra, dec, rotation in radians, scale in radians per pixel, parity 1 for a mirrored
+ (north up, east right) image orientation and -1 for the sky as seen (north up, east left), matching Astrometry; matched is the number of consistent matches of
  the final fit and rms its residual in radians (both optional).
  */
 extern bool indigo_solver_compute_center(indigo_solver_star_match *matches, int match_count, int width, int height, float *ra, float *dec, float *rotation, float *scale, int *parity, int *matched, float *rms);

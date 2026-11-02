@@ -24,7 +24,7 @@
  \file indigo_agent_platesolver.c
  */
 
-#define DRIVER_VERSION 0x0300001C
+#define DRIVER_VERSION 0x0300001D
 #define DRIVER_NAME	"indigo_agent_platesolver"
 
 #include <stdio.h>
@@ -602,7 +602,7 @@ static bool solver_solve(indigo_device *device, indigo_platesolver_task *task) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to load %s", path);
 				continue;
 			}
-			// the catalog restricted to the hint cone: the field centre is within the radius, its stars within the
+			// the catalog restricted to the hint cone: the expected field centre lies near the hint, its stars within the
 			// radius plus half the field diagonal (or the index scale when the pixel scale is unknown); a quad needs
 			// four stars within the cone
 			const indigo_solver_catalog *catalog = &SOLVER_DEVICE_PRIVATE_DATA->catalog;
