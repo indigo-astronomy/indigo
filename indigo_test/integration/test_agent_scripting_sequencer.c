@@ -453,7 +453,7 @@ static void cleanup(void) {
 
 static void library_inventory(void) {
 	ASSERT_TRUE(check_js("typeof Sequence==='function'"));
-	ASSERT_TRUE(check_js("(function(){var names=Object.getOwnPropertyNames(Sequence.prototype); if(names.length!==108) throw new Error('prototype count '+names.length); return true})()"));
+	ASSERT_TRUE(check_js("(function(){var names=Object.getOwnPropertyNames(Sequence.prototype); if(names.length!==109) throw new Error('prototype count '+names.length); return true})()"));
 	ASSERT_TRUE(check_js("indigo_event_handlers.indigo_sequencer===indigo_sequencer"));
 	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE" };
 	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
@@ -511,9 +511,9 @@ static void focus_batch_snapshot(void) {
 }
 
 static void all_public_constructors(void) {
-	ASSERT_TRUE(run_js("publicMethods=Object.getOwnPropertyNames(Sequence.prototype).filter(function(n){return n!=='constructor'}); publicCalls={}; publicMethods.forEach(function(n){var original=Sequence.prototype[n]; Sequence.prototype[n]=function(){publicCalls[n]=(publicCalls[n]||0)+1; return original.apply(this,arguments)}}); var s=new Sequence('all'); s.enable_reset_loop_content_state(); s.disable_reset_loop_content_state(); s.repeat(1,function(){s.send_message('loop')}); s.enable_verbose(); s.disable_verbose(); s.recovery_point(); s.wait(0); s.wait_until(1704112495); s.continue_on_failure(); s.recover_on_failure(); s.abort_on_failure(); s.break_at(1704112495); s.break_at_ha('01:00:00'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,1,2); s.break_if_solar_altitude_above(91); s.break_if_target_altitude_below(-91,1,2); s.resume_point(); s.evaluate('testValue=1'); s.send_message('message'); s.load_config('Config'); s.load_driver('Driver'); s.unload_driver('Driver'); s.select_imager_agent('Imager Agent'); s.select_mount_agent('Mount Agent'); s.select_guider_agent('Guider Agent'); s.select_imager_camera('CCD Imager Simulator'); s.select_filter_wheel('CCD Imager Simulator (wheel)'); s.select_focuser('CCD Imager Simulator (focuser)'); s.select_rotator('Field Rotator Simulator'); s.select_mount('Mount Simulator'); s.select_dome('Dome Simulator'); s.select_gps('GPS Simulator'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.select_frame_type('Light'); s.select_image_format('RAW'); s.set_frame(0,0,100,100); s.reset_frame(); s.select_camera_mode('BIN_1x1'); s.set_gain(10); s.set_offset(5); s.set_gamma(1); s.select_program('M'); s.select_aperture('f/4'); s.select_shutter('1/10'); s.select_iso('800'); s.enable_cooler(-10); s.disable_cooler(); s.enable_dithering(2,3,4); s.disable_dithering(); s.enable_meridian_flip(true,0); s.disable_meridian_flip(); s.enable_filter_offsets(); s.disable_filter_offsets(); s.set_fits_header('OBJECT','M42'); s.remove_fits_header('OBJECT'); s.select_filter('L'); s.set_directory('/tmp'); s.set_file_template('frame'); s.set_object_name('M42'); s.start_preview(0.1); s.stop_preview(); s.capture_batch(2,0.1); s.capture_batch('batch',2,0.1); s.capture_stream(2,0.1); s.capture_stream('stream',2,0.1); s.set_manual_focuser_mode(); s.set_automatic_focuser_mode(); s.focus(0.1); s.focus_ignore_failure(0.1); s.clear_focuser_selection(); s.set_focuser_position(100); s.slew(1,2); s.park(); s.unpark(); s.home(); s.enable_tracking(); s.disable_tracking(); s.dome_slew(90); s.dome_park(); s.dome_unpark(); s.dome_open(); s.dome_close(); s.enable_ha_limit(); s.disable_ha_limit(); s.enable_time_limit(); s.disable_time_limit(); s.enable_dome_slaving(); s.disable_dome_slaving(); s.make_dome_slaving_persistent(); s.make_dome_slaving_not_persistent(); s.enable_field_derotation(); s.disable_field_derotation(); s.make_field_derotation_persistent(); s.make_field_derotation_not_persistent(); s.enable_joystick_control(); s.disable_joystick_control(); s.wait_for_gps(); s.calibrate_guiding(); s.calibrate_guiding(0.1); s.calibrate_guiding(0.1,0.4); s.start_guiding(); s.start_guiding(0.1); s.start_guiding_exposure(0.1); s.stop_guiding(); s.clear_guider_selection(); s.set_solver_filter('L'); s.sync_center(0.1); s.precise_goto(0.1,1,2); s.set_rotator_angle(45); new Sequence('start').start();"));
+	ASSERT_TRUE(run_js("publicMethods=Object.getOwnPropertyNames(Sequence.prototype).filter(function(n){return n!=='constructor'}); publicCalls={}; publicMethods.forEach(function(n){var original=Sequence.prototype[n]; Sequence.prototype[n]=function(){publicCalls[n]=(publicCalls[n]||0)+1; return original.apply(this,arguments)}}); var s=new Sequence('all'); s.enable_reset_loop_content_state(); s.disable_reset_loop_content_state(); s.repeat(1,function(){s.send_message('loop')}); s.enable_verbose(); s.disable_verbose(); s.recovery_point(); s.wait(0); s.wait_until(1704112495); s.continue_on_failure(); s.recover_on_failure(); s.abort_on_failure(); s.break_at(1704112495); s.break_at_ha('01:00:00'); s.wait_until_solar_altitude_below(91); s.wait_until_target_altitude_above(-91,1,2); s.break_if_solar_altitude_above(91); s.break_if_target_altitude_below(-91,1,2); s.resume_point(); s.evaluate('testValue=1'); s.send_message('message'); s.load_config('Config'); s.load_driver('Driver'); s.unload_driver('Driver'); s.select_imager_agent('Imager Agent'); s.select_mount_agent('Mount Agent'); s.select_guider_agent('Guider Agent'); s.select_solver_agent('Astrometry Agent'); s.select_imager_camera('CCD Imager Simulator'); s.select_filter_wheel('CCD Imager Simulator (wheel)'); s.select_focuser('CCD Imager Simulator (focuser)'); s.select_rotator('Field Rotator Simulator'); s.select_mount('Mount Simulator'); s.select_dome('Dome Simulator'); s.select_gps('GPS Simulator'); s.select_guider_camera('CCD Guider Simulator'); s.select_guider('CCD Guider Simulator (guider)'); s.select_frame_type('Light'); s.select_image_format('RAW'); s.set_frame(0,0,100,100); s.reset_frame(); s.select_camera_mode('BIN_1x1'); s.set_gain(10); s.set_offset(5); s.set_gamma(1); s.select_program('M'); s.select_aperture('f/4'); s.select_shutter('1/10'); s.select_iso('800'); s.enable_cooler(-10); s.disable_cooler(); s.enable_dithering(2,3,4); s.disable_dithering(); s.enable_meridian_flip(true,0); s.disable_meridian_flip(); s.enable_filter_offsets(); s.disable_filter_offsets(); s.set_fits_header('OBJECT','M42'); s.remove_fits_header('OBJECT'); s.select_filter('L'); s.set_directory('/tmp'); s.set_file_template('frame'); s.set_object_name('M42'); s.start_preview(0.1); s.stop_preview(); s.capture_batch(2,0.1); s.capture_batch('batch',2,0.1); s.capture_stream(2,0.1); s.capture_stream('stream',2,0.1); s.set_manual_focuser_mode(); s.set_automatic_focuser_mode(); s.focus(0.1); s.focus_ignore_failure(0.1); s.clear_focuser_selection(); s.set_focuser_position(100); s.slew(1,2); s.park(); s.unpark(); s.home(); s.enable_tracking(); s.disable_tracking(); s.dome_slew(90); s.dome_park(); s.dome_unpark(); s.dome_open(); s.dome_close(); s.enable_ha_limit(); s.disable_ha_limit(); s.enable_time_limit(); s.disable_time_limit(); s.enable_dome_slaving(); s.disable_dome_slaving(); s.make_dome_slaving_persistent(); s.make_dome_slaving_not_persistent(); s.enable_field_derotation(); s.disable_field_derotation(); s.make_field_derotation_persistent(); s.make_field_derotation_not_persistent(); s.enable_joystick_control(); s.disable_joystick_control(); s.wait_for_gps(); s.calibrate_guiding(); s.calibrate_guiding(0.1); s.calibrate_guiding(0.1,0.4); s.start_guiding(); s.start_guiding(0.1); s.start_guiding_exposure(0.1); s.stop_guiding(); s.clear_guider_selection(); s.set_solver_filter('L'); s.sync_center(0.1); s.precise_goto(0.1,1,2); s.set_rotator_angle(45); new Sequence('start').start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
-	ASSERT_TRUE(check_js("publicMethods.length===107 && publicMethods.every(function(n){return publicCalls[n]>0}) && s.step>100 && s.progress>100 && s.exposure===0.8 && s.reset_loop_content_state===false"));
+	ASSERT_TRUE(check_js("publicMethods.length===108 && publicMethods.every(function(n){return publicCalls[n]>0}) && s.step>100 && s.progress>100 && s.exposure===0.8 && s.reset_loop_content_state===false"));
 	ASSERT_TRUE(check_js("s.sequence.every(function(entry){var name=entry.execute.substring(0,entry.execute.indexOf('(')); return typeof indigo_sequencer[name]==='function' && Function('return function(){indigo_sequencer.'+entry.execute+'}')})"));
 }
 
@@ -747,9 +747,6 @@ static void platesolver_orchestration(void) {
 	ASSERT_NEAR(5, property->items[0].number.value, 0.001);
 	ASSERT_NEAR(20, property->items[1].number.value, 0.001);
 	indigo_release_property(property);
-	ASSERT_TRUE(run_js("var s=new Sequence('explicit solver'); s.start('Imager Agent','Mount Agent','Guider Agent','Astrometry Agent');"));
-	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
-	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
 }
 
 static void remote_solver_orchestration(void) {
@@ -768,6 +765,58 @@ static void remote_solver_orchestration(void) {
 	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ remote')==='Astrometry Agent @ remote' && sequencer_solver_agent('Imager Agent @ other')==='Astrometry Agent @ remote'"));
 }
 
+static void select_solver_agent_step(void) {
+	ASSERT_TRUE(rename_solver_peer("Custom Solver"));
+	ASSERT_TRUE(run_js("var s=new Sequence('selected solver'); s.select_solver_agent('Custom Solver'); s.precise_goto(0.3,9,40); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("Sequence.prototype.start.length===3 && indigo_sequencer.devices[SOLVER_AGENT]==='Custom Solver'"));
+	indigo_property *property = snapshot("Custom Solver", "AGENT_PLATESOLVER_GOTO_SETTINGS");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_NEAR(9, property->items[0].number.value, 0.001);
+	ASSERT_NEAR(40, property->items[1].number.value, 0.001);
+	indigo_release_property(property);
+	ASSERT_TRUE(run_js("var s=new Sequence('automatic again'); s.start('Imager Agent','Mount Agent','Guider Agent','Custom Solver');"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+}
+
+static bool wait_solver_center(const char *agent) {
+	for (int i = 0; i < 500; i++) {
+		indigo_property *property = snapshot(agent, "AGENT_START_PROCESS");
+		if (property != NULL) {
+			bool center = property->items[0].sw.value;
+			indigo_release_property(property);
+			if (center) {
+				return true;
+			}
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+// Enters the flip through the sequencer's pause handler and resumes it at the end of the slew; the transit wait and the mount are not exercised
+static bool run_flip_to_centering(void) {
+	return run_js("indigo_sequencer.on_update({device:indigo_sequencer.devices[IMAGER_AGENT],name:'AGENT_PAUSE_PROCESS',state:'Busy',items:{PAUSE_AFTER_TRANSIT:true}}); indigo_flipper.waiting_for_transit=false; indigo_flipper.waiting_for_slew=true; indigo_flipper.on_update({device:indigo_flipper.devices[MOUNT_AGENT],name:'AGENT_START_PROCESS',state:'Ok',items:{}});");
+}
+
+static void meridian_flip_uses_selected_solver(void) {
+	ASSERT_TRUE(rename_solver_peer("Platesolver Agent"));
+	ASSERT_TRUE(run_js("var s=new Sequence('flip'); s.enable_meridian_flip(true,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(check_js("indigo_flipper.devices[SOLVER_AGENT]==='Platesolver Agent'"));
+	ASSERT_TRUE(wait_solver_center("Platesolver Agent"));
+}
+
+static void meridian_flip_uses_solver_selected_by_step(void) {
+	ASSERT_TRUE(rename_solver_peer("Custom Solver"));
+	ASSERT_TRUE(run_js("var s=new Sequence('flip selected'); s.enable_meridian_flip(true,0); s.select_solver_agent('Custom Solver'); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(check_js("indigo_flipper.devices[SOLVER_AGENT]==='Custom Solver'"));
+	ASSERT_TRUE(wait_solver_center("Custom Solver"));
+}
 
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
@@ -798,7 +847,10 @@ static const indigo_test_case tests[] = {
 	{ "configuration and driver orchestration", configuration_and_driver_orchestration },
 	{ "astrometry orchestration", astrometry_orchestration },
 	{ "platesolver orchestration", platesolver_orchestration },
-	{ "remote solver orchestration", remote_solver_orchestration }
+	{ "remote solver orchestration", remote_solver_orchestration },
+	{ "select solver agent step", select_solver_agent_step },
+	{ "meridian flip uses selected solver", meridian_flip_uses_selected_solver },
+	{ "meridian flip uses solver selected by step", meridian_flip_uses_solver_selected_by_step }
 };
 
 int main(int argc, char **argv) {

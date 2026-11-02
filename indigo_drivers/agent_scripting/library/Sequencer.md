@@ -118,11 +118,13 @@ By default the per-step state of the loop body is reset on each iteration so the
 sequence.start();
 ```
 
-`start(imager_agent, mount_agent, guider_agent, solver_agent)` optionally accepts the device names of the agents to drive. When omitted they default to `"Imager Agent"`, `"Mount Agent"` and `"Guider Agent"` respectively. Solver agents are mutually exclusive on one server, so when `solver_agent` is omitted the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent is used, otherwise one loaded on another host; with no solver agent `"Astrometry Agent"` on the host of the imager agent is assumed:
+`start(imager_agent, mount_agent, guider_agent)` optionally accepts the device names of the agents to drive. When omitted they default to `"Imager Agent"`, `"Mount Agent"` and `"Guider Agent"` respectively:
 
 ```js
 sequence.start("Imager Agent @ observatory", "Mount Agent @ observatory", "Guider Agent @ observatory");
 ```
+
+`start()` also selects the solver agent automatically. Solver agents are mutually exclusive on one server, so the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent given to `start()` is used, otherwise one loaded on another host; with no solver agent `"Astrometry Agent"` on that host is assumed. A `select_imager_agent()` step does not change the solver agent. Use the `select_solver_agent()` step to choose another solver agent or one loaded later by the sequence. Every `start()` selects the solver agent again.
 
 ## Step reference
 
@@ -175,6 +177,7 @@ The `select_*_agent` methods pick which agent drives each role; the remaining `s
 | `select_imager_agent(agent)` | Select the imager agent. |
 | `select_mount_agent(agent)` | Select the mount agent. |
 | `select_guider_agent(agent)` | Select the guider agent. |
+| `select_solver_agent(agent)` | Select the solver agent instead of the one selected automatically by `start()`. |
 | `select_imager_camera(camera)` | Select the imaging camera. |
 | `select_filter_wheel(wheel)` | Select the filter wheel. |
 | `select_focuser(focuser)` | Select the focuser. |

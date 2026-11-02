@@ -188,6 +188,10 @@ Sequence.prototype.select_guider_agent = function(agent) {
 	this.sequence.push({ execute: 'select_guider_agent(' + sequencer_string(agent) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.select_solver_agent = function(agent) {
+	this.sequence.push({ execute: 'select_solver_agent(' + sequencer_string(agent) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.select_imager_camera = function(camera) {
 	this.sequence.push({ execute: 'select_imager_camera(' + sequencer_string(camera) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -576,11 +580,11 @@ Sequence.prototype.set_rotator_angle = function(value) {
 	this.sequence.push({ execute: 'set_rotator_angle(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent, solver_agent) {
+Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
 	indigo_sequencer.devices[IMAGER_AGENT] = imager_agent == undefined ? "Imager Agent" : imager_agent;
 	indigo_sequencer.devices[MOUNT_AGENT] = mount_agent == undefined ? "Mount Agent" : mount_agent;
 	indigo_sequencer.devices[GUIDER_AGENT] = guider_agent == undefined ? "Guider Agent" : guider_agent;
-	indigo_sequencer.devices[SOLVER_AGENT] = solver_agent == undefined ? sequencer_solver_agent(indigo_sequencer.devices[IMAGER_AGENT]) : solver_agent;
+	indigo_sequencer.devices[SOLVER_AGENT] = sequencer_solver_agent(indigo_sequencer.devices[IMAGER_AGENT]);
 	indigo_sequencer.start(this.sequence, this.name, this.progress, this.exposure);
 };
 
@@ -1497,6 +1501,11 @@ var indigo_sequencer = {
 
 	select_guider_agent: function(agent) {
 		this.devices[GUIDER_AGENT] = agent;
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+	},
+
+	select_solver_agent: function(agent) {
+		this.devices[SOLVER_AGENT] = agent;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
