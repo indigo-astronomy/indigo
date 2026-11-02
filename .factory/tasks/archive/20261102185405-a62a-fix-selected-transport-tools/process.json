@@ -99,21 +99,21 @@
         "./.factory/scripts/test"
       ],
       "result": "pass",
-      "evidence": "evidence/factory-tests.txt"
+      "evidence": "verification.md"
     },
     {
       "command": [
         "./.factory/scripts/check"
       ],
       "result": "pass",
-      "evidence": "evidence/final-check.txt"
+      "evidence": "verification.md"
     },
     {
       "command": [
         "./.factory/scripts/security"
       ],
       "result": "pass",
-      "evidence": "evidence/final-security.txt"
+      "evidence": "verification.md"
     }
   ],
   "risk_reviews": {
