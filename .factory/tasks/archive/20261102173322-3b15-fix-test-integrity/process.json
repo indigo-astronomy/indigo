@@ -33,6 +33,11 @@
   "risk_reviews": {},
   "reviews": [],
   "reviewed_content": {
+    ".factory/completions/20261102173322-3b15-fix-test-integrity.json": [
+      "100644",
+      "blob",
+      "95341bda26dd5fd76521e47d9abdce3fe97adf4e"
+    ],
     "indigo_test/hardware/test_aux_alto_hw.c": [
       "100644",
       "blob",
