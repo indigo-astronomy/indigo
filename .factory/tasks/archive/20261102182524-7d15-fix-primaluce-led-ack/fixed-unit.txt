@@ -1,0 +1,74 @@
+19:29:06.211678 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: disabled
+19:29:06.313841 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: disabled
+19:29:06.519047 Application: test_primalucelib[primalucelib_check_credentials:733]: The SSID has more than 32 characters
+19:29:06.519228 Application: test_primalucelib[primalucelib_check_credentials:733]: The password has more than 63 characters
+19:29:07.031088 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+19:29:07.031339 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: bad value
+19:29:07.031572 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: unknown key
+19:29:07.031797 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: again
+19:29:17.641551 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+19:29:17.850048 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+19:29:17.851106 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+19:29:17.851849 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+19:29:17.852419 Application: test_primalucelib[primalucelib_vrequest:353]: Dropped a reply that answers another request
+19:29:18.770091 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+19:29:18.771408 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+19:29:18.876908 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+19:29:18.981530 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: SYS: Invalid command
+19:29:19.293206 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: no ARCO
+19:29:20.205076 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: no panel
+19:29:20.307448 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:29:20.308382 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:29:20.309936 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+19:29:20.517884 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:29:20.518953 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:29:20.520550 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: empty preset
+19:29:20.521058 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:29:21.238915 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+19:29:21.847964 Application: test_primalucelib[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:29:21.953942 Application: test_primalucelib[primalucelib_vrequest:371]: Request rejected: busy
+19:29:22.055470 Application: test_primalucelib[primalucelib_check_credentials:733]: The access point password needs at least 8 characters
+19:29:22.055974 Application: test_primalucelib[primalucelib_check_credentials:733]: The access point needs an SSID
+19:29:22.056388 Application: test_primalucelib[primalucelib_check_credentials:733]: The password has more than 63 characters
+19:29:22.056825 Application: test_primalucelib[primalucelib_check_credentials:733]: The SSID has more than 32 characters
+19:29:22.158663 Application: test_primalucelib[primalucelib_open:149]: Malformed URL 'http://'
+Running PrimaLuce Lab protocol library
+  PASS access point refusal preserves reason
+  PASS LED acknowledgements are validated
+  PASS WiFi credentials are escaped
+  PASS WiFi credentials fit or send nothing
+  PASS golden requests match the original driver
+  PASS reply values are found by path
+  PASS reply keys require full names
+  PASS diagnostic lines are skipped
+  PASS refusals fail with their reason
+  PASS garbage is an answer but not a reply
+  PASS silence marks the link failed
+  PASS a duplicate reply is discarded
+  PASS a late reply is skipped
+  PASS SESTO SENSO 3 log line before LOGLEVEL
+  PASS only stale replies fail the request
+  PASS a restarting link refuses requests until probed
+  PASS debug text before a reply is skipped
+  PASS field errors refuse calibration requests
+  PASS moves return their acknowledgement
+  PASS focuser stop falls back to a decelerated stop
+  PASS settings need done
+  PASS stored positions guard their values
+  PASS positions and angles need their field
+  PASS environment needs the external probe field
+  PASS restart waits for the controller
+  PASS SESTO SENSO 3 extras
+  PASS flat panel commands
+  PASS flat panel state, presets and settings
+  PASS cover commands
+  PASS cover motion, presets and refusals
+  PASS lookups stay within a full token array
+  PASS LAN mode restarts only on a change
+  PASS WiFi modes select the LAN mode first
+  PASS WiFi status shows where the controller is
+  PASS WiFi credentials are checked before sending
+  PASS models are recognized by prefix
+  PASS HTTP URLs are split into host and port
+  PASS HTTP links open without contact
+PrimaLuce Lab protocol library: all tests passed

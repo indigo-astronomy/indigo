@@ -1,0 +1,14 @@
++ make check-lib build/integration/test_focuser_primaluce_motion build/integration/test_focuser_primaluce_simulator
+make: `build/integration/test_focuser_primaluce_motion' is up to date.
+make: `build/integration/test_focuser_primaluce_simulator' is up to date.
++ ./build/integration/test_focuser_primaluce_motion
+Running PrimaluceLab Focuser
+  PASS measured motion progress, completion, abort and pending disconnect
+PrimaluceLab Focuser: all tests passed
++ ./build/integration/test_focuser_primaluce_simulator
+Running PrimaluceLab
+  PASS sestosenso3_profile
+PrimaluceLab: all tests passed
+PrimaluceLab: 0 failing scenarios
+
+focuser_primaluce: 2/2 OK

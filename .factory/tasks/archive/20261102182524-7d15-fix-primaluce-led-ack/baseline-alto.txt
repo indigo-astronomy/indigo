@@ -1,0 +1,7 @@
+Running PrimaluceLab ALTO
+X_LEDS never published state 3 (current 1)
+integration/test_aux_alto_simulator.c:825: assertion failed: switch_change(X_LEDS_PROPERTY_NAME, OFF_ITEM_NAME, INDIGO_ALERT_STATE)
+  FAIL leds
+PrimaluceLab ALTO: 1 test(s) failed
+FAIL: leds (exit=1, signal=0)
+PrimaluceLab ALTO: 1 failing scenarios

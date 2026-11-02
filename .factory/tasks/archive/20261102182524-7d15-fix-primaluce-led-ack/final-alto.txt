@@ -1,0 +1,10 @@
++ make check-lib build/integration/test_aux_alto_simulator
+make: `build/integration/test_aux_alto_simulator' is up to date.
++ ./build/integration/test_aux_alto_simulator
+Running PrimaluceLab ALTO
+19:29:07.675398 Application: indigo_aux_alto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS leds
+PrimaluceLab ALTO: all tests passed
+PrimaluceLab ALTO: 0 failing scenarios
+
+aux_alto: 1/1 OK

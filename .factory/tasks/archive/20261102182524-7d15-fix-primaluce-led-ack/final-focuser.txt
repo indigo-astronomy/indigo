@@ -1,0 +1,16 @@
++ make check-lib build/integration/test_focuser_primaluce_motion build/integration/test_focuser_primaluce_simulator
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-led-ack/indigo_libs -I/private/tmp/indigo-led-ack/indigo_drivers -I/private/tmp/indigo-led-ack/indigo_mac_drivers -I/private/tmp/indigo-led-ack/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/focuser_primaluce_simulator ../indigo_drivers/focuser_primaluce/focuser_primaluce_simulator/focuser_primaluce_simulator.c
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-led-ack/indigo_libs -I/private/tmp/indigo-led-ack/indigo_drivers -I/private/tmp/indigo-led-ack/indigo_mac_drivers -I/private/tmp/indigo-led-ack/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DTEST_ENTRY=indigo_focuser_primaluce -DTEST_NAME='"PrimaluceLab Focuser"' -DTEST_SIMULATOR='"build/integration/focuser_primaluce_simulator"' integration/test_focuser_motion.c -o build/integration/test_focuser_primaluce_motion /private/tmp/indigo-led-ack/build/drivers/indigo_focuser_primaluce.a /private/tmp/indigo-led-ack/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-led-ack/build/lib -Wl,-rpath,/private/tmp/indigo-led-ack/build/lib -lindigo -lm -lpthread
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/private/tmp/indigo-led-ack/indigo_libs -I/private/tmp/indigo-led-ack/indigo_drivers -I/private/tmp/indigo-led-ack/indigo_mac_drivers -I/private/tmp/indigo-led-ack/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -o build/integration/test_focuser_primaluce_simulator integration/test_focuser_primaluce_simulator.c /private/tmp/indigo-led-ack/build/drivers/indigo_focuser_primaluce.a /private/tmp/indigo-led-ack/build/lib/libprimalucelib.a -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/private/tmp/indigo-led-ack/build/lib -Wl,-rpath,/private/tmp/indigo-led-ack/build/lib -lindigo -lm -lpthread -lindigocat
++ ./build/integration/test_focuser_primaluce_motion
+Running PrimaluceLab Focuser
+  PASS measured motion progress, completion, abort and pending disconnect
+PrimaluceLab Focuser: all tests passed
++ ./build/integration/test_focuser_primaluce_simulator
+Running PrimaluceLab
+19:30:26.670690 Application: indigo_focuser_primaluce[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid parameter
+  PASS settings_reported_failures
+PrimaluceLab: all tests passed
+PrimaluceLab: 0 failing scenarios
+
+focuser_primaluce: 2/2 OK

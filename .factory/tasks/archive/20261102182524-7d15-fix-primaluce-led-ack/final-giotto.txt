@@ -1,0 +1,15 @@
++ make check-lib build/integration/test_aux_giotto_simulator
+make: `build/integration/test_aux_giotto_simulator' is up to date.
++ ./build/integration/test_aux_giotto_simulator
+Running PrimaluceLab GIOTTO
+  PASS settings
+PrimaluceLab GIOTTO: all tests passed
+Running PrimaluceLab GIOTTO
+19:31:51.487616 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:31:51.588946 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+19:31:51.689581 Application: indigo_aux_giotto[primalucelib_reply_is_acknowledged:481]: Request refused: Error: invalid command
+  PASS settings_refused
+PrimaluceLab GIOTTO: all tests passed
+PrimaluceLab GIOTTO: 0 failing scenarios
+
+aux_giotto: 2/2 OK

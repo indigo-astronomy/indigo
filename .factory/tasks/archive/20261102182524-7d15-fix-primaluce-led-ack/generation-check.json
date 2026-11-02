@@ -1,0 +1,14 @@
+{
+  "identical_after_regeneration": true,
+  "sha256": {
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": "49c060f610c391c017638d1cb2af8fce417f82ea40082b97aacd370cd6e16883",
+    "indigo_drivers/aux_alto/indigo_aux_alto.h": "2caa18c71385a14333e801f46a1d93853d7f4aaca90031e225c59f82fd6e6a9c",
+    "indigo_drivers/aux_alto/indigo_aux_alto_main.c": "f77ac535ea41c6fdd60741ceb2c4d5755358bc638e73af2856ac207c06310cc8",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.c": "7b8748cf5d8eb2f68df1c29dab9c239a882409cab1e217b585e556d114b5dee9",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto.h": "e756a58e991730bc31ebece6304c932926403680ec996425af2bb9bcfd6a74f8",
+    "indigo_drivers/aux_giotto/indigo_aux_giotto_main.c": "5fa033ebfa08a044cfd71e913ef59674734310ec38e2fca6e3fb8e2a051df225",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c": "01764ef8553b6b51b2d419b36c805e29f9cc6e5009120ffd61a5c4dba0f6660c",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.h": "89cce576d1b7615c392f57b5ffbb8fd68d19e12e34498e083b1019d2d503dd3f",
+    "indigo_drivers/focuser_primaluce/indigo_focuser_primaluce_main.c": "044acef5ce50d9dcb671f016ca3caf2386b582100e728a538d05b84c902c79e3"
+  }
+}
