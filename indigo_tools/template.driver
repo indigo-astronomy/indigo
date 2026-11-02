@@ -85,6 +85,12 @@ driver XXXXX {
 		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression) @type=expression
 	}
 	sdk {
+		usb = true; // optional attribute, default is true; Set false with hotplug = false and discover for SDK-enumerated non-USB devices. @type=boolean
+		discover {
+			// optional C code block; requires usb = false, hotplug = false, and no USB filtering or discovery retries
+			// call process_plug_event_handler(NULL, handle) for each SDK-enumerated device
+			// the code will be surrounded by "//+ sdk.discover" and "//-" markers in the generated code
+		}
 		unplug_match {
 			// Set unplug_result to indicate whether this device matches the removed USB device; device, private_data and dev are available.
 		}
@@ -106,6 +112,7 @@ driver XXXXX {
 		}
 	}
 	XXXXX {
+		id = XXXXX; // optional attribute; Logical device identifier, before properties and code blocks. @type=identifier
 		attach_if = XXXXX; // optional attribute; Condition for attaching this logical device (C expression). @type=expression
 		name_value = XXXXX; // optional attribute; Runtime device name expression (C expression). @type=expression // at least one device block is mandatory; replace XXXXX with aux, ccd, wheel, focuser, mount, guider, rotator, dome, gps, ao or polaralign, additional device definitions may follow, but the first one is the master device)
 		name = "XXXXX";  // mandatory attribute; replace XXXXX with device name  (string literal) @type=expression

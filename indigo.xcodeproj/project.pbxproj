@@ -5880,6 +5880,7 @@
 		D35C489943CE4AA80F095E70 /* test_decision_index.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_decision_index.py; sourceTree = "<group>"; };
 		D56DA963063B2BAA9C4134BE /* ADR-002-factory-record-upgrade.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-002-factory-record-upgrade.md"; sourceTree = "<group>"; };
 		D56DA963063B2BAA9C4134BF /* ADR-003-exclude-factory-from-xcode.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-003-exclude-factory-from-xcode.md"; sourceTree = "<group>"; };
+		853F00000000000000000001 /* test_build_revision.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_build_revision.py; sourceTree = "<group>"; };
 		D7CE00EAEFC3F94DA3E0BDAB /* test_ftdi_build.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_ftdi_build.py; sourceTree = "<group>"; };
 		D953B0583D568EBDF4A6B59C /* test_imager_download.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = test_imager_download.js; sourceTree = "<group>"; };
 		DC66CEFDAFCB5B53840E7473 /* indigo_aux_giotto.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_giotto.h; sourceTree = "<group>"; };
@@ -6132,6 +6133,7 @@
 		514C82BA37D5A234281ECD52 /* buildsystem */ = {
 			isa = PBXGroup;
 			children = (
+				853F00000000000000000001 /* test_build_revision.py */,
 				D7CE00EAEFC3F94DA3E0BDAB /* test_ftdi_build.py */,
 			);
 			path = buildsystem;

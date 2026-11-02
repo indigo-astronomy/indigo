@@ -18,7 +18,7 @@ It builds on the following documents and does not repeat them:
 * [Timers and Handler Queues](TIMERS_AND_QUEUES.md) — queue semantics, priorities, cancellation and the `INDIGO_COPY_*_PROCESS_*` macros.
 * [Driver Generator Migration Guide](DRIVER_GENERATOR_MIGRATION.md) — converting an existing hand-written driver, `sdk` hot-plug details, C++ output and architecture restrictions.
 * [Serial Device Simulators](SERIAL_DEVICE_SIMULATORS.md) and [indigo_test/AGENTS.md](../indigo_test/AGENTS.md) — simulators and automated tests.
-* Repository rules in [AGENTS.md](../AGENTS.md) (section *Generated Drivers*) and [indigo_drivers/AGENTS.override.md](../indigo_drivers/AGENTS.override.md). Where this document and those rules differ, the rules win.
+* Repository rules in [AGENTS.md](../AGENTS.md) (section *Generated Drivers*) and [indigo_drivers/AGENTS.md](../indigo_drivers/AGENTS.md). Where this document and those rules differ, the rules win.
 
 The authoritative reference for what the generator accepts is the generator itself. [indigo_tools/template.driver](../indigo_tools/template.driver) is a catalogue of every block and attribute with a one-line description, and [indigo_tools/driver_editor](../indigo_tools/driver_editor/README.md) is a local browser editor that edits `.driver` files and previews the generated source.
 
@@ -419,7 +419,7 @@ The six abort properties listed in the dispatch table are queued at `INDIGO_TASK
 
 ### Guider pulses
 
-`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` are dispatched at `INDIGO_TASK_PRIORITY_TIME`. By default a pulse arriving while the previous one on the same axis is BUSY is ignored by the busy guard. With `accept_while_busy = true;` the request is taken anyway and the driver owns the replacement: clear the stale items in `on_change_request`, cancel the running pulse's finalizer, start the new pulse and schedule `guider_guide_<axis>_finalizer` (see the guider device of `mount_simulator`). Every exposed guider interface needs the pulse-duration accuracy measurement required by [indigo_drivers/AGENTS.override.md](../indigo_drivers/AGENTS.override.md).
+`GUIDER_GUIDE_RA` and `GUIDER_GUIDE_DEC` are dispatched at `INDIGO_TASK_PRIORITY_TIME`. By default a pulse arriving while the previous one on the same axis is BUSY is ignored by the busy guard. With `accept_while_busy = true;` the request is taken anyway and the driver owns the replacement: clear the stale items in `on_change_request`, cancel the running pulse's finalizer, start the new pulse and schedule `guider_guide_<axis>_finalizer` (see the guider device of `mount_simulator`). Every exposed guider interface needs the pulse-duration accuracy measurement required by [indigo_drivers/AGENTS.md](../indigo_drivers/AGENTS.md).
 
 ### Mount
 

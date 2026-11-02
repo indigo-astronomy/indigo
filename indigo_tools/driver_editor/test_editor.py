@@ -230,6 +230,39 @@ class ParserTests(unittest.TestCase):
 		self.assertIn('attach_if', catalog['device'])
 		self.assertIn('format', catalog['item:number'])
 
+	def test_catalog_device_id_can_be_added_without_changing_device_code(self):
+		catalog = schema((ROOT / 'indigo_tools/template.driver').read_text())
+		self.assertEqual(catalog['device']['id']['type'], 'identifier')
+		for eol in ('\n', '\r\n'):
+			source = eol.join(['driver sample {', '\tccd {', '\t\tname = "Guide camera"; // preserve name', '\t\ton_attach { /* preserve code */ }', '\t}', '}'])
+			root = parse(source)
+			updated, root = edit(source, root, named(root, 'ccd')['id'], [dict(field='attribute', name='id', value='ccd_guide')])
+			self.assertEqual(attributes(named(root, 'ccd'))['id'], 'ccd_guide')
+			self.assertEqual(updated.replace('\n\t\tid = ccd_guide;', ''), source)
+			self.assertLess(updated.index('id = ccd_guide;'), updated.index('on_attach'))
+
+	def test_catalog_sdk_discover_can_be_added_edited_and_removed(self):
+		catalog = code_schema((ROOT / 'indigo_tools/template.driver').read_text())
+		for eol in ('\n', '\r\n'):
+			source = eol.join(['// preserve header', 'driver sample {', '\tsdk { hotplug = false; usb = false; }', '\taux;', '}'])
+			root = parse(source)
+			updated, root, selected = structure(source, root, named(root, 'sdk')['id'], 'add', 'discover', code_catalog=catalog)
+			discover = named(root, 'discover')
+			self.assertTrue(discover['code'])
+			self.assertEqual(discover['id'], selected)
+			body = eol + '\t\tif (ready) { process_plug_event_handler(NULL, handle); }' + eol + '\t'
+			updated, root = edit(updated, root, selected, [dict(field='code', value=body)])
+			self.assertIn('if (ready) { process_plug_event_handler(NULL, handle); }', updated)
+			with self.assertRaises(ValueError):
+				structure(updated, root, named(root, 'aux')['id'], 'add', 'discover', code_catalog=catalog)
+			with self.assertRaises(ValueError):
+				structure(updated, root, named(root, 'sdk')['id'], 'add', 'discover', code_catalog=catalog)
+			updated, root, parent = structure(updated, root, selected, 'remove', code_catalog=catalog)
+			self.assertEqual(named(root, 'sdk')['id'], parent)
+			self.assertNotIn('discover', updated)
+			self.assertIn('sdk { hotplug = false; usb = false;', updated)
+			self.assertTrue(updated.startswith('// preserve header' + eol))
+
 	def test_template_matches_generator_attribute_contexts(self):
 		generator = (ROOT / 'indigo_tools/indigo_generator.c').read_text()
 		catalog = schema((ROOT / 'indigo_tools/template.driver').read_text())
@@ -335,6 +368,22 @@ class EditorTests(unittest.TestCase):
 		with self.assertRaises(ValueError):
 			self.editor.change_structure(self.editor.revision, named(self.editor.root, 'X_VALUE')['id'], 'add', 'code')
 		self.assertEqual(self.path.read_text(), FIXTURE)
+
+	@unittest.skipUnless(GENERATOR.is_file(), 'Build indigo_generator first')
+	def test_sdk_discover_and_device_id_generate_in_isolated_preview(self):
+		source = FIXTURE.replace('\taux {', '\tsdk { hotplug = false; usb = false; }\n\taux {', 1)
+		self.path.write_text(source, encoding='utf-8')
+		editor = Editor(self.path, GENERATOR)
+		self.assertEqual(editor.catalog['device']['id']['type'], 'identifier')
+		self.assertEqual(editor.catalog['sdk']['usb']['type'], 'boolean')
+		editor.apply(editor.revision, named(editor.root, 'aux')['id'], [dict(field='attribute', name='id', value='custom_aux')])
+		state = editor.change_structure(editor.revision, named(editor.root, 'sdk')['id'], 'add', 'discover')
+		editor.apply(editor.revision, state['selected'], [dict(field='code', value='\nprocess_plug_event_handler(NULL, (void *)1);\n')])
+		preview = editor.refresh(editor.revision)['preview']['source']
+		self.assertIn('CUSTOM_AUX_DEVICE_NAME', preview)
+		self.assertIn('//+ sdk.discover', preview)
+		self.assertIn('process_plug_event_handler(NULL, (void *)1);', preview)
+		self.assertEqual(self.path.read_text(), source)
 
 	def test_disk_conflict_and_failed_atomic_save(self):
 		self.change_label()
