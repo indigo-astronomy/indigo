@@ -1,0 +1,82 @@
+[
+  {
+    "name": "sum-seed-1",
+    "command": [
+      "/tmp/indigo-rosetta-recheck/indigo_solver",
+      "-vv",
+      "-D",
+      "1",
+      "-x",
+      "2,5",
+      "-c",
+      "30",
+      "/tmp/indigo-rosetta-recheck/sum-seed-1.raw"
+    ],
+    "exit": 0,
+    "elapsed": 2.1220464999999997
+  },
+  {
+    "name": "mean-no-noise",
+    "command": [
+      "/tmp/indigo-rosetta-recheck/indigo_solver",
+      "-vv",
+      "-D",
+      "1",
+      "-x",
+      "2,5",
+      "-c",
+      "30",
+      "/tmp/indigo-rosetta-recheck/mean-no-noise.raw"
+    ],
+    "exit": 0,
+    "elapsed": 1.654955958
+  },
+  {
+    "name": "sum-no-noise",
+    "command": [
+      "/tmp/indigo-rosetta-recheck/indigo_solver",
+      "-vv",
+      "-D",
+      "1",
+      "-x",
+      "2,5",
+      "-c",
+      "30",
+      "/tmp/indigo-rosetta-recheck/sum-no-noise.raw"
+    ],
+    "exit": 0,
+    "elapsed": 1.835821417
+  },
+  {
+    "name": "mean-seed-5859",
+    "command": [
+      "/tmp/indigo-rosetta-recheck/indigo_solver",
+      "-vv",
+      "-D",
+      "1",
+      "-x",
+      "2,5",
+      "-c",
+      "30",
+      "/tmp/indigo-rosetta-recheck/mean-seed-5859.raw"
+    ],
+    "exit": 0,
+    "elapsed": 1.282740542
+  },
+  {
+    "name": "sum-seed-5859",
+    "command": [
+      "/tmp/indigo-rosetta-recheck/indigo_solver",
+      "-vv",
+      "-D",
+      "1",
+      "-x",
+      "2,5",
+      "-c",
+      "30",
+      "/tmp/indigo-rosetta-recheck/sum-seed-5859.raw"
+    ],
+    "exit": 0,
+    "elapsed": 1.7512610420000003
+  }
+]

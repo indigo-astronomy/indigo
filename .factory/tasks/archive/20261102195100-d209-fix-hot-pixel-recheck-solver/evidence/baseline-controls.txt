@@ -1,0 +1,6 @@
+Running CCD simulator integration tests
+    bin 1: 128 x 96 pixels are the means of their bin blocks, 0 of them with a block sum beyond 65535
+    bin 2: 64 x 48 pixels are the means of their bin blocks, 3 of them with a block sum beyond 65535
+    bin 4: 32 x 24 pixels are the means of their bin blocks, 2 of them with a block sum beyond 65535
+  PASS simulator_imager_binning_averages_the_bin_block
+CCD simulator integration tests: all tests passed

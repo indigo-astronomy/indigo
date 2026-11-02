@@ -1,0 +1,11 @@
+20:53:22.824586 Application: indigo_solver_compute_center: no consistent set of matches found (4 of 40)
+20:53:23.422472 Application: indigo_solver_compute_center: no consistent set of matches found (5 of 69)
+Not solved: No solution found
+Image 800 x 600, binned 1 x 1
+403 stars detected
+Solving with index 5° Tycho-2 (FOV 4.5° - 10°)...
+Stage 1: 40 brightest stars, 27405 quads, 6205073 catalog quads
+Solving with index 5° Tycho-2 (FOV 4.5° - 10°)...
+Stage 2: 100 brightest stars, 270725 quads, 6205073 catalog quads
+Solving with index 5° Tycho-2 (FOV 4.5° - 10°)...
+Stage 3: 403 brightest stars, 864501 quads, 6205073 catalog quads

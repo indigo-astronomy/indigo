@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261102195100-d209-fix-hot-pixel-recheck-solver",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Ready for owner-authorized integration/publication after final immutable process gate.",
+  "blocker": null
+}

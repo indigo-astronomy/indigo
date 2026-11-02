@@ -1,0 +1,29 @@
+{
+  "title": "Solver margin on the 800 x 600 Rosetta field is a few consistent matches",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261027140318-5859-fix-simulator-binning",
+      "report": "verification.md",
+      "revision": null
+    },
+    {
+      "id": "20261102195100-d209-fix-hot-pixel-recheck-solver",
+      "report": "solver-verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The native quad solver solves the 2 x 2 binned Rosetta frame of the CCD Imager Simulator (800 x 600, 16.87\"/px) with 6 of 23 consistent matches when the camera averages the bin block, and the agent's own downsampling of the unbinned frame with 7 of 32, but a summed and clamped frame of the same field (106 detected stars instead of 71 or 96) fails deterministically with 5 of 57 and 5 of 53 consistent matches. The brightest star per cell selection and the vote threshold leave little margin at this field size. Not separated whether the clamped cores or the extra faint detections break it. Next: feed the solver core the summed frame offline and tune the star selection or the consistency threshold with a regression in test_agent_solver_core. Current recheck: six reconstructed mean and sum/clamp frames all solve with current source and appropriate 2-degree index (selected 2+5); summed inputs yield 10-13 consistent matches. Diagnostic 5-degree-only failures also affect mean controls and lie below that index field range. Closed as obsolete/not_a_bug for current behavior, not as a new solver fix; original exact noisy bytes and historical indexes were unavailable.",
+  "evidence": "verification.md of task 20261027140318-5859-fix-simulator-binning (debug runs of test_agent_solver_simulator 'rosetta camera binned' with the summed and the averaged driver); indigo_drivers/agent_solver/indigo_solver.c indigo_solver_compute_center()",
+  "resolution": {
+    "kind": "not_a_bug",
+    "evidence": ".factory/tasks/archive/20261102195100-d209-fix-hot-pixel-recheck-solver/solver-verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261027140318-5859-fix-simulator-binning-002"
+}

@@ -1,0 +1,135 @@
+{
+  "version": 2,
+  "task": "20261102195100-d209-fix-hot-pixel-recheck-solver",
+  "scope": [
+    ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-001.json",
+    ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-002.json",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/ccd_simulator/README.md",
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.c",
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_ccd_simulator.c",
+    "indigo_test/integration/ccd_simulator_test_driver.c",
+    ".factory/completions/20261102195100-d209-fix-hot-pixel-recheck-solver.json",
+    ".factory/findings/archive/FND-20261027140318-5859-fix-simulator-binning-001.json",
+    ".factory/findings/archive/FND-20261027140318-5859-fix-simulator-binning-002.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_simulator"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "/tmp/indigo-hotpixel-sanitize",
+        "simulator_hot_pixels_respect_subframe_edges"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/benchmark/bench_ccd_simulator_guider_timing"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102195100-d209-fix-hot-pixel-recheck-solver.json": [
+      "100644",
+      "blob",
+      "58cba3b8a3fbae5cfe4052d8c88daac8c220475a"
+    ],
+    ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-001.json": null,
+    ".factory/findings/active/FND-20261027140318-5859-fix-simulator-binning-002.json": null,
+    ".factory/findings/archive/FND-20261027140318-5859-fix-simulator-binning-001.json": [
+      "100644",
+      "blob",
+      "0fd18d9ef6cd65382d5f6788a0ccd329734376a7"
+    ],
+    ".factory/findings/archive/FND-20261027140318-5859-fix-simulator-binning-002.json": [
+      "100644",
+      "blob",
+      "3cea5afa7088a2fc5d313252c1e97d45571f119b"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "fc74cf498e21f7c95654fb6783b29012b240e646"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "975ab66a1809267bbf57e602b1f9724d6fe0f746"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "ca06d29046907b3491f151f3e36bf58664f4d2d5"
+    ],
+    "indigo_drivers/ccd_simulator/README.md": [
+      "100644",
+      "blob",
+      "b6a6ffebce5075540081be78683bba1aed1e1c41"
+    ],
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.c": [
+      "100644",
+      "blob",
+      "57e5498afb06738e85ba7472ad72c0d0c17a53d9"
+    ],
+    "indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver": [
+      "100644",
+      "blob",
+      "7d09688748199d208a1bd8ea2893ede8b10aa9fc"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "2425616289a57a17937db0d8d765854bfbde530d"
+    ],
+    "indigo_test/integration/ccd_simulator_test_driver.c": [
+      "100644",
+      "blob",
+      "d0927404e58e3d04defd5ce1b3a7e4ddaa072c3f"
+    ],
+    "indigo_test/integration/test_ccd_simulator.c": [
+      "100644",
+      "blob",
+      "031f46702767e359233946edbacb368cf3897c8c"
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+Image 800 x 600, binned 1 x 1
+359 stars detected
+Solving with index 5° Tycho-2 (FOV 4.5° - 10°)...
+Stage 1: 40 brightest stars, 31465 quads, 6205073 catalog quads
+Solving with index 2° Tycho-2 (FOV 2° - 4.5°)...
+Stage 1: 40 brightest stars, 31465 quads, 12596193 catalog quads
+Solved in 1.27 s: 8 of 8 stars matched, rms 3.76"
+RA:       6.526811 h (6:31:36.52)
+Dec:      +5.093896° (+5:05:38.0)
+Epoch:    J2000
+Angle:    0.8468°
+Scale:    0.00468956°/pixel (16.882"/pixel)
+Field:    3.7516° x 2.8137°
+Parity:   -1
+Index:    2° Tycho-2 (FOV 2° - 4.5°)

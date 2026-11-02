@@ -1,0 +1,48 @@
+{
+  "source_sha256": "e9cd3d3ab20d6a6a38bda9714ce16ea4f2a049e18a8702307e7a6449eaff084e",
+  "blocks_exceeding_65535": 60,
+  "frames": [
+    {
+      "name": "mean-no-noise.raw",
+      "sha256": "b4328c2a965061525b463a13b3c2bbc225d32ea8af902c55a41a33f9e360420c",
+      "bytes": 960012,
+      "method": "mean",
+      "noise_seed": null
+    },
+    {
+      "name": "sum-no-noise.raw",
+      "sha256": "0e30c21fdbe2c22d0240e33d0c9fa29abf5ba4be9adc3fd8145e5b7f8ecf59c0",
+      "bytes": 960012,
+      "method": "sum",
+      "noise_seed": null
+    },
+    {
+      "name": "mean-seed-1.raw",
+      "sha256": "c8b7b94b66a77bec8084e80b75871eb727acde07fe0f23901ab6fc1a3593f70e",
+      "bytes": 960012,
+      "method": "mean",
+      "noise_seed": 1
+    },
+    {
+      "name": "sum-seed-1.raw",
+      "sha256": "350db492915ab0b5a8eab4a1ee846e568f8fbf64407a6fd45477826a6b8c306a",
+      "bytes": 960012,
+      "method": "sum",
+      "noise_seed": 1
+    },
+    {
+      "name": "mean-seed-5859.raw",
+      "sha256": "78bdc04155d0919769bd2afaeb3d836bbe1448c70d10abdbd147bce9d94fe9d0",
+      "bytes": 960012,
+      "method": "mean",
+      "noise_seed": 5859
+    },
+    {
+      "name": "sum-seed-5859.raw",
+      "sha256": "5c8ce3614cbffd553e4a8019970bf3d63caf46302e9ff1ac53a4a2c8f6a12c6f",
+      "bytes": 960012,
+      "method": "sum",
+      "noise_seed": 5859
+    }
+  ]
+}

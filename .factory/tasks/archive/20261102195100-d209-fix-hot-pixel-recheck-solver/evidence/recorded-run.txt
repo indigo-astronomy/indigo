@@ -1,0 +1,125 @@
++ make -C /Users/polakovic/Development/indigo/indigo_drivers/ccd_simulator -f ../../Makefile.drv all
+Definition: indigo_ccd_simulator.driver
+Sources:    indigo_ccd_simulator.c indigo_ccd_simulator_data.c indigo_ccd_simulator_main.c
+Archive:    indigo_ccd_simulator.a
+SO library: indigo_ccd_simulator.dylib
+indigo_ccd_simulator.o indigo_ccd_simulator_data.o
+Executable: indigo_ccd_simulator
+
++ make check-lib build/integration/test_ccd_simulator
+make: `build/integration/test_ccd_simulator' is up to date.
++ ./build/integration/test_ccd_simulator
+Running CCD simulator integration tests
+  PASS simulator_countdown_progress_abort_and_restart
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_fractional_exposure_and_finite_stream_timing
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    2000 ms east pulse replaced after 500 ms by a 600 ms east pulse finished in 1133 ms
+    2000 ms east pulse replaced after 500 ms by a 300 ms west pulse finished in 820 ms
+  PASS simulator_guider_replacement_and_simultaneous_axes
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_raw_geometry_and_bins
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_hot_pixels_respect_subframe_edges
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    bin 1: 128 x 96 pixels are the means of their bin blocks, 0 of them with a block sum beyond 65535
+    bin 2: 64 x 48 pixels are the means of their bin blocks, 3 of them with a block sum beyond 65535
+    bin 4: 32 x 24 pixels are the means of their bin blocks, 2 of them with a block sum beyond 65535
+  PASS simulator_imager_binning_averages_the_bin_block
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    unbinned star at 265.16, 884.40 width 2.00 px flux 97957 ADU
+    2 x 2 binned star at 132.61, 442.19 width 1.00 px flux 24488 ADU
+  PASS simulator_guider_binning_scales_the_star_profile
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_stream_abort_and_reconnect
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_cooling_target_and_polling
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_camera_modes_and_settings
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_file_noise_formats_and_failure
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    star at 799.39, 599.55 in 1600 x 1200 frame
+    0.5 px Dec move shifted the star by 0.211, 0.384 px
+  PASS simulator_guider_camera_follows_simulated_mount
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    RA offset shifted the star by 2.440, -1.822 px, the mount by 2.398, -1.812 px
+    Dec offset shifted the star by 1.737, 2.426 px, the mount by 1.690, 2.453 px
+  PASS simulator_guider_offsets_follow_simulated_mount_axes
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    periodic error shifted the star by 2.910, -2.165 px
+  PASS simulator_guider_periodic_error_follows_ra_axis
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    24 samples over 23 s
+    fitted period 6.00 s (expected 6.0), amplitude 4.003 px (expected 4.0), rms 0.025 px
+  PASS simulator_guider_periodic_error_period_and_amplitude
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    east side of pier: 3 s north pulse shifted the star by 1.123, 1.486 px
+    east side of pier: 3 s west pulse shifted the star by 1.456, -1.122 px
+    west side of pier: 3 s north pulse shifted the star by -1.150, -1.523 px
+    west side of pier: 3 s west pulse shifted the star by -1.498, 1.047 px
+  PASS simulator_guider_offset_model_pulses_follow_mount_axes
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+    the mount is on the west side of the pier
+    3 s north pulse shifted the star by -1.166, -1.516 px, expected 1.880 px
+    3 s west pulse shifted the star by -1.494, 1.095 px, expected 1.864 px
+    3 s south and east pulses of the camera guider moved the star back to 0.005, -0.018 px from the start
+  PASS simulator_guider_camera_follows_mount_simulator_guiding
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_focuser_direction_queued_behind_a_move_keeps_the_last
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS driver_info_reports_simulator_metadata
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS simulator_initializes_enumerates_connects_disconnects_and_shuts_down
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_imager_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_wheel_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_focuser_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_guider_camera_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_guider_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_ao_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_bahtinov_camera_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_dslr_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+Running CCD simulator integration tests
+  PASS ccd_file_camera_passes_compliance_checks
+CCD simulator integration tests: all tests passed
+144 driver(s) written to /Users/polakovic/Development/indigo/TEST_SUMMARY.md
+
+ccd_simulator: 29/29 OK
+recorded in indigo_drivers/ccd_simulator/README.md:
+2026-11-02 20:55 3.0.0.46 mac arm64 simulator 29/29 OK

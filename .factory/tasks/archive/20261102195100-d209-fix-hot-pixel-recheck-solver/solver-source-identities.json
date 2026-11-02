@@ -1,0 +1,7 @@
+{
+  "indigo_tools/indigo_solver.c": "703b19aaec39a5c5064b8183a8c7323d4cedab3a",
+  "indigo_drivers/agent_platesolver/indigo_solver.c": "ba6194eb84d810dbc9e282220341f0d4b80b4377",
+  "indigo_drivers/agent_platesolver/indigo_solver_utils.c": "887ed14ca7ef604b1e01c78ae5bee1afcd1aeef5",
+  "indigo_drivers/agent_platesolver/indigo_solver_healpix.c": "fbc8444f64533d8e7e606c2dae4007008a5128ba",
+  "indigo_drivers/ccd_simulator/indigo_ccd_simulator_mono.h": "4d6f68b5c5d568d503aa6a4f585dc58a22123434"
+}

@@ -1,0 +1,29 @@
+Definition: indigo_ccd_simulator.driver
+Sources:    indigo_ccd_simulator.c indigo_ccd_simulator_data.c indigo_ccd_simulator_main.c
+Archive:    indigo_ccd_simulator.a
+SO library: indigo_ccd_simulator.dylib
+indigo_ccd_simulator.o indigo_ccd_simulator_data.o
+Executable: indigo_ccd_simulator
+
+/Applications/Xcode.app/Contents/Developer/usr/bin/make -C ../../indigo_tools /Users/polakovic/Development/indigo/build/bin/indigo_generator
+/usr/bin/clang indigo_generator.c -o /Users/polakovic/Development/indigo/build/bin/indigo_generator
+/Users/polakovic/Development/indigo/build/bin/indigo_generator indigo_ccd_simulator.driver
+Reading indigo_ccd_simulator.driver ...
+Warning: CCD_STREAMING_PROPERTY->hidden set to false
+Warning: CCD_COOLER_PROPERTY->hidden set to false
+Warning: CCD_TEMPERATURE_PROPERTY->hidden set to false
+Warning: CCD_STREAMING_PROPERTY->hidden set to false
+Warning: CCD_STREAMING_PROPERTY->hidden set to false
+Warning: CCD_STREAMING_PROPERTY->hidden set to false
+Warning: CCD_STREAMING_PROPERTY->hidden set to false
+Warning: FOCUSER_BACKLASH_PROPERTY->hidden set to false
+Warning: FOCUSER_COMPENSATION_PROPERTY->hidden set to false
+Warning: GUIDER_RATE_PROPERTY->hidden set to false
+Writing ./indigo_ccd_simulator.h ...
+Writing ./indigo_ccd_simulator_main.c ...
+Writing ./indigo_ccd_simulator.c ...
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_ccd_simulator.o indigo_ccd_simulator.c
+/usr/bin/libtool -static -o /Users/polakovic/Development/indigo/build/drivers/indigo_ccd_simulator.a indigo_ccd_simulator.o indigo_ccd_simulator_data.o
+/usr/bin/clang -shared -o /Users/polakovic/Development/indigo/build/drivers/indigo_ccd_simulator.dylib -Wl,-force_load /Users/polakovic/Development/indigo/build/drivers/indigo_ccd_simulator.a    -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lindigocat -lusb-1.0
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned    -c -o indigo_ccd_simulator_main.o indigo_ccd_simulator_main.c
+/usr/bin/clang -o /Users/polakovic/Development/indigo/build/drivers/indigo_ccd_simulator indigo_ccd_simulator_main.o /Users/polakovic/Development/indigo/build/drivers/indigo_ccd_simulator.a   -lindigo -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc  -L/Users/polakovic/Development/indigo/build/lib -lindigocat -lusb-1.0

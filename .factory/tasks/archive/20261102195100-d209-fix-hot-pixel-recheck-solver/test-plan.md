@@ -1,0 +1,3 @@
+# Test plan
+
+AC hot-pixel bounds: deterministic test-only wrapper includes the actual generated driver, seeds known hot-pixel and hot-row coordinates in an idle connected imager, renders subframes at bins 1/2/4, checks the last valid row still receives hot pixels and the following guard row remains unchanged. Cover y equal to height, beyond bottom, negative/top and excluded x edges. Baseline must fail before comparison change; normal and sanitizer checks after repair. Existing full simulator suite is final recorded driver run; no hardware. Solver investigator constructs mean and sum-clamped Rosetta RAW offline and invokes unchanged current core with existing local indices only.

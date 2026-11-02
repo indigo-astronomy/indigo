@@ -1,0 +1,5 @@
+Running CCD simulator integration tests
+hot pixel wrote beyond frame at guard column 0
+integration/test_ccd_simulator.c:743: sim_test_hotpixel_guard_intact(device)
+  FAIL simulator_hot_pixels_respect_subframe_edges
+CCD simulator integration tests: 1 test(s) failed
