@@ -118,7 +118,7 @@ By default the per-step state of the loop body is reset on each iteration so the
 sequence.start();
 ```
 
-`start(imager_agent, mount_agent, guider_agent)` optionally accepts the device names of the agents to drive. When omitted they default to `"Imager Agent"`, `"Mount Agent"` and `"Guider Agent"` respectively:
+`start(imager_agent, mount_agent, guider_agent, solver_agent)` optionally accepts the device names of the agents to drive. When omitted they default to `"Imager Agent"`, `"Mount Agent"` and `"Guider Agent"` respectively. Solver agents are mutually exclusive, so when `solver_agent` is omitted the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent is used:
 
 ```js
 sequence.start("Imager Agent @ observatory", "Mount Agent @ observatory", "Guider Agent @ observatory");
@@ -341,7 +341,7 @@ A GUI can use `STEP` together with the property state to flag steps: those with 
 Besides the public `Sequence` class, [Sequencer.js](Sequencer.js) contains two internal singletons that users normally do not call directly:
 
 - `indigo_sequencer` - the execution engine. It interprets the recorded microsteps one by one, waits for the relevant agent properties to reach the expected state, updates the progress properties, and handles abort/pause/failure logic.
-- `indigo_flipper` - the meridian-flip state machine driven by `enable_meridian_flip()`. It waits for transit, performs the slew, optionally syncs & centers with the astrometry agent, resumes guiding, waits for settle-down, and reports progress via `FLIPPER_STATE`.
+- `indigo_flipper` - the meridian-flip state machine driven by `enable_meridian_flip()`. It waits for transit, performs the slew, optionally syncs & centers with the solver agent, resumes guiding, waits for settle-down, and reports progress via `FLIPPER_STATE`.
 
 These are wired into the agent through `indigo_event_handlers` and respond to `on_update` / `on_enumerate_properties` events. Refer to [Sequencer.js](Sequencer.js) for the details.
 

@@ -714,6 +714,44 @@ static void astrometry_orchestration(void) {
 	indigo_release_property(property);
 }
 
+static bool rename_solver_peer(const char *name) {
+	indigo_property *properties[] = { solver_exposure_property, solver_target_property, solver_process_property, solver_filter_property };
+	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
+		indigo_delete_property(&astrometry_peer, properties[i], NULL);
+	}
+	REQUIRE(indigo_detach_device(&astrometry_peer) == INDIGO_OK);
+	INDIGO_COPY_NAME(astrometry_peer.name, name);
+	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
+		INDIGO_COPY_NAME(properties[i]->device, name);
+	}
+	REQUIRE(indigo_attach_device(&astrometry_peer) == INDIGO_OK);
+	orchestration_enumerate(&astrometry_peer, NULL, NULL);
+	return wait_exists(name, "AGENT_PLATESOLVER_FILTER", 5);
+}
+
+static void platesolver_orchestration(void) {
+	ASSERT_TRUE(rename_solver_peer("Platesolver Agent"));
+	ASSERT_TRUE(check_js("indigo_devices['Platesolver Agent'] != null"));
+	int before = atomic_load(&orchestration_changes);
+	ASSERT_TRUE(run_js("var s=new Sequence('platesolver'); s.set_solver_filter('R'); s.sync_center(0.2); s.precise_goto(0.3,5,20); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Platesolver Agent' && ASTROMETRY_AGENT===SOLVER_AGENT"));
+	ASSERT_EQ_INT(before + 6, atomic_load(&orchestration_changes));
+	indigo_property *property = snapshot("Platesolver Agent", "AGENT_PLATESOLVER_FILTER");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_FALSE(property->items[0].sw.value);
+	ASSERT_TRUE(property->items[2].sw.value);
+	indigo_release_property(property);
+	property = snapshot("Platesolver Agent", "AGENT_PLATESOLVER_GOTO_SETTINGS");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_NEAR(5, property->items[0].number.value, 0.001);
+	ASSERT_NEAR(20, property->items[1].number.value, 0.001);
+	indigo_release_property(property);
+	ASSERT_TRUE(run_js("var s=new Sequence('explicit solver'); s.start('Imager Agent','Mount Agent','Guider Agent','Astrometry Agent');"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+}
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
@@ -741,7 +779,8 @@ static const indigo_test_case tests[] = {
 	{ "simulator guiding calibration step", simulator_guiding_calibration_step },
 	{ "custom agent arguments", custom_agent_arguments },
 	{ "configuration and driver orchestration", configuration_and_driver_orchestration },
-	{ "astrometry orchestration", astrometry_orchestration }
+	{ "astrometry orchestration", astrometry_orchestration },
+	{ "platesolver orchestration", platesolver_orchestration }
 };
 
 int main(int argc, char **argv) {
