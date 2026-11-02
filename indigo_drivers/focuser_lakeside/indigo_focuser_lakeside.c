@@ -41,7 +41,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000E
+#define DRIVER_VERSION       0x0300000F
 #define DRIVER_NAME          "indigo_focuser_lakeside"
 #define DRIVER_LABEL         "LakesideAstro Focuser"
 #define FOCUSER_DEVICE_NAME  "LakesideAstro Focuser"
@@ -52,6 +52,10 @@
 #define RESPONSE             (PRIVATE_DATA->response)
 #define X_FOCUSER_DEADBAND_ITEM (FOCUSER_COMPENSATION_PROPERTY->items + 1)
 #define X_FOCUSER_PERIOD_ITEM (FOCUSER_COMPENSATION_PROPERTY->items + 2)
+// A report count cannot distinguish a stalled motor from slow motion/backlash take-up.
+#ifndef LAKESIDE_NO_PROGRESS_TIMEOUT
+#define LAKESIDE_NO_PROGRESS_TIMEOUT 30
+#endif
 
 //- define
 
@@ -72,7 +76,8 @@ typedef struct {
 	indigo_property *x_focuser_active_slope_property;
 	//+ data
 	char response[64];
-	int position, expected_position, last_position, stalled, active_slope, abort_position;
+	int position, expected_position, last_position, active_slope, abort_position;
+	double progress_deadline;
 	bool active, uncertain, external, poll_failed, abort_moving;
 	//- data
 } lakeside_private_data;
@@ -219,7 +224,7 @@ static void motion_finalizer(indigo_device *device) {
 		return;
 	}
 	if (!lakeside_read(device, 0.2)) {
-		if (++PRIVATE_DATA->stalled < 40) {
+		if (indigo_monotonic_time() < PRIVATE_DATA->progress_deadline) {
 			indigo_execute_handler_in(device, 0.1, motion_finalizer);
 			return;
 		}
@@ -245,7 +250,7 @@ static void motion_finalizer(indigo_device *device) {
 		// Anything else the controller reports during a move is skipped, as the 2.0 driver and INDI did; the
 		// stall bound still ends a move that never reports DONE.
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Skipped '%s' during the move", RESPONSE);
-		if (++PRIVATE_DATA->stalled < 40) {
+		if (indigo_monotonic_time() < PRIVATE_DATA->progress_deadline) {
 			indigo_execute_handler_in(device, 0.1, motion_finalizer);
 			return;
 		}
@@ -259,9 +264,9 @@ static void motion_finalizer(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.value = position;
 	if (position != PRIVATE_DATA->last_position) {
 		PRIVATE_DATA->last_position = position;
-		PRIVATE_DATA->stalled = 0;
-	} else if (++PRIVATE_DATA->stalled >= 40) {
-		// A motor that keeps reporting the same position without DONE has stalled as well.
+		PRIVATE_DATA->progress_deadline = indigo_monotonic_time() + LAKESIDE_NO_PROGRESS_TIMEOUT;
+	} else if (indigo_monotonic_time() >= PRIVATE_DATA->progress_deadline) {
+		// Only elapsed time without a changed valid position ends the move, independent of report cadence.
 		lakeside_command(device, false, "CH#");
 		PRIVATE_DATA->active = false;
 		PRIVATE_DATA->uncertain = true;
@@ -419,7 +424,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		// A move past either end of travel is sent as a move to that end.
 		PRIVATE_DATA->expected_position = target;
 		PRIVATE_DATA->last_position = PRIVATE_DATA->position;
-		PRIVATE_DATA->stalled = 0;
+		PRIVATE_DATA->progress_deadline = indigo_monotonic_time() + LAKESIDE_NO_PROGRESS_TIMEOUT;
 		PRIVATE_DATA->active = true;
 		PRIVATE_DATA->external = false;
 		FOCUSER_POSITION_ITEM->number.target = target;

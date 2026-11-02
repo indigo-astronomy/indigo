@@ -198,9 +198,9 @@ static indigo_result observe_update(indigo_client *client, indigo_device *device
 	return result;
 }
 
-static bool new_state(const char *name, unsigned before, indigo_property_state state) {
+static bool new_state_for(const char *name, unsigned before, indigo_property_state state, int polls) {
 	int index = observed_index(name);
-	for (int i = 0; i < 400; i++) {
+	for (int i = 0; i < polls; i++) {
 		indigo_property *property = find_cached_property(name);
 		if (index >= 0 && atomic_load(&revisions[index]) > before && property && property->state == state) {
 			return true;
@@ -209,6 +209,10 @@ static bool new_state(const char *name, unsigned before, indigo_property_state s
 	}
 	fprintf(stderr, "No fresh %s state %d\n", name, state);
 	return false;
+}
+
+static bool new_state(const char *name, unsigned before, indigo_property_state state) {
+	return new_state_for(name, before, state, 400);
 }
 
 static bool number_change(const char *property, const char *item, double value, indigo_property_state state) {
@@ -688,7 +692,8 @@ static void stalled_motion(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// The production no-progress contract is thirty seconds, independent of report cadence.
+	SERIAL_CHECK_TRUE(new_state_for(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 800));
 	SERIAL_CHECK_TRUE(commands("CH") > 0);
 	// Later good idle polls neither turn the failed move OK nor rewrite the requested target.
 	indigo_usleep(2200000);
@@ -709,7 +714,8 @@ static void frozen_motion(void) {
 	SERIAL_CHECK_TRUE(switch_change(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true, INDIGO_OK_STATE));
 	unsigned before = atomic_load(&revisions[observed_index(FOCUSER_STEPS_PROPERTY_NAME)]);
 	SERIAL_CHECK_TRUE(number_change(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 500, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(new_state(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE));
+	// The production no-progress contract is thirty seconds, independent of report cadence.
+	SERIAL_CHECK_TRUE(new_state_for(FOCUSER_STEPS_PROPERTY_NAME, before, INDIGO_ALERT_STATE, 800));
 	SERIAL_CHECK_TRUE(commands("CH") > 0);
 	SERIAL_CHECK_TRUE(find_cached_property(FOCUSER_POSITION_PROPERTY_NAME)->state == INDIGO_ALERT_STATE);
 	SERIAL_CHECK_TRUE(find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.target == 33268);
@@ -901,7 +907,8 @@ static int run_cases(const lakeside_test *cases, int count) {
 		fflush(NULL);
 		pid_t child = fork();
 		if (child == 0) {
-			alarm(30);
+			// No-progress cases exercise the real thirty-second production bound plus setup/recovery.
+			alarm(cases[i].run == stalled_motion || cases[i].run == frozen_motion ? 60 : 30);
 			indigo_test_case test = { cases[i].name, cases[i].run };
 			_exit(indigo_run_tests("Lakeside", &test, 1));
 		}
