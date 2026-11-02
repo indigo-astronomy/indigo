@@ -1,0 +1,629 @@
+make: Entering directory '<repo>/indigo_test'
+build/integration/test_agent_imager
+Running Imager Agent integration
+RELATED attach INDIGO Solver Agent listed=1 expected=1
+RELATED select INDIGO Solver Agent state=OK selected=1
+RELATED detach INDIGO Solver Agent listed=0
+RELATED attach INDIGO Solver Agent #2 @ legacy listed=1 expected=1
+RELATED select INDIGO Solver Agent #2 @ legacy state=OK selected=1
+RELATED detach INDIGO Solver Agent #2 @ legacy listed=0
+RELATED attach Solver Agent listed=1 expected=1
+RELATED select Solver Agent state=OK selected=1
+RELATED detach Solver Agent listed=0
+RELATED attach Solver Agent #2 @ legacy listed=1 expected=1
+RELATED select Solver Agent #2 @ legacy state=OK selected=1
+RELATED detach Solver Agent #2 @ legacy listed=0
+RELATED attach Imager Agent #3 listed=1 expected=1
+RELATED select Imager Agent #3 state=OK selected=1
+RELATED detach Imager Agent #3 listed=0
+RELATED attach Auxiliary Agent #2 listed=1 expected=1
+RELATED select Auxiliary Agent #2 state=OK selected=1
+RELATED detach Auxiliary Agent #2 listed=0
+RELATED attach Mount Agent #2 listed=1 expected=1
+RELATED select Mount Agent #2 state=OK selected=1
+RELATED detach Mount Agent #2 listed=0
+RELATED attach Guider Agent #2 listed=1 expected=1
+RELATED select Guider Agent #2 state=OK selected=1
+RELATED detach Guider Agent #2 listed=0
+RELATED attach Astrometry Agent #2 listed=1 expected=1
+RELATED select Astrometry Agent #2 state=OK selected=1
+RELATED detach Astrometry Agent #2 listed=0
+RELATED attach ASTAP Agent #2 listed=1 expected=1
+RELATED select ASTAP Agent #2 state=OK selected=1
+RELATED detach ASTAP Agent #2 listed=0
+RELATED attach Unrelated Agent listed=0 expected=0
+RELATED detach Unrelated Agent listed=0
+RELATED attach Platesolver Agen listed=0 expected=0
+RELATED detach Platesolver Agen listed=0
+RELATED attach PlateSolver Agent listed=0 expected=0
+RELATED detach PlateSolver Agent listed=0
+RELATED attach Other Platesolver Agent listed=0 expected=0
+RELATED detach Other Platesolver Agent listed=0
+RELATED attach Solver Agen listed=0 expected=0
+RELATED detach Solver Agen listed=0
+RELATED attach INDIGO Solver Agen listed=0 expected=0
+RELATED detach INDIGO Solver Agen listed=0
+  PASS related agent discovery compatibility
+Imager Agent integration: all tests passed
+Running Imager Agent integration
+RELATED attach Platesolver Agent listed=1 expected=1
+RELATED select Platesolver Agent state=OK selected=1
+RELATED detach Platesolver Agent listed=0
+RELATED attach Platesolver Agent #2 listed=1 expected=1
+RELATED select Platesolver Agent #2 state=OK selected=1
+RELATED detach Platesolver Agent #2 listed=0
+RELATED attach Platesolver Agent @ remote listed=1 expected=1
+RELATED select Platesolver Agent @ remote state=OK selected=1
+RELATED detach Platesolver Agent @ remote listed=0
+RELATED attach Platesolver Agent #2 @ remote listed=1 expected=1
+RELATED select Platesolver Agent #2 @ remote state=OK selected=1
+RELATED detach Platesolver Agent #2 @ remote listed=0
+  PASS platesolver agent discovery
+Imager Agent integration: all tests passed
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  PASS empty start
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  Test Platesolver: Failed to start exposure - no image source agent selected
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  PASS platesolver empty start
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  Imager Agent: Focusing started
+  Imager Agent: U-Curve found best focus at position -1.383
+  Imager Agent: Focusing finished
+  PASS default preview estimator
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Batch aborted
+  PASS interframe delay abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Dithering failed, no guider agent selected
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  PASS dither disabled dark and missing guider
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  Imager Agent: Focusing started
+  CCD Imager Simulator: Injected exposure failure
+12:27:00.923156 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:27:01.983753 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:27:03.041258 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+12:27:04.041350 Application: indigo_agent_imager[capture_frame:675]: Exposure failed
+  Imager Agent: Failed to evaluate quality
+  Imager Agent: Focus does not meet the quality criteria
+  Imager Agent: Focusing failed
+  Imager Agent: Focusing started
+  CCD Imager Simulator: Injected exposure failure
+12:27:06.768954 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:27:07.824561 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:27:08.885020 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+12:27:09.885137 Application: indigo_agent_imager[capture_frame:675]: Exposure failed
+  Imager Agent: Failed to evaluate quality
+  Imager Agent: Focus does not meet the quality criteria
+  Imager Agent: Focus failed, restoring initial position
+12:27:12.622874 Application: indigo_agent_imager[autofocus_iterative:1877]: Failed to reach focus, moving to initial position 0 steps
+  Imager Agent: Focusing failed
+  Imager Agent: Focusing started
+  CCD Imager Simulator: Injected exposure failure
+12:27:12.675486 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:27:13.727556 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:27:14.778822 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+12:27:15.781540 Application: indigo_agent_imager[capture_frame:675]: Exposure failed
+  Imager Agent: Failed to evaluate quality
+  Imager Agent: Focus does not meet the quality criteria
+  Imager Agent: Focus failed, restoring initial position
+12:27:18.524513 Application: indigo_agent_imager[autofocus_iterative:1877]: Failed to reach focus, moving to initial position 0 steps
+  Imager Agent: Repeating in 0 seconds, 1 attempts left
+  Imager Agent: Focusing finished
+  PASS autofocus failure policies and repeat
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Batch aborted
+  PASS external shutter routing
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Streaming started
+  CCD Imager Simulator: Injected stream failure
+  Imager Agent: Streaming failed
+  Imager Agent: Streaming started
+  Imager Agent: Streaming finished
+  Imager Agent: Streaming started
+  CCD Imager Simulator: Injected stream failure
+  Imager Agent: Streaming failed
+  Imager Agent: Streaming started
+  Imager Agent: Streaming finished
+  Imager Agent: Streaming started
+  CCD Imager Simulator: Injected stream failure
+  Imager Agent: Streaming failed
+  Imager Agent: Streaming started
+  Imager Agent: Streaming finished
+  PASS streaming failure propagates
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: RAW image not received
+  Imager Agent: Invalid or incomplete RAW image
+  PASS invalid image detection and recovery
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Bahtinov Mask Simulator: Connected to CCD Bahtinov Mask Simulator
+  CCD Bahtinov Mask Simulator: Disconnected from CCD Bahtinov Mask Simulator
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Bahtinov Mask Simulator: Connected to CCD Bahtinov Mask Simulator
+  PASS independent instances and reselection
+Imager Agent integration: all tests passed
+  CCD Bahtinov Mask Simulator: Disconnected from CCD Bahtinov Mask Simulator
+Running Imager Agent integration
+  PASS additional instance lifecycle
+Imager Agent integration: all tests passed
+Running Imager Agent integration
+  PASS additional instance removal during publication
+Imager Agent integration: all tests passed
+Running Imager Agent integration
+  CCD Bahtinov Mask Simulator: Connected to CCD Bahtinov Mask Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  Imager Agent: Focusing started
+  Imager Agent: Focusing finished
+  PASS bahtinov preview and focus
+Imager Agent integration: all tests passed
+  CCD Bahtinov Mask Simulator: Disconnected from CCD Bahtinov Mask Simulator
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Warning: Selection can not be changed while process is running!
+  Imager Agent: Frame saturation detected, masking out saturated areas and resetting statistics
+  PASS configuration reload
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_CAPTURE breakpoint
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  Imager Agent: Imager Agent resumed on PRE_CAPTURE breakpoint
+  Imager Agent: Batch aborted
+  PASS shutdown while paused
+Imager Agent integration: all tests passed
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  Imager Agent: Device connection failed or was closed
+12:27:39.568731 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+12:27:45.925846 Application: indigo_agent_imager[capture_frame:616]: CCD_EXPOSURE didn't become busy in 5 second(s)
+12:27:52.275847 Application: indigo_agent_imager[capture_frame:616]: CCD_EXPOSURE didn't become busy in 5 second(s)
+12:27:53.275980 Application: indigo_agent_imager[capture_frame:675]: Exposure failed
+  Imager Agent: Preview failed
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  Imager Agent: Device connection failed or was closed
+12:27:53.611795 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+12:27:54.613538 Application: indigo_agent_imager[exposure_batch:1354]: CCD_EXPOSURE_PROPERTY didn't become busy in 5 second(s)
+12:27:55.615190 Application: indigo_agent_imager[exposure_batch:1354]: CCD_EXPOSURE_PROPERTY didn't become busy in 5 second(s)
+  Imager Agent: Batch failed
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Streaming started
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  Imager Agent: Device connection failed or was closed
+  Imager Agent: Streaming failed
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Streaming started
+  Imager Agent: Streaming finished
+  PASS camera disconnect and recover
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  PASS selection regions binning and subframe
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  CCD Imager Simulator (wheel): Connected to CCD Imager Simulator (wheel)
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  PASS local batch and fits headers
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (wheel): Disconnected from CCD Imager Simulator (wheel)
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Dithering started
+  Imager Agent: Dithering finished
+  Imager Agent: Dithering started
+  Imager Agent: Dithering finished
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Dithering started
+  Imager Agent: Dithering finished
+  Imager Agent: Dithering started
+  Imager Agent: Dithering finished
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Dithering started
+  Imager Agent: Dithering finished
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Dithering started
+  Imager Agent: Batch aborted
+  PASS dither cadence failure and abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Batch paused, transit 0:00:36.00 ago
+  Imager Agent: Batch finished
+  PASS mount transit and solver coordination
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  PASS platesolver agent solving disabled
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Bahtinov Mask Simulator: Connected to CCD Bahtinov Mask Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_CAPTURE breakpoint
+  Imager Agent #2: Batch started
+  Imager Agent #2: Imager Agent #2 paused on PRE_CAPTURE breakpoint
+  Imager Agent: Imager Agent resumed on PRE_CAPTURE breakpoint
+  Imager Agent #2: Imager Agent #2 resumed on PRE_CAPTURE breakpoint
+  Imager Agent: Batch finished
+  Imager Agent #2: Batch finished
+  Imager Agent: Batch started
+  Imager Agent #2: Batch started
+  Imager Agent: Batch aborted
+  Imager Agent #2: Batch aborted
+  CCD Bahtinov Mask Simulator: Disconnected from CCD Bahtinov Mask Simulator
+  PASS additional instances and barrier
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Reset to defaults
+  PASS settings selection estimator and reset
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  PASS stars statistics and format restoration
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_BATCH breakpoint
+  Imager Agent: Imager Agent resumed on PRE_BATCH breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_BATCH breakpoint
+  Imager Agent: Imager Agent resumed on PRE_BATCH breakpoint
+  Imager Agent: Batch aborted
+  PASS breakpoint PRE_BATCH resume and abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_CAPTURE breakpoint
+  Imager Agent: Imager Agent resumed on PRE_CAPTURE breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_CAPTURE breakpoint
+  Imager Agent: Imager Agent resumed on PRE_CAPTURE breakpoint
+  Imager Agent: Batch aborted
+  PASS breakpoint PRE_CAPTURE resume and abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_CAPTURE breakpoint
+  Imager Agent: Imager Agent resumed on POST_CAPTURE breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_CAPTURE breakpoint
+  Imager Agent: Imager Agent resumed on POST_CAPTURE breakpoint
+  Imager Agent: Batch aborted
+  PASS breakpoint POST_CAPTURE resume and abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on PRE_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on PRE_DELAY breakpoint
+  Imager Agent: Batch aborted
+  PASS breakpoint PRE_DELAY resume and abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_DELAY breakpoint
+  Imager Agent: Imager Agent resumed on POST_DELAY breakpoint
+  Imager Agent: Batch aborted
+  PASS breakpoint POST_DELAY resume and abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_BATCH breakpoint
+  Imager Agent: Imager Agent resumed on POST_BATCH breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_BATCH breakpoint
+  Imager Agent: Imager Agent resumed on POST_BATCH breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_BATCH breakpoint
+  Imager Agent: Imager Agent resumed on POST_BATCH breakpoint
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Imager Agent paused on POST_BATCH breakpoint
+  Imager Agent: Imager Agent resumed on POST_BATCH breakpoint
+  Imager Agent: Batch aborted
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  PASS breakpoint POST_BATCH resume and abort
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+12:28:23.332562 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  Imager Agent: Batch aborted
+  PASS pause resume and busy guards
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  CCD Imager Simulator (wheel): Connected to CCD Imager Simulator (wheel)
+  PASS wheel offsets and manual focus
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (wheel): Disconnected from CCD Imager Simulator (wheel)
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  Imager Agent: Bracketing batch started
+  Imager Agent: Bracketing batch finished
+  Imager Agent: Bracketing batch started
+  Imager Agent: Bracketing batch aborted
+  PASS bracketing returns to start
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  Imager Agent: Focusing started
+  Imager Agent: U-Curve found best focus at position -1.652
+  Imager Agent: Focusing finished
+  Imager Agent: Focusing started
+  Imager Agent: Focusing finished
+  Imager Agent: Focusing started
+  Imager Agent: Frame saturation detected, masking out saturated areas and resetting statistics
+  Imager Agent: Focusing finished
+  PASS autofocus estimators
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator (focuser): Connected to CCD Imager Simulator (focuser)
+  Imager Agent: Focusing started
+  Imager Agent: Focusing aborted
+  Imager Agent: Focusing started
+  CCD Imager Simulator: Injected exposure failure
+12:28:52.445907 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:28:53.503729 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:28:54.562773 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+12:28:55.563020 Application: indigo_agent_imager[capture_frame:675]: Exposure failed
+  Imager Agent: No stars detected, maybe focus is too far
+12:28:55.951672 Application: indigo_agent_imager[autofocus_ucurve:2078]: UC: No stars detected, maybe focus is too far (frame_count = 0)
+  Imager Agent: Focus failed, restoring initial position
+12:28:55.951687 Application: indigo_agent_imager[autofocus_ucurve:2293]: Failed to reach focus, moving to initial position 0 steps
+  Imager Agent: Focusing failed
+  PASS autofocus abort and failure
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+  CCD Imager Simulator (focuser): Disconnected from CCD Imager Simulator (focuser)
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  PASS download listing payload delete
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  Imager Agent: No imager camera is selected
+  Imager Agent: No imager camera is selected
+  Imager Agent: No imager camera is selected
+  Imager Agent: No imager camera is selected
+  Imager Agent: No imager camera is selected
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: No focuser is selected
+  PASS metadata and missing devices
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  Imager Agent: Streaming started
+  Imager Agent: Streaming finished
+  PASS finite capture preview batch and streaming
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  Imager Agent: Batch started
+  Imager Agent: Batch aborted
+  Imager Agent: Streaming started
+  Imager Agent: Streaming aborted
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  Imager Agent: Streaming started
+  Imager Agent: Streaming finished
+  PASS abort all capture modes and reacquire
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Running Imager Agent integration
+  CCD Imager Simulator: Connected to CCD Imager Simulator
+  CCD Imager Simulator: Injected exposure failure
+12:29:04.181997 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:05.232523 Application: indigo_agent_imager[capture_frame:648]: CCD_EXPOSURE_PROPERTY didn't become OK
+  Imager Agent: Batch started
+  CCD Imager Simulator: Injected exposure failure
+12:29:06.433096 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:07.491936 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  CCD Imager Simulator: Injected exposure failure
+12:29:08.800850 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:09.851567 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:10.902682 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  Imager Agent: Batch failed
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  CCD Imager Simulator: Injected exposure failure
+12:29:12.088116 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:13.138613 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:14.189158 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  Imager Agent: Batch failed
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  Imager Agent: Batch started
+  CCD Imager Simulator: Injected exposure failure
+12:29:15.375439 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:16.435970 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  CCD Imager Simulator: Injected exposure failure
+12:29:17.499654 Application: indigo_agent_imager[exposure_batch:1383]: CCD_EXPOSURE_PROPERTY didn't become OK
+  Imager Agent: Batch failed
+  Imager Agent: Batch started
+  Imager Agent: Batch finished
+  PASS exposure failure retry exhaustion and recovery
+Imager Agent integration: all tests passed
+  CCD Imager Simulator: Disconnected from CCD Imager Simulator
+Imager Agent: 42/42 cases passed (including cleanup)
+make: Leaving directory '<repo>/indigo_test'
+exit 0

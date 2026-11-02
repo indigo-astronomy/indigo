@@ -1,0 +1,11 @@
+indigo_server -p 7700 indigo_agent_imager indigo_agent_mount indigo_agent_astrometry indigo_ccd_simulator indigo_mount_simulator (fresh HOME), headless Firefox via Marionette
+PASS astrometry: solver agent properties visible
+PASS astrometry: solverAgent() is Astrometry Agent
+PASS astrometry: no waiting banner
+PASS astrometry: command buttons rendered
+PASS astrometry: related Imager Agent selected
+PASS astrometry: related Mount Agent selected
+PASS imager: related Astrometry Agent selected
+PASS mount: related Astrometry Agent selected
+exit 0
+server log 'Conflicting driver'/'failed to initialise' lines: 0

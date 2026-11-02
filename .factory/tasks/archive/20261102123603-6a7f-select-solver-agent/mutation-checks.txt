@@ -1,0 +1,10 @@
+--- mutation 1: remove flipper device hand-off
+FAILED meridian flip uses selected solver (status 256)
+Sequencer.js: 0/1 passed (including cleanup)
+FAILED meridian flip uses solver selected by step (status 256)
+Sequencer.js: 0/1 passed (including cleanup)
+--- mutation 2: select_solver_agent does not store the name
+FAILED select solver agent step (status 256)
+Sequencer.js: 0/1 passed (including cleanup)
+FAILED meridian flip uses solver selected by step (status 256)
+Sequencer.js: 0/1 passed (including cleanup)

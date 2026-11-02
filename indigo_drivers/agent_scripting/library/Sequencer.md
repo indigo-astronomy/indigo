@@ -124,6 +124,8 @@ sequence.start();
 sequence.start("Imager Agent @ observatory", "Mount Agent @ observatory", "Guider Agent @ observatory");
 ```
 
+`start()` also selects the solver agent automatically. Solver agents are mutually exclusive on one server, so the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent given to `start()` is used, otherwise one loaded on another host; with no solver agent `"Astrometry Agent"` on that host is assumed. A `select_imager_agent()` step does not change the solver agent. Use the `select_solver_agent()` step to choose another solver agent or one loaded later by the sequence. Every `start()` selects the solver agent again.
+
 ## Step reference
 
 All methods below are called on a `Sequence` instance and append one or more steps. Times/exposures are in **seconds**, coordinates in the units used by the corresponding agent (RA in hours, Dec in degrees), unless noted otherwise.
@@ -175,6 +177,7 @@ The `select_*_agent` methods pick which agent drives each role; the remaining `s
 | `select_imager_agent(agent)` | Select the imager agent. |
 | `select_mount_agent(agent)` | Select the mount agent. |
 | `select_guider_agent(agent)` | Select the guider agent. |
+| `select_solver_agent(agent)` | Select the solver agent instead of the one selected automatically by `start()`. |
 | `select_imager_camera(camera)` | Select the imaging camera. |
 | `select_filter_wheel(wheel)` | Select the filter wheel. |
 | `select_focuser(focuser)` | Select the focuser. |
@@ -341,7 +344,7 @@ A GUI can use `STEP` together with the property state to flag steps: those with 
 Besides the public `Sequence` class, [Sequencer.js](Sequencer.js) contains two internal singletons that users normally do not call directly:
 
 - `indigo_sequencer` - the execution engine. It interprets the recorded microsteps one by one, waits for the relevant agent properties to reach the expected state, updates the progress properties, and handles abort/pause/failure logic.
-- `indigo_flipper` - the meridian-flip state machine driven by `enable_meridian_flip()`. It waits for transit, performs the slew, optionally syncs & centers with the astrometry agent, resumes guiding, waits for settle-down, and reports progress via `FLIPPER_STATE`.
+- `indigo_flipper` - the meridian-flip state machine driven by `enable_meridian_flip()`. It waits for transit, performs the slew, optionally syncs & centers with the solver agent, resumes guiding, waits for settle-down, and reports progress via `FLIPPER_STATE`.
 
 These are wired into the agent through `indigo_event_handlers` and respond to `on_update` / `on_enumerate_properties` events. Refer to [Sequencer.js](Sequencer.js) for the details.
 

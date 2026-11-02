@@ -1,0 +1,144 @@
+{
+  "version": 2,
+  "task": "20261102101805-593a-solver-agent-integration",
+  "scope": [
+    "indigo_drivers/agent_imager/indigo_agent_imager.c",
+    "indigo_test/integration/test_agent_imager.c",
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_drivers/agent_scripting/library/Sequencer.md",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    "indigo_server/resource/astrometry.html",
+    "indigo_server/resource/imager.html",
+    "indigo_server/resource/mount.html",
+    ".factory/findings/active/FND-20261102101805-593a-solver-agent-integration-*.json",
+    ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-*.json",
+    ".factory/completions/20261102101805-593a-solver-agent-integration.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-imager"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-scripting-sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "web-ui-check.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102101805-593a-solver-agent-integration.json": [
+      "100644",
+      "blob",
+      "c30ccb8977f73709328f42a691471690cc3da941"
+    ],
+    ".factory/findings/active/FND-20261102101805-593a-solver-agent-integration-001.json": [
+      "100644",
+      "blob",
+      "3d6f8f0d582a53511fe09b35a58e5c031e05b23d"
+    ],
+    ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-002.json": [
+      "100644",
+      "blob",
+      "abfff23b4330d63e72060341e67f42362585e133"
+    ],
+    ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-003.json": [
+      "100644",
+      "blob",
+      "2f6bccb96a9263a54067103cda9c9a797436c64b"
+    ],
+    ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-004.json": [
+      "100644",
+      "blob",
+      "a528cd22f80330a9e9baee5921c9d03e5d98e0a7"
+    ],
+    ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-005.json": [
+      "100644",
+      "blob",
+      "562bc3b4d84c61ce4c400dc9bac06ba53c7c40ac"
+    ],
+    "indigo_drivers/agent_imager/indigo_agent_imager.c": [
+      "100644",
+      "blob",
+      "2be4aa3a3e3110d7b28e15fd273dc360d055e95b"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "9ef5676bfc4dd59274363373e8ca3c978b69069c"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "100644",
+      "blob",
+      "4c06459ee85bed6b6ba1b2ad69c20185ab912bfb"
+    ],
+    "indigo_server/resource/astrometry.html": [
+      "100644",
+      "blob",
+      "bc7e1668e4d300b3f4583e0c5ff60c32d6e0380c"
+    ],
+    "indigo_server/resource/imager.html": [
+      "100644",
+      "blob",
+      "bbdfec004b4c115297d2d503f129912c87c3a79c"
+    ],
+    "indigo_server/resource/mount.html": [
+      "100644",
+      "blob",
+      "06719597c9b9f851dc98f2f8db5290190ec7ba22"
+    ],
+    "indigo_test/integration/test_agent_imager.c": [
+      "100644",
+      "blob",
+      "0e1598bac1ab424e3224cffab77a8c7ae0f72153"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "b3dc272071a51d4108d2ea43ed4ddeefb12272bc"
+    ]
+  }
+}

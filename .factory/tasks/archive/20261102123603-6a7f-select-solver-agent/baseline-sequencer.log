@@ -1,0 +1,92 @@
+make: Entering directory '<repo>/indigo_test'
+build/integration/test_agent_scripting_sequencer
+Running Sequencer.js integration
+  PASS library inventory and properties
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS published property schema
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS all public constructors
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS focus batch snapshot
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS loop and timing construction
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS nested loop execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS capture accounting and overloads
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS empty sequence execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS evaluate wait and messages
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS string arguments and UTC break
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure abort policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure continue policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure recovery policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS recovery without point
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS pause resume abort reset
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS past waits and breaks
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator imaging
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator preview
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator stream
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator mount dome GPS rotator
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator agent features
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator altitude and hour angle
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding calibration step
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS custom agent arguments
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS configuration and driver orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS astrometry orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS platesolver orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS remote solver orchestration
+Sequencer.js integration: all tests passed
+Sequencer.js: 29/29 passed (including cleanup)
+make: Leaving directory '<repo>/indigo_test'
+exit 0

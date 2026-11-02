@@ -460,7 +460,7 @@
 						changeProperty(property.device, property.name, values);
 					}
 					if (property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
-						changeProperty("Mount Agent", "FILTER_RELATED_AGENT_LIST", { "Astrometry Agent" : true, "Guider Agent" : true, "Imager Agent" : true });
+						changeProperty("Mount Agent", "FILTER_RELATED_AGENT_LIST", { "Astrometry Agent" : true, "Platesolver Agent" : true, "Guider Agent" : true, "Imager Agent" : true });
 					}
 				}
 				guiSetup();

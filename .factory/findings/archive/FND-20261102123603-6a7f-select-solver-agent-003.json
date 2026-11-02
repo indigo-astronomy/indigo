@@ -1,0 +1,24 @@
+{
+  "severity": "low",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261102123603-6a7f-select-solver-agent",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Blank line removed; quality-review.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "title": "Two blank lines before select_solver_agent_step in the Sequencer test",
+  "category": "quality",
+  "status": "closed",
+  "summary": "The diff left two blank lines between test functions; AGENTS.md requires exactly one.",
+  "evidence": "indigo_test/integration/test_agent_scripting_sequencer.c; quality-review.md.",
+  "id": "FND-20261102123603-6a7f-select-solver-agent-003"
+}

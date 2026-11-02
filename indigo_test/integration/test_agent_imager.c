@@ -881,6 +881,15 @@ static void mount_transit_and_solver_coordination(void) {
 	ASSERT_TRUE(atomic_load(&peers[1].requests) >= 4);
 }
 
+static void platesolver_agent_solving_disabled(void) {
+	ASSERT_TRUE(connect_camera());
+	ASSERT_TRUE(attach_peer(2, "Platesolver Agent Test", "AGENT_PLATESOLVER_SOLVE_IMAGES", "DISABLED"));
+	ASSERT_EQ_INT(0, value("Platesolver Agent Test", "AGENT_PLATESOLVER_SOLVE_IMAGES", "DISABLED"));
+	ASSERT_TRUE(run("EXPOSURE", INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_state(AGENT, "AGENT_START_PROCESS", 0, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(1, value("Platesolver Agent Test", "AGENT_PLATESOLVER_SOLVE_IMAGES", "DISABLED"));
+}
+
 static void additional_instances_and_barrier(void) {
 	ASSERT_TRUE(connect_camera());
 	ASSERT_TRUE(num(AGENT, "ADDITIONAL_INSTANCES", "COUNT", 1));
@@ -1410,6 +1419,7 @@ static const indigo_test_case tests[] = {
 
 	{ "dither cadence failure and abort", dither_cadence_failure_and_abort },
 	{ "mount transit and solver coordination", mount_transit_and_solver_coordination },
+	{ "platesolver agent solving disabled", platesolver_agent_solving_disabled },
 	{ "additional instances and barrier", additional_instances_and_barrier },
 	{ "settings selection estimator and reset", settings_selection_and_reset },
 	{ "stars statistics and format restoration", stars_statistics_and_format_restoration },
