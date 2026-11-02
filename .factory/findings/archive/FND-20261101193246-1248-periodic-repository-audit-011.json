@@ -2,7 +2,7 @@
   "title": "WeMacro Bluetooth unexpected disconnect prevents reconnection",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261102185500-c325-fix-driver-protocol-followups",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Unexpected didDisconnectPeripheral marks the public connection disconnected without resetting device_count. After a successful connection count remains 1; the next connect increments it to 2 and skips the only delegate connect call guarded by count++ == 0. Reset/remove the single-device refcount coherently and test connected\u2192unexpected-loss\u2192reconnect callbacks. Source-contract evidence; no Bluetooth hardware executed.",
   "evidence": "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:191\u2013202,371\u2013375; repository-review.md confirmed finding 11",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102185500-c325-fix-driver-protocol-followups/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101193246-1248-periodic-repository-audit-011"
 }

@@ -1,0 +1,68 @@
+=================================================================
+==31019==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x602000002417 at pc 0x000102a2e2f0 bp 0x00016d446f70 sp 0x00016d446f68
+READ of size 8 at 0x602000002417 thread T0
+==31019==WARNING: external symbolizer didn't start up correctly!
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x102a2e2ec"
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x1029c62f4"
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x1029c5d00"
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x000102a2e2ec in ptp_decode_property_value+0xae4 (/Users/polakovic/Development/indigo/indigo_test/build/integration/test_ccd_ptp_sdk_sanitize:arm64+0x10007a2ec)
+    #1 0x0001029c62f4 in property_value_reply_bounds+0x12c (/Users/polakovic/Development/indigo/indigo_test/build/integration/test_ccd_ptp_sdk_sanitize:arm64+0x1000122f4)
+    #2 0x0001029c5d00 in main+0xb90 (/Users/polakovic/Development/indigo/indigo_test/build/integration/test_ccd_ptp_sdk_sanitize:arm64+0x100011d00)
+    #3 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+0x602000002417 is located 6 bytes after 1-byte region [0x602000002410,0x602000002411)
+allocated by thread T0 here:
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x104625274"
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x1029c6294"
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x1029c5d00"
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x180d07e7c"
+    #0 0x000104625274 in malloc+0x78 (/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/21/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x0001029c6294 in property_value_reply_bounds+0xcc (/Users/polakovic/Development/indigo/indigo_test/build/integration/test_ccd_ptp_sdk_sanitize:arm64+0x100012294)
+    #2 0x0001029c5d00 in main+0xb90 (/Users/polakovic/Development/indigo/indigo_test/build/integration/test_ccd_ptp_sdk_sanitize:arm64+0x100011d00)
+    #3 0x000180d07e7c in start+0x1a1c (/usr/lib/dyld:arm64e+0x31e7c)
+
+==31019==WARNING: Can't read from symbolizer at fd 3
+==31019==WARNING: atos failed to symbolize address "0x102a2e2ec"
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/Users/polakovic/Development/indigo/indigo_test/build/integration/test_ccd_ptp_sdk_sanitize:arm64+0x10007a2ec) in ptp_decode_property_value+0xae4
+Shadow bytes around the buggy address:
+  0x602000002180: fa fa 00 00 fa fa 00 00 fa fa 00 00 fa fa 00 00
+  0x602000002200: fa fa 00 00 fa fa 00 fa fa fa 00 00 fa fa fd fa
+  0x602000002280: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fa
+  0x602000002300: fa fa fd fd fa fa fd fa fa fa fd fa fa fa fd fa
+  0x602000002380: fa fa fd fa fa fa fd fa fa fa fd fa fa fa fd fa
+=>0x602000002400: fa fa[01]fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002480: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002500: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002580: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002600: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x602000002680: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==31019==ABORTING
+Running PTP fake USB

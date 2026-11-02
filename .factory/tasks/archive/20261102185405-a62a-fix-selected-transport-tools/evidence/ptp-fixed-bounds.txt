@@ -1,0 +1,5 @@
+Running PTP fake USB
+  PASS property_value_reply_bounds
+  PASS sony_property_reply_bounds
+  PASS canon_image_format_reply_bounds
+PTP fake USB: all tests passed

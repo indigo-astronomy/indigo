@@ -1,0 +1,431 @@
+{
+  "version": 2,
+  "task": "20261102185405-a62a-fix-selected-transport-tools",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c",
+    "indigo_drivers/ccd_ptp/indigo_ptp.c",
+    "indigo_drivers/ccd_ptp/indigo_ptp.h",
+    "indigo_drivers/ccd_ptp/indigo_ptp_canon.c",
+    "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c",
+    "indigo_drivers/ccd_ptp/indigo_ptp_sony.c",
+    "indigo_drivers/ccd_ptp/indigo_ptp_sony.h",
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c",
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.c",
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver",
+    "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino",
+    "indigo_libs/indigo_server_tcp.c",
+    "indigo_libs/indigo_token.c",
+    "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m",
+    "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_ccd_ptp_sdk.c",
+    "indigo_test/integration/test_focuser_lakeside_simulator.c",
+    "indigo_test/integration/test_mount_nexstar_simulator.c",
+    "indigo_test/integration/test_transport_http_security.c",
+    "indigo_test/unit/driver_source_probe.py",
+    "indigo_test/unit/test_ao_sx_simulator_options.py",
+    "indigo_test/unit/test_focuser_lakeside_deadline.py",
+    "indigo_test/unit/test_focuser_mjkzz_bt.py",
+    "indigo_test/unit/test_focuser_wemacro_bt.py",
+    "indigo_test/unit/test_mount_temma_manual.py",
+    "indigo_test/unit/test_token.c",
+    "indigo_test/unit/test_tool_io_failures.py",
+    "indigo_tools/Makefile",
+    "indigo_tools/fits_to_raw.c",
+    "indigo_tools/fix_fits.c",
+    "indigo_tools/fix_xisf.c",
+    "indigo_tools/indigo_generator.c",
+    "indigo_tools/indigo_metadata_extractor.c",
+    "indigo_tools/indigo_prop_tool.c",
+    "indigo_tools/indigo_raw_to_fits.c",
+    "indigo_tools/tool_file_io.h",
+    ".factory/project.md",
+    ".factory/completions/20261102185405-a62a-fix-selected-transport-tools.json",
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-001.json",
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-001.json",
+    ".factory/findings/active/FND-000038.json",
+    ".factory/findings/archive/FND-000038.json",
+    ".factory/findings/active/FND-000039.json",
+    ".factory/findings/archive/FND-000039.json",
+    ".factory/findings/active/FND-000040.json",
+    ".factory/findings/archive/FND-000040.json",
+    ".factory/findings/active/FND-000041.json",
+    ".factory/findings/archive/FND-000041.json",
+    ".factory/findings/active/FND-000042.json",
+    ".factory/findings/archive/FND-000042.json",
+    ".factory/findings/active/FND-000043.json",
+    ".factory/findings/archive/FND-000043.json",
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-011.json",
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-011.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-036.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-036.json",
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-047.json",
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-047.json",
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-006.json",
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-006.json",
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-005.json",
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-005.json",
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-022.json",
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-022.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json",
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-010.json",
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-010.json",
+    ".factory/findings/active/FND-20261025093224-2d50-fix-ptp-findings-001.json",
+    ".factory/findings/archive/FND-20261025093224-2d50-fix-ptp-findings-001.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "PTP_TEST_FILTER=reply_bounds",
+        "indigo_test/build/integration/test_ccd_ptp_sdk"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "PTP_TEST_FILTER=reply_bounds",
+        "indigo_test/build/integration/test_ccd_ptp_sdk_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "evidence/factory-tests.txt"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "evidence/final-check.txt"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "evidence/final-security.txt"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102185405-a62a-fix-selected-transport-tools.json": [
+      "100644",
+      "blob",
+      "fcbce4a3d4864db3f141d2e0ce0713ae237439a0"
+    ],
+    ".factory/findings/active/FND-000038.json": null,
+    ".factory/findings/active/FND-000039.json": null,
+    ".factory/findings/active/FND-000040.json": null,
+    ".factory/findings/active/FND-000041.json": null,
+    ".factory/findings/active/FND-000042.json": null,
+    ".factory/findings/active/FND-000043.json": null,
+    ".factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-047.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-007.json": null,
+    ".factory/findings/active/FND-20261023112118-8e5e-server-security-audit-010.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-022.json": null,
+    ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-036.json": null,
+    ".factory/findings/active/FND-20261025093224-2d50-fix-ptp-findings-001.json": null,
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-005.json": null,
+    ".factory/findings/active/FND-20261025211159-e308-fix-audit-findings-batch-006.json": null,
+    ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-011.json": null,
+    ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-001.json": null,
+    ".factory/findings/archive/FND-000038.json": [
+      "100644",
+      "blob",
+      "2076bfea48d1d50addad3b97af9a97ff78df44a1"
+    ],
+    ".factory/findings/archive/FND-000039.json": [
+      "100644",
+      "blob",
+      "e3157239050e9fc28565a50ec80e6909ff3716d4"
+    ],
+    ".factory/findings/archive/FND-000040.json": [
+      "100644",
+      "blob",
+      "6f9830111e83dac4d48829ddc4dea8acc6313c49"
+    ],
+    ".factory/findings/archive/FND-000041.json": [
+      "100644",
+      "blob",
+      "4eeeff73afb17abf87e53205c8c369f2ee36ebda"
+    ],
+    ".factory/findings/archive/FND-000042.json": [
+      "100644",
+      "blob",
+      "ed3699a37eeea2025fd2b24fc4e506a712dc8b80"
+    ],
+    ".factory/findings/archive/FND-000043.json": [
+      "100644",
+      "blob",
+      "8cb0393fc4e731c9a93a23141a84ed430fea7342"
+    ],
+    ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-047.json": [
+      "100644",
+      "blob",
+      "0bd64a956146ae2ba59faefde0d966350e608510"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json": [
+      "100644",
+      "blob",
+      "2fdf671e04bd9288442373b5c28df5780da8d8b5"
+    ],
+    ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-010.json": [
+      "100644",
+      "blob",
+      "dfc4b3df4e3f9a68d4afb850ea75c1acfd955c09"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-022.json": [
+      "100644",
+      "blob",
+      "1ca03c262289de9d77c2a964b856b41fafe61ff5"
+    ],
+    ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-036.json": [
+      "100644",
+      "blob",
+      "2ab54ed14b17abdcab9fc43f5a6f561b2925101f"
+    ],
+    ".factory/findings/archive/FND-20261025093224-2d50-fix-ptp-findings-001.json": [
+      "100644",
+      "blob",
+      "7eea745f11683f16b42e5b53a5d2265d47fc122e"
+    ],
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-005.json": [
+      "100644",
+      "blob",
+      "f8db9d665485a6597108f996d6d307a5433869bd"
+    ],
+    ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-006.json": [
+      "100644",
+      "blob",
+      "e2dbb93ec89577f2304993c7ba087c907c3eb740"
+    ],
+    ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-011.json": [
+      "100644",
+      "blob",
+      "738dd3eac3f57ab6e5d08884364daecb76269925"
+    ],
+    ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-001.json": [
+      "100644",
+      "blob",
+      "903122af72a5dd6f7dfc9019bd00f734ec37db34"
+    ],
+    ".factory/project.md": [
+      "100644",
+      "blob",
+      "9b092b199aa20870ef13f1be4beba19911103ddd"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "41ff4f89e860bd1047d95d6e844b7fe8c171a937"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "d12756ea2af0adc81a792c3ef44c6a3255fd89b0"
+    ],
+    "indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c": [
+      "100644",
+      "blob",
+      "070d7bada0e6ee35d88f22fe3edeba6213948642"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp.c": [
+      "100644",
+      "blob",
+      "54fe9b2aa4ea3b6ecdb45e0dc756ed26fee307b0"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp.h": [
+      "100644",
+      "blob",
+      "6f67f81bfbaced063d8513a9fc9e6c5e8fd86bcc"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_canon.c": [
+      "100644",
+      "blob",
+      "e1e3eaa4c375b63308e0bbca88d4168e2df5e260"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_fuji.c": [
+      "100644",
+      "blob",
+      "d8a07108b859c8cf852c05e851dedac4155d2e10"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_sony.c": [
+      "100644",
+      "blob",
+      "fb4e0708580bfc43739cb910a575699c6e0d3494"
+    ],
+    "indigo_drivers/ccd_ptp/indigo_ptp_sony.h": [
+      "100644",
+      "blob",
+      "13bf1448c5f991587140cd6026c9211768171bb6"
+    ],
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c": [
+      "100644",
+      "blob",
+      "d64447ccfddcfb6984b29d1b07908bbc28f8d8c1"
+    ],
+    "indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.driver": [
+      "100644",
+      "blob",
+      "58b136b85ac23588d1c125b0d139fb539edb7aa5"
+    ],
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.c": [
+      "100644",
+      "blob",
+      "486c150aaede3942e7339c9913dbc5fa82d32f4a"
+    ],
+    "indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver": [
+      "100644",
+      "blob",
+      "3ed581347e39813a54e06150b7080b07f0ecec94"
+    ],
+    "indigo_drivers/mount_temma/mount_temma_simulator/mount_temma_simulator.ino": [
+      "100644",
+      "blob",
+      "40aa025dee4db1f9c72a39e034bc6f5c0bf1100c"
+    ],
+    "indigo_libs/indigo_server_tcp.c": [
+      "100644",
+      "blob",
+      "13abc9d08cd2a59a8ff8e50e6fb7488435ecc913"
+    ],
+    "indigo_libs/indigo_token.c": [
+      "100644",
+      "blob",
+      "bee4d123c0631c62c3473e7505e369e391acca56"
+    ],
+    "indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m": [
+      "100644",
+      "blob",
+      "cfbccfad1938bf31a7a11b60a911daa1d0187b42"
+    ],
+    "indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m": [
+      "100644",
+      "blob",
+      "82988f753f43c6126ec18df1cbf3c2456352e5d6"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "7b75780eba6f9d4de246ea8286cae278cf4bdc34"
+    ],
+    "indigo_test/integration/test_ccd_ptp_sdk.c": [
+      "100644",
+      "blob",
+      "16f6a448b88789f553edb2d8dd58dc0f352cb812"
+    ],
+    "indigo_test/integration/test_focuser_lakeside_simulator.c": [
+      "100644",
+      "blob",
+      "7ff21631b58a230e3c5ccae9a17d2f3fd3865e86"
+    ],
+    "indigo_test/integration/test_mount_nexstar_simulator.c": [
+      "100644",
+      "blob",
+      "b607950076d3bd30a62e3670025af9829675aac0"
+    ],
+    "indigo_test/integration/test_transport_http_security.c": [
+      "100644",
+      "blob",
+      "fae21264c6564cda523f7c667c339c7b7f37bf77"
+    ],
+    "indigo_test/unit/driver_source_probe.py": [
+      "100644",
+      "blob",
+      "43560a96214f301df6f1b823679b6d7ebf492b44"
+    ],
+    "indigo_test/unit/test_ao_sx_simulator_options.py": [
+      "100644",
+      "blob",
+      "663a8cd8d0e4c612b3592f2d6edd0579af8cdf57"
+    ],
+    "indigo_test/unit/test_focuser_lakeside_deadline.py": [
+      "100644",
+      "blob",
+      "e5b0b7b17eab010f818eb1215c315dd51ae4adf2"
+    ],
+    "indigo_test/unit/test_focuser_mjkzz_bt.py": [
+      "100644",
+      "blob",
+      "ff436fc488c0719c0a5860cf42a78bcb41612bce"
+    ],
+    "indigo_test/unit/test_focuser_wemacro_bt.py": [
+      "100644",
+      "blob",
+      "41f9c2c2c8529b193e87f59c96251d92b7f727a4"
+    ],
+    "indigo_test/unit/test_mount_temma_manual.py": [
+      "100644",
+      "blob",
+      "24756b003a09051e01a36d3f8eaed02525eb01ab"
+    ],
+    "indigo_test/unit/test_token.c": [
+      "100644",
+      "blob",
+      "900564c33448ae8554a4c264d332d73c0663475c"
+    ],
+    "indigo_test/unit/test_tool_io_failures.py": [
+      "100644",
+      "blob",
+      "809f14262ba3ffb195a2037e56b328d22e9126b3"
+    ],
+    "indigo_tools/Makefile": [
+      "100644",
+      "blob",
+      "0d642d593aad1ce45f3685525cad75317452cd1b"
+    ],
+    "indigo_tools/fits_to_raw.c": [
+      "100644",
+      "blob",
+      "0f3db96b6f6eb50b560ca192077d405275ac6c7f"
+    ],
+    "indigo_tools/fix_fits.c": [
+      "100644",
+      "blob",
+      "7dd977aae777a00f1a0aff124bf88735ae3c8016"
+    ],
+    "indigo_tools/fix_xisf.c": [
+      "100644",
+      "blob",
+      "912bc8fa6abc9c484effa9d040316c59f1acf733"
+    ],
+    "indigo_tools/indigo_generator.c": [
+      "100644",
+      "blob",
+      "f090dc02a0c978a80738e5fdad7362da314da286"
+    ],
+    "indigo_tools/indigo_metadata_extractor.c": [
+      "100644",
+      "blob",
+      "9a63127a3480b43f3b8acd243ca5474763bdcc01"
+    ],
+    "indigo_tools/indigo_prop_tool.c": [
+      "100644",
+      "blob",
+      "ca99a8ab86c3589a8a23f8196f75763c5ebdda15"
+    ],
+    "indigo_tools/indigo_raw_to_fits.c": [
+      "100644",
+      "blob",
+      "b85dccd4e0da29b60cabbc3715452106757ea377"
+    ],
+    "indigo_tools/tool_file_io.h": [
+      "100644",
+      "blob",
+      "e5efbf7f9553a21bc495e334078245d05b32f133"
+    ]
+  }
+}

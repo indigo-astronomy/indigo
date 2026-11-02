@@ -2,7 +2,7 @@
   "title": "Partial HTTP requests retain admission slots without a framing deadline",
   "category": "security",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -20,10 +20,20 @@
       "id": "20261101193246-1248-periodic-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261102185510-e875-fix-http-deadlines-acl",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Reopened for incomplete HTTP framing/progress repair. Admission is now capped at 128 and initial protocol detection is bounded, but one supplied G enters an unlimited-interbyte line reader and retains a worker indefinitely. Next: enforce complete request/header progress and total deadlines without disrupting established sessions. Prior initial-admission repair remains implemented; no risk acceptance.",
   "evidence": "Current indigo_libs/indigo_server_tcp.c:291,311,327; indigo_libs/indigo_uni_io.c:2056\u20132057,2123; audit 20261101193246-1248-periodic-repository-audit/repository-review.md. Prior closure evidence retained: 20261024115039-61cc-fix-server-security-remaining/verification.md and security.md: scoped implementation, independent reinspection, final sanitizer/native/leak checks passed.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102185510-e875-fix-http-deadlines-acl/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261023112118-8e5e-server-security-audit-007"
 }

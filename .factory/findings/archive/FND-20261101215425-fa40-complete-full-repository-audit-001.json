@@ -2,7 +2,7 @@
   "title": "Property CLI reads file uploads from EOF",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261101215425-fa40-complete-full-repository-audit",
       "report": "repository-review.md",
       "revision": null
+    },
+    {
+      "id": "20261102185447-2b65-repair-tool-io-findings",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "The file helper seeks to EOF for size but never rewinds before read; nonempty script/BLOB uploads return-2 and the failure path leaves the handle open. Actual indigo_uni_seek uses lseek/_lseek. Check size and seek errors, rewind, close on every outcome, terminate text, and add nonempty upload/failing-read cleanup regressions. Next action: coordinator assigns a focused repair and relevant regression.",
   "evidence": "indigo_tools/indigo_prop_tool.c:93-107; components/tools-tests.md item1",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": ".factory/tasks/archive/20261102185447-2b65-repair-tool-io-findings/verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261101215425-fa40-complete-full-repository-audit-001"
 }

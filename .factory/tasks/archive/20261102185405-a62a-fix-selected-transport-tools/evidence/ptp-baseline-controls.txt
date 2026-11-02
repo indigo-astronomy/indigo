@@ -1,0 +1,4 @@
+Running PTP fake USB
+  PASS descriptor_oversized_enum
+  PASS descriptor_truncated_enum
+PTP fake USB: all tests passed

@@ -1,0 +1,528 @@
+mkdir -p build/integration
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ccd_ptp.c -o build/integration/ccd_ptp_sdk_indigo_ccd_ptp.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp.c -o build/integration/ccd_ptp_sdk_indigo_ptp.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_canon.c -o build/integration/ccd_ptp_sdk_indigo_ptp_canon.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_nikon.c -o build/integration/ccd_ptp_sdk_indigo_ptp_nikon.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_sony.c -o build/integration/ccd_ptp_sdk_indigo_ptp_sony.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_fuji.c -o build/integration/ccd_ptp_sdk_indigo_ptp_fuji.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c -o build/integration/ccd_ptp_sdk_indigo_ptp_olympus.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -c ../indigo_libs/indigo_ccd_driver.c -o build/integration/ccd_ptp_sdk_ccd_framework.o
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -DPTP_STOP_RETRY_LIMIT=5 integration/test_ccd_ptp_sdk.c build/integration/ccd_ptp_sdk_indigo_ccd_ptp.o build/integration/ccd_ptp_sdk_indigo_ptp.o build/integration/ccd_ptp_sdk_indigo_ptp_canon.o build/integration/ccd_ptp_sdk_indigo_ptp_nikon.o build/integration/ccd_ptp_sdk_indigo_ptp_sony.o build/integration/ccd_ptp_sdk_indigo_ptp_fuji.o build/integration/ccd_ptp_sdk_indigo_ptp_olympus.o build/integration/ccd_ptp_sdk_ccd_framework.o -o build/integration/test_ccd_ptp_sdk -g -arch x86_64 -arch arm64 -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libtiffxx.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lz -lstdc++ -ldl -lhidapi -lm -lpthread
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ccd_ptp.c -o build/integration/ccd_ptp_sanitize_indigo_ccd_ptp.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp.c -o build/integration/ccd_ptp_sanitize_indigo_ptp.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_canon.c -o build/integration/ccd_ptp_sanitize_indigo_ptp_canon.o
+../indigo_drivers/ccd_ptp/indigo_ptp_canon.c:571:6: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  571 |                                         sprintf(label, "Unknown (0x%llx) +", (code >> 32) & 0xFFFFFFFF);
+      |                                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_canon.c:663:6: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  663 |                                         sprintf(label, "Unknown (0x%llx)", code & 0xFFFFFFFF);
+      |                                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_canon.c:789:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  789 |                         sprintf(label, "f/%g", code / 100.0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_canon.c:794:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  794 |                         sprintf(label, "%d", (int16_t)code);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+4 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_nikon.c -o build/integration/ccd_ptp_sanitize_indigo_ptp_nikon.o
+../indigo_drivers/ccd_ptp/indigo_ptp_nikon.c:523:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  523 |                         sprintf(label, "f/%g", code / 100.0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_nikon.c:691:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  691 |                         sprintf(label, "%lld", code);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+2 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_sony.c -o build/integration/ccd_ptp_sanitize_indigo_ptp_sony.o
+../indigo_drivers/ccd_ptp/indigo_ptp_sony.c:275:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  275 |                         sprintf(label, "f/%.1f", (int)code / 100.0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_sony.c:344:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  344 |                         sprintf(label, "%+.1f", (int)code / 1000.0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_sony.c:553:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  553 |                                 sprintf(label, "%g\"", (double)a / b);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_sony.c:555:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  555 |                                 sprintf(label, "1/%d", b);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_sony.c:620:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  620 |                         sprintf(label, "%d", (int)(code & 0xffffff));
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+5 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_fuji.c -o build/integration/ccd_ptp_sanitize_indigo_ptp_fuji.o
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -Dlibusb_ref_device=ptp_test_ref -Dlibusb_unref_device=ptp_test_unref -Dlibusb_get_device_descriptor=ptp_test_descriptor -Dlibusb_open=ptp_test_open -Dlibusb_close=ptp_test_close -Dlibusb_kernel_driver_active=ptp_test_kernel -Dlibusb_detach_kernel_driver=ptp_test_detach_kernel -Dlibusb_claim_interface=ptp_test_claim -Dlibusb_get_config_descriptor=ptp_test_config -Dlibusb_free_config_descriptor=ptp_test_free_config -Dlibusb_bulk_transfer=ptp_test_bulk -Dlibusb_clear_halt=ptp_test_clear -Dlibusb_control_transfer=ptp_test_control -Dlibusb_hotplug_register_callback_sim=ptp_test_register -Dlibusb_hotplug_deregister_callback_poll=ptp_test_deregister -Dindigo_get_usb_path=ptp_test_path -Dindigo_start_usb_event_handler=ptp_test_usb_start -Dindigo_attach_device=ptp_test_attach -Dindigo_detach_device=ptp_test_detach -DPTP_CAPTURE_TIMEOUT=1 -DPTP_STOP_RETRY_LIMIT=5 -DSONY_SHOT_CONFIRM_TIME=0.3 -DSONY_STALE_SHOT_TIME=8 -DSONY_OLD_API_VERIFY_TIMEOUT=4 -DSONY_OLD_API_REWRITE_DELAY=2.5 -c ../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c -o build/integration/ccd_ptp_sanitize_indigo_ptp_olympus.o
+../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c:151:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  151 |                         sprintf(label, "f/%.1f", (int)code / 10.0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c:172:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  172 |                                 sprintf(label, "1/%d", denominator);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c:174:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  174 |                                 sprintf(label, "%d\"", numerator / denominator);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c:176:5: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  176 |                                 sprintf(label, "%g\"", (double)numerator / denominator);
+      |                                 ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c:184:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  184 |                         sprintf(label, "%d", (int)code);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_drivers/ccd_ptp/indigo_ptp_olympus.c:189:4: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+  189 |                         sprintf(label, "%+.1f", (int16_t)code / 1000.0);
+      |                         ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+6 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -c ../indigo_libs/indigo_ccd_driver.c -o build/integration/ccd_ptp_sanitize_ccd_framework.o
+../indigo_libs/indigo_ccd_driver.c:2062:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2062 |                 header += sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2074:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2074 |                         header += sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2076:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2076 |                         header += sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt16' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2078:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2078 |                         header += sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2080:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2080 |                         header += sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2082:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2082 |                 header += sprintf(header, "<FITSKeyword name='IMAGETYP' value='%s' comment='Frame type'/>", frame_type);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2083:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2083 |                 header += sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2084:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2084 |                 header += sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2085:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2085 |                 header += sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2086:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2086 |                 header += sprintf(header, "<FITSKeyword name='INSTRUME' value='%s' comment='Instrument'/>", device->name);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2087:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2087 |                 header += sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2088:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2088 |                 header += sprintf(header, "<FITSKeyword name='XBINNING' value='%d' comment='Binning factor, X-axis'/><FITSKeyword name='YBINNING' value='%d' comment='Binning factor, Y-axis'/>", horizontal_bin, vertical_bin);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2089:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2089 |                 header += sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%s'/>", indigo_dtoa(CCD_EXPOSURE_ITEM->number.target, b1));
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2091:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2091 |                         header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.2f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2093:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2093 |                         header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.4f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2095:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2095 |                 header += sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2096:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2096 |                 header += sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2099:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2099 |                         header += sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2100:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2100 |                         header += sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2103:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2103 |                         header += sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAIN_ITEM->number.value, b1));
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2104:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2104 |                         header += sprintf(header, "<FITSKeyword name='GAIN' value='%20.2f' comment='Gain'/>", CCD_GAIN_ITEM->number.value);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2107:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2107 |                         header += sprintf(header, "<Property id='Instrument:Camera:Offset' type='Float32' value='%s'/>", indigo_dtoa(CCD_OFFSET_ITEM->number.value, b1));
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2108:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2108 |                         header += sprintf(header, "<FITSKeyword name='OFFSET' value='%20.2f' comment='Offset'/>", CCD_OFFSET_ITEM->number.value);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2111:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2111 |                         header += sprintf(header, "<Property id='Instrument:Camera:Gamma' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAMMA_ITEM->number.value, b1));
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2112:14: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2112 |                         header += sprintf(header, "<FITSKeyword name='GAMMA' value='%20.2f' comment='Gamma'/>", CCD_GAMMA_ITEM->number.value);
+      |                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2116:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2116 |                                 header += sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_APERTURE_ITEM->number.value / 100, b1));
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2117:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2117 |                                 header += sprintf(header, "<FITSKeyword name='APTDIA' value='%20.2f' comment='Aperture diameter (mm)'/>", CCD_LENS_APERTURE_ITEM->number.value * 10);
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2120:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2120 |                                 header += sprintf(header, "<Property id='Instrument:Camera:FocalLength' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_FOCAL_LENGTH_ITEM->number.value / 100, b1));
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2121:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2121 |                                 header += sprintf(header, "<FITSKeyword name='FOCALLEN' value='%20.2f' comment='Focal length (mm)'/>", CCD_LENS_FOCAL_LENGTH_ITEM->number.value * 10);
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2127:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2127 |                                 header += sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value=%s/>", item->text.value);
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2128:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2128 |                                 header += sprintf(header, "<FITSKeyword name='FILTER' value=%s comment='Name of the used filter'/>", item->text.value);
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2130:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2130 |                                 header += sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value);
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2131:15: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2131 |                                 header += sprintf(header, "<FITSKeyword name='FOCUSPOS' value='%s' comment='Focuser position'/>", item->text.value);
+      |                                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2137:16: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2137 |                                         header += sprintf(header, "<FITSKeyword name='BAYERPAT' value='%s' comment='Bayer color filter array pattern'/>", keywords->string);
+      |                                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2138:16: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2138 |                                         header += sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2' name='%s Bayer Filter'/>", keywords->string, keywords->string);
+      |                                                   ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2143:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2143 |                 header += sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO %d.%d-%s</Property>", date_time_end, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2148:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2148 |                 header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>macOS</Property>");
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2153:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2153 |                 header += sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
+      |                           ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+../indigo_libs/indigo_ccd_driver.c:2171:16: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+ 2171 |                         blobsize += sprintf(appendix, "SIMPLE=T;BAYERPAT='%s';", bayerpat);
+      |                                     ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/_stdio.h:278:1: note: 'sprintf' has been explicitly marked deprecated here
+  278 | __deprecated_msg("This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead.")
+      | ^
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/cdefs.h:227:48: note: expanded from macro '__deprecated_msg'
+  227 |         #define __deprecated_msg(_msg) __attribute__((__deprecated__(_msg)))
+      |                                                       ^
+39 warnings generated.
+/usr/bin/clang -g -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/indigo_mac_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -I.. -I../indigo_libs -I../build/include -arch arm64 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -DPTP_STOP_RETRY_LIMIT=5 integration/test_ccd_ptp_sdk.c build/integration/ccd_ptp_sanitize_indigo_ccd_ptp.o build/integration/ccd_ptp_sanitize_indigo_ptp.o build/integration/ccd_ptp_sanitize_indigo_ptp_canon.o build/integration/ccd_ptp_sanitize_indigo_ptp_nikon.o build/integration/ccd_ptp_sanitize_indigo_ptp_sony.o build/integration/ccd_ptp_sanitize_indigo_ptp_fuji.o build/integration/ccd_ptp_sanitize_indigo_ptp_olympus.o build/integration/ccd_ptp_sanitize_ccd_framework.o -o build/integration/test_ccd_ptp_sdk_sanitize -g -headerpad_max_install_names -framework Cocoa -mmacosx-version-min=10.10 -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib /Users/polakovic/Development/indigo/build/lib/libindigo.a /Users/polakovic/Development/indigo/build/lib/libjpeg.a /Users/polakovic/Development/indigo/build/lib/libtiff.a /Users/polakovic/Development/indigo/build/lib/libtiffxx.a /Users/polakovic/Development/indigo/build/lib/libraw.a -lusb-1.0 -lz -lstdc++ -ldl -lhidapi -lm -lpthread -arch arm64 -fsanitize=address,undefined
