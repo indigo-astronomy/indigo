@@ -157,6 +157,54 @@ static bool write_bytes(const char *path, const void *data, size_t size) {
 	return fclose(file) == 0 && ok;
 }
 
+static void test_catalog_rejects_invalid_star_references(void) {
+	struct { indigo_solver_star before; indigo_solver_star stars[4]; indigo_solver_star after; } layout = { 0 };
+	indigo_solver_star *heap_stars = calloc(4, sizeof(indigo_solver_star));
+	indigo_solver_star *foreign = calloc(1, sizeof(indigo_solver_star));
+	ASSERT_TRUE(heap_stars != NULL && foreign != NULL);
+	bool rejected_all = true, cleared_all = true;
+	for (int storage = 0; storage < 2; storage++) {
+		indigo_solver_star *stars = storage == 0 ? layout.stars : heap_stars;
+		indigo_solver_star *invalid[] = { NULL, foreign, &layout.before, &layout.after, stars + 4, (indigo_solver_star *)((uintptr_t)stars + 1), (indigo_solver_star *)((uintptr_t)stars - 1) };
+		for (size_t i = 0; i < sizeof(invalid) / sizeof(invalid[0]); i++) {
+			indigo_solver_quad quad = { 0 };
+			for (int k = 0; k < 4; k++) {
+				quad.stars[k] = stars + k;
+			}
+			quad.stars[i % 4] = invalid[i];
+			indigo_solver_catalog catalog;
+			bool built = indigo_solver_catalog_build(stars, 4, &quad, 1, 5, &catalog);
+			if (built) {
+				fprintf(stderr, "Catalog accepted invalid reference %zu in storage %d\n", i, storage);
+				rejected_all = false;
+				indigo_solver_free_catalog(&catalog);
+			}
+			cleared_all = cleared_all && catalog.stars == NULL && catalog.hashes == NULL && catalog.quad_count == 0;
+		}
+	}
+	free(foreign);
+	free(heap_stars);
+	ASSERT_TRUE(rejected_all);
+	ASSERT_TRUE(cleared_all);
+}
+
+static void test_catalog_preserves_valid_star_indices(void) {
+	indigo_solver_star stars[4] = { { 0 } };
+	indigo_solver_quad quad = { 0 };
+	for (int i = 0; i < 4; i++) {
+		stars[i].ra = 0.1f * i;
+		stars[i].dec = -0.1f * i;
+		quad.stars[i] = stars + 3 - i;
+	}
+	indigo_solver_catalog catalog;
+	ASSERT_TRUE(indigo_solver_catalog_build(stars, 4, &quad, 1, 5, &catalog));
+	for (int i = 0; i < 4; i++) {
+		ASSERT_EQ_INT(3 - i, catalog.quad_stars[i]);
+		ASSERT_TRUE(catalog.stars[i].ra == stars[i].ra && catalog.stars[i].dec == stars[i].dec);
+	}
+	indigo_solver_free_catalog(&catalog);
+}
+
 static void test_index_file_roundtrip(void) {
 	char path[] = "/tmp/indigo_test_solver_index_XXXXXX";
 	int fd = mkstemp(path);
@@ -1161,6 +1209,8 @@ int main(void) {
 		{ "quad_code_invariance", test_quad_code_invariance },
 		{ "quad_variants_canonical_first", test_quad_variants_canonical_first },
 		{ "index_file_roundtrip", test_index_file_roundtrip },
+		{ "catalog_rejects_invalid_star_references", test_catalog_rejects_invalid_star_references },
+		{ "catalog_preserves_valid_star_indices", test_catalog_preserves_valid_star_indices },
 		{ "index_selection", test_index_selection },
 		{ "solve_synthetic_field", test_solve_synthetic_field },
 		{ "solve_synthetic_mirrored_field", test_solve_synthetic_mirrored_field },

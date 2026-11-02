@@ -1078,13 +1078,14 @@ bool indigo_solver_catalog_build(const indigo_solver_star *stars, int star_count
 	uint32_t *quad_stars = catalog->allocated[4];
 	for (int i = 0; i < quad_count; i++) {
 		for (int k = 0; k < 4; k++) {
-			ptrdiff_t index = quads[i].stars[k] - stars;
-			if (index < 0 || index >= star_count) {
+			// Unrelated pointers cannot be subtracted; validate the numeric address and element boundary first.
+			uintptr_t address = (uintptr_t)quads[i].stars[k], base = (uintptr_t)stars;
+			if (address < base || (address - base) % sizeof(*stars) != 0 || (address - base) / sizeof(*stars) >= (uintptr_t)star_count) {
 				indigo_error("%s: quad %d references a star outside of the catalog", __FUNCTION__, i);
 				indigo_solver_free_catalog(catalog);
 				return false;
 			}
-			quad_stars[4 * (size_t)i + k] = (uint32_t)index;
+			quad_stars[4 * (size_t)i + k] = (uint32_t)((address - base) / sizeof(*stars));
 		}
 		hashes[i] = quads[i].hash;
 		baselines[i] = quads[i].baseline;
