@@ -2016,12 +2016,13 @@ static void nexstar_goto_deadline_stops_and_recovers(void) {
 	SERIAL_CHECK_TRUE(start_nexstar_simulator(&simulator, "celestron"));
 	SERIAL_CHECK_TRUE(start_serial_driver(&nexstar_mount, simulator.port));
 	SERIAL_CHECK_TRUE(sync_to(&simulator, 3, 20));
+	clear_simulator_events(&simulator);
 	SERIAL_CHECK_TRUE(set_simulator_control(&simulator, "stall", "r"));
 	unsigned revision = property_revision(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
 	record_messages();
 	SERIAL_CHECK_TRUE(request_coordinates(5, 35));
 	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
-	SERIAL_CHECK_TRUE(count_simulator_events(&simulator, "4D") > 0);
+	SERIAL_CHECK_EQ_INT(1, count_simulator_events(&simulator, "4D"));
 	SERIAL_CHECK_TRUE(strstr(recorded_messages, "GOTO timed out") != NULL);
 	SERIAL_CHECK_TRUE(coordinates_are(3, 20, .001));
 	SERIAL_CHECK_TRUE(goto_and_arrive(3.001, 20.001));
