@@ -201,8 +201,27 @@ cleanup:
 	tear_down_serial_driver(&astromechanics_aux);
 }
 
+static void malformed_measurements_are_rejected(void) {
+	const char *replies[] = { "garbage", "20.3junk", "nan", "inf", "1e", "1e999999999999", "1234567890123456789" };
+	for (int i = 0; i < ARRAY_SIZE(replies); i++) {
+		external_serial_simulator simulator = { 0 };
+		const char *arguments[] = { "--sampling-time", "0", "--measurement-reply", replies[i], NULL };
+		SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, AUX_ASTROMECHANICS_SIMULATOR_EXECUTABLE, arguments));
+		SERIAL_CHECK_TRUE(start_serial_driver(&astromechanics_aux, simulator.port));
+		SERIAL_CHECK_TRUE(wait_for_property_state(AUX_WEATHER_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		stop_serial_driver(&astromechanics_aux);
+		stop_external_serial_simulator(&simulator);
+		continue;
+cleanup:
+		stop_serial_driver(&astromechanics_aux);
+		stop_external_serial_simulator(&simulator);
+		return;
+	}
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
+		{ "malformed_measurements_are_rejected", malformed_measurements_are_rejected },
 		{ "metadata_and_property_completeness", metadata_and_property_completeness },
 		{ "default_reading_is_published_with_its_bortle_class", default_reading_is_published_with_its_bortle_class },
 		{ "bortle_class_follows_the_reported_brightness", bortle_class_follows_the_reported_brightness },

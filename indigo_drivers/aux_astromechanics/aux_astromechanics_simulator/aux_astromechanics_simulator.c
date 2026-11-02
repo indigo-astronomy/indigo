@@ -50,6 +50,8 @@ static simulator_options options = {
 	.sampling_time = 0
 };
 
+static const char *measurement_reply;
+
 static const char *simulator_name = "aux_astromechanics";
 
 static void usage(const char *name) {
@@ -79,6 +81,8 @@ static bool parse_args(int argc, char *argv[]) {
 				return false;
 			}
 			options.ready_file = argv[i];
+		} else if (!strcmp(argv[i], "--measurement-reply") && i + 1 < argc) {
+			measurement_reply = argv[++i];
 		} else if (!strcmp(argv[i], "--sky-brightness")) {
 			if (++i == argc) {
 				fprintf(stderr, "--sky-brightness requires a magnitude\n");
@@ -183,7 +187,11 @@ static void dispatch_command(int fd, const char *buffer) {
 			usleep((useconds_t)(options.sampling_time * 1000000));
 		}
 		// Report sky brightness in mag/arcsec2, terminated by a newline.
-		sim_printf(fd, "%.2f\n", options.sky_brightness);
+		if (measurement_reply != NULL) {
+			sim_printf(fd, "%s\n", measurement_reply);
+		} else {
+			sim_printf(fd, "%.2f\n", options.sky_brightness);
+		}
 	} else {
 		serial_simulator_trace_line(options.trace, "??", buffer);
 	}

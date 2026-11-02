@@ -24,6 +24,13 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
+
+//+ include
+
+#include <ctype.h>
+
+//- include
+
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -32,7 +39,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000A
 #define DRIVER_NAME          "indigo_aux_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS LPM"
 #define AUX_DEVICE_NAME      "ASTROMECHANICS LPM"
@@ -63,6 +70,55 @@ typedef struct {
 // V# is answered when the measurement is over, which takes up to 120 s under a dark sky.
 #define MEASUREMENT_TIMEOUT  130
 #define POLL_INTERVAL        10
+
+static bool astromechanics_measurement(const char *text, double *value) {
+	const char *cursor = text;
+	while (isspace((unsigned char)*cursor)) {
+		cursor++;
+	}
+	if (*cursor == '+' || *cursor == '-') {
+		cursor++;
+	}
+	bool digits = false;
+	while (isdigit((unsigned char)*cursor)) {
+		digits = true;
+		cursor++;
+	}
+	if (*cursor == '.' || *cursor == ',') {
+		cursor++;
+		while (isdigit((unsigned char)*cursor)) {
+			digits = true;
+			cursor++;
+		}
+	}
+	if (!digits) {
+		return false;
+	}
+	if (*cursor == 'e' || *cursor == 'E') {
+		cursor++;
+		if (*cursor == '+' || *cursor == '-') {
+			cursor++;
+		}
+		if (!isdigit((unsigned char)*cursor)) {
+			return false;
+		}
+		unsigned exponent = 0;
+		while (isdigit((unsigned char)*cursor)) {
+			exponent = exponent * 10 + *cursor++ - '0';
+			if (exponent > 308) {
+				return false;
+			}
+		}
+	}
+	while (isspace((unsigned char)*cursor)) {
+		cursor++;
+	}
+	if (*cursor) {
+		return false;
+	}
+	*value = indigo_atod(text);
+	return isfinite(*value);
+}
 
 static bool astromechanics_open(indigo_device *device, const char **error_message) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed2(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG, error_message);
@@ -95,11 +151,21 @@ static void aux_timer_callback(indigo_device *device) {
 			return;
 		}
 	}
-	if (indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n#", "\n#", INDIGO_DELAY(0.5)) > 0) {
+	long length = indigo_uni_read_section2(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response) - 1, "\n#", "\r", INDIGO_DELAY(0.5), INDIGO_DELAY(0.5));
+	if (length > 0) {
 		PRIVATE_DATA->measuring = false;
-		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(PRIVATE_DATA->response);
-		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
-		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+		double brightness;
+		bool terminated = PRIVATE_DATA->response[length - 1] == '\n' || PRIVATE_DATA->response[length - 1] == '#';
+		if (terminated) {
+			PRIVATE_DATA->response[length - 1] = 0;
+		}
+		if (terminated && astromechanics_measurement(PRIVATE_DATA->response, &brightness)) {
+			AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = brightness;
+			AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(brightness);
+			AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	} else if (indigo_monotonic_time() < PRIVATE_DATA->deadline) {
 		indigo_execute_handler_in(device, 0.5, aux_timer_callback);
 		return;
