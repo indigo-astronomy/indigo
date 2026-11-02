@@ -332,7 +332,7 @@ POLARALIGN_MLASTRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_m
 
 .PHONY: test test-unit test-integration test-buildsystem benchmark test-clean check-lib
 
-test: test-examples test-shell-compliance-framework test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup test-harness-verdicts
+test: test-examples test-shell-compliance-framework test-driver-test-recording test-unit test-integration test-buildsystem test-imager-download test-indigo-js-formatting test-tool-input-safety test-mount-manual-motion test-gps-compliance-script test-omnisim-startup test-harness-verdicts test-selected-transport-tools
 
 # Client example regressions use isolated files, processes and loopback connections.
 .PHONY: test-examples
@@ -1005,7 +1005,7 @@ $(INTEGRATION_BUILD)/mount_nexstar_simulator: ../indigo_drivers/mount_nexstar/mo
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/test_mount_nexstar_deadline: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.driver | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -DINDIGO_TEST_MOTION_DEADLINE -DNEXSTAR_PARK_TIMEOUT=1 -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o $@ $< ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c $(TEST_LDFLAGS) ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat
+	$(CC) $(TEST_CFLAGS) -DINDIGO_TEST_MOTION_DEADLINE -DNEXSTAR_PARK_TIMEOUT=1 -DNEXSTAR_GOTO_TIMEOUT=1 -I../indigo_drivers/mount_nexstar/externals/libnexstar/build/include -o $@ $< ../indigo_drivers/mount_nexstar/indigo_mount_nexstar.c $(TEST_LDFLAGS) ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a -lindigocat
 
 $(INTEGRATION_BUILD)/test_mount_nexstar_simulator: integration/test_mount_nexstar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h integration/abort_queue_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_nexstar_simulator $(BUILD_DRIVERS)/indigo_mount_nexstar.a ../indigo_drivers/mount_nexstar/externals/libnexstar/build/lib/libnexstar.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_NEXSTAR_SIMULATOR_TEST_LDFLAGS)
@@ -3644,7 +3644,7 @@ $(UNIT_BUILD)/test_protocol_security: unit/test_protocol_security.c test_runner.
 # supplies remaining symbols. Small budgets and deadlines keep adversarial tests bounded.
 SECURITY_BUILD ?= $(TEST_BUILD)/security
 SECURITY_ASSERT_FLAGS ?=
-SECURITY_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(SECURITY_ASSERT_FLAGS) -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L
+SECURITY_CFLAGS = $(filter-out -arch arm64 x86_64,$(TEST_CFLAGS)) $(SANITIZE_ARCH) -O1 -fsanitize=address,undefined -fno-omit-frame-pointer $(SECURITY_ASSERT_FLAGS) -DINDIGO_BLOB_UPLOAD_LIMIT=64 -DINDIGO_BLOB_UPLOAD_BUDGET=128 -DINDIGO_BLOB_UPLOAD_PROGRESS_TIMEOUT=0.2 -DINDIGO_BLOB_UPLOAD_TOTAL_TIMEOUT=1.0 -DINDIGO_TCP_WORKER_LIMIT=8 -DINDIGO_SERVER_INITIAL_TIMEOUT=500000L -DINDIGO_HTTP_HEADER_PROGRESS_TIMEOUT=0.2 -DINDIGO_HTTP_HEADER_TOTAL_TIMEOUT=1.0
 SECURITY_OBJECTS = $(addprefix $(SECURITY_BUILD)/,indigo_bus.o indigo_xml.o indigo_json.o indigo_server_tcp.o indigo_uni_io.o)
 
 $(SECURITY_BUILD):
@@ -3815,3 +3815,12 @@ test-harness-verdicts: $(BUILD_LIB)/libindigo_client.a
 	python3 -B unit/test_harness_verdicts.py
 	python3 -B unit/test_custom_harness_integrity.py
 	python3 -B unit/test_generator_tokens.py
+
+.PHONY: test-selected-transport-tools
+test-selected-transport-tools:
+	python3 -B unit/test_tool_io_failures.py
+	python3 -B unit/test_focuser_wemacro_bt.py
+	python3 -B unit/test_focuser_mjkzz_bt.py
+	python3 -B unit/test_mount_temma_manual.py
+	python3 -B unit/test_ao_sx_simulator_options.py
+	python3 -B unit/test_focuser_lakeside_deadline.py

@@ -1268,6 +1268,13 @@
 		5560F867DB1B8995E921356D /* test_wheel_indigo_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_transport.c; sourceTree = "<group>"; };
 		561E4947491CFD9C66C4B12F /* test_serial_port_loss.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_port_loss.c; sourceTree = "<group>"; };
 		C0DE20261101000000000314 /* test_harness_verdicts.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_harness_verdicts.py; sourceTree = "<group>"; };
+		C0DE20261102185405000001 /* driver_source_probe.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = driver_source_probe.py; sourceTree = "<group>"; };
+		C0DE20261102185405000002 /* test_tool_io_failures.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_tool_io_failures.py; sourceTree = "<group>"; };
+		C0DE20261102185405000003 /* test_focuser_wemacro_bt.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_focuser_wemacro_bt.py; sourceTree = "<group>"; };
+		C0DE20261102185405000004 /* test_focuser_mjkzz_bt.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_focuser_mjkzz_bt.py; sourceTree = "<group>"; };
+		C0DE20261102185405000005 /* test_mount_temma_manual.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_mount_temma_manual.py; sourceTree = "<group>"; };
+		C0DE20261102185405000006 /* test_ao_sx_simulator_options.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_ao_sx_simulator_options.py; sourceTree = "<group>"; };
+		C0DE20261102185405000007 /* test_focuser_lakeside_deadline.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_focuser_lakeside_deadline.py; sourceTree = "<group>"; };
 		C0DE20261102173234000001 /* test_custom_harness_integrity.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_custom_harness_integrity.py; sourceTree = "<group>"; };
 		C0DE20261102173234000002 /* test_generator_tokens.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_generator_tokens.py; sourceTree = "<group>"; };
 		56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_tool_input_safety.py; sourceTree = "<group>"; };
@@ -4835,6 +4842,7 @@
 		59E14E732F5F675D0083B6FD /* indigo_wheel_qhy.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_qhy.driver; sourceTree = "<group>"; };
 		59E1B2292AE5B3FD00AC9889 /* AstroPhysics-GTOCP4.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-GTOCP4.pdf"; sourceTree = "<group>"; };
 		59E21BE12651940F00C1E912 /* indigo_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_raw_to_fits.c; sourceTree = "<group>"; };
+		C0DE20261102185405000008 /* tool_file_io.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tool_file_io.h; sourceTree = "<group>"; };
 		59E2DA0E263837D600D3D4B5 /* jinclude.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = jinclude.h; path = externals/libjpeg/jinclude.h; sourceTree = "<group>"; };
 		59E2DA0F263837D600D3D4B5 /* cderror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = cderror.h; path = externals/libjpeg/cderror.h; sourceTree = "<group>"; };
 		59E2DA11263837D600D3D4B5 /* jmemsys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = jmemsys.h; path = externals/libjpeg/jmemsys.h; sourceTree = "<group>"; };
@@ -14236,6 +14244,13 @@
 				C0DE20261101204146000002 /* test_agent_platesolver_core.c */,
 				58D21354F48205219CDA34FB /* test_core_text_bounds.c */,
 				C0DE20261101000000000314 /* test_harness_verdicts.py */,
+				C0DE20261102185405000001 /* driver_source_probe.py */,
+				C0DE20261102185405000002 /* test_tool_io_failures.py */,
+				C0DE20261102185405000003 /* test_focuser_wemacro_bt.py */,
+				C0DE20261102185405000004 /* test_focuser_mjkzz_bt.py */,
+				C0DE20261102185405000005 /* test_mount_temma_manual.py */,
+				C0DE20261102185405000006 /* test_ao_sx_simulator_options.py */,
+				C0DE20261102185405000007 /* test_focuser_lakeside_deadline.py */,
 				C0DE20261102173234000001 /* test_custom_harness_integrity.py */,
 				C0DE20261102173234000002 /* test_generator_tokens.py */,
 				56CA10427BF042D18D9FD9BF /* test_tool_input_safety.py */,
@@ -14893,6 +14908,7 @@
 				59E7C8392DBE2D0B00C84BAB /* indigo_metadata_extractor.c */,
 				9DC774FA2DB8BAD400CE859C /* template.driver */,
 				59E21BE12651940F00C1E912 /* indigo_raw_to_fits.c */,
+				C0DE20261102185405000008 /* tool_file_io.h */,
 				595705A321866D9700E713A9 /* indigo_drivers.c */,
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
 				9DF4DCCB2C5A182B00A1852B /* indigo_driver_metadata.c */,
