@@ -10,10 +10,9 @@
 
 static const uint32_t BAUD = 19200;
 
-// ---- IMPORTANT: flip if your host uses opposite STN semantics ----
-// true  => "STN-ON" means motors ON
-// false => "STN-ON" means standby ON (motors OFF)
-static const bool STN_ON_MEANS_MOTORS_ON = false;
+// Protocol revision 2 follows the maintained Temma driver standby and speed replies.
+#define TEMMA_SIMULATOR_VERSION 2
+static bool highSpeedMode = false;
 
 // ---- RX buffer (bytes, not C-string) ----
 static const uint16_t RX_MAX = 128;
@@ -213,27 +212,29 @@ static void execCommand() {
 
   // --- STN motor/standby ---
   if (cmd == "STN-ON") {
-    motorsOn = STN_ON_MEANS_MOTORS_ON ? true : false;
-    if (!motorsOn) { slewingGoto = false; motionMask = 0; }
-    replyR(1);
+    motorsOn = false;
+    slewingGoto = false;
+    motionMask = 0;
+    sendLine("stn-on");
     return;
   }
   if (cmd == "STN-OFF") {
-    motorsOn = STN_ON_MEANS_MOTORS_ON ? false : true;
-    if (!motorsOn) { slewingGoto = false; motionMask = 0; }
-    replyR(1);
+    motorsOn = true;
+    sendLine("stn-off");
     return;
   }
   if (cmd == "STN-COD") {
-    // Return polarity-consistent status (hosts vary).
-    if (STN_ON_MEANS_MOTORS_ON) sendLine(String("STN-COD ") + (motorsOn ? "on" : "off"));
-    else                        sendLine(String("STN-COD ") + (motorsOn ? "off" : "on"));
+    sendLine(motorsOn ? "stn-off" : "stn-on");
     return;
   }
 
   // --- Version / voltage ---
-  if (cmd == "v")  { sendLine("vTEMMA_SIM-ARDUINO"); return; }
-  if (cmd == "v1" || cmd == "v2") { replyR(1); return; }
+  if (cmd == "v") { sendLine(String("vTEMMA_SIM-ARDUINO-") + String(TEMMA_SIMULATOR_VERSION)); return; }
+  if (cmd == "v1" || cmd == "v2") {
+    highSpeedMode = cmd == "v2";
+    sendLine(highSpeedMode ? "v2  Power 12.0v" : "v1  Power 12.0v");
+    return;
+  }
 
   // --- Z handshake ---
   if (cmd == "Z") { replyR(1); return; }
