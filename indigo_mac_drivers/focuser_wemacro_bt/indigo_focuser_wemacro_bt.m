@@ -23,7 +23,7 @@
  \file indigo_focuser_wemacro_bt.m
  */
 
-#define DRIVER_VERSION 0x02000003
+#define DRIVER_VERSION 0x02000004
 #define DRIVER_NAME "indigo_focuser_wemacro_bt"
 
 #include <stdlib.h>
@@ -189,6 +189,8 @@ static indigo_result focuser_detach(indigo_device *device);
 }
 
 -(void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
+	PRIVATE_DATA->device_count = 0;
+	ffe1 = nil;
 	indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 	indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
 	indigo_delete_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
