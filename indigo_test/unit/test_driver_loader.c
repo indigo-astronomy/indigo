@@ -197,6 +197,99 @@ static void driver_registry_refuses_entry_past_capacity(void) {
 	ASSERT_TRUE(gap_filled);
 }
 
+static int first_init_calls, second_init_calls;
+static bool refuse_shutdown, fail_second_init;
+
+static indigo_result recycled_first_driver(indigo_driver_action action, indigo_driver_info *info) {
+	if (action == INDIGO_DRIVER_INFO && info != NULL) {
+		memset(info, 0, sizeof(*info));
+		INDIGO_COPY_NAME(info->name, "recycled_first");
+		INDIGO_COPY_NAME(info->description, "First lifecycle fixture");
+	}
+	if (action == INDIGO_DRIVER_INIT) {
+		first_init_calls++;
+	}
+	return action == INDIGO_DRIVER_SHUTDOWN && refuse_shutdown ? INDIGO_BUSY : INDIGO_OK;
+}
+
+static indigo_result recycled_second_driver(indigo_driver_action action, indigo_driver_info *info) {
+	if (action == INDIGO_DRIVER_INFO && info != NULL) {
+		memset(info, 0, sizeof(*info));
+		INDIGO_COPY_NAME(info->name, "recycled_second");
+		INDIGO_COPY_NAME(info->description, "Second lifecycle fixture");
+	}
+	if (action == INDIGO_DRIVER_INIT) {
+		second_init_calls++;
+		return fail_second_init ? INDIGO_FAILED : INDIGO_OK;
+	}
+	return INDIGO_OK;
+}
+
+static void recycled_inactive_registration_starts_uninitialized(void) {
+	indigo_driver_entry *first = NULL, *second = NULL;
+	first_init_calls = second_init_calls = 0;
+	indigo_result added_first = indigo_add_driver(recycled_first_driver, true, &first);
+	bool first_initialized = first != NULL && first->initialized;
+	indigo_result removed = first != NULL ? indigo_remove_driver(first) : INDIGO_FAILED;
+	bool cleared = first != NULL && !first->initialized;
+	indigo_result added_second = indigo_add_driver(recycled_second_driver, false, &second);
+	bool reused = first == second;
+	bool second_initialized = indigo_driver_initialized("recycled_second");
+	bool second_flag = second != NULL && second->initialized;
+	if (second != NULL) {
+		indigo_remove_driver(second);
+	}
+	ASSERT_EQ_INT(INDIGO_OK, added_first);
+	ASSERT_TRUE(first_initialized);
+	ASSERT_EQ_INT(INDIGO_OK, removed);
+	ASSERT_EQ_INT(INDIGO_OK, added_second);
+	ASSERT_TRUE(reused);
+	ASSERT_EQ_INT(1, first_init_calls);
+	ASSERT_EQ_INT(0, second_init_calls);
+	ASSERT_FALSE(second_initialized);
+	ASSERT_FALSE(second_flag);
+	ASSERT_TRUE(cleared);
+}
+
+static void failed_initialization_does_not_mark_recycled_slot_initialized(void) {
+	indigo_driver_entry *first = NULL, *second = NULL;
+	second_init_calls = 0;
+	indigo_result added_first = indigo_add_driver(recycled_first_driver, true, &first);
+	indigo_result removed = first != NULL ? indigo_remove_driver(first) : INDIGO_FAILED;
+	fail_second_init = true;
+	indigo_result added_second = indigo_add_driver(recycled_second_driver, true, &second);
+	fail_second_init = false;
+	bool reused = first == second;
+	bool initialized = indigo_driver_initialized("recycled_second");
+	if (second != NULL) {
+		indigo_remove_driver(second);
+	}
+	ASSERT_EQ_INT(INDIGO_OK, added_first);
+	ASSERT_EQ_INT(INDIGO_OK, removed);
+	ASSERT_EQ_INT(INDIGO_FAILED, added_second);
+	ASSERT_TRUE(reused);
+	ASSERT_EQ_INT(1, second_init_calls);
+	ASSERT_FALSE(initialized);
+}
+
+static void refused_removal_keeps_initialized_registration(void) {
+	indigo_driver_entry *entry = NULL;
+	indigo_result added = indigo_add_driver(recycled_first_driver, true, &entry);
+	refuse_shutdown = true;
+	indigo_result removed = entry != NULL ? indigo_remove_driver(entry) : INDIGO_FAILED;
+	refuse_shutdown = false;
+	bool initialized = indigo_driver_initialized("recycled_first");
+	bool retained = entry != NULL && entry->driver == recycled_first_driver;
+	indigo_result final_removed = entry != NULL ? indigo_remove_driver(entry) : INDIGO_FAILED;
+	bool cleared = entry != NULL && !entry->initialized;
+	ASSERT_EQ_INT(INDIGO_OK, added);
+	ASSERT_EQ_INT(INDIGO_BUSY, removed);
+	ASSERT_TRUE(initialized);
+	ASSERT_TRUE(retained);
+	ASSERT_EQ_INT(INDIGO_OK, final_removed);
+	ASSERT_TRUE(cleared);
+}
+
 static bool wait_for_server_thread_stop(indigo_server_entry *server) {
 	for (int i = 0; i < 50; i++) {
 		if (!server->thread_started) {
@@ -279,6 +372,9 @@ int main(void) {
 		{ "too_long_entry_point_name_is_rejected", too_long_entry_point_name_is_rejected },
 		{ "missing_entry_point_is_reported_and_driver_still_loads", missing_entry_point_is_reported_and_driver_still_loads },
 		{ "driver_registry_refuses_entry_past_capacity", driver_registry_refuses_entry_past_capacity },
+		{ "recycled_inactive_registration_starts_uninitialized", recycled_inactive_registration_starts_uninitialized },
+		{ "failed_initialization_does_not_mark_recycled_slot_initialized", failed_initialization_does_not_mark_recycled_slot_initialized },
+		{ "refused_removal_keeps_initialized_registration", refused_removal_keeps_initialized_registration },
 		{ "server_registry_refuses_entry_past_capacity", server_registry_refuses_entry_past_capacity }
 	};
 	int result = indigo_run_tests("driver loader unit tests", tests, (int)(sizeof(tests) / sizeof(tests[0])));

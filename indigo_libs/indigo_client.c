@@ -220,6 +220,7 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 	INDIGO_COPY_NAME(indigo_available_drivers[empty_slot].name, info.name);
 	indigo_available_drivers[empty_slot].driver = entry_point;
 	indigo_available_drivers[empty_slot].dl_handle = dl_handle;
+	indigo_available_drivers[empty_slot].initialized = false;
 	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded", info.name, INDIGO_VERSION_MAJOR(info.version >> 16), INDIGO_VERSION_MINOR(info.version >> 16), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
 	if (empty_slot == used_driver_slots) {
 		used_driver_slots++;
@@ -261,6 +262,7 @@ indigo_result indigo_remove_driver(indigo_driver_entry *driver) {
 	driver->name[0] = '\0';
 	driver->driver = NULL;
 	driver->dl_handle = NULL;
+	driver->initialized = false;
 	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
