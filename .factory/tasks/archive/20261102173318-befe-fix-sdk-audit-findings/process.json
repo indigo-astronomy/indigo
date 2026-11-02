@@ -8,7 +8,8 @@
     "indigo_test/integration/test_ccd_atik2_sdk.c",
     "indigo_drivers/ccd_pentax/indigo_ccd_pentax.c",
     "indigo_drivers/ccd_pentax/README.md",
-    "indigo_test/integration/test_ccd_pentax_usb.c"
+    "indigo_test/integration/test_ccd_pentax_usb.c",
+    ".factory/completions/20261102173318-befe-fix-sdk-audit-findings.json"
   ],
   "checks": [
     {
@@ -36,14 +37,14 @@
         "./.factory/scripts/check"
       ],
       "result": "pass",
-      "evidence": "factory-check.txt"
+      "evidence": "verification.md"
     },
     {
       "command": [
         "./.factory/scripts/security"
       ],
       "result": "pass",
-      "evidence": "factory-security.txt"
+      "evidence": "verification.md"
     }
   ],
   "risk_reviews": {},
