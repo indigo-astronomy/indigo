@@ -36,14 +36,14 @@
         "./.factory/scripts/check"
       ],
       "result": "pass",
-      "evidence": "factory-check.log"
+      "evidence": "factory-check.txt"
     },
     {
       "command": [
         "./.factory/scripts/security"
       ],
       "result": "pass",
-      "evidence": "factory-security.log"
+      "evidence": "factory-security.txt"
     }
   ],
   "risk_reviews": {},

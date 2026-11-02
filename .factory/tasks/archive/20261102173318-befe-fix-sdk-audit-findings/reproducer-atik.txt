@@ -1,0 +1,5 @@
+Running Atik2 fake SDK
+device 1 property GUIDER_GUIDE_RA: expected 1, got 3
+integration/test_ccd_atik2_sdk.c:1042: assertion failed: wait_state(1, properties[axis], INDIGO_OK_STATE)
+  FAIL guider_failed_replacement_preserves_stop
+Atik2 fake SDK: 1 test(s) failed

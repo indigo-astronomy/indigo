@@ -1,0 +1,82 @@
+Running Atik2 fake SDK
+  PASS metadata_and_properties
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS shared_lifecycle
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS initialization_failures
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS shared_connection_rollback
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS malformed_initialization
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS capability_profiles
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS exposure_modes_and_timing
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS geometry_and_payload
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS mode_and_bin_contract
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS acquisition_failures_and_abort
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS abort_failure_and_deadline
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS pending_start_abort
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS readout_disconnect_and_removal
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS countdown_with_occupied_queue
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS cooling_and_polling
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS implausible_temperature_is_not_published
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS cooling_failures_and_exclusion
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS cooler_off_queued_behind_a_temperature_change_survives
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS queued_cooler_request_is_not_published_by_the_poll
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS guider_operations
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS guider_failures_and_disconnect
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS wheel_operations
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS wheel_initialization_failures
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS hotplug_and_capacity
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS hotplug_filters_and_attach_rollback
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS repeated_init_shutdown
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+18:35:17.159683 Application: indigo_ccd_atik2[indigo_ccd_atik2:1022]: Failed to create driver queue
+  PASS driver_lifecycle_and_races
+Atik2 fake SDK: all tests passed

@@ -1,0 +1,168 @@
++ make check-lib build/integration/test_ccd_atik2_sdk
+make: `build/integration/test_ccd_atik2_sdk' is up to date.
++ ./build/integration/test_ccd_atik2_sdk
+Running Atik2 fake SDK
+  PASS metadata_and_properties
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS shared_lifecycle
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS initialization_failures
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS shared_connection_rollback
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS malformed_initialization
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS capability_profiles
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS exposure_modes_and_timing
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS geometry_and_payload
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS mode_and_bin_contract
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS acquisition_failures_and_abort
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS abort_failure_and_deadline
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS pending_start_abort
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS readout_disconnect_and_removal
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS countdown_with_occupied_queue
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS cooling_and_polling
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS implausible_temperature_is_not_published
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS cooling_failures_and_exclusion
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS cooler_off_queued_behind_a_temperature_change_survives
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS queued_cooler_request_is_not_published_by_the_poll
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS guider_operations
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS guider_failures_and_disconnect
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS guider_failed_replacement_preserves_stop
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+GUIDE_TIMING idle EAST 20 21.583080
+GUIDE_TIMING idle EAST 20 20.962000
+GUIDE_TIMING idle EAST 20 21.131039
+GUIDE_TIMING idle EAST 100 104.869843
+GUIDE_TIMING idle EAST 100 104.351997
+GUIDE_TIMING idle EAST 100 105.015039
+GUIDE_TIMING idle EAST 500 504.123926
+GUIDE_TIMING idle EAST 500 500.557899
+GUIDE_TIMING idle EAST 500 505.011082
+GUIDE_TIMING idle WEST 20 22.535086
+GUIDE_TIMING idle WEST 20 24.834871
+GUIDE_TIMING idle WEST 20 23.566008
+GUIDE_TIMING idle WEST 100 100.633144
+GUIDE_TIMING idle WEST 100 103.048086
+GUIDE_TIMING idle WEST 100 100.859880
+GUIDE_TIMING idle WEST 500 501.830101
+GUIDE_TIMING idle WEST 500 501.369953
+GUIDE_TIMING idle WEST 500 503.032923
+GUIDE_TIMING idle NORTH 20 20.084143
+GUIDE_TIMING idle NORTH 20 21.271944
+GUIDE_TIMING idle NORTH 20 20.285130
+GUIDE_TIMING idle NORTH 100 100.111961
+GUIDE_TIMING idle NORTH 100 101.166010
+GUIDE_TIMING idle NORTH 100 101.395130
+GUIDE_TIMING idle NORTH 500 500.518084
+GUIDE_TIMING idle NORTH 500 503.083944
+GUIDE_TIMING idle NORTH 500 501.090050
+GUIDE_TIMING idle SOUTH 20 21.184921
+GUIDE_TIMING idle SOUTH 20 22.652149
+GUIDE_TIMING idle SOUTH 20 22.293091
+GUIDE_TIMING idle SOUTH 100 105.041027
+GUIDE_TIMING idle SOUTH 100 100.619078
+GUIDE_TIMING idle SOUTH 100 104.439974
+GUIDE_TIMING idle SOUTH 500 502.274036
+GUIDE_TIMING idle SOUTH 500 505.026102
+GUIDE_TIMING idle SOUTH 500 504.030943
+GUIDE_TIMING acquisition EAST 20 21.502972
+GUIDE_TIMING acquisition EAST 20 20.270824
+GUIDE_TIMING acquisition EAST 20 21.378040
+GUIDE_TIMING acquisition EAST 100 100.111008
+GUIDE_TIMING acquisition EAST 100 102.592945
+GUIDE_TIMING acquisition EAST 100 104.811907
+GUIDE_TIMING acquisition EAST 500 505.024910
+GUIDE_TIMING acquisition EAST 500 501.966953
+GUIDE_TIMING acquisition EAST 500 502.039909
+GUIDE_TIMING acquisition WEST 20 22.886038
+GUIDE_TIMING acquisition WEST 20 21.778822
+GUIDE_TIMING acquisition WEST 20 23.659945
+GUIDE_TIMING acquisition WEST 100 100.226879
+GUIDE_TIMING acquisition WEST 100 101.628065
+GUIDE_TIMING acquisition WEST 100 100.800037
+GUIDE_TIMING acquisition WEST 500 500.227928
+GUIDE_TIMING acquisition WEST 500 505.028009
+GUIDE_TIMING acquisition WEST 500 500.476837
+GUIDE_TIMING acquisition NORTH 20 20.093918
+GUIDE_TIMING acquisition NORTH 20 22.526979
+GUIDE_TIMING acquisition NORTH 20 23.444891
+GUIDE_TIMING acquisition NORTH 100 103.631020
+GUIDE_TIMING acquisition NORTH 100 105.061054
+GUIDE_TIMING acquisition NORTH 100 101.568937
+GUIDE_TIMING acquisition NORTH 500 501.835108
+GUIDE_TIMING acquisition NORTH 500 505.023003
+GUIDE_TIMING acquisition NORTH 500 502.502918
+GUIDE_TIMING acquisition SOUTH 20 21.151066
+GUIDE_TIMING acquisition SOUTH 20 20.105839
+GUIDE_TIMING acquisition SOUTH 20 21.205902
+GUIDE_TIMING acquisition SOUTH 100 102.555990
+GUIDE_TIMING acquisition SOUTH 100 105.028868
+GUIDE_TIMING acquisition SOUTH 100 104.446888
+GUIDE_TIMING acquisition SOUTH 500 502.804995
+GUIDE_TIMING acquisition SOUTH 500 502.182961
+GUIDE_TIMING acquisition SOUTH 500 500.066042
+  PASS guider_pulse_software_timing
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS wheel_operations
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS wheel_initialization_failures
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS hotplug_and_capacity
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS hotplug_filters_and_attach_rollback
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+  PASS repeated_init_shutdown
+Atik2 fake SDK: all tests passed
+Running Atik2 fake SDK
+18:39:36.924496 Application: indigo_ccd_atik2[indigo_ccd_atik2:1022]: Failed to create driver queue
+  PASS driver_lifecycle_and_races
+Atik2 fake SDK: all tests passed
+144 driver(s) written to /private/tmp/indigo-sdk-audit/TEST_SUMMARY.md
+
+ccd_atik2: 29/29 OK
+recorded in indigo_mac_drivers/ccd_atik2/README.md:
+2026-11-02 18:38 3.0.0.19 mac arm64 fake SDK 29/29 OK

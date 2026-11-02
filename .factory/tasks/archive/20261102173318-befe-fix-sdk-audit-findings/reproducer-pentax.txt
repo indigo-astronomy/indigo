@@ -1,0 +1,4 @@
+Running ccd_pentax_usb
+integration/test_ccd_pentax_usb.c:918: expected 0, got 3
+  FAIL hotplug full registry preserves ownership
+ccd_pentax_usb: 1 test(s) failed
