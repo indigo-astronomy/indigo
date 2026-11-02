@@ -466,6 +466,210 @@ static void retirement_during_receive_rejects_publication(void) {
 	ASSERT_TRUE(!strncmp(response, "HTTP/1.1 404 ", 13));
 }
 
+#ifndef INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT
+#define INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT 5.0
+#endif
+#ifndef INDIGO_HTTP_HEADER_TOTAL_TIMEOUT
+#define INDIGO_HTTP_HEADER_TOTAL_TIMEOUT 30.0
+#endif
+
+static bool partial_http_expires(const char *prefix, bool drip_headers, bool drip_request) {
+	int fd = connect_loopback(indigo_server_tcp_port);
+	if (fd < 0) {
+		return false;
+	}
+	bool sent = write(fd, prefix, strlen(prefix)) == (ssize_t)strlen(prefix);
+	bool accepted = WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1);
+	double start = indigo_monotonic_time();
+	double interval = INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT / 3;
+	double budget = drip_headers || drip_request ? INDIGO_HTTP_HEADER_TOTAL_TIMEOUT + 0.4 : INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT + 0.4;
+	while (indigo_monotonic_time() - start < budget && atomic_load(&server_client_count) != 0) {
+		indigo_usleep((long)(interval * 1000000));
+		if (drip_headers || drip_request) {
+			const char *chunk = drip_headers ? "X: a\r\n" : "a";
+			if (write(fd, chunk, strlen(chunk)) <= 0) {
+				break;
+			}
+		}
+	}
+	bool expired = WAIT_UNTIL(atomic_load(&server_client_count) == 0, 0.2);
+	bool total_used = !(drip_headers || drip_request) || indigo_monotonic_time() - start >= INDIGO_HTTP_HEADER_TOTAL_TIMEOUT - 0.15;
+	close(fd);
+	WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1);
+	return sent && accepted && expired && total_used;
+}
+
+static void partial_http_request_and_headers_expire(void) {
+	ASSERT_TRUE(partial_http_expires("G", false, false));
+	ASSERT_TRUE(partial_http_expires("GET /fixture-file HTTP/1.1\r\nHost:", false, false));
+	ASSERT_TRUE(partial_http_expires("PUT /unregistered HTTP/1.1\r\nHost:", false, false));
+}
+
+static void progressing_http_framing_has_total_deadline(void) {
+	ASSERT_TRUE(partial_http_expires("G", false, true));
+	ASSERT_TRUE(partial_http_expires("GET /fixture-file HTTP/1.1\r\n", true, false));
+}
+
+static void http_header_size_and_peer_close_bounds(void) {
+	for (size_t target = 4096; target <= 4097; target++) {
+		char request[4098];
+		size_t used = snprintf(request, sizeof(request), "GET /fixture-file HTTP/1.1\r\nConnection: close\r\n");
+		while (target - used > 2) {
+			size_t line = target - used - 2;
+			if (line > 900) {
+				line = 900;
+			}
+			ASSERT_TRUE(line >= 4);
+			memcpy(request + used, "X:", 2);
+			memset(request + used + 2, 'a', line - 4);
+			memcpy(request + used + line - 2, "\r\n", 2);
+			used += line;
+		}
+		memcpy(request + used, "\r\n", 2);
+		int fd = connect_loopback(indigo_server_tcp_port);
+		ASSERT_TRUE(fd >= 0);
+		ASSERT_EQ_INT(1, write(fd, request, 1));
+		ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1));
+		bool sent = write(fd, request + 1, target - 1) == (ssize_t)target - 1;
+		char response[4096];
+		bool received = target == 4096 ? read_reply(fd, response, sizeof(response)) : WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1);
+		close(fd);
+		ASSERT_TRUE(sent && received);
+		if (target == 4096) {
+			ASSERT_TRUE(!strncmp(response, "HTTP/1.1 200 ", 13));
+		}
+		ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1));
+	}
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	ASSERT_EQ_INT(1, write(fd, "G", 1));
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1));
+	shutdown(fd, SHUT_WR);
+	bool released = WAIT_UNTIL(atomic_load(&server_client_count) == 0, INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT + 0.5);
+	close(fd);
+	ASSERT_TRUE(released);
+}
+
+static bool http_block_is_rejected(const void *request, size_t size) {
+	int fd = connect_loopback(indigo_server_tcp_port);
+	if (fd < 0) {
+		return false;
+	}
+	bool started = write(fd, request, 1) == 1 && WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1);
+	bool sent = started && write(fd, (const char *)request + 1, size - 1) == (ssize_t)size - 1;
+	bool closed = WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1);
+	char response[256] = { 0 };
+	ssize_t count = closed ? read(fd, response, sizeof(response) - 1) : -1;
+	close(fd);
+	WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1);
+	return sent && closed && (count <= 0 || strncmp(response, "HTTP/1.1 200 ", 13));
+}
+
+static void malformed_or_excess_headers_cannot_dispatch(void) {
+	char request[2048];
+	size_t used = snprintf(request, sizeof(request), "GET /fixture-file HTTP/1.1\r\nX:");
+	memset(request + used, 'a', 1100);
+	memcpy(request + used + 1100, "\r\n\r\n", 4);
+	ASSERT_TRUE(http_block_is_rejected(request, used + 1104));
+	const char nul_header[] = "GET /fixture-file HTTP/1.1\r\nX: a\0b\r\n\r\n";
+	ASSERT_TRUE(http_block_is_rejected(nul_header, sizeof(nul_header) - 1));
+	for (int i = 64; i <= 65; i++) {
+		used = snprintf(request, sizeof(request), "GET /fixture-file HTTP/1.1\r\n");
+		for (int k = 0; k < i; k++) {
+			memcpy(request + used, "X:a\r\n", 5);
+			used += 5;
+		}
+		memcpy(request + used, "\r\n", 2);
+		used += 2;
+		if (i == 65) {
+			ASSERT_TRUE(http_block_is_rejected(request, used));
+		} else {
+			int fd = connect_loopback(indigo_server_tcp_port);
+			ASSERT_TRUE(fd >= 0);
+			bool sent = write(fd, request, used) == (ssize_t)used;
+			char response[256];
+			bool received = read_reply(fd, response, sizeof(response));
+			close(fd);
+			ASSERT_TRUE(sent && received && !strncmp(response, "HTTP/1.1 200 ", 13));
+			ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1));
+		}
+	}
+}
+
+static atomic_bool put_framing_preserved;
+
+static bool framing_put_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
+	char header[1024], body[4];
+	bool length_seen = false;
+	while (indigo_uni_read_line(handle, header, sizeof(header) - 1) > 0) {
+		length_seen = length_seen || !strcmp(header, "Content-Length: 4");
+	}
+	bool preserved = length_seen && indigo_uni_read(handle, body, sizeof(body)) == sizeof(body) && !memcmp(body, "\0dat", 4);
+	atomic_store(&put_framing_preserved, preserved);
+	indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+	return false;
+}
+
+static void complete_put_headers_and_coalesced_body_are_preserved(void) {
+	indigo_server_add_handler("/framing-put", framing_put_handler);
+	atomic_store(&put_framing_preserved, false);
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	const char request[] = "PUT /framing-put HTTP/1.1\r\nContent-Length: 4\r\n\r\n\0dat";
+	bool sent = write(fd, request, sizeof(request) - 1) == sizeof(request) - 1;
+	char response[256];
+	bool received = read_reply(fd, response, sizeof(response));
+	close(fd);
+	indigo_server_remove_resource("/framing-put");
+	ASSERT_TRUE(sent && received);
+	ASSERT_TRUE(!strncmp(response, "HTTP/1.1 200 ", 13));
+	ASSERT_TRUE(atomic_load(&put_framing_preserved));
+}
+
+static void complete_http_keepalive_requests_are_preserved(void) {
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	for (int i = 0; i < 2; i++) {
+		const char *request = i ? "GET /fixture-file HTTP/1.1\r\nConnection: close\r\n\r\n" : "GET /fixture-file HTTP/1.1\r\n\r\n";
+		bool sent = write(fd, request, strlen(request)) == (ssize_t)strlen(request);
+		char response[512];
+		bool received = read_reply(fd, response, sizeof(response));
+		if (!sent || !received || strncmp(response, "HTTP/1.1 200 ", 13)) {
+			close(fd);
+			ASSERT_TRUE(false);
+		}
+		if (i == 0) {
+			indigo_usleep((long)(INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT * 500000));
+		}
+	}
+	close(fd);
+	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1));
+}
+
+static void established_json_and_websocket_survive_http_deadlines(void) {
+	for (int websocket = 0; websocket <= 1; websocket++) {
+		int fd = connect_loopback(indigo_server_tcp_port);
+		ASSERT_TRUE(fd >= 0);
+		const char *request = websocket ? "GET / HTTP/1.1\r\nUpgrade: websocket\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n" : "{\"getProperties\":{\"version\":\"3.0\",\"device\":\"No such fixture\"}}";
+		bool sent = write(fd, request, strlen(request)) == (ssize_t)strlen(request);
+		bool upgraded = !websocket;
+		if (websocket) {
+			char response[1024] = { 0 };
+			size_t used = 0;
+			while (used + 1 < sizeof(response) && strstr(response, "\r\n\r\n") == NULL && read(fd, response + used, 1) == 1) {
+				used++;
+			}
+			upgraded = !strncmp(response, "HTTP/1.1 101 ", 13);
+		}
+		bool accepted = WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1);
+		indigo_usleep((long)((INDIGO_HTTP_HEADER_TOTAL_TIMEOUT + 0.1) * 1000000));
+		bool retained = atomic_load(&server_client_count) == 1;
+		close(fd);
+		bool released = WAIT_UNTIL(atomic_load(&server_client_count) == 0, 1);
+		ASSERT_TRUE(sent && upgraded && accepted && retained && released);
+	}
+}
+
 static void idle_initial_connections_expire(void) {
 	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 0, 2));
 	int fd = connect_loopback(indigo_server_tcp_port);
@@ -483,7 +687,7 @@ static void established_xml_survives_initial_deadline(void) {
 	const char *request = "<getProperties version='3.0' device='No such fixture'/>";
 	ASSERT_EQ_INT(strlen(request), write(fd, request, strlen(request)));
 	ASSERT_TRUE(WAIT_UNTIL(atomic_load(&server_client_count) == 1, 1));
-	indigo_usleep(INDIGO_SERVER_INITIAL_TIMEOUT + 100000L);
+	indigo_usleep((long)((INDIGO_HTTP_HEADER_TOTAL_TIMEOUT + 0.1) * 1000000));
 	ASSERT_EQ_INT(1, atomic_load(&server_client_count));
 	ASSERT_EQ_INT(strlen(request), write(fd, request, strlen(request)));
 	close(fd);
@@ -707,6 +911,13 @@ int main(int argc, char **argv) {
 	}
 	indigo_test_case tests[] = {
 		{ "idle initial connections expire", idle_initial_connections_expire },
+		{ "partial HTTP request and headers expire", partial_http_request_and_headers_expire },
+		{ "progressing HTTP framing total deadline", progressing_http_framing_has_total_deadline },
+		{ "HTTP header size and peer close bounds", http_header_size_and_peer_close_bounds },
+		{ "malformed or excess headers cannot dispatch", malformed_or_excess_headers_cannot_dispatch },
+		{ "complete PUT headers and coalesced body", complete_put_headers_and_coalesced_body_are_preserved },
+		{ "complete HTTP keepalive", complete_http_keepalive_requests_are_preserved },
+		{ "established JSON and WebSocket idle sessions", established_json_and_websocket_survive_http_deadlines },
 		{ "established XML idle session", established_xml_survives_initial_deadline },
 #ifdef INDIGO_HTTP_FAULT_INJECTION
 		{ "admission limit and spawn failure", admission_limit_and_spawn_failure_recover },

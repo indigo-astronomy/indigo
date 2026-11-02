@@ -135,6 +135,72 @@ static void retire_resource(struct resource *resource) {
 #define INDIGO_SERVER_INITIAL_TIMEOUT 5000000L
 #endif
 
+#ifndef INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT
+#define INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT 5.0
+#endif
+#ifndef INDIGO_HTTP_HEADER_TOTAL_TIMEOUT
+#define INDIGO_HTTP_HEADER_TOTAL_TIMEOUT 30.0
+#endif
+
+// Leave the complete framing queued for GET parsing and PUT callbacks, which own their headers and body.
+// A small explicit block budget avoids requiring large kernel receive buffers before any bytes can be consumed.
+static bool http_header_ready(indigo_uni_handle *handle) {
+	char bytes[4096];
+	size_t scanned = 0, line_start = 0;
+	unsigned lines = 0;
+	double now = indigo_monotonic_time();
+	double deadline = now + INDIGO_HTTP_HEADER_TOTAL_TIMEOUT;
+	double progress = now + INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT;
+	while (true) {
+		now = indigo_monotonic_time();
+		double remaining = (deadline < progress ? deadline : progress) - now;
+		if (remaining <= 0 || indigo_uni_wait_for_data(handle, (long)(remaining * 1000000)) <= 0) {
+			return false;
+		}
+		now = indigo_monotonic_time();
+		if (now >= deadline || now >= progress) {
+			return false;
+		}
+		long available = indigo_uni_peek_available(handle, bytes, sizeof(bytes));
+		if (available <= 0 || (size_t)available < scanned) {
+			return false;
+		}
+		if ((size_t)available > scanned) {
+			progress = indigo_monotonic_time() + INDIGO_HTTP_HEADER_PROGRESS_TIMEOUT;
+			while (scanned < (size_t)available) {
+				if (bytes[scanned] == 0) {
+					return false;
+				}
+				if (bytes[scanned] == '\n') {
+					size_t length = scanned - line_start;
+					if (length && bytes[scanned - 1] == '\r') {
+						length--;
+					}
+					if (length >= BUFFER_SIZE - 1) {
+						return false;
+					}
+					if (length == 0) {
+						return lines > 0;
+					}
+					if (++lines > 65) {
+						return false;
+					}
+					line_start = scanned + 1;
+				} else if (scanned - line_start >= BUFFER_SIZE - 1) {
+					return false;
+				}
+				scanned++;
+			}
+			if (scanned == sizeof(bytes)) {
+				return false;
+			}
+		} else {
+			// select() remains ready for the unconsumed prefix; sleep rather than spin on it.
+			indigo_usleep(10000);
+		}
+	}
+}
+
 static void client_count_change(int delta) {
 	pthread_mutex_lock(&client_count_mutex);
 	server_callback(client_count += delta);
@@ -308,7 +374,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 		} else if (c == 'G' || c == 'P') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
-			while ((res = indigo_uni_read_line(handle, request, sizeof(request) - 1)) > 0) {
+			while (http_header_ready(handle) && (res = indigo_uni_read_line(handle, request, sizeof(request) - 1)) > 0) {
 				bool keep_alive = true;
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;

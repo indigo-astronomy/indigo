@@ -28,6 +28,7 @@
 #endif
 
 #include <string.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <indigo/indigo_token.h>
@@ -165,10 +166,12 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 			continue;
 		}
 		
-		// remove training spaces
+		// Remove trailing whitespace.
 		int len = (int)strlen(buffer) - 1;
 		if (len >= 0) {
-			while (buffer[len] == ' ' || buffer[len] == '\t' || buffer[len] == '\n') len--;
+			while (len >= 0 && isspace((unsigned char)buffer[len])) {
+				len--;
+			}
 			buffer[len + 1] = '\0';
 		}
 		// skip empty lines
