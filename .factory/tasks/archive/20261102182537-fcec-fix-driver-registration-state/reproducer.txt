@@ -1,0 +1,4 @@
+unit/test_driver_loader.c:249: assertion failed: !(second_initialized)
+Running driver loader unit tests
+  FAIL recycled_inactive_registration_starts_uninitialized
+driver loader unit tests: 1 test(s) failed

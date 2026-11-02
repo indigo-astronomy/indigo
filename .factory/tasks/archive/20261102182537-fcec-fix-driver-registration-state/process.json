@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "task": "20261102182537-fcec-fix-driver-registration-state",
+  "scope": [
+    "indigo_libs/indigo_client.c",
+    "indigo_test/unit/test_driver_loader.c",
+    ".factory/completions/20261102182537-fcec-fix-driver-registration-state.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "/tmp/registration-fixed-test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "env",
+        "ASAN_OPTIONS=detect_leaks=0",
+        "UBSAN_OPTIONS=halt_on_error=1",
+        "/tmp/registration-sanitize-test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261102182537-fcec-fix-driver-registration-state.json": [
+      "100644",
+      "blob",
+      "45195a65e111b90a6317522b3ec9348034877fc3"
+    ],
+    "indigo_libs/indigo_client.c": [
+      "100644",
+      "blob",
+      "07acd30798c057e05fdbc485041b4e8f6fd98826"
+    ],
+    "indigo_test/unit/test_driver_loader.c": [
+      "100644",
+      "blob",
+      "11b19aaf536378dcc6a62b02136ec2f223e61d77"
+    ]
+  }
+}
