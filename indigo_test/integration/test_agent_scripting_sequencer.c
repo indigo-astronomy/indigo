@@ -1090,6 +1090,65 @@ static void late_abort_keeps_finished_state(void) {
 	ASSERT_TRUE(!has_message("Sequence aborted"));
 }
 
+// Most steps do not store their timer in wait_for_timer, forgetting the timer of wait() makes it such a pending timer; the sentinel message comes after it
+static bool end_sequence_with_pending_step_timer(const char *ending) {
+	char script[512];
+	REQUIRE(run_js("lateTrace=0; var s=new Sequence('pending timer'); s.wait(1); s.evaluate('lateTrace=1'); s.start();"));
+	REQUIRE(wait_message("Suspended for 1s", 5));
+	snprintf(script, sizeof(script), "indigo_set_timer(function(){indigo_send_message('timer sentinel')},1.1); indigo_sequencer.wait_for_timer=null; %s", ending);
+	return run_js(script);
+}
+
+static void step_timer_after_abort_keeps_step_state(void) {
+	ASSERT_TRUE(end_sequence_with_pending_step_timer("indigo_sequencer_abort_handler();"));
+	ASSERT_TRUE(wait_message("Sequence aborted", 5));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'"));
+}
+
+static void step_timer_after_failure_keeps_step_state(void) {
+	ASSERT_TRUE(end_sequence_with_pending_step_timer("indigo_sequencer.failure('late failure');"));
+	ASSERT_TRUE(wait_message("Sequence failed", 5));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'"));
+}
+
+static void step_timer_after_abort_does_not_advance_next_sequence(void) {
+	ASSERT_TRUE(end_sequence_with_pending_step_timer("indigo_sequencer_abort_handler(); var n=new Sequence('restarted'); n.wait(10); n.evaluate('lateTrace=2'); n.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("lateTrace===0 && indigo_sequencer.name==='restarted' && indigo_sequencer.step===0 && indigo_sequencer.wait_for_timer!==null"));
+	ASSERT_TRUE(wait_sequence(INDIGO_BUSY_STATE, 1));
+}
+
+// A finished mount process schedules the next step 0.5 s later, the abort comes in between
+static void mount_delay_timer_after_abort_keeps_step_state(void) {
+	ASSERT_TRUE(run_js("lateTrace=0; var s=new Sequence('mount delay'); s.wait(10); s.evaluate('lateTrace=1'); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(run_js("indigo_set_timer(function(){indigo_send_message('timer sentinel')},0.7); indigo_sequencer.wait_for_device=indigo_sequencer.devices[MOUNT_AGENT]; indigo_sequencer.wait_for_property='AGENT_START_PROCESS'; indigo_sequencer.on_update({device:indigo_sequencer.devices[MOUNT_AGENT],name:'AGENT_START_PROCESS',state:'Ok',items:{}}); indigo_sequencer_abort_handler();"));
+	ASSERT_TRUE(wait_message("Sequence aborted", 5));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'"));
+}
+
+static void failure_cancels_stored_timer(void) {
+	ASSERT_TRUE(run_js("lateTrace=0; var s=new Sequence('stored timer'); s.wait(10); s.evaluate('lateTrace=1'); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(run_js("indigo_sequencer.altitude_poll=function(){lateTrace=2}; indigo_sequencer.failure('late failure');"));
+	ASSERT_TRUE(wait_message("Sequence failed", 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.wait_for_timer===null && indigo_sequencer.altitude_poll===null"));
+}
+
+// Slot 31 holds no timer, cancelling it fails as it does for a timer which is already firing
+static void abort_with_timer_not_cancellable(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('not cancellable'); s.wait(10); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(run_js("indigo_cancel_timer(indigo_sequencer.wait_for_timer); indigo_sequencer.wait_for_timer=31; indigo_sequencer_abort_handler();"));
+	ASSERT_TRUE(wait_message("Sequence aborted", 5));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 2));
+	ASSERT_TRUE(check_js("indigo_sequencer.wait_for_timer===null"));
+}
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
@@ -1139,7 +1198,13 @@ static const indigo_test_case tests[] = {
 	{ "meridian flip failure keeps failed state", meridian_flip_failure_keeps_failed_state },
 	{ "meridian flip failure keeps aborted state", meridian_flip_failure_keeps_aborted_state },
 	{ "meridian flip failure keeps reset state", meridian_flip_failure_keeps_reset_state },
-	{ "late abort keeps finished state", late_abort_keeps_finished_state }
+	{ "late abort keeps finished state", late_abort_keeps_finished_state },
+	{ "step timer after abort keeps step state", step_timer_after_abort_keeps_step_state },
+	{ "step timer after failure keeps step state", step_timer_after_failure_keeps_step_state },
+	{ "step timer after abort does not advance next sequence", step_timer_after_abort_does_not_advance_next_sequence },
+	{ "mount delay timer after abort keeps step state", mount_delay_timer_after_abort_keeps_step_state },
+	{ "failure cancels stored timer", failure_cancels_stored_timer },
+	{ "abort with timer not cancellable", abort_with_timer_not_cancellable }
 };
 
 int main(int argc, char **argv) {
