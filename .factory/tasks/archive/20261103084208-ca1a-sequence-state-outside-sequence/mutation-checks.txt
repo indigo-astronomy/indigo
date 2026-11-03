@@ -1,0 +1,33 @@
+Part 1: Sequencer.js from HEAD (44ef49d2b, without the change) with the candidate tests, exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:930: assertion failed: wait_sequence(INDIGO_OK_STATE, 5)
+FAILED meridian flip without solver fails (status 256)
+integration/test_agent_scripting_sequencer.c:948: same_state
+integration/test_agent_scripting_sequencer.c:958: assertion failed: failed_flip_keeps_sequence_state(INDIGO_OK_STATE)
+FAILED meridian flip failure keeps finished state (status 256)
+integration/test_agent_scripting_sequencer.c:949: revision(SCRIPTING, "SEQUENCE_STATE") == sequence_before
+integration/test_agent_scripting_sequencer.c:964: assertion failed: failed_flip_keeps_sequence_state(INDIGO_ALERT_STATE)
+FAILED meridian flip failure keeps failed state (status 256)
+integration/test_agent_scripting_sequencer.c:949: revision(SCRIPTING, "SEQUENCE_STATE") == sequence_before
+integration/test_agent_scripting_sequencer.c:972: assertion failed: failed_flip_keeps_sequence_state(INDIGO_ALERT_STATE)
+FAILED meridian flip failure keeps aborted state (status 256)
+integration/test_agent_scripting_sequencer.c:948: same_state
+integration/test_agent_scripting_sequencer.c:980: assertion failed: failed_flip_keeps_sequence_state(INDIGO_OK_STATE)
+FAILED meridian flip failure keeps reset state (status 256)
+integration/test_agent_scripting_sequencer.c:1088: assertion failed: wait_sequence(INDIGO_OK_STATE, 1)
+FAILED late abort keeps finished state (status 256)
+Sequencer.js: 43/49 passed (including cleanup)
+
+Part 2: candidate with 'var sequence_running = false;', exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:620: assertion failed: wait_sequence(INDIGO_ALERT_STATE, 5)
+FAILED pause resume abort reset (status 256)
+integration/test_agent_scripting_sequencer.c:837: assertion failed: wait_sequence(INDIGO_ALERT_STATE, 5)
+FAILED abort reaches replaced solver (status 256)
+integration/test_agent_scripting_sequencer.c:849: assertion failed: wait_sequence(INDIGO_ALERT_STATE, 5)
+FAILED abort reaches selected solver (status 256)
+integration/test_agent_scripting_sequencer.c:1075: assertion failed: wait_sequence(INDIGO_ALERT_STATE, 5)
+FAILED meridian flip failure aborts (status 256)
+integration/test_agent_scripting_sequencer.c:971: assertion failed: wait_message("Sequence aborted", 5)
+FAILED meridian flip failure keeps aborted state (status 256)
+Sequencer.js: 44/49 passed (including cleanup)
+
+Sequencer.js restored from the saved candidate and compared with cmp.

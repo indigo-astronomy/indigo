@@ -1,0 +1,66 @@
+{
+  "version": 2,
+  "task": "20261103084208-ca1a-sequence-state-outside-sequence",
+  "scope": [
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_drivers/agent_scripting/library/Sequencer.md",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    ".factory/findings/active/FND-20261103084208-ca1a-sequence-state-outside-sequence-*.json",
+    ".factory/completions/20261103084208-ca1a-sequence-state-outside-sequence.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-scripting-sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103084208-ca1a-sequence-state-outside-sequence.json": [
+      "100644",
+      "blob",
+      "f1630800d6d3e9088ef7214ef1d7e68deb993c62"
+    ],
+    ".factory/findings/active/FND-20261103084208-ca1a-sequence-state-outside-sequence-001.json": [
+      "100644",
+      "blob",
+      "063e42dbe110705fdbec0162166272e35822e93b"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "2891e242238c6788faa768d685e0bb083ec36bf3"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "100644",
+      "blob",
+      "1e49b633dd1c349dd21e9d70d68d4c8a9da24cc1"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "c39eaed949f6724efe4f8b0cc7a0ae7ef74364e1"
+    ]
+  }
+}
