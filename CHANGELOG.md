@@ -2,6 +2,216 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-10] - 04 Nov Wed 2026
+## Overall:
+- packaging:
+	- indigo_ccd_pentax is built and installed, indigo_system_alpaca is installed
+	- make install installs every built tool, indigo_drivers, indigo_driver_metadata, indigo_generator, indigo_scan_drivers and indigo_solver_indexer included
+
+- indigo_libs:
+	- serial ports are opened with exclusive access on Linux and macOS, auto:// skips serial ports another device has open or is connecting to, so identical devices get different ports, and falls back to a free port when the matching ones are claimed
+	- serial port open functions returning a platform specific, human readable error message added
+	- AGENT_PLATESOLVER_FILTER added, the plate solver agents can take their frames through a selected filter and return to the previous filter afterwards
+	- %t and %nt (current CCD temperature) added to the image file name macros
+	- indigo_uni_map_file(), indigo_uni_unmap_file() and indigo_find_stars_fast_threshold() added
+	- indigo_acquire_blob(), indigo_acquire_blob_by_name(), indigo_release_blob() and indigo_snapshot_blob() added for safe concurrent access to the BLOB cache
+	- uploaded BLOBs are limited to 64 MB each and 256 MB in total and time out when stalled, the server limits workers, request size and idle connections, HTTP request headers are limited and BLOB uploads to read-only cache entries are refused
+	- fix a server crash on a WebSocket key longer than 219 bytes
+	- fix out of bounds writes and unbounded memory use in the XML and JSON protocol parsers, upstream XML messages used as printf formats and the JSON parser misreading escaped backslashes, exponents and malformed numbers
+	- fix a crash when an HTTP resource is removed while it is served, file handles leaked by failed downloads and truncated gzip BLOB downloads, which now fall back to an uncompressed transfer
+	- fix network URLs with an over-long host name or an invalid port overflowing instead of being refused
+	- fix overflows of long image file name patterns, CCD_LOCAL_MODE goes to ALERT with "Directory name is too long", and an incomplete local image save reported as OK, it goes to ALERT and the partial file is removed
+	- fix AVI and SER recording ignoring failed writes and SER timestamps overflowing on Windows
+	- fix out of bounds reads in RAW to FITS conversion, Bayer interpolation and equalisation of small frames and frame edges, star detection, selection PSF near the frame edge, and the star exclusion rectangle also dropping stars outside it
+	- fix a crash when LibRaw initialisation fails
+	- fix CCD_FPS leaked on every camera unload or unplug
+	- fix device enumeration reaching a device before its attach finished, additional instances of slave devices and static drivers re-added to a reused registry slot
+	- fix writing past full driver, subprocess and server registries and indigo_query_slave_devices() writing past its array
+	- fix closing a HID device also closing an unrelated file descriptor on Linux and macOS, and indigo_printf() sending output longer than its buffer truncated
+	- fix a partial SESSION_FEATURES change applied to the values of other clients
+	- fix solar aberration 360 times too small, nutation recomputation, proper motion ignored when only one of its components is nonzero and the spherical conversion of negative axes and the south pole
+	- fix MULTI_POINT alignment mode leaving the mount coordinates unset
+	- fix three point polar alignment dividing by zero, NaN focus estimates on masked contrast, DONUTS accepting too narrow regions and the plate solver accepting an exposure started after the acceptance timeout
+	- fix numbers with a zero mantissa in exponent notation parsed as nonzero, RGB48 endian conversion swapping only part of the samples and the profile selection checking profile 0 instead of the selected one
+	- fix indigo_prop_tool showing IDLE properties as OK, a request for a single device or property asks for the INDIGO protocol too
+	- fix macOS USB serial enumeration writing past the port array
+	- fix a blank line in the access list file read out of bounds
+
+- indigo_server:
+	- indigo_agent_platesolver and indigo_aux_simulator added as static drivers
+	- web UI drives the loaded solver agent, Platesolver Agent included, instead of a fixed Astrometry Agent, and selects the related agents also on the first load of the astrometry page
+	- fix shell command injection through the item names of the RPI INSTALL property
+	- fix web UI mount motion not stopping when the button is released outside it, it stops on release, blur and a hidden page and supports touch
+	- fix web UI imager deleting the source file when an image download fails
+	- fix web UI dropping the sign of sexagesimal values between -1 and 0 and formatting fractional hour HOST_TIME offsets wrongly
+	- fix a static driver unloaded by UNLOAD shown enabled without devices when enabled again through DRIVERS
+
+- indigo_tools:
+	- indigo_solver command line plate solver added, it solves an image file with the Platesolver Agent indexes and takes the hints as switches
+	- indigo_solver_indexer added, it builds the Platesolver Agent indexes from the Tycho-2 and Gaia DR3 catalogues
+	- indigo_generator: sdk { usb = false; discover { } } added for SDK devices without a USB device
+	- indigo_generator: the connection failure alert of serial drivers shows why the serial port could not be opened
+	- indigo_generator: fix tokens like trueX accepted as booleans and key prefixes matching longer keys
+	- driver editor: polaralign devices, device id and the sdk discover block supported, fix CCD properties lost on explicitly identified logical devices
+	- indigo_prop_tool: fix overflows on long names, values and too many items, malformed requests are refused
+	- fits_to_raw, fix_fits, fix_xisf, indigo_raw_to_fits, indigo_metadata_extractor, indigo_prop_tool and indigo_generator: fix failed writes and allocations not reported
+
+- behaviour common to many drivers:
+	- the connection failure alert shows why the serial port could not be opened: ao_sx, aux_arteskyflat, aux_astromechanics, aux_cloudwatcher, aux_fbc, aux_flatmaster, aux_flipflat, aux_geoptikflat, aux_mgbox, aux_ppb, aux_rts, aux_skyalert, aux_sqm, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec, dome_baader, dome_beaver, dome_nexdome, dome_nexdome3, dome_skyroof, dome_talon6ror, focuser_askar, focuser_astromechanics, focuser_dmfc, focuser_dsd, focuser_efa, focuser_fc3, focuser_focusdreampro, focuser_ioptron, focuser_lacerta, focuser_lakeside, focuser_lunatico, focuser_mjkzz, focuser_moonlite, focuser_mypro2, focuser_nfocus, focuser_nstep, focuser_optec, focuser_optecfl, focuser_primaluce, focuser_prodigy, focuser_qhy, focuser_robofocus, focuser_steeldrive2, focuser_usbv3, focuser_wemacro, gps_nmea, guider_cgusbst4, mount_asi, mount_ioptron, mount_lx200, mount_mxhd, mount_pmc8, mount_rainbow, mount_synscan, mount_temma, polaralign_mlastro, rotator_falcon, rotator_lunatico, rotator_optec, rotator_wa, wheel_indigo, wheel_optec, wheel_qhy, wheel_quantum, wheel_trutek, wheel_xagyl
+	- a move that never completes is stopped and ends in ALERT after a deadline instead of staying BUSY: aux_flipflat, focuser_lakeside, focuser_nfocus, focuser_optec, mount_nexstar, mount_pmc8, mount_temma, wheel_asi, wheel_playerone, wheel_quantum, wheel_trutek, wheel_xagyl
+	- a move that stops short of the target ends in ALERT instead of OK: focuser_asi, focuser_dmfc, focuser_dsd, focuser_fc3, focuser_lunatico (rotator), focuser_mypro2, focuser_usbv3, rotator_asi, rotator_lunatico
+	- SDK updated to 60.33015.20261024: ccd_altair, ccd_baccam, ccd_bresser, ccd_mallin, ccd_ogma, ccd_omegonpro, ccd_rising, ccd_svb2, ccd_touptek
+
+
+## New drivers:
+- indigo_agent_platesolver:
+	- Platesolver Agent, a native plate solver, solving RAW, FITS, JPEG and camera raw frames itself with Tycho-2 and Gaia DR3 indexes for fields from below 0.5° to over 20° downloaded on demand through X_AGENT_SOLVER_INDEX, using the position, parity, depth and CPU limit hints, not loadable together with indigo_agent_astrometry and built also on Windows, added
+
+- indigo_aux_alto:
+	- PrimaLuce Lab ALTO telescope cover driver added
+
+- indigo_aux_giotto:
+	- PrimaLuce Lab GIOTTO flat panel driver added
+
+- indigo_aux_simulator:
+	- PowerBox, weather station, SQM and flat panel simulators for client development added
+
+- indigo_ccd_libcamera:
+	- libcamera driver for Raspberry Pi CSI and other cameras supported by libcamera added (Linux)
+
+
+## Driver changes:
+- indigo_agent_alpaca:
+	- the guider of a mount is connected only for an Alpaca client that connected the mount, a mount connected by the Mount Agent no longer takes the guider from the Guider Agent
+	- fix a crash when more cameras are configured than supported, "Too many Alpaca cameras configured" is shown
+	- fix the image array served from invalid or incomplete RAW frames and read while the image is replaced
+	- fix a crash when HTTP requests are served during or after the agent unload
+
+- indigo_agent_astrometry:
+	- solves frames taken through the filter selected in AGENT_PLATESOLVER_FILTER
+	- refuses to load while indigo_agent_platesolver is loaded
+	- fix memory leaks of the solver output and of the agent data at shutdown
+
+- indigo_agent_guider:
+	- fix a memory leak on agent unload
+
+- indigo_agent_imager:
+	- recognises the Platesolver Agent as a related solver agent and disables its automatic solving before imager processes
+	- fix capture continuing with invalid or incomplete RAW images, "Invalid or incomplete RAW image" is shown
+	- fix U-Curve focusing producing a non-finite best focus position
+
+- indigo_agent_mount:
+	- recognises the Platesolver Agent as a related solver agent
+	- fix joystick RA and Dec motion lost or stuck on release or direction change
+
+- indigo_agent_scripting:
+	- Sequencer.js: select_solver_agent() added, the solver agent is selected automatically, the one on the host of the loaded imager agent first, then the local one, then one on another host, Platesolver Agent included, instead of a fixed Astrometry Agent
+	- Sequencer.js: set_solver_filter() added to select the filter used for plate solving
+	- Sequencer.js: solver steps, abort and meridian flip use the solver agent loaded at that time
+	- Sequencer.js: a failed meridian flip follows the failure policy, recover_on_failure() continues at the next recovery point and continue_on_failure() with the next step, and restores the HA limit it disabled
+	- Sequencer.js: fix the meridian flip waiting forever when no solver agent is loaded
+	- Sequencer.js: fix a meridian flip failure or an abort outside of a sequence setting SEQUENCE_STATE and the step state to ALERT
+	- Sequencer.js: fix step and altitude timers of an aborted or failed sequence changing the step state or advancing the next sequence
+	- Sequencer.js: fix the imager batch restored after focusing containing the values changed by the focusing
+	- fix properties defined or updated by a script published with values changed after the call
+
+- indigo_aux_asiair:
+	- fix ports exported by other programs released, a failed pulse end is reported
+
+- indigo_aux_astromechanics:
+	- fix malformed or unterminated measurements accepted and locale dependent parsing
+
+- indigo_aux_fbc:
+	- light impulses and exposures are counted down without blocking the device queue
+
+- indigo_aux_flipflat:
+	- fix operations reported successful without a valid acknowledgement from the device
+
+- indigo_aux_rpio:
+	- fix pins exported by other programs released, a failed pulse end is reported, RP1 inputs are configured
+
+- indigo_aux_svbpowerbox:
+	- fix connection hanging while the boot log is read, it is limited to 3 seconds
+
+- indigo_aux_upb:
+	- fix a queued focuser request shown as finished by the poll and a request cancelled by abort not ending in ALERT
+
+- indigo_aux_usbdp:
+	- fix the serial port left open when the identification fails
+
+- indigo_ccd_atik2:
+	- fix a guide pulse not stopped after a rejected replacement pulse
+
+- indigo_ccd_dsi:
+	- fix an exposure whose setup or start fails or whose image is short reported as finished
+
+- indigo_ccd_pentax:
+	- Pentax K-m and K-2000 supported, timed and bulb exposures with JPEG, PEF and DNG images and writable DSLR_PROGRAM, DSLR_APERTURE, DSLR_SHUTTER and DSLR_ISO
+
+- indigo_ccd_ptp:
+	- Canon: fix images not downloaded by cameras using 64-bit transfer events and DeviceBusy on EOS R6 Mark III caused by rewriting the mirror lockup setting - #778
+	- fix the RAW+JPEG preview and histogram missing in ENABLED_WITH_HISTOGRAM mode - #702
+	- Sony: setting writes are confirmed and read back, ignored shutter presses retried, PriorityMode written, live view works after a capture, autofocus retried when busy after connect
+	- Fujifilm: unsupported Bulb hidden, rejected settings read back
+	- the camera identity and downloaded object sizes are published, only PTP interfaces are attached
+	- fix malformed PTP replies read out of bounds and images of aborted or interrupted shots delivered later
+
+- indigo_ccd_rpi:
+	- fix build with libcamera 0.7, frames not covering the full sensor, subframe cropping, RGB24 byte order, the exposure countdown, abort, disconnect and connection failure cleanup, advanced settings not kept and focuser moves
+
+- indigo_ccd_simulator:
+	- fix binned frames sampling every second pixel instead of averaging the bin block, binned frames can be solved
+	- fix hot pixels written below the subframe and a truncated RAW file accepted by the file camera
+
+- indigo_focuser_lunatico:
+	- fix FOCUSER_POSITION and FOCUSER_STEPS requests lost when they arrive during the connection poll
+
+- indigo_focuser_mjkzz_bt:
+	- fix corrupted notifications decoded as values
+
+- indigo_focuser_primaluce:
+	- SESTO SENSO 3 support completed, late replies are recovered and a running calibration can be stopped
+	- relative ARCO move added
+	- X_WIFI_STATUS added, it shows the WiFi addresses and connection state
+	- WiFi SSIDs and passwords WiFi cannot use are refused with the reason, switching the WiFi off in station mode returns to the access point mode
+	- the calibration runs without blocking the device queue, abort and other requests are served during it, and fails with a request to rerun it when the position is outside the new range
+	- moves are refused while the focuser or the ARCO needs calibration and end in ALERT with the reason, refused calibration steps, moves and syncs report the controller's text
+	- the ARCO stays enabled across disconnects and its angle is published during a move
+	- the focuser calibration is hidden on the ESATTO
+	- the serial port of a CP2102N bridge (10c4:ea60) is preferred by auto://
+	- fix ARCO moves and syncs on the SESTO SENSO 3 and reply keys matched by prefix
+	- fix WiFi credentials with quotes, backslashes or control characters and a long firmware version overflowing the item
+	- fix LED and access point changes refused by the controller reported as successful
+
+- indigo_focuser_qhy:
+	- fix FOCUSER_STEPS updated while deleted in automatic compensation mode
+
+- indigo_focuser_wemacro_bt:
+	- fix the connection staying claimed after an unexpected disconnect
+
+- indigo_guider_cgusbst4:
+	- fix guide pulses ignored by the adapter, the PHD2 numeric protocol is used
+
+- indigo_mount_ioptron:
+	- fix an HC8406 guide pulse whose stop command fails reported as OK
+
+- indigo_mount_synscan:
+	- auto-home can be interrupted by abort and disconnect
+
+- indigo_rotator_falcon:
+	- fix the direction changed when FN is not acknowledged, motion stays BUSY until finished and abort and disconnect are served during it
+
+- indigo_wheel_qhy:
+	- fix CFW3 filter counts larger than the slot properties accepted
+
+- indigo_wheel_trutek:
+	- the wheel goes to ALERT when it stops at the wrong slot, corrupt replies are refused
+	- fix filter counts larger than the slot properties accepted
+
+- indigo_wheel_xagyl:
+	- fix filter counts larger than the slot properties accepted
+
+
 # [3.0-9] - 18 Oct Sun 2026
 ## Overall:
 - packaging:
