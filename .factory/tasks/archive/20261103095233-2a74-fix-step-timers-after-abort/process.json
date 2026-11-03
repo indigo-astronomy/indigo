@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "task": "20261103095233-2a74-fix-step-timers-after-abort",
+  "scope": [
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    ".factory/findings/active/FND-20261103095233-2a74-fix-step-timers-after-abort-*.json",
+    ".factory/findings/active/FND-20261103084208-ca1a-sequence-state-outside-sequence-001.json",
+    ".factory/findings/archive/FND-20261103084208-ca1a-sequence-state-outside-sequence-001.json",
+    ".factory/completions/20261103095233-2a74-fix-step-timers-after-abort.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-scripting-sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103095233-2a74-fix-step-timers-after-abort.json": [
+      "100644",
+      "blob",
+      "97d96b62750f35d5aea7cfdf8c190fb954821e6b"
+    ],
+    ".factory/findings/active/FND-20261103084208-ca1a-sequence-state-outside-sequence-001.json": null,
+    ".factory/findings/active/FND-20261103095233-2a74-fix-step-timers-after-abort-001.json": [
+      "100644",
+      "blob",
+      "2e72d802676d2a40b93fa599b982c6044835ba45"
+    ],
+    ".factory/findings/archive/FND-20261103084208-ca1a-sequence-state-outside-sequence-001.json": [
+      "100644",
+      "blob",
+      "4d1710f4c858db75562c6165b31c9e2bf50962e5"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "e7eb4b10d5e8059ebf86cc44032a677dd43da1e0"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "d83dc0447ea0e80822004bd3f94383161ff16e15"
+    ]
+  }
+}

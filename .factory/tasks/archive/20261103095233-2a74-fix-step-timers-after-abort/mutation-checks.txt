@@ -1,0 +1,40 @@
+Part 1: Sequencer.js from HEAD (874de4bef) with the candidate tests, exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1106: assertion failed: check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'")
+FAILED step timer after abort keeps step state (status 256)
+integration/test_agent_scripting_sequencer.c:1113: assertion failed: check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'")
+FAILED step timer after failure keeps step state (status 256)
+integration/test_agent_scripting_sequencer.c:1120: assertion failed: check_js("lateTrace===0 && indigo_sequencer.name==='restarted' && indigo_sequencer.step===0 && indigo_sequencer.wait_for_timer!==nu
+FAILED step timer after abort does not advance next sequence (status 256)
+integration/test_agent_scripting_sequencer.c:1131: assertion failed: check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'")
+FAILED mount delay timer after abort keeps step state (status 256)
+integration/test_agent_scripting_sequencer.c:1139: assertion failed: check_js("indigo_sequencer.wait_for_timer===null && indigo_sequencer.altitude_poll===null")
+FAILED failure cancels stored timer (status 256)
+integration/test_agent_scripting_sequencer.c:1146: assertion failed: run_js("indigo_cancel_timer(indigo_sequencer.wait_for_timer); indigo_sequencer.wait_for_timer=31; indigo_sequencer_abort_handler();
+FAILED abort with timer not cancellable (status 256)
+Sequencer.js: 49/55 passed (including cleanup)
+
+Part 2: candidate without timer_generation++ in failure(), exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1113: assertion failed: check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'")
+FAILED step timer after failure keeps step state (status 256)
+Sequencer.js: 54/55 passed (including cleanup)
+
+Part 3: candidate without timer_generation++ in abort(), exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1106: assertion failed: check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'")
+FAILED step timer after abort keeps step state (status 256)
+integration/test_agent_scripting_sequencer.c:1120: assertion failed: check_js("lateTrace===0 && indigo_sequencer.name==='restarted' && indigo_sequencer.step===0 && indigo_sequencer.wait_for_timer!==nu
+FAILED step timer after abort does not advance next sequence (status 256)
+integration/test_agent_scripting_sequencer.c:1131: assertion failed: check_js("lateTrace===0 && indigo_sequencer.step_states['0']==='Alert'")
+FAILED mount delay timer after abort keeps step state (status 256)
+Sequencer.js: 52/55 passed (including cleanup)
+
+Part 4: candidate without cancel_stale_timer() in failure(), exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1139: assertion failed: check_js("indigo_sequencer.wait_for_timer===null && indigo_sequencer.altitude_poll===null")
+FAILED failure cancels stored timer (status 256)
+Sequencer.js: 54/55 passed (including cleanup)
+
+Part 5: candidate without the try/catch in cancel_stale_timer(), exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1146: assertion failed: run_js("indigo_cancel_timer(indigo_sequencer.wait_for_timer); indigo_sequencer.wait_for_timer=31; indigo_sequencer_abort_handler();
+FAILED abort with timer not cancellable (status 256)
+Sequencer.js: 54/55 passed (including cleanup)
+
+Sequencer.js restored from the saved candidate and compared with cmp.

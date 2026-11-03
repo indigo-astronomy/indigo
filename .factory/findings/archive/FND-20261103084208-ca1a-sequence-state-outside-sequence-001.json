@@ -2,7 +2,7 @@
   "title": "Step timers not stored survive an abort and change the step state afterwards",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261103084208-ca1a-sequence-state-outside-sequence",
       "report": "quality-review.md",
       "revision": null
+    },
+    {
+      "id": "20261103095233-2a74-fix-step-timers-after-abort",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "indigo_sequencer_next_ok_handler() sets the step to Ok and runs execute_next() without checking that a sequence runs, and abort() cancels only wait_for_timer while most next_ok timers are not stored in it. An abort or failed flip inside such a window can turn the step state Alert back to Ok while SEQUENCE_STATE stays Alert. A late timer after a new start() might also advance that sequence, this was not traced. Pre-existing, found by code inspection, not reproduced. Next: return from the handler when no sequence runs, or store the timers, with a test that aborts inside the 0.5 s window after a mount process.",
   "evidence": "quality-review.md F1; indigo_drivers/agent_scripting/library/Sequencer.js indigo_sequencer_next_ok_handler, on_update delayed next_ok timer, abort",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Six step timer tests pass and fail against the previous Sequencer.js; task 20261103095233-2a74-fix-step-timers-after-abort verification.md, mutation-checks.txt.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261103084208-ca1a-sequence-state-outside-sequence-001"
 }
