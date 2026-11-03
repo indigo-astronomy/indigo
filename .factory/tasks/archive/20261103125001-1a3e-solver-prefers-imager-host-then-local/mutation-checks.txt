@@ -1,0 +1,38 @@
+Run: build/integration/test_agent_scripting_sequencer 'solver autoselection' in indigo_test, exit 1 (intended) in all parts
+
+Part 1: Sequencer.js from HEAD (d9ae777ee) with the candidate tests
+JavaScript assertion failed: sequencer_solver_agent('Imager Agent @ c')==='Astrometry Agent'
+integration/test_agent_scripting_sequencer.c:806: assertion failed: check_js("sequencer_solver_agent('Imager Agent @ c')==='Astrometry Agent'")
+FAILED solver autoselection prefers imager host then local (status 256)
+JavaScript assertion failed: sequencer_solver_agent('Imager Agent @ b')==='Astrometry Agent'
+integration/test_agent_scripting_sequencer.c:819: assertion failed: check_js("sequencer_solver_agent('Imager Agent @ b')==='Astrometry Agent'")
+FAILED solver autoselection without local solver (status 256)
+JavaScript assertion failed: indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'
+integration/test_agent_scripting_sequencer.c:828: assertion failed: check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'")
+FAILED solver autoselection corrected at use (status 256)
+Sequencer.js: 0/3 passed (including cleanup)
+
+Part 2: candidate without the preference of the local solver agent over other hosts
+JavaScript assertion failed: sequencer_solver_agent('Imager Agent @ c')==='Astrometry Agent'
+integration/test_agent_scripting_sequencer.c:806: assertion failed: check_js("sequencer_solver_agent('Imager Agent @ c')==='Astrometry Agent'")
+FAILED solver autoselection prefers imager host then local (status 256)
+Sequencer.js: 2/3 passed (including cleanup)
+
+Part 3: candidate treating an imager entry without AGENT_IMAGER_BATCH as loaded
+JavaScript assertion failed: sequencer_solver_agent('Imager Agent @ stale')==='Astrometry Agent'
+integration/test_agent_scripting_sequencer.c:809: assertion failed: check_js("sequencer_solver_agent('Imager Agent @ stale')==='Astrometry Agent'")
+FAILED solver autoselection prefers imager host then local (status 256)
+Sequencer.js: 2/3 passed (including cleanup)
+
+Part 4: candidate ignoring the host of the imager agent
+JavaScript assertion failed: sequencer_solver_agent('Imager Agent @ a')==='Astrometry Agent @ a'
+integration/test_agent_scripting_sequencer.c:804: assertion failed: check_js("sequencer_solver_agent('Imager Agent @ a')==='Astrometry Agent @ a'")
+FAILED solver autoselection prefers imager host then local (status 256)
+JavaScript assertion failed: sequencer_solver_agent('Imager Agent @ a')==='Astrometry Agent @ a'
+integration/test_agent_scripting_sequencer.c:818: assertion failed: check_js("sequencer_solver_agent('Imager Agent @ a')==='Astrometry Agent @ a'")
+FAILED solver autoselection without local solver (status 256)
+integration/test_agent_scripting_sequencer.c:832: assertion failed: wait_sequence(INDIGO_OK_STATE, 5)
+FAILED solver autoselection corrected at use (status 256)
+Sequencer.js: 0/3 passed (including cleanup)
+
+Sequencer.js restored from the saved candidate and compared with cmp.

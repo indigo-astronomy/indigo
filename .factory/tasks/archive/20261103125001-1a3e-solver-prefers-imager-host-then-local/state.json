@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261103125001-1a3e-solver-prefers-imager-host-then-local",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of the product commit and the factory commit, then fast-forward master and delete the task branch; push not authorized.",
+  "blocker": null
+}

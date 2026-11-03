@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "task": "20261103125001-1a3e-solver-prefers-imager-host-then-local",
+  "scope": [
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_drivers/agent_scripting/library/Sequencer.md",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    ".factory/completions/20261103125001-1a3e-solver-prefers-imager-host-then-local.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-scripting-sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103125001-1a3e-solver-prefers-imager-host-then-local.json": [
+      "100644",
+      "blob",
+      "583780af8df91d170522a1eda78b13a0f11e1ad1"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "702633e0c8bd2a2ece18fa816cc6ad58550d723b"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "100644",
+      "blob",
+      "e466ef53f28f28046a20ec322505748ddabd6d7c"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "da8d08c9ba9c86f88892dbf81358ffaaf76fb408"
+    ]
+  }
+}
