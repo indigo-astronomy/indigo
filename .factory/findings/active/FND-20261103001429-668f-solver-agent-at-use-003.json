@@ -1,0 +1,19 @@
+{
+  "title": "Sequencer waits forever when the solver agent is unloaded during a solver step or flip centering",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103001429-668f-solver-agent-at-use",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "Pre-existing. When a solver step (sync_center, precise_goto, set_solver_filter) or the meridian flip centering already waits for the solver's AGENT_START_PROCESS or another property and the solver agent is unloaded, the property deletion does not reach on_update, so the wait never ends and the sequence or flip hangs. This task only re-selects the solver at the start of each step or flip. Next: fail the waiting step when its device or property is deleted, or time out.",
+  "evidence": "quality-review.md R4; indigo_drivers/agent_scripting/library/Sequencer.js wait_for_device/wait_for_property handling in indigo_sequencer.on_update and indigo_flipper waiting_for_sync_and_center.",
+  "resolution": null,
+  "id": "FND-20261103001429-668f-solver-agent-at-use-003"
+}

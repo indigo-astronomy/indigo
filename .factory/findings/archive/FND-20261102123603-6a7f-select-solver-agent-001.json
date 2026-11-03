@@ -7,12 +7,22 @@
       "id": "20261102123603-6a7f-select-solver-agent",
       "report": "quality-review.md",
       "revision": null
+    },
+    {
+      "id": "20261103001429-668f-solver-agent-at-use",
+      "report": "quality-review.md",
+      "revision": null
     }
   ],
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "The Sequencer test solver stand-in defines AGENT_PLATESOLVER_ABORT; 'abort reaches replaced solver' asserts ABORT on an automatically re-selected solver and 'abort reaches selected solver' on one chosen by select_solver_agent(); task 20261103001429-668f-solver-agent-at-use verification.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "title": "Sequencer suite does not assert that abort reaches the solver agent",
   "category": "quality",
-  "status": "open",
+  "status": "closed",
   "summary": "The fake solver peer in test_agent_scripting_sequencer defines no AGENT_PLATESOLVER_ABORT, so no test asserts the abort sent to the solver slot, automatically selected or selected by select_solver_agent(). Code inspection shows the dispatch is by slot and correct; only a regression would go unnoticed. Pre-existing gap. Next: add the property to the peer and assert ABORT on the selected solver.",
   "evidence": "indigo_drivers/agent_scripting/library/Sequencer.js abort loop (device == SOLVER_AGENT); indigo_test/integration/test_agent_scripting_sequencer.c attach_orchestration_peers(); quality-review.md.",
   "id": "FND-20261102123603-6a7f-select-solver-agent-001"

@@ -1,0 +1,85 @@
+{
+  "version": 2,
+  "task": "20261103001429-668f-solver-agent-at-use",
+  "scope": [
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_drivers/agent_scripting/library/Sequencer.md",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    ".factory/findings/active/FND-20261103001429-668f-solver-agent-at-use-*.json",
+    ".factory/findings/archive/FND-20261103001429-668f-solver-agent-at-use-*.json",
+    ".factory/findings/active/FND-20261102123603-6a7f-select-solver-agent-001.json",
+    ".factory/findings/archive/FND-20261102123603-6a7f-select-solver-agent-001.json",
+    ".factory/completions/20261103001429-668f-solver-agent-at-use.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-scripting-sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103001429-668f-solver-agent-at-use.json": [
+      "100644",
+      "blob",
+      "491c9a1d6d4a8d1261eea365726b28271d163f05"
+    ],
+    ".factory/findings/active/FND-20261102123603-6a7f-select-solver-agent-001.json": null,
+    ".factory/findings/active/FND-20261103001429-668f-solver-agent-at-use-003.json": [
+      "100644",
+      "blob",
+      "9ca00f145716f6ab3630fd471efb5b90195b3faa"
+    ],
+    ".factory/findings/archive/FND-20261102123603-6a7f-select-solver-agent-001.json": [
+      "100644",
+      "blob",
+      "e10c8adda837cb19acb5031b50b8d3e2702b9c56"
+    ],
+    ".factory/findings/archive/FND-20261103001429-668f-solver-agent-at-use-001.json": [
+      "100644",
+      "blob",
+      "2418f8b6eefcf3b2cbc6bce962eb2182bc8f45a6"
+    ],
+    ".factory/findings/archive/FND-20261103001429-668f-solver-agent-at-use-002.json": [
+      "100644",
+      "blob",
+      "36e3d74669c3eaa880e19a26df38e5b202255945"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "cd0c467abf3f59051bb7a61ad4509068a3e77edb"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "100644",
+      "blob",
+      "f62cb6084132203e2d1821b4d87f38686afe2ece"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "73d4f6a93af3e43bebc799d7ce63cfd62d2e86c3"
+    ]
+  }
+}

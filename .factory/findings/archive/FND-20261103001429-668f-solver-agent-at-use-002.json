@@ -1,0 +1,24 @@
+{
+  "title": "Meridian flip without solver test does not assert the failure message and sequence abort",
+  "category": "quality",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103001429-668f-solver-agent-at-use",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "meridian_flip_without_solver_fails asserted the flipper state and FLIPPER_STATE Alert but not the message 'Meridian flip failed (no solver agent is loaded)' nor the indigo_sequencer.abort() result. Next: wait for the message and SEQUENCE_STATE Alert.",
+  "evidence": "quality-review.md R2; indigo_test/integration/test_agent_scripting_sequencer.c meridian_flip_without_solver_fails.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "meridian_flip_without_solver_fails now waits for 'Meridian flip failed (no solver agent is loaded)' and SEQUENCE_STATE Alert; suite 39/39, fails against the previous Sequencer.js (verification.md, mutation-checks.txt).",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261103001429-668f-solver-agent-at-use-002"
+}
