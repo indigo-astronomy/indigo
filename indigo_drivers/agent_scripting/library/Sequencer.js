@@ -923,6 +923,8 @@ var indigo_sequencer = {
 	},
 
 	abort: function() {
+		// a failed meridian flip or a pending abort timer also gets here after the sequence has ended, its result is kept then
+		var sequence_running = this.sequence != null;
 		this.flip_failure = null;
 		this.wait_for_device = null;
 		this.wait_for_property = null;
@@ -956,8 +958,10 @@ var indigo_sequencer = {
 			indigo_cancel_timer(this.wait_for_timer);
 			this.wait_for_timer = null;
 		}
-		indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
-		indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence aborted");
+		if (sequence_running) {
+			indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
+			indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence aborted");
+		}
 		indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Ok");
 	},
 
@@ -1304,7 +1308,7 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
-	// a failed meridian flip aborts the sequence under abort_on_failure() or when no sequence runs, otherwise the step during which the flip ran fails
+	// a failed meridian flip aborts the sequence under abort_on_failure() and the agents when no sequence runs, otherwise the step during which the flip ran fails
 	flip_failed: function(message) {
 		if (this.sequence == null || this.failure_handling == 0) {
 			indigo_send_message(message);

@@ -348,6 +348,16 @@ static bool has_message(const char *text) {
 	return result;
 }
 
+static int count_messages(const char *text) {
+	int result = 0;
+	pthread_mutex_lock(&cache_mutex);
+	for (const char *found = strstr(messages, text); found != NULL; found = strstr(found + 1, text)) {
+		result++;
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
 // The sequencer publishes the final SEQUENCE_STATE before it sends the message that goes with it
 static bool wait_message(const char *text, double timeout) {
 	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(1000)) {
@@ -611,7 +621,10 @@ static void pause_resume_abort_reset(void) {
 	ASSERT_TRUE(check_js("abortTrace===0"));
 	ASSERT_TRUE(change_switch(SCRIPTING, "SEQUENCE_RESET", "RESET", true, INDIGO_OK_STATE));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 2));
+	unsigned sequence_before = revision(SCRIPTING, "SEQUENCE_STATE");
 	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 2));
+	ASSERT_EQ_INT(sequence_before, revision(SCRIPTING, "SEQUENCE_STATE"));
 }
 
 static void past_waits_and_breaks(void) {
@@ -914,7 +927,57 @@ static void meridian_flip_without_solver_fails(void) {
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
 	indigo_release_property(property);
 	ASSERT_TRUE(wait_message("Meridian flip failed (no solver agent is loaded)", 5));
-	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(!has_message("Sequence aborted"));
+}
+
+// The abort publishes AGENT_ABORT_PROCESS last, so whatever it did to the sequence state has been delivered by then
+static bool failed_flip_keeps_sequence_state(indigo_property_state state) {
+	unsigned sequence_before = revision(SCRIPTING, "SEQUENCE_STATE");
+	unsigned steps_before = revision(SCRIPTING, "SEQUENCE_STEP_STATE");
+	unsigned abort_before = revision(SCRIPTING, "AGENT_ABORT_PROCESS");
+	int aborted_before = count_messages("Sequence aborted");
+	atomic_store(&solver_process_fails, true);
+	REQUIRE(run_flip_to_centering());
+	REQUIRE(wait_state(SCRIPTING, "AGENT_ABORT_PROCESS", abort_before, INDIGO_OK_STATE, 10));
+	REQUIRE(wait_message("Meridian flip failed (due to sync & center failure)", 5));
+	indigo_property *property = snapshot(SCRIPTING, "SEQUENCE_STATE");
+	REQUIRE(property != NULL);
+	bool same_state = property->state == state;
+	indigo_release_property(property);
+	REQUIRE(same_state);
+	REQUIRE(revision(SCRIPTING, "SEQUENCE_STATE") == sequence_before);
+	REQUIRE(revision(SCRIPTING, "SEQUENCE_STEP_STATE") == steps_before);
+	REQUIRE(count_messages("Sequence aborted") == aborted_before);
+	return true;
+}
+
+static void meridian_flip_failure_keeps_finished_state(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip after finish'); s.enable_meridian_flip(true,0); s.start();"));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
+	ASSERT_TRUE(failed_flip_keeps_sequence_state(INDIGO_OK_STATE));
+}
+
+static void meridian_flip_failure_keeps_failed_state(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip after failure'); s.enable_meridian_flip(true,0); s.set_solver_filter('Missing'); s.start();"));
+	ASSERT_TRUE(wait_message("Sequence failed", 5));
+	ASSERT_TRUE(failed_flip_keeps_sequence_state(INDIGO_ALERT_STATE));
+}
+
+static void meridian_flip_failure_keeps_aborted_state(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip after abort'); s.enable_meridian_flip(true,0); s.wait(10); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_message("Sequence aborted", 5));
+	ASSERT_TRUE(failed_flip_keeps_sequence_state(INDIGO_ALERT_STATE));
+}
+
+static void meridian_flip_failure_keeps_reset_state(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip after reset'); s.enable_meridian_flip(true,0); s.set_solver_filter('Missing'); s.start();"));
+	ASSERT_TRUE(wait_message("Sequence failed", 5));
+	ASSERT_TRUE(change_switch(SCRIPTING, "SEQUENCE_RESET", "RESET", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 2));
+	ASSERT_TRUE(failed_flip_keeps_sequence_state(INDIGO_OK_STATE));
 }
 
 static bool wait_switch_item(const char *device, const char *name, const char *item, bool value) {
@@ -1011,7 +1074,20 @@ static void meridian_flip_failure_aborts(void) {
 	ASSERT_TRUE(fail_flip_during_step("s.enable_meridian_flip(true,0); s.wait(10); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\");", NULL));
 	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
 	ASSERT_TRUE(wait_message("Sequence aborted", 5));
-	ASSERT_TRUE(check_js("recoveryTrace===''"));
+	ASSERT_TRUE(check_js("recoveryTrace==='' && indigo_sequencer.step_states[''+indigo_sequencer.step]==='Alert'"));
+}
+
+// An abort requested just before the sequence ended runs its timer afterwards
+static void late_abort_keeps_finished_state(void) {
+	ASSERT_TRUE(run_js("new Sequence('late abort').start();"));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
+	unsigned sequence_before = revision(SCRIPTING, "SEQUENCE_STATE");
+	unsigned abort_before = revision(SCRIPTING, "AGENT_ABORT_PROCESS");
+	ASSERT_TRUE(run_js("indigo_sequencer_abort_handler();"));
+	ASSERT_TRUE(wait_state(SCRIPTING, "AGENT_ABORT_PROCESS", abort_before, INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 1));
+	ASSERT_EQ_INT(sequence_before, revision(SCRIPTING, "SEQUENCE_STATE"));
+	ASSERT_TRUE(!has_message("Sequence aborted"));
 }
 
 static const indigo_test_case tests[] = {
@@ -1058,7 +1134,12 @@ static const indigo_test_case tests[] = {
 	{ "meridian flip failure during capture recovers", meridian_flip_failure_during_capture_recovers },
 	{ "meridian flip failure during endless capture recovers", meridian_flip_failure_during_endless_capture_recovers },
 	{ "meridian flip failure continues", meridian_flip_failure_continues },
-	{ "meridian flip failure aborts", meridian_flip_failure_aborts }
+	{ "meridian flip failure aborts", meridian_flip_failure_aborts },
+	{ "meridian flip failure keeps finished state", meridian_flip_failure_keeps_finished_state },
+	{ "meridian flip failure keeps failed state", meridian_flip_failure_keeps_failed_state },
+	{ "meridian flip failure keeps aborted state", meridian_flip_failure_keeps_aborted_state },
+	{ "meridian flip failure keeps reset state", meridian_flip_failure_keeps_reset_state },
+	{ "late abort keeps finished state", late_abort_keeps_finished_state }
 };
 
 int main(int argc, char **argv) {
