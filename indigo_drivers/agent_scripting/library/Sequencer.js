@@ -33,7 +33,7 @@ function sequencer_solver_agent(imager_agent) {
 	var other = null;
 	for (var device in indigo_devices) {
 		for (var i = 0; i < names.length; i++) {
-			if (device.startsWith(names[i]) && indigo_devices[device].AGENT_PLATESOLVER_EXPOSURE != null) {
+			if (device.startsWith(names[i]) && sequencer_is_solver_agent(device)) {
 				if (sequencer_agent_host(device) == host) {
 					return device;
 				}
@@ -44,6 +44,20 @@ function sequencer_solver_agent(imager_agent) {
 		}
 	}
 	return other != null ? other : "Astrometry Agent" + host;
+}
+
+function sequencer_is_solver_agent(agent) {
+	var device = indigo_devices[agent];
+	return device != null && device.AGENT_PLATESOLVER_EXPOSURE != null;
+}
+
+// the solver agent selected when the sequence started may have been replaced since, e.g. before a meridian flip enabled by a finished sequence; null if no solver agent is loaded
+function sequencer_loaded_solver_agent(solver_agent, imager_agent) {
+	if (sequencer_is_solver_agent(solver_agent)) {
+		return solver_agent;
+	}
+	solver_agent = sequencer_solver_agent(imager_agent);
+	return sequencer_is_solver_agent(solver_agent) ? solver_agent : null;
 }
 
 function sequencer_string(value) {
@@ -649,6 +663,15 @@ var indigo_flipper = {
 			} else if (property.state == "Ok") {
 				this.waiting_for_slew = false;
 				if (this.use_solver) {
+					var solver_agent = sequencer_loaded_solver_agent(this.devices[SOLVER_AGENT], this.devices[IMAGER_AGENT]);
+					if (solver_agent == null) {
+						delete indigo_event_handlers.indigo_flipper;
+						indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Alert");
+						indigo_send_message("Meridian flip failed (no solver agent is loaded)");
+						indigo_sequencer.abort();
+						return;
+					}
+					this.devices[SOLVER_AGENT] = solver_agent;
 					this.waiting_for_sync_and_center = true;
 					indigo_change_switch_property(this.devices[SOLVER_AGENT], "AGENT_START_PROCESS", { CENTER: true});
 					indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Busy");
@@ -926,7 +949,7 @@ var indigo_sequencer = {
 					indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 				}
 			} else if (device == SOLVER_AGENT) {
-				indigo_change_switch_property(this.devices[device], "AGENT_PLATESOLVER_ABORT", { "ABORT": true });
+				indigo_change_switch_property(this.loaded_solver_agent(), "AGENT_PLATESOLVER_ABORT", { "ABORT": true });
 			} else {
 				indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 			}
@@ -1509,6 +1532,15 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
+	// the solver agent selected by start() or select_solver_agent() is used while it is loaded, otherwise another loaded one is selected again
+	loaded_solver_agent: function() {
+		var agent = sequencer_loaded_solver_agent(this.devices[SOLVER_AGENT], this.devices[IMAGER_AGENT]);
+		if (agent != null) {
+			this.devices[SOLVER_AGENT] = agent;
+		}
+		return this.devices[SOLVER_AGENT];
+	},
+
 	select_device: function(agent, filter_property, device) {
 		if (agent == undefined) {
 			agent = "NONE";
@@ -1781,19 +1813,19 @@ var indigo_sequencer = {
 	},
 
 	set_solver_exposure: function(exposure) {
-		this.change_numbers(this.devices[SOLVER_AGENT], "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: exposure });
+		this.change_numbers(this.loaded_solver_agent(), "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: exposure });
 	},
 
 	set_solver_filter: function(filter) {
-		this.select_switch(this.devices[SOLVER_AGENT], "AGENT_PLATESOLVER_FILTER", String(filter) === "0" ? "CURRENT" : filter);
+		this.select_switch(this.loaded_solver_agent(), "AGENT_PLATESOLVER_FILTER", String(filter) === "0" ? "CURRENT" : filter);
 	},
 
 	set_solver_target: function(ra, dec) {
-		this.change_numbers(this.devices[SOLVER_AGENT], "AGENT_PLATESOLVER_GOTO_SETTINGS", { RA: ra, DEC: dec });
+		this.change_numbers(this.loaded_solver_agent(), "AGENT_PLATESOLVER_GOTO_SETTINGS", { RA: ra, DEC: dec });
 	},
 
 	start_astrometry_process: function(name) {
-		this.select_switch(this.devices[SOLVER_AGENT], "AGENT_START_PROCESS", name);
+		this.select_switch(this.loaded_solver_agent(), "AGENT_START_PROCESS", name);
 	},
 
 	set_rotator_goto: function() {

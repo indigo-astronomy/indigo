@@ -58,10 +58,12 @@ static observation cache[4096];
 static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_client observer;
 static indigo_device *scripting_device;
-static indigo_property *config_load_property, *drivers_property, *solver_exposure_property, *solver_target_property, *solver_process_property, *solver_filter_property;
+static indigo_property *config_load_property, *drivers_property, *solver_exposure_property, *solver_target_property, *solver_process_property, *solver_filter_property, *solver_abort_property;
 static char test_root[256], messages[131072];
 static atomic_int message_count;
 static atomic_int orchestration_changes;
+// the solver stand-in reports a failed solve on AGENT_START_PROCESS
+static atomic_bool solver_process_fails;
 static bool bus_started, observer_attached, peers_attached, ccd_started, mount_started, dome_started, gps_started, rotator_started, imager_started, mount_agent_started, guider_started, scripting_started;
 static time_t fixed_time = 1704112496;
 
@@ -73,7 +75,7 @@ time_t sequencer_test_time(time_t *result) {
 }
 
 static indigo_result orchestration_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_property *properties[4] = { NULL, NULL, NULL, NULL };
+	indigo_property *properties[5] = { NULL, NULL, NULL, NULL, NULL };
 	if (!strcmp(device->name, "Configuration Agent")) {
 		properties[0] = config_load_property;
 	} else if (!strcmp(device->name, "Server")) {
@@ -83,8 +85,9 @@ static indigo_result orchestration_enumerate(indigo_device *device, indigo_clien
 		properties[1] = solver_target_property;
 		properties[2] = solver_process_property;
 		properties[3] = solver_filter_property;
+		properties[4] = solver_abort_property;
 	}
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < 5; i++) {
 		if (properties[i] && indigo_property_match(properties[i], property)) {
 			indigo_define_property(device, properties[i], NULL);
 		}
@@ -106,10 +109,12 @@ static indigo_result orchestration_change(indigo_device *device, indigo_client *
 		target = solver_process_property;
 	} else if (!strcmp(property->name, "AGENT_PLATESOLVER_FILTER")) {
 		target = solver_filter_property;
+	} else if (!strcmp(property->name, "AGENT_PLATESOLVER_ABORT")) {
+		target = solver_abort_property;
 	}
 	if (indigo_property_match_changeable(target, property)) {
 		indigo_property_copy_values(target, property, false);
-		target->state = INDIGO_OK_STATE;
+		target->state = target == solver_process_property && atomic_load(&solver_process_fails) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 		atomic_fetch_add(&orchestration_changes, 1);
 		indigo_update_property(device, target, NULL);
 	}
@@ -137,6 +142,8 @@ static bool attach_orchestration_peers(void) {
 	indigo_init_switch_item(solver_filter_property->items, "CURRENT", "Current filter", true);
 	indigo_init_switch_item(solver_filter_property->items + 1, "1", "L", false);
 	indigo_init_switch_item(solver_filter_property->items + 2, "2", "R", false);
+	solver_abort_property = indigo_init_switch_property(NULL, astrometry_peer.name, "AGENT_PLATESOLVER_ABORT", "Test", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+	indigo_init_switch_item(solver_abort_property->items, "ABORT", "Abort", false);
 	REQUIRE(indigo_attach_device(&configuration_peer) == INDIGO_OK);
 	REQUIRE(indigo_attach_device(&server_peer) == INDIGO_OK);
 	REQUIRE(indigo_attach_device(&astrometry_peer) == INDIGO_OK);
@@ -449,6 +456,7 @@ static void cleanup(void) {
 	indigo_release_property(solver_target_property);
 	indigo_release_property(solver_exposure_property);
 	indigo_release_property(solver_filter_property);
+	indigo_release_property(solver_abort_property);
 }
 
 static void library_inventory(void) {
@@ -715,7 +723,7 @@ static void astrometry_orchestration(void) {
 }
 
 static bool rename_solver_peer(const char *name) {
-	indigo_property *properties[] = { solver_exposure_property, solver_target_property, solver_process_property, solver_filter_property };
+	indigo_property *properties[] = { solver_exposure_property, solver_target_property, solver_process_property, solver_filter_property, solver_abort_property };
 	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
 		indigo_delete_property(&astrometry_peer, properties[i], NULL);
 	}
@@ -780,6 +788,73 @@ static void select_solver_agent_step(void) {
 	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
 }
 
+static void solver_replaced_during_sequence(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('solver replaced'); s.wait(1); s.precise_goto(0.3,11,50); s.start();"));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+	ASSERT_TRUE(rename_solver_peer("Platesolver Agent"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Platesolver Agent'"));
+	indigo_property *property = snapshot("Platesolver Agent", "AGENT_PLATESOLVER_GOTO_SETTINGS");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_NEAR(11, property->items[0].number.value, 0.001);
+	ASSERT_NEAR(50, property->items[1].number.value, 0.001);
+	indigo_release_property(property);
+}
+
+static bool wait_solver_abort(const char *agent) {
+	for (int i = 0; i < 500; i++) {
+		indigo_property *property = snapshot(agent, "AGENT_PLATESOLVER_ABORT");
+		if (property != NULL) {
+			bool aborted = property->items[0].sw.value;
+			indigo_release_property(property);
+			if (aborted) {
+				return true;
+			}
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static void abort_reaches_replaced_solver(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('abort solver'); s.wait(10); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_BUSY_STATE, 2));
+	ASSERT_TRUE(rename_solver_peer("Platesolver Agent"));
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Platesolver Agent'"));
+	ASSERT_TRUE(wait_solver_abort("Platesolver Agent"));
+}
+
+static void abort_reaches_selected_solver(void) {
+	ASSERT_TRUE(rename_solver_peer("Custom Solver"));
+	ASSERT_TRUE(run_js("var s=new Sequence('abort selected solver'); s.select_solver_agent('Custom Solver'); s.wait(10); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_BUSY_STATE, 2));
+	// SEQUENCE_STATE is busy before the first step runs, let select_solver_agent() execute
+	indigo_usleep(500000);
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Custom Solver'"));
+	ASSERT_TRUE(wait_solver_abort("Custom Solver"));
+}
+
+static void solver_step_without_solver_recovers(void) {
+	ASSERT_TRUE(rename_solver_peer("Unrelated Device"));
+	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('no solver recovery'); s.recover_on_failure(); s.sync_center(0.1); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\"); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='1' && indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+	ASSERT_TRUE(wait_message("There is no AGENT_PLATESOLVER_EXPOSURE on Astrometry Agent", 5));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+}
+
+static void solver_failures_recover(void) {
+	atomic_store(&solver_process_fails, true);
+	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('solver recovery'); s.recover_on_failure(); s.sync_center(0.1); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\"); s.precise_goto(0.1,1,2); s.evaluate(\"recoveryTrace+='B'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='2'\"); s.set_solver_filter('Missing'); s.evaluate(\"recoveryTrace+='C'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='3'\"); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='123'"));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #3", 5));
+}
+
 static bool wait_solver_center(const char *agent) {
 	for (int i = 0; i < 500; i++) {
 		indigo_property *property = snapshot(agent, "AGENT_START_PROCESS");
@@ -818,6 +893,30 @@ static void meridian_flip_uses_solver_selected_by_step(void) {
 	ASSERT_TRUE(wait_solver_center("Custom Solver"));
 }
 
+static void meridian_flip_uses_solver_loaded_after_sequence(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip before solver change'); s.enable_meridian_flip(true,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+	ASSERT_TRUE(rename_solver_peer("Platesolver Agent"));
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(check_js("indigo_flipper.devices[SOLVER_AGENT]==='Platesolver Agent'"));
+	ASSERT_TRUE(wait_solver_center("Platesolver Agent"));
+}
+
+static void meridian_flip_without_solver_fails(void) {
+	ASSERT_TRUE(run_js("var s=new Sequence('flip without solver'); s.enable_meridian_flip(true,0); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(rename_solver_peer("Unrelated Device"));
+	ASSERT_TRUE(run_flip_to_centering());
+	ASSERT_TRUE(check_js("!indigo_flipper.waiting_for_sync_and_center && indigo_flipper.state==='Alert' && indigo_event_handlers.indigo_flipper===undefined"));
+	indigo_property *property = snapshot(SCRIPTING, "FLIPPER_STATE");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	indigo_release_property(property);
+	ASSERT_TRUE(wait_message("Meridian flip failed (no solver agent is loaded)", 5));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+}
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
@@ -849,8 +948,15 @@ static const indigo_test_case tests[] = {
 	{ "platesolver orchestration", platesolver_orchestration },
 	{ "remote solver orchestration", remote_solver_orchestration },
 	{ "select solver agent step", select_solver_agent_step },
+	{ "solver replaced during sequence", solver_replaced_during_sequence },
+	{ "solver failures recover", solver_failures_recover },
+	{ "solver step without solver recovers", solver_step_without_solver_recovers },
+	{ "abort reaches replaced solver", abort_reaches_replaced_solver },
+	{ "abort reaches selected solver", abort_reaches_selected_solver },
 	{ "meridian flip uses selected solver", meridian_flip_uses_selected_solver },
-	{ "meridian flip uses solver selected by step", meridian_flip_uses_solver_selected_by_step }
+	{ "meridian flip uses solver selected by step", meridian_flip_uses_solver_selected_by_step },
+	{ "meridian flip uses solver loaded after sequence", meridian_flip_uses_solver_loaded_after_sequence },
+	{ "meridian flip without solver fails", meridian_flip_without_solver_fails }
 };
 
 int main(int argc, char **argv) {

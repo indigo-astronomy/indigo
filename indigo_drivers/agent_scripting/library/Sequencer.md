@@ -124,7 +124,7 @@ sequence.start();
 sequence.start("Imager Agent @ observatory", "Mount Agent @ observatory", "Guider Agent @ observatory");
 ```
 
-`start()` also selects the solver agent automatically. Solver agents are mutually exclusive on one server, so the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent given to `start()` is used, otherwise one loaded on another host; with no solver agent `"Astrometry Agent"` on that host is assumed. A `select_imager_agent()` step does not change the solver agent. Use the `select_solver_agent()` step to choose another solver agent or one loaded later by the sequence. Every `start()` selects the solver agent again.
+`start()` also selects the solver agent automatically. Solver agents are mutually exclusive on one server, so the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent given to `start()` is used, otherwise one loaded on another host; with no solver agent `"Astrometry Agent"` on that host is assumed. A `select_imager_agent()` step does not change the solver agent. Use the `select_solver_agent()` step to choose another solver agent or one loaded later by the sequence. Every `start()` selects the solver agent again. The selected solver agent is used while it is loaded; when it is replaced during the sequence, the solver steps, the abort and the meridian flip select a loaded one again in the same way, and the sequence keeps using the new one.
 
 ## Step reference
 
@@ -304,7 +304,7 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 
 | Method | Description |
 |---|---|
-| `enable_meridian_flip(use_solver, time)` | Enable automatic meridian flip. `use_solver` (boolean) selects whether plate solving is used to recenter after the flip; `time` is the pause after transit in seconds. |
+| `enable_meridian_flip(use_solver, time)` | Enable automatic meridian flip. `use_solver` (boolean) selects whether plate solving is used to recenter after the flip; `time` is the pause after transit in seconds. The flip stays enabled after the sequence finishes and recenters with the solver agent loaded at the time of the flip, see `start()`; with no solver agent loaded the flip fails. |
 | `disable_meridian_flip()` | Disable automatic meridian flip. |
 
 ### Rotator
