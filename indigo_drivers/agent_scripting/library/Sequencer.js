@@ -923,16 +923,19 @@ var indigo_sequencer = {
 		}
 	},
 
-	// used after timer_generation changed: a timer which can't be cancelled is already firing and does nothing then
-	cancel_stale_timer: function() {
-		if (this.wait_for_timer != null) {
-			var timer = this.wait_for_timer;
-			this.wait_for_timer = null;
-			try {
-				indigo_cancel_timer(timer);
-			} catch (error) {
-				indigo_log("Timer " + timer + " can't be cancelled");
-			}
+	// returns true when the stored timer was cancelled; one which can't be cancelled is normally already firing, it does nothing when timer_generation changed, otherwise it still runs
+	cancel_wait_timer: function() {
+		if (this.wait_for_timer == null) {
+			return false;
+		}
+		var timer = this.wait_for_timer;
+		this.wait_for_timer = null;
+		try {
+			indigo_cancel_timer(timer);
+			return true;
+		} catch (error) {
+			indigo_log("Timer " + timer + " can't be cancelled");
+			return false;
 		}
 	},
 
@@ -969,7 +972,7 @@ var indigo_sequencer = {
 				indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 			}
 		}
-		this.cancel_stale_timer();
+		this.cancel_wait_timer();
 		if (sequence_running) {
 			indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
 			indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence aborted");
@@ -1328,13 +1331,11 @@ var indigo_sequencer = {
 			return;
 		}
 		indigo_change_switch_property(this.devices[IMAGER_AGENT], "AGENT_ABORT_PROCESS", { ABORT: true });
-		if (this.wait_for_timer != null) {
-			indigo_cancel_timer(this.wait_for_timer);
-			this.wait_for_timer = null;
+		if (this.cancel_wait_timer()) {
 			this.altitude_poll = null;
 			this.failure(message);
 		} else {
-			// the step fails when it ends, e.g. when the imager aborted the capture paused by the flip, so that the next step starts with the imager stopped
+			// the step fails when it ends, e.g. when the imager aborted the capture paused by the flip, so that the next step starts with the imager stopped, or when its timer already firing runs
 			this.flip_failure = message;
 		}
 	},
@@ -1360,7 +1361,7 @@ var indigo_sequencer = {
 			this.altitude_poll = null;
 			this.sequence = null;
 			this.timer_generation++;
-			this.cancel_stale_timer();
+			this.cancel_wait_timer();
 			this.update_step_state(this.step, "Alert");
 			if (this.paused) {
 				this.paused = false;
@@ -1478,10 +1479,10 @@ var indigo_sequencer = {
 				indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
 			} else {
 				indigo_send_message("Solar altitude " + a.toFixed(1) + "°, waiting for < " + limit + "°");
-				indigo_sequencer.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+				indigo_sequencer.wait_for_timer = indigo_sequencer_set_step_timer(indigo_sequencer_altitude_poll_handler, 60);
 			}
 		};
-		this.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+		this.wait_for_timer = indigo_sequencer_set_step_timer(indigo_sequencer_altitude_poll_handler, 60);
 	},
 
 	wait_until_target_altitude_above: function(ra, dec, limit) {
@@ -1501,10 +1502,10 @@ var indigo_sequencer = {
 				indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
 			} else {
 				indigo_send_message("Target altitude " + a.toFixed(1) + "°, waiting for > " + limit + "°");
-				indigo_sequencer.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+				indigo_sequencer.wait_for_timer = indigo_sequencer_set_step_timer(indigo_sequencer_altitude_poll_handler, 60);
 			}
 		};
-		this.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+		this.wait_for_timer = indigo_sequencer_set_step_timer(indigo_sequencer_altitude_poll_handler, 60);
 	},
 
 	break_if_solar_altitude_above: function(limit) {
@@ -1921,7 +1922,10 @@ function indigo_sequencer_abort_handler() {
 
 function indigo_sequencer_altitude_poll_handler() {
 	indigo_sequencer.wait_for_timer = null;
-	if (indigo_sequencer.altitude_poll != null) {
+	if (indigo_sequencer.flip_failure != null) {
+		indigo_sequencer.altitude_poll = null;
+		indigo_sequencer.execute_next();
+	} else if (indigo_sequencer.altitude_poll != null) {
 		indigo_sequencer.altitude_poll();
 	}
 }

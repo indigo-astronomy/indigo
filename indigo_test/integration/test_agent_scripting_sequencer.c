@@ -1149,6 +1149,74 @@ static void abort_with_timer_not_cancellable(void) {
 	ASSERT_TRUE(check_js("indigo_sequencer.wait_for_timer===null"));
 }
 
+// The script holds the agent mutex until the timer is firing and waiting for it, indigo_cancel_timer() then fails and flip_failed() stores the failure; the script fails when the timer was not firing yet
+static bool fail_flip_while_timer_fires(const char *timer, const char *after) {
+	char script[768];
+	snprintf(script, sizeof(script), "%s var busyUntil=Date.now()+1300; while(Date.now()<busyUntil){} indigo_sequencer.flip_failed('Meridian flip failed (test)'); if (indigo_sequencer.flip_failure===null) throw new Error('timer was not firing');%s", timer, after);
+	return run_js(script);
+}
+
+// The failure and the firing timer must advance the sequence once: the next wait() holds it, a second advance would run the step behind it
+static void meridian_flip_failure_while_step_timer_fires_recovers(void) {
+	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('firing timer'); s.recover_on_failure(); s.wait(1); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\"); s.wait(10); s.evaluate(\"recoveryTrace+='2'\"); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 1s", 5));
+	ASSERT_TRUE(fail_flip_while_timer_fires("", ""));
+	ASSERT_TRUE(wait_message("Meridian flip failed (test)", 5));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(run_js("indigo_set_timer(function(){indigo_send_message('timer sentinel')},0.3);"));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='1' && indigo_sequencer.flip_failure===null"));
+}
+
+static void meridian_flip_failure_while_step_timer_fires_continues(void) {
+	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('firing timer'); s.continue_on_failure(); s.wait(1); s.evaluate(\"recoveryTrace+='A'\"); s.wait(10); s.evaluate(\"recoveryTrace+='B'\"); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 1s", 5));
+	ASSERT_TRUE(fail_flip_while_timer_fires("", ""));
+	ASSERT_TRUE(wait_message("Meridian flip failed (test)", 5));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(run_js("indigo_set_timer(function(){indigo_send_message('timer sentinel')},0.3);"));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='A' && indigo_sequencer.step_states['1']==='Alert'"));
+}
+
+// The poll would otherwise schedule itself again and postpone the failure
+static void meridian_flip_failure_while_altitude_poll_fires_recovers(void) {
+	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('firing poll'); s.recover_on_failure(); s.wait(30); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\"); s.wait(10); s.evaluate(\"recoveryTrace+='2'\"); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 30s", 5));
+	ASSERT_TRUE(fail_flip_while_timer_fires("indigo_cancel_timer(indigo_sequencer.wait_for_timer); pollTrace=0; indigo_sequencer.altitude_poll=function(){pollTrace=1; indigo_sequencer.wait_for_timer=indigo_sequencer_set_step_timer(indigo_sequencer_altitude_poll_handler,60)}; indigo_sequencer.wait_for_timer=indigo_sequencer_set_step_timer(indigo_sequencer_altitude_poll_handler,1);", ""));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(run_js("indigo_set_timer(function(){indigo_send_message('timer sentinel')},0.3);"));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='1' && pollTrace===0 && indigo_sequencer.altitude_poll===null"));
+}
+
+// The stored failure is dropped with the sequence and the firing timer does nothing
+static void abort_after_stored_flip_failure(void) {
+	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('abort after store'); s.recover_on_failure(); s.wait(1); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\"); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 1s", 5));
+	ASSERT_TRUE(fail_flip_while_timer_fires("", " indigo_sequencer_abort_handler();"));
+	ASSERT_TRUE(wait_message("Sequence aborted", 5));
+	ASSERT_TRUE(run_js("indigo_set_timer(function(){indigo_send_message('timer sentinel')},0.3);"));
+	ASSERT_TRUE(wait_message("timer sentinel", 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='' && indigo_sequencer.flip_failure===null && indigo_sequencer.step_states['1']==='Alert'"));
+}
+
+// The failure waits for the end of the pause
+static void paused_stored_flip_failure_recovers(void) {
+	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('paused store'); s.recover_on_failure(); s.wait(1); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\"); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 1s", 5));
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_PAUSE_PROCESS", "PAUSE_WAIT", true, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(fail_flip_while_timer_fires("", ""));
+	indigo_usleep(300000);
+	ASSERT_TRUE(check_js("recoveryTrace==='' && indigo_sequencer.flip_failure!==null"));
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_PAUSE_PROCESS", "PAUSE_WAIT", false, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='1'"));
+}
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
@@ -1204,7 +1272,12 @@ static const indigo_test_case tests[] = {
 	{ "step timer after abort does not advance next sequence", step_timer_after_abort_does_not_advance_next_sequence },
 	{ "mount delay timer after abort keeps step state", mount_delay_timer_after_abort_keeps_step_state },
 	{ "failure cancels stored timer", failure_cancels_stored_timer },
-	{ "abort with timer not cancellable", abort_with_timer_not_cancellable }
+	{ "abort with timer not cancellable", abort_with_timer_not_cancellable },
+	{ "meridian flip failure while step timer fires recovers", meridian_flip_failure_while_step_timer_fires_recovers },
+	{ "meridian flip failure while step timer fires continues", meridian_flip_failure_while_step_timer_fires_continues },
+	{ "meridian flip failure while altitude poll fires recovers", meridian_flip_failure_while_altitude_poll_fires_recovers },
+	{ "abort after stored flip failure", abort_after_stored_flip_failure },
+	{ "paused stored flip failure recovers", paused_stored_flip_failure_recovers }
 };
 
 int main(int argc, char **argv) {
