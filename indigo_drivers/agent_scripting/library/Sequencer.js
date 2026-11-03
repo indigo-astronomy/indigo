@@ -26,9 +26,10 @@ function sequencer_agent_host(agent) {
 	return at < 0 ? "" : agent.substring(at);
 }
 
-// solver agents are mutually exclusive on one server, the one on the host of the imager agent is preferred, then one on any other host
+// solver agents are mutually exclusive on one server, the one on the host of the loaded imager agent is preferred, then the local one, then one on any other host
 function sequencer_solver_agent(imager_agent) {
-	var host = sequencer_agent_host(imager_agent);
+	var imager = indigo_devices[imager_agent];
+	var host = imager != null && imager.AGENT_IMAGER_BATCH != null ? sequencer_agent_host(imager_agent) : "";
 	var names = [ "Platesolver Agent", "Astrometry Agent", "ASTAP Agent" ];
 	var other = null;
 	for (var device in indigo_devices) {
@@ -37,7 +38,7 @@ function sequencer_solver_agent(imager_agent) {
 				if (sequencer_agent_host(device) == host) {
 					return device;
 				}
-				if (other == null) {
+				if (other == null || sequencer_agent_host(device) == "") {
 					other = device;
 				}
 			}

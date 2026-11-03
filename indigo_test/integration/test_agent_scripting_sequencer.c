@@ -786,6 +786,58 @@ static void remote_solver_orchestration(void) {
 	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ remote')==='Astrometry Agent @ remote' && sequencer_solver_agent('Imager Agent @ other')==='Astrometry Agent @ remote'"));
 }
 
+static bool define_test_agents(const char *names, const char *property) {
+	char script[512];
+	snprintf(script, sizeof(script), "[%s].forEach(function(name){indigo_on_define_property(name,'%s','Test',{VALUE:1},{},'Ok','RW')});", names, property);
+	return run_js(script);
+}
+
+static void solver_autoselection_prefers_imager_host_then_local(void) {
+	// the local solver agent comes last in indigo_devices, the first one found must not win
+	ASSERT_TRUE(rename_solver_peer("Unrelated Device"));
+	ASSERT_TRUE(run_js("delete indigo_devices['Astrometry Agent'];"));
+	ASSERT_TRUE(define_test_agents("'Astrometry Agent @ a','Platesolver Agent @ b','ASTAP Agent @ stale'", "AGENT_PLATESOLVER_EXPOSURE"));
+	ASSERT_TRUE(rename_solver_peer("Astrometry Agent"));
+	ASSERT_TRUE(define_test_agents("'Imager Agent @ a','Imager Agent @ c'", "AGENT_IMAGER_BATCH"));
+	ASSERT_TRUE(define_test_agents("'Imager Agent @ stale'", "OTHER_PROPERTY"));
+	// the host of a loaded imager agent, then the local solver agent also when other hosts have one
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ a')==='Astrometry Agent @ a'"));
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent')==='Astrometry Agent'"));
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ c')==='Astrometry Agent'"));
+	// no imager agent, its name does not count
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ b')==='Astrometry Agent'"));
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ stale')==='Astrometry Agent'"));
+	ASSERT_TRUE(run_js("new Sequence('imager host').start('Imager Agent @ a');"));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent @ a'"));
+}
+
+static void solver_autoselection_without_local_solver(void) {
+	ASSERT_TRUE(rename_solver_peer("Unrelated Device"));
+	ASSERT_TRUE(define_test_agents("'Imager Agent @ a'", "AGENT_IMAGER_BATCH"));
+	// nothing loaded: the host of a loaded imager agent, otherwise local
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ a')==='Astrometry Agent @ a'"));
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ b')==='Astrometry Agent'"));
+	ASSERT_TRUE(define_test_agents("'Platesolver Agent @ b'", "AGENT_PLATESOLVER_EXPOSURE"));
+	ASSERT_TRUE(check_js("sequencer_solver_agent('Imager Agent @ a')==='Platesolver Agent @ b' && sequencer_solver_agent('Imager Agent')==='Platesolver Agent @ b'"));
+}
+
+// With nothing loaded at start() the local agent is assumed, at use the loaded imager agent decides; the decoy comes first in indigo_devices
+static void solver_autoselection_corrected_at_use(void) {
+	ASSERT_TRUE(rename_solver_peer("Unrelated Device"));
+	ASSERT_TRUE(run_js("var s=new Sequence('corrected at use'); s.wait(1); s.precise_goto(0.3,13,60); s.start('Imager Agent @ a');"));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent'"));
+	ASSERT_TRUE(define_test_agents("'Platesolver Agent @ b'", "AGENT_PLATESOLVER_EXPOSURE"));
+	ASSERT_TRUE(define_test_agents("'Imager Agent @ a'", "AGENT_IMAGER_BATCH"));
+	ASSERT_TRUE(rename_solver_peer("Astrometry Agent @ a"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("indigo_sequencer.devices[SOLVER_AGENT]==='Astrometry Agent @ a'"));
+	indigo_property *property = snapshot("Astrometry Agent @ a", "AGENT_PLATESOLVER_GOTO_SETTINGS");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_NEAR(13, property->items[0].number.value, 0.001);
+	ASSERT_NEAR(60, property->items[1].number.value, 0.001);
+	indigo_release_property(property);
+}
+
 static void select_solver_agent_step(void) {
 	ASSERT_TRUE(rename_solver_peer("Custom Solver"));
 	ASSERT_TRUE(run_js("var s=new Sequence('selected solver'); s.select_solver_agent('Custom Solver'); s.precise_goto(0.3,9,40); s.start();"));
@@ -1247,6 +1299,9 @@ static const indigo_test_case tests[] = {
 	{ "astrometry orchestration", astrometry_orchestration },
 	{ "platesolver orchestration", platesolver_orchestration },
 	{ "remote solver orchestration", remote_solver_orchestration },
+	{ "solver autoselection prefers imager host then local", solver_autoselection_prefers_imager_host_then_local },
+	{ "solver autoselection without local solver", solver_autoselection_without_local_solver },
+	{ "solver autoselection corrected at use", solver_autoselection_corrected_at_use },
 	{ "select solver agent step", select_solver_agent_step },
 	{ "solver replaced during sequence", solver_replaced_during_sequence },
 	{ "solver failures recover", solver_failures_recover },
