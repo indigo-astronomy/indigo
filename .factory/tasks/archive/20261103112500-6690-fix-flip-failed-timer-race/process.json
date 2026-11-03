@@ -1,0 +1,62 @@
+{
+  "version": 2,
+  "task": "20261103112500-6690-fix-flip-failed-timer-race",
+  "scope": [
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    ".factory/findings/active/FND-20261103095233-2a74-fix-step-timers-after-abort-001.json",
+    ".factory/findings/archive/FND-20261103095233-2a74-fix-step-timers-after-abort-001.json",
+    ".factory/completions/20261103112500-6690-fix-flip-failed-timer-race.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-scripting-sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103112500-6690-fix-flip-failed-timer-race.json": [
+      "100644",
+      "blob",
+      "a729e4cc2181f0349d4a24c0064a781a18fc30bb"
+    ],
+    ".factory/findings/active/FND-20261103095233-2a74-fix-step-timers-after-abort-001.json": null,
+    ".factory/findings/archive/FND-20261103095233-2a74-fix-step-timers-after-abort-001.json": [
+      "100644",
+      "blob",
+      "5d445e7efd1285737b6c5840bb67c1bb575bee24"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "f3ffdb1913c1252d00080c4ca6353715a528ab01"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "4c4f8cd5f2a069c79007bfa4a74db6c76b6efe2c"
+    ]
+  }
+}

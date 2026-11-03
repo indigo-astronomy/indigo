@@ -2,7 +2,7 @@
   "title": "flip_failed() fails when the stored timer is already firing",
   "category": "functional",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261103095233-2a74-fix-step-timers-after-abort",
       "report": "quality-review.md",
       "revision": null
+    },
+    {
+      "id": "20261103112500-6690-fix-flip-failed-timer-race",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "flip_failed() cancels wait_for_timer under the continue and recover policies without a generation change. If the timer is already firing, the cancel throws and the failure policy is not applied. Ignoring the error would not be enough, because that timer would advance the sequence as well. Pre-existing, very narrow window, found by code inspection, not reproduced. Next: treat a timer which can't be cancelled as the step ending, for example by storing the failure in flip_failure.",
   "evidence": "quality-review.md F2; indigo_drivers/agent_scripting/library/Sequencer.js flip_failed; indigo_drivers/agent_scripting/indigo_agent_scripting.c cancel_timer",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Five tests with a timer really firing pass and fail against the previous Sequencer.js; task 20261103112500-6690-fix-flip-failed-timer-race verification.md, mutation-checks.txt.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261103095233-2a74-fix-step-timers-after-abort-001"
 }

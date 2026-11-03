@@ -1,0 +1,61 @@
+  PASS library inventory and properties
+  PASS published property schema
+  PASS all public constructors
+  PASS focus batch snapshot
+  PASS loop and timing construction
+  PASS nested loop execution
+  PASS capture accounting and overloads
+  PASS empty sequence execution
+  PASS evaluate wait and messages
+  PASS string arguments and UTC break
+  PASS failure abort policy
+  PASS failure continue policy
+  PASS failure recovery policy
+  PASS recovery without point
+  PASS pause resume abort reset
+  PASS past waits and breaks
+  PASS simulator imaging
+  PASS simulator preview
+  PASS simulator stream
+  PASS simulator mount dome GPS rotator
+  PASS simulator agent features
+  PASS simulator altitude and hour angle
+  PASS simulator guiding
+  PASS simulator guiding calibration step
+  PASS custom agent arguments
+  PASS configuration and driver orchestration
+  PASS astrometry orchestration
+  PASS platesolver orchestration
+  PASS remote solver orchestration
+  PASS select solver agent step
+  PASS solver replaced during sequence
+  PASS solver failures recover
+  PASS solver step without solver recovers
+  PASS abort reaches replaced solver
+  PASS abort reaches selected solver
+  PASS meridian flip uses selected solver
+  PASS meridian flip uses solver selected by step
+  PASS meridian flip uses solver loaded after sequence
+  PASS meridian flip without solver fails
+  PASS meridian flip failure recovers
+  PASS meridian flip failure during capture recovers
+  PASS meridian flip failure during endless capture recovers
+  PASS meridian flip failure continues
+  PASS meridian flip failure aborts
+  PASS meridian flip failure keeps finished state
+  PASS meridian flip failure keeps failed state
+  PASS meridian flip failure keeps aborted state
+  PASS meridian flip failure keeps reset state
+  PASS late abort keeps finished state
+  PASS step timer after abort keeps step state
+  PASS step timer after failure keeps step state
+  PASS step timer after abort does not advance next sequence
+  PASS mount delay timer after abort keeps step state
+  PASS failure cancels stored timer
+  PASS abort with timer not cancellable
+  PASS meridian flip failure while step timer fires recovers
+  PASS meridian flip failure while step timer fires continues
+  PASS meridian flip failure while altitude poll fires recovers
+  PASS abort after stored flip failure
+  PASS paused stored flip failure recovers
+Sequencer.js: 60/60 passed (including cleanup)

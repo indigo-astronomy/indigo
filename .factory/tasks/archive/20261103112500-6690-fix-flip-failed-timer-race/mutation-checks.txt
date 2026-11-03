@@ -1,0 +1,41 @@
+Part 1: Sequencer.js from HEAD (4c7111221) with the candidate tests, exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1163: assertion failed: fail_flip_while_timer_fires("", "")
+FAILED meridian flip failure while step timer fires recovers (status 256)
+integration/test_agent_scripting_sequencer.c:1175: assertion failed: fail_flip_while_timer_fires("", "")
+FAILED meridian flip failure while step timer fires continues (status 256)
+integration/test_agent_scripting_sequencer.c:1187: assertion failed: fail_flip_while_timer_fires("indigo_cancel_timer(indigo_sequencer.wait_for_timer); pollTrace=0; indigo_sequence
+FAILED meridian flip failure while altitude poll fires recovers (status 256)
+integration/test_agent_scripting_sequencer.c:1199: assertion failed: fail_flip_while_timer_fires("", " indigo_sequencer_abort_handler();")
+FAILED abort after stored flip failure (status 256)
+integration/test_agent_scripting_sequencer.c:1211: assertion failed: fail_flip_while_timer_fires("", "")
+FAILED paused stored flip failure recovers (status 256)
+Sequencer.js: 55/60 passed (including cleanup)
+
+Part 2: candidate without the flip_failure check in the altitude poll handler, exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1188: assertion failed: wait_message("Recovered from failure at recovery point #1", 5)
+FAILED meridian flip failure while altitude poll fires recovers (status 256)
+Sequencer.js: 59/60 passed (including cleanup)
+
+Part 3: candidate with cancel_wait_timer() returning true for a firing timer (immediate failure plus the firing timer), exit 2 (intended)
+integration/test_agent_scripting_sequencer.c:1163: assertion failed: fail_flip_while_timer_fires("", "")
+FAILED meridian flip failure while step timer fires recovers (status 256)
+integration/test_agent_scripting_sequencer.c:1175: assertion failed: fail_flip_while_timer_fires("", "")
+FAILED meridian flip failure while step timer fires continues (status 256)
+integration/test_agent_scripting_sequencer.c:1187: assertion failed: fail_flip_while_timer_fires("indigo_cancel_timer(indigo_sequencer.wait_for_timer); pollTrace=0; indigo_sequence
+FAILED meridian flip failure while altitude poll fires recovers (status 256)
+integration/test_agent_scripting_sequencer.c:1199: assertion failed: fail_flip_while_timer_fires("", " indigo_sequencer_abort_handler();")
+FAILED abort after stored flip failure (status 256)
+integration/test_agent_scripting_sequencer.c:1211: assertion failed: fail_flip_while_timer_fires("", "")
+FAILED paused stored flip failure recovers (status 256)
+Sequencer.js: 55/60 passed (including cleanup)
+
+Part 4: as part 3 with the 'timer was not firing' check removed from the test, cases matching 'while' only, exit 1 (intended): the trace checks detect the second advance; the altitude poll case passes because its handler does nothing once altitude_poll is cleared
+JavaScript assertion failed: recoveryTrace==='1' && indigo_sequencer.flip_failure===null
+integration/test_agent_scripting_sequencer.c:1169: assertion failed: check_js("recoveryTrace==='1' && indigo_sequencer.flip_failure===null")
+FAILED meridian flip failure while step timer fires recovers (status 256)
+JavaScript assertion failed: recoveryTrace==='A' && indigo_sequencer.step_states['1']==='Alert'
+integration/test_agent_scripting_sequencer.c:1180: assertion failed: check_js("recoveryTrace==='A' && indigo_sequencer.step_states['1']==='Alert'")
+FAILED meridian flip failure while step timer fires continues (status 256)
+Sequencer.js: 1/3 passed (including cleanup)
+
+Sequencer.js and the test file restored from saved copies and compared with cmp.
