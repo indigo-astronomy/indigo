@@ -917,6 +917,103 @@ static void meridian_flip_without_solver_fails(void) {
 	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
 }
 
+static bool wait_switch_item(const char *device, const char *name, const char *item, bool value) {
+	for (int i = 0; i < 500; i++) {
+		indigo_property *property = snapshot(device, name);
+		if (property != NULL) {
+			bool found = false;
+			for (int j = 0; j < property->count; j++) {
+				if (!strcmp(property->items[j].name, item) && property->items[j].sw.value == value) {
+					found = true;
+				}
+			}
+			indigo_release_property(property);
+			if (found) {
+				return true;
+			}
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static bool wait_property_state(const char *device, const char *name, indigo_property_state state, double timeout) {
+	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(10000)) {
+		indigo_property *property = snapshot(device, name);
+		if (property != NULL) {
+			bool matches = property->state == state;
+			indigo_release_property(property);
+			if (matches) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+// The flip runs while a sequence step is in progress, a capture when the imager is given; the solver stand-in fails the centering
+static bool fail_flip_during_step(const char *steps, const char *imager) {
+	char script[2048];
+	snprintf(script, sizeof(script), "recoveryTrace=''; var s=new Sequence('flip failure'); %s s.start();", steps);
+	REQUIRE(run_js(script));
+	REQUIRE(wait_sequence(INDIGO_BUSY_STATE, 2));
+	if (imager != NULL) {
+		REQUIRE(wait_property_state(imager, "AGENT_START_PROCESS", INDIGO_BUSY_STATE, 10));
+	} else {
+		REQUIRE(wait_message("Suspended for 10s", 5));
+	}
+	atomic_store(&solver_process_fails, true);
+	return run_flip_to_centering();
+}
+
+static void meridian_flip_failure_recovers(void) {
+	ASSERT_TRUE(run_js("indigo_flipper.resume_ha_limit=true;"));
+	ASSERT_TRUE(fail_flip_during_step("s.recover_on_failure(); s.enable_meridian_flip(true,0); s.wait(10); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\");", NULL));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='1' && indigo_sequencer.wait_for_timer===null && indigo_event_handlers.indigo_flipper===undefined"));
+	ASSERT_TRUE(wait_message("Meridian flip failed (due to sync & center failure)", 5));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+	indigo_property *property = snapshot(SCRIPTING, "FLIPPER_STATE");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	indigo_release_property(property);
+	ASSERT_TRUE(wait_switch_item(MOUNT, "AGENT_PROCESS_FEATURES", "ENABLE_HA_LIMIT", true));
+}
+
+static void meridian_flip_failure_during_capture_recovers(void) {
+	char steps[1024];
+	snprintf(steps, sizeof(steps), "s.recover_on_failure(); s.select_imager_camera('CCD Imager Simulator'); s.select_image_format('RAW'); s.set_directory('%s'); s.enable_meridian_flip(true,0); s.capture_batch(1,30); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\");", test_root);
+	ASSERT_TRUE(fail_flip_during_step(steps, IMAGER));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 20));
+	ASSERT_TRUE(check_js("recoveryTrace==='1'"));
+	ASSERT_TRUE(wait_message("Meridian flip failed (due to sync & center failure)", 5));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+	ASSERT_TRUE(wait_property_state(IMAGER, "AGENT_START_PROCESS", INDIGO_ALERT_STATE, 5));
+}
+
+static void meridian_flip_failure_during_endless_capture_recovers(void) {
+	char steps[1024];
+	// the imager reports an aborted endless batch as finished, the flip failure must still fail the step
+	snprintf(steps, sizeof(steps), "s.recover_on_failure(); s.select_imager_camera('CCD Imager Simulator'); s.select_image_format('RAW'); s.set_directory('%s'); s.enable_meridian_flip(true,0); s.capture_batch(-1,30); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\");", test_root);
+	ASSERT_TRUE(fail_flip_during_step(steps, IMAGER));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 20));
+	ASSERT_TRUE(check_js("recoveryTrace==='1' && indigo_sequencer.flip_failure===null"));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+}
+
+static void meridian_flip_failure_continues(void) {
+	ASSERT_TRUE(fail_flip_during_step("s.continue_on_failure(); s.enable_meridian_flip(true,0); s.wait(10); s.evaluate(\"recoveryTrace+='A'\");", NULL));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("recoveryTrace==='A'"));
+}
+
+static void meridian_flip_failure_aborts(void) {
+	ASSERT_TRUE(fail_flip_during_step("s.enable_meridian_flip(true,0); s.wait(10); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\");", NULL));
+	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(wait_message("Sequence aborted", 5));
+	ASSERT_TRUE(check_js("recoveryTrace===''"));
+}
+
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
@@ -956,7 +1053,12 @@ static const indigo_test_case tests[] = {
 	{ "meridian flip uses selected solver", meridian_flip_uses_selected_solver },
 	{ "meridian flip uses solver selected by step", meridian_flip_uses_solver_selected_by_step },
 	{ "meridian flip uses solver loaded after sequence", meridian_flip_uses_solver_loaded_after_sequence },
-	{ "meridian flip without solver fails", meridian_flip_without_solver_fails }
+	{ "meridian flip without solver fails", meridian_flip_without_solver_fails },
+	{ "meridian flip failure recovers", meridian_flip_failure_recovers },
+	{ "meridian flip failure during capture recovers", meridian_flip_failure_during_capture_recovers },
+	{ "meridian flip failure during endless capture recovers", meridian_flip_failure_during_endless_capture_recovers },
+	{ "meridian flip failure continues", meridian_flip_failure_continues },
+	{ "meridian flip failure aborts", meridian_flip_failure_aborts }
 };
 
 int main(int argc, char **argv) {

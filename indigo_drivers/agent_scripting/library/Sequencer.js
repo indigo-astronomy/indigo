@@ -633,6 +633,7 @@ var indigo_flipper = {
 				this.waiting_for_transit = false;
 				indigo_send_message("Meridian flip started");
 				this.resume_guiding = false;
+				this.resume_ha_limit = false;
 				var guider_agent = indigo_devices[this.devices[GUIDER_AGENT]];
 				if (guider_agent != null) {
 					var guider_process = guider_agent.AGENT_START_PROCESS;
@@ -656,19 +657,13 @@ var indigo_flipper = {
 			}
 		} else if (this.waiting_for_slew && property.device == this.devices[MOUNT_AGENT] && property.name == "AGENT_START_PROCESS") {
 			if (property.state == "Alert") {
-				indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Alert");
-				delete indigo_event_handlers.indigo_flipper;
-				indigo_send_message("Meridian flip failed (due to slew failure)");
-				indigo_sequencer.abort();
+				this.fail("Meridian flip failed (due to slew failure)");
 			} else if (property.state == "Ok") {
 				this.waiting_for_slew = false;
 				if (this.use_solver) {
 					var solver_agent = sequencer_loaded_solver_agent(this.devices[SOLVER_AGENT], this.devices[IMAGER_AGENT]);
 					if (solver_agent == null) {
-						delete indigo_event_handlers.indigo_flipper;
-						indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Alert");
-						indigo_send_message("Meridian flip failed (no solver agent is loaded)");
-						indigo_sequencer.abort();
+						this.fail("Meridian flip failed (no solver agent is loaded)");
 						return;
 					}
 					this.devices[SOLVER_AGENT] = solver_agent;
@@ -691,10 +686,7 @@ var indigo_flipper = {
 			}
 		} else if (this.waiting_for_sync_and_center && property.device == this.devices[SOLVER_AGENT] && property.name == "AGENT_START_PROCESS") {
 			if (property.state == "Alert") {
-				delete indigo_event_handlers.indigo_flipper;
-				indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Alert");
-				indigo_send_message("Meridian flip failed (due to sync & center failure)");
-				indigo_sequencer.abort();
+				this.fail("Meridian flip failed (due to sync & center failure)");
 			} else if (property.state == "Ok") {
 				this.waiting_for_sync_and_center = false;
 				if (this.resume_guiding) {
@@ -713,13 +705,7 @@ var indigo_flipper = {
 			}
 		} else if (this.waiting_for_guiding && property.device == this.devices[GUIDER_AGENT] && property.name == "AGENT_START_PROCESS") {
 			if (property.state == "Alert") {
-				delete indigo_event_handlers.indigo_flipper;
-				if (this.resume_ha_limit) {
-					indigo_change_switch_property(this.devices[MOUNT_AGENT], "AGENT_PROCESS_FEATURES", { ENABLE_HA_LIMIT: true });
-				}
-				indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Alert");
-				indigo_send_message("Meridian flip failed (due to guiding failure)");
-				indigo_sequencer.abort();
+				this.fail("Meridian flip failed (due to guiding failure)");
 			} else if (property.state == "Busy") {
 				this.waiting_for_guiding = false;
 				indigo_send_message("Settling down...");
@@ -738,6 +724,16 @@ var indigo_flipper = {
 				indigo_send_message("Meridian flip finished");
 			}
 		}
+	},
+
+	// the HA limit is restored and the sequencer applies its failure policy to the step during which the flip ran
+	fail: function(message) {
+		delete indigo_event_handlers.indigo_flipper;
+		if (this.resume_ha_limit) {
+			indigo_change_switch_property(this.devices[MOUNT_AGENT], "AGENT_PROCESS_FEATURES", { ENABLE_HA_LIMIT: true });
+		}
+		indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "FLIPPER_STATE", { WAITING_FOR_TRANSIT: this.waiting_for_transit, WAITING_FOR_SLEW: this.waiting_for_slew, WAITING_FOR_SYNC_AND_CENTER: this.waiting_for_sync_and_center, WAITING_FOR_GUIDING: this.waiting_for_guiding, WAITING_FOR_SETTLE_DOWN: this.waiting_for_settle_down, RESUME_GUIDING: this.resume_guiding, USE_SOLVER: this.use_solver }, this.state = "Alert");
+		indigo_sequencer.flip_failed(message);
 	},
 
 	start: function(use_solver) {
@@ -787,6 +783,7 @@ var indigo_sequencer = {
 	skip_to_recovery_point: false,
 	failure_handling: 0,
 	skip_to_resume_point: false,
+	flip_failure: null,
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
@@ -926,6 +923,7 @@ var indigo_sequencer = {
 	},
 
 	abort: function() {
+		this.flip_failure = null;
 		this.wait_for_device = null;
 		this.wait_for_property = null;
 		this.wait_for_property_state = "Ok";
@@ -975,6 +973,7 @@ var indigo_sequencer = {
 			this.exposure_total = exposure_total;
 			this.paused = false;
 			this.capturing_batch = false;
+			this.flip_failure = null;
 			this.failure_handling = 0;
 			this.skip_to_recovery_point = false;
 			this.ignore_failure = false;
@@ -1014,6 +1013,8 @@ var indigo_sequencer = {
 		var nesting = 0;
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
+		} else if (this.flip_failure != null && this.sequence != null) {
+			this.failure(this.flip_failure);
 		} else if (this.sequence != null) {
 			var previous = this.sequence[this.index];
 			var current = null;
@@ -1303,7 +1304,30 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
+	// a failed meridian flip aborts the sequence under abort_on_failure() or when no sequence runs, otherwise the step during which the flip ran fails
+	flip_failed: function(message) {
+		if (this.sequence == null || this.failure_handling == 0) {
+			indigo_send_message(message);
+			this.abort();
+			return;
+		}
+		indigo_change_switch_property(this.devices[IMAGER_AGENT], "AGENT_ABORT_PROCESS", { ABORT: true });
+		if (this.wait_for_timer != null) {
+			indigo_cancel_timer(this.wait_for_timer);
+			this.wait_for_timer = null;
+			this.altitude_poll = null;
+			this.failure(message);
+		} else {
+			// the step fails when it ends, e.g. when the imager aborted the capture paused by the flip, so that the next step starts with the imager stopped
+			this.flip_failure = message;
+		}
+	},
+
 	failure: function(message) {
+		if (this.flip_failure != null) {
+			message = this.flip_failure;
+			this.flip_failure = null;
+		}
 		indigo_send_message(message);
 		if (this.ignore_failure || this.failure_handling == 2) {
 			this.ignore_failure = false;
