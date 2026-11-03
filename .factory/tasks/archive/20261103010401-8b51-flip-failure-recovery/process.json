@@ -1,0 +1,82 @@
+{
+  "version": 2,
+  "task": "20261103010401-8b51-flip-failure-recovery",
+  "scope": [
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_drivers/agent_scripting/library/Sequencer.md",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    ".factory/findings/active/FND-20261103010401-8b51-flip-failure-recovery-*.json",
+    ".factory/findings/archive/FND-20261103010401-8b51-flip-failure-recovery-*.json",
+    ".factory/completions/20261103010401-8b51-flip-failure-recovery.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-scripting-sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103010401-8b51-flip-failure-recovery.json": [
+      "100644",
+      "blob",
+      "e29961578a6a44477ec62725baa44ec3905d8fdb"
+    ],
+    ".factory/findings/active/FND-20261103010401-8b51-flip-failure-recovery-004.json": [
+      "100644",
+      "blob",
+      "e46527708a193097b7aff3cbd85b29e4a1b4dcc3"
+    ],
+    ".factory/findings/archive/FND-20261103010401-8b51-flip-failure-recovery-001.json": [
+      "100644",
+      "blob",
+      "1d8cfa09665f5f1c0d903fc0d3e9e5bd36ad7b10"
+    ],
+    ".factory/findings/archive/FND-20261103010401-8b51-flip-failure-recovery-002.json": [
+      "100644",
+      "blob",
+      "a557d9096603401049dcf758bc20b93f9f7d61b9"
+    ],
+    ".factory/findings/archive/FND-20261103010401-8b51-flip-failure-recovery-003.json": [
+      "100644",
+      "blob",
+      "a1ebe6380904aaa2c79d740479525cda053b0abf"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "eae67c59cef575374ff1f2126f111a815215b5b3"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "100644",
+      "blob",
+      "77dd8f61ee75b09d61a9007a447fd15bce0246cc"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "16bc176bbc5a959a13f8796d9eb735eebc76410b"
+    ]
+  }
+}

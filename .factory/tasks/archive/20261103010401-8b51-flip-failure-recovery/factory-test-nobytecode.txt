@@ -1,0 +1,24 @@
+Working directory: /home/rumen/work/indigo.git
+[test] python3 -B -m unittest discover -s indigo_test/factory -p 'test_*.py'
+...............................................F.......................................................................................................................................F.............
+======================================================================
+FAIL: test_missing_pinned_tree_never_starts_lazy_fetch (test_findings.FindingsTests.test_missing_pinned_tree_never_starts_lazy_fetch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/rumen/work/indigo.git/indigo_test/factory/test_findings.py", line 244, in test_missing_pinned_tree_never_starts_lazy_fetch
+    self.assertNotIn(' fetch ', trace.read_text())
+AssertionError: ' fetch ' unexpectedly found in "03:59:14.054679 git.c:463               trace: built-in: git cat-file -e '7f85d91bdc59c80f041f5bcdf3ae4039595a3151^{commit}'\n03:59:14.057129 git.c:463               trace: built-in: git ls-tree 7f85d91bdc59c80f041f5bcdf3ae4039595a3151 -- .factory/tasks/001-demo/verification.md\n03:59:14.057359 run-command.c:659       trace: run_command: git -c fetch.negotiationAlgorithm=noop fetch origin --no-tags --no-write-fetch-head --recurse-submodules=no --filter=blob:none --stdin\n03:59:14.058401 git.c:463               trace: built-in: git fetch origin --no-tags --no-write-fetch-head --recurse-submodules=no --filter=blob:none --stdin\n03:59:14.058795 run-command.c:659       trace: run_command: unset GIT_CONFIG_PARAMETERS GIT_NO_REPLACE_OBJECTS GIT_PREFIX; GIT_PROTOCOL=version=2 'git-upload-pack '\\''/tmp/factory-findings-rr28_1wo/unavailable'\\'''\n03:59:14.060243 git.c:463               trace: built-in: git upload-pack /tmp/factory-findings-rr28_1wo/unavailable\n03:59:14.063244 git.c:463               trace: built-in: git ls-tree 7f85d91bdc59c80f041f5bcdf3ae4039595a3151 -- .factory/tasks/archive/001-demo/verification.md\n03:59:14.063484 run-command.c:659       trace: run_command: git -c fetch.negotiationAlgorithm=noop fetch origin --no-tags --no-write-fetch-head --recurse-submodules=no --filter=blob:none --stdin\n03:59:14.064519 git.c:463               trace: built-in: git fetch origin --no-tags --no-write-fetch-head --recurse-submodules=no --filter=blob:none --stdin\n03:59:14.064718 run-command.c:659       trace: run_command: unset GIT_CONFIG_PARAMETERS GIT_NO_REPLACE_OBJECTS GIT_PREFIX; GIT_PROTOCOL=version=2 'git-upload-pack '\\''/tmp/factory-findings-rr28_1wo/unavailable'\\'''\n03:59:14.066073 git.c:463               trace: built-in: git upload-pack /tmp/factory-findings-rr28_1wo/unavailable\n"
+
+======================================================================
+FAIL: test_missing_promisor_blob_does_not_start_implicit_fetch (test_template_update.TemplateUpdateTests.test_missing_promisor_blob_does_not_start_implicit_fetch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/rumen/work/indigo.git/indigo_test/factory/test_template_update.py", line 349, in test_missing_promisor_blob_does_not_start_implicit_fetch
+    with self.assertRaises(ValueError):
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 197 tests in 51.194s
+
+FAILED (failures=2)
+Command failed with exit code 1

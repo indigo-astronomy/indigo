@@ -1,0 +1,24 @@
+{
+  "title": "Immediate flip failure could advance the sequence twice",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103010401-8b51-flip-failure-recovery",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "For steps not waiting on the imager, flip_failed called failure() at once; an advance timer not stored in wait_for_timer (0 s step completion, pause polling, altitude completion) or a step waiting on the device whose Alert failed the flip could cause a second execute_next. Next: defer the failure to the end of the step unless a cancellable step timer runs.",
+  "evidence": "quality-review.md F2; indigo_drivers/agent_scripting/library/Sequencer.js flip_failed, execute_next; indigo_test/integration/test_agent_scripting_sequencer.c",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "flip_failed fails at once only after cancelling a step timer, otherwise stores flip_failure applied by failure() or execute_next once; suite 44/44; verification.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261103010401-8b51-flip-failure-recovery-002"
+}

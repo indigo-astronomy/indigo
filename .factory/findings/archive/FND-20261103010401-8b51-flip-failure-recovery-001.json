@@ -1,0 +1,24 @@
+{
+  "title": "Meridian flip failure lost when it interrupts an endless capture",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103010401-8b51-flip-failure-recovery",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "The imager reports an aborted endless batch (capture_batch(-1, ...)) with AGENT_START_PROCESS Ok, so the capture step paused by a failed flip succeeded and the failure policy was not applied. Next: keep the flip failure until the step ends and fail the step then.",
+  "evidence": "quality-review.md F1; indigo_drivers/agent_scripting/library/Sequencer.js flip_failed, execute_next; indigo_test/integration/test_agent_scripting_sequencer.c",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Test 'meridian flip failure during endless capture recovers' passes and fails when the deferred check in execute_next is removed; verification.md, mutation-checks.txt.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261103010401-8b51-flip-failure-recovery-001"
+}
