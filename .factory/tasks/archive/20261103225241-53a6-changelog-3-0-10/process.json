@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "task": "20261103225241-53a6-changelog-3-0-10",
+  "scope": [
+    "CHANGELOG.md",
+    ".factory/completions/20261103225241-53a6-changelog-3-0-10.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103225241-53a6-changelog-3-0-10.json": [
+      "100644",
+      "blob",
+      "0d670a40786e0e87c35b1b6a546ef7d92b734065"
+    ],
+    "CHANGELOG.md": [
+      "100644",
+      "blob",
+      "00a293b57bb780b21a3e9c605af179ef2d8085cf"
+    ]
+  }
+}

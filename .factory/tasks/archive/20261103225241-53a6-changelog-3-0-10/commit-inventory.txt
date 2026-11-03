@@ -1,0 +1,460 @@
+c5bb8d0cb Peter Polakovic | Fix atomic joystick axis forwarding in mount agent
+2d5f2e7ed Peter Polakovic | ccd_ptp: avoid redundant Canon mirror lockup writes (#778)
+b5cf096db Peter Polakovic | ccd_ptp: support histogram previews for RAW+JPEG (#702)
+07ab36374 Peter Polakovic | ccd_ptp: handle Canon 64-bit transfer events and correct event parsing (#778)
+8235ffda5 Peter Polakovic | focuser_qhy: avoid undefined steps updates during compensation
+b429711c0 Rumen G.Bogdanovski | indigo_libs: make auto:// port selection skip serial ports another device has open or is connecting to, so identical devices get different ports
+5856c3f7c Peter Polakovic | Add virtual AUX simulators for client development
+a82b4661d Peter Polakovic | Save remaining Xcode project changes
+8aeb2fd6d Rumen Bogdanovski | indigo_libs: fall back to free serial ports when matching ports are claimed
+5c6f9e7e8 Rumen Bogdanovski | indigo_libs: open serial ports with exclussive access on Linux and macOS (on Windows it is default)
+fbbd61a1c Rumen Bogdanovski | indigo_libs: add version 2 of sunctions to open serial ports that return errorcodes (windows mapped to POSIX)
+199d16809 Rumen G.Bogdanovski | indigo_libs: make version 2 serial port open functions report human readable platform specific error messages
+9e527acfa Rumen G.Bogdanovski | indigo_generator: show the serial port open error message in the connection failure alert of serial drivers
+781e41466 Rumen G.Bogdanovski | indigo_ao_sx: report why the serial port could not be opened when connecting fails
+b3c055f5e Rumen G.Bogdanovski | indigo_aux_arteskyflat: report why the serial port could not be opened when connecting fails
+9e82b3298 Rumen G.Bogdanovski | indigo_aux_astromechanics: report why the serial port could not be opened when connecting fails
+4c83c3b04 Rumen G.Bogdanovski | indigo_aux_cloudwatcher: report why the serial port could not be opened when connecting fails
+fa113255e Rumen G.Bogdanovski | indigo_aux_dragonfly: regenerate with the serial port open error message support (no change of behaviour)
+a70fda2f9 Rumen G.Bogdanovski | indigo_aux_fbc: report why the serial port could not be opened when connecting fails
+09058dd8b Rumen G.Bogdanovski | indigo_aux_flatmaster: report why the serial port could not be opened when connecting fails
+cea9ca815 Rumen G.Bogdanovski | indigo_aux_flipflat: report why the serial port could not be opened when connecting fails
+af67934c4 Rumen G.Bogdanovski | indigo_aux_geoptikflat: report why the serial port could not be opened when connecting fails
+5e93dfd03 Rumen G.Bogdanovski | indigo_aux_mgbox: report why the serial port could not be opened when connecting fails
+0f651ecb0 Rumen G.Bogdanovski | indigo_aux_ppb: report why the serial port could not be opened when connecting fails
+fcc9da52a Rumen G.Bogdanovski | indigo_aux_rts: report why the serial port could not be opened when connecting fails
+523497755 Rumen G.Bogdanovski | indigo_aux_skyalert: report why the serial port could not be opened when connecting fails
+9fa2772c4 Rumen G.Bogdanovski | indigo_aux_sqm: report why the serial port could not be opened when connecting fails
+06c8eceb3 Rumen G.Bogdanovski | indigo_aux_svbpowerbox: report why the serial port could not be opened when connecting fails
+ee088d342 Rumen G.Bogdanovski | indigo_aux_uch: report why the serial port could not be opened when connecting fails
+25d734964 Rumen G.Bogdanovski | indigo_aux_upb: report why the serial port could not be opened when connecting fails
+c0127bb84 Rumen G.Bogdanovski | indigo_aux_upb3: report why the serial port could not be opened when connecting fails
+d10231014 Rumen G.Bogdanovski | indigo_aux_usbdp: report why the serial port could not be opened when connecting fails
+77835d9e2 Rumen G.Bogdanovski | indigo_aux_wbplusv3: report why the serial port could not be opened when connecting fails
+95f304634 Rumen G.Bogdanovski | indigo_aux_wbprov3: report why the serial port could not be opened when connecting fails
+042973ada Rumen G.Bogdanovski | indigo_aux_wcv4ec: report why the serial port could not be opened when connecting fails
+9b6f4ab24 Rumen G.Bogdanovski | indigo_dome_baader: report why the serial port could not be opened when connecting fails
+8b3b27daf Rumen G.Bogdanovski | indigo_dome_beaver: report why the serial port could not be opened when connecting fails
+0129077ae Rumen G.Bogdanovski | indigo_dome_dragonfly: regenerate with the serial port open error message support (no change of behaviour)
+57338c9fc Rumen G.Bogdanovski | indigo_dome_nexdome: report why the serial port could not be opened when connecting fails
+5fbd3e09d Rumen G.Bogdanovski | indigo_dome_nexdome3: report why the serial port could not be opened when connecting fails
+57c99fe3d Rumen G.Bogdanovski | indigo_dome_skyroof: report why the serial port could not be opened when connecting fails
+52f9748cf Rumen G.Bogdanovski | indigo_dome_talon6ror: report why the serial port could not be opened when connecting fails
+f841038db Rumen G.Bogdanovski | indigo_focuser_askar: report why the serial port could not be opened when connecting fails
+4f93679d0 Rumen G.Bogdanovski | indigo_focuser_astromechanics: report why the serial port could not be opened when connecting fails
+e765b9441 Rumen G.Bogdanovski | indigo_focuser_dmfc: report why the serial port could not be opened when connecting fails
+f491c347e Rumen G.Bogdanovski | indigo_focuser_dsd: report why the serial port could not be opened when connecting fails
+0fede01b4 Rumen G.Bogdanovski | indigo_focuser_efa: report why the serial port could not be opened when connecting fails
+3e7f9a632 Rumen G.Bogdanovski | indigo_focuser_fc3: report why the serial port could not be opened when connecting fails
+bf7c24af3 Rumen G.Bogdanovski | indigo_focuser_focusdreampro: report why the serial port could not be opened when connecting fails
+f25b03091 Rumen G.Bogdanovski | indigo_focuser_ioptron: report why the serial port could not be opened when connecting fails
+f93080ce2 Rumen G.Bogdanovski | indigo_focuser_lacerta: report why the serial port could not be opened when connecting fails
+552c3fa43 Rumen G.Bogdanovski | indigo_focuser_lakeside: report why the serial port could not be opened when connecting fails
+4acaaff9e Rumen G.Bogdanovski | indigo_focuser_lunatico: report why the serial port could not be opened when connecting fails
+80741b173 Rumen G.Bogdanovski | indigo_focuser_mjkzz: report why the serial port could not be opened when connecting fails
+3907b8dd7 Rumen G.Bogdanovski | indigo_focuser_moonlite: report why the serial port could not be opened when connecting fails
+853bbe843 Rumen G.Bogdanovski | indigo_focuser_mypro2: report why the serial port could not be opened when connecting fails
+28ed55394 Rumen G.Bogdanovski | indigo_focuser_nfocus: report why the serial port could not be opened when connecting fails
+7c9af8cc3 Rumen G.Bogdanovski | indigo_focuser_nstep: report why the serial port could not be opened when connecting fails
+a5ec68081 Rumen G.Bogdanovski | indigo_focuser_optec: report why the serial port could not be opened when connecting fails
+6b9104a28 Rumen G.Bogdanovski | indigo_focuser_optecfl: report why the serial port could not be opened when connecting fails
+79bc5e7a2 Rumen G.Bogdanovski | indigo_focuser_primaluce: report why the serial port could not be opened when connecting fails
+e61b99e32 Rumen G.Bogdanovski | indigo_focuser_prodigy: report why the serial port could not be opened when connecting fails
+ea44ddcfd Rumen G.Bogdanovski | indigo_focuser_qhy: report why the serial port could not be opened when connecting fails
+29de6e996 Rumen G.Bogdanovski | indigo_focuser_robofocus: report why the serial port could not be opened when connecting fails
+3f7514e45 Rumen G.Bogdanovski | indigo_focuser_steeldrive2: report why the serial port could not be opened when connecting fails
+a8f1ab574 Rumen G.Bogdanovski | indigo_focuser_usbv3: report why the serial port could not be opened when connecting fails
+b3ad961aa Rumen G.Bogdanovski | indigo_focuser_wemacro: report why the serial port could not be opened when connecting fails
+45ce5e88e Rumen G.Bogdanovski | indigo_gps_gpsd: regenerate with the serial port open error message support (no change of behaviour)
+15f69b1ff Rumen G.Bogdanovski | indigo_gps_nmea: report why the serial port could not be opened when connecting fails
+40228c10a Rumen G.Bogdanovski | indigo_guider_cgusbst4: report why the serial port could not be opened when connecting fails
+75e5fa89e Rumen G.Bogdanovski | indigo_mount_asi: report why the serial port could not be opened when connecting fails
+8b21057c6 Rumen G.Bogdanovski | indigo_mount_ioptron: report why the serial port could not be opened when connecting fails
+88e29410f Rumen G.Bogdanovski | indigo_mount_lx200: report why the serial port could not be opened when connecting fails
+2a7a1e5f9 Rumen G.Bogdanovski | indigo_mount_mxhd: report why the serial port could not be opened when connecting fails
+b56136bef Rumen G.Bogdanovski | indigo_mount_nexstar: regenerate with the serial port open error message support (no change of behaviour)
+9129c0b47 Rumen G.Bogdanovski | indigo_mount_nexstaraux: regenerate with the serial port open error message support (no change of behaviour)
+9b8d59458 Rumen G.Bogdanovski | indigo_mount_pmc8: report why the serial port could not be opened when connecting fails
+2256f8142 Rumen G.Bogdanovski | indigo_mount_rainbow: report why the serial port could not be opened when connecting fails
+c0a139249 Rumen G.Bogdanovski | indigo_mount_starbook: regenerate with the serial port open error message support (no change of behaviour)
+07a63b534 Rumen G.Bogdanovski | indigo_mount_synscan: report why the serial port could not be opened when connecting fails
+dd56b82e0 Rumen G.Bogdanovski | indigo_mount_temma: report why the serial port could not be opened when connecting fails
+07110ec15 Rumen G.Bogdanovski | indigo_polaralign_mlastro: report why the serial port could not be opened when connecting fails
+71d6bb5b7 Rumen G.Bogdanovski | indigo_rotator_falcon: report why the serial port could not be opened when connecting fails
+1f222861f Rumen G.Bogdanovski | indigo_rotator_lunatico: report why the serial port could not be opened when connecting fails
+0aaf14217 Rumen G.Bogdanovski | indigo_rotator_optec: report why the serial port could not be opened when connecting fails
+9e38e1b6f Rumen G.Bogdanovski | indigo_rotator_wa: report why the serial port could not be opened when connecting fails
+94fbe525e Rumen G.Bogdanovski | indigo_wheel_indigo: report why the serial port could not be opened when connecting fails
+a6dd7d745 Rumen G.Bogdanovski | indigo_wheel_optec: report why the serial port could not be opened when connecting fails
+37d3f6128 Rumen G.Bogdanovski | indigo_wheel_qhy: report why the serial port could not be opened when connecting fails
+189981c55 Rumen G.Bogdanovski | indigo_wheel_quantum: report why the serial port could not be opened when connecting fails
+efc37ca58 Rumen G.Bogdanovski | indigo_wheel_trutek: report why the serial port could not be opened when connecting fails
+eba315b70 Rumen G.Bogdanovski | indigo_wheel_xagyl: report why the serial port could not be opened when connecting fails
+e5f255349 Peter Polakovic | Adopt AI Factory workflow and migrate review findings
+48dc89349 Peter Polakovic | Fix atomic FTDI archive builds and blocked DMG cleanup
+f1a28a893 Peter Polakovic | Record initial repository audit evidence and register FND-000045
+93f8ae3d5 Peter Polakovic | Refuse over-long WebSocket keys instead of overflowing the handshake buffer
+85c7c3d92 Peter Polakovic | Complete the initial repository audit and set the full-review checkpoint
+c1e65cc62 Peter Polakovic | Remove REVIEW_SWITCH_TARGETS.md and keep its open finding in the register
+38e71b647 Peter Polakovic | Point REFACTOR.md notes at the removed switch target review in Git history
+c876bf44b Peter Polakovic | Forbid rewriting existing commits in AGENTS.md
+68be13e26 Rumen G.Bogdanovski | indigo_generator: pass the serial port open error message to <driver>_open() as a parameter instead of keeping it in private data
+c04dc28f3 Rumen G.Bogdanovski | indigo_ao_sx: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+729fb329e Rumen G.Bogdanovski | indigo_aux_arteskyflat: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+aff982079 Rumen G.Bogdanovski | indigo_aux_astromechanics: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+18edc68c2 Rumen G.Bogdanovski | indigo_aux_cloudwatcher: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+827523bb6 Rumen G.Bogdanovski | indigo_aux_dragonfly: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+0817b232c Rumen G.Bogdanovski | indigo_aux_fbc: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+cd3ce50cf Rumen G.Bogdanovski | indigo_aux_flatmaster: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+b8450ed94 Rumen G.Bogdanovski | indigo_aux_flipflat: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+4f4c38a5d Rumen G.Bogdanovski | indigo_aux_geoptikflat: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+95f669717 Rumen G.Bogdanovski | indigo_aux_mgbox: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+c10f9e323 Rumen G.Bogdanovski | indigo_aux_ppb: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+e034efefc Rumen G.Bogdanovski | indigo_aux_rts: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+48e5adb5d Rumen G.Bogdanovski | indigo_aux_skyalert: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+8f8956c51 Rumen G.Bogdanovski | indigo_aux_sqm: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+25de77013 Rumen G.Bogdanovski | indigo_aux_svbpowerbox: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+bf850068d Rumen G.Bogdanovski | indigo_aux_uch: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+4af471e5e Rumen G.Bogdanovski | indigo_aux_upb: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+dcf2525e1 Rumen G.Bogdanovski | indigo_aux_upb3: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+5279a6546 Rumen G.Bogdanovski | indigo_aux_usbdp: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+f345582c5 Rumen G.Bogdanovski | indigo_aux_wbplusv3: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+194da4be3 Rumen G.Bogdanovski | indigo_aux_wbprov3: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+50c1c3178 Rumen G.Bogdanovski | indigo_aux_wcv4ec: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+9ad7d1f67 Rumen G.Bogdanovski | indigo_dome_baader: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+ba99a0fc1 Rumen G.Bogdanovski | indigo_dome_beaver: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+19bdfa48c Rumen G.Bogdanovski | indigo_dome_dragonfly: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+435172228 Rumen G.Bogdanovski | indigo_dome_nexdome: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+637d16a4f Rumen G.Bogdanovski | indigo_dome_nexdome3: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+bd7b89dc0 Rumen G.Bogdanovski | indigo_dome_skyroof: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+15f6eda53 Rumen G.Bogdanovski | indigo_dome_talon6ror: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+5a07f0f5a Rumen G.Bogdanovski | indigo_focuser_askar: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+68ed1cfd7 Rumen G.Bogdanovski | indigo_focuser_astromechanics: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+bb6e8a735 Rumen G.Bogdanovski | indigo_focuser_dmfc: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+5a69fc001 Rumen G.Bogdanovski | indigo_focuser_dsd: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+6f4b3b4ac Rumen G.Bogdanovski | indigo_focuser_efa: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+22112a1fb Rumen G.Bogdanovski | indigo_focuser_fc3: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+3dcb8c8d7 Rumen G.Bogdanovski | indigo_focuser_focusdreampro: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+e6f13ee3f Rumen G.Bogdanovski | indigo_focuser_ioptron: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+31408764f Rumen G.Bogdanovski | indigo_focuser_lacerta: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+19d6afe74 Rumen G.Bogdanovski | indigo_focuser_lakeside: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+8208fea74 Rumen G.Bogdanovski | indigo_focuser_lunatico: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+3136dce3c Rumen G.Bogdanovski | indigo_focuser_mjkzz: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+e6cd4b3e1 Rumen G.Bogdanovski | indigo_focuser_moonlite: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+f217b17dc Rumen G.Bogdanovski | indigo_focuser_mypro2: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+d38e18054 Rumen G.Bogdanovski | indigo_focuser_nfocus: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+9375370f9 Rumen G.Bogdanovski | indigo_focuser_nstep: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+1bd09ccf3 Rumen G.Bogdanovski | indigo_focuser_optec: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+01bff1ca1 Rumen G.Bogdanovski | indigo_focuser_optecfl: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+7386d1cfc Rumen G.Bogdanovski | indigo_focuser_primaluce: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+a4ed181f5 Rumen G.Bogdanovski | indigo_focuser_prodigy: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+93d64c4a1 Rumen G.Bogdanovski | indigo_focuser_qhy: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+2067a1fae Rumen G.Bogdanovski | indigo_focuser_robofocus: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+4cbc39a64 Rumen G.Bogdanovski | indigo_focuser_steeldrive2: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+4ef90e7e4 Rumen G.Bogdanovski | indigo_focuser_usbv3: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+25be0171c Rumen G.Bogdanovski | indigo_focuser_wemacro: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+0e7afb794 Rumen G.Bogdanovski | indigo_gps_gpsd: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+b65dfc85c Rumen G.Bogdanovski | indigo_gps_nmea: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+401ef175f Rumen G.Bogdanovski | indigo_guider_cgusbst4: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+d9c7e6569 Rumen G.Bogdanovski | indigo_mount_asi: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+5e2cb88ac Rumen G.Bogdanovski | indigo_mount_ioptron: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+1c9dce9b2 Rumen G.Bogdanovski | indigo_mount_lx200: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+dfaf85b65 Rumen G.Bogdanovski | indigo_mount_mxhd: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+5badeadce Rumen G.Bogdanovski | indigo_mount_nexstar: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+8d4dcfe7b Rumen G.Bogdanovski | indigo_mount_nexstaraux: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+f23a3f0d0 Rumen G.Bogdanovski | indigo_mount_pmc8: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+3f1f96e90 Rumen G.Bogdanovski | indigo_mount_rainbow: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+ec197fef5 Rumen G.Bogdanovski | indigo_mount_starbook: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+e97d2acba Rumen G.Bogdanovski | indigo_mount_synscan: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+20db47afb Rumen G.Bogdanovski | indigo_mount_temma: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+f478ceff3 Rumen G.Bogdanovski | indigo_polaralign_mlastro: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+a3c84f21c Rumen G.Bogdanovski | indigo_rotator_falcon: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+780fd8570 Rumen G.Bogdanovski | indigo_rotator_lunatico: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+8e43299f1 Rumen G.Bogdanovski | indigo_rotator_optec: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+f6e69604b Rumen G.Bogdanovski | indigo_rotator_wa: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+7442c9e01 Rumen G.Bogdanovski | indigo_wheel_indigo: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+f45e7f6a2 Rumen G.Bogdanovski | indigo_wheel_optec: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+b593f8cd6 Rumen G.Bogdanovski | indigo_wheel_qhy: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+73e72a079 Rumen G.Bogdanovski | indigo_wheel_quantum: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+9874be226 Rumen G.Bogdanovski | indigo_wheel_trutek: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+09f564acf Rumen G.Bogdanovski | indigo_wheel_xagyl: take the serial port open error message as a parameter of the open helper instead of keeping it in private data
+5129a60cc Peter Polakovic | Record task evidence for the rule against rewriting commits
+fa42dc791 Rumen G.Bogdanovski | indigo_aux_wbplusv3: remove the stale untested TODO, the driver is tested with real hardware
+6b96b084b Rumen G.Bogdanovski | indigo_aux_wbprov3: remove the stale untested TODO, the driver is tested with real hardware
+80d073bcb Rumen G.Bogdanovski | indigo_aux_wcv4ec: remove the stale untested TODO, the driver is tested with real hardware
+7d46bc02e Rumen G.Bogdanovski | indigo_libs: release the exclusive claim of a serial port on close, so a Linux pseudo-terminal can be reopened
+fb4d409da Peter Polakovic | Support current CCD temperature in image filename macros
+51e14099c Rumen G.Bogdanovski | indigo: commit only after the task is complete and the commit plan, with any test results, is approved, when working for Rumen G. Bogdanovski
+edc01a863 Rumen G.Bogdanovski | indigo_focuser_primaluce: move the PrimaLuce Lab protocol into the static primalucelib library shared by PrimaLuce drivers
+c3730a753 Rumen G.Bogdanovski | indigo_focuser_primaluce: support the SESTO SENSO 3, recover from late replies, refuse moves while uncalibrated and keep a running calibration stoppable
+b0c5cf377 Rumen G.Bogdanovski | indigo_focuser_primaluce: run the calibration steps as finalizers and refuse requests at once while the SESTO SENSO 3 restarts, so abort and other commands are served during the calibration
+c25de0065 Peter Polakovic | Migrate Factory task identities and retain completion proof
+d1e20e364 Peter Polakovic | Upgrade INDIGO Factory to independent task records
+e0139d57c Peter Polakovic | Correct server, client and build documentation
+0cf556f8f Peter Polakovic | Fix PrimaLuce archive builds and exact reply key matching
+7ce125f54 Rumen G.Bogdanovski | indigo_focuser_primaluce: fix ARCO moves and syncs on the SESTO SENSO 3, which acknowledges them under DEG, reports the angle with a rounding error and may print debug text before a reply
+f019b0047 Rumen G.Bogdanovski | indigo_focuser_primaluce: fail the calibration with a request to rerun it when the SESTO SENSO 3 reports a position outside the new range
+9aa68031c Rumen G.Bogdanovski | indigo_focuser_primaluce: end a move ALERT with the reason when the focuser or the ARCO needs calibration and the move does not run
+989ec8db1 Peter Polakovic | Complete server security audit and retain remediation findings
+e044bf7d0 Peter Polakovic | Harden server uploads, protocol parsers and management inputs
+c35c056ed Peter Polakovic | xcode project cleanup
+9c6d2efa5 Rumen G.Bogdanovski | indigo_focuser_primaluce: publish the ARCO angle during a move and keep the measured position as the value when a focuser or rotator move starts
+3b48146ca Rumen G.Bogdanovski | indigo_focuser_primaluce: fail calibration steps, moves and syncs the controller refuses in the parameter field and report its text as the reason
+c5a8b69ab Peter Polakovic | Preserve imager source files when image downloads fail
+98e0629ea Peter Polakovic | Reject oversized network URL hosts and invalid ports
+16f82217e Peter Polakovic | Checkpoint RAW-to-FITS bounds repair before coordinated synchronization
+a1beecfdb Peter Polakovic | Reject unsafe RAW selections and preserve PSF variance precision
+7f4c8bff0 Peter Polakovic | Make SynScan auto-home interruptible by abort and disconnect
+d414e778c Peter Polakovic | Synchronize Xcode finding references during archival
+b401f0db7 Peter Polakovic | Pin INDIGO Factory provenance to published findings repair
+29abdaf6a Rumen G.Bogdanovski | indigo_focuser_primaluce: keep the ARCO enabled across disconnects, switching it off and on lost its calibration on the SESTO SENSO 3
+07f8efca8 Rumen G.Bogdanovski | indigo_focuser_primaluce: say in the calibration label and at START that the current position becomes the innermost one
+54f222886 Peter Polakovic | Make the non-serial port error test portable
+17681f4f8 Rumen G.Bogdanovski | indigo_focuser_primaluce: announce a completed focuser calibration with its range and a completed ARCO calibration
+ba09a1367 Rumen G.Bogdanovski | indigo_focuser_primaluce: add the relative ARCO move, computed from the current angle as the ARCO has no relative command
+ff98d482b Rumen G.Bogdanovski | indigo_focuser_primaluce: hide the focuser calibration on the ESATTO, which has no calibration command, and report the home sensor reset of an inward move near 0
+c7513fd72 Rumen G.Bogdanovski | indigo.xcodeproj: add the missing archived PrimaLuce task records, completions and finding to the project navigator
+4a5b7837f Rumen G.Bogdanovski | indigo_focuser_primaluce: prefer the serial port of a CP2102N bridge with the Silicon Labs VID/PID 10c4:ea60
+83899ad9b Rumen G.Bogdanovski | indigo_focuser_primaluce: record the hardware check of the serial port preselection
+7a586b925 Peter Polakovic | Fix CGUSB-ST4 guide commands to use the PHD2 numeric protocol
+344aba0b5 Peter Polakovic | Verify inverted ST4 declination response away from the pole
+30d172d37 Peter Polakovic | Confirm inverted ST4 declination response on west pier side
+9c3e0e05d Peter Polakovic | Verify CGUSB-ST4 north south orientation on iEXOS-100
+8c4f8d4ab Peter Polakovic | Confirm NYX ST4 declination reversal with the iEXOS-tested cable
+efb9923f5 Peter Polakovic | Close CGUSB-ST4 investigation at owner request
+44a2ad43b Peter Polakovic | Prefer subagents and audit after twenty completed tasks
+25c92ed42 Peter Polakovic | Update INDIGO Factory to shared subagent and audit policy
+f967c0032 Peter Polakovic | Validate property tool arguments and RAW crop input safely
+312303391 Rumen G.Bogdanovski | indigo_aux_giotto: add the PrimaLuce Lab GIOTTO flat panel driver with light, brightness, presets and settings
+5951a142a Peter Polakovic | Bound server protocol resources and enforce BLOB cache ownership
+ce3a97281 Peter Polakovic | Audit maintained repository and register source-contract findings
+cef89cc21 Peter Polakovic | Fix high-priority core, HTTP resource and mount control audit findings
+21efe303f Peter Polakovic | Bound USB serial enumeration and fix GPS and OmniSim lifecycle checks
+79ff0a781 Rumen G.Bogdanovski | indigo_aux_alto: add the PrimaLuce Lab ALTO cover driver with open, close, position, abort, presets and calibration
+79dcf6d81 Peter Polakovic | Fix core formatting, image processing and agent audit defects
+5e825a54c Rumen G.Bogdanovski | indigo_aux_giotto: keep a light or brightness request that arrives during a poll instead of replacing it with the poll's readback
+679053b19 Rumen G.Bogdanovski | indigo_aux_alto: keep a cover request that arrives during an idle poll instead of letting the poll override or refuse it
+42752eed1 Peter Polakovic | Make imager instance tests fail on teardown errors
+fea5df7cd Peter Polakovic | Move shell compliance tools into indigo_test
+463eb538d Peter Polakovic | Fix scripting callback snapshots and focus batch restoration
+6aaf019da Rumen G.Bogdanovski | indigo_primalucelib: stop token lookups at the end of the parsed reply instead of reading past the token array when a reply uses all 1024 tokens
+52e2e8228 Rumen G.Bogdanovski | indigo_focuser_primaluce: raise the version for the token lookup bound in primalucelib
+851e62435 Rumen G.Bogdanovski | indigo_aux_giotto: raise the version for the token lookup bound in primalucelib
+c5215fd27 Rumen G.Bogdanovski | indigo_aux_alto: raise the version for the token lookup bound in primalucelib
+c5193c103 Peter Polakovic | Validate motion completion, RAW frames and Alpaca capacity
+caa4c7787 Peter Polakovic | Preserve Lunatico focuser requests during connection polling
+6a2a53928 Peter Polakovic | Bound PrimaLuce firmware metadata and escape WiFi credentials
+df9c35e69 Rumen G.Bogdanovski | indigo_primalucelib: select the WiFi mode for all PrimaLuce drivers and refuse SSIDs and passwords WiFi cannot use before sending them
+f397d2ccd Rumen G.Bogdanovski | indigo_focuser_primaluce: switch the WiFi off from station mode by returning to the access point mode and show why credentials are refused
+70452f588 Rumen G.Bogdanovski | indigo_aux_giotto: add WiFi mode, access point and station settings
+bffdb9fff Rumen G.Bogdanovski | indigo_aux_alto: add WiFi mode, access point and station settings, refusing a mode change while the cover moves or calibrates
+0f0847b2e Peter Polakovic | Fix indigo_ccd_rpi for libcamera 0.7 and repair capture defects
+1cb0ab81c Peter Polakovic | Order merged ccd_rpi findings references in the Xcode archive group
+7403aea20 Rumen G.Bogdanovski | indigo_aux_giotto: cut off a long firmware version in INFO instead of overflowing the item
+718c39c4c Rumen G.Bogdanovski | indigo_aux_alto: cut off a long firmware version in INFO instead of overflowing the item
+2fde3af2e Peter Polakovic | Add libcamera CCD driver with USB-free SDK discovery in the generator
+4299f881b Rumen G.Bogdanovski | indigo_primalucelib: report where a controller can be reached over WiFi
+2371aa500 Rumen G.Bogdanovski | indigo_focuser_primaluce: show the WiFi addresses and connection state in X_WIFI_STATUS
+e3aedb7ea Rumen G.Bogdanovski | indigo_aux_giotto: show the WiFi addresses and connection state in X_WIFI_STATUS
+65a6cc2f7 Rumen G.Bogdanovski | indigo_aux_alto: show the WiFi addresses and connection state in X_WIFI_STATUS
+ac55b5440 Rumen G.Bogdanovski | indigo_primalucelib: tell whether a controller can be reached over WiFi
+6bc1b44e0 Rumen G.Bogdanovski | indigo_focuser_primaluce: show X_WIFI_STATUS as IDLE while the controller cannot be reached over WiFi
+8579e3859 Rumen G.Bogdanovski | indigo_aux_giotto: show X_WIFI_STATUS as IDLE while the panel cannot be reached over WiFi
+5aa5660f3 Rumen G.Bogdanovski | indigo_aux_alto: show X_WIFI_STATUS as IDLE while the cover cannot be reached over WiFi
+7d16b6a94 Peter Polakovic | Record the daylight hardware run of the libcamera driver
+8a91e894a Peter Polakovic | indigo_aux_rpio: release only the pins the session exported, report a failed pulse end and configure RP1 inputs
+9ff9ed130 Peter Polakovic | indigo_aux_asiair: report a failed pulse end and keep ports exported by others
+3884fed3e Peter Polakovic | Document the libcamera build dependency and complete the README driver list
+4ce9b20e8 Rumen G.Bogdanovski | indigo_libs: ask for the INDIGO protocol with a request for one device or property, so indigo_prop_tool no longer shows IDLE properties as OK
+93bb23d76 Peter Polakovic | Correct Idle property state documentation
+9af005036 Peter Polakovic | indigo_ccd_ptp: bound PTP reply decoding and publish downloaded object sizes
+e49bfce27 Peter Polakovic | indigo_ccd_ptp: confirm Sony setting writes, retry busy AF after connect, publish camera identity
+971fafaab Peter Polakovic | indigo_ccd_ptp: hide unsupported Fujifilm Bulb, read back rejected settings, attach only PTP interfaces
+04c051737 Peter Polakovic | indigo_ccd_ptp: retry an ignored Sony shutter press, delay reopening a Sony session
+37ad41200 Rumen G.Bogdanovski | indigo_test: add an opt-in Valgrind leak check of indigo_server with the simulator drivers
+436b2e415 Rumen G.Bogdanovski | indigo_libs: release CCD_FPS when a CCD device detaches, every camera leaked it on unload or unplug
+c7c82c514 Rumen G.Bogdanovski | indigo_agent_guider: release the Multi Kernel GP reset property when the agent detaches
+b8eb19db0 Rumen G.Bogdanovski | indigo_agent_astrometry: free the agent's private data at shutdown
+b2e62cc29 Rumen G.Bogdanovski | indigo_test: give the astrometry polar alignment cases distinct references, identical ones are refused since the core audit fixes
+c3b89eaed Rumen G.Bogdanovski | indigo_test: check the CCD simulator mount-following case for the side of the pier the mount takes, it failed at times of day that put the mount west
+5e9a17c2b Peter Polakovic | indigo_ccd_ptp: Sony live view after a capture, discard images of aborted old-API shots; Xcode cleanup
+7834bfc50 Peter Polakovic | Exclude Factory metadata from INDIGO Xcode project
+df6212d59 Peter Polakovic | indigo_ccd_ptp: retry ignored Sony presses, confirm late Sony writes, drain leftover old-API images
+a00e5ab4f Peter Polakovic | indigo_ccd_ptp: write Sony PriorityMode, discard a shot interrupted by a reconnect, guard ObjectInMemory lag
+664f00402 Peter Polakovic | indigo_server: keep the sign of sub-degree sexagesimal values and format fractional-hour HOST_TIME offsets in the browser UI
+2ea396fe4 Peter Polakovic | indigo_wheel_quantum: bound a slot move with a deadline and run it as a finalizer
+e72ef3343 Peter Polakovic | indigo_libs: report a gzip stream that does not fit the output buffer as a compression failure
+9cd5c5437 Peter Polakovic | indigo_wheel_trutek: end a move that keeps reporting slot 0 after a deadline
+246133b2f Peter Polakovic | indigo_server: let DRIVERS enable reinitialize a static driver unloaded through UNLOAD
+854d3a2eb Peter Polakovic | indigo_wheel_xagyl: end a move that keeps reporting another slot after a deadline
+930a51de5 Peter Polakovic | indigo_wheel_asi: end a move or calibration whose position stays unknown after a deadline
+79d845055 Peter Polakovic | indigo_wheel_trutek: reject filter counts the slot properties cannot hold
+3f730cf2d Peter Polakovic | indigo_wheel_xagyl: reject filter counts the slot properties cannot hold
+57639a2cf Peter Polakovic | indigo_wheel_qhy: reject CFW3 filter counts the slot properties cannot hold
+16e17f90d Peter Polakovic | indigo_aux_fbc: count light impulses and exposures down in finalizers
+b975448f9 Peter Polakovic | indigo_aux_flipflat: poll the cover in a finalizer with a 30 s deadline
+811a3db42 Peter Polakovic | aux_flipflat_simulator.ino: keep the receive buffer NUL terminated
+3527d6b86 Peter Polakovic | dome_nexdome3_simulator.ino: reserve room for the receive buffer terminator
+104dfdde2 Peter Polakovic | ao_sx_simulator.ino: clamp each axis at its limit in all four directions
+3d795bb4d Peter Polakovic | indigo_wheel_playerone: bound every move, not only the initial positioning
+fe7c177a6 Peter Polakovic | indigo_raw_utils: exclude stars only inside the rectangle, keep the PSF map to measured stars, free the Bahtinov binarized frame
+56f1a24f3 Peter Polakovic | indigo_stretch: interpolate Bayer frame edges from in-bounds neighbours only
+116286712 Peter Polakovic | indigo_avi, indigo_ser: report failed or short writes and seeks, count frames only after a complete write
+4de1a6440 Peter Polakovic | indigo_ccd_driver: publish ALERT and remove the file when a local image save is incomplete
+43c48ebd0 Peter Polakovic | indigo_mount_pmc8: stop and fail a park that keeps moving past its deadline
+20538c1cf Peter Polakovic | indigo_mount_temma: stop and fail a GOTO whose slew status never clears
+abc7c2e94 Peter Polakovic | indigo_focuser_nfocus: stop and fail a move whose status stays moving past a deadline
+75cc5d1a5 Peter Polakovic | indigo_mount_ioptron: alert an HC8406 guide pulse whose stop command fails
+44d41ded0 Peter Polakovic | indigo_aux_svbpowerbox: bound the boot log drain to 3 seconds
+363f75254 Peter Polakovic | indigo_aux_usbdp: close the port when the identification fails
+3a5cef6b5 Peter Polakovic | indigo_ccd_simulator: refuse a truncated RAW file for the file camera
+4ac99e0ec Peter Polakovic | indigo_rotator_falcon: alert and keep the direction when FN is not acknowledged
+3741304cc Peter Polakovic | indigo_focuser_lakeside: stop a move that keeps reporting the same position
+bb697e6aa Peter Polakovic | indigo_aux_upb: leave a queued focuser request BUSY in the poll
+316e75b16 Peter Polakovic | indigo_ccd_dsi: fail an exposure whose setup or start fails and a short image plane
+566f24791 Peter Polakovic | indigo_focuser_optec: bound a whole move so endless ER= reports cannot keep it BUSY
+28e655064 Peter Polakovic | indigo_mount_nexstar: stop and fail a park whose goto never completes
+417f06e0b Peter Polakovic | indigo_uni_io, indigo_io: keep HID close away from descriptor cleanup, send legacy formatted output that exceeds the buffer
+4b2091e9e Peter Polakovic | indigo_client, indigo_bus: refuse registry entries at capacity, bound indigo_query_slave_devices() by max
+59c2eac71 Peter Polakovic | indigo_session: apply a partial SESSION_FEATURES change to the values of the requesting client
+63615d85a Peter Polakovic | indigo_test: make ASSERT_NEAR reject NaN, unmatched infinities and invalid tolerances
+71fae40ef Peter Polakovic | indigocat: apply proper motion when only one of its components is nonzero
+637e56c56 Peter Polakovic | indigo_align: convert negative cartesian axes and the south pole to the right spherical point
+66ca2066a Peter Polakovic | indigo_mount_driver: pass coordinates through in MULTI_POINT alignment mode instead of leaving them unset
+1619d4243 Peter Polakovic | indigo_aux_upb: end a focuser request cancelled by abort in ALERT even when SH fails
+9e8c4b2c0 Peter Polakovic | Fix device cloning, image calculations and editor mapping regressions
+957ec8b9e Rumen G.Bogdanovski | indigo_libs: let the plate solver agents solve frames taken through a selected filter and return to the previous filter afterwards
+36ae0832e Rumen G.Bogdanovski | indigo_agent_solver: solve frames with a selected filter
+b6cf75efa Rumen G.Bogdanovski | indigo_agent_astrometry: solve frames with a selected filter
+55152ec27 Peter Polakovic | Stabilize Player One cooler and long-exposure tests
+0d4ab596a Peter Polakovic | Measure Optec cleanup after shared USB initialization
+c373f6255 Peter Polakovic | Synchronize mount simulator abort and recovery checks
+6ead38826 Peter Polakovic | Test iOptron manual motion across the RA wrap
+d1fe673be Peter Polakovic | Cover Temma motion deadlines and recovery
+4a6b6a374 Peter Polakovic | Cover NexStar park deadline and recovery
+4b0998053 Peter Polakovic | Verify registered Lunatico rotator simulator suites
+a39983454 Peter Polakovic | Correct test result recording and remove retired Travis integration
+992d927d7 Rumen G.Bogdanovski | indigo_agent_astrometry: free the solver output buffer left by getline() at the end of every solver command
+0c3436a3e Peter Polakovic | Make shell compliance checks preserve failures and connection state
+eea566731 Peter Polakovic | Fix client example builds and failure handling
+aa8faa422 Peter Polakovic | Fix device enumeration during attachment
+64e965d7f Peter Polakovic | Fix Pentax USB response handling and device cleanup
+2c5744636 Peter Polakovic | Checkpoint Pentax K-m imaging pending USB hardware validation
+34d0c2869 Peter Polakovic | Finalize Pentax software delivery with Linux validation follow-up
+aabaed8ec Peter Polakovic | Restore Pentax automatic USB acquisition with safe Darwin rollback
+c7c2218c3 Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js - set_solver_filter() added to set the filter used for platesolving
+e7220ab6c Peter Polakovic | Port the native quad plate solver into the solver agent
+a4da4fb64 Peter Polakovic | Download the solver indexes from the solver-indexes-v1 GitHub release
+b7a52e6c4 Peter Polakovic | Name the solver index release index_release_v1
+1982e053d Peter Polakovic | Verify the solver agent against the CCD simulators and fix its angle
+32d7396d7 Peter Polakovic | indigo_server: register the solver agent as a static driver
+855c8f571 Peter Polakovic | Bin the simulator cameras over the whole bin block
+e1b9f0cf4 Peter Polakovic | Verify Pentax K-m connection on Raspberry Pi
+a1e7f53d0 Peter Polakovic | agent_solver: filter noise before star detection and accept FITS, JPEG and camera raw input
+ac3c53e2c Peter Polakovic | Move decision records from docs to indigo_docs and record the indigo_docs rule
+c0bbb7870 Peter Polakovic | agent_solver: use the position, parity, depth and CPU limit hints, bin Bayer input and report the fit
+e0a2d5490 Peter Polakovic | Complete Pentax K-m capture validation and correct bulb timing
+c002f790a Peter Polakovic | Close the INDIGO 3.0 refactoring notes: archive REFACTOR.md files and withdraw their rules
+bb09a0d3e Peter Polakovic | Update driver build lists: promote hardware-tested drivers to stable
+3ca61a6e8 Peter Polakovic | Promote aux_rts to stable drivers
+1e7c23390 Peter Polakovic | agent_solver: add the 0.5 degree index built from Gaia DR3
+0c3056986 Rumen G.Bogdanovski | indigo_agent_solver: make the solver core build with MSVC, the image quad grid is allocated on the heap instead of a variable length array and unistd.h is not used
+a78b5a5f1 Rumen G.Bogdanovski | indigo_tools: indigo_solver command line plate solver added, it solves an image file with the Solver agent indexes and takes the hints as switches
+1987f1782 Rumen G.Bogdanovski | indigo_test: test the indigo_solver tool on a synthetic index and frames, all hint switches, invalid arguments and unreadable files
+1397ce7a2 Rumen G.Bogdanovski | indigo_agent_solver: without the pixel scale search the selected indexes stage by stage, the largest index first, instead of all stages of one index after the other
+d03d751b5 Rumen G.Bogdanovski | indigo_tools: indigo_solver searches the indexes like the Solver agent, stage by stage and the largest index first without the scale
+44d787912 Rumen G.Bogdanovski | indigo_agent_solver: select the index nearest to 0.7 x the field size instead of the largest one below 1.5 x the field size
+5282dbf53 Rumen G.Bogdanovski | indigo_tools: indigo_solver orders the indexes by the distance from 0.7 x the field size like the Solver agent
+2d4fe4000 Rumen G.Bogdanovski | indigo_agent_solver: report the rotation angle of non-mirrored frames in the astrometry.net convention like the Astrometry agent, it was 180 - angle
+c0b5b95d7 Rumen G.Bogdanovski | indigo_tools: indigo_solver_indexer keeps its projection with the corrected angle convention
+8b48e4dd0 Rumen G.Bogdanovski | indigo_libs: indigo_uni_map_file() and indigo_uni_unmap_file() added to map files read only
+cfd6184ea Rumen G.Bogdanovski | indigo_agent_solver: memory mapped index files of version 2 and a compact layout for version 1, the bucket table is stored instead of rebuilt for every match
+79242e0d5 Rumen G.Bogdanovski | indigo_tools: indigo_solver_indexer writes index files of version 2 and converts version 1 files with -c, indigo_solver uses the compact catalog
+89285d2c7 Rumen G.Bogdanovski | indigo_docs: SOLVER_INDEX_FORMAT.md describes the solver index files of version 1 and 2
+ecef3d138 Rumen G.Bogdanovski | indigo_agent_solver: renamed to INDIGO Solver Agent, the Imager and Mount agents recognise it under the new and the old name
+113c23100 Rumen G.Bogdanovski | indigo_agent_solver: index files of version 1 are no longer read, indigo_solver_indexer -c removed, the tests use version 2 only
+9c1d085a5 Rumen G.Bogdanovski | indigo_docs: SOLVER_INDEX_FORMAT.md describes version 2 only
+ea9602032 Rumen G.Bogdanovski | indigo_agent_solver: indexes are downloaded from index_release_v2, sizes of the version 2 files
+77f21bf14 Rumen G.Bogdanovski | indigo_libs: indigo_find_stars_fast_threshold() added, it evaluates only the brightest local maxima
+2abc335e8 Rumen G.Bogdanovski | indigo_agent_solver: stars are detected with indigo_find_stars_fast_threshold()
+61fcb3109 Rumen G.Bogdanovski | indigo_agent_solver: index management as in indigo_agent_astrometry, native index download on Windows, curl download killed on abort and exit
+846c01561 Rumen G.Bogdanovski | indigo_agent_solver: Visual Studio project added, the agent is built on Windows
+d03442596 Rumen G.Bogdanovski | indigo_tools: indigo_solver Windows project finds libraw.h
+0c856dddf Rumen G.Bogdanovski | indigo_agent_solver: Visual Studio project finds libraw.h
+4298ab53e Rumen G.Bogdanovski | indigo_agent_solver: newly downloaded indexes are selected for use as in indigo_agent_astrometry
+d924fa6b3 Rumen G.Bogdanovski | indigo_tools: compare_solvers.py solves an image with the INDIGO solver and astrometry.net and compares the results
+dd506196f Rumen G.Bogdanovski | indigo_agent_solver: index files and items are named by zero padded scale, item labels give the fields they solve
+28aabf374 Rumen G.Bogdanovski | indigo_agent_solver: the agent and indigo_solver share the index names giving the fields they solve
+53bb21402 Rumen G.Bogdanovski | indigo_tools: indigo_solver prints a negative Dec with a single minus sign
+2dce31412 Rumen G.Bogdanovski | indigo_agent_solver: the position hint marks the catalog stars in the cone instead of copying its quads, hinted solves no longer read the whole index
+8e6a1d484 Rumen G.Bogdanovski | indigo_agent_solver: indexes are searched stage by stage also with the pixel scale, a wrong scale no longer runs all stages on every index that does not fit
+21d2af5c5 Rumen G.Bogdanovski | indigo_agent_solver and indigo_solver: optimized
+a47792348 Peter Polakovic | indigo_agent_solver: 0.2 degree index built from Gaia DR3 for fields of 0.1 to 0.45 degree
+a5d9ebd4e Rumen G.Bogdanovski | indigo_agent_solver: FITS images of BITPIX 16 without BZERO are read as unsigned, saturated star cores stored as negative values no longer break the solve, FITS rows are converted and binned without per pixel format checks
+68e52ca92 Rumen G.Bogdanovski | indigo_agent_solver: the index tried during a solve is logged at the debug level only instead of being sent to clients
+546aa0c6c Rumen G.Bogdanovski | indigo_ccd_touptek: SDK updated to 60.33015.20261024
+a8acb02c9 Rumen G.Bogdanovski | indigo_ccd_altair: SDK updated to 60.33015.20261024
+c6a15c823 Rumen G.Bogdanovski | indigo_ccd_baccam: SDK updated to 60.33015.20261024
+0f5c8ecd5 Rumen G.Bogdanovski | indigo_ccd_bresser: SDK updated to 60.33015.20261024
+56a6925b9 Rumen G.Bogdanovski | indigo_ccd_mallin: SDK updated to 60.33015.20261024
+5f4d6ad19 Rumen G.Bogdanovski | indigo_ccd_ogma: SDK updated to 60.33015.20261024
+9f50c1c92 Rumen G.Bogdanovski | indigo_ccd_omegonpro: SDK updated to 60.33015.20261024
+dfba3b3ca Rumen G.Bogdanovski | indigo_ccd_rising: SDK updated to 60.33015.20261024
+90e8424bd Rumen G.Bogdanovski | indigo_ccd_svb2: SDK updated to 60.33015.20261024
+aabadb28b Peter Polakovic | indigo_agent_alpaca: the guider of a mount is connected only for an Alpaca client that connected the mount, a mount connected by the Mount Agent no longer takes the guider from the Guider Agent
+10a0fa252 Peter Polakovic | Prevent Astrometry Agent loading alongside Solver Agent
+4a42e89d2 Peter Polakovic | Prevent Solver Agent loading alongside Astrometry Agent
+42011325b Peter Polakovic | Fix bounds and radius sizing in precise and fast star detection
+127036f03 Peter Polakovic | Read Gaia catalog paths literally without a shell
+bbf55dcc8 Peter Polakovic | Handle catalog, JSON and narrow image data safely
+2f153803a Peter Polakovic | Reject malformed FITS header numbers before conversion
+a87e29f5a Peter Polakovic | Alert when Trutek filter wheel stops at the wrong slot
+8489f012c Peter Polakovic | Verify ASI rotator arrival for commanded moves
+3c137d784 Peter Polakovic | Make test verdicts reject missing execution and failed exercises
+d96f9446f Peter Polakovic | Preserve Astrometry exclusion with renamed Platesolver Agent
+28c8da837 Peter Polakovic | Recognize Platesolver Agent in Imager related devices
+5154369b9 Peter Polakovic | Recognize Platesolver Agent in Mount related devices
+2b040e9b6 Peter Polakovic | Rename Solver Agent identity to Platesolver Agent
+6e2b8aa12 Peter Polakovic | Separate incremental and quarterly repository audits
+3a6425a2c Rumen G.Bogdanovski | indigo_agent_imager: automatic solving is disabled also on the Platesolver Agent before imager processes
+09a7018fc Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js uses the loaded solver agent, Platesolver Agent included, instead of a fixed Astrometry Agent
+9322e99f9 Rumen G.Bogdanovski | indigo_server: web UI drives the loaded solver agent, Platesolver Agent included, instead of a fixed Astrometry Agent
+8d1aaa542 Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js finds the solver agent also on another host than the imager agent
+4c3bc0a29 Rumen G.Bogdanovski | indigo_agent_scripting: Factory record of the solver agent integration, the astrometry page selects the related agents also on first load
+a5c7b08dd Rumen G.Bogdanovski | factory: separate Factory and code commits, Factory commit messages start with factory
+918df764e Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js selects the solver agent automatically or by the select_solver_agent step instead of a start argument
+e0f97cfe5 Peter Polakovic | Guard native solver image geometry and document hint and parity contracts
+14c6b5085 Peter Polakovic | Reject malformed generator tokens and propagate custom harness failures
+2e193c5f4 Peter Polakovic | indigo_ccd_atik2: retain pulse stop after rejected replacement
+f6ae4baec Peter Polakovic | indigo_ccd_pentax: avoid ownership acquisition with full registry
+d0a890e4b Peter Polakovic | indigo_rotator_falcon: keep motion busy and service abort and disconnect through queued finalizers
+f44dae135 Peter Polakovic | indigo_wheel_trutek: reject corrupt checksums before consuming device replies
+15daea26d Peter Polakovic | indigo_aux_astromechanics: reject malformed and unterminated measurements without locale dependence
+3b5810bc3 Peter Polakovic | indigo_aux_flipflat: validate operation and device acknowledgements before reporting success
+22fe48dc3 Peter Polakovic | primalucelib: reject negative access point acknowledgements and preserve refused ALTO simulator state
+2f6797bc6 Peter Polakovic | Register focused regressions and synchronize verified driver test inventories
+7d969f69f Peter Polakovic | Support polaralign definitions throughout the local driver editor
+79eb63168 Peter Polakovic | Reset initialized state when driver registration slots are reused or removed
+0147a2d80 Peter Polakovic | indigo_agent_platesolver: validate catalog star references before deriving indexes
+db3ed6e9c Peter Polakovic | primalucelib: reject LED refusals while retaining documented acknowledgement variants
+0ba79cef5 Peter Polakovic | indigo_ccd_ptp: bound property replies and variable Canon format entries
+d02bc87dc Peter Polakovic | Bound complete HTTP framing and safely trim blank access-list records
+1da859957 Peter Polakovic | Harden standalone tool file and process failure handling
+9ba6da629 Peter Polakovic | Track tool I/O header dependencies and retain portable write counts
+71512db3c Peter Polakovic | indigo_focuser_wemacro_bt: release connection ownership after unexpected loss
+173af9aec Peter Polakovic | indigo_focuser_mjkzz_bt: validate notification integrity before decoding values
+0b7c0c958 Peter Polakovic | mount_temma simulator: match maintained standby and speed reply contracts
+4d9f5a21f Peter Polakovic | ao_sx simulator: reject firmware replies exceeding the fixed buffer
+2047b29c0 Peter Polakovic | indigo_focuser_lakeside: measure motion stalls by monotonic elapsed time
+1aaa646ea Peter Polakovic | indigo_mount_nexstar: bound GOTO completion and stop timed out slews
+d1b3385bf Peter Polakovic | Register focused transport and tool regressions with current driver inventories
+2e079368b Peter Polakovic | Fix simulator hot-pixel writes beyond the subframe bottom edge
+5f168e82c Peter Polakovic | Fix editor catalogs, worktree build stamps and guide links
+db20f8189 Peter Polakovic | factory: record four tooling repairs and clarify commit separation
+e2c72fb23 Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js solver steps, abort and meridian flip use the solver agent loaded at the time instead of the one selected at the start of the sequence, the meridian flip fails instead of waiting forever when no solver agent is loaded
+580fccc2a Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js meridian flip failures follow the failure policy of the sequence instead of always aborting it, recover_on_failure() continues at the next recovery point, the HA limit disabled by the flip is restored on failure
+fe8883240 Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js keeps SEQUENCE_STATE and the step state when a meridian flip fails or an abort runs outside of a sequence, they go to alert only inside a sequence
+f2b67e0bd Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js step timers of an aborted or failed sequence do nothing instead of changing the step state or advancing the next sequence, abort completes when a timer is already firing
+0779f37a0 Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js a meridian flip failure is applied once when the step or altitude poll timer is already firing instead of being lost, altitude poll timers of an aborted or failed sequence do nothing
+86b84daa4 Rumen G.Bogdanovski | indigo_agent_scripting: Sequencer.js autoselection uses the solver agent on the host of the loaded imager agent, then the local one, then one on another host, an imager agent which is not loaded does not count
+d2e29d2f3 Rumen G.Bogdanovski | version ++
