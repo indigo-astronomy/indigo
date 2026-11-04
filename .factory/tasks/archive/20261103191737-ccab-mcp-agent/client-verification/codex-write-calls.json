@@ -1,0 +1,224 @@
+[
+  {
+    "id": "item_1",
+    "type": "mcp_tool_call",
+    "server": "indigo_smoke",
+    "tool": "get_property",
+    "arguments": {
+      "device": "CCD Imager Simulator",
+      "property": "PROFILE_NAME"
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"device\":\"CCD Imager Simulator\",\"name\":\"PROFILE_NAME\",\"label\":\"Profile names\",\"group\":\"Main\",\"type\":\"text\",\"state\":\"Ok\",\"permission\":\"rw\",\"items\":[{\"name\":\"NAME_0\",\"label\":\"Name #0\",\"value\":\"Profile #0\"},{\"name\":\"NAME_1\",\"label\":\"Name #1\",\"value\":\"Profile #1\"},{\"name\":\"NAME_2\",\"label\":\"Name #2\",\"value\":\"Profile #2\"},{\"name\":\"NAME_3\",\"label\":\"Name #3\",\"value\":\"Profile #3\"},{\"name\":\"NAME_4\",\"label\":\"Name #4\",\"value\":\"Profile #4\"}]}"
+        }
+      ],
+      "structured_content": {
+        "device": "CCD Imager Simulator",
+        "name": "PROFILE_NAME",
+        "label": "Profile names",
+        "group": "Main",
+        "type": "text",
+        "state": "Ok",
+        "permission": "rw",
+        "items": [
+          {
+            "name": "NAME_0",
+            "label": "Name #0",
+            "value": "Profile #0"
+          },
+          {
+            "name": "NAME_1",
+            "label": "Name #1",
+            "value": "Profile #1"
+          },
+          {
+            "name": "NAME_2",
+            "label": "Name #2",
+            "value": "Profile #2"
+          },
+          {
+            "name": "NAME_3",
+            "label": "Name #3",
+            "value": "Profile #3"
+          },
+          {
+            "name": "NAME_4",
+            "label": "Name #4",
+            "value": "Profile #4"
+          }
+        ]
+      }
+    },
+    "error": null,
+    "status": "completed"
+  },
+  {
+    "id": "item_2",
+    "type": "mcp_tool_call",
+    "server": "indigo_smoke",
+    "tool": "set_property",
+    "arguments": {
+      "device": "CCD Imager Simulator",
+      "property": "PROFILE_NAME",
+      "items": {
+        "NAME_0": "MCP Codex verification"
+      }
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"dispatched\":true,\"completion\":\"not_confirmed\"}"
+        }
+      ],
+      "structured_content": {
+        "dispatched": true,
+        "completion": "not_confirmed"
+      }
+    },
+    "error": null,
+    "status": "completed"
+  },
+  {
+    "id": "item_3",
+    "type": "mcp_tool_call",
+    "server": "indigo_smoke",
+    "tool": "get_property",
+    "arguments": {
+      "device": "CCD Imager Simulator",
+      "property": "PROFILE_NAME"
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"device\":\"CCD Imager Simulator\",\"name\":\"PROFILE_NAME\",\"label\":\"Profile names\",\"group\":\"Main\",\"type\":\"text\",\"state\":\"Ok\",\"permission\":\"rw\",\"items\":[{\"name\":\"NAME_0\",\"label\":\"Name #0\",\"value\":\"MCP Codex verification\"},{\"name\":\"NAME_1\",\"label\":\"Name #1\",\"value\":\"Profile #1\"},{\"name\":\"NAME_2\",\"label\":\"Name #2\",\"value\":\"Profile #2\"},{\"name\":\"NAME_3\",\"label\":\"Name #3\",\"value\":\"Profile #3\"},{\"name\":\"NAME_4\",\"label\":\"Name #4\",\"value\":\"Profile #4\"}]}"
+        }
+      ],
+      "structured_content": {
+        "device": "CCD Imager Simulator",
+        "name": "PROFILE_NAME",
+        "label": "Profile names",
+        "group": "Main",
+        "type": "text",
+        "state": "Ok",
+        "permission": "rw",
+        "items": [
+          {
+            "name": "NAME_0",
+            "label": "Name #0",
+            "value": "MCP Codex verification"
+          },
+          {
+            "name": "NAME_1",
+            "label": "Name #1",
+            "value": "Profile #1"
+          },
+          {
+            "name": "NAME_2",
+            "label": "Name #2",
+            "value": "Profile #2"
+          },
+          {
+            "name": "NAME_3",
+            "label": "Name #3",
+            "value": "Profile #3"
+          },
+          {
+            "name": "NAME_4",
+            "label": "Name #4",
+            "value": "Profile #4"
+          }
+        ]
+      }
+    },
+    "error": null,
+    "status": "completed"
+  },
+  {
+    "id": "item_4",
+    "type": "mcp_tool_call",
+    "server": "indigo_smoke",
+    "tool": "set_property",
+    "arguments": {
+      "device": "CCD Imager Simulator",
+      "property": "PROFILE_NAME",
+      "items": {
+        "NAME_0": "Profile #0"
+      }
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"dispatched\":true,\"completion\":\"not_confirmed\"}"
+        }
+      ],
+      "structured_content": {
+        "dispatched": true,
+        "completion": "not_confirmed"
+      }
+    },
+    "error": null,
+    "status": "completed"
+  },
+  {
+    "id": "item_5",
+    "type": "mcp_tool_call",
+    "server": "indigo_smoke",
+    "tool": "get_property",
+    "arguments": {
+      "device": "CCD Imager Simulator",
+      "property": "PROFILE_NAME"
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"device\":\"CCD Imager Simulator\",\"name\":\"PROFILE_NAME\",\"label\":\"Profile names\",\"group\":\"Main\",\"type\":\"text\",\"state\":\"Ok\",\"permission\":\"rw\",\"items\":[{\"name\":\"NAME_0\",\"label\":\"Name #0\",\"value\":\"Profile #0\"},{\"name\":\"NAME_1\",\"label\":\"Name #1\",\"value\":\"Profile #1\"},{\"name\":\"NAME_2\",\"label\":\"Name #2\",\"value\":\"Profile #2\"},{\"name\":\"NAME_3\",\"label\":\"Name #3\",\"value\":\"Profile #3\"},{\"name\":\"NAME_4\",\"label\":\"Name #4\",\"value\":\"Profile #4\"}]}"
+        }
+      ],
+      "structured_content": {
+        "device": "CCD Imager Simulator",
+        "name": "PROFILE_NAME",
+        "label": "Profile names",
+        "group": "Main",
+        "type": "text",
+        "state": "Ok",
+        "permission": "rw",
+        "items": [
+          {
+            "name": "NAME_0",
+            "label": "Name #0",
+            "value": "Profile #0"
+          },
+          {
+            "name": "NAME_1",
+            "label": "Name #1",
+            "value": "Profile #1"
+          },
+          {
+            "name": "NAME_2",
+            "label": "Name #2",
+            "value": "Profile #2"
+          },
+          {
+            "name": "NAME_3",
+            "label": "Name #3",
+            "value": "Profile #3"
+          },
+          {
+            "name": "NAME_4",
+            "label": "Name #4",
+            "value": "Profile #4"
+          }
+        ]
+      }
+    },
+    "error": null,
+    "status": "completed"
+  }
+]

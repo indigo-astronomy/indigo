@@ -1,0 +1,24 @@
+{
+  "title": "Present empty MCP protocol-version header treated as absent",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103191737-ccab-mcp-agent",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The new skeleton accepted a present empty or whitespace-only MCP-Protocol-Version for initialize/ping as if the header were absent. Add an explicit nonempty-value guard; regression and final verification are recorded in the origin task.",
+  "evidence": "verification.md, MCP skeleton increment / Found defects and fixes; source-audit discovery and final native/sanitizer regression.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Origin verification.md MCP skeleton / Found defects and fixes; final recorded native14/14 and final ASan/UBSan14/14, with independent reviewer source inspection and sanitizer rerun.",
+    "approved_by": "Independent mcp_review verification; no risk acceptance",
+    "duplicate_of": null
+  },
+  "id": "FND-20261103191737-ccab-mcp-agent-001"
+}

@@ -579,13 +579,18 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							}
 						}
 					}
-				} else if (!strncmp(request, "PUT /", 5)) {
-					char *path = request + 4;
+				} else if (!strncmp(request, "PUT /", 5) || !strncmp(request, "POST /", 6)) {
+					bool post = !strncmp(request, "POST /", 6);
+					char *path = request + (post ? 5 : 4);
 					char *space = strchr(path, ' ');
 					if (space) {
 						*space = 0;
 					}
 					if (!strncmp(path, "/blob/", 6)) {
+						if (post) {
+							INDIGO_PRINTF(handle, "HTTP/1.1 405 Method Not Allowed\r\nAllow: GET, PUT\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+							goto failure;
+						}
 						indigo_item *item;
 						indigo_blob_entry *entry;
 						if (sscanf(path, "/blob/%p.", &item) && (entry = release_at_exit = indigo_acquire_blob(item))) {
@@ -608,7 +613,10 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							INDIGO_TRACE(indigo_trace("%d <- // %s not found", handle->index, path));
 							goto failure;
 						} else if (resource->handler) {
-							keep_alive = resource->handler(handle, "PUT", path, NULL);
+							keep_alive = resource->handler(handle, post ? "POST" : "PUT", path, NULL);
+						} else if (post) {
+							INDIGO_PRINTF(handle, "HTTP/1.1 405 Method Not Allowed\r\nAllow: GET\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+							goto failure;
 						}
 					}
 				}

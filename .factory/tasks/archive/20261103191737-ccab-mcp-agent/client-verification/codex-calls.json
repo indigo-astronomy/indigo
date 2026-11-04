@@ -1,0 +1,295 @@
+[
+  {
+    "server": "indigo_smoke",
+    "tool": "list_devices",
+    "arguments": {},
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"devices\":[{\"name\":\"Server\"},{\"name\":\"CCD Imager Simulator\"},{\"name\":\"CCD Guider Simulator\"},{\"name\":\"CCD Bahtinov Mask Simulator\"},{\"name\":\"DSLR Simulator\"},{\"name\":\"CCD File Simulator\"},{\"name\":\"CCD Imager Simulator (wheel)\"},{\"name\":\"CCD Imager Simulator (focuser)\"},{\"name\":\"CCD Guider Simulator (guider)\"},{\"name\":\"CCD Guider Simulator (AO)\"},{\"name\":\"Mount Simulator\"},{\"name\":\"Mount Simulator (guider)\"},{\"name\":\"MCP Agent\"}]}"
+        }
+      ],
+      "structured_content": {
+        "devices": [
+          {
+            "name": "Server"
+          },
+          {
+            "name": "CCD Imager Simulator"
+          },
+          {
+            "name": "CCD Guider Simulator"
+          },
+          {
+            "name": "CCD Bahtinov Mask Simulator"
+          },
+          {
+            "name": "DSLR Simulator"
+          },
+          {
+            "name": "CCD File Simulator"
+          },
+          {
+            "name": "CCD Imager Simulator (wheel)"
+          },
+          {
+            "name": "CCD Imager Simulator (focuser)"
+          },
+          {
+            "name": "CCD Guider Simulator (guider)"
+          },
+          {
+            "name": "CCD Guider Simulator (AO)"
+          },
+          {
+            "name": "Mount Simulator"
+          },
+          {
+            "name": "Mount Simulator (guider)"
+          },
+          {
+            "name": "MCP Agent"
+          }
+        ]
+      }
+    },
+    "error": null,
+    "status": "completed"
+  },
+  {
+    "server": "indigo_smoke",
+    "tool": "list_properties",
+    "arguments": {
+      "device": "CCD Imager Simulator"
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"properties\":[{\"device\":\"CCD Imager Simulator\",\"name\":\"INFO\",\"label\":\"Device info\",\"group\":\"Main\",\"type\":\"text\",\"state\":\"Ok\",\"permission\":\"ro\",\"items\":[{\"name\":\"DEVICE_NAME\",\"label\":\"Device name\"},{\"name\":\"DEVICE_DRIVER\",\"label\":\"Driver name\"},{\"name\":\"DEVICE_VERSION\",\"label\":\"Driver version\"},{\"name\":\"DEVICE_INTERFACE\",\"label\":\"Interface\"}]},{\"device\":\"CCD Imager Simulator\",\"name\":\"SIMULATION\",\"label\":\"Simulation status\",\"group\":\"Main\",\"type\":\"switch\",\"state\":\"Ok\",\"permission\":\"ro\",\"rule\":\"OneOfMany\",\"items\":[{\"name\":\"ENABLED\",\"label\":\"Enabled\"},{\"name\":\"DISABLED\",\"label\":\"Disabled\"}]},{\"device\":\"CCD Imager Simulator\",\"name\":\"CONFIG\",\"label\":\"Configuration control\",\"group\":\"Main\",\"type\":\"switch\",\"state\":\"Ok\",\"permission\":\"rw\",\"rule\":\"AtMostOne\",\"items\":[{\"name\":\"SAVE\",\"label\":\"Save\"}]},{\"device\":\"CCD Imager Simulator\",\"name\":\"PROFILE_NAME\",\"label\":\"Profile names\",\"group\":\"Main\",\"type\":\"text\",\"state\":\"Ok\",\"permission\":\"rw\",\"items\":[{\"name\":\"NAME_0\",\"label\":\"Name #0\"},{\"name\":\"NAME_1\",\"label\":\"Name #1\"},{\"name\":\"NAME_2\",\"label\":\"Name #2\"},{\"name\":\"NAME_3\",\"label\":\"Name #3\"},{\"name\":\"NAME_4\",\"label\":\"Name #4\"}]},{\"device\":\"CCD Imager Simulator\",\"name\":\"PROFILE\",\"label\":\"Profile selection\",\"group\":\"Main\",\"type\":\"switch\",\"state\":\"Ok\",\"permission\":\"rw\",\"rule\":\"OneOfMany\",\"items\":[{\"name\":\"PROFILE_0\",\"label\":\"Profile #0\"},{\"name\":\"PROFILE_1\",\"label\":\"Profile #1\"},{\"name\":\"PROFILE_2\",\"label\":\"Profile #2\"},{\"name\":\"PROFILE_3\",\"label\":\"Profile #3\"},{\"name\":\"PROFILE_4\",\"label\":\"Profile #4\"}]},{\"device\":\"CCD Imager Simulator\",\"name\":\"ADDITIONAL_INSTANCES\",\"label\":\"Additional instances\",\"group\":\"Main\",\"type\":\"number\",\"state\":\"Ok\",\"permission\":\"rw\",\"items\":[{\"name\":\"COUNT\",\"label\":\"Count\",\"min\":0,\"max\":4,\"step\":1,\"format\":\"%g\"}]},{\"device\":\"CCD Imager Simulator\",\"name\":\"CONNECTION\",\"label\":\"Connection status\",\"group\":\"Main\",\"type\":\"switch\",\"state\":\"Ok\",\"permission\":\"rw\",\"rule\":\"OneOfMany\",\"items\":[{\"name\":\"CONNECTED\",\"label\":\"Connected\"},{\"name\":\"DISCONNECTED\",\"label\":\"Disconnected\"}]}]}"
+        }
+      ],
+      "structured_content": {
+        "properties": [
+          {
+            "device": "CCD Imager Simulator",
+            "name": "INFO",
+            "label": "Device info",
+            "group": "Main",
+            "type": "text",
+            "state": "Ok",
+            "permission": "ro",
+            "items": [
+              {
+                "name": "DEVICE_NAME",
+                "label": "Device name"
+              },
+              {
+                "name": "DEVICE_DRIVER",
+                "label": "Driver name"
+              },
+              {
+                "name": "DEVICE_VERSION",
+                "label": "Driver version"
+              },
+              {
+                "name": "DEVICE_INTERFACE",
+                "label": "Interface"
+              }
+            ]
+          },
+          {
+            "device": "CCD Imager Simulator",
+            "name": "SIMULATION",
+            "label": "Simulation status",
+            "group": "Main",
+            "type": "switch",
+            "state": "Ok",
+            "permission": "ro",
+            "rule": "OneOfMany",
+            "items": [
+              {
+                "name": "ENABLED",
+                "label": "Enabled"
+              },
+              {
+                "name": "DISABLED",
+                "label": "Disabled"
+              }
+            ]
+          },
+          {
+            "device": "CCD Imager Simulator",
+            "name": "CONFIG",
+            "label": "Configuration control",
+            "group": "Main",
+            "type": "switch",
+            "state": "Ok",
+            "permission": "rw",
+            "rule": "AtMostOne",
+            "items": [
+              {
+                "name": "SAVE",
+                "label": "Save"
+              }
+            ]
+          },
+          {
+            "device": "CCD Imager Simulator",
+            "name": "PROFILE_NAME",
+            "label": "Profile names",
+            "group": "Main",
+            "type": "text",
+            "state": "Ok",
+            "permission": "rw",
+            "items": [
+              {
+                "name": "NAME_0",
+                "label": "Name #0"
+              },
+              {
+                "name": "NAME_1",
+                "label": "Name #1"
+              },
+              {
+                "name": "NAME_2",
+                "label": "Name #2"
+              },
+              {
+                "name": "NAME_3",
+                "label": "Name #3"
+              },
+              {
+                "name": "NAME_4",
+                "label": "Name #4"
+              }
+            ]
+          },
+          {
+            "device": "CCD Imager Simulator",
+            "name": "PROFILE",
+            "label": "Profile selection",
+            "group": "Main",
+            "type": "switch",
+            "state": "Ok",
+            "permission": "rw",
+            "rule": "OneOfMany",
+            "items": [
+              {
+                "name": "PROFILE_0",
+                "label": "Profile #0"
+              },
+              {
+                "name": "PROFILE_1",
+                "label": "Profile #1"
+              },
+              {
+                "name": "PROFILE_2",
+                "label": "Profile #2"
+              },
+              {
+                "name": "PROFILE_3",
+                "label": "Profile #3"
+              },
+              {
+                "name": "PROFILE_4",
+                "label": "Profile #4"
+              }
+            ]
+          },
+          {
+            "device": "CCD Imager Simulator",
+            "name": "ADDITIONAL_INSTANCES",
+            "label": "Additional instances",
+            "group": "Main",
+            "type": "number",
+            "state": "Ok",
+            "permission": "rw",
+            "items": [
+              {
+                "name": "COUNT",
+                "label": "Count",
+                "min": 0,
+                "max": 4,
+                "step": 1,
+                "format": "%g"
+              }
+            ]
+          },
+          {
+            "device": "CCD Imager Simulator",
+            "name": "CONNECTION",
+            "label": "Connection status",
+            "group": "Main",
+            "type": "switch",
+            "state": "Ok",
+            "permission": "rw",
+            "rule": "OneOfMany",
+            "items": [
+              {
+                "name": "CONNECTED",
+                "label": "Connected"
+              },
+              {
+                "name": "DISCONNECTED",
+                "label": "Disconnected"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "error": null,
+    "status": "completed"
+  },
+  {
+    "server": "indigo_smoke",
+    "tool": "get_property",
+    "arguments": {
+      "device": "CCD Imager Simulator",
+      "property": "INFO"
+    },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"device\":\"CCD Imager Simulator\",\"name\":\"INFO\",\"label\":\"Device info\",\"group\":\"Main\",\"type\":\"text\",\"state\":\"Ok\",\"permission\":\"ro\",\"items\":[{\"name\":\"DEVICE_NAME\",\"label\":\"Device name\",\"value\":\"CCD Imager Simulator\"},{\"name\":\"DEVICE_DRIVER\",\"label\":\"Driver name\",\"value\":\"indigo_ccd_simulator\"},{\"name\":\"DEVICE_VERSION\",\"label\":\"Driver version\",\"value\":\"3.0.0.46\"},{\"name\":\"DEVICE_INTERFACE\",\"label\":\"Interface\",\"value\":\"2\"}]}"
+        }
+      ],
+      "structured_content": {
+        "device": "CCD Imager Simulator",
+        "name": "INFO",
+        "label": "Device info",
+        "group": "Main",
+        "type": "text",
+        "state": "Ok",
+        "permission": "ro",
+        "items": [
+          {
+            "name": "DEVICE_NAME",
+            "label": "Device name",
+            "value": "CCD Imager Simulator"
+          },
+          {
+            "name": "DEVICE_DRIVER",
+            "label": "Driver name",
+            "value": "indigo_ccd_simulator"
+          },
+          {
+            "name": "DEVICE_VERSION",
+            "label": "Driver version",
+            "value": "3.0.0.46"
+          },
+          {
+            "name": "DEVICE_INTERFACE",
+            "label": "Interface",
+            "value": "2"
+          }
+        ]
+      }
+    },
+    "error": null,
+    "status": "completed"
+  }
+]

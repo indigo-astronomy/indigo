@@ -1,0 +1,25 @@
+# Read-tools security review
+
+Date: 2026-11-04. Reviewer: independent `mcp_review` subagent on the same host/provider, no implementation/test edits; separate pass by the same reviewer as quality review. Candidate identities and finding reinspection are retained in [read-tools-review.md](read-tools-review.md).
+
+Verdict: **pass for the owner-defined shared-listener read scope**. No new concrete security finding identified. Earlier skeleton/POST/tokenizer review remains in [security.md](security.md). This is neither whole-server certification nor authorization for write tools, deployment, publication or task completion.
+
+## Boundary and policy
+
+The new trust transition exposes cached INDIGO bus data to untrusted headless HTTP clients through the existing listener, only after standard CONNECTION enables the endpoint. The skeleton review's requirement to revisit confidentiality before adding data tools was revisited: the owner explicitly chose every visible RO/RW property, including readable password/token text, and no new authentication, allowlist or name heuristic. WO/hidden properties are omitted. All reachable accepted clients share this read access; README states that actual scope. Origin rejection remains a browser-origin restriction, not authentication. This records the requested product boundary rather than an agent-created risk waiver or protection claim.
+
+No write tool, bus change request, process execution, sensitive file operation or outbound fetch is added. The cache only observes bus publications; get/list do not poll hardware. BLOB responses contain URL/format/size metadata; no payload copying, dereferencing, base64 encoding or implicit URL fetch occurs. Existing local `/blob/` URLs intentionally use the original published item address, matching the existing server convention. Consumers must resolve relative URLs against the INDIGO server. An external BLOB URL is data returned to the caller, not a server-side request.
+
+## Inspected safeguards and evidence
+
+Checked visibility checks on definitions and updates, removal on hidden/WO publications, owned variable text, item-name partial updates, replacement/deletion frees, snapshot isolation and rollback/unload ordering. Shutdown withdraws/drains HTTP callbacks, detaches the internal bus client and then destroys cache/device. Borrowed BLOB pointers are cleared from owned copies. Serialization/network writes run outside the cache mutex. Allocation or invalid-output-UTF8 failures return explicit errors; sticky cache failure prevents incomplete/stale success until reload. No arbitrary cache/output cap was introduced, as explicitly requested; allocation failures remain physical-resource limits.
+
+Checked typed numbers/booleans/light states, nonfinite numbers becoming JSON null, UTF-8 validation and JSON escaping, exact decoded Unicode lookup, strict argument validation, duplicate relevant keys and bounded original request/ID parsing. Dynamic response construction has overflow/allocation checks. Request framing, finite read deadlines, admission, Origin policy and close-after-response remain the prior reviewed skeleton behavior. No content logging, payload logging, new secret fixture or third-party dependency was introduced.
+
+Inspected final native and ASan/UBSan23-case logs attributed to the test writer, including synthetic readable-token/password visibility,600KiB text lifetime, unreadable `(void *)1` BLOB payload sentinel, external URL zero-fetch counter, actual local BLOB retrieval, concurrent reads/updates and reload/deletion. No extra reviewer runtime run was needed after those passing focused checks. Source/test identities and exact verification links are in [read-tools-review.md](read-tools-review.md) and [verification.md](verification.md#read-tools-increment-baseline-and-developer-checks). FND-20261103191737-ccab-mcp-agent-002 is a fixed/retested functional schema issue, not a security finding; coordinator owns its registry lifecycle.
+
+Reviewer ran `git diff --check` and configured `python3 .factory/scripts/validate_project.py --security`: passed, Git2.54.0/Python3.9.6, original checkout. The configured validator checks repository boundary policy; it is not a vulnerability scanner. The generic role's `indigo_docs/security.md` input does not exist in this checkout; actual source, owner policy, scoped instructions and retained security evidence were used. No external probes, hardware, unrelated suites or off-limits driver inspection was added. Windows/Linux execution, real GUI clients, allocation-fault injection and a ThreadSanitizer run were not performed. No claim of universal race freedom or vulnerability absence is made.
+
+## Final evidence refresh
+
+The coordinator repeated the recorded driver run after the final test edit and ownership release; the retained [recorded log](read-tools-logs/recorded.log.gz) now records the final23/23 run at15:08. Updated README/summary identities are in read-tools-review.md; executable source and final test identities are unchanged. FND002 is archived fixed/retested. No security-relevant code or test-scope delta occurred, so the scoped verdict remains unchanged.

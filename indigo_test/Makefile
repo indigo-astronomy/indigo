@@ -150,6 +150,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_guider \
 	$(INTEGRATION_BUILD)/test_agent_mount \
 	$(INTEGRATION_BUILD)/test_agent_config \
+	$(INTEGRATION_BUILD)/test_agent_mcp \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
 	$(INTEGRATION_BUILD)/test_agent_platesolver \
 	$(INTEGRATION_BUILD)/test_indigo_solver_tool \
@@ -556,6 +557,22 @@ test-server-static-driver: check-lib $(INTEGRATION_BUILD)/test_server_static_dri
 
 $(INTEGRATION_BUILD)/test_server_websocket: integration/test_server_websocket.c test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+AGENT_MCP_TEST_DEFINES = -DMCP_PROGRESS_TIMEOUT=0.25 -DMCP_TOTAL_TIMEOUT=1.0
+AGENT_MCP_TEST_SOURCES = integration/test_agent_mcp.c ../indigo_drivers/agent_mcp/indigo_agent_mcp.c ../indigo_libs/indigo_server_tcp.c
+
+$(INTEGRATION_BUILD)/test_agent_mcp: $(AGENT_MCP_TEST_SOURCES) ../indigo_drivers/agent_mcp/indigo_agent_mcp.h ../indigo_libs/externals/jsmn/jsmn.h test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(AGENT_MCP_TEST_DEFINES) -o $@ $(AGENT_MCP_TEST_SOURCES) $(TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),,-ldns_sd)
+
+$(INTEGRATION_BUILD)/test_agent_mcp_sanitize: $(AGENT_MCP_TEST_SOURCES) ../indigo_drivers/agent_mcp/indigo_agent_mcp.h ../indigo_libs/externals/jsmn/jsmn.h test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
+	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) $(AGENT_MCP_TEST_DEFINES) -o $@ $(AGENT_MCP_TEST_SOURCES) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+.PHONY: test-agent-mcp test-agent-mcp-sanitize
+test-agent-mcp: check-lib $(INTEGRATION_BUILD)/test_agent_mcp
+	$(INTEGRATION_BUILD)/test_agent_mcp
+
+test-agent-mcp-sanitize: check-lib $(INTEGRATION_BUILD)/test_agent_mcp_sanitize
+	$(INTEGRATION_BUILD)/test_agent_mcp_sanitize
 
 $(INTEGRATION_BUILD)/test_server_websocket_sanitize: integration/test_server_websocket.c ../indigo_libs/indigo_server_tcp.c test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
 	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) -o $@ $< ../indigo_libs/indigo_server_tcp.c $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)

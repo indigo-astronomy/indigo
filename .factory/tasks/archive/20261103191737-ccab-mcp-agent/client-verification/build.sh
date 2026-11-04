@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+cd /Users/polakovic/Development/indigo
+/usr/bin/clang -g -arch x86_64 -arch arm64 -mmacosx-version-min=10.10 -fPIC -O3 -isystem/Users/polakovic/Development/indigo/indigo_libs -I/Users/polakovic/Development/indigo/indigo_drivers -I/Users/polakovic/Development/indigo/build/include -std=gnu11 -DINDIGO_MACOS -Duint=unsigned -D_GNU_SOURCE -o /private/tmp/indigo-mcp-gui-smoke/fixture/fixture /private/tmp/indigo-mcp-gui-smoke/fixture/fixture.c indigo_drivers/agent_mcp/indigo_agent_mcp.c indigo_libs/indigo_server_tcp.c build/drivers/indigo_ccd_simulator.a build/drivers/indigo_mount_simulator.a -headerpad_max_install_names -framework Cocoa -framework CoreFoundation -framework IOKit -framework ImageCaptureCore -framework IOBluetooth -lobjc -L/Users/polakovic/Development/indigo/build/lib -Wl,-rpath,/Users/polakovic/Development/indigo/build/lib -lindigo -lindigocat -lm -lpthread

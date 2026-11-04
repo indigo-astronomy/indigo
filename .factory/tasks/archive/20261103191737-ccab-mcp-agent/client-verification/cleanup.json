@@ -1,0 +1,27 @@
+{
+  "read_fixture": {
+    "pid": 62638,
+    "port": 56512,
+    "exit": 0,
+    "home": "removed"
+  },
+  "write_fixture": {
+    "pid": 76091,
+    "port": 56512,
+    "exit": 0,
+    "home": "/private/tmp/indigo-test-home.2ccwb8",
+    "home_removed": true,
+    "native_profile_file": "private home/.indigo/CCD_Imager_Simulator.common"
+  },
+  "guarded_fixture_check": {
+    "pid": 92952,
+    "port": 56512,
+    "exit": 0,
+    "home": "/tmp/indigo-test-home.BPRoa2",
+    "home_removed": true
+  },
+  "all_owned_processes_and_listeners": "gone",
+  "temporary_project_mcp_config": "removed",
+  "persistent_user_mcp_entries_added": false,
+  "production_source_changes": false
+}

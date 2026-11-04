@@ -32,6 +32,9 @@
 |  | 2026-10-25 17:30 | 3.0.0.54 | linux x64 | simulator | 95 / 95 | ✅ OK |
 | agent_imager | 2026-09-24 12:56 | 3.0.0.61 | linux x64 | simulator | 53 / 53 | ✅ OK |
 |  | 2026-10-24 20:43 | 3.0.0.66 | mac arm64 | simulator | 63 / 63 | ✅ OK |
+| agent_mcp | 2026-11-04 15:51 | 3.0.0.0 | mac arm64 | Codex CLI 0.166.0-alpha.5.1 (simulators) | 8 / 8 | ✅ OK |
+|  | 2026-11-04 20:27 | 3.0.0.0 | mac arm64 | Claude Desktop Code 4.16336.0 (simulators) | 9 / 9 | ✅ OK |
+|  | 2026-11-04 20:38 | 3.0.0.0 | mac arm64 | simulator | 30 / 30 | ✅ OK |
 | agent_mount | 2026-09-24 12:56 | 3.0.0.23 | linux x64 | simulator | 69 / 69 | ✅ OK |
 |  | 2026-10-19 11:54 | 3.0.0.28 | mac arm64 | simulator | 76 / 76 | ✅ OK |
 | agent_platesolver | 2026-10-30 13:43 | 3.0.0.25 | linux x64 | simulator | 154 / 154 | ✅ OK |

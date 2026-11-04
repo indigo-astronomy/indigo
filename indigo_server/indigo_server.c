@@ -180,6 +180,7 @@
 #include "ccd_playerone/indigo_ccd_playerone.h"
 #include "focuser_prodigy/indigo_focuser_prodigy.h"
 #include "agent_config/indigo_agent_config.h"
+#include "agent_mcp/indigo_agent_mcp.h"
 #include "mount_asi/indigo_mount_asi.h"
 #include "wheel_indigo/indigo_wheel_indigo.h"
 #include "rotator_falcon/indigo_rotator_falcon.h"
@@ -235,6 +236,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_guider,
 	indigo_agent_imager,
 	indigo_agent_config,
+	indigo_agent_mcp,
 	indigo_agent_platesolver,
 	indigo_agent_scripting,
 	indigo_agent_mount,

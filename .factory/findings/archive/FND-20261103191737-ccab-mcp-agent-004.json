@@ -1,0 +1,24 @@
+{
+  "title": "Temporary MCP client fixture ignored private-home setup failure",
+  "category": "security",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103191737-ccab-mcp-agent",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Guarded reusable temporary simulator fixture now aborts before bus initialization when private-home setup fails. As-executed client artifacts retained; actual client runs positively used private homes and no user-config write was observed.",
+  "evidence": "Origin verification.md Real-client text-write/readback/restore extension; client-verification/guarded-simulator-fixture.c and write-shutdown.log; independent client review.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Origin verification.md/client-review.md; separately retained guarded-simulator-fixture.c, positive guarded startup/quit exit0 with exact private-home/process/listener cleanup in client-verification/write-shutdown.log. Independent source/cleanup reinspection confirmed; no fault-injection claim.",
+    "approved_by": "Independent mcp_review verification; no risk acceptance",
+    "duplicate_of": null
+  },
+  "id": "FND-20261103191737-ccab-mcp-agent-004"
+}

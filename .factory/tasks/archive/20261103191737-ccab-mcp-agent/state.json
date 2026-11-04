@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261103191737-ccab-mcp-agent",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Create authorized local MCP commit and verify committed-range process gate; no integration or push.",
+  "blocker": null
+}
