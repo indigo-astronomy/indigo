@@ -33,8 +33,8 @@ MDNS_DEFINES    = -DUNICODE -D_UNICODE -DWIN32 -DMINGW_HAS_SECURE_API=1 -DWIN32 
 MDNS_CFLAGS     = -fno-keep-inline-dllexport -g -Wall -Wextra $(MDNS_DEFINES)
 INDIGO_DEFINES_DLL  = -DINDIGO_WINDOWS -DINDIGO_WINDOWS_DLL -DINDIGO_CLIENT -D_WIN32_WINNT=0x0600 -DWINVER=0x0600
 INDIGO_DEFINES_EXE  = -DINDIGO_WINDOWS -DINDIGO_CLIENT -D_WIN32_WINNT=0x0600 -DWINVER=0x0600
-INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES_DLL)
-INDIGO_CFLAGS_EXE   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES_EXE)
+INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g $(INDIGO_DEFINES_DLL)
+INDIGO_CFLAGS_EXE   = -O3 -fno-keep-inline-dllexport -g $(INDIGO_DEFINES_EXE)
 INCPATH         = -I$(INDIGO_DIR) -I$(MDNS_DIR)
 LINKER          = gcc
 LFLAGS          = -shared -Wl,-subsystem,windows -mthreads -Wl,--out-implib,$(OUTPUT_DIR)/$(LIB_NAME).lib -Wl,--output-def,$(OUTPUT_DIR)/$(LIB_NAME).def -static-libgcc -static-libstdc++
