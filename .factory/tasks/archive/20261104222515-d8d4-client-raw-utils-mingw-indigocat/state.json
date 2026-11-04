@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261104222515-d8d4-client-raw-utils-mingw-indigocat",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Committed-range process check, fast-forward master and delete the task branch; push not authorized.",
+  "blocker": null
+}
