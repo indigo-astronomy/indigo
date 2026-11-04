@@ -28,7 +28,7 @@ include ../../../Makefile.inc
 
 LIB = $(BUILD_LIB)/libprimalucelib.a
 SOURCES = primalucelib.c
-HEADERS = primalucelib.h jsmn.h
+HEADERS = primalucelib.h ../../../indigo_libs/externals/jsmn/jsmn.h
 
 .PHONY: all status clean clean-all
 

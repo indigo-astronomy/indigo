@@ -21,7 +21,7 @@
 #include <time.h>
 
 #define JSMN_STATIC
-#include "../../shared/primalucelib/jsmn.h"
+#include <externals/jsmn/jsmn.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 

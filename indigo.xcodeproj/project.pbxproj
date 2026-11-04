@@ -11330,6 +11330,7 @@
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
+				C0DE4A534D4E000000000001 /* jsmn */,
 				AAAF66866494BCC5527AE16E /* AGENTS.md */,
 				9D42F0442F615C7E000D1ED5 /* indigo_client */,
 				9D94A89E2E703FD7005C5C56 /* hidapi */,
@@ -16923,7 +16924,6 @@
 				C0DE20261022000000000005 /* PROTOCOL.md */,
 				C0DE20261022000000000003 /* primalucelib.h */,
 				C0DE20261022000000000004 /* primalucelib.c */,
-				59B348A329E85E2F0062C2EA /* jsmn.h */,
 				C0DE20261022000000000009 /* Makefile */,
 			);
 			path = primalucelib;
@@ -16970,6 +16970,15 @@
 				F6E14E01192CC6BDFBEE1051 /* test_findings_project.py */,
 			);
 			path = factory;
+			sourceTree = "<group>";
+		};
+		C0DE4A534D4E000000000001 /* jsmn */ = {
+			isa = PBXGroup;
+			children = (
+				59B348A329E85E2F0062C2EA /* jsmn.h */,
+			);
+			name = jsmn;
+			path = externals/jsmn;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */

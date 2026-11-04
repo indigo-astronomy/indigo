@@ -498,7 +498,7 @@ $(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h $(BUILD_LIB)/libindi
 
 # Static PrimaLuce Lab protocol library, linked by the PrimaLuce drivers and their tests.
 PRIMALUCELIB = $(BUILD_LIB)/libprimalucelib.a
-PRIMALUCELIB_SOURCES = ../indigo_drivers/shared/primalucelib/primalucelib.h ../indigo_drivers/shared/primalucelib/primalucelib.c ../indigo_drivers/shared/primalucelib/jsmn.h ../indigo_drivers/shared/primalucelib/Makefile
+PRIMALUCELIB_SOURCES = ../indigo_drivers/shared/primalucelib/primalucelib.h ../indigo_drivers/shared/primalucelib/primalucelib.c ../indigo_libs/externals/jsmn/jsmn.h ../indigo_drivers/shared/primalucelib/Makefile
 
 $(PRIMALUCELIB): $(PRIMALUCELIB_SOURCES)
 	$(MAKE) -C ../indigo_drivers/shared/primalucelib all
@@ -749,10 +749,10 @@ $(INTEGRATION_BUILD)/aux_arteskyflat_simulator: ../indigo_drivers/aux_arteskyfla
 $(INTEGRATION_BUILD)/aux_geoptikflat_simulator: ../indigo_drivers/aux_geoptikflat/aux_geoptikflat_simulator/aux_geoptikflat_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/giotto_simulator: ../indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c ../indigo_drivers/shared/primalucelib/jsmn.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/giotto_simulator: ../indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c ../indigo_libs/externals/jsmn/jsmn.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/alto_simulator: ../indigo_drivers/aux_alto/alto_simulator/alto_simulator.c ../indigo_drivers/shared/primalucelib/jsmn.h simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/alto_simulator: ../indigo_drivers/aux_alto/alto_simulator/alto_simulator.c ../indigo_libs/externals/jsmn/jsmn.h simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/aux_astromechanics_simulator: ../indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
