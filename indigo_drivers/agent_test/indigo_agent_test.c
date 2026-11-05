@@ -23,7 +23,7 @@
  \file indigo_agent_test.c
  */
 
-#define DRIVER_VERSION 0x03000000
+#define DRIVER_VERSION 0x03000001
 #define DRIVER_NAME	"indigo_agent_test"
 
 #define TEST_AGENT_NAME "Test Agent"

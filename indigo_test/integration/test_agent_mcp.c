@@ -215,7 +215,7 @@ static void lifecycle_is_idempotent_and_disabled_by_default(void) {
 	ASSERT_TRUE(ensure_fixture());
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000000, info.version);
+	ASSERT_EQ_INT(0x03000001, info.version);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_INIT, NULL));
 	char response[4096];
 	ASSERT_TRUE(post_body(ping_request, sizeof(ping_request) - 1, MCP_HEADERS, response, sizeof(response)));

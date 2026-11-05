@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261105074950-dd62-hide-agent-profile-names",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Requested separate local commit and committed-range gate; then restore unfinished MCP work. Main integration/publication not authorized.",
+  "blocker": null
+}

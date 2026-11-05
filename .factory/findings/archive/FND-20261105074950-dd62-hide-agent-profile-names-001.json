@@ -1,0 +1,24 @@
+{
+  "title": "Agents expose writable profile names without profile controls",
+  "category": "functional",
+  "severity": "low",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261105074950-dd62-hide-agent-profile-names",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "All eleven current agents inherit visible writable PROFILE_NAME even though profile/config selection controls are hidden. Pure and mixed agent interface regressions reproduce unwanted definition, rename and persistence before the fix; non-agent controls pass. The requested repair defaults PROFILE_NAME hidden for any INDIGO_INTERFACE_AGENT at common attachment. Final unit4/4 and MCP30/30 pass natively and under scoped ASan/UBSan; independent unit4/4 and all-eleven-source review pass.",
+  "evidence": "verification.md baseline and Pre-fix reproducer; analysis.md eleven-module attachment inventory.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification.md final native and scoped sanitizer results; quality-review.md independent4/4, eleven-agent attachment/override inventory and final source diff; security.md hidden/undefined change guard.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261105074950-dd62-hide-agent-profile-names-001"
+}

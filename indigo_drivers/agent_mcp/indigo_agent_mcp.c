@@ -38,7 +38,7 @@
 #include "indigo_agent_mcp.h"
 
 #define DRIVER_NAME "indigo_agent_mcp"
-#define DRIVER_VERSION 0x03000000
+#define DRIVER_VERSION 0x03000001
 #define MCP_VERSION "2025-11-25"
 #define MCP_BODY_LIMIT (64 * 1024)
 #define MCP_TOKEN_LIMIT 256
@@ -1120,7 +1120,7 @@ static void process_rpc(indigo_uni_handle *handle, const char *body, size_t size
 		if (protocol < 0 || document.tokens[protocol].type != JSMN_STRING || capabilities < 0 || document.tokens[capabilities].type != JSMN_OBJECT || name < 0 || document.tokens[name].type != JSMN_STRING || client_version < 0 || document.tokens[client_version].type != JSMN_STRING) {
 			rpc_error(handle, 200, id_text, id_size, -32602, "Invalid initialize parameters");
 		} else {
-			rpc_reply(handle, 200, id_text, id_size, "result", "{\"protocolVersion\":\"" MCP_VERSION "\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"INDIGO MCP Agent\",\"version\":\"3.0.0.0\"}}");
+			rpc_reply(handle, 200, id_text, id_size, "result", "{\"protocolVersion\":\"" MCP_VERSION "\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"INDIGO MCP Agent\",\"version\":\"3.0.0.1\"}}");
 		}
 	} else if (ping) {
 		rpc_reply(handle, 200, id_text, id_size, "result", "{}");

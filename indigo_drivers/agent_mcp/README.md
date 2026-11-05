@@ -34,4 +34,4 @@ Results reflect the latest bus definitions and updates; reading does not poll ha
 
 - 2026-11-04 15:51 3.0.0.0 mac arm64 Codex CLI 0.166.0-alpha.5.1 (simulators) 8/8 OK
 - 2026-11-04 20:27 3.0.0.0 mac arm64 Claude Desktop Code 4.16336.0 (simulators) 9/9 OK
-- 2026-11-04 20:38 3.0.0.0 mac arm64 simulator 30/30 OK
+- 2026-11-05 09:02 3.0.0.1 mac arm64 simulator 30/30 OK

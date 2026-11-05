@@ -1,0 +1,191 @@
+{
+  "version": 2,
+  "task": "20261105074950-dd62-hide-agent-profile-names",
+  "scope": [
+    "TEST_SUMMARY.md",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c",
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c",
+    "indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c",
+    "indigo_drivers/agent_config/indigo_agent_config.c",
+    "indigo_drivers/agent_guider/indigo_agent_guider.c",
+    "indigo_drivers/agent_imager/indigo_agent_imager.c",
+    "indigo_drivers/agent_mcp/README.md",
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.c",
+    "indigo_drivers/agent_mount/indigo_agent_mount.c",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c",
+    "indigo_drivers/agent_scripting/indigo_agent_scripting.c",
+    "indigo_drivers/agent_test/indigo_agent_test.c",
+    "indigo_libs/indigo_driver.c",
+    "indigo_test/integration/test_agent_mcp.c",
+    "indigo_test/unit/test_profile_selection.c",
+    ".factory/findings/archive/FND-20261105074950-dd62-hide-agent-profile-names-001.json",
+    ".factory/completions/20261105074950-dd62-hide-agent-profile-names.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "build/unit/test_profile_selection",
+        "build/integration/test_agent_mcp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_profile_selection"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_mcp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_mcp_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_mcp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261105074950-dd62-hide-agent-profile-names.json": [
+      "100644",
+      "blob",
+      "b60f865f335f93c78aaf47e134491c8c2a85770d"
+    ],
+    ".factory/findings/archive/FND-20261105074950-dd62-hide-agent-profile-names-001.json": [
+      "100644",
+      "blob",
+      "f3cca592f47a62da7dbee03c88b406ed5a0b801a"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "9a6022f9daa34cb08f391d15b256446b7a017eaf"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "b8070ea8e9c1eb0d1e6c02a9e19f7d0c523dbd7d"
+    ],
+    "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": [
+      "100644",
+      "blob",
+      "3647e476567d44994b0eeb9f80069ede0a265871"
+    ],
+    "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": [
+      "100644",
+      "blob",
+      "028d30b948936ce69289bcbdb2f5e2e613d7138a"
+    ],
+    "indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c": [
+      "100644",
+      "blob",
+      "b80c00f02f74e971594e56c443f6174b9953abea"
+    ],
+    "indigo_drivers/agent_config/indigo_agent_config.c": [
+      "100644",
+      "blob",
+      "4e38511fb0b5693c6c8512b7d315149b1ea8a85c"
+    ],
+    "indigo_drivers/agent_guider/indigo_agent_guider.c": [
+      "100644",
+      "blob",
+      "769f7809f8ee1d80616756f6e915b6e45983847a"
+    ],
+    "indigo_drivers/agent_imager/indigo_agent_imager.c": [
+      "100644",
+      "blob",
+      "89158e86c945f179c28fdc0646524912b6571976"
+    ],
+    "indigo_drivers/agent_mcp/README.md": [
+      "100644",
+      "blob",
+      "586dd6fc5b0ff86c5f2f687f426b2379ccd21321"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.c": [
+      "100644",
+      "blob",
+      "e55e4b3ddc03691c102b67901b138ba540b5dc8d"
+    ],
+    "indigo_drivers/agent_mount/indigo_agent_mount.c": [
+      "100644",
+      "blob",
+      "1c2569a1a97608a5dc15df6ed770d7988c1d44ed"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c": [
+      "100644",
+      "blob",
+      "8532f4222fe282dea1afc567aa81c8509818f3b0"
+    ],
+    "indigo_drivers/agent_scripting/indigo_agent_scripting.c": [
+      "100644",
+      "blob",
+      "2aa9b531394e3081764bb6eac49c67892d95efbb"
+    ],
+    "indigo_drivers/agent_test/indigo_agent_test.c": [
+      "100644",
+      "blob",
+      "5461466f4b06dcd546bbb2ecf71ae58f76f6d73d"
+    ],
+    "indigo_libs/indigo_driver.c": [
+      "100644",
+      "blob",
+      "6c87d5e06a25960dfd8917259b66661eafd000c0"
+    ],
+    "indigo_test/integration/test_agent_mcp.c": [
+      "100644",
+      "blob",
+      "0380870c71eb384e5ae986fea50fac505a29ddcb"
+    ],
+    "indigo_test/unit/test_profile_selection.c": [
+      "100644",
+      "blob",
+      "a1815ab4d6110a881d9f34e819e1cd217cf50ff7"
+    ]
+  }
+}

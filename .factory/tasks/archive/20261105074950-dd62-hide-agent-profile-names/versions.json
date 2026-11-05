@@ -1,0 +1,46 @@
+{
+  "indigo_drivers/agent_alpaca/indigo_agent_alpaca.c": {
+    "before": "0x03000012",
+    "after": "0x03000013"
+  },
+  "indigo_drivers/agent_astrometry/indigo_agent_astrometry.c": {
+    "before": "0x02000024",
+    "after": "0x02000025"
+  },
+  "indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c": {
+    "before": "0x03000004",
+    "after": "0x03000005"
+  },
+  "indigo_drivers/agent_config/indigo_agent_config.c": {
+    "before": "0x0300001D",
+    "after": "0x0300001E"
+  },
+  "indigo_drivers/agent_guider/indigo_agent_guider.c": {
+    "before": "0x03000036",
+    "after": "0x03000037"
+  },
+  "indigo_drivers/agent_imager/indigo_agent_imager.c": {
+    "before": "0x03000045",
+    "after": "0x03000046"
+  },
+  "indigo_drivers/agent_mcp/indigo_agent_mcp.c": {
+    "before": "0x03000000",
+    "after": "0x03000001"
+  },
+  "indigo_drivers/agent_mount/indigo_agent_mount.c": {
+    "before": "0x0300001E",
+    "after": "0x0300001F"
+  },
+  "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c": {
+    "before": "0x0300001E",
+    "after": "0x0300001F"
+  },
+  "indigo_drivers/agent_scripting/indigo_agent_scripting.c": {
+    "before": "0x0300000E",
+    "after": "0x0300000F"
+  },
+  "indigo_drivers/agent_test/indigo_agent_test.c": {
+    "before": "0x03000000",
+    "after": "0x03000001"
+  }
+}

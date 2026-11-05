@@ -24,7 +24,7 @@
  \file indigo_agent_auxiliary.c
  */
 
-#define DRIVER_VERSION 0x03000004
+#define DRIVER_VERSION 0x03000005
 #define DRIVER_NAME	"indigo_agent_auxiliary"
 
 #include <stdlib.h>
