@@ -1,0 +1,47 @@
+{
+  "version": 2,
+  "task": "20261105141337-ccae-close-acl-false-positive",
+  "scope": [
+    ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-003.json",
+    ".factory/findings/archive/FND-20261105112837-9c3a-sequencer-simulator-suite-003.json",
+    ".factory/completions/20261105141337-ccae-close-acl-false-positive.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261105141337-ccae-close-acl-false-positive.json": [
+      "100644",
+      "blob",
+      "59e235d8729af780428705ac7c699d2cddbb5f33"
+    ],
+    ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-003.json": null,
+    ".factory/findings/archive/FND-20261105112837-9c3a-sequencer-simulator-suite-003.json": [
+      "100644",
+      "blob",
+      "51f122c856465d7b88de961e52c8fdcf3acb6f9e"
+    ]
+  }
+}

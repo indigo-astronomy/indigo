@@ -2,7 +2,7 @@
   "title": "Unset master token bypasses nonzero device ACL authorization",
   "category": "security",
   "severity": "high",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261105112837-9c3a-sequencer-simulator-suite",
       "report": "security.md",
       "revision": null
+    },
+    {
+      "id": "20261105141337-ccae-close-acl-false-positive",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "indigo_change_property accepts omitted request token 0 as the default master token 0, bypassing nonzero device ACL. Confirmed by native XML/JSON regression and unauthorized Server module loading. Next: require nonzero master before master-token equality authorizes. Owner explicitly limited this task to tests and documented findings; coordinator must obtain separate repair authorization.",
   "evidence": "security.md; local execution logs referenced there",
-  "resolution": null,
+  "resolution": {
+    "kind": "not_a_bug",
+    "evidence": "Documented contract: indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md (Protected Devices and Master Tokens). An unset server master token disables device protection; accepting a tokenless request is expected. Owner explicitly requested preserving this behavior and closing this false positive on 2026-11-05. See task 20261105141337-ccae-close-acl-false-positive/verification.md.",
+    "approved_by": "Peter Polakovic, explicit conversation instruction, 2026-11-05",
+    "duplicate_of": null
+  },
   "id": "FND-20261105112837-9c3a-sequencer-simulator-suite-003"
 }
