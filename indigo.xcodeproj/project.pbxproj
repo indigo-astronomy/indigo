@@ -5919,6 +5919,10 @@
 		C0DE20261101204146000001 /* test_agent_platesolver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_platesolver.c; sourceTree = "<group>"; };
 		C0DE20261101204146000002 /* test_agent_platesolver_core.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_platesolver_core.c; sourceTree = "<group>"; };
 		BBE08DAAFCCB4942A923BFD9 /* indigo_agent_mcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_mcp.c; sourceTree = "<group>"; };
+		B37A209D14B546C6AA3E2202 /* generate_help.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = generate_help.py; sourceTree = "<group>"; };
+		B37A209D14B546C6AA3E2203 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		B37A209D14B546C6AA3E2204 /* mcp */ = {isa = PBXFileReference; lastKnownFileType = folder; path = mcp; sourceTree = "<group>"; };
+		B37A209D14B546C6AA3E2201 /* indigo_agent_mcp_help.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_mcp_help.h; sourceTree = "<group>"; };
 		7C19430502CE47C8A2B2A288 /* indigo_agent_mcp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_mcp.h; sourceTree = "<group>"; };
 		C0DE4D4350524541444D4501 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		7DC33585521547ACA8F0E658 /* test_agent_mcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_mcp.c; sourceTree = "<group>"; };
@@ -6399,6 +6403,7 @@
 		5912C80723D2447400A48B75 /* indigo_docs */ = {
 			isa = PBXGroup;
 			children = (
+				B37A209D14B546C6AA3E2204 /* mcp */,
 				3B2ED1921836C68EF05F3426 /* AGENTS.md */,
 				59FA7C18301E2DCF00A35CFB /* README.md */,
 				598679702F7D80AA008F60F3 /* HOME.md */,
@@ -16985,6 +16990,9 @@
 			children = (
 				C0DE4D4350524541444D4501 /* README.md */,
 				7C19430502CE47C8A2B2A288 /* indigo_agent_mcp.h */,
+				B37A209D14B546C6AA3E2201 /* indigo_agent_mcp_help.h */,
+				B37A209D14B546C6AA3E2202 /* generate_help.py */,
+				B37A209D14B546C6AA3E2203 /* Makefile */,
 				BBE08DAAFCCB4942A923BFD9 /* indigo_agent_mcp.c */,
 			);
 			path = agent_mcp;

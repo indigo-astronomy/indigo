@@ -168,6 +168,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="indigo_agent_mcp.h" />
+    <ClInclude Include="indigo_agent_mcp_help.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="generate_help.py" />
+    <None Include="Makefile" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

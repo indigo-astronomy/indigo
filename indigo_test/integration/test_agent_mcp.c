@@ -198,46 +198,38 @@ static bool ensure_fixture(void) {
 	return true;
 }
 
-static bool enable_agent(bool enabled) {
-	if (!ensure_fixture() || indigo_enumerate_properties(NULL, &INDIGO_ALL_PROPERTIES) != INDIGO_OK) {
-		return false;
-	}
-	return indigo_change_switch_property_1(NULL, MCP_AGENT_NAME, CONNECTION_PROPERTY_NAME, enabled ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true) == INDIGO_OK;
-}
-
 static void initialization_requires_started_bus(void) {
 	ASSERT_FALSE(bus_started);
 	ASSERT_EQ_INT(INDIGO_FAILED, indigo_agent_mcp(INDIGO_DRIVER_INIT, NULL));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_SHUTDOWN, NULL));
 }
 
-static void lifecycle_is_idempotent_and_disabled_by_default(void) {
+static void lifecycle_is_idempotent_and_starts_immediately(void) {
 	ASSERT_TRUE(ensure_fixture());
 	indigo_driver_info info;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_INFO, &info));
-	ASSERT_EQ_INT(0x03000001, info.version);
-	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_EQ_INT(0x03000003, info.version);
 	char response[4096];
 	ASSERT_TRUE(post_body(ping_request, sizeof(ping_request) - 1, MCP_HEADERS, response, sizeof(response)));
-	ASSERT_EQ_INT(503, response_status(response));
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_EQ_INT(200, response_status(response));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_INIT, NULL));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_INIT, NULL));
 	ASSERT_TRUE(post_body(ping_request, sizeof(ping_request) - 1, MCP_HEADERS, response, sizeof(response)));
 	ASSERT_EQ_INT(200, response_status(response));
-	ASSERT_TRUE(enable_agent(false));
-	ASSERT_TRUE(post_body(ping_request, sizeof(ping_request) - 1, MCP_HEADERS, response, sizeof(response)));
-	ASSERT_EQ_INT(503, response_status(response));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_SHUTDOWN, NULL));
 	agent_started = false;
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_SHUTDOWN, NULL));
 	ASSERT_TRUE(post_body(ping_request, sizeof(ping_request) - 1, MCP_HEADERS, response, sizeof(response)));
 	ASSERT_EQ_INT(404, response_status(response));
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
+	ASSERT_TRUE(post_body(ping_request, sizeof(ping_request) - 1, MCP_HEADERS, response, sizeof(response)));
+	ASSERT_EQ_INT(200, response_status(response));
 }
 
 static void initialize_and_initialized_notification(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	const char request[] = "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"fixture\",\"version\":\"1\"}}}";
-	char response[4096];
+	char response[65536];
 	ASSERT_TRUE(post_body(request, sizeof(request) - 1, "Content-Type: application/json; charset=utf-8\r\nAccept: application/json, text/event-stream\r\n", response, sizeof(response)));
 	ASSERT_EQ_INT(200, response_status(response));
 	ASSERT_TRUE(body_contains(response, "\"id\":7"));
@@ -253,13 +245,13 @@ static void initialize_and_initialized_notification(void) {
 }
 
 static void ping_and_catalog_preserve_ids(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	const char *requests[] = {
 		"{\"jsonrpc\":\"2.0\",\"id\":-7,\"method\":\"ping\"}",
 		"{\"jsonrpc\":\"2.0\",\"id\":\"\\u0041\\\"id\",\"m\\u0065thod\":\"p\\u0069ng\"}",
 		"{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}"
 	};
-	char response[4096];
+	char response[65536];
 	for (size_t i = 0; i < sizeof(requests) / sizeof(requests[0]); i++) {
 		ASSERT_TRUE(post_body(requests[i], strlen(requests[i]), MCP_HEADERS, response, sizeof(response)));
 		ASSERT_EQ_INT(200, response_status(response));
@@ -274,7 +266,7 @@ static void ping_and_catalog_preserve_ids(void) {
 }
 
 static void unknown_methods_and_tools_return_rpc_errors(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	const char *requests[] = { "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"does/not/exist\"}", "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"missing\",\"arguments\":{}}}" };
 	char response[4096];
 	for (int i = 0; i < 2; i++) {
@@ -285,7 +277,7 @@ static void unknown_methods_and_tools_return_rpc_errors(void) {
 }
 
 static void exact_path_and_get_rejection(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	const char *requests[] = { "GET /mcp HTTP/1.1\r\nConnection: close\r\n\r\n", "POST /mcp-extra HTTP/1.1\r\nContent-Length: 0\r\n\r\n", "POST /mcp/ HTTP/1.1\r\nContent-Length: 0\r\n\r\n" };
 	char response[4096];
 	for (int i = 0; i < 3; i++) {
@@ -295,7 +287,7 @@ static void exact_path_and_get_rejection(void) {
 }
 
 static void invalid_envelopes_and_duplicate_reserved_fields(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	const char *requests[] = {
 		"[]", "null", "{\"jsonrpc\":\"1.0\",\"id\":1,\"method\":\"ping\"}",
 		"{\"jsonrpc\":\"2.0\",\"id\":null,\"method\":\"ping\"}",
@@ -317,7 +309,7 @@ static void invalid_envelopes_and_duplicate_reserved_fields(void) {
 }
 
 static void malformed_json_and_utf8_are_rejected(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	const char *requests[] = {
 		"{jsonrpc:\"2.0\",\"id\":1,\"method\":\"ping\"}",
 		"{\"jsonrpc\":\"2.0\" \"id\":1,\"method\":\"ping\"}",
@@ -345,7 +337,7 @@ static void malformed_json_and_utf8_are_rejected(void) {
 }
 
 static void malformed_http_headers_are_rejected(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	const char *headers[] = {
 		MCP_HEADERS "Content-Length: 0\r\n",
 		MCP_HEADERS "Transfer-Encoding: chunked\r\n",
@@ -368,7 +360,7 @@ static void malformed_http_headers_are_rejected(void) {
 }
 
 static void body_limits_and_partial_eof_are_bounded(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	char response[4096];
 	const char too_large[] = "POST /mcp HTTP/1.1\r\n" MCP_HEADERS "Content-Length: 65537\r\n\r\n";
 	ASSERT_TRUE(exchange(too_large, sizeof(too_large) - 1, response, sizeof(response)));
@@ -387,7 +379,7 @@ static void body_limits_and_partial_eof_are_bounded(void) {
 }
 
 static void fragmented_body_and_pipeline_close(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	int fd = connect_client();
 	ASSERT_TRUE(fd >= 0);
 	char head[512];
@@ -406,7 +398,7 @@ static void fragmented_body_and_pipeline_close(void) {
 }
 
 static void stalled_body_times_out(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	int fd = connect_client();
 	ASSERT_TRUE(fd >= 0);
 	const char request[] = "POST /mcp HTTP/1.1\r\n" MCP_HEADERS "Content-Length: 20\r\n\r\n{";
@@ -421,7 +413,7 @@ static void stalled_body_times_out(void) {
 }
 
 static void nested_and_token_heavy_json_is_bounded(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	char body[8192];
 	size_t used = snprintf(body, sizeof(body), "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\",\"params\":{\"x\":");
 	for (int i = 0; i < 20; i++) {
@@ -455,7 +447,7 @@ static void *shutdown_agent(void *data) {
 }
 
 static void incomplete_requests_are_admitted_then_drained_on_unload(void) {
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	int fds[8];
 	const char partial[] = "POST /mcp HTTP/1.1\r\n" MCP_HEADERS "Content-Length: 32\r\n\r\n{";
 	bool sent = true;
@@ -491,7 +483,7 @@ static void incomplete_requests_are_admitted_then_drained_on_unload(void) {
 		agent_started = false;
 	}
 	ASSERT_TRUE(sent && saturated && spawned && withdrawn && waited && drained && atomic_load(&shutdown_done));
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 }
 
 #define READ_FIXTURE_NAME "MCP Reader Fixture @ Remote"
@@ -570,7 +562,7 @@ static bool read_fixture_begin(void) {
 	atomic_store(&read_fixture_writes, 0);
 	read_fixture_attached = indigo_attach_device(&read_fixture) == INDIGO_OK;
 	atomic_store(&read_fixture_writes, 0);
-	return read_fixture_attached && enable_agent(true);
+	return read_fixture_attached && ensure_fixture();
 }
 
 static bool read_define(indigo_property *property) {
@@ -747,18 +739,18 @@ static void read_reply_free(read_reply *reply) {
 	memset(reply, 0, sizeof(*reply));
 }
 
-static bool read_tool(const char *name, const char *arguments, read_reply *reply) {
+static bool read_rpc(const char *method, const char *params, read_reply *reply) {
 	memset(reply, 0, sizeof(*reply));
-	size_t capacity = strlen(arguments) + strlen(name) + 128;
+	size_t capacity = strlen(params) + strlen(method) + 128;
 	char *request = malloc(capacity);
 	if (!request) {
 		return false;
 	}
-	int length = snprintf(request, capacity, "{\"jsonrpc\":\"2.0\",\"id\":31,\"method\":\"tools/call\",\"params\":{\"name\":\"%s\",\"arguments\":%s}}", name, arguments);
+	int length = snprintf(request, capacity, "{\"jsonrpc\":\"2.0\",\"id\":31,\"method\":\"%s\",\"params\":%s}", method, params);
 	reply->wire = malloc(3 * 1024 * 1024);
 	bool sent = reply->wire && post_body(request, length, MCP_HEADERS, reply->wire, 3 * 1024 * 1024);
 	free(request);
-	if (!sent || response_status(reply->wire) != 200) {
+	if (!sent || (response_status(reply->wire) != 200 && response_status(reply->wire) != 400)) {
 		read_reply_free(reply);
 		return false;
 	}
@@ -781,6 +773,18 @@ static bool read_tool(const char *name, const char *arguments, read_reply *reply
 	reply->result = read_json_member(reply->json, reply->tokens, reply->count, 0, "result");
 	reply->structured = read_json_member(reply->json, reply->tokens, reply->count, reply->result, "structuredContent");
 	return true;
+}
+
+static bool read_tool(const char *name, const char *arguments, read_reply *reply) {
+	size_t capacity = strlen(name) + strlen(arguments) + 64;
+	char *params = malloc(capacity);
+	if (!params) {
+		return false;
+	}
+	snprintf(params, capacity, "{\"name\":\"%s\",\"arguments\":%s}", name, arguments);
+	bool result = read_rpc("tools/call", params, reply) && response_status(reply->wire) == 200;
+	free(params);
+	return result;
 }
 
 static bool read_success_is_consistent(const read_reply *reply) {
@@ -1103,7 +1107,7 @@ static void deletion_and_reload_refresh_the_bus_view(void) {
 	indigo_set_text_item_value(property->items, "after reload");
 	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_SHUTDOWN, NULL));
 	agent_started = false;
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_TRUE(ensure_fixture());
 	ASSERT_TRUE(read_get("X_DELETE", &reply));
 	ASSERT_TRUE(read_success_is_consistent(&reply));
 	int items = read_field(&reply, reply.structured, "items");
@@ -1462,7 +1466,7 @@ static void unsupported_write_types_never_dispatch(void) {
 	read_fixture_end();
 }
 
-static void self_unload_is_busy_and_connection_can_disable(void) {
+static void self_unload_is_busy_and_connection_is_unavailable(void) {
 	ASSERT_TRUE(read_fixture_begin());
 	ASSERT_TRUE(read_define(read_text("X_SELF_UNLOAD", INDIGO_RW_PERM, "old")));
 	write_capture = true;
@@ -1476,14 +1480,216 @@ static void self_unload_is_busy_and_connection_can_disable(void) {
 	ASSERT_TRUE(read_get("X_SELF_UNLOAD", &reply));
 	ASSERT_TRUE(read_success_is_consistent(&reply));
 	read_reply_free(&reply);
+	ASSERT_TRUE(read_tool("list_properties", "{\"device\":\"" MCP_AGENT_NAME "\"}", &reply));
+	ASSERT_TRUE(read_success_is_consistent(&reply));
+	int properties = read_field(&reply, reply.structured, "properties");
+	ASSERT_EQ_INT(-1, read_json_named(&reply, properties, "name", CONNECTION_PROPERTY_NAME));
+	read_reply_free(&reply);
+	ASSERT_TRUE(read_tool("get_property", "{\"device\":\"" MCP_AGENT_NAME "\",\"property\":\"CONNECTION\"}", &reply));
+	ASSERT_TRUE(read_is_error(&reply));
+	read_reply_free(&reply);
 	ASSERT_TRUE(read_tool("set_property", "{\"device\":\"" MCP_AGENT_NAME "\",\"property\":\"CONNECTION\",\"items\":{\"DISCONNECTED\":true}}", &reply));
-	ASSERT_TRUE(write_dispatched(&reply));
+	ASSERT_TRUE(read_is_error(&reply));
 	read_reply_free(&reply);
 	char response[4096];
 	ASSERT_TRUE(post_body(ping_request, strlen(ping_request), MCP_HEADERS, response, sizeof(response)));
-	ASSERT_EQ_INT(503, response_status(response));
-	ASSERT_TRUE(enable_agent(true));
+	ASSERT_EQ_INT(200, response_status(response));
 	read_fixture_end();
+}
+
+static const char *help_topics[] = {
+	"README.md", "instructions.md", "server-and-devices.md", "agent-catalog.md", "acceptance-scenarios.md",
+	"agents/imager.md", "agents/guider.md", "agents/mount.md", "agents/platesolver.md", "agents/astrometry.md",
+	"agents/configuration.md", "agents/auxiliary.md", "agents/scripting.md", "agents/sequencer.md", "agents/alpaca.md", "agents/mcp.md", "agents/test.md", "reference/sequencer.md"
+};
+
+static char *help_reply_text(const read_reply *reply, bool resource) {
+	int contents = read_field(reply, reply->result, resource ? "contents" : "content");
+	if (contents < 0 || reply->tokens[contents].type != JSMN_ARRAY || reply->tokens[contents].size != 1) {
+		return NULL;
+	}
+	if (!resource && (!read_json_is(reply, read_field(reply, contents + 1, "type"), "text") || reply->structured >= 0)) {
+		return NULL;
+	}
+	int text = read_field(reply, contents + 1, "text");
+	return text >= 0 ? read_json_string(reply->json, reply->tokens + text) : NULL;
+}
+
+static bool help_all_resources_match_tool(void) {
+	bool unicode_seen = false;
+	for (size_t i = 0; i < sizeof(help_topics) / sizeof(help_topics[0]); i++) {
+		char uri[160], params[256];
+		snprintf(uri, sizeof(uri), "indigo://help/%s", help_topics[i]);
+		snprintf(params, sizeof(params), "{\"uri\":\"%s\"}", uri);
+		read_reply reply;
+		if (!read_rpc("resources/read", params, &reply)) {
+			return false;
+		}
+		char *resource = help_reply_text(&reply, true);
+		int contents = read_field(&reply, reply.result, "contents");
+		bool valid = resource && strlen(resource) > 100 && strstr(resource, "# ") && read_json_is(&reply, read_field(&reply, contents + 1, "uri"), uri) && read_json_is(&reply, read_field(&reply, contents + 1, "mimeType"), "text/markdown");
+		read_reply_free(&reply);
+		for (const unsigned char *p = (const unsigned char *)resource; p && *p; p++) {
+			unicode_seen |= *p >= 0x80;
+		}
+		for (int alias = 0; valid && alias < 2; alias++) {
+			snprintf(params, sizeof(params), "{\"topic\":\"%s\"}", alias ? uri : help_topics[i]);
+			valid = read_tool("get_help", params, &reply);
+			char *text = valid ? help_reply_text(&reply, false) : NULL;
+			valid = valid && !read_is_error(&reply) && text && !strcmp(text, resource);
+			free(text);
+			read_reply_free(&reply);
+		}
+		if (valid && i == 0) {
+			valid = read_tool("get_help", "{}", &reply);
+			char *text = valid ? help_reply_text(&reply, false) : NULL;
+			valid = valid && text && !strcmp(text, resource);
+			free(text);
+			read_reply_free(&reply);
+		}
+		free(resource);
+		if (!valid) {
+			fprintf(stderr, "Embedded resource/help mismatch: %s\n", uri);
+			return false;
+		}
+	}
+	return unicode_seen;
+}
+
+static void embedded_help_is_discoverable_on_initialize(void) {
+	ASSERT_TRUE(ensure_fixture());
+	read_reply reply;
+	ASSERT_TRUE(read_rpc("initialize", "{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"help-fixture\",\"version\":\"1\"}}", &reply));
+	int instructions = read_field(&reply, reply.result, "instructions");
+	char *text = instructions >= 0 ? read_json_string(reply.json, reply.tokens + instructions) : NULL;
+	bool guidance = text && strlen(text) > 200 && strstr(text, "agent") && strstr(text, "get_help") && strstr(text, "indigo://help/");
+	free(text);
+	ASSERT_TRUE(guidance);
+	int capabilities = read_field(&reply, reply.result, "capabilities");
+	int resources = read_field(&reply, capabilities, "resources");
+	ASSERT_TRUE(resources >= 0 && reply.tokens[resources].type == JSMN_OBJECT);
+	read_reply_free(&reply);
+	ASSERT_TRUE(read_rpc("tools/list", "{}", &reply));
+	int tools = read_field(&reply, reply.result, "tools");
+	ASSERT_TRUE(read_json_named(&reply, tools, "name", "get_help") >= 0);
+	read_reply_free(&reply);
+}
+
+static void all_embedded_resources_are_listed_and_readable(void) {
+	ASSERT_TRUE(ensure_fixture());
+	read_reply reply;
+	ASSERT_TRUE(read_rpc("resources/list", "{}", &reply));
+	int resources = read_field(&reply, reply.result, "resources");
+	ASSERT_TRUE(resources >= 0 && reply.tokens[resources].type == JSMN_ARRAY);
+	ASSERT_EQ_INT(sizeof(help_topics) / sizeof(help_topics[0]), reply.tokens[resources].size);
+	ASSERT_EQ_INT(-1, read_field(&reply, reply.result, "nextCursor"));
+	for (size_t i = 0; i < sizeof(help_topics) / sizeof(help_topics[0]); i++) {
+		char uri[160];
+		snprintf(uri, sizeof(uri), "indigo://help/%s", help_topics[i]);
+		int entry = read_json_named(&reply, resources, "uri", uri);
+		ASSERT_TRUE(entry >= 0);
+		ASSERT_TRUE(read_json_is(&reply, read_field(&reply, entry, "mimeType"), "text/markdown"));
+	}
+	read_reply_free(&reply);
+	ASSERT_TRUE(read_rpc("resources/list", "{\"_meta\":{\"progressToken\":\"help-fixture\"}}", &reply));
+	resources = read_field(&reply, reply.result, "resources");
+	ASSERT_TRUE(resources >= 0 && reply.tokens[resources].size == sizeof(help_topics) / sizeof(help_topics[0]));
+	read_reply_free(&reply);
+	ASSERT_TRUE(read_rpc("resources/read", "{\"uri\":\"indigo://help/README.md\",\"_meta\":{\"unrecognized\":{\"value\":\"ignored\"}}}", &reply));
+	char *metadata_text = help_reply_text(&reply, true);
+	ASSERT_TRUE(metadata_text != NULL);
+	free(metadata_text);
+	read_reply_free(&reply);
+	ASSERT_TRUE(help_all_resources_match_tool());
+	ASSERT_TRUE(read_rpc("resources/read", "{\"uri\":\"indigo://help/agents/mou\\u006et.md\"}", &reply));
+	char *resource = help_reply_text(&reply, true);
+	bool unicode = resource && strstr(resource, "J2000→JNow");
+	free(resource);
+	read_reply_free(&reply);
+	ASSERT_TRUE(unicode);
+	ASSERT_TRUE(read_tool("get_help", "{\"topic\":\"instructions\\u002emd\"}", &reply));
+	char *text = help_reply_text(&reply, false);
+	ASSERT_TRUE(text != NULL);
+	read_reply_free(&reply);
+	ASSERT_TRUE(read_tool("get_help", "{\"topic\":\"instructions.md#unknown-fragment\"}", &reply));
+	char *anchored = help_reply_text(&reply, false);
+	ASSERT_TRUE(anchored && !strcmp(text, anchored));
+	free(anchored);
+	read_reply_free(&reply);
+	ASSERT_TRUE(read_rpc("resources/read", "{\"uri\":\"indigo://help/instructions.md#agent-first-workflow\"}", &reply));
+	anchored = help_reply_text(&reply, true);
+	ASSERT_TRUE(anchored && !strcmp(text, anchored));
+	int contents = read_field(&reply, reply.result, "contents");
+	ASSERT_TRUE(read_json_is(&reply, read_field(&reply, contents + 1, "uri"), "indigo://help/instructions.md"));
+	free(anchored);
+	free(text);
+	read_reply_free(&reply);
+}
+
+static void embedded_help_rejects_invalid_targets_and_arguments(void) {
+	ASSERT_TRUE(ensure_fixture());
+	read_reply reply;
+	const char *invalid_uris[] = { "indigo://help/missing.md", "indigo://help/../README.md", "indigo://help/agents/../../README.md", "file:///etc/passwd", "README.md", "indigo://help/README.md?x=1", "indigo://help/missing.md#heading", "indigo://help/%52EADME.md" };
+	for (size_t i = 0; i < sizeof(invalid_uris) / sizeof(invalid_uris[0]); i++) {
+		char params[256];
+		snprintf(params, sizeof(params), "{\"uri\":\"%s\"}", invalid_uris[i]);
+		ASSERT_TRUE(read_rpc("resources/read", params, &reply));
+		int error = read_field(&reply, 0, "error");
+		ASSERT_TRUE(read_json_is(&reply, read_field(&reply, error, "code"), "-32002"));
+		read_reply_free(&reply);
+		if (i != 4) {
+			snprintf(params, sizeof(params), "{\"topic\":\"%s\"}", invalid_uris[i]);
+			ASSERT_TRUE(read_tool("get_help", params, &reply));
+			ASSERT_TRUE(read_is_error(&reply));
+			read_reply_free(&reply);
+		}
+	}
+	const char *methods[] = { "resources/list", "resources/list", "resources/read", "resources/read", "resources/read", "resources/read", "resources/read", "resources/list", "resources/read", "resources/list", "resources/read" };
+	const char *params[] = { "{\"cursor\":\"x\"}", "[]", "{}", "{\"uri\":7}", "{\"uri\":\"indigo://help/README.md\",\"uri\":\"indigo://help/instructions.md\"}", "{\"uri\":\"indigo://help/README.md\",\"extra\":true}", "{\"uri\":null}", "{\"_meta\":7}", "{\"uri\":\"indigo://help/README.md\",\"_meta\":null}", "{\"_meta\":{},\"_meta\":{}}", "{\"uri\":\"indigo://help/README.md\",\"_meta\":{},\"_meta\":{}}" };
+	for (size_t i = 0; i < sizeof(methods) / sizeof(methods[0]); i++) {
+		ASSERT_TRUE(read_rpc(methods[i], params[i], &reply));
+		int error = read_field(&reply, 0, "error");
+		ASSERT_TRUE(read_json_is(&reply, read_field(&reply, error, "code"), i == 1 ? "-32600" : "-32602"));
+		read_reply_free(&reply);
+	}
+	const char *invalid_topics[] = { "{\"topic\":7}", "{\"topic\":null}", "{\"topic\":\"README.md\",\"topic\":\"instructions.md\"}", "{\"topic\":\"README.md\",\"extra\":true}" };
+	for (size_t i = 0; i < sizeof(invalid_topics) / sizeof(invalid_topics[0]); i++) {
+		ASSERT_TRUE(read_tool("get_help", invalid_topics[i], &reply));
+		int error = read_field(&reply, 0, "error");
+		ASSERT_TRUE(read_json_is(&reply, read_field(&reply, error, "code"), "-32602"));
+		read_reply_free(&reply);
+	}
+	ASSERT_TRUE(read_tool("get_help", "{\"topic\":\"mount\"}", &reply));
+	ASSERT_TRUE(read_is_error(&reply));
+	read_reply_free(&reply);
+	const char *notifications[] = { "{\"jsonrpc\":\"2.0\",\"method\":\"resources/list\"}", "{\"jsonrpc\":\"2.0\",\"method\":\"resources/read\",\"params\":{\"uri\":\"indigo://help/README.md\"}}" };
+	char response[65536];
+	for (size_t i = 0; i < sizeof(notifications) / sizeof(notifications[0]); i++) {
+		ASSERT_TRUE(post_body(notifications[i], strlen(notifications[i]), MCP_HEADERS, response, sizeof(response)));
+		ASSERT_EQ_INT(400, response_status(response));
+		ASSERT_TRUE(body_contains(response, "\"code\":-32600"));
+	}
+	const char absent[] = "{\"jsonrpc\":\"2.0\",\"id\":81,\"method\":\"resources/list\"}";
+	ASSERT_TRUE(post_body(absent, sizeof(absent) - 1, MCP_HEADERS, response, sizeof(response)));
+	ASSERT_EQ_INT(200, response_status(response));
+	ASSERT_TRUE(body_contains(response, "\"resources\":["));
+}
+
+static void embedded_help_survives_reload_in_an_empty_directory(void) {
+	ASSERT_TRUE(ensure_fixture());
+	char original[PATH_MAX];
+	ASSERT_TRUE(getcwd(original, sizeof(original)) != NULL);
+	char empty[] = "/tmp/indigo-mcp-help.XXXXXX";
+	ASSERT_TRUE(mkdtemp(empty) != NULL);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_agent_mcp(INDIGO_DRIVER_SHUTDOWN, NULL));
+	agent_started = false;
+	bool isolated = chdir(empty) == 0;
+	bool initialized = isolated && indigo_agent_mcp(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK;
+	agent_started = initialized;
+	bool readable = initialized && help_all_resources_match_tool();
+	bool restored = chdir(original) == 0;
+	bool removed = rmdir(empty) == 0;
+	ASSERT_TRUE(isolated && initialized && readable && restored && removed);
 }
 
 static void cleanup_fixture(void) {
@@ -1521,7 +1727,7 @@ int main(void) {
 	signal(SIGPIPE, SIG_IGN);
 	const indigo_test_case tests[] = {
 		{ "initialization requires bus", initialization_requires_started_bus },
-		{ "idempotent disabled lifecycle", lifecycle_is_idempotent_and_disabled_by_default },
+		{ "idempotent automatic lifecycle", lifecycle_is_idempotent_and_starts_immediately },
 		{ "initialize and ready notification", initialize_and_initialized_notification },
 		{ "ping catalog and IDs", ping_and_catalog_preserve_ids },
 		{ "unknown method and tool errors", unknown_methods_and_tools_return_rpc_errors },
@@ -1549,7 +1755,11 @@ int main(void) {
 		{ "invalid writes have no effects", invalid_writes_have_no_bus_effects },
 		{ "explicit tokens and native locking", explicit_tokens_respect_native_locking },
 		{ "unsupported write types", unsupported_write_types_never_dispatch },
-		{ "self unload and connection disable", self_unload_is_busy_and_connection_can_disable }
+		{ "self unload and unavailable connection", self_unload_is_busy_and_connection_is_unavailable },
+		{ "embedded help discovery", embedded_help_is_discoverable_on_initialize },
+		{ "all embedded resources and help aliases", all_embedded_resources_are_listed_and_readable },
+		{ "embedded help argument boundaries", embedded_help_rejects_invalid_targets_and_arguments },
+		{ "embedded help reload without files", embedded_help_survives_reload_in_an_empty_directory }
 	};
 	int result = indigo_run_tests("MCP agent integration", tests, sizeof(tests) / sizeof(tests[0]));
 	cleanup_fixture();

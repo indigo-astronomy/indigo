@@ -43,6 +43,12 @@ properties are first of all defined memory structures which are, if needed, mapp
 
 Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver base class in [indigo_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver.c). GEOGRAPHIC_COORDINATES and UTC_TIME are implemented in the mount, GPS, and dome driver base classes.
 
+## MCP agent lifecycle
+
+MCP Agent hides the inherited `CONNECTION` property. Loading `indigo_agent_mcp` activates the MCP endpoint immediately; unloading it stops admission and drains active requests before releasing the internal bus client. There is no separate connect/disconnect control. Its `CONFIG`, `PROFILE` and `ADDITIONAL_INSTANCES` controls are also hidden; the visible `INFO` property identifies the agent.
+
+Sources: [MCP agent](../indigo_drivers/agent_mcp/indigo_agent_mcp.c), [common driver properties](../indigo_libs/indigo_driver.c).
+
 ## CCD specific properties
 
 | Property name | Type | RO | Required | Item name | Required | Comments |

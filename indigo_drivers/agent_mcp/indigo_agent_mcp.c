@@ -36,9 +36,11 @@
 #include <externals/jsmn/jsmn.h>
 
 #include "indigo_agent_mcp.h"
+#include "indigo_agent_mcp_help.h"
 
 #define DRIVER_NAME "indigo_agent_mcp"
-#define DRIVER_VERSION 0x03000001
+#define DRIVER_VERSION 0x03000003
+#define MCP_AGENT_VERSION "3.0.0.3"
 #define MCP_VERSION "2025-11-25"
 #define MCP_BODY_LIMIT (64 * 1024)
 #define MCP_TOKEN_LIMIT 256
@@ -693,7 +695,10 @@ static void rpc_error(indigo_uni_handle *handle, int status, const char *id, int
 	rpc_reply(handle, status, id, id_size, "error", error);
 }
 
+static const char help_instructions[] = "INDIGO controls astronomical observing and astrophotography equipment. Use its agents for acquisition, autofocus, guiding, dithering, mount/dome coordination, solving and configuration. Before control, read get_help(topic=\"instructions.md\"), get_help(topic=\"server-and-devices.md\") and get_help(topic=\"agent-catalog.md\"), then the relevant agent manual. get_help() returns the index; all manuals are embedded and available offline, even for unloaded agents. The same documents are resources at indigo://help/<topic>. Main workflow: discover/load the required agents through Server.DRIVERS; discover/load device drivers; configure serial ports and driver-specific setup; select devices and related agents in the agents; configure the task; start and monitor agent processes. Direct device operations are for setup or explicit service tasks. A dispatched property write does not confirm completion. Read function semantics and verify live schemas/results; do not guess from labels. Documentation lists remaining coverage and source-contract limitations.";
+
 static const char tool_catalog[] = "{\"tools\":["
+	"{\"name\":\"get_help\",\"description\":\"Read embedded offline INDIGO operating help before controlling devices. Omit topic for the index. Topics include instructions.md, server-and-devices.md, agent-catalog.md and agents/imager.md; follow the catalog for every agent. Accepts an exact topic path or indigo://help/<topic> resource URI.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"topic\":{\"type\":\"string\",\"minLength\":1}},\"additionalProperties\":false},\"annotations\":{\"readOnlyHint\":true}},"
 	"{\"name\":\"list_devices\",\"description\":\"List INDIGO devices with visible properties, including write-only schemas.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false},\"annotations\":{\"readOnlyHint\":true}},"
 	"{\"name\":\"list_properties\",\"description\":\"List visible property and item schemas for an exact INDIGO device name. Write-only values are omitted.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"device\":{\"type\":\"string\",\"minLength\":1}},\"required\":[\"device\"],\"additionalProperties\":false},\"annotations\":{\"readOnlyHint\":true}},"
 	"{\"name\":\"get_property\",\"description\":\"Read the latest observed INDIGO property values and state. BLOBs are URLs; this does not trigger hardware reads or changes.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"device\":{\"type\":\"string\",\"minLength\":1},\"property\":{\"type\":\"string\",\"minLength\":1}},\"required\":[\"device\",\"property\"],\"additionalProperties\":false},\"annotations\":{\"readOnlyHint\":true}},"
@@ -731,6 +736,126 @@ static void tool_result(indigo_uni_handle *handle, const char *id, int id_size, 
 		append_json(&result, data);
 		append_json(&result, "}");
 	}
+	if (result.failed) {
+		rpc_error(handle, 200, id, id_size, -32603, "Allocation failed");
+	} else {
+		rpc_reply(handle, 200, id, id_size, "result", result.text);
+	}
+	free(result.text);
+}
+
+static bool valid_resource_parameters(const json_document *document, int params, bool read) {
+	if (params == -1) {
+		return !read;
+	}
+	if (params < 0 || document->tokens[params].type != JSMN_OBJECT) {
+		return false;
+	}
+	int meta = json_member(document, params, "_meta");
+	if (meta == -2 || (meta >= 0 && document->tokens[meta].type != JSMN_OBJECT)) {
+		return false;
+	}
+	for (int i = params + 1; i < document->count && document->tokens[i].start < document->tokens[params].end;) {
+		if (!token_is(document, i, "_meta") && !(read && token_is(document, i, "uri"))) {
+			return false;
+		}
+		int end = token_end(document, i + 1);
+		i += 2;
+		while (i < document->count && document->tokens[i].start < end) {
+			i++;
+		}
+	}
+	return true;
+}
+
+static char *decode_string(const json_document *document, int index);
+
+static void help_reply(indigo_uni_handle *handle, const json_document *document, int arguments, const char *id, int id_size, bool tool) {
+	const char *key = tool ? "topic" : "uri";
+	int topic = json_member(document, arguments, key);
+	bool valid = arguments == -1 ? tool : arguments >= 0 && document->tokens[arguments].type == JSMN_OBJECT;
+	if (topic == -2 || (topic < 0 && !tool) || (topic >= 0 && (document->tokens[topic].type != JSMN_STRING || document->tokens[topic].start == document->tokens[topic].end))) {
+		valid = false;
+	}
+	if (valid && !tool) {
+		valid = valid_resource_parameters(document, arguments, true);
+	}
+	if (valid && tool && arguments >= 0) {
+		for (int i = arguments + 1; i < document->count && document->tokens[i].start < document->tokens[arguments].end;) {
+			if (!token_is(document, i, key)) {
+				valid = false;
+				break;
+			}
+			int end = token_end(document, i + 1);
+			i += 2;
+			while (i < document->count && document->tokens[i].start < end) {
+				i++;
+			}
+		}
+	}
+	if (!valid) {
+		rpc_error(handle, 200, id, id_size, -32602, "Invalid help arguments");
+		return;
+	}
+	char *requested = topic >= 0 ? decode_string(document, topic) : NULL;
+	if (topic >= 0 && !requested) {
+		rpc_error(handle, 200, id, id_size, -32602, "Invalid help topic");
+		return;
+	}
+	char *fragment = requested ? strchr(requested, '#') : NULL;
+	if (fragment) {
+		*fragment = 0;
+	}
+	const char *lookup = requested ? requested : "README.md";
+	const mcp_help_document *entry = NULL;
+	for (size_t i = 0; i < sizeof(mcp_help) / sizeof(*mcp_help); i++) {
+		if (!strcmp(lookup, mcp_help[i].uri) || (tool && !strcmp(lookup, mcp_help[i].topic))) {
+			entry = mcp_help + i;
+			break;
+		}
+	}
+	free(requested);
+	if (!entry) {
+		if (tool) {
+			tool_result(handle, id, id_size, NULL, "Unknown help topic; use get_help() for the index and exact topic paths.");
+		} else {
+			rpc_error(handle, 200, id, id_size, -32002, "Resource not found");
+		}
+		return;
+	}
+	json_buffer result = { 0 };
+	append_json(&result, tool ? "{\"content\":[{\"type\":\"text\"," : "{\"contents\":[{");
+	if (!tool) {
+		string_field(&result, "uri", entry->uri);
+		append_json(&result, ",\"mimeType\":\"text/markdown\",");
+	}
+	string_field(&result, "text", entry->text);
+	append_json(&result, "}]}");
+	if (result.failed) {
+		rpc_error(handle, 200, id, id_size, -32603, "Allocation failed");
+	} else {
+		rpc_reply(handle, 200, id, id_size, "result", result.text);
+	}
+	free(result.text);
+}
+
+static void list_help(indigo_uni_handle *handle, const json_document *document, int params, const char *id, int id_size) {
+	if (!valid_resource_parameters(document, params, false)) {
+		rpc_error(handle, 200, id, id_size, -32602, "Invalid resources/list parameters");
+		return;
+	}
+	json_buffer result = { 0 };
+	append_json(&result, "{\"resources\":[");
+	for (size_t i = 0; i < sizeof(mcp_help) / sizeof(*mcp_help); i++) {
+		append_json(&result, i ? ",{" : "{");
+		string_field(&result, "uri", mcp_help[i].uri);
+		append_json(&result, ",");
+		string_field(&result, "name", mcp_help[i].topic);
+		append_json(&result, ",");
+		string_field(&result, "title", mcp_help[i].title);
+		append_json(&result, ",\"mimeType\":\"text/markdown\"}");
+	}
+	append_json(&result, "]}");
 	if (result.failed) {
 		rpc_error(handle, 200, id, id_size, -32603, "Allocation failed");
 	} else {
@@ -983,6 +1108,10 @@ static void set_property(indigo_uni_handle *handle, const json_document *documen
 static void call_tool(indigo_uni_handle *handle, const json_document *document, int params, const char *id, int id_size) {
 	int name = json_member(document, params, "name");
 	int arguments = json_member(document, params, "arguments");
+	if (token_is(document, name, "get_help")) {
+		help_reply(handle, document, arguments, id, id_size, true);
+		return;
+	}
 	if (token_is(document, name, "set_property")) {
 		set_property(handle, document, arguments, id, id_size);
 		return;
@@ -1104,7 +1233,7 @@ static void process_rpc(indigo_uni_handle *handle, const char *body, size_t size
 		return;
 	}
 	if (id == -1) {
-		if (initialize || ping || token_is(&document, method, "tools/list") || token_is(&document, method, "tools/call")) {
+		if (initialize || ping || token_is(&document, method, "tools/list") || token_is(&document, method, "tools/call") || token_is(&document, method, "resources/list") || token_is(&document, method, "resources/read")) {
 			rpc_error(handle, 400, "null", 4, -32600, "Request id required");
 		} else {
 			http_reply(handle, 202, NULL);
@@ -1120,10 +1249,23 @@ static void process_rpc(indigo_uni_handle *handle, const char *body, size_t size
 		if (protocol < 0 || document.tokens[protocol].type != JSMN_STRING || capabilities < 0 || document.tokens[capabilities].type != JSMN_OBJECT || name < 0 || document.tokens[name].type != JSMN_STRING || client_version < 0 || document.tokens[client_version].type != JSMN_STRING) {
 			rpc_error(handle, 200, id_text, id_size, -32602, "Invalid initialize parameters");
 		} else {
-			rpc_reply(handle, 200, id_text, id_size, "result", "{\"protocolVersion\":\"" MCP_VERSION "\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"INDIGO MCP Agent\",\"version\":\"3.0.0.1\"}}");
+			json_buffer result = { 0 };
+			append_json(&result, "{\"protocolVersion\":\"" MCP_VERSION "\",\"capabilities\":{\"tools\":{},\"resources\":{}},\"serverInfo\":{\"name\":\"INDIGO MCP Agent\",\"version\":\"" MCP_AGENT_VERSION "\"},");
+			string_field(&result, "instructions", help_instructions);
+			append_json(&result, "}");
+			if (result.failed) {
+				rpc_error(handle, 200, id_text, id_size, -32603, "Allocation failed");
+			} else {
+				rpc_reply(handle, 200, id_text, id_size, "result", result.text);
+			}
+			free(result.text);
 		}
 	} else if (ping) {
 		rpc_reply(handle, 200, id_text, id_size, "result", "{}");
+	} else if (token_is(&document, method, "resources/list")) {
+		list_help(handle, &document, params, id_text, id_size);
+	} else if (token_is(&document, method, "resources/read")) {
+		help_reply(handle, &document, params, id_text, id_size, false);
 	} else if (token_is(&document, method, "tools/list")) {
 		rpc_reply(handle, 200, id_text, id_size, "result", tool_catalog);
 	} else if (token_is(&document, method, "tools/call")) {
@@ -1328,27 +1470,13 @@ static indigo_result device_attach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_result result = indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT);
 	if (result == INDIGO_OK) {
+		CONNECTION_PROPERTY->hidden = true;
 		CONFIG_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = true;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	}
 	return result;
-}
-
-static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(property != NULL);
-	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		pthread_mutex_lock(&service_mutex);
-		service_enabled = CONNECTION_CONNECTED_ITEM->sw.value;
-		pthread_mutex_unlock(&service_mutex);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		return INDIGO_OK;
-	}
-	return indigo_device_change_property(device, client, property);
 }
 
 static indigo_result device_detach(indigo_device *device) {
@@ -1359,7 +1487,7 @@ static indigo_result device_detach(indigo_device *device) {
 
 indigo_result indigo_agent_mcp(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	static const indigo_device device_template = INDIGO_DEVICE_INITIALIZER(MCP_AGENT_NAME, device_attach, indigo_device_enumerate_properties, change_property, NULL, device_detach);
+	static const indigo_device device_template = INDIGO_DEVICE_INITIALIZER(MCP_AGENT_NAME, device_attach, indigo_device_enumerate_properties, indigo_device_change_property, NULL, device_detach);
 	SET_DRIVER_INFO(info, "MCP agent", __FUNCTION__, DRIVER_VERSION, false, last_action);
 	if (action == last_action) {
 		return INDIGO_OK;
@@ -1392,6 +1520,9 @@ indigo_result indigo_agent_mcp(indigo_driver_action action, indigo_driver_info *
 				agent_device = NULL;
 				return INDIGO_FAILED;
 			}
+			pthread_mutex_lock(&service_mutex);
+			service_enabled = true;
+			pthread_mutex_unlock(&service_mutex);
 			indigo_server_add_handler("/mcp", mcp_handler);
 			last_action = action;
 			break;
