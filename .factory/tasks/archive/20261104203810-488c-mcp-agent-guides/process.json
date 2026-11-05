@@ -39,7 +39,7 @@
         "indigo_test/build/integration/test_agent_mcp_sanitize"
       ],
       "result": "pass",
-      "evidence": "verification-autostart.md"
+      "evidence": "verification.md"
     },
     {
       "command": [
@@ -69,18 +69,19 @@
         "indigo_test/build/unit/test_profile_selection"
       ],
       "result": "pass",
-      "evidence": "verification-delivery.md"
+      "evidence": "verification.md"
     },
     {
       "command": [
         "./.factory/scripts/test"
       ],
       "result": "pass",
-      "evidence": "verification-delivery.md"
+      "evidence": "verification.md"
     }
   ],
   "risk_reviews": {
-    "authentication": "security.md"
+    "authentication": "security.md",
+    "data-model": "security.md"
   },
   "reviews": [],
   "reviewed_content": {

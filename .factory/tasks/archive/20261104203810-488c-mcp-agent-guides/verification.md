@@ -77,3 +77,5 @@ Separateprofilefix5a48ccdd2 passed its immutable processgate witherrors[] on cle
 ## Final synchronized delivery
 
 The latest combined candidate is verified in [verification-delivery.md](verification-delivery.md); this supersedes earlier phase state/version statements. Final MCP version3.0.0.3, native34/34, ASan/UBSan34/34 and profile4/4 pass after merging origin/master. Final independent reviews are canonical quality-review.md/security.md. Commit/integration/publication now authorized; immutable delivery gates remain pending.
+
+Factory suite final execution passed197 tests; the exact final driver/sanitizer/profile/build commands and results are included by the verification-delivery.md link above. Immutable gate initially rejected noncanonical report names in process.json checks; evidence references were corrected to this canonical verification report, and the existing status-table security review was mapped to the data-model policy signal. No product content changed. The repaired candidate must pass the immutable gate before integration.
