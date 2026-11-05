@@ -71,6 +71,7 @@ LIBINDIGO_CLIENT_SRCS := \
 	indigo_base64.c \
 	indigo_md5.c \
 	indigo_fits.c \
+	indigo_raw_utils.c \
 	indigo_client.c \
 	indigo_service_discovery.c \
 	indigo_token.c

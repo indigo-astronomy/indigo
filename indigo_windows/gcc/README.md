@@ -25,3 +25,6 @@ gcc -o indigo_app indigo_app.c -DINDIGO_WINDOWS -I.\include\indigo -L.\lib -lind
 Your application depends on **libindigo_client.dll** and **libwinpthread-1.dll** dynamic libraries. This is why they need to be in your PATH or in the same folder as your application in order to be able to run it.
 
 Distribute your Application bundled with **libindigo_client.dll** and **libwinpthread-1.dll** along with the other dependencies.
+
+## Catalogues
+The star, deep sky and solar system catalogues are in a separate library, it is needed only by an application that uses them. Add "libindigocat.lib" as a dependency, include the headers from "indigo\indigocat" and distribute the application with **libindigocat.dll**.

@@ -1,0 +1,66 @@
+{
+  "version": 2,
+  "task": "20261104222515-d8d4-client-raw-utils-mingw-indigocat",
+  "scope": [
+    "indigo_libs/indigo_client/Makefile",
+    "indigo_windows/README.md",
+    "indigo_windows/gcc/Makefile",
+    "indigo_windows/gcc/README.md",
+    ".factory/completions/20261104222515-d8d4-client-raw-utils-mingw-indigocat.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-unit"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    "indigo_libs/indigo_client/Makefile": [
+      "100644",
+      "blob",
+      "9e119c9a15f754922642349cc30dac819a4efc30"
+    ],
+    "indigo_windows/README.md": [
+      "100644",
+      "blob",
+      "11deba0d0c5bd799bcff78623ffbcd57901d0c9a"
+    ],
+    "indigo_windows/gcc/Makefile": [
+      "100644",
+      "blob",
+      "69754d4520fa26c41391176b4e8eab8bdbfa4043"
+    ],
+    "indigo_windows/gcc/README.md": [
+      "100644",
+      "blob",
+      "e7fca6191906a56c4e61ffc808a27ba8cf312687"
+    ],
+    ".factory/completions/20261104222515-d8d4-client-raw-utils-mingw-indigocat.json": [
+      "100644",
+      "blob",
+      "f3f36867dc57c65a68c3c75fac4ed78c36ee1439"
+    ]
+  }
+}

@@ -21,6 +21,7 @@
 #---------------------------------------------------------------------
 
 LIB_NAME        = libindigo_client
+CAT_LIB_NAME    = libindigocat
 OBJ_DIR         = ./obj
 OUTPUT_DIR      = ./build
 MDNS_DIR        = ../../indigo_libs/externals/bonjour-sdk/
@@ -32,12 +33,13 @@ MDNS_DEFINES    = -DUNICODE -D_UNICODE -DWIN32 -DMINGW_HAS_SECURE_API=1 -DWIN32 
 MDNS_CFLAGS     = -fno-keep-inline-dllexport -g -Wall -Wextra $(MDNS_DEFINES)
 INDIGO_DEFINES_DLL  = -DINDIGO_WINDOWS -DINDIGO_WINDOWS_DLL -DINDIGO_CLIENT -D_WIN32_WINNT=0x0600 -DWINVER=0x0600
 INDIGO_DEFINES_EXE  = -DINDIGO_WINDOWS -DINDIGO_CLIENT -D_WIN32_WINNT=0x0600 -DWINVER=0x0600
-INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES_DLL)
-INDIGO_CFLAGS_EXE   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES_EXE)
+INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g $(INDIGO_DEFINES_DLL)
+INDIGO_CFLAGS_EXE   = -O3 -fno-keep-inline-dllexport -g $(INDIGO_DEFINES_EXE)
 INCPATH         = -I$(INDIGO_DIR) -I$(MDNS_DIR)
 LINKER          = gcc
 LFLAGS          = -shared -Wl,-subsystem,windows -mthreads -Wl,--out-implib,$(OUTPUT_DIR)/$(LIB_NAME).lib -Wl,--output-def,$(OUTPUT_DIR)/$(LIB_NAME).def -static-libgcc -static-libstdc++
 LIBS            = -lws2_32 -lwsock32 -liphlpapi -lz
+CAT_LFLAGS      = -shared -Wl,-subsystem,windows -Wl,--out-implib,$(OUTPUT_DIR)/$(CAT_LIB_NAME).lib -Wl,--output-def,$(OUTPUT_DIR)/$(CAT_LIB_NAME).def -static-libgcc
 
 MDNS_OBJECTS = $(OBJ_DIR)/dnssd_clientlib.o \
           $(OBJ_DIR)/dnssd_clientstub.o \
@@ -54,12 +56,22 @@ INDIGO_OBJECTS = $(OBJ_DIR)/indigo_base64.o \
           $(OBJ_DIR)/indigo_xml.o\
           $(OBJ_DIR)/indigo_md5.o\
           $(OBJ_DIR)/indigo_fits.o\
+          $(OBJ_DIR)/indigo_raw_utils.o\
           $(OBJ_DIR)/indigo_version.o
 
-all: $(OUTPUT_DIR)/$(LIB_NAME).dll $(OUTPUT_DIR)/indigo_prop_tool.exe
+INDIGOCAT_SOURCES = $(wildcard $(INDIGO_DIR)/indigocat/*.c)
+INDIGOCAT_OBJECTS = $(addprefix $(OBJ_DIR)/,$(notdir $(INDIGOCAT_SOURCES:.c=.o)))
+
+all: $(OUTPUT_DIR)/$(LIB_NAME).dll $(OUTPUT_DIR)/$(CAT_LIB_NAME).dll $(OUTPUT_DIR)/indigo_prop_tool.exe
 
 $(OUTPUT_DIR)/$(LIB_NAME).dll: $(INDIGO_OBJECTS) $(MDNS_OBJECTS) directories
 	$(LINKER) $(LFLAGS) -o $(OUTPUT_DIR)/$(LIB_NAME).dll $(INDIGO_OBJECTS) $(MDNS_OBJECTS) $(LIBS)
+
+$(OUTPUT_DIR)/$(CAT_LIB_NAME).dll: $(INDIGOCAT_OBJECTS) directories
+	$(LINKER) $(CAT_LFLAGS) -o $(OUTPUT_DIR)/$(CAT_LIB_NAME).dll $(INDIGOCAT_OBJECTS)
+
+$(OBJ_DIR)/indigocat_%.o: $(INDIGO_DIR)/indigocat/indigocat_%.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
 
 $(OBJ_DIR)/dnssd_clientlib.o: $(MDNS_DIR)/dnssd_clientlib.c $(MDNS_DIR)/dns_sd.h directories
 	$(CC) -c $(MDNS_CFLAGS) $(INCPATH) -o$(OBJ_DIR)/dnssd_clientlib.o $(MDNS_DIR)/dnssd_clientlib.c
@@ -103,6 +115,9 @@ $(OBJ_DIR)/indigo_xml.o: $(INDIGO_DIR)/indigo_xml.c directories
 $(OBJ_DIR)/indigo_fits.o: $(INDIGO_DIR)/indigo_fits.c directories
 	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
 
+$(OBJ_DIR)/indigo_raw_utils.o: $(INDIGO_DIR)/indigo_raw_utils.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
 $(OBJ_DIR)/indigo_version.o: $(INDIGO_DIR)/indigo_version.c directories
 	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
 
@@ -114,7 +129,7 @@ PTHREAD_PATH = $(shell dirname `which $(CC)`)
 PTHREAD_BASE = $(shell dirname $(PTHREAD_PATH))
 PTHREAD_INCLUDE_PATH = $(shell ls -d $(PTHREAD_BASE)/*-w64-mingw32)/include
 bundle: all
-	@mkdir -p $(BUNDLE_DIR)/include/indigo
+	@mkdir -p $(BUNDLE_DIR)/include/indigo/indigocat
 	@mkdir -p $(BUNDLE_DIR)/include/pthread
 	@mkdir -p $(BUNDLE_DIR)/lib
 	@mkdir -p $(BUNDLE_DIR)/doc
@@ -129,8 +144,12 @@ bundle: all
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_io.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_uni_io.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_fits.h $(BUNDLE_DIR)/include/indigo/
+	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_raw_utils.h $(BUNDLE_DIR)/include/indigo/
+	cp $(INDIGO_BASE)/indigo_libs/indigo/indigocat/*.h $(BUNDLE_DIR)/include/indigo/indigocat/
 	cp $(OUTPUT_DIR)/$(LIB_NAME).lib $(BUNDLE_DIR)/lib/
 	cp $(OUTPUT_DIR)/$(LIB_NAME).dll $(BUNDLE_DIR)/lib/
+	cp $(OUTPUT_DIR)/$(CAT_LIB_NAME).lib $(BUNDLE_DIR)/lib/
+	cp $(OUTPUT_DIR)/$(CAT_LIB_NAME).dll $(BUNDLE_DIR)/lib/
 	cp $(PTHREAD_PATH)/libwinpthread-1.dll $(BUNDLE_DIR)/lib/
 	cp $(OUTPUT_DIR)/indigo_prop_tool.exe $(BUNDLE_DIR)/lib/
 	cp $(PTHREAD_INCLUDE_PATH)/pthread* $(BUNDLE_DIR)/include/pthread
