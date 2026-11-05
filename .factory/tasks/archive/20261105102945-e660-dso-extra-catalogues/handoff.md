@@ -20,4 +20,5 @@
 [verification.md](verification.md), [quality-review.md](quality-review.md), [security.md](security.md), [generation-report.txt](generation-report.txt), [source-checksums.txt](source-checksums.txt), [licence-review.md](licence-review.md).
 
 ## Delivery state
+A second Factory commit corrects the verdict line of verification.md, which the committed-range process check requires to be exactly "pass". The product commit is unchanged.
 Commit approved by the owner on the task branch. Integration and publication are not authorized.
