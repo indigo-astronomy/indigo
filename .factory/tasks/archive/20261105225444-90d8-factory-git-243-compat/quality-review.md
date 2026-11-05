@@ -1,8 +1,8 @@
 # Task quality review
 
-Verdict: pass after fixes
+Verdict: pass
 Reviewer and independence: fresh general-purpose subagent (same host and model), read-only, independent of the implementation context
-Reviewed revision and working-tree state: base 8c14701e7 + uncommitted task diff (2026-11-06). The fixes for F1–F3 were re-verified by the implementer.
+Reviewed revision and working-tree state: base 8c14701e7 + uncommitted task diff (2026-11-06). Findings F1–F3 were fixed before delivery and re-verified by the implementer (see Findings).
 
 ## Scope and method
 Reviewed `git diff master` plus the new `git_compat.py` and `test_git_compat.py`: promisor detection completeness,

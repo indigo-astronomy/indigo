@@ -5,7 +5,8 @@
     ".factory/scripts/*",
     ".factory/routines/template-updates.md",
     "indigo_test/factory/*",
-    "indigo.xcodeproj/project.pbxproj"
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/completions/20261105225444-90d8-factory-git-243-compat.json"
   ],
   "checks": [
     {
@@ -35,6 +36,11 @@
   },
   "reviews": [],
   "reviewed_content": {
+    ".factory/completions/20261105225444-90d8-factory-git-243-compat.json": [
+      "100644",
+      "blob",
+      "f7917e39fa481e628ba48c933e12cf7aa9ca5992"
+    ],
     ".factory/routines/template-updates.md": [
       "100644",
       "blob",
