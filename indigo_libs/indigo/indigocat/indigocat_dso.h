@@ -42,7 +42,8 @@ typedef enum {
 	ASSOCIATION_OF_STARS,
 	STAR_CLUSTER_NEBULA,
 	GROUP_OF_GALAXIES,
-	NOVA_STAR
+	NOVA_STAR,
+	DARK_NEBULA
 } indigocat_dso_type;
 
 typedef struct {
