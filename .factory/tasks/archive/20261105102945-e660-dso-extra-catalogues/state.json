@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261105102945-e660-dso-extra-catalogues",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Committed-range process check. Integration is not authorized; the owner decides after the licence review.",
+  "blocker": null
+}

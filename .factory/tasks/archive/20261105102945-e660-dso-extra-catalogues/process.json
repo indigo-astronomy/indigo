@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "task": "20261105102945-e660-dso-extra-catalogues",
+  "scope": [
+    "indigo_libs/indigocat/indigocat_dso.c",
+    "indigo_libs/indigo/indigocat/indigocat_dso.h",
+    ".factory/completions/20261105102945-e660-dso-extra-catalogues.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    "indigo_libs/indigo/indigocat/indigocat_dso.h": [
+      "100644",
+      "blob",
+      "6eece44e5a7054835f59875fdc41a5dff59109e9"
+    ],
+    "indigo_libs/indigocat/indigocat_dso.c": [
+      "100644",
+      "blob",
+      "463446e4ac13ab78e8c2b8a5920877e46ae54c79"
+    ]
+  }
+}
