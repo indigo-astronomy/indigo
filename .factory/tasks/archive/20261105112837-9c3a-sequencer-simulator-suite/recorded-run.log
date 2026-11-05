@@ -1,0 +1,492 @@
++ make -C /Users/polakovic/Development/indigo/indigo_drivers/agent_scripting -f ../../Makefile.drv all
+Definition:
+Sources:    duktape.c indigo_agent_scripting.c
+Archive:    indigo_agent_scripting.a
+SO library: indigo_agent_scripting.dylib
+duktape.o indigo_agent_scripting.o
+
++ make check-lib build/integration/test_agent_scripting build/integration/test_agent_scripting_sequencer build/integration/test_agent_scripting_sequencer_simulators
+make: `build/integration/test_agent_scripting' is up to date.
+make: `build/integration/test_agent_scripting_sequencer' is up to date.
+printf '%s\n' '#!/bin/sh' 'exec python3 "$(dirname "$0")/../../integration/run_sequencer_simulators.py" "$@"' > build/integration/test_agent_scripting_sequencer_simulators
+chmod +x build/integration/test_agent_scripting_sequencer_simulators
++ ./build/integration/test_agent_scripting
+Running Scripting Agent integration
+  PASS schema and lifecycle
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS immediate execution and recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS repeated execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS long script execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS script create rename execute delete
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS empty name recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS duplicate script recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS saved script failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS delete acknowledgement
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS delete unknown script
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS script capacity and reuse
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS configuration long text roundtrip
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load order after reinitialize
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS shutdown during automatic load
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load existing scripts
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-unload execution
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-load failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS on-unload failure
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS hook defaults and rename
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS invalid rename recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+13:28:20.393406 Application: Failed to create /tmp/indigo_scripting_test_XsXmLF/.indigo/Scripting_Agent.config
+13:28:20.393711 Application: Failed to create /tmp/indigo_scripting_test_XsXmLF/.indigo/Scripting_Agent.config
+13:28:20.393722 Application: Failed to create /tmp/indigo_scripting_test_XsXmLF/.indigo/Scripting_Agent.config
+  PASS configuration save failure recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS low-level change bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+Timeout waiting for counter 0x10027a23c to reach 4 (observed 1)
+Timeout waiting for counter 0x10027a23c to reach 7 (observed 1)
+integration/test_agent_scripting.c:744: assertion failed: device_forwarded && device_token
+  FAIL change bindings forward local access tokens
+Scripting Agent integration: 1 test(s) failed
+FAILED change bindings forward local access tokens (status 256)
+Running Scripting Agent integration
+  PASS enumeration and BLOB enable bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS define update redefine delete bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS queued property snapshots
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS binding defaults and large property
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS cached property capacity and reuse
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS boot.js cache and callbacks
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS boot.js property change helper
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+13:28:27.333331 Application: indigo_agent_scripting[populate_blob:349]: indigo_populate_http_blob_item() failed
+13:28:27.334863 Application: Failed to create /no/such/scripting-test/blob.bin
+13:28:27.334870 Application: indigo_agent_scripting[save_blob:332]: indigo_save_blob() failed
+  PASS BLOB populate and save bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS conversion and astronomy bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+13:28:27.495006 Application: indigo_agent_scripting[timer_handler:934]: timer call failed (Error: timer callback failure)
+  PASS timer scheduling cancellation capacity
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS shutdown cancels pending timers
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+13:28:27.646218 Application: error-binding
+13:28:27.647751 Application: cached property 'Scripting test peer'.PEER_BLOB, state = Ok, perm = RO
+13:28:27.647768 Application:   DATA = [url: 'http://test.invalid/blob', size: 0, format: '.bin', reference: 0x76e4c125b0]
+  PASS logging and message bindings
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+13:28:27.652545 Application: indigo_agent_scripting[agent_update_property:1633]: indigo_on_update_property() call failed (Error: update callback)
+13:28:27.653942 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+13:28:27.653962 Application: indigo_agent_scripting[agent_delete_property:1653]: indigo_on_delete_property() call failed (Error: delete callback)
+13:28:27.653974 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+13:28:27.653991 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+13:28:27.654001 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+13:28:27.654014 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+13:28:27.654023 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+13:28:27.654036 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+13:28:27.654044 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+13:28:27.654056 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+13:28:27.654064 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+13:28:27.654076 Application: indigo_agent_scripting[agent_define_property:1615]: indigo_on_define_property() call failed (Error: define callback)
+13:28:27.654085 Application: indigo_agent_scripting[agent_send_message:1668]: indigo_on_send_message() call failed (Error: message callback)
+13:28:27.654129 Application: indigo_agent_scripting[agent_enumerate_properties:1285]: indigo_on_enumerate_properties() call failed (Error: enumerate callback)
+13:28:27.654145 Application: indigo_agent_scripting[agent_change_property:1524]: indigo_on_change_property() call failed (Error: change callback)
+13:28:27.654158 Application: indigo_agent_scripting[agent_update_property:1633]: indigo_on_update_property() call failed (Error: update callback)
+13:28:27.654179 Application: indigo_agent_scripting[agent_update_property:1633]: indigo_on_update_property() call failed (Error: update callback)
+  PASS callback exception recovery
+Scripting Agent integration: all tests passed
+Running Scripting Agent integration
+  PASS invalid binding argument recovery
+Scripting Agent integration: all tests passed
+Scripting Agent: 36/37 passed (including cleanup)
++ ./build/integration/test_agent_scripting_sequencer
+Running Sequencer.js integration
+  PASS library inventory and properties
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS published property schema
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS all public constructors
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS focus batch snapshot
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS loop and timing construction
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS nested loop execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS capture accounting and overloads
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS empty sequence execution
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS evaluate wait and messages
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS string arguments and UTC break
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure abort policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure continue policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure recovery policy
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS recovery without point
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS pause resume abort reset
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS past waits and breaks
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator imaging
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator preview
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator stream
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator mount dome GPS rotator
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator agent features
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator altitude and hour angle
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS simulator guiding calibration step
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS custom agent arguments
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS configuration and driver orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS astrometry orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS platesolver orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS remote solver orchestration
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS solver autoselection prefers imager host then local
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS solver autoselection without local solver
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS solver autoselection corrected at use
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS select solver agent step
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS solver replaced during sequence
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS solver failures recover
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS solver step without solver recovers
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS abort reaches replaced solver
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS abort reaches selected solver
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip uses selected solver
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip uses solver selected by step
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip uses solver loaded after sequence
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip without solver fails
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure recovers
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure during capture recovers
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure during endless capture recovers
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure continues
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure aborts
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure keeps finished state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure keeps failed state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure keeps aborted state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure keeps reset state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS late abort keeps finished state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS step timer after abort keeps step state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS step timer after failure keeps step state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS step timer after abort does not advance next sequence
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS mount delay timer after abort keeps step state
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS failure cancels stored timer
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS abort with timer not cancellable
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure while step timer fires recovers
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure while step timer fires continues
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS meridian flip failure while altitude poll fires recovers
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS abort after stored flip failure
+Sequencer.js integration: all tests passed
+Running Sequencer.js integration
+  PASS paused stored flip failure recovers
+Sequencer.js integration: all tests passed
+Sequencer.js: 63/63 passed (including cleanup)
++ ./build/integration/test_agent_scripting_sequencer_simulators
+PASS: empty sequence
+PASS: messages and quoted evaluation
+PASS: nested loops reset=true
+PASS: nested loops reset=false
+PASS: zero loop and trailing step
+PASS: past numeric and UTC waits
+PASS: future numeric wait
+PASS: future UTC wait
+PASS: time break taken=true
+PASS: time break taken=false
+PASS: break without destination
+PASS: abort on missing camera property
+PASS: continue on missing camera property
+PASS: recover on missing camera property
+PASS: recover without destination
+PASS: explicit policy transition
+PASS: recover independently inside repeated blocks
+PASS: pause then resume a wait
+PASS: abort pending wait
+PASS: fresh sequence after abort
+PASS: save private configuration
+FAIL: restore private configuration — Unexpected terminal sequence state
+PASS: missing configuration fails
+PASS: missing driver fails
+PASS: load unused simulator
+PASS: unload unused simulator
+PASS: select_imager_camera ["CCD Imager Simulator"]
+PASS: select_filter_wheel ["CCD Imager Simulator (wheel)"]
+PASS: select_focuser ["CCD Imager Simulator (focuser)"]
+PASS: select_mount ["Mount Simulator"]
+PASS: select_dome ["Dome Simulator"]
+PASS: select_gps ["GPS Simulator"]
+PASS: select_rotator ["Field Rotator Simulator"]
+PASS: select_guider_camera ["CCD Guider Simulator"]
+PASS: select_guider ["CCD Guider Simulator (guider)"]
+PASS: explicit agent selection
+PASS: private image directory and names
+PASS: select_frame_type ["Light"]
+PASS: select_frame_type ["Dark"]
+PASS: select_frame_type ["Flat"]
+PASS: select_frame_type ["Bias"]
+PASS: select_image_format ["RAW"]
+PASS: select_image_format ["FITS"]
+PASS: binning then full sensor
+PASS: set_gain [17]
+PASS: set_offset [7]
+PASS: set_gamma [1.2]
+PASS: enable_cooler [25]
+PASS: disable_cooler []
+PASS: select_imager_camera ["DSLR Simulator"]
+PASS: select_program ["Manual"]
+PASS: select_program ["Bulb"]
+PASS: select_aperture ["f/4"]
+PASS: select_program ["Manual"]
+PASS: select_shutter ["1/10"]
+PASS: select_iso ["100"]
+PASS: select_iso ["200"]
+PASS: select_iso ["400"]
+PASS: invalid DSLR option fails
+PASS: select_imager_camera ["CCD Imager Simulator"]
+PASS: prepare finite image batches
+PASS: capture batch named=false
+PASS: capture stream named=false
+PASS: capture batch named=true
+PASS: capture stream named=true
+PASS: FITS custom header present
+PASS: FITS custom header removed
+PASS: preview observes frames then stops
+PASS: set_manual_focuser_mode []
+PASS: set_focuser_position [500]
+PASS: set_automatic_focuser_mode []
+PASS: clear autofocus selection
+PASS: autofocus without focuser fails
+PASS: autofocus ignores process failure and restores batch
+PASS: select_focuser ["CCD Imager Simulator (focuser)"]
+PASS: autofocus with real simulator
+PASS: select_filter ["1"]
+PASS: filter offsets enabled then disabled
+PASS: enable_ha_limit []
+PASS: enable_time_limit []
+PASS: enable_dome_slaving []
+PASS: enable_field_derotation []
+PASS: enable_joystick_control []
+PASS: disable_ha_limit []
+PASS: disable_time_limit []
+PASS: disable_dome_slaving []
+PASS: disable_field_derotation []
+PASS: disable_joystick_control []
+PASS: make_dome_slaving_persistent []
+PASS: make_dome_slaving_not_persistent []
+PASS: make_field_derotation_persistent []
+PASS: make_field_derotation_not_persistent []
+PASS: unpark []
+PASS: home mount simulator
+PASS: enable_tracking []
+PASS: slew mount with coordinate readback
+PASS: GPS ready
+PASS: dome unpark
+PASS: dome_open []
+PASS: dome_slew [45]
+PASS: set_rotator_angle [10]
+PASS: dome_close []
+PASS: dome_park []
+PASS: sky breaks taken=true
+PASS: HA break taken=true
+PASS: sky breaks taken=false
+PASS: HA break taken=false
+PASS: sky waits immediately satisfied
+PASS: abort wait_until_solar_altitude_below
+PASS: abort wait_until_target_altitude_above
+PASS: prepare guider and solver relations
+PASS: guiding calibration real simulator
+PASS: start_guiding produces frames then stops
+PASS: start_guiding_exposure produces frames then stops
+PASS: guiding reuses configured exposure
+PASS: guided capture with dithering
+PASS: clear guider selection
+PASS: meridian flip options readback
+PASS: prepare transit target 0.008
+PASS: natural transit meridian flip and capture resume
+PASS: prepare transit target 0.05
+PASS: abort imager paused before natural transit
+PASS: restore flip option after transit abort
+PASS: pause and resume actual capture
+PASS: abort finite capture
+PASS: solver filter current
+PASS: solver operations reject unconfigured source
+PASS: solver setup with installed indexes
+PASS: native solve sync and center
+PASS: native precise goto simulator field
+PASS: prepare solver-assisted transit target
+PASS: natural transit flip with native solver correction
+PASS: disable_tracking []
+PASS: park []
+PASS: reset completed sequence through bus
+Scripting Agent: 134 passed, 1 failed; report: /private/tmp/sequencer-final-3/results.json
+145 driver(s) written to /Users/polakovic/Development/indigo/TEST_SUMMARY.md
+
+FAILED: test_agent_scripting
+FAILED: test_agent_scripting_sequencer_simulators
+agent_scripting: 241/239 Failed
+recorded in indigo_drivers/agent_scripting/README.md:
+2026-11-05 13:28 3.0.0.15 mac arm64 simulator 241/239 Failed

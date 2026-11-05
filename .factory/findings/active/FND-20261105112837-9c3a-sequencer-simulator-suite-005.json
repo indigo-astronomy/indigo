@@ -1,0 +1,19 @@
+{
+  "title": "Configuration restore replays unauthenticated requests against protected Configuration Agent",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261105112837-9c3a-sequencer-simulator-suite",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "On a server with nonzero device/master ACLs, saving a private configuration succeeds but restoring it fails. The saved file contains new*Vector requests to Configuration Agent without tokens; load_configuration parses it through a CONFIG_READER client and the bus rejects those requests. Next: authorize trusted local configuration replay without allowing network ACL bypass, then rerun private configuration restoration. Owner explicitly requests tests/findings only; no production fix authorized.",
+  "evidence": "/tmp/sequencer-run-8/messages.jsonl reports six protected Configuration Agent rejections and AGENT_CONFIG_LOAD Alert. indigo_drivers/agent_config/indigo_agent_config.c load_configuration and indigo_xml_parse path.",
+  "resolution": null,
+  "id": "FND-20261105112837-9c3a-sequencer-simulator-suite-005"
+}

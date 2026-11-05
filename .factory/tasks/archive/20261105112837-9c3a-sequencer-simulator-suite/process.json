@@ -1,0 +1,130 @@
+{
+  "version": 2,
+  "task": "20261105112837-9c3a-sequencer-simulator-suite",
+  "scope": [
+    "indigo_test/integration/run_sequencer_simulators.py",
+    "indigo_test/integration/sequencer_simulators.js",
+    "indigo_test/integration/sequencer_simulators.md",
+    "indigo_test/integration/test_agent_scripting.c",
+    "indigo_test/unit/test_protocol_security.c",
+    "indigo_test/Makefile",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_drivers/agent_scripting/README.md",
+    "TEST_SUMMARY.md",
+    ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-*.json",
+    ".factory/findings/archive/FND-20261105112837-9c3a-sequencer-simulator-suite-*.json",
+    ".factory/completions/20261105112837-9c3a-sequencer-simulator-suite.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        ".factory/tasks/archive/20261105112837-9c3a-sequencer-simulator-suite/verify-results.py"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "security.md"
+    },
+    {
+      "command": [
+        "node",
+        "--check",
+        "indigo_test/integration/sequencer_simulators.js"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261105112837-9c3a-sequencer-simulator-suite.json": [
+      "100644",
+      "blob",
+      "d43da1852a50be335026278885be65ae82f3912e"
+    ],
+    ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-003.json": [
+      "100644",
+      "blob",
+      "723f4fd550e4562041c7fd7fbfda2d30797958ab"
+    ],
+    ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-004.json": [
+      "100644",
+      "blob",
+      "d37cf5330e0368dc42f641ff2952ad6031085bf9"
+    ],
+    ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-005.json": [
+      "100644",
+      "blob",
+      "11a5caee34150ab73ec64c951b1cc09984ab8d24"
+    ],
+    ".factory/findings/archive/FND-20261105112837-9c3a-sequencer-simulator-suite-001.json": [
+      "100644",
+      "blob",
+      "2e31fb070f6f61a8390668392b169d35f2733b24"
+    ],
+    ".factory/findings/archive/FND-20261105112837-9c3a-sequencer-simulator-suite-002.json": [
+      "100644",
+      "blob",
+      "a9ffafd5593fc856bf29947340875d39385e49a4"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "bb1c8535087939a1d3821273c4414129c9caee75"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "1e97927fdb6cd7ea5677be124329901f92491195"
+    ],
+    "indigo_drivers/agent_scripting/README.md": [
+      "100644",
+      "blob",
+      "909658f6c17d5bcb1735fa9ad9ca24d50df3fe04"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "eb1f728680ca9247865d6aa4cc2be04bd793c754"
+    ],
+    "indigo_test/integration/run_sequencer_simulators.py": [
+      "100644",
+      "blob",
+      "7889f50eac8d6045f053bdde175b97e3393db8b0"
+    ],
+    "indigo_test/integration/sequencer_simulators.js": [
+      "100644",
+      "blob",
+      "0ec2f177f1f774b49b86d009cb316fa7870e8d81"
+    ],
+    "indigo_test/integration/sequencer_simulators.md": [
+      "100644",
+      "blob",
+      "26bd21e5099f413c9a359d1fa8311b4c0c400edd"
+    ],
+    "indigo_test/integration/test_agent_scripting.c": [
+      "100644",
+      "blob",
+      "2cd73196305adf71bdf3bfd4f705d405583a60a5"
+    ],
+    "indigo_test/unit/test_protocol_security.c": [
+      "100644",
+      "blob",
+      "01c183cebfa854fee839380e0a5ee1f9b8ae0ff8"
+    ]
+  }
+}

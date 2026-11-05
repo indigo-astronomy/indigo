@@ -1,0 +1,59 @@
+unit/test_protocol_security.c:537: assertion failed: rejected_without_master[protocol]
+13:03:10.182131 Application: XML Parser: syntax error
+13:03:10.196884 Application: XML Parser: syntax error
+13:03:10.287310 Application: JSON Parser: syntax error
+13:03:20.902471 Application: JSON Parser: syntax error
+13:03:20.932533 Application: XML Parser: syntax error
+13:03:20.934983 Application: XML Parser: syntax error
+13:03:20.935399 Application: XML Parser: syntax error
+13:03:20.935837 Application: XML Parser: syntax error
+13:03:20.936251 Application: XML Parser: syntax error
+13:03:20.936589 Application: XML Parser: syntax error
+13:03:20.936939 Application: XML Parser: syntax error
+13:03:20.937347 Application: XML Parser: syntax error
+13:03:20.937697 Application: XML Parser: syntax error
+13:03:20.938028 Application: XML Parser: syntax error
+13:03:20.938435 Application: XML Parser: syntax error
+13:03:20.938852 Application: XML Parser: syntax error
+13:03:20.939195 Application: XML Parser: syntax error
+13:03:20.939612 Application: XML Parser: syntax error
+13:03:20.939945 Application: XML Parser: syntax error
+13:03:20.940280 Application: XML Parser: syntax error
+13:03:20.940611 Application: XML Parser: syntax error
+13:03:20.940940 Application: XML Parser: syntax error
+13:03:20.941288 Application: XML Parser: syntax error
+13:03:20.941545 Application: XML Parser: syntax error
+13:03:20.947002 Application: XML Parser: syntax error
+13:03:20.947345 Application: XML Parser: syntax error
+13:03:20.947690 Application: XML Parser: syntax error
+13:03:20.948050 Application: XML Parser: syntax error
+13:03:20.949079 Application: XML Parser: syntax error
+13:03:20.949434 Application: XML Parser: syntax error
+13:03:21.209397 Application: JSON Parser: syntax error
+13:03:21.211550 Application: JSON Parser: syntax error
+13:03:21.212164 Application: JSON Parser: syntax error
+13:03:21.464347 Application: JSON Parser: syntax error
+13:03:21.551190 Application: JSON Parser: syntax error
+13:03:21.637528 Application: JSON Parser: syntax error
+13:03:21.724084 Application: JSON Parser: syntax error
+Running Protocol security
+  FAIL device ACL requires device or nonzero master token
+  PASS XML upload staging one shot
+  PASS request item limits
+  PASS request text budgets and reset
+  PASS JSON repeated items rejected
+  PASS cached RO BLOB retirement
+  PASS xml_attribute_boundaries
+  PASS xml_name_boundaries
+  PASS xml_entity_boundaries
+  PASS xml_wrong_direction
+  PASS xml_blob_owned_items_and_padding
+  PASS xml_blob_empty_after_nonempty
+  PASS xml_blob_rejects_mismatch_and_malformed
+  PASS xml_blob_crosses_input_buffers
+  PASS xml_messages_are_literal
+  PASS json_token_boundaries
+  PASS json_number_and_logical_boundaries
+  PASS websocket_frames
+  PASS websocket_controls
+Protocol security: 1 test(s) failed

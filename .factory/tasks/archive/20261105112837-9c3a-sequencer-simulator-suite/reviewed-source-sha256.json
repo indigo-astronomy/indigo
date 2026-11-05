@@ -1,0 +1,9 @@
+{
+  "indigo_test/integration/run_sequencer_simulators.py": "64ca87ecf750217b906e39f55a5cfb086fc81232526ad6310a71c3cc933ac1cc",
+  "indigo_test/integration/sequencer_simulators.js": "e925bcc107b8dece18ea645862cd0afa71befbc27f8baf51aad21ab3788457de",
+  "indigo_test/integration/sequencer_simulators.md": "4c20251e7b2a49e0444ed4a8223c5798dad933017a90479efe1c0a8f25939f3f",
+  "indigo_test/integration/test_agent_scripting.c": "5bba4e885671be2527bce87edd9553645776c3433f87b7c28f592e4df51d8fae",
+  "indigo_test/unit/test_protocol_security.c": "cc96756003ae81a751718dad23e81324625edee7988893ae875a006eb36739db",
+  "indigo_test/Makefile": "34f30a0dfa44ee9675592a0f4367f7aa3b1078f53162ea125c54b1a1c99b177e",
+  "indigo.xcodeproj/project.pbxproj": "2b3208ec3277c90de9ff31f5a30329efdd7d655374c5987f272b0c27d04e0a5b"
+}

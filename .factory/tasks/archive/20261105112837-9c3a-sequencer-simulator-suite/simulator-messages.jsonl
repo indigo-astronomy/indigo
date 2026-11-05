@@ -1,0 +1,664 @@
+{"message": "Device 'Server' is protected or locked for exclusive access", "device": "Server"}
+{"message": "Executing on-load scripts", "device": "Scripting Agent", "name": "AGENT_SCRIPTING_ON_LOAD_SCRIPT"}
+{"message": "Device 'Scripting Agent' is protected or locked for exclusive access", "device": "Scripting Agent"}
+{"message": "Sequencer installed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST_PLAN 135", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"empty sequence\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Quote \" slash \\ Unicode Ω", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.02s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"messages and quoted evaluation\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"nested loops reset=true\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"nested loops reset=false\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"zero loop and trailing step\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Target time has passed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Target time has passed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"past numeric and UTC waits\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended until 2026-11-05 12:33:17 UTC", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"future numeric wait\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended until 2026-11-05 12:33:21 UTC", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"future UTC wait\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Break executed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Resumed from break at resume point #1", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"time break taken=true\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"time break taken=false\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Break executed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished, no resume point found", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"break without destination\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set 'CCD_FRAME_TYPE' on 'Missing Simulator Agent'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"abort on missing camera property\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set 'CCD_FRAME_TYPE' on 'Missing Simulator Agent'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"continue on missing camera property\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set 'CCD_FRAME_TYPE' on 'Missing Simulator Agent'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Recovered from failure at recovery point #1", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"recover on missing camera property\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "There is no CCD_GAIN on Missing Simulator Agent", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed, no recovery point found", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"recover without destination\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "There is no CCD_GAIN on Missing Simulator Agent", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"explicit policy transition\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set 'CCD_FRAME_TYPE' on 'Missing Simulator Agent'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Recovered from failure at recovery point #1", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set 'CCD_FRAME_TYPE' on 'Missing Simulator Agent'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Recovered from failure at recovery point #1", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"recover independently inside repeated blocks\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.5s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence paused", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence resumed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"pause then resume a wait\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 20s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence aborted", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Process aborted", "device": "Platesolver Agent", "name": "ALERT"}
+{"message": "SEQTEST {\"name\":\"abort pending wait\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.6s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"fresh sequence after abort\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 1s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Active configuration saved as 'Sequencer_Private_Test'", "device": "Configuration Agent", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"save private configuration\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Unloading current configuration, please wait...", "device": "Configuration Agent", "name": "AGENT_CONFIG_LOAD"}
+{"message": "Loading configuration 'Sequencer_Private_Test', please wait...", "device": "Configuration Agent", "name": "AGENT_CONFIG_LOAD"}
+{"message": "Device 'Configuration Agent' is protected or locked for exclusive access", "device": "Configuration Agent"}
+{"message": "Device 'Configuration Agent' is protected or locked for exclusive access", "device": "Configuration Agent"}
+{"message": "Device 'Configuration Agent' is protected or locked for exclusive access", "device": "Configuration Agent"}
+{"message": "Device 'Configuration Agent' is protected or locked for exclusive access", "device": "Configuration Agent"}
+{"message": "Device 'Configuration Agent' is protected or locked for exclusive access", "device": "Configuration Agent"}
+{"message": "Device 'Configuration Agent' is protected or locked for exclusive access", "device": "Configuration Agent"}
+{"message": "Configuration did not load properly. Are all devices connected?", "device": "Configuration Agent", "name": "AGENT_CONFIG_LOAD"}
+{"message": "AGENT_CONFIG_LOAD reports alert", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"restore private configuration\",\"status\":\"fail\",\"error\":\"Unexpected terminal sequence state\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set non-existent option 'No_Such_Sequencer_Config' for 'Configuration Agent -> Load configuration'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"missing configuration fails\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set non-existent option 'indigo_missing_sequencer_driver' for 'Server -> Available drivers'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"missing driver fails\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"load unused simulator\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"unload unused simulator\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to CCD Imager Simulator", "device": "CCD Imager Simulator", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_imager_camera [\\\"CCD Imager Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to CCD Imager Simulator (wheel)", "device": "CCD Imager Simulator (wheel)", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_filter_wheel [\\\"CCD Imager Simulator (wheel)\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to CCD Imager Simulator (focuser)", "device": "CCD Imager Simulator (focuser)", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_focuser [\\\"CCD Imager Simulator (focuser)\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to Mount Simulator", "device": "Mount Simulator", "name": "OK"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is parked", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount not at home position", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not tracking", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Telescope is on east side of pier", "device": "Mount Agent", "name": "IDLE"}
+{"message": "The site is 0° N, 0° E, most likely not set; it is not written to the mount or the dome", "device": "Mount Agent", "name": "ALERT"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_mount [\\\"Mount Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to Dome Simulator", "device": "Dome Simulator", "name": "OK"}
+{"message": "Dome is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Dome is parked", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Dome is closed", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_dome [\\\"Dome Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to GPS Simulator", "device": "GPS Simulator", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_gps [\\\"GPS Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to Field Rotator Simulator", "device": "Field Rotator Simulator", "name": "OK"}
+{"message": "Field derotation is inactive", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_rotator [\\\"Field Rotator Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to CCD Guider Simulator", "device": "CCD Guider Simulator", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_guider_camera [\\\"CCD Guider Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to CCD Guider Simulator (guider)", "device": "CCD Guider Simulator (guider)", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_guider [\\\"CCD Guider Simulator (guider)\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"explicit agent selection\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"private image directory and names\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Imager Agent -> Frame type -> Light' is already selected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_frame_type [\\\"Light\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_frame_type [\\\"Dark\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_frame_type [\\\"Flat\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_frame_type [\\\"Bias\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_image_format [\\\"RAW\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_image_format [\\\"FITS\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"binning then full sensor\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"set_gain [17]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"set_offset [7]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"set_gamma [1.2]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"enable_cooler [25]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"disable_cooler []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Disconnected from CCD Imager Simulator", "device": "CCD Imager Simulator", "name": "OK"}
+{"message": "Connected to DSLR Simulator", "device": "DSLR Simulator", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_imager_camera [\\\"DSLR Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Imager Agent -> Program mode -> Manual' is already selected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_program [\\\"Manual\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_program [\\\"Bulb\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_aperture [\\\"f/4\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_program [\\\"Manual\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_shutter [\\\"1/10\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Imager Agent -> ISO -> 100' is already selected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_iso [\\\"100\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_iso [\\\"200\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_iso [\\\"400\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to set non-existent option 'missing-iso' for 'Imager Agent -> ISO'", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"invalid DSLR option fails\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Disconnected from DSLR Simulator", "device": "DSLR Simulator", "name": "OK"}
+{"message": "Connected to CCD Imager Simulator", "device": "CCD Imager Simulator", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_imager_camera [\\\"CCD Imager Simulator\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Imager Agent -> Image format -> FITS format' is already selected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Imager Agent -> Process features -> Pause after transit' is already unselected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"prepare finite image batches\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"capture batch named=false\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Streaming started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Streaming finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"capture stream named=false\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"capture batch named=true\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Streaming started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Streaming finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"capture stream named=true\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"FITS custom header present\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"FITS custom header removed\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.6s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"preview observes frames then stops\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Imager Agent -> Compensation mode -> Manual control' is already selected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"set_manual_focuser_mode []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"set_focuser_position [500]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"set_automatic_focuser_mode []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"clear autofocus selection\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Disconnected from CCD Imager Simulator (focuser)", "device": "CCD Imager Simulator (focuser)", "name": "OK"}
+{"message": "No focuser is selected", "device": "Imager Agent", "name": "AGENT_START_PROCESS"}
+{"message": "AGENT_START_PROCESS reports alert", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence failed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"autofocus without focuser fails\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "No focuser is selected", "device": "Imager Agent", "name": "AGENT_START_PROCESS"}
+{"message": "AGENT_START_PROCESS reports alert", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"autofocus ignores process failure and restores batch\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Connected to CCD Imager Simulator (focuser)", "device": "CCD Imager Simulator (focuser)", "name": "OK"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_focuser [\\\"CCD Imager Simulator (focuser)\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.3s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Focusing started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Frame saturation detected, masking out saturated areas and resetting statistics", "device": "Imager Agent", "name": "BUSY"}
+{"message": "Focusing finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"autofocus with real simulator\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Imager Agent -> Selected filter -> Filter #1' is already selected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"select_filter [\\\"1\\\"]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"filter offsets enabled then disabled\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"enable_ha_limit []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"enable_time_limit []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Dome slaving is active", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"enable_dome_slaving []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Field derotation is active", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"enable_field_derotation []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"enable_joystick_control []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"disable_ha_limit []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"disable_time_limit []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Dome slaving is inactive", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"disable_dome_slaving []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Field derotation is inactive", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"disable_field_derotation []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"disable_joystick_control []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"make_dome_slaving_persistent []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"make_dome_slaving_not_persistent []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"make_field_derotation_persistent []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"make_field_derotation_not_persistent []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is unparked", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is tracking", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"unpark []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is going to home position...", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not tracking", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is at home position", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"home mount simulator\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is tracking", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"enable_tracking []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount not at home position", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"slew mount with coordinate readback\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"GPS ready\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Dome is unparked", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"dome unpark\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Dome shutter is moving...", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Dome is opened", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"dome_open []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Dome is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Dome is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"dome_slew [45]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"set_rotator_angle [10]\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Dome shutter is moving...", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Dome is closed", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"dome_close []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Dome is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Dome is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Dome is parked", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"dome_park []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Break executed: solar altitude 69.7° above -91°", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Resumed from break at resume point #1", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Break executed: target altitude -60.9° below 91°", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Resumed from break at resume point #2", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"sky breaks taken=true\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Break executed: HA 10.536 past limit 9.536", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Resumed from break at resume point #1", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"HA break taken=true\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"sky breaks taken=false\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"HA break taken=false\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Solar altitude 69.7° is already below 91°", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Target altitude -60.9° is already above -91°", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"sky waits immediately satisfied\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Waiting for solar altitude to drop below -91° (currently 69.6°)", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence aborted", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Aborted", "device": "Mount Simulator", "name": "MOUNT_ABORT_MOTION"}
+{"message": "Process aborted", "device": "Platesolver Agent", "name": "ALERT"}
+{"message": "SEQTEST {\"name\":\"abort wait_until_solar_altitude_below\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Waiting for target altitude to rise above 91° (currently -60.9°)", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence aborted", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Aborted", "device": "Mount Simulator", "name": "MOUNT_ABORT_MOTION"}
+{"message": "Process aborted", "device": "Platesolver Agent", "name": "ALERT"}
+{"message": "SEQTEST {\"name\":\"abort wait_until_target_altitude_above\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.5s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"prepare guider and solver relations\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Calibration started", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Initializing calibration", "device": "Guider Agent", "name": "AGENT_GUIDER_STATS"}
+{"message": "Clearing DEC backlash", "device": "Guider Agent", "name": "AGENT_GUIDER_STATS"}
+{"message": "Calibration step 1 s fits, the star moves 0.657 px/s", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Clearing RA backlash", "device": "Guider Agent", "name": "AGENT_GUIDER_STATS"}
+{"message": "Backlash cleared", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Moving north", "device": "Guider Agent", "name": "AGENT_GUIDER_STATS"}
+{"message": "Moving south", "device": "Guider Agent", "name": "AGENT_GUIDER_STATS"}
+{"message": "Moving west", "device": "Guider Agent", "name": "AGENT_GUIDER_STATS"}
+{"message": "Moving east", "device": "Guider Agent", "name": "AGENT_GUIDER_STATS"}
+{"message": "Calibration complete", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"guiding calibration real simulator\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Guiding started", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Suspended for 0.6s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Guiding aborted", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"start_guiding produces frames then stops\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.6s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Guiding started", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Guiding aborted", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"start_guiding_exposure produces frames then stops\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Guiding started", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Suspended for 0.6s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Guiding aborted", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"guiding reuses configured exposure\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Guiding started", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Dithering started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Dithering finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Guiding aborted", "device": "Guider Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"guided capture with dithering\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"clear guider selection\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"meridian flip options readback\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.5s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"prepare transit target 0.008\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Telescope is on west side of pier", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Suspended for 2s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch paused, transit in 0:00:13.72", "device": "Imager Agent", "name": "BUSY"}
+{"message": "Meridian flip waits for transit", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Meridian flip started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Telescope is on east side of pier", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Meridian flip finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"natural transit meridian flip and capture resume\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.5s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"prepare transit target 0.05\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Telescope is on west side of pier", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Batch paused, transit in 0:02:58.51", "device": "Imager Agent", "name": "BUSY"}
+{"message": "Meridian flip waits for transit", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence aborted", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Aborted", "device": "Mount Simulator", "name": "MOUNT_ABORT_MOTION"}
+{"message": "Process aborted", "device": "Platesolver Agent", "name": "ALERT"}
+{"message": "Aborted", "device": "Mount Simulator", "name": "MOUNT_ABORT_MOTION"}
+{"message": "Batch aborted", "device": "Imager Agent", "name": "ALERT"}
+{"message": "SEQTEST {\"name\":\"abort imager paused before natural transit\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"restore flip option after transit abort\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence paused", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence resumed", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"pause and resume actual capture\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence aborted", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Aborted", "device": "Mount Simulator", "name": "MOUNT_ABORT_MOTION"}
+{"message": "Process aborted", "device": "Platesolver Agent", "name": "ALERT"}
+{"message": "Aborted", "device": "Mount Simulator", "name": "MOUNT_ABORT_MOTION"}
+{"message": "SEQTEST {\"name\":\"abort finite capture\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch aborted", "device": "Imager Agent", "name": "ALERT"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "'Platesolver Agent -> Solver filter -> Current filter' is already selected", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"solver filter current\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.2s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Failed to start exposure - no image source agent selected", "device": "Platesolver Agent", "name": "ALERT"}
+{"message": "AGENT_START_PROCESS reports alert", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Recovered from failure at recovery point #1", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Telescope is on east side of pier", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Failed to start exposure - no image source agent selected", "device": "Platesolver Agent", "name": "ALERT"}
+{"message": "AGENT_START_PROCESS reports alert", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Recovered from failure at recovery point #2", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"solver operations reject unconfigured source\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Disconnected from CCD Guider Simulator", "device": "CCD Guider Simulator", "name": "OK"}
+{"message": "Disconnected from CCD Imager Simulator", "device": "CCD Imager Simulator", "name": "OK"}
+{"message": "Connected to CCD Guider Simulator", "device": "CCD Guider Simulator", "name": "OK"}
+{"message": "Suspended for 0.5s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"solver setup with installed indexes\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Capture started", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Solving started", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Solved: 13 of 13 stars matched, rms 4.11\"", "device": "Platesolver Agent", "name": "OK"}
+{"message": "Synced", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Synced", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Centered", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"native solve sync and center\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Capture started", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Solving started", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Solved: 13 of 13 stars matched, rms 4.45\"", "device": "Platesolver Agent", "name": "OK"}
+{"message": "Synced", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Synced", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Centered", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"native precise goto simulator field\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Suspended for 0.5s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"prepare solver-assisted transit target\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Telescope is on west side of pier", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Suspended for 2s", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch started", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Meridian flip waits for transit", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch paused, transit in 0:00:57.80", "device": "Imager Agent", "name": "BUSY"}
+{"message": "Meridian flip started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Telescope is on east side of pier", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Capture started", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Solving started", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Solved: 12 of 12 stars matched, rms 2.33\"", "device": "Platesolver Agent", "name": "OK"}
+{"message": "Synced", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Synced", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Centered", "device": "Platesolver Agent", "name": "IDLE"}
+{"message": "Meridian flip finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Batch finished", "device": "Imager Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"natural transit flip with native solver correction\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is not tracking", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"disable_tracking []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Mount is slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is not slewing", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Mount is parked", "device": "Mount Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"park []\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence started", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "Sequence finished", "device": "Scripting Agent", "name": "IDLE"}
+{"message": "SEQTEST {\"name\":\"reset completed sequence through bus\",\"status\":\"pass\",\"error\":\"\"}", "device": "Scripting Agent", "name": "IDLE"}

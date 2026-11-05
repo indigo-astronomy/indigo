@@ -1,0 +1,38 @@
+[
+  {
+    "file": "factory-test.log",
+    "raw_sha256": "8be5b876d23111b01e8dd907bf85c082aca603a0595faa810b7bb7fb0ca67f25",
+    "retained_sha256": "8be5b876d23111b01e8dd907bf85c082aca603a0595faa810b7bb7fb0ca67f25",
+    "normalization": "trailing ASCII spaces/tabs removed only"
+  },
+  {
+    "file": "factory-check.log",
+    "raw_sha256": "a0daf8120e4f8f10b6333cd5284f4c0bd28335be97eb738f18ba29f550949620",
+    "retained_sha256": "a0daf8120e4f8f10b6333cd5284f4c0bd28335be97eb738f18ba29f550949620",
+    "normalization": "trailing ASCII spaces/tabs removed only"
+  },
+  {
+    "file": "factory-security.log",
+    "raw_sha256": "a5baad4adb5566758f33b3e244b5d1414dd1d4f6bb754382897a85d79d3babc7",
+    "retained_sha256": "a5baad4adb5566758f33b3e244b5d1414dd1d4f6bb754382897a85d79d3babc7",
+    "normalization": "trailing ASCII spaces/tabs removed only"
+  },
+  {
+    "file": "recorded-run.log",
+    "raw_sha256": "0a501e98fe756b8b99d48f9fca4094f1b638ed4388b99b568462e6a86be85fab",
+    "retained_sha256": "0781f294ff7148a12cac6fea503f0baa19209339f16e08ca54c6d398c2fb140a",
+    "normalization": "trailing ASCII spaces/tabs removed only"
+  },
+  {
+    "file": "protocol-regression.log",
+    "raw_sha256": "217d6f9449a6a2b2de96b5ddf3d948dbacb5602c3dbb8c5f9fd07258926b1b8b",
+    "retained_sha256": "217d6f9449a6a2b2de96b5ddf3d948dbacb5602c3dbb8c5f9fd07258926b1b8b",
+    "normalization": "trailing ASCII spaces/tabs removed only"
+  },
+  {
+    "file": "test-clean.log",
+    "raw_sha256": "e515c56b50b994cb8f823f7b9eb39d8895805550d525686a601400e9413b9ada",
+    "retained_sha256": "e515c56b50b994cb8f823f7b9eb39d8895805550d525686a601400e9413b9ada",
+    "normalization": "trailing ASCII spaces/tabs removed only"
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "title": "Unset master token bypasses nonzero device ACL authorization",
+  "category": "security",
+  "severity": "high",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261105112837-9c3a-sequencer-simulator-suite",
+      "report": "security.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_change_property accepts omitted request token 0 as the default master token 0, bypassing nonzero device ACL. Confirmed by native XML/JSON regression and unauthorized Server module loading. Next: require nonzero master before master-token equality authorizes. Owner explicitly limited this task to tests and documented findings; coordinator must obtain separate repair authorization.",
+  "evidence": "security.md; local execution logs referenced there",
+  "resolution": null,
+  "id": "FND-20261105112837-9c3a-sequencer-simulator-suite-003"
+}

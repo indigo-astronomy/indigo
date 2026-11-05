@@ -1,0 +1,2192 @@
+{
+  "done": true,
+  "total": 135,
+  "results": [
+    {
+      "name": "empty sequence",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.106,
+      "methods": [
+        "start"
+      ]
+    },
+    {
+      "name": "messages and quoted evaluation",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.419,
+      "methods": [
+        "evaluate",
+        "send_message",
+        "enable_verbose",
+        "disable_verbose",
+        "wait"
+      ]
+    },
+    {
+      "name": "nested loops reset=true",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 1.362,
+      "methods": [
+        "repeat",
+        "enable_reset_loop_content_state"
+      ]
+    },
+    {
+      "name": "nested loops reset=false",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 1.36,
+      "methods": [
+        "repeat",
+        "disable_reset_loop_content_state"
+      ]
+    },
+    {
+      "name": "zero loop and trailing step",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.417,
+      "methods": [
+        "repeat"
+      ]
+    },
+    {
+      "name": "past numeric and UTC waits",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.212,
+      "methods": [
+        "wait_until"
+      ]
+    },
+    {
+      "name": "future numeric wait",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 3.192,
+      "methods": [
+        "wait_until"
+      ]
+    },
+    {
+      "name": "future UTC wait",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 3.216,
+      "methods": [
+        "wait_until"
+      ]
+    },
+    {
+      "name": "time break taken=true",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.212,
+      "methods": [
+        "break_at",
+        "resume_point"
+      ]
+    },
+    {
+      "name": "time break taken=false",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "break_at",
+        "resume_point"
+      ]
+    },
+    {
+      "name": "break without destination",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.208,
+      "methods": [
+        "break_at"
+      ]
+    },
+    {
+      "name": "abort on missing camera property",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.209,
+      "methods": [
+        "abort_on_failure"
+      ]
+    },
+    {
+      "name": "continue on missing camera property",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "continue_on_failure"
+      ]
+    },
+    {
+      "name": "recover on missing camera property",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "recover_on_failure",
+        "recovery_point"
+      ]
+    },
+    {
+      "name": "recover without destination",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.206,
+      "methods": [
+        "recover_on_failure"
+      ]
+    },
+    {
+      "name": "explicit policy transition",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.211,
+      "methods": [
+        "continue_on_failure",
+        "abort_on_failure",
+        "select_imager_agent"
+      ]
+    },
+    {
+      "name": "recover independently inside repeated blocks",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.525,
+      "methods": [
+        "repeat",
+        "recover_on_failure",
+        "recovery_point"
+      ]
+    },
+    {
+      "name": "pause then resume a wait",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 1.132,
+      "methods": [
+        "wait"
+      ]
+    },
+    {
+      "name": "abort pending wait",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.42,
+      "methods": [
+        "wait"
+      ]
+    },
+    {
+      "name": "fresh sequence after abort",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.734,
+      "methods": [
+        "wait",
+        "evaluate"
+      ]
+    },
+    {
+      "name": "save private configuration",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 1.143,
+      "methods": [
+        "evaluate",
+        "wait"
+      ]
+    },
+    {
+      "name": "restore private configuration",
+      "status": "fail",
+      "error": "Unexpected terminal sequence state",
+      "expected": "Ok",
+      "actual": "Alert",
+      "seconds": 1.667,
+      "methods": [
+        "load_config"
+      ]
+    },
+    {
+      "name": "missing configuration fails",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.106,
+      "methods": [
+        "load_config"
+      ]
+    },
+    {
+      "name": "missing driver fails",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.102,
+      "methods": [
+        "load_driver"
+      ]
+    },
+    {
+      "name": "load unused simulator",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "load_driver"
+      ]
+    },
+    {
+      "name": "unload unused simulator",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.627,
+      "methods": [
+        "unload_driver"
+      ]
+    },
+    {
+      "name": "select_imager_camera [\"CCD Imager Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_imager_camera"
+      ]
+    },
+    {
+      "name": "select_filter_wheel [\"CCD Imager Simulator (wheel)\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_filter_wheel"
+      ]
+    },
+    {
+      "name": "select_focuser [\"CCD Imager Simulator (focuser)\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_focuser"
+      ]
+    },
+    {
+      "name": "select_mount [\"Mount Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_mount"
+      ]
+    },
+    {
+      "name": "select_dome [\"Dome Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_dome"
+      ]
+    },
+    {
+      "name": "select_gps [\"GPS Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.209,
+      "methods": [
+        "select_gps"
+      ]
+    },
+    {
+      "name": "select_rotator [\"Field Rotator Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.206,
+      "methods": [
+        "select_rotator"
+      ]
+    },
+    {
+      "name": "select_guider_camera [\"CCD Guider Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.209,
+      "methods": [
+        "select_guider_camera"
+      ]
+    },
+    {
+      "name": "select_guider [\"CCD Guider Simulator (guider)\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_guider"
+      ]
+    },
+    {
+      "name": "explicit agent selection",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.208,
+      "methods": [
+        "select_imager_agent",
+        "select_mount_agent",
+        "select_guider_agent",
+        "select_solver_agent"
+      ]
+    },
+    {
+      "name": "private image directory and names",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "set_directory",
+        "set_file_template",
+        "set_object_name"
+      ]
+    },
+    {
+      "name": "select_frame_type [\"Light\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.207,
+      "methods": [
+        "select_frame_type"
+      ]
+    },
+    {
+      "name": "select_frame_type [\"Dark\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "select_frame_type"
+      ]
+    },
+    {
+      "name": "select_frame_type [\"Flat\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_frame_type"
+      ]
+    },
+    {
+      "name": "select_frame_type [\"Bias\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_frame_type"
+      ]
+    },
+    {
+      "name": "select_image_format [\"RAW\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_image_format"
+      ]
+    },
+    {
+      "name": "select_image_format [\"FITS\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.208,
+      "methods": [
+        "select_image_format"
+      ]
+    },
+    {
+      "name": "binning then full sensor",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_camera_mode",
+        "set_frame",
+        "reset_frame"
+      ]
+    },
+    {
+      "name": "set_gain [17]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.212,
+      "methods": [
+        "set_gain"
+      ]
+    },
+    {
+      "name": "set_offset [7]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "set_offset"
+      ]
+    },
+    {
+      "name": "set_gamma [1.2]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "set_gamma"
+      ]
+    },
+    {
+      "name": "enable_cooler [25]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 3.531,
+      "methods": [
+        "enable_cooler"
+      ]
+    },
+    {
+      "name": "disable_cooler []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "disable_cooler"
+      ]
+    },
+    {
+      "name": "select_imager_camera [\"DSLR Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.206,
+      "methods": [
+        "select_imager_camera"
+      ]
+    },
+    {
+      "name": "select_program [\"Manual\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_program"
+      ]
+    },
+    {
+      "name": "select_program [\"Bulb\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.207,
+      "methods": [
+        "select_program"
+      ]
+    },
+    {
+      "name": "select_aperture [\"f/4\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.207,
+      "methods": [
+        "select_aperture"
+      ]
+    },
+    {
+      "name": "select_program [\"Manual\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.208,
+      "methods": [
+        "select_program"
+      ]
+    },
+    {
+      "name": "select_shutter [\"1/10\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "select_shutter"
+      ]
+    },
+    {
+      "name": "select_iso [\"100\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_iso"
+      ]
+    },
+    {
+      "name": "select_iso [\"200\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_iso"
+      ]
+    },
+    {
+      "name": "select_iso [\"400\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.206,
+      "methods": [
+        "select_iso"
+      ]
+    },
+    {
+      "name": "invalid DSLR option fails",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.104,
+      "methods": [
+        "select_iso"
+      ]
+    },
+    {
+      "name": "select_imager_camera [\"CCD Imager Simulator\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.209,
+      "methods": [
+        "select_imager_camera"
+      ]
+    },
+    {
+      "name": "prepare finite image batches",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.208,
+      "methods": [
+        "select_frame_type",
+        "select_image_format",
+        "set_directory",
+        "set_frame",
+        "disable_dithering",
+        "disable_meridian_flip"
+      ]
+    },
+    {
+      "name": "capture batch named=false",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.314,
+      "methods": [
+        "capture_batch",
+        "set_file_template"
+      ]
+    },
+    {
+      "name": "capture stream named=false",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.417,
+      "methods": [
+        "capture_stream",
+        "set_file_template"
+      ]
+    },
+    {
+      "name": "capture batch named=true",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.421,
+      "methods": [
+        "capture_batch",
+        "set_file_template"
+      ]
+    },
+    {
+      "name": "capture stream named=true",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.414,
+      "methods": [
+        "capture_stream",
+        "set_file_template"
+      ]
+    },
+    {
+      "name": "FITS custom header present",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.317,
+      "methods": [
+        "set_fits_header",
+        "capture_batch"
+      ]
+    },
+    {
+      "name": "FITS custom header removed",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.311,
+      "methods": [
+        "remove_fits_header",
+        "capture_batch"
+      ]
+    },
+    {
+      "name": "preview observes frames then stops",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.726,
+      "methods": [
+        "start_preview",
+        "stop_preview",
+        "wait"
+      ]
+    },
+    {
+      "name": "set_manual_focuser_mode []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "set_manual_focuser_mode"
+      ]
+    },
+    {
+      "name": "set_focuser_position [500]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.725,
+      "methods": [
+        "set_focuser_position"
+      ]
+    },
+    {
+      "name": "set_automatic_focuser_mode []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "set_automatic_focuser_mode"
+      ]
+    },
+    {
+      "name": "clear autofocus selection",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.207,
+      "methods": [
+        "clear_focuser_selection"
+      ]
+    },
+    {
+      "name": "autofocus without focuser fails",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.209,
+      "methods": [
+        "focus",
+        "select_focuser"
+      ]
+    },
+    {
+      "name": "autofocus ignores process failure and restores batch",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.419,
+      "methods": [
+        "focus_ignore_failure"
+      ]
+    },
+    {
+      "name": "select_focuser [\"CCD Imager Simulator (focuser)\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.206,
+      "methods": [
+        "select_focuser"
+      ]
+    },
+    {
+      "name": "autofocus with real simulator",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 6.666,
+      "methods": [
+        "focus",
+        "reset_frame"
+      ]
+    },
+    {
+      "name": "select_filter [\"1\"]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "select_filter"
+      ]
+    },
+    {
+      "name": "filter offsets enabled then disabled",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "enable_filter_offsets",
+        "disable_filter_offsets"
+      ]
+    },
+    {
+      "name": "enable_ha_limit []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.207,
+      "methods": [
+        "enable_ha_limit"
+      ]
+    },
+    {
+      "name": "enable_time_limit []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.212,
+      "methods": [
+        "enable_time_limit"
+      ]
+    },
+    {
+      "name": "enable_dome_slaving []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "enable_dome_slaving"
+      ]
+    },
+    {
+      "name": "enable_field_derotation []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "enable_field_derotation"
+      ]
+    },
+    {
+      "name": "enable_joystick_control []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.209,
+      "methods": [
+        "enable_joystick_control"
+      ]
+    },
+    {
+      "name": "disable_ha_limit []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "disable_ha_limit"
+      ]
+    },
+    {
+      "name": "disable_time_limit []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "disable_time_limit"
+      ]
+    },
+    {
+      "name": "disable_dome_slaving []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.207,
+      "methods": [
+        "disable_dome_slaving"
+      ]
+    },
+    {
+      "name": "disable_field_derotation []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "disable_field_derotation"
+      ]
+    },
+    {
+      "name": "disable_joystick_control []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.204,
+      "methods": [
+        "disable_joystick_control"
+      ]
+    },
+    {
+      "name": "make_dome_slaving_persistent []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.206,
+      "methods": [
+        "make_dome_slaving_persistent"
+      ]
+    },
+    {
+      "name": "make_dome_slaving_not_persistent []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.207,
+      "methods": [
+        "make_dome_slaving_not_persistent"
+      ]
+    },
+    {
+      "name": "make_field_derotation_persistent []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.204,
+      "methods": [
+        "make_field_derotation_persistent"
+      ]
+    },
+    {
+      "name": "make_field_derotation_not_persistent []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "make_field_derotation_not_persistent"
+      ]
+    },
+    {
+      "name": "unpark []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.625,
+      "methods": [
+        "unpark"
+      ]
+    },
+    {
+      "name": "home mount simulator",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.827,
+      "methods": [
+        "home"
+      ]
+    },
+    {
+      "name": "enable_tracking []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.628,
+      "methods": [
+        "enable_tracking"
+      ]
+    },
+    {
+      "name": "slew mount with coordinate readback",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 10.251,
+      "methods": [
+        "slew"
+      ]
+    },
+    {
+      "name": "GPS ready",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "wait_for_gps"
+      ]
+    },
+    {
+      "name": "dome unpark",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.622,
+      "methods": [
+        "dome_unpark"
+      ]
+    },
+    {
+      "name": "dome_open []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 6.696,
+      "methods": [
+        "dome_open"
+      ]
+    },
+    {
+      "name": "dome_slew [45]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 5.504,
+      "methods": [
+        "dome_slew"
+      ]
+    },
+    {
+      "name": "set_rotator_angle [10]",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 1.35,
+      "methods": [
+        "set_rotator_angle"
+      ]
+    },
+    {
+      "name": "dome_close []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 6.619,
+      "methods": [
+        "dome_close"
+      ]
+    },
+    {
+      "name": "dome_park []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 5.898,
+      "methods": [
+        "dome_park"
+      ]
+    },
+    {
+      "name": "sky breaks taken=true",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.209,
+      "methods": [
+        "break_if_solar_altitude_above",
+        "break_if_target_altitude_below",
+        "resume_point"
+      ]
+    },
+    {
+      "name": "HA break taken=true",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.205,
+      "methods": [
+        "break_at_ha",
+        "resume_point"
+      ]
+    },
+    {
+      "name": "sky breaks taken=false",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.206,
+      "methods": [
+        "break_if_solar_altitude_above",
+        "break_if_target_altitude_below",
+        "resume_point"
+      ]
+    },
+    {
+      "name": "HA break taken=false",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.209,
+      "methods": [
+        "break_at_ha",
+        "resume_point"
+      ]
+    },
+    {
+      "name": "sky waits immediately satisfied",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.21,
+      "methods": [
+        "wait_until_solar_altitude_below",
+        "wait_until_target_altitude_above"
+      ]
+    },
+    {
+      "name": "abort wait_until_solar_altitude_below",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.517,
+      "methods": [
+        "wait_until_solar_altitude_below"
+      ]
+    },
+    {
+      "name": "abort wait_until_target_altitude_above",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.518,
+      "methods": [
+        "wait_until_target_altitude_above"
+      ]
+    },
+    {
+      "name": "prepare guider and solver relations",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.628,
+      "methods": [
+        "evaluate",
+        "wait"
+      ]
+    },
+    {
+      "name": "guiding calibration real simulator",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 55.553,
+      "methods": [
+        "calibrate_guiding"
+      ]
+    },
+    {
+      "name": "start_guiding produces frames then stops",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.726,
+      "methods": [
+        "start_guiding",
+        "stop_guiding"
+      ]
+    },
+    {
+      "name": "start_guiding_exposure produces frames then stops",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.829,
+      "methods": [
+        "start_guiding_exposure",
+        "stop_guiding"
+      ]
+    },
+    {
+      "name": "guiding reuses configured exposure",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.723,
+      "methods": [
+        "start_guiding",
+        "stop_guiding"
+      ]
+    },
+    {
+      "name": "guided capture with dithering",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 2.383,
+      "methods": [
+        "start_guiding",
+        "enable_dithering",
+        "capture_batch",
+        "disable_dithering",
+        "stop_guiding"
+      ]
+    },
+    {
+      "name": "clear guider selection",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.211,
+      "methods": [
+        "clear_guider_selection"
+      ]
+    },
+    {
+      "name": "meridian flip options readback",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.204,
+      "methods": [
+        "enable_meridian_flip",
+        "disable_meridian_flip"
+      ]
+    },
+    {
+      "name": "prepare transit target 0.008",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.626,
+      "methods": [
+        "evaluate",
+        "wait"
+      ]
+    },
+    {
+      "name": "natural transit meridian flip and capture resume",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 27.371,
+      "methods": [
+        "slew",
+        "enable_meridian_flip",
+        "capture_batch",
+        "disable_meridian_flip"
+      ]
+    },
+    {
+      "name": "prepare transit target 0.05",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.621,
+      "methods": [
+        "evaluate",
+        "wait"
+      ]
+    },
+    {
+      "name": "abort imager paused before natural transit",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 1.135,
+      "methods": [
+        "slew",
+        "enable_meridian_flip",
+        "capture_batch"
+      ]
+    },
+    {
+      "name": "restore flip option after transit abort",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.208,
+      "methods": [
+        "disable_meridian_flip"
+      ]
+    },
+    {
+      "name": "pause and resume actual capture",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 1.979,
+      "methods": [
+        "capture_batch"
+      ]
+    },
+    {
+      "name": "abort finite capture",
+      "status": "pass",
+      "error": "",
+      "expected": "Alert",
+      "actual": "Alert",
+      "seconds": 0.938,
+      "methods": [
+        "capture_batch"
+      ]
+    },
+    {
+      "name": "solver filter current",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.209,
+      "methods": [
+        "set_solver_filter"
+      ]
+    },
+    {
+      "name": "solver operations reject unconfigured source",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 14.409,
+      "methods": [
+        "sync_center",
+        "precise_goto",
+        "recover_on_failure",
+        "recovery_point"
+      ]
+    },
+    {
+      "name": "solver setup with installed indexes",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.728,
+      "methods": [
+        "select_imager_camera",
+        "reset_frame",
+        "evaluate",
+        "wait"
+      ]
+    },
+    {
+      "name": "native solve sync and center",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 5.709,
+      "methods": [
+        "sync_center"
+      ]
+    },
+    {
+      "name": "native precise goto simulator field",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 8.611,
+      "methods": [
+        "precise_goto"
+      ]
+    },
+    {
+      "name": "prepare solver-assisted transit target",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.612,
+      "methods": [
+        "evaluate",
+        "wait"
+      ]
+    },
+    {
+      "name": "natural transit flip with native solver correction",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 77.236,
+      "methods": [
+        "slew",
+        "enable_meridian_flip",
+        "capture_batch",
+        "disable_meridian_flip"
+      ]
+    },
+    {
+      "name": "disable_tracking []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.619,
+      "methods": [
+        "disable_tracking"
+      ]
+    },
+    {
+      "name": "park []",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 10.259,
+      "methods": [
+        "park"
+      ]
+    },
+    {
+      "name": "reset completed sequence through bus",
+      "status": "pass",
+      "error": "",
+      "expected": "Ok",
+      "actual": "Ok",
+      "seconds": 0.316,
+      "methods": [
+        "evaluate",
+        "wait"
+      ]
+    }
+  ],
+  "methods": {
+    "start": [
+      "empty sequence"
+    ],
+    "evaluate": [
+      "messages and quoted evaluation",
+      "fresh sequence after abort",
+      "save private configuration",
+      "prepare guider and solver relations",
+      "prepare transit target 0.008",
+      "prepare transit target 0.05",
+      "solver setup with installed indexes",
+      "prepare solver-assisted transit target",
+      "reset completed sequence through bus"
+    ],
+    "send_message": [
+      "messages and quoted evaluation"
+    ],
+    "enable_verbose": [
+      "messages and quoted evaluation"
+    ],
+    "disable_verbose": [
+      "messages and quoted evaluation"
+    ],
+    "wait": [
+      "messages and quoted evaluation",
+      "pause then resume a wait",
+      "abort pending wait",
+      "fresh sequence after abort",
+      "save private configuration",
+      "preview observes frames then stops",
+      "prepare guider and solver relations",
+      "prepare transit target 0.008",
+      "prepare transit target 0.05",
+      "solver setup with installed indexes",
+      "prepare solver-assisted transit target",
+      "reset completed sequence through bus"
+    ],
+    "repeat": [
+      "nested loops reset=true",
+      "nested loops reset=false",
+      "zero loop and trailing step",
+      "recover independently inside repeated blocks"
+    ],
+    "enable_reset_loop_content_state": [
+      "nested loops reset=true"
+    ],
+    "disable_reset_loop_content_state": [
+      "nested loops reset=false"
+    ],
+    "wait_until": [
+      "past numeric and UTC waits",
+      "future numeric wait",
+      "future UTC wait"
+    ],
+    "break_at": [
+      "time break taken=true",
+      "time break taken=false",
+      "break without destination"
+    ],
+    "resume_point": [
+      "time break taken=true",
+      "time break taken=false",
+      "sky breaks taken=true",
+      "HA break taken=true",
+      "sky breaks taken=false",
+      "HA break taken=false"
+    ],
+    "abort_on_failure": [
+      "abort on missing camera property",
+      "explicit policy transition"
+    ],
+    "continue_on_failure": [
+      "continue on missing camera property",
+      "explicit policy transition"
+    ],
+    "recover_on_failure": [
+      "recover on missing camera property",
+      "recover without destination",
+      "recover independently inside repeated blocks",
+      "solver operations reject unconfigured source"
+    ],
+    "recovery_point": [
+      "recover on missing camera property",
+      "recover independently inside repeated blocks",
+      "solver operations reject unconfigured source"
+    ],
+    "select_imager_agent": [
+      "explicit policy transition",
+      "explicit agent selection"
+    ],
+    "load_config": [
+      "missing configuration fails"
+    ],
+    "load_driver": [
+      "missing driver fails",
+      "load unused simulator"
+    ],
+    "unload_driver": [
+      "unload unused simulator"
+    ],
+    "select_imager_camera": [
+      "select_imager_camera [\"CCD Imager Simulator\"]",
+      "select_imager_camera [\"DSLR Simulator\"]",
+      "select_imager_camera [\"CCD Imager Simulator\"]",
+      "solver setup with installed indexes"
+    ],
+    "select_filter_wheel": [
+      "select_filter_wheel [\"CCD Imager Simulator (wheel)\"]"
+    ],
+    "select_focuser": [
+      "select_focuser [\"CCD Imager Simulator (focuser)\"]",
+      "autofocus without focuser fails",
+      "select_focuser [\"CCD Imager Simulator (focuser)\"]"
+    ],
+    "select_mount": [
+      "select_mount [\"Mount Simulator\"]"
+    ],
+    "select_dome": [
+      "select_dome [\"Dome Simulator\"]"
+    ],
+    "select_gps": [
+      "select_gps [\"GPS Simulator\"]"
+    ],
+    "select_rotator": [
+      "select_rotator [\"Field Rotator Simulator\"]"
+    ],
+    "select_guider_camera": [
+      "select_guider_camera [\"CCD Guider Simulator\"]"
+    ],
+    "select_guider": [
+      "select_guider [\"CCD Guider Simulator (guider)\"]"
+    ],
+    "select_mount_agent": [
+      "explicit agent selection"
+    ],
+    "select_guider_agent": [
+      "explicit agent selection"
+    ],
+    "select_solver_agent": [
+      "explicit agent selection"
+    ],
+    "set_directory": [
+      "private image directory and names",
+      "prepare finite image batches"
+    ],
+    "set_file_template": [
+      "private image directory and names",
+      "capture batch named=false",
+      "capture stream named=false",
+      "capture batch named=true",
+      "capture stream named=true"
+    ],
+    "set_object_name": [
+      "private image directory and names"
+    ],
+    "select_frame_type": [
+      "select_frame_type [\"Light\"]",
+      "select_frame_type [\"Dark\"]",
+      "select_frame_type [\"Flat\"]",
+      "select_frame_type [\"Bias\"]",
+      "prepare finite image batches"
+    ],
+    "select_image_format": [
+      "select_image_format [\"RAW\"]",
+      "select_image_format [\"FITS\"]",
+      "prepare finite image batches"
+    ],
+    "select_camera_mode": [
+      "binning then full sensor"
+    ],
+    "set_frame": [
+      "binning then full sensor",
+      "prepare finite image batches"
+    ],
+    "reset_frame": [
+      "binning then full sensor",
+      "autofocus with real simulator",
+      "solver setup with installed indexes"
+    ],
+    "set_gain": [
+      "set_gain [17]"
+    ],
+    "set_offset": [
+      "set_offset [7]"
+    ],
+    "set_gamma": [
+      "set_gamma [1.2]"
+    ],
+    "enable_cooler": [
+      "enable_cooler [25]"
+    ],
+    "disable_cooler": [
+      "disable_cooler []"
+    ],
+    "select_program": [
+      "select_program [\"Manual\"]",
+      "select_program [\"Bulb\"]",
+      "select_program [\"Manual\"]"
+    ],
+    "select_aperture": [
+      "select_aperture [\"f/4\"]"
+    ],
+    "select_shutter": [
+      "select_shutter [\"1/10\"]"
+    ],
+    "select_iso": [
+      "select_iso [\"100\"]",
+      "select_iso [\"200\"]",
+      "select_iso [\"400\"]",
+      "invalid DSLR option fails"
+    ],
+    "disable_dithering": [
+      "prepare finite image batches",
+      "guided capture with dithering"
+    ],
+    "disable_meridian_flip": [
+      "prepare finite image batches",
+      "meridian flip options readback",
+      "natural transit meridian flip and capture resume",
+      "restore flip option after transit abort",
+      "natural transit flip with native solver correction"
+    ],
+    "capture_batch": [
+      "capture batch named=false",
+      "capture batch named=true",
+      "FITS custom header present",
+      "FITS custom header removed",
+      "guided capture with dithering",
+      "natural transit meridian flip and capture resume",
+      "abort imager paused before natural transit",
+      "pause and resume actual capture",
+      "abort finite capture",
+      "natural transit flip with native solver correction"
+    ],
+    "capture_stream": [
+      "capture stream named=false",
+      "capture stream named=true"
+    ],
+    "set_fits_header": [
+      "FITS custom header present"
+    ],
+    "remove_fits_header": [
+      "FITS custom header removed"
+    ],
+    "start_preview": [
+      "preview observes frames then stops"
+    ],
+    "stop_preview": [
+      "preview observes frames then stops"
+    ],
+    "set_manual_focuser_mode": [
+      "set_manual_focuser_mode []"
+    ],
+    "set_focuser_position": [
+      "set_focuser_position [500]"
+    ],
+    "set_automatic_focuser_mode": [
+      "set_automatic_focuser_mode []"
+    ],
+    "clear_focuser_selection": [
+      "clear autofocus selection"
+    ],
+    "focus": [
+      "autofocus without focuser fails",
+      "autofocus with real simulator"
+    ],
+    "focus_ignore_failure": [
+      "autofocus ignores process failure and restores batch"
+    ],
+    "select_filter": [
+      "select_filter [\"1\"]"
+    ],
+    "enable_filter_offsets": [
+      "filter offsets enabled then disabled"
+    ],
+    "disable_filter_offsets": [
+      "filter offsets enabled then disabled"
+    ],
+    "enable_ha_limit": [
+      "enable_ha_limit []"
+    ],
+    "enable_time_limit": [
+      "enable_time_limit []"
+    ],
+    "enable_dome_slaving": [
+      "enable_dome_slaving []"
+    ],
+    "enable_field_derotation": [
+      "enable_field_derotation []"
+    ],
+    "enable_joystick_control": [
+      "enable_joystick_control []"
+    ],
+    "disable_ha_limit": [
+      "disable_ha_limit []"
+    ],
+    "disable_time_limit": [
+      "disable_time_limit []"
+    ],
+    "disable_dome_slaving": [
+      "disable_dome_slaving []"
+    ],
+    "disable_field_derotation": [
+      "disable_field_derotation []"
+    ],
+    "disable_joystick_control": [
+      "disable_joystick_control []"
+    ],
+    "make_dome_slaving_persistent": [
+      "make_dome_slaving_persistent []"
+    ],
+    "make_dome_slaving_not_persistent": [
+      "make_dome_slaving_not_persistent []"
+    ],
+    "make_field_derotation_persistent": [
+      "make_field_derotation_persistent []"
+    ],
+    "make_field_derotation_not_persistent": [
+      "make_field_derotation_not_persistent []"
+    ],
+    "unpark": [
+      "unpark []"
+    ],
+    "home": [
+      "home mount simulator"
+    ],
+    "enable_tracking": [
+      "enable_tracking []"
+    ],
+    "slew": [
+      "slew mount with coordinate readback",
+      "natural transit meridian flip and capture resume",
+      "abort imager paused before natural transit",
+      "natural transit flip with native solver correction"
+    ],
+    "wait_for_gps": [
+      "GPS ready"
+    ],
+    "dome_unpark": [
+      "dome unpark"
+    ],
+    "dome_open": [
+      "dome_open []"
+    ],
+    "dome_slew": [
+      "dome_slew [45]"
+    ],
+    "set_rotator_angle": [
+      "set_rotator_angle [10]"
+    ],
+    "dome_close": [
+      "dome_close []"
+    ],
+    "dome_park": [
+      "dome_park []"
+    ],
+    "break_if_solar_altitude_above": [
+      "sky breaks taken=true",
+      "sky breaks taken=false"
+    ],
+    "break_if_target_altitude_below": [
+      "sky breaks taken=true",
+      "sky breaks taken=false"
+    ],
+    "break_at_ha": [
+      "HA break taken=true",
+      "HA break taken=false"
+    ],
+    "wait_until_solar_altitude_below": [
+      "sky waits immediately satisfied",
+      "abort wait_until_solar_altitude_below"
+    ],
+    "wait_until_target_altitude_above": [
+      "sky waits immediately satisfied",
+      "abort wait_until_target_altitude_above"
+    ],
+    "calibrate_guiding": [
+      "guiding calibration real simulator"
+    ],
+    "start_guiding": [
+      "start_guiding produces frames then stops",
+      "guiding reuses configured exposure",
+      "guided capture with dithering"
+    ],
+    "stop_guiding": [
+      "start_guiding produces frames then stops",
+      "start_guiding_exposure produces frames then stops",
+      "guiding reuses configured exposure",
+      "guided capture with dithering"
+    ],
+    "start_guiding_exposure": [
+      "start_guiding_exposure produces frames then stops"
+    ],
+    "enable_dithering": [
+      "guided capture with dithering"
+    ],
+    "clear_guider_selection": [
+      "clear guider selection"
+    ],
+    "enable_meridian_flip": [
+      "meridian flip options readback",
+      "natural transit meridian flip and capture resume",
+      "abort imager paused before natural transit",
+      "natural transit flip with native solver correction"
+    ],
+    "set_solver_filter": [
+      "solver filter current"
+    ],
+    "sync_center": [
+      "solver operations reject unconfigured source",
+      "native solve sync and center"
+    ],
+    "precise_goto": [
+      "solver operations reject unconfigured source",
+      "native precise goto simulator field"
+    ],
+    "disable_tracking": [
+      "disable_tracking []"
+    ],
+    "park": [
+      "park []"
+    ]
+  },
+  "missing": [],
+  "inventory": [
+    "abort_on_failure",
+    "break_at",
+    "break_at_ha",
+    "break_if_solar_altitude_above",
+    "break_if_target_altitude_below",
+    "calibrate_guiding",
+    "capture_batch",
+    "capture_stream",
+    "clear_focuser_selection",
+    "clear_guider_selection",
+    "continue_on_failure",
+    "disable_cooler",
+    "disable_dithering",
+    "disable_dome_slaving",
+    "disable_field_derotation",
+    "disable_filter_offsets",
+    "disable_ha_limit",
+    "disable_joystick_control",
+    "disable_meridian_flip",
+    "disable_reset_loop_content_state",
+    "disable_time_limit",
+    "disable_tracking",
+    "disable_verbose",
+    "dome_close",
+    "dome_open",
+    "dome_park",
+    "dome_slew",
+    "dome_unpark",
+    "enable_cooler",
+    "enable_dithering",
+    "enable_dome_slaving",
+    "enable_field_derotation",
+    "enable_filter_offsets",
+    "enable_ha_limit",
+    "enable_joystick_control",
+    "enable_meridian_flip",
+    "enable_reset_loop_content_state",
+    "enable_time_limit",
+    "enable_tracking",
+    "enable_verbose",
+    "evaluate",
+    "focus",
+    "focus_ignore_failure",
+    "home",
+    "load_config",
+    "load_driver",
+    "make_dome_slaving_not_persistent",
+    "make_dome_slaving_persistent",
+    "make_field_derotation_not_persistent",
+    "make_field_derotation_persistent",
+    "park",
+    "precise_goto",
+    "recover_on_failure",
+    "recovery_point",
+    "remove_fits_header",
+    "repeat",
+    "reset_frame",
+    "resume_point",
+    "select_aperture",
+    "select_camera_mode",
+    "select_dome",
+    "select_filter",
+    "select_filter_wheel",
+    "select_focuser",
+    "select_frame_type",
+    "select_gps",
+    "select_guider",
+    "select_guider_agent",
+    "select_guider_camera",
+    "select_image_format",
+    "select_imager_agent",
+    "select_imager_camera",
+    "select_iso",
+    "select_mount",
+    "select_mount_agent",
+    "select_program",
+    "select_rotator",
+    "select_shutter",
+    "select_solver_agent",
+    "send_message",
+    "set_automatic_focuser_mode",
+    "set_directory",
+    "set_file_template",
+    "set_fits_header",
+    "set_focuser_position",
+    "set_frame",
+    "set_gain",
+    "set_gamma",
+    "set_manual_focuser_mode",
+    "set_object_name",
+    "set_offset",
+    "set_rotator_angle",
+    "set_solver_filter",
+    "slew",
+    "start",
+    "start_guiding",
+    "start_guiding_exposure",
+    "start_preview",
+    "stop_guiding",
+    "stop_preview",
+    "sync_center",
+    "unload_driver",
+    "unpark",
+    "wait",
+    "wait_for_gps",
+    "wait_until",
+    "wait_until_solar_altitude_below",
+    "wait_until_target_altitude_above"
+  ],
+  "command": [
+    "/Users/polakovic/Development/indigo/build/bin/indigo_server",
+    "--",
+    "-p",
+    "49650",
+    "-b-",
+    "-c-",
+    "-w-",
+    "-a",
+    "/private/tmp/sequencer-final-3/home/test.acl"
+  ],
+  "cwd": "/Users/polakovic/Development/indigo",
+  "indexes": [
+    "index-02deg-tyc2.isix",
+    "index-05deg-tyc2.isix"
+  ],
+  "output": "/private/tmp/sequencer-final-3",
+  "source_revision": "77bad42c0d871cef5e275e585db23c454df74f9d",
+  "source_sha256": {
+    "indigo_test/integration/run_sequencer_simulators.py": "64ca87ecf750217b906e39f55a5cfb086fc81232526ad6310a71c3cc933ac1cc",
+    "indigo_test/build/integration/../../integration/sequencer_simulators.js": "e925bcc107b8dece18ea645862cd0afa71befbc27f8baf51aad21ab3788457de",
+    "indigo_drivers/agent_scripting/library/Sequencer.js": "41e7e63f5eb95982100b5b132db121e16c16a6bfdbdce193f02a64a00a0bca0f"
+  },
+  "unauthenticated_write_rejected": [
+    "Scripting Agent",
+    "Server"
+  ],
+  "selection": {
+    "directory": "/private/tmp/sequencer-final-3/images/",
+    "solver": true,
+    "only": null,
+    "exclude": null,
+    "authenticated_relay": true
+  },
+  "server_exit": 0,
+  "relayed_requests": 245,
+  "native_geometry_conversions": 3,
+  "error": null,
+  "artifacts": [
+    {
+      "name": "artifacts/batch_plain",
+      "status": "pass",
+      "files": [
+        "batch_plain_001.fits",
+        "batch_plain_002.fits"
+      ],
+      "minimum": 2
+    },
+    {
+      "name": "artifacts/batch_named",
+      "status": "pass",
+      "files": [
+        "batch_named_001.fits",
+        "batch_named_002.fits"
+      ],
+      "minimum": 2
+    },
+    {
+      "name": "artifacts/stream_plain",
+      "status": "pass",
+      "files": [
+        "stream_plain_001.fits",
+        "stream_plain_003.fits",
+        "stream_plain_002.fits"
+      ],
+      "minimum": 3
+    },
+    {
+      "name": "artifacts/stream_named",
+      "status": "pass",
+      "files": [
+        "stream_named_001.fits",
+        "stream_named_003.fits",
+        "stream_named_002.fits"
+      ],
+      "minimum": 3
+    },
+    {
+      "name": "artifacts/header_present",
+      "status": "pass",
+      "files": [
+        "header_present_001.fits"
+      ],
+      "minimum": 1
+    },
+    {
+      "name": "artifacts/header_removed",
+      "status": "pass",
+      "files": [
+        "header_removed_001.fits"
+      ],
+      "minimum": 1
+    }
+  ]
+}

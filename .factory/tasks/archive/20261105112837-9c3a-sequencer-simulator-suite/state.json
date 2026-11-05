@@ -1,0 +1,46 @@
+{
+  "version": 2,
+  "active_task": "20261105112837-9c3a-sequencer-simulator-suite",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Deliver the tested scripts and open findings; main integration/publication remain unauthorized and pending.",
+  "blocker": null,
+  "completion": {
+    "kind": "incremental-audit",
+    "audit": {
+      "reviewed_on": "2026-11-05",
+      "revision": "77bad42c0d871cef5e275e585db23c454df74f9d",
+      "covered_tasks": [
+        "20261102101805-593a-solver-agent-integration",
+        "20261102110138-ff60-separate-factory-commits",
+        "20261102123603-6a7f-select-solver-agent",
+        "20261102173234-13fb-fix-full-audit-findings",
+        "20261102173307-8455-repair-serial-audit-findings",
+        "20261102173318-befe-fix-sdk-audit-findings",
+        "20261102173322-3b15-fix-test-integrity",
+        "20261102182442-b67b-fix-four-followup-findings",
+        "20261102182524-7d15-fix-primaluce-led-ack",
+        "20261102182529-3f77-fix-catalog-membership",
+        "20261102182537-fcec-fix-driver-registration-state",
+        "20261102185405-a62a-fix-selected-transport-tools",
+        "20261102185447-2b65-repair-tool-io-findings",
+        "20261102185500-c325-fix-driver-protocol-followups",
+        "20261102185510-e875-fix-http-deadlines-acl",
+        "20261102195100-d209-fix-hot-pixel-recheck-solver",
+        "20261102201622-853f-fix-editor-build-doc-findings",
+        "20261103001429-668f-solver-agent-at-use",
+        "20261103010401-8b51-flip-failure-recovery",
+        "20261103084208-ca1a-sequence-state-outside-sequence",
+        "20261103095233-2a74-fix-step-timers-after-abort",
+        "20261103112500-6690-fix-flip-failed-timer-race",
+        "20261103125001-1a3e-solver-prefers-imager-host-then-local",
+        "20261103191737-ccab-mcp-agent",
+        "20261103225241-53a6-changelog-3-0-10",
+        "20261104203810-488c-mcp-agent-guides",
+        "20261104222515-d8d4-client-raw-utils-mingw-indigocat",
+        "20261105074950-dd62-hide-agent-profile-names"
+      ]
+    }
+  }
+}

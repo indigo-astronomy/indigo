@@ -1,0 +1,24 @@
+{
+  "title": "Simulator test listener initially lacked authenticated write protection",
+  "category": "security",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261105112837-9c3a-sequencer-simulator-suite",
+      "report": "security.md",
+      "revision": null
+    }
+  ],
+  "summary": "Initial launcher used the ordinary INADDR_ANY native listener without ACLs. Candidate now creates device and nonzero master ACLs, signs client requests and rejects unauthorized probes; final whole-suite execution pending.",
+  "evidence": "security.md; local execution logs referenced there",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "quality-review.md reinspection; authenticated rejection probes in /tmp/sequencer-no-match-final/results.json; final run evidence in verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261105112837-9c3a-sequencer-simulator-suite-002"
+}

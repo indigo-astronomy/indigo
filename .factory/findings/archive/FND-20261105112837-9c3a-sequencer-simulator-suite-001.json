@@ -1,0 +1,24 @@
+{
+  "title": "Test suite cleanup and assertions can report misleading acceptance",
+  "category": "quality",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261105112837-9c3a-sequencer-simulator-suite",
+      "report": "quality-review.md",
+      "revision": null
+    }
+  ],
+  "summary": "Six initial candidate issues: fixed-delay cleanup, empty filtered success, missing focus restoration/reset/dither assertions and weak stream artifact count. Implementation corrections are independently reinspected; complete runtime retest pending.",
+  "evidence": "quality-review.md; local execution logs referenced there",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "quality-review.md reinspection; authenticated rejection probes in /tmp/sequencer-no-match-final/results.json; final run evidence in verification.md",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261105112837-9c3a-sequencer-simulator-suite-001"
+}

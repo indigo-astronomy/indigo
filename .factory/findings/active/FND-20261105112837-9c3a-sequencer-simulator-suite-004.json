@@ -1,0 +1,19 @@
+{
+  "title": "Scripting Agent change bindings omit local access tokens",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261105112837-9c3a-sequencer-simulator-suite",
+      "report": "security.md",
+      "revision": null
+    }
+  ],
+  "summary": "Native scripting text/number/switch change bindings build property access_token 0 and dispatch directly. Protected targets reject writes with nonzero master/device ACLs. Next: use registered device/master token consistently with native change helpers, add regression coverage and increment driver version if owner authorizes repair.",
+  "evidence": "security.md; local execution logs referenced there",
+  "resolution": null,
+  "id": "FND-20261105112837-9c3a-sequencer-simulator-suite-004"
+}
