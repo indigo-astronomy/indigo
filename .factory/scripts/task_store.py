@@ -10,6 +10,8 @@ import subprocess
 import tempfile
 import secrets
 
+from git_compat import no_lazy_fetch
+
 LIMIT = 1024 * 1024
 TASK = re.compile(r'[a-z0-9]+(?:-[a-z0-9]+)*')
 ORDERED = re.compile(r'\d{14}-[0-9a-f]{4}-[a-z0-9]+(?:-[a-z0-9]+)*')
@@ -80,7 +82,7 @@ def unique_id(root, slug):
             continue
         repository = subprocess.run(['git', 'rev-parse', '--show-toplevel'], cwd=root, capture_output=True)
         if repository.returncode == 0:
-            history = subprocess.run(['git', '--no-replace-objects', '--no-lazy-fetch', 'log', '--all', '-1', '--format=%H', '--',
+            history = subprocess.run(['git', '--no-replace-objects', *no_lazy_fetch(root), 'log', '--all', '-1', '--format=%H', '--',
                                       '.factory/tasks/' + task, '.factory/tasks/archive/' + task],
                                      cwd=root, capture_output=True, text=True)
             if history.returncode:

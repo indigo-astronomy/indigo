@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Execute an explicitly configured quality group without a shell."""
 import json
+import os
 from pathlib import Path
 import shlex
 import subprocess
@@ -28,10 +29,12 @@ def main():
         print(f"Configuration error for {group}: {exc}", file=sys.stderr)
         return 2
     print(f"Working directory: {ROOT}", flush=True)
+    # Helpers promise not to write into the checked tree; bytecode caches would break that on any host.
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
     for command in commands:
         print(f"[{group}] {shlex.join(command)}", flush=True)
         try:
-            result = subprocess.run(command, cwd=ROOT, check=False)
+            result = subprocess.run(command, cwd=ROOT, env=environment, check=False)
         except OSError as exc:
             print(f"Could not execute command: {exc}", file=sys.stderr)
             return 2

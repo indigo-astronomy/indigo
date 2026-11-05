@@ -2,6 +2,7 @@
 """Plan and apply pinned, project-local AI Factory template updates."""
 import argparse
 import task_store
+from git_compat import no_lazy_fetch
 import json
 import os
 from pathlib import Path
@@ -26,7 +27,7 @@ PROTECTED = (
 
 def git(root, *args, ok=(0,)):
     result = subprocess.run(
-        ['git', '--no-replace-objects', '--no-lazy-fetch', '--no-optional-locks', '-c', 'core.fsmonitor=false', '-C', str(root), *args],
+        ['git', '--no-replace-objects', *no_lazy_fetch(root), '--no-optional-locks', '-c', 'core.fsmonitor=false', '-C', str(root), *args],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     if result.returncode not in ok:

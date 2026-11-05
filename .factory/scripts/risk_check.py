@@ -13,6 +13,7 @@ DEFAULT_POLICY = {
                                          '.factory/workflow.md', '.factory/process-policy.json',
                                          '.factory/checks.json', '.cursor/rules/*', '.github/copilot-instructions.md',
                                          '.factory/scripts/process_check.py', '.factory/scripts/risk_check.py', '.factory/scripts/git_snapshot.py',
+                                         '.factory/scripts/git_compat.py',
                                          '.factory/scripts/findings.py', '.factory/scripts/decision_index.py', '.factory/scripts/process-check',
                                          '.factory/review-policy.json', '.factory/scripts/review', '.factory/scripts/review.py',
                                          '.factory/scripts/review_adapters.py', '.factory/scripts/review_protocol.py',

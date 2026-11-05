@@ -8,6 +8,7 @@ import sys
 import argparse
 import tempfile
 import task_store
+from git_compat import no_lazy_fetch
 
 ROOT = Path(__file__).resolve().parents[2]
 LIMIT = 1024 * 1024
@@ -49,8 +50,13 @@ def create(task_id):
         if shutil.which("git"):
             repository = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=ROOT, capture_output=True, text=True)
             if repository.returncode == 0:
+                try:
+                    lazy = no_lazy_fetch(ROOT)
+                except ValueError as error:
+                    print(f"Task ID history could not be checked: {error}.", file=sys.stderr)
+                    return 2
                 history = subprocess.run(
-                    ["git", "--no-replace-objects", "--no-lazy-fetch", "log", "--all", "-1", "--format=%H", "--",
+                    ["git", "--no-replace-objects", *lazy, "log", "--all", "-1", "--format=%H", "--",
                      f".factory/tasks/{task_id}", f".factory/tasks/archive/{task_id}"],
                     cwd=ROOT, capture_output=True, text=True,
                 )

@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 import task_store as store
+from git_compat import no_lazy_fetch
 
 ROOT = Path(__file__).resolve().parents[2]
 TEXT_SUFFIXES = ('.md', '.json', '.txt', '.yaml', '.yml', '.toml', '.sh', '.py', '.mdc')
@@ -17,7 +18,7 @@ SHA = re.compile(r'(?<![0-9a-f])[0-9a-f]{40}(?:[0-9a-f]{24})?(?![0-9a-f])')
 
 
 def git(root, *args):
-    result = subprocess.run(['git', '--no-replace-objects', '--no-lazy-fetch', '-C', str(root), *args], capture_output=True)
+    result = subprocess.run(['git', '--no-replace-objects', *no_lazy_fetch(root), '-C', str(root), *args], capture_output=True)
     if result.returncode:
         raise ValueError('Git operation failed: ' + args[0])
     return result.stdout.decode().strip()

@@ -4,11 +4,13 @@ from pathlib import Path
 import re
 import subprocess
 
+from git_compat import no_lazy_fetch
+
 LIMIT = 1024 * 1024
 
 
 def git(root, *args):
-    result = subprocess.run(['git', '--no-replace-objects', '--no-lazy-fetch', '--no-optional-locks',
+    result = subprocess.run(['git', '--no-replace-objects', *no_lazy_fetch(root), '--no-optional-locks',
                              *args], cwd=root, capture_output=True)
     if result.returncode:
         raise ValueError('local Git operation unavailable: ' + args[0])
@@ -57,7 +59,7 @@ class Snapshot:
     def ancestor(self, older):
         if not re.fullmatch(r'[0-9a-f]{40}|[0-9a-f]{64}', older):
             raise ValueError('ancestor must be a full commit SHA')
-        result = subprocess.run(['git', '--no-replace-objects', '--no-lazy-fetch', '--no-optional-locks',
+        result = subprocess.run(['git', '--no-replace-objects', *no_lazy_fetch(self.root), '--no-optional-locks',
                                  'merge-base', '--is-ancestor', older, self.revision],
                                 cwd=self.root, capture_output=True)
         if result.returncode not in (0, 1):

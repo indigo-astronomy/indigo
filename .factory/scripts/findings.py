@@ -7,13 +7,17 @@ import re
 import subprocess
 import sys
 
+# A read-only helper must not leave bytecode caches behind when it imports its sibling.
+sys.dont_write_bytecode = True
+from git_compat import no_lazy_fetch  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 ACTIVE = ".factory/findings/active.json"
 REGISTRY = ".factory/findings/registry.json"
 ACTIVE_DIR = ".factory/findings/active"
 ARCHIVE = ".factory/findings/archive"
 MAX_BYTES = 1024 * 1024
-GIT_FLAGS = ("--no-replace-objects", "--no-lazy-fetch", "--no-optional-locks")
+GIT_FLAGS = ("--no-replace-objects", "--no-optional-locks")
 ID = re.compile(r"FND-(?:[0-9]{6}|[a-z0-9]+(?:-[a-z0-9]+)*-[0-9]{3,})")
 LEGACY_ID = re.compile(r"FND-[0-9]{6}")
 TASK = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
@@ -197,13 +201,27 @@ def check_duplicate_chains(records):
             current = by_id[target]
 
 
+def git_flags():
+    # A partial clone on Git older than 2.44 cannot disable lazy fetching; such a check fails closed.
+    try:
+        return [GIT_FLAGS[0], *no_lazy_fetch(ROOT), *GIT_FLAGS[1:]]
+    except ValueError:
+        return None
+
+
 def git_ok(*args):
-    result = subprocess.run(["git", *GIT_FLAGS, *args], cwd=ROOT, capture_output=True, text=True)
+    flags = git_flags()
+    if flags is None:
+        return False
+    result = subprocess.run(["git", *flags, *args], cwd=ROOT, capture_output=True, text=True)
     return result.returncode == 0
 
 
 def git_blob(revision, path):
-    result = subprocess.run(["git", *GIT_FLAGS, "ls-tree", revision, "--", path], cwd=ROOT, capture_output=True, text=True)
+    flags = git_flags()
+    if flags is None:
+        return False
+    result = subprocess.run(["git", *flags, "ls-tree", revision, "--", path], cwd=ROOT, capture_output=True, text=True)
     return result.returncode == 0 and result.stdout.startswith(("100644 blob ", "100755 blob "))
 
 

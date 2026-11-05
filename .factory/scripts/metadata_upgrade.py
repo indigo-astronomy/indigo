@@ -10,6 +10,7 @@ import sys
 import findings
 import maintenance
 import task_store as store
+from git_compat import no_lazy_fetch
 
 ROOT = Path(__file__).resolve().parents[2]
 DERIVED = {'completed_non_audit_tasks_since_full_review', 'last_full_review_task', 'last_full_review_date',
@@ -17,7 +18,7 @@ DERIVED = {'completed_non_audit_tasks_since_full_review', 'last_full_review_task
 
 
 def git(root, *args):
-    result = subprocess.run(['git', '--no-replace-objects', '--no-lazy-fetch', '-C', str(root), *args], capture_output=True, text=True)
+    result = subprocess.run(['git', '--no-replace-objects', *no_lazy_fetch(root), '-C', str(root), *args], capture_output=True, text=True)
     if result.returncode:
         raise ValueError('Git operation failed: ' + args[0])
     return result.stdout.strip()
