@@ -37,6 +37,7 @@ class ContextExportTests(unittest.TestCase):
         self.write(".factory/scripts/context_export.py", (TEMPLATE_ROOT / ".factory/scripts/context_export.py").read_text())
         self.write(".factory/scripts/task_store.py", (TEMPLATE_ROOT / ".factory/scripts/task_store.py").read_text())
         self.write(".factory/scripts/findings.py", (TEMPLATE_ROOT / ".factory/scripts/findings.py").read_text())
+        self.write(".factory/scripts/git_compat.py", (TEMPLATE_ROOT / ".factory/scripts/git_compat.py").read_text())
         self.required = [
             "AGENTS.md", ".factory/bootstrap.md", ".factory/project.md",
             ".factory/state.json", ".factory/workflow.md", ".factory/maintenance.json",

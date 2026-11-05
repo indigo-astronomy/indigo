@@ -76,7 +76,7 @@ class FindingsProjectTests(unittest.TestCase):
     def run_cli(self, *args):
         scripts = self.root / '.factory/scripts'
         scripts.mkdir(exist_ok=True)
-        for name in ('findings.py', 'task_store.py'):
+        for name in ('findings.py', 'task_store.py', 'git_compat.py'):
             shutil.copy2(ROOT / '.factory/scripts' / name, scripts / name)
         return subprocess.run([sys.executable, '-B', str(scripts / 'findings.py'), *args],
                               cwd=self.root, capture_output=True, text=True)

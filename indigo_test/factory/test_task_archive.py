@@ -44,7 +44,7 @@ class TaskArchiveTests(unittest.TestCase):
         self.root = Path(self.temp.name) / 'project with spaces'
         self.root.mkdir()
         self.git('init', '-q')
-        for name in ('task_store.py', 'maintenance.py', 'archive_task.py', 'new_task.py', 'context_export.py', 'findings.py'):
+        for name in ('task_store.py', 'maintenance.py', 'archive_task.py', 'new_task.py', 'context_export.py', 'findings.py', 'git_compat.py'):
             self.put('.factory/scripts/' + name, (ROOT / '.factory/scripts' / name).read_bytes())
         shutil.copytree(ROOT / '.factory/templates/task', self.root / '.factory/templates/task')
         self.state = self.put('.factory/state.json', json.dumps({

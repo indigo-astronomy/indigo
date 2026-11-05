@@ -40,6 +40,7 @@ class FindingsTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / ".factory/scripts").mkdir(parents=True)
         shutil.copy2(ROOT / ".factory/scripts/findings.py", self.root / ".factory/scripts/findings.py")
+        shutil.copy2(ROOT / ".factory/scripts/git_compat.py", self.root / ".factory/scripts/git_compat.py")
         (self.root / ".factory/findings/archive").mkdir(parents=True)
         self.active = {"version": 1, "next_id": 1, "findings": []}
         self.save()

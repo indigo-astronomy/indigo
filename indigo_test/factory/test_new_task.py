@@ -38,6 +38,7 @@ class NewTaskBoundaryTests(unittest.TestCase):
         (self.root / '.factory/scripts').mkdir(parents=True)
         shutil.copy2(ROOT / '.factory/scripts/task_store.py', self.root / '.factory/scripts/task_store.py')
         shutil.copy2(ROOT / '.factory/scripts/new_task.py', self.root / '.factory/scripts/new_task.py')
+        shutil.copy2(ROOT / '.factory/scripts/git_compat.py', self.root / '.factory/scripts/git_compat.py')
         shutil.copytree(ROOT / '.factory/templates/task', self.root / '.factory/templates/task')
         (self.root / '.factory/tasks').mkdir()
         self.state = self.root / '.factory/state.json'

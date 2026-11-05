@@ -325,7 +325,7 @@ class ProcessCheckTests(unittest.TestCase):
 
     def test_cli_exit_codes_and_shallow_history_fail_closed(self):
         # The real CLI resolves its own repository from its installed location.
-        for name in ('process_check.py', 'decision_index.py', 'findings.py', 'git_snapshot.py', 'risk_check.py', 'review_protocol.py'):
+        for name in ('process_check.py', 'decision_index.py', 'findings.py', 'git_snapshot.py', 'git_compat.py', 'risk_check.py', 'review_protocol.py'):
             self.put('.factory/scripts/' + name, (SCRIPTS / name).read_text())
         self.data['scope'].append('.factory/scripts/*')
         self.reviewed()
@@ -490,7 +490,7 @@ class ProcessCheckTests(unittest.TestCase):
         self.assertIn('.factory/tasks/archive/' + self.task + '/process.json', self.git('ls-tree', '-r', '--name-only', 'HEAD'))
 
     def test_record_content_cli_is_readonly_and_rejects_ambiguous_symlink_and_unmerged_inputs(self):
-        for name in ('process_check.py', 'decision_index.py', 'findings.py', 'git_snapshot.py', 'risk_check.py', 'review_protocol.py'):
+        for name in ('process_check.py', 'decision_index.py', 'findings.py', 'git_snapshot.py', 'git_compat.py', 'risk_check.py', 'review_protocol.py'):
             self.put('.factory/scripts/' + name, (SCRIPTS / name).read_text())
         self.data['scope'].append('.factory/scripts/*')
         self.content_review()

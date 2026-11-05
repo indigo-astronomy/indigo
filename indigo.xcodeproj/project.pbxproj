@@ -5912,6 +5912,7 @@
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_giotto.c; sourceTree = "<group>"; };
 		F5BAEED44662DE1A3480689A /* test_findings.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_findings.py; sourceTree = "<group>"; };
+		6A5572BCFF2F1EB34D52E530 /* test_git_compat.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_git_compat.py; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
 		F6E14E01192CC6BDFBEE1051 /* test_findings_project.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_findings_project.py; sourceTree = "<group>"; };
 		F79366E0F4385E79E0FD4036 /* ADR-001-adopt-factory.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-001-adopt-factory.md"; sourceTree = "<group>"; };
@@ -16979,6 +16980,7 @@
 				C23AF2ECD26B8FB09527BE5D /* test_context_export.py */,
 				D35C489943CE4AA80F095E70 /* test_decision_index.py */,
 				F5BAEED44662DE1A3480689A /* test_findings.py */,
+				6A5572BCFF2F1EB34D52E530 /* test_git_compat.py */,
 				BD32759CA3EA1E85E291A1B3 /* test_new_task.py */,
 				72D6F5A588B4495EC42302AA /* test_process_check.py */,
 				6A8C1222806CCB8FE622265F /* test_review.py */,
