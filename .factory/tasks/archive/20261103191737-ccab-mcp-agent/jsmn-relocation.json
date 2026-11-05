@@ -1,0 +1,6 @@
+{
+  "old_path": "indigo_drivers/shared/primalucelib/jsmn.h",
+  "new_path": "indigo_libs/externals/jsmn/jsmn.h",
+  "sha256": "a7811ac6efe4ba60ea6a635bb7d02c8ccb0b88ce5e8a92e06e77cef305385990",
+  "bytes": 11188
+}

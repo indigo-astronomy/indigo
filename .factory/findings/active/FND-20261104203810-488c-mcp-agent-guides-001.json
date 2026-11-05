@@ -1,0 +1,19 @@
+{
+  "title": "Mount Agent derived coordinates assume J2000 for non-J2000 mount inputs",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261104203810-488c-mcp-agent-guides",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Source inspection shows Mount Agent forwards targets and mirrors mount coordinates without epoch conversion but unconditionally converts derived coordinates from J2000 to current epoch. The shared solver instead converts targets to the related mount's reported MOUNT_EPOCH. Non-J2000 mounts can therefore produce inconsistent derived geometry. Next action: assign a bounded Mount Agent epoch-contract fix and simulator regression; no runtime reproduction or risk acceptance is claimed.",
+  "evidence": "verification.md, Mount epoch source discrepancy; indigo_drivers/agent_mount/indigo_agent_mount.c target forwarding and coordinate observer; indigo_libs/indigo_platesolver.c mount_epoch conversion.",
+  "resolution": null,
+  "id": "FND-20261104203810-488c-mcp-agent-guides-001"
+}

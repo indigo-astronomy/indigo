@@ -1,0 +1,24 @@
+{
+  "title": "MCP property listing omitted item schemas",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103191737-ccab-mcp-agent",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Initial list_properties omitted item schemas; snapshot/serializer now preserve item metadata without duplicating long-text values.",
+  "evidence": "Origin read-tools-review.md; original count-zero list snapshot and property_json(false) omitted items.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Origin verification.md read-tools final acceptance;23/23 native and ASan/UBSan, recorded23/23; independent source reinspection and schema regression confirmed.",
+    "approved_by": "Independent mcp_review verification; no risk acceptance",
+    "duplicate_of": null
+  },
+  "id": "FND-20261103191737-ccab-mcp-agent-002"
+}

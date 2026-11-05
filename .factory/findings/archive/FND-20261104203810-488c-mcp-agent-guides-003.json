@@ -1,0 +1,24 @@
+{
+  "title": "Embedded help links with section fragments were rejected",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261104203810-488c-mcp-agent-guides",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The initial embedded catalog published URI links with section fragments while lookup accepted only the complete base URI. Following a published recipe link returned unknown topic/resource. Fixed before delivery by removing the fragment before exact compiled-whitelist lookup, with full-document/canonical-base response; regression passed in final34-case native and sanitizer suites; independently reinspected.",
+  "evidence": "verification.md, Embedding review defects and fixes; detailed final regressions in verification-embedding.md.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification-embedding.md final native34/34 andASan/UBSan34/34; focused fragment/metadata regressions and independent source reinspection recorded in quality-review-embedding.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261104203810-488c-mcp-agent-guides-003"
+}

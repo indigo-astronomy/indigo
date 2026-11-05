@@ -1,0 +1,9 @@
+Both readback checks passed. Actual MCP results, in order, for `CCD Imager Simulator` / `PROFILE_NAME`:
+
+1. **get_property:** state `Ok`, permission `rw`; `NAME_0="Profile #0"`, `NAME_1="Profile #1"`, `NAME_2="Profile #2"`, `NAME_3="Profile #3"`, `NAME_4="Profile #4"`.
+2. **set_property** `NAME_0="MCP Codex verification"`: `{"dispatched":true,"completion":"not_confirmed"}`.
+3. **get_property:** state `Ok`; `NAME_0="MCP Codex verification"`. Other items unchanged. **New-value check: PASS.**
+4. **set_property** `NAME_0="Profile #0"`: `{"dispatched":true,"completion":"not_confirmed"}`.
+5. **get_property:** state `Ok`; `NAME_0="Profile #0"`. Other items unchanged. **Exact restoration check: PASS.**
+
+Completion was confirmed by readbacks. No device connection, config save, exposure, motion, or other property/item change was performed.

@@ -1,0 +1,401 @@
+{
+  "format": "gzip, original output preserved byte-for-byte",
+  "logs": [
+    {
+      "original_path": "client-verification/build.log",
+      "stored_path": "client-verification/build.log.gz",
+      "sha256_uncompressed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes_uncompressed": 0
+    },
+    {
+      "original_path": "client-verification/ccd-build.log",
+      "stored_path": "client-verification/ccd-build.log.gz",
+      "sha256_uncompressed": "6cfbac64255751e791027dcfc96df096d8d1c60ca5e1c1afb838229b27c0aa79",
+      "bytes_uncompressed": 96
+    },
+    {
+      "original_path": "client-verification/mount-build.log",
+      "stored_path": "client-verification/mount-build.log.gz",
+      "sha256_uncompressed": "e269f5feecafd926f83b74513c7cf62f4f300054fa2f0f96c66fce467ae578e2",
+      "bytes_uncompressed": 98
+    },
+    {
+      "original_path": "client-verification/shutdown.log",
+      "stored_path": "client-verification/shutdown.log.gz",
+      "sha256_uncompressed": "2671a36a76aebd817df5ab4e8e3d15253da71675f03c0cb96484e716e4b5f921",
+      "bytes_uncompressed": 648
+    },
+    {
+      "original_path": "client-verification/write-shutdown.log",
+      "stored_path": "client-verification/write-shutdown.log.gz",
+      "sha256_uncompressed": "8f35b69893aed89a9796a0bf6bd6b96d0c5b43088a7341d7fbb0809bc1edbfc1",
+      "bytes_uncompressed": 1156
+    },
+    {
+      "original_path": "commit-logs/build.log",
+      "stored_path": "commit-logs/build.log.gz",
+      "sha256_uncompressed": "7b31a1fe35ec18b273092cdc87da20c75a358712d33027fc70a205ea327d9ede",
+      "bytes_uncompressed": 2194
+    },
+    {
+      "original_path": "commit-logs/native.log",
+      "stored_path": "commit-logs/native.log.gz",
+      "sha256_uncompressed": "c435d035cafe98e8ea7fa7862ed9f917299a2cb597da9233747d3b41d80bac85",
+      "bytes_uncompressed": 1230
+    },
+    {
+      "original_path": "commit-logs/recorded.log",
+      "stored_path": "commit-logs/recorded.log.gz",
+      "sha256_uncompressed": "2cc3da88b7c3262620c765494f4885f94301898abe364dda4f54c4e1b20cc73f",
+      "bytes_uncompressed": 2761
+    },
+    {
+      "original_path": "commit-logs/sanitize.log",
+      "stored_path": "commit-logs/sanitize.log.gz",
+      "sha256_uncompressed": "c435d035cafe98e8ea7fa7862ed9f917299a2cb597da9233747d3b41d80bac85",
+      "bytes_uncompressed": 1230
+    },
+    {
+      "original_path": "factory-check.log",
+      "stored_path": "factory-check.log.gz",
+      "sha256_uncompressed": "3351d225363d90663ec99833f75bcff3c0f1f28887f6ed534c5789f5941b8b21",
+      "bytes_uncompressed": 442
+    },
+    {
+      "original_path": "factory-security.log",
+      "stored_path": "factory-security.log.gz",
+      "sha256_uncompressed": "9efec8097d1b4402419c4383256c5af2e44504a135c4a78e6baca1aba7e9a095",
+      "bytes_uncompressed": 237
+    },
+    {
+      "original_path": "final-regression-build.log",
+      "stored_path": "final-regression-build.log.gz",
+      "sha256_uncompressed": "33ae1ecbaa6cbd525d4b588b03043c52c10dbbb60fb02a5002908ae9e5b46e8c",
+      "bytes_uncompressed": 3057
+    },
+    {
+      "original_path": "http-handler-sanitize-test.log",
+      "stored_path": "http-handler-sanitize-test.log.gz",
+      "sha256_uncompressed": "c8628a9ece2e469a673f206c80882c71e4aa8821b50c6eb4daa00ed7b880c342",
+      "bytes_uncompressed": 813
+    },
+    {
+      "original_path": "http-handler-test.log",
+      "stored_path": "http-handler-test.log.gz",
+      "sha256_uncompressed": "c8628a9ece2e469a673f206c80882c71e4aa8821b50c6eb4daa00ed7b880c342",
+      "bytes_uncompressed": 813
+    },
+    {
+      "original_path": "http-security-build.log",
+      "stored_path": "http-security-build.log.gz",
+      "sha256_uncompressed": "a35770d216bd6c4ce8b335eb2896806bc93e1c925e339ea0d9cf1ba30b59cadd",
+      "bytes_uncompressed": 1954
+    },
+    {
+      "original_path": "http-security-test.log",
+      "stored_path": "http-security-test.log.gz",
+      "sha256_uncompressed": "5769e23b81c7412622ad2f5e4237467ac6fe72140b027b7b1e72faf9757377bf",
+      "bytes_uncompressed": 1182
+    },
+    {
+      "original_path": "jsmn-build.log",
+      "stored_path": "jsmn-build.log.gz",
+      "sha256_uncompressed": "5ed0802669d32fc81136903db00406e93f133e87e59869aa8c218c687f9ab1f5",
+      "bytes_uncompressed": 3228
+    },
+    {
+      "original_path": "jsmn-commit-build.log",
+      "stored_path": "jsmn-commit-build.log.gz",
+      "sha256_uncompressed": "68b0909f62d91c48827be165a49d295ed0d6450c7d611b56dddea69a0a60818b",
+      "bytes_uncompressed": 1886
+    },
+    {
+      "original_path": "jsmn-commit-test.log",
+      "stored_path": "jsmn-commit-test.log.gz",
+      "sha256_uncompressed": "f9786601e5d9d9429f5a2eb7cd65b595e283cd7fbe5996f484e275a1ee0a469a",
+      "bytes_uncompressed": 5652
+    },
+    {
+      "original_path": "jsmn-factory-check.log",
+      "stored_path": "jsmn-factory-check.log.gz",
+      "sha256_uncompressed": "dd9e2764d92fafb6e90cb5f0c3d47f06bf80cc4a178a2ca79b200f1f0e46f331",
+      "bytes_uncompressed": 433
+    },
+    {
+      "original_path": "jsmn-factory-security.log",
+      "stored_path": "jsmn-factory-security.log.gz",
+      "sha256_uncompressed": "a5baad4adb5566758f33b3e244b5d1414dd1d4f6bb754382897a85d79d3babc7",
+      "bytes_uncompressed": 228
+    },
+    {
+      "original_path": "jsmn-mcp-recorded-test.log",
+      "stored_path": "jsmn-mcp-recorded-test.log.gz",
+      "sha256_uncompressed": "6cbc889b19c8490f3ff74db34cb501514e3710ede67e3e158399fba244591753",
+      "bytes_uncompressed": 2985
+    },
+    {
+      "original_path": "jsmn-mcp-sanitize-test.log",
+      "stored_path": "jsmn-mcp-sanitize-test.log.gz",
+      "sha256_uncompressed": "64e2c77a2ce6d146235a601d89bbb769eb951211fc6f5abfa44cdd8624b3e24e",
+      "bytes_uncompressed": 584
+    },
+    {
+      "original_path": "jsmn-primalucelib-test.log",
+      "stored_path": "jsmn-primalucelib-test.log.gz",
+      "sha256_uncompressed": "83e40d20890fce9065c6f457f6121b0e0ffd20f01b83c9d16e3ef4a4ace264cc",
+      "bytes_uncompressed": 5652
+    },
+    {
+      "original_path": "mcp-build.log",
+      "stored_path": "mcp-build.log.gz",
+      "sha256_uncompressed": "2aab8c0854cef49f45725742f5d39fc9ab688bd64321784e15d13dddf8dbe0b8",
+      "bytes_uncompressed": 1091
+    },
+    {
+      "original_path": "mcp-core-build.log",
+      "stored_path": "mcp-core-build.log.gz",
+      "sha256_uncompressed": "72eec5dccbb14f32a6b39db206a6f1851c0495d172c9d789a952c77337c70e69",
+      "bytes_uncompressed": 3654
+    },
+    {
+      "original_path": "mcp-factory-check.log",
+      "stored_path": "mcp-factory-check.log.gz",
+      "sha256_uncompressed": "dd9e2764d92fafb6e90cb5f0c3d47f06bf80cc4a178a2ca79b200f1f0e46f331",
+      "bytes_uncompressed": 433
+    },
+    {
+      "original_path": "mcp-factory-security.log",
+      "stored_path": "mcp-factory-security.log.gz",
+      "sha256_uncompressed": "a5baad4adb5566758f33b3e244b5d1414dd1d4f6bb754382897a85d79d3babc7",
+      "bytes_uncompressed": 228
+    },
+    {
+      "original_path": "mcp-final-build.log",
+      "stored_path": "mcp-final-build.log.gz",
+      "sha256_uncompressed": "a2c842263c9ad35b456af2075453e90c3758b224edaa5828bd5962cbf5088a47",
+      "bytes_uncompressed": 18766
+    },
+    {
+      "original_path": "mcp-final-driver-build.log",
+      "stored_path": "mcp-final-driver-build.log.gz",
+      "sha256_uncompressed": "2aab8c0854cef49f45725742f5d39fc9ab688bd64321784e15d13dddf8dbe0b8",
+      "bytes_uncompressed": 1091
+    },
+    {
+      "original_path": "mcp-http-regression.log",
+      "stored_path": "mcp-http-regression.log.gz",
+      "sha256_uncompressed": "7b615e31196fd97e24b0866fe7b3a677a9bffd3dc0f3de7766f0b967225b7e4e",
+      "bytes_uncompressed": 1387
+    },
+    {
+      "original_path": "mcp-independent-sanitize-test.log",
+      "stored_path": "mcp-independent-sanitize-test.log.gz",
+      "sha256_uncompressed": "64e2c77a2ce6d146235a601d89bbb769eb951211fc6f5abfa44cdd8624b3e24e",
+      "bytes_uncompressed": 584
+    },
+    {
+      "original_path": "mcp-initial-native-test.log",
+      "stored_path": "mcp-initial-native-test.log.gz",
+      "sha256_uncompressed": "64e2c77a2ce6d146235a601d89bbb769eb951211fc6f5abfa44cdd8624b3e24e",
+      "bytes_uncompressed": 584
+    },
+    {
+      "original_path": "mcp-initial-sanitize-test.log",
+      "stored_path": "mcp-initial-sanitize-test.log.gz",
+      "sha256_uncompressed": "64e2c77a2ce6d146235a601d89bbb769eb951211fc6f5abfa44cdd8624b3e24e",
+      "bytes_uncompressed": 584
+    },
+    {
+      "original_path": "mcp-initial-tests-build.log",
+      "stored_path": "mcp-initial-tests-build.log.gz",
+      "sha256_uncompressed": "516f60951a83007473520d05f5bc40a76eebdd9f8ae4da40b505740053ad219b",
+      "bytes_uncompressed": 2167
+    },
+    {
+      "original_path": "mcp-recorded-test.log",
+      "stored_path": "mcp-recorded-test.log.gz",
+      "sha256_uncompressed": "f42e07cffa867378bf70c3594762b333dd4ad8a340cce9bf6b1a778335d7d0fb",
+      "bytes_uncompressed": 2985
+    },
+    {
+      "original_path": "mcp-sanitize-test.log",
+      "stored_path": "mcp-sanitize-test.log.gz",
+      "sha256_uncompressed": "64e2c77a2ce6d146235a601d89bbb769eb951211fc6f5abfa44cdd8624b3e24e",
+      "bytes_uncompressed": 584
+    },
+    {
+      "original_path": "mcp-websocket-regression.log",
+      "stored_path": "mcp-websocket-regression.log.gz",
+      "sha256_uncompressed": "90e13277ad1696a1d5ac3d373cc30636cd78764e4ae917d1f1cda7350f106e6c",
+      "bytes_uncompressed": 345
+    },
+    {
+      "original_path": "post-baseline-build.log",
+      "stored_path": "post-baseline-build.log.gz",
+      "sha256_uncompressed": "28f915d2e66d0a9944e86abeb0100cb5f351e08fae419aee45902253bc02c115",
+      "bytes_uncompressed": 16369
+    },
+    {
+      "original_path": "post-baseline-test.log",
+      "stored_path": "post-baseline-test.log.gz",
+      "sha256_uncompressed": "ccfdf8499b211d1faa3072ed47af1d80c2bcc6db69304e51c354e215b09125aa",
+      "bytes_uncompressed": 181
+    },
+    {
+      "original_path": "post-build.log",
+      "stored_path": "post-build.log.gz",
+      "sha256_uncompressed": "ba5349d69fb4f275e7c5a51550dd0075f31ca3b62b25d7bbbc2667692d17a3ca",
+      "bytes_uncompressed": 3847
+    },
+    {
+      "original_path": "post-factory-check.log",
+      "stored_path": "post-factory-check.log.gz",
+      "sha256_uncompressed": "2bd5af62e784901bc9650a833a0292a49f14607dc8ce4cb529ea31b555d3ad3d",
+      "bytes_uncompressed": 433
+    },
+    {
+      "original_path": "post-factory-security.log",
+      "stored_path": "post-factory-security.log.gz",
+      "sha256_uncompressed": "a5baad4adb5566758f33b3e244b5d1414dd1d4f6bb754382897a85d79d3babc7",
+      "bytes_uncompressed": 228
+    },
+    {
+      "original_path": "post-test.log",
+      "stored_path": "post-test.log.gz",
+      "sha256_uncompressed": "c14ae242738328791886f895649b716d47b5d9ee15f3da1fa237ce11417eb0a6",
+      "bytes_uncompressed": 1387
+    },
+    {
+      "original_path": "post-websocket-test.log",
+      "stored_path": "post-websocket-test.log.gz",
+      "sha256_uncompressed": "90e13277ad1696a1d5ac3d373cc30636cd78764e4ae917d1f1cda7350f106e6c",
+      "bytes_uncompressed": 345
+    },
+    {
+      "original_path": "read-tools-logs/build.log",
+      "stored_path": "read-tools-logs/build.log.gz",
+      "sha256_uncompressed": "516f60951a83007473520d05f5bc40a76eebdd9f8ae4da40b505740053ad219b",
+      "bytes_uncompressed": 2167
+    },
+    {
+      "original_path": "read-tools-logs/native.log",
+      "stored_path": "read-tools-logs/native.log.gz",
+      "sha256_uncompressed": "bb7b6d19542f4efed43715c70872f9d95c5f966ec9f36ccb625b9bdf0fdb005d",
+      "bytes_uncompressed": 960
+    },
+    {
+      "original_path": "read-tools-logs/recorded.log",
+      "stored_path": "read-tools-logs/recorded.log.gz",
+      "sha256_uncompressed": "a90d8e095d00d3e8b8e5e8e403b658d95eecb404e5551cea72a52d5e27c679d6",
+      "bytes_uncompressed": 1531
+    },
+    {
+      "original_path": "read-tools-logs/sanitize.log",
+      "stored_path": "read-tools-logs/sanitize.log.gz",
+      "sha256_uncompressed": "bb7b6d19542f4efed43715c70872f9d95c5f966ec9f36ccb625b9bdf0fdb005d",
+      "bytes_uncompressed": 960
+    },
+    {
+      "original_path": "superseded-http-api/factory-check.log",
+      "stored_path": "superseded-http-api/factory-check.log.gz",
+      "sha256_uncompressed": "3351d225363d90663ec99833f75bcff3c0f1f28887f6ed534c5789f5941b8b21",
+      "bytes_uncompressed": 442
+    },
+    {
+      "original_path": "superseded-http-api/factory-security.log",
+      "stored_path": "superseded-http-api/factory-security.log.gz",
+      "sha256_uncompressed": "9efec8097d1b4402419c4383256c5af2e44504a135c4a78e6baca1aba7e9a095",
+      "bytes_uncompressed": 237
+    },
+    {
+      "original_path": "superseded-http-api/final-regression-build.log",
+      "stored_path": "superseded-http-api/final-regression-build.log.gz",
+      "sha256_uncompressed": "33ae1ecbaa6cbd525d4b588b03043c52c10dbbb60fb02a5002908ae9e5b46e8c",
+      "bytes_uncompressed": 3057
+    },
+    {
+      "original_path": "superseded-http-api/http-handler-sanitize-test.log",
+      "stored_path": "superseded-http-api/http-handler-sanitize-test.log.gz",
+      "sha256_uncompressed": "c8628a9ece2e469a673f206c80882c71e4aa8821b50c6eb4daa00ed7b880c342",
+      "bytes_uncompressed": 813
+    },
+    {
+      "original_path": "superseded-http-api/http-handler-test.log",
+      "stored_path": "superseded-http-api/http-handler-test.log.gz",
+      "sha256_uncompressed": "c8628a9ece2e469a673f206c80882c71e4aa8821b50c6eb4daa00ed7b880c342",
+      "bytes_uncompressed": 813
+    },
+    {
+      "original_path": "superseded-http-api/http-security-build.log",
+      "stored_path": "superseded-http-api/http-security-build.log.gz",
+      "sha256_uncompressed": "a35770d216bd6c4ce8b335eb2896806bc93e1c925e339ea0d9cf1ba30b59cadd",
+      "bytes_uncompressed": 1954
+    },
+    {
+      "original_path": "superseded-http-api/http-security-test.log",
+      "stored_path": "superseded-http-api/http-security-test.log.gz",
+      "sha256_uncompressed": "5769e23b81c7412622ad2f5e4237467ac6fe72140b027b7b1e72faf9757377bf",
+      "bytes_uncompressed": 1182
+    },
+    {
+      "original_path": "superseded-http-api/websocket-build.log",
+      "stored_path": "superseded-http-api/websocket-build.log.gz",
+      "sha256_uncompressed": "194c46c61feed8de84757eed1260d6e5386661bb4a0db52845cb9c6f0422437a",
+      "bytes_uncompressed": 882
+    },
+    {
+      "original_path": "superseded-http-api/websocket-test.log",
+      "stored_path": "superseded-http-api/websocket-test.log.gz",
+      "sha256_uncompressed": "90e13277ad1696a1d5ac3d373cc30636cd78764e4ae917d1f1cda7350f106e6c",
+      "bytes_uncompressed": 345
+    },
+    {
+      "original_path": "websocket-build.log",
+      "stored_path": "websocket-build.log.gz",
+      "sha256_uncompressed": "194c46c61feed8de84757eed1260d6e5386661bb4a0db52845cb9c6f0422437a",
+      "bytes_uncompressed": 882
+    },
+    {
+      "original_path": "websocket-test.log",
+      "stored_path": "websocket-test.log.gz",
+      "sha256_uncompressed": "90e13277ad1696a1d5ac3d373cc30636cd78764e4ae917d1f1cda7350f106e6c",
+      "bytes_uncompressed": 345
+    },
+    {
+      "original_path": "write-tools-logs/baseline.log",
+      "stored_path": "write-tools-logs/baseline.log.gz",
+      "sha256_uncompressed": "bb7b6d19542f4efed43715c70872f9d95c5f966ec9f36ccb625b9bdf0fdb005d",
+      "bytes_uncompressed": 960
+    },
+    {
+      "original_path": "write-tools-logs/build.log",
+      "stored_path": "write-tools-logs/build.log.gz",
+      "sha256_uncompressed": "516f60951a83007473520d05f5bc40a76eebdd9f8ae4da40b505740053ad219b",
+      "bytes_uncompressed": 2167
+    },
+    {
+      "original_path": "write-tools-logs/fnd003-baseline.log",
+      "stored_path": "write-tools-logs/fnd003-baseline.log.gz",
+      "sha256_uncompressed": "be7a43c961d9b124697770d96f9642e6d7f0bd7377987013b6fdb952a62c364f",
+      "bytes_uncompressed": 1308
+    },
+    {
+      "original_path": "write-tools-logs/native.log",
+      "stored_path": "write-tools-logs/native.log.gz",
+      "sha256_uncompressed": "c435d035cafe98e8ea7fa7862ed9f917299a2cb597da9233747d3b41d80bac85",
+      "bytes_uncompressed": 1230
+    },
+    {
+      "original_path": "write-tools-logs/recorded.log",
+      "stored_path": "write-tools-logs/recorded.log.gz",
+      "sha256_uncompressed": "4facd2e4f158ef7056080ad91ee7ecf7189fecdab0a6446da61433bf519e43b6",
+      "bytes_uncompressed": 1801
+    },
+    {
+      "original_path": "write-tools-logs/sanitize.log",
+      "stored_path": "write-tools-logs/sanitize.log.gz",
+      "sha256_uncompressed": "c435d035cafe98e8ea7fa7862ed9f917299a2cb597da9233747d3b41d80bac85",
+      "bytes_uncompressed": 1230
+    }
+  ]
+}

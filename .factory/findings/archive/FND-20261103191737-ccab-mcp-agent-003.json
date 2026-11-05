@@ -1,0 +1,24 @@
+{
+  "title": "MCP numeric writes misconvert scaled finite decimal values",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103191737-ccab-mcp-agent",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Agent numeric boundary now uses locale-normalized strtod with full consumption and finite result checks; correctly scaled finite values are preserved.",
+  "evidence": "Origin verification.md Write-tools increment; independent source/ctypes proof and write-tools-logs/fnd003-baseline.log (29/30).",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Origin verification.md Write-tools final acceptance; both scaled finite regressions and comma-locale assertion pass in30/30 native and30/30 ASan/UBSan, final recorded30/30; independent source reinspection confirmed.",
+    "approved_by": "Independent mcp_review verification; no risk acceptance",
+    "duplicate_of": null
+  },
+  "id": "FND-20261103191737-ccab-mcp-agent-003"
+}

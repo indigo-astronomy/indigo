@@ -1,0 +1,19 @@
+{
+  "title": "Sequencer meridian-flip pause documentation disagrees with forwarded time units",
+  "category": "quality",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261104203810-488c-mcp-agent-guides",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Canonical Sequencer.md describes enable_meridian_flip time as seconds. Sequencer.js forwards it unchanged through set_pause_after_transit to Imager AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT, whose source definition and computation use hours. Nonzero values interpreted as documented can schedule the wrong transit pause. Next action: reconcile the public unit contract, correct reference or conversion as appropriate, and verify with a focused simulator test. Draft guide exposes the discrepancy; no runtime validation or source fix here.",
+  "evidence": "verification.md, Sequencer transit pause discrepancy; Sequencer.md line307; Sequencer.js enable_meridian_flip and set_pause_after_transit; Imager source definition Pause after transit (h).",
+  "resolution": null,
+  "id": "FND-20261104203810-488c-mcp-agent-guides-002"
+}

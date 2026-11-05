@@ -150,6 +150,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_agent_guider \
 	$(INTEGRATION_BUILD)/test_agent_mount \
 	$(INTEGRATION_BUILD)/test_agent_config \
+	$(INTEGRATION_BUILD)/test_agent_mcp \
 	$(INTEGRATION_BUILD)/test_agent_astrometry \
 	$(INTEGRATION_BUILD)/test_agent_platesolver \
 	$(INTEGRATION_BUILD)/test_indigo_solver_tool \
@@ -498,7 +499,7 @@ $(UNIT_BUILD)/test_uni_io: unit/test_uni_io.c test_runner.h $(BUILD_LIB)/libindi
 
 # Static PrimaLuce Lab protocol library, linked by the PrimaLuce drivers and their tests.
 PRIMALUCELIB = $(BUILD_LIB)/libprimalucelib.a
-PRIMALUCELIB_SOURCES = ../indigo_drivers/shared/primalucelib/primalucelib.h ../indigo_drivers/shared/primalucelib/primalucelib.c ../indigo_drivers/shared/primalucelib/jsmn.h ../indigo_drivers/shared/primalucelib/Makefile
+PRIMALUCELIB_SOURCES = ../indigo_drivers/shared/primalucelib/primalucelib.h ../indigo_drivers/shared/primalucelib/primalucelib.c ../indigo_libs/externals/jsmn/jsmn.h ../indigo_drivers/shared/primalucelib/Makefile
 
 $(PRIMALUCELIB): $(PRIMALUCELIB_SOURCES)
 	$(MAKE) -C ../indigo_drivers/shared/primalucelib all
@@ -556,6 +557,28 @@ test-server-static-driver: check-lib $(INTEGRATION_BUILD)/test_server_static_dri
 
 $(INTEGRATION_BUILD)/test_server_websocket: integration/test_server_websocket.c test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+AGENT_MCP_TEST_DEFINES = -DMCP_PROGRESS_TIMEOUT=0.25 -DMCP_TOTAL_TIMEOUT=1.0
+AGENT_MCP_HELP = ../indigo_drivers/agent_mcp/indigo_agent_mcp_help.h
+AGENT_MCP_HELP_SOURCES = $(wildcard ../indigo_docs/mcp/*.md ../indigo_docs/mcp/agents/*.md) ../indigo_drivers/agent_scripting/library/Sequencer.md
+
+$(AGENT_MCP_HELP): ../indigo_drivers/agent_mcp/generate_help.py $(AGENT_MCP_HELP_SOURCES)
+	python3 ../indigo_drivers/agent_mcp/generate_help.py
+
+AGENT_MCP_TEST_SOURCES = integration/test_agent_mcp.c ../indigo_drivers/agent_mcp/indigo_agent_mcp.c ../indigo_libs/indigo_server_tcp.c
+
+$(INTEGRATION_BUILD)/test_agent_mcp: $(AGENT_MCP_TEST_SOURCES) $(AGENT_MCP_HELP) ../indigo_drivers/agent_mcp/indigo_agent_mcp.h ../indigo_libs/externals/jsmn/jsmn.h test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(AGENT_MCP_TEST_DEFINES) -o $@ $(AGENT_MCP_TEST_SOURCES) $(TEST_LDFLAGS) $(if $(filter Darwin,$(OS_DETECTED)),,-ldns_sd)
+
+$(INTEGRATION_BUILD)/test_agent_mcp_sanitize: $(AGENT_MCP_TEST_SOURCES) $(AGENT_MCP_HELP) ../indigo_drivers/agent_mcp/indigo_agent_mcp.h ../indigo_libs/externals/jsmn/jsmn.h test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
+	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) $(AGENT_MCP_TEST_DEFINES) -o $@ $(AGENT_MCP_TEST_SOURCES) $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
+
+.PHONY: test-agent-mcp test-agent-mcp-sanitize
+test-agent-mcp: check-lib $(INTEGRATION_BUILD)/test_agent_mcp
+	$(INTEGRATION_BUILD)/test_agent_mcp
+
+test-agent-mcp-sanitize: check-lib $(INTEGRATION_BUILD)/test_agent_mcp_sanitize
+	$(INTEGRATION_BUILD)/test_agent_mcp_sanitize
 
 $(INTEGRATION_BUILD)/test_server_websocket_sanitize: integration/test_server_websocket.c ../indigo_libs/indigo_server_tcp.c test_runner.h $(BUILD_LIB)/libindigo.a | $(INTEGRATION_BUILD)
 	$(CC) $(SERVER_WEBSOCKET_SANITIZE_CFLAGS) -o $@ $< ../indigo_libs/indigo_server_tcp.c $(SERVER_WEBSOCKET_SANITIZE_LDFLAGS)
@@ -749,10 +772,10 @@ $(INTEGRATION_BUILD)/aux_arteskyflat_simulator: ../indigo_drivers/aux_arteskyfla
 $(INTEGRATION_BUILD)/aux_geoptikflat_simulator: ../indigo_drivers/aux_geoptikflat/aux_geoptikflat_simulator/aux_geoptikflat_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/giotto_simulator: ../indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c ../indigo_drivers/shared/primalucelib/jsmn.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/giotto_simulator: ../indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c ../indigo_libs/externals/jsmn/jsmn.h simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
-$(INTEGRATION_BUILD)/alto_simulator: ../indigo_drivers/aux_alto/alto_simulator/alto_simulator.c ../indigo_drivers/shared/primalucelib/jsmn.h simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
+$(INTEGRATION_BUILD)/alto_simulator: ../indigo_drivers/aux_alto/alto_simulator/alto_simulator.c ../indigo_libs/externals/jsmn/jsmn.h simulator_common/serial_simulator_common.h simulator_common/serial_motion.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< -lm
 
 $(INTEGRATION_BUILD)/aux_astromechanics_simulator: ../indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)

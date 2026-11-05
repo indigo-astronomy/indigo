@@ -1,0 +1,259 @@
+{
+  "version": 2,
+  "task": "20261104203810-488c-mcp-agent-guides",
+  "scope": [
+    "indigo_docs/mcp/*",
+    "indigo_drivers/agent_mcp/*",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_agent_mcp.c",
+    "indigo.xcodeproj/project.pbxproj",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-00[12].json",
+    ".factory/findings/archive/FND-20261104203810-488c-mcp-agent-guides-00[34].json",
+    "indigo_docs/PROPERTIES.md",
+    ".factory/completions/20261104203810-488c-mcp-agent-guides.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_drivers/agent_mcp",
+        "all"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_mcp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_mcp_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "indigo_drivers/agent_mcp/generate_help.py",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/security"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_profile_selection"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/test"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "authentication": "security.md",
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261104203810-488c-mcp-agent-guides.json": [
+      "100644",
+      "blob",
+      "32a49c2e56616235c7ebaa96c12deba4e07f73b3"
+    ],
+    ".factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-001.json": [
+      "100644",
+      "blob",
+      "04dd9d73bb845d9ed8d199d3b2a5fd69f25c6c19"
+    ],
+    ".factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-002.json": [
+      "100644",
+      "blob",
+      "4d45be42a6863ca74923758673cf3df83a698645"
+    ],
+    ".factory/findings/archive/FND-20261104203810-488c-mcp-agent-guides-003.json": [
+      "100644",
+      "blob",
+      "bf72064b7c97b819466748018677cce9f03380c5"
+    ],
+    ".factory/findings/archive/FND-20261104203810-488c-mcp-agent-guides-004.json": [
+      "100644",
+      "blob",
+      "a26b6e9bd1e92eba4c99f2c4c43ee30b1bb0d0e3"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "d9d6cb80bf463865522d491943d80a23532784aa"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "c3c1514f909e886804dbef365a9f669de2b912de"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "858e640e4cdccb00bec7dd1d574b63c2dae266ba"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "e7a2610218950199037a24e85da95b1f7ed4f328"
+    ],
+    "indigo_docs/mcp/README.md": [
+      "100644",
+      "blob",
+      "b414943ad11e51d79772e76a3d6d44558f4b8bbc"
+    ],
+    "indigo_docs/mcp/acceptance-scenarios.md": [
+      "100644",
+      "blob",
+      "13e7e0937de7afc0a14bc5a471a14a41ac720700"
+    ],
+    "indigo_docs/mcp/agent-catalog.md": [
+      "100644",
+      "blob",
+      "d67f827ba3571a7c4792058e396f61ce77badda2"
+    ],
+    "indigo_docs/mcp/agents/alpaca.md": [
+      "100644",
+      "blob",
+      "ef62433fa58b54a045f631b2ca6c5ec1751588be"
+    ],
+    "indigo_docs/mcp/agents/astrometry.md": [
+      "100644",
+      "blob",
+      "80dae6eedd18ab6f6aeafcbf1065ce6807725926"
+    ],
+    "indigo_docs/mcp/agents/auxiliary.md": [
+      "100644",
+      "blob",
+      "e4f6ce93e9fdde959d1c7a4ebed1ebd2fbf59d6b"
+    ],
+    "indigo_docs/mcp/agents/configuration.md": [
+      "100644",
+      "blob",
+      "730611d58a6f28dc70fb40cd9851b95083fa2eb1"
+    ],
+    "indigo_docs/mcp/agents/guider.md": [
+      "100644",
+      "blob",
+      "e563dbbd3ffccb3d9eac53be220eafd05b5ddd75"
+    ],
+    "indigo_docs/mcp/agents/imager.md": [
+      "100644",
+      "blob",
+      "4af5d2ac1eb7e29229188b462f714049e1c90d01"
+    ],
+    "indigo_docs/mcp/agents/mcp.md": [
+      "100644",
+      "blob",
+      "0ebfd1d7bbc9ea96e5321ae1997d4c914470dda4"
+    ],
+    "indigo_docs/mcp/agents/mount.md": [
+      "100644",
+      "blob",
+      "fa6947e68c0f85875564e03c00e9a69e9893f4b9"
+    ],
+    "indigo_docs/mcp/agents/platesolver.md": [
+      "100644",
+      "blob",
+      "dfcf219c2ef869af2e88d4a75b9f11d295172789"
+    ],
+    "indigo_docs/mcp/agents/scripting.md": [
+      "100644",
+      "blob",
+      "fd73a41d02701bb9129b015c5e5a1ae206349074"
+    ],
+    "indigo_docs/mcp/agents/sequencer.md": [
+      "100644",
+      "blob",
+      "3e1bfa23e13e3f13ba7cf54277b73e9204b10cc6"
+    ],
+    "indigo_docs/mcp/agents/test.md": [
+      "100644",
+      "blob",
+      "5fd9488f10c50ef808c4d9c0097516480b573c15"
+    ],
+    "indigo_docs/mcp/instructions.md": [
+      "100644",
+      "blob",
+      "ef03986847c2407b8a7151c3a495b7df4119ce9f"
+    ],
+    "indigo_docs/mcp/server-and-devices.md": [
+      "100644",
+      "blob",
+      "7be16432631dceaa26628f5c05f07c11d47dcb13"
+    ],
+    "indigo_drivers/agent_mcp/Makefile": [
+      "100644",
+      "blob",
+      "12ca09da70ca4a664e66e83b37122cd59d77bd6d"
+    ],
+    "indigo_drivers/agent_mcp/README.md": [
+      "100644",
+      "blob",
+      "4ea133b0450566afce6cbdae32ccb79534808c62"
+    ],
+    "indigo_drivers/agent_mcp/generate_help.py": [
+      "100644",
+      "blob",
+      "36cf681eb7ab65cf970c97e2b4c7f0e1a86bde73"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.c": [
+      "100644",
+      "blob",
+      "57fe19aab780a88efeeb9fb28c369b696638fb7b"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.vcxproj": [
+      "100644",
+      "blob",
+      "f38aee8dfd6d0a3e5194e02900aa9f5818850f62"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp_help.h": [
+      "100644",
+      "blob",
+      "f07c0ce0e54d10dc538dd9e7e16eb3213ecaca4c"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "f6747d68c06437f3ecf74f54e45db7951cf15582"
+    ],
+    "indigo_test/integration/test_agent_mcp.c": [
+      "100644",
+      "blob",
+      "52ae6ed135c84e718b6f411d909acf7b50b2bc88"
+    ]
+  }
+}

@@ -62,12 +62,102 @@ static void selection_tracks_saved_profile(void) {
 	ASSERT_TRUE(indigo_stop() == INDIGO_OK);
 }
 
+static int profile_definitions;
+static int profile_updates;
+
+static indigo_result capture_profile_definition(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, ((indigo_device *)client->client_context)->name) && !strcmp(property->name, PROFILE_NAME_PROPERTY_NAME)) {
+		profile_definitions++;
+	}
+	return INDIGO_OK;
+}
+
+static indigo_result capture_profile_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, ((indigo_device *)client->client_context)->name) && !strcmp(property->name, PROFILE_NAME_PROPERTY_NAME)) {
+		profile_updates++;
+	}
+	return INDIGO_OK;
+}
+
+static bool profile_visibility_contract(int interface_mask, const char *name, bool agent) {
+	indigo_device storage = { 0 };
+	indigo_device *device = &storage;
+	INDIGO_COPY_NAME(device->name, name);
+	indigo_client client = { .name = "Profile visibility observer", .client_context = device, .version = INDIGO_VERSION_CURRENT, .define_property = capture_profile_definition, .update_property = capture_profile_update };
+	bool started = indigo_start() == INDIGO_OK;
+	bool client_attached = started && indigo_attach_client(&client) == INDIGO_OK;
+	bool attached = client_attached && indigo_device_attach(device, "profile-visibility-test", 1, interface_mask) == INDIGO_OK;
+	bool valid = attached;
+	char path[512] = { 0 };
+	profile_definitions = profile_updates = 0;
+	if (attached) {
+		bool initial = PROFILE_NAME_PROPERTY->hidden == agent && !PROFILE_NAME_PROPERTY->defined && PROFILE_NAME_PROPERTY->perm == INDIGO_RW_PERM;
+		indigo_property filter = { .name = PROFILE_NAME_PROPERTY_NAME };
+		INDIGO_COPY_NAME(filter.device, device->name);
+		bool enumerated = indigo_device_enumerate_properties(device, &client, &filter) == INDIGO_OK && indigo_device_enumerate_properties(device, &client, NULL) == INDIGO_OK;
+		bool visibility = agent ? !PROFILE_NAME_PROPERTY->defined && profile_definitions == 0 : PROFILE_NAME_PROPERTY->defined && profile_definitions >= 1;
+		indigo_property *change = indigo_init_text_property(NULL, device->name, PROFILE_NAME_PROPERTY_NAME, "", "", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		indigo_init_text_item(change->items, "NAME_0", "", "Synthetic renamed profile");
+		bool changed = indigo_device_change_property(device, &client, change) == INDIGO_OK;
+		indigo_release_property(change);
+		bool value = !strcmp(PROFILE_NAME_ITEM->text.value, agent ? "Profile #0" : "Synthetic renamed profile") && !strcmp(PROFILE_ITEM->label, agent ? "Profile #0" : "Synthetic renamed profile");
+		make_config_file_name(device->name, 0, ".common", path, sizeof(path));
+		bool persisted = false;
+		FILE *file = fopen(path, "r");
+		if (file) {
+			char saved[4096];
+			size_t length = fread(saved, 1, sizeof(saved) - 1, file);
+			saved[length] = 0;
+			persisted = strstr(saved, "Synthetic renamed profile") != NULL;
+			fclose(file);
+		}
+		bool write_boundary = agent ? profile_updates == 0 && !persisted && access(path, F_OK) != 0 : profile_updates >= 1 && persisted;
+		bool selectable = true;
+		if (!agent) {
+			change = indigo_init_switch_property(NULL, device->name, PROFILE_PROPERTY_NAME, "", "", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			indigo_init_switch_item(change->items, "PROFILE_1", "", true);
+			selectable = indigo_device_change_property(device, &client, change) == INDIGO_OK && PROFILE_PROPERTY->items[1].sw.value;
+			indigo_release_property(change);
+		}
+		valid = initial && enumerated && visibility && changed && value && write_boundary && selectable;
+		if (!valid) {
+			fprintf(stderr, "Profile contract mask=%d initial=%d enumerate=%d visibility=%d dispatch=%d value=%d write=%d selection=%d\n", interface_mask, initial, enumerated, visibility, changed, value, write_boundary, selectable);
+		}
+		valid = indigo_device_detach(device) == INDIGO_OK && valid;
+	}
+	if (client_attached) {
+		valid = indigo_detach_client(&client) == INDIGO_OK && valid;
+	}
+	if (started) {
+		valid = indigo_stop() == INDIGO_OK && valid;
+	}
+	if (*path) {
+		remove(path);
+	}
+	return valid;
+}
+
+static void agent_profile_names_are_private(void) {
+	ASSERT_TRUE(profile_visibility_contract(INDIGO_INTERFACE_AGENT, "Synthetic Agent Profiles", true));
+}
+
+static void mixed_agent_interface_profile_names_are_private(void) {
+	ASSERT_TRUE(profile_visibility_contract(INDIGO_INTERFACE_AGENT | INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_AUX, "Synthetic Mixed Agent Profiles", true));
+}
+
+static void physical_profile_names_remain_editable_and_persisted(void) {
+	ASSERT_TRUE(profile_visibility_contract(INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_AUX, "Synthetic Physical Profiles", false));
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
 	}
 	const indigo_test_case tests[] = {
-		{ "selection_tracks_saved_profile", selection_tracks_saved_profile }
+		{ "selection_tracks_saved_profile", selection_tracks_saved_profile },
+		{ "agent profile names are private", agent_profile_names_are_private },
+		{ "mixed agent profile names are private", mixed_agent_interface_profile_names_are_private },
+		{ "physical profile names remain editable", physical_profile_names_remain_editable_and_persisted }
 	};
 	int result = indigo_run_tests("Profile selection", tests, sizeof(tests) / sizeof(*tests));
 	indigo_test_remove_private_home();

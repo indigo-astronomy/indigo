@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000024
+#define DRIVER_VERSION 0x02000025
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>

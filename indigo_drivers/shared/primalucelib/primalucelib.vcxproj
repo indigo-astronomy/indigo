@@ -107,7 +107,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="primalucelib.h" />
-    <ClInclude Include="jsmn.h" />
+    <ClInclude Include="..\..\..\indigo_libs\externals\jsmn\jsmn.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="PROTOCOL.md" />

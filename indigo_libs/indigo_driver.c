@@ -1511,6 +1511,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		if (PROFILE_NAME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
+		PROFILE_NAME_PROPERTY->hidden = (interface_mask & INDIGO_INTERFACE_AGENT) != 0;
 		for (int i = 0; i < PROFILE_COUNT; i++) {
 			char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE], value[INDIGO_VALUE_SIZE];
 			sprintf(name, PROFILE_NAME_ITEM_NAME, i);

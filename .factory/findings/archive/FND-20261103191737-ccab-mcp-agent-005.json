@@ -1,0 +1,24 @@
+{
+  "title": "MCP numeric parser used POSIX-only strndup in Windows driver",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261103191737-ccab-mcp-agent",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "New MCP Windows v143/stdc11 target had no strndup compatibility, so POSIX-only numeric-token copy would not build/link there. Replaced with checked malloc/memcpy/NUL, preserving bytes/lifetime; strict and final30 native/sanitizer/recorded tests pass. Source-audit issue; MSVC runtime unavailable.",
+  "evidence": "Origin verification.md Final commit candidate and independent canonical quality/security review; commit-logs/.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Origin final verification/quality/security reports; portable checked allocation/copy/NUL source independently reinspected; final30/30 native,30/30 ASan/UBSan and30/30 recorded driver run in commit-logs. Windows compiler unavailable, source-audit claim only.",
+    "approved_by": "Independent mcp_review verification; no risk acceptance",
+    "duplicate_of": null
+  },
+  "id": "FND-20261103191737-ccab-mcp-agent-005"
+}

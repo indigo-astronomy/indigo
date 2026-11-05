@@ -1,0 +1,197 @@
+{
+  "version": 2,
+  "task": "20261103191737-ccab-mcp-agent",
+  "scope": [
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_libs/indigo_server_tcp.c",
+    "indigo_server/indigo_server.c",
+    "indigo_server/indigo_server.vcxproj",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_transport_http_security.c",
+    "indigo_windows.sln",
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.c",
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.h",
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.vcxproj",
+    "indigo_drivers/agent_mcp/README.md",
+    "indigo_test/integration/test_agent_mcp.c",
+    "indigo_libs/externals/jsmn/jsmn.h",
+    "indigo_drivers/shared/primalucelib/jsmn.h",
+    "indigo_drivers/shared/primalucelib/Makefile",
+    "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "indigo_drivers/shared/primalucelib/primalucelib.h",
+    "indigo_drivers/shared/primalucelib/primalucelib.vcxproj",
+    "indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c",
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c",
+    ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-*.json",
+    ".factory/completions/20261103191737-ccab-mcp-agent.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_mcp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_mcp_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_mcp"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261103191737-ccab-mcp-agent.json": [
+      "100644",
+      "blob",
+      "1304fdfd9ff0f5eec26904cbf1db4a9f7db2f46e"
+    ],
+    ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-001.json": [
+      "100644",
+      "blob",
+      "629144b0cd975cfff0a39fbb72110295cbcddcc7"
+    ],
+    ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-002.json": [
+      "100644",
+      "blob",
+      "de8214baf64d69e1fa9163c7b767087eaa984750"
+    ],
+    ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-003.json": [
+      "100644",
+      "blob",
+      "0d55e72cadcf0545e810ee76c8d25876cf008027"
+    ],
+    ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-004.json": [
+      "100644",
+      "blob",
+      "5e3e7785f32cd8ce6cd350a4a2308e7243869551"
+    ],
+    ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-005.json": [
+      "100644",
+      "blob",
+      "fe6c17c6ffcab6575e22c14c0166ee433e2b8ac4"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "3de666fecb29b634629fe9e257b20ccbf6ad6d6d"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "6640eb662f21c7f10194a57291109b309e1639b5"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "931b6ad10c4474eb6b74d164d9603e63155cb8c2"
+    ],
+    "indigo_drivers/agent_mcp/README.md": [
+      "100644",
+      "blob",
+      "3500e9b42c0a9173f7141ce050b140ca91fff337"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.c": [
+      "100644",
+      "blob",
+      "13693451ba2243c6f5493b17062a34b7112b9672"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.h": [
+      "100644",
+      "blob",
+      "ed63ea5980d9af3837d0319207225ddffce92afc"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp.vcxproj": [
+      "100644",
+      "blob",
+      "62106ce7b1b619a74131df0f704b6d37f8624d9e"
+    ],
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c": [
+      "100644",
+      "blob",
+      "cc2c9f2e938547b295894efdad84f683d5007c39"
+    ],
+    "indigo_drivers/aux_giotto/giotto_simulator/giotto_simulator.c": [
+      "100644",
+      "blob",
+      "8fa33293a9f630470430e90b389a0c94c0fd3466"
+    ],
+    "indigo_drivers/shared/primalucelib/Makefile": [
+      "100644",
+      "blob",
+      "652e85d27ecffb7538df2a0f9aefa5feb335ff3d"
+    ],
+    "indigo_drivers/shared/primalucelib/jsmn.h": null,
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "01a9f2dd85ac554b7c368bfd881377b544259069"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.h": [
+      "100644",
+      "blob",
+      "c4904e53ae0c4746e35ea778cf0348213a4de19e"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.vcxproj": [
+      "100644",
+      "blob",
+      "ce83d540c3c9e925fab525d6ca0bc902e6bc0d07"
+    ],
+    "indigo_libs/externals/jsmn/jsmn.h": [
+      "100644",
+      "blob",
+      "b3e2338c1f029df5bf75e62d9b7f73aa34ccc32a"
+    ],
+    "indigo_libs/indigo_server_tcp.c": [
+      "100644",
+      "blob",
+      "cdcb139b602745970418b0cfdf2596ebc5578201"
+    ],
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "3c39d310d96ac99cdcdbe9458e510ac73daa4979"
+    ],
+    "indigo_server/indigo_server.vcxproj": [
+      "100644",
+      "blob",
+      "245b13540a9e56d42234cd051b98f6d58c3f7d4a"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "f71e313776423266d85624805e2e7ee000bf842b"
+    ],
+    "indigo_test/integration/test_agent_mcp.c": [
+      "100644",
+      "blob",
+      "75da8e53e9102ff7f1f91ae2c2a4ff1c3f9e2a50"
+    ],
+    "indigo_test/integration/test_transport_http_security.c": [
+      "100644",
+      "blob",
+      "1cec14c3ca8a58d4b2d3f4b91450f20621696fd4"
+    ],
+    "indigo_windows.sln": [
+      "100644",
+      "blob",
+      "1a0862901a8525a9e8dc76a032d91d3094931a45"
+    ]
+  }
+}

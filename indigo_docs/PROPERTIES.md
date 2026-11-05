@@ -24,7 +24,7 @@ properties are first of all defined memory structures which are, if needed, mapp
 | CONFIG | switch | no | yes | LOAD | yes | Load |
 |  |  |  |  | SAVE | yes | Save |
 |  |  |  |  | REMOVE | yes | Remove |
-| PROFILE_NAME | text | no | yes | NAME_0,... | yes | Set profile name |
+| PROFILE_NAME | text | no | yes | NAME_0,... | yes | Set profile name. Hidden for all agent interfaces; regular device profiles remain available. |
 | PROFILE | switch | no | yes | PROFILE_0,... | yes | Select the profile number for subsequent CONFIG operation |
 | DEVICE_PORT | text | no | no | PORT | no | Either device path like "/dev/tty0" or URL like "lx200://host:port". |
 | DEVICE_BAUDRATE | text | no | no | BAUDRATE | no | Serial port configuration in a string like this: 9600-8N1 |
@@ -42,6 +42,12 @@ properties are first of all defined memory structures which are, if needed, mapp
 `CONFIG.LOAD` sets `CONFIG` to BUSY while the base framework applies saved requests in file order. Each available writable property must publish a new completion update after its request; BUSY keeps the restore pending, and ALERT fails it. CONFIG becomes OK only after all requests complete, or ALERT on failure, disconnection or a 120-second restore timeout. Properties no longer exposed by the device are skipped. Fully synchronous restores can complete within the initiating call; asynchronous handlers and finalizers are awaited. The direct `indigo_load_properties()` helper retains its existing dispatch-only behavior.
 
 Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver base class in [indigo_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver.c). GEOGRAPHIC_COORDINATES and UTC_TIME are implemented in the mount, GPS, and dome driver base classes.
+
+## MCP agent lifecycle
+
+MCP Agent hides the inherited `CONNECTION` property. Loading `indigo_agent_mcp` activates the MCP endpoint immediately; unloading it stops admission and drains active requests before releasing the internal bus client. There is no separate connect/disconnect control. Its `CONFIG`, `PROFILE` and `ADDITIONAL_INSTANCES` controls are also hidden; the visible `INFO` property identifies the agent.
+
+Sources: [MCP agent](../indigo_drivers/agent_mcp/indigo_agent_mcp.c), [common driver properties](../indigo_libs/indigo_driver.c).
 
 ## CCD specific properties
 

@@ -1,0 +1,34 @@
+All three MCP calls to `indigo_smoke` succeeded:
+
+- `list_devices`
+- `list_properties("CCD Imager Simulator")`
+- `get_property("CCD Imager Simulator", "INFO")`
+
+Exact device names returned:
+
+```text
+Server
+CCD Imager Simulator
+CCD Guider Simulator
+CCD Bahtinov Mask Simulator
+DSLR Simulator
+CCD File Simulator
+CCD Imager Simulator (wheel)
+CCD Imager Simulator (focuser)
+CCD Guider Simulator (guider)
+CCD Guider Simulator (AO)
+Mount Simulator
+Mount Simulator (guider)
+MCP Agent
+```
+
+`CCD Imager Simulator` → `INFO` values, with state `Ok`:
+
+| Item | Exact value |
+|---|---|
+| `DEVICE_NAME` | `CCD Imager Simulator` |
+| `DEVICE_DRIVER` | `indigo_ccd_simulator` |
+| `DEVICE_VERSION` | `3.0.0.46` |
+| `DEVICE_INTERFACE` | `2` |
+
+No properties were changed or devices connected.

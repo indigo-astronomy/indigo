@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261104203810-488c-mcp-agent-guides",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Execution and reviews complete; verify committed candidate then fast-forward master, push and delete completed task branches.",
+  "blocker": null
+}

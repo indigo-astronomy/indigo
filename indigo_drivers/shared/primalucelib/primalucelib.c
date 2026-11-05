@@ -33,7 +33,7 @@
 #define JSMN_STATIC
 #define JSMN_STRICT
 #define JSMN_PARENT_LINKS
-#include "jsmn.h"
+#include <externals/jsmn/jsmn.h>
 
 #include "primalucelib.h"
 

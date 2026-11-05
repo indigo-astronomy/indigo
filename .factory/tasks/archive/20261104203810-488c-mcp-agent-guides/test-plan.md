@@ -1,0 +1,3 @@
+# Draft verification
+
+Check module coverage against Git source inventory, identifiers against PROPERTIES/headers/initializers/change handlers, each function's full recipe fields, relative links and no external runtime-doc dependency. Critical semantic checks: agent selector preparation and relatedagent lists; currentstate vs dispatch completion; nativebusy/abort; coordinate epoch/units; imaging and guiding process prerequisites; no arbitrary devicecontrol fallback. Source-read verification, not live operational acceptance. List any unresolved semantics as coverage gaps rather than invent commands.

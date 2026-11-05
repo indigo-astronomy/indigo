@@ -176,6 +176,9 @@
     <ProjectReference Include="..\indigo_drivers\agent_config\indigo_agent_config.vcxproj">
       <Project>{619339be-bfcc-41fe-b258-ea9db15cb26c}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\agent_mcp\indigo_agent_mcp.vcxproj">
+      <Project>{b4b13d43-ceeb-4a85-be58-be5e5f8d4f90}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\agent_guider\indigo_agent_guider.vcxproj">
       <Project>{5d9b3665-d3aa-45a0-9b78-4fcd2f052773}</Project>
     </ProjectReference>

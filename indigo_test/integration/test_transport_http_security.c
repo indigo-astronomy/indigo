@@ -626,6 +626,119 @@ static void complete_put_headers_and_coalesced_body_are_preserved(void) {
 	ASSERT_TRUE(atomic_load(&put_framing_preserved));
 }
 
+static const char post_json_body[] = "{\n\"value\":\"a%20+b\"}";
+static const unsigned char post_binary_body[] = { 0, 'a', '\n', 0xff };
+static atomic_bool post_handler_entered;
+
+// This fixture owns framing just like an existing PUT handler; it also checks its
+// endpoint explicitly because the shared registry intentionally matches prefixes.
+static bool framing_post_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
+	atomic_store(&post_handler_entered, true);
+	const char *query = strchr(path, '?');
+	size_t path_size = query ? (size_t)(query - path) : strlen(path);
+	if (path_size != strlen("/framing-post") || strncmp(path, "/framing-post", path_size)) {
+		indigo_uni_printf(handle, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+		return false;
+	}
+	char header[1024];
+	size_t size = 0;
+	bool json = false;
+	bool binary = false;
+	bool keep_alive = false;
+	while (indigo_uni_read_line(handle, header, sizeof(header) - 1) > 0) {
+		if (!strncmp(header, "Content-Length: ", 16)) {
+			size = strtoul(header + 16, NULL, 10);
+		} else if (!strcmp(header, "Content-Type: application/json")) {
+			json = true;
+		} else if (!strcmp(header, "Content-Type: application/octet-stream")) {
+			binary = true;
+		} else if (!strcmp(header, "Connection: keep-alive")) {
+			keep_alive = true;
+		}
+	}
+	unsigned char body[64];
+	bool preserved = !strcmp(method, "POST") && params == NULL && (!query || !strcmp(query + 1, "raw=a%20b")) && size > 0 && size <= sizeof(body) && indigo_uni_read(handle, (char *)body, size) == (long)size;
+	preserved = preserved && ((json && size == sizeof(post_json_body) - 1 && !memcmp(body, post_json_body, size)) || (binary && size == sizeof(post_binary_body) && !memcmp(body, post_binary_body, size)));
+	indigo_uni_printf(handle, "HTTP/1.1 %s\r\nContent-Length: 0\r\nConnection: %s\r\n\r\n", preserved ? "200 OK" : "400 Bad Request", preserved && keep_alive ? "keep-alive" : "close");
+	return preserved && keep_alive;
+}
+
+static void post_framing_case(bool binary, bool fragmented, bool keep_alive) {
+	indigo_server_add_handler("/framing-post", framing_post_handler);
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	const void *body = binary ? (const void *)post_binary_body : (const void *)post_json_body;
+	size_t body_size = binary ? sizeof(post_binary_body) : sizeof(post_json_body) - 1;
+	bool passed = true;
+	for (int i = 0; i < (keep_alive ? 2 : 1); i++) {
+		atomic_store(&post_handler_entered, false);
+		char request[256];
+		int length = snprintf(request, sizeof(request), "POST /framing-post?raw=a%%20b HTTP/1.1\r\nContent-Type: %s\r\nContent-Length: %zu\r\nConnection: %s\r\n\r\n", binary ? "application/octet-stream" : "application/json", body_size, keep_alive && i == 0 ? "keep-alive" : "close");
+		bool sent;
+		if (fragmented) {
+			sent = write(fd, request, length) == length;
+			sent = WAIT_UNTIL(atomic_load(&post_handler_entered), 1) && sent;
+			sent = write(fd, body, 1) == 1 && sent;
+			sent = write(fd, (const char *)body + 1, body_size - 1) == (ssize_t)body_size - 1 && sent;
+		} else {
+			memcpy(request + length, body, body_size);
+			sent = write(fd, request, length + body_size) == (ssize_t)(length + body_size);
+		}
+		char response[256];
+		bool received = read_reply(fd, response, sizeof(response));
+		passed = sent && received && !strncmp(response, "HTTP/1.1 200 ", 13) && passed;
+	}
+	close(fd);
+	indigo_server_remove_resource("/framing-post");
+	ASSERT_TRUE(passed);
+}
+
+static void post_json_headers_and_body_are_preserved(void) {
+	post_framing_case(false, false, false);
+}
+
+static void post_binary_and_fragmented_body_are_preserved(void) {
+	post_framing_case(true, true, false);
+}
+
+static void post_callback_can_keep_connection_alive(void) {
+	post_framing_case(false, false, true);
+}
+
+static void post_handler_checks_exact_path(void) {
+	indigo_server_add_handler("/framing-post", framing_post_handler);
+	atomic_store(&post_handler_entered, false);
+	int fd = connect_loopback(indigo_server_tcp_port);
+	ASSERT_TRUE(fd >= 0);
+	const char request[] = "POST /framing-post-extra HTTP/1.1\r\nContent-Length: 0\r\n\r\n";
+	bool sent = write(fd, request, sizeof(request) - 1) == sizeof(request) - 1;
+	char response[256];
+	bool received = read_reply(fd, response, sizeof(response));
+	close(fd);
+	indigo_server_remove_resource("/framing-post");
+	ASSERT_TRUE(sent && received && !strncmp(response, "HTTP/1.1 404 ", 13));
+	ASSERT_TRUE(atomic_load(&post_handler_entered));
+}
+
+static void post_to_builtin_resources_is_not_a_put_upload(void) {
+	void *previous = upload_property->items[0].blob.value;
+	char blob_path[128];
+	snprintf(blob_path, sizeof(blob_path), "/blob/%p.bin", upload_property->items);
+	const char *paths[] = { blob_path, "/fixture-file", "/missing-post" };
+	for (int i = 0; i < 3; i++) {
+		int fd = connect_loopback(indigo_server_tcp_port);
+		ASSERT_TRUE(fd >= 0);
+		char request[256];
+		int length = snprintf(request, sizeof(request), "POST %s HTTP/1.1\r\nContent-Length: 4\r\n\r\ndata", paths[i]);
+		bool sent = write(fd, request, length) == length;
+		char response[256];
+		bool received = read_reply(fd, response, sizeof(response));
+		close(fd);
+		ASSERT_TRUE(sent && received && !strncmp(response, i == 2 ? "HTTP/1.1 404 " : "HTTP/1.1 405 ", 13));
+	}
+	ASSERT_TRUE(upload_property->items[0].blob.value == previous);
+}
+
 static void complete_http_keepalive_requests_are_preserved(void) {
 	int fd = connect_loopback(indigo_server_tcp_port);
 	ASSERT_TRUE(fd >= 0);
@@ -885,6 +998,10 @@ static void put_handler_retirement_waits(void) {
 	resource_retirement_case("PUT", false);
 }
 
+static void post_handler_retirement_waits(void) {
+	resource_retirement_case("POST", false);
+}
+
 static void remove_all_preserves_new_registrations(void) {
 	resource_retirement_case("GET", true);
 }
@@ -916,6 +1033,11 @@ int main(int argc, char **argv) {
 		{ "HTTP header size and peer close bounds", http_header_size_and_peer_close_bounds },
 		{ "malformed or excess headers cannot dispatch", malformed_or_excess_headers_cannot_dispatch },
 		{ "complete PUT headers and coalesced body", complete_put_headers_and_coalesced_body_are_preserved },
+		{ "POST JSON headers and body", post_json_headers_and_body_are_preserved },
+		{ "POST binary fragmented body", post_binary_and_fragmented_body_are_preserved },
+		{ "POST callback keepalive", post_callback_can_keep_connection_alive },
+		{ "POST handler exact path", post_handler_checks_exact_path },
+		{ "POST built-in resource restrictions", post_to_builtin_resources_is_not_a_put_upload },
 		{ "complete HTTP keepalive", complete_http_keepalive_requests_are_preserved },
 		{ "established JSON and WebSocket idle sessions", established_json_and_websocket_survive_http_deadlines },
 		{ "established XML idle session", established_xml_survives_initial_deadline },
@@ -936,6 +1058,7 @@ int main(int argc, char **argv) {
 		{ "resource metadata ownership", resource_metadata_is_owned },
 		{ "GET handler retirement", get_handler_retirement_waits },
 		{ "PUT handler retirement", put_handler_retirement_waits },
+		{ "POST handler retirement", post_handler_retirement_waits },
 		{ "remove all preserves new registrations", remove_all_preserves_new_registrations }
 	};
 	int result = indigo_run_tests("transport HTTP security", tests, sizeof(tests) / sizeof(tests[0]));

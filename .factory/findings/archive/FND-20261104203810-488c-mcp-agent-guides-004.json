@@ -1,0 +1,24 @@
+{
+  "title": "Resource methods rejected standard request metadata",
+  "category": "functional",
+  "severity": "medium",
+  "status": "closed",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261104203810-488c-mcp-agent-guides",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "Initial new resources/list and resources/read validation rejected standard optional _meta objects, causing valid clients with progress/request metadata to fail. Fixed before delivery by allowing and type-checking optional object metadata only on resource method params, preserving strict tool arguments; regression passed in final34-case native and sanitizer suites; independently reinspected.",
+  "evidence": "verification.md, Embedding review defects and fixes; detailed final regressions in verification-embedding.md.",
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "verification-embedding.md final native34/34 andASan/UBSan34/34; focused fragment/metadata regressions and independent source reinspection recorded in quality-review-embedding.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
+  "id": "FND-20261104203810-488c-mcp-agent-guides-004"
+}

@@ -59,7 +59,7 @@
 #define JSMN_STRICT
 #define JSMN_PARENT_LINKS
 #define JSMN_HEADER
-#include "jsmn.h"
+#include <externals/jsmn/jsmn.h>
 
 #ifdef __cplusplus
 extern "C" {
