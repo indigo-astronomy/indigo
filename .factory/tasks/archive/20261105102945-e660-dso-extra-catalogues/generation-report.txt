@@ -1,0 +1,235 @@
+catalogue read added without_size
+Sh 313 270 0
+B 349 345 57
+vdB 158 125 1
+Abell 86 82 14
+Cr 170 96 46
+Mel 74 10 3
+total 1150 928 121
+
+merged
+Sh2-6 | NGC6302 | same SIMBAD object
+Sh2-11 | NGC6357 | same SIMBAD object
+Sh2-25 | NGC6526 | 18.4' apart, 90' and 40' across
+Sh2-29 | NGC6559 | 10.1' apart, 40' and 15' across
+Sh2-30 | NGC6514 | 12.3' apart, 20' and 28' across
+Sh2-37 | NGC6590 | same SIMBAD object
+Sh2-44 | IC4701 | 5.3' apart, 60' and 60' across
+Sh2-49 | NGC6611 | 9.4' apart, 90' and 120' across
+Sh2-95 | NGC6842 | same SIMBAD object
+Sh2-97 | NGC6847 | same SIMBAD object
+Sh2-103 | NGC6960 | 62.1' apart, 210' and 210' across
+Sh2-105 | NGC6888 | 0.8' apart, 18' and 20' across
+Sh2-117 | NGC7000 | same SIMBAD object
+Sh2-125 | IC5146 | 0.8' apart, 9' and 10' across
+Sh2-142 | NGC7380 | 4.7' apart, 30' and 25' across
+Sh2-156 | IC1470 | same SIMBAD object
+Sh2-158 | NGC7538 | same SIMBAD object
+Sh2-162 | NGC7635 | same SIMBAD object
+Sh2-171 | NGC7822 | same SIMBAD object
+Sh2-184 | NGC281 | same SIMBAD object
+Sh2-190 | IC1805 | same SIMBAD object
+Sh2-199 | IC1848 | same SIMBAD object
+Sh2-206 | NGC1491 | same SIMBAD object
+Sh2-220 | NGC1499 | same SIMBAD object
+Sh2-222 | NGC1579 | same SIMBAD object
+Sh2-229 | IC405 | 6.8' apart, 65' and 50' across
+Sh2-234 | IC417 | same SIMBAD object
+Sh2-237 | NGC1931 | same SIMBAD object
+Sh2-238 | NGC1555 | same SIMBAD object
+Sh2-244 | NGC1952 | same SIMBAD object
+Sh2-248 | IC443 | same SIMBAD object
+Sh2-252 | NGC2175 | same SIMBAD object
+Sh2-255 | IC2162 | same SIMBAD object
+Sh2-273 | NGC2264 | same SIMBAD object
+Sh2-275 | NGC2237 | 14.0' apart, 100' and 80' across
+Sh2-276 | Sh 2-276 | already in the catalogue
+Sh2-277 | IC434 | 4.4' apart, 120' and 90' across
+Sh2-279 | NGC1977 | 2.8' apart, 20' and 10.2' across
+Sh2-281 | NGC1976 | 7.2' apart, 60' and 90' across
+Sh2-288 | IC466 | same SIMBAD object
+Sh2-292 | IC2177 | same SIMBAD object
+Sh2-298 | NGC2359 | same SIMBAD object
+Sh2-311 | NGC2467 | same SIMBAD object
+B10 | IC359A | 1.4' apart, 8' and 15' across
+B14 | IC2087 | 0.6' apart, 3' and 4' across
+B168 | IC5146 | 1.5' apart, 10' and 10' across
+B302 | IC4685 | 1.6' apart, 30' and 15' across
+vdB17 | NGC1333 | 5.9' apart, 8' and 19.5' across
+vdB19 | IC348 | 0.0' apart, 5.6' and 10' across
+vdB20 | NGC1432 | 20.1' apart, 22' and 60' across
+vdB21 | NGC1432 | 0.0' apart, 52' and 60' across
+vdB22 | IC349 | 0.5' apart, 52' and 25.7' across
+vdB23 | NGC1432 | 27.6' apart, 34' and 60' across
+vdB33 | NGC1788 | 0.7' apart, 1.8' and 2' across
+vdB34 | IC405 | 3.5' apart, 20' and 50' across
+vdB44 | IC420 | 1.5' apart, 8.6' and 6.03' across
+vdB46 | NGC1999 | 0.1' apart, 1.8' and 2' across
+vdB50 | IC431 | 0.2' apart, 6.2' and 8' across
+vdB51 | IC432 | 0.1' apart, 10.2' and 10' across
+vdB52 | NGC2023 | same SIMBAD object
+vdB57 | IC435 | 0.0' apart, 5.2' and 3.98' across
+vdB59 | NGC2067 | 4.4' apart, 13.6' and 8' across
+vdB60 | NGC2071 | 0.3' apart, 8.6' and 7' across
+vdB67 | NGC2170 | 0.0' apart, 2.2' and 2' across
+vdB72 | NGC2182 | 0.1' apart, 4.6' and 3' across
+vdB81 | IC448 | 4.0' apart, 36' and 15' across
+vdB85 | NGC2282 | same SIMBAD object
+vdB93 | IC2177 | same SIMBAD object
+vdB102 | IC4601 | 4.5' apart, 14.2' and 20' across
+vdB103 | IC4601 | 1.5' apart, 9' and 20' across
+vdB105 | IC4603 | 0.2' apart, 28' and 20' across
+vdB106 | IC4604 | 1.1' apart, 62' and 60' across
+vdB108 | IC4605 | 0.0' apart, 28' and 30' across
+vdB115 | IC4684 | 0.0' apart, 1.8' and 3' across
+vdB118 | NGC6589 | 0.6' apart, 5.2' and 4' across
+vdB119 | NGC6590 | same SIMBAD object
+vdB124 | IC1287 | 0.0' apart, 36' and 20' across
+vdB137 | IC5076 | 3.0' apart, 13.6' and 7' across
+vdB139 | NGC7023 | 0.4' apart, 17' and 10' across
+vdB146 | IC5134 | 1.4' apart, 9' and 7.59' across
+Abell37 | IC972 | same SIMBAD object
+Abell50 | NGC6742 | same SIMBAD object
+Abell75 | NGC7076 | same SIMBAD object
+Abell81 | IC1454 | same SIMBAD object
+Cr3 | NGC133 | same SIMBAD object
+Cr10 | NGC381 | same SIMBAD object
+Cr17 | NGC637 | same SIMBAD object
+Cr24 | NGC869 | same SIMBAD object
+Cr25 | NGC884 | same SIMBAD object
+Cr26 | IC1805 | same SIMBAD object
+Cr32 | IC1848 | same SIMBAD object
+Cr35 | NGC1193 | same SIMBAD object
+Cr41 | IC348 | same SIMBAD object
+Cr44 | NGC1496 | same SIMBAD object
+Cr53 | NGC1624 | same SIMBAD object
+Cr60 | NGC1817 | same SIMBAD object
+Cr61 | NGC1807 | same SIMBAD object
+Cr64 | NGC1883 | same SIMBAD object
+Cr76 | NGC2112 | same SIMBAD object
+Cr78 | NGC2126 | same SIMBAD object
+Cr79 | NGC2141 | same SIMBAD object
+Cr80 | IC2157 | same SIMBAD object
+Cr87 | NGC2194 | same SIMBAD object
+Cr94 | NGC2236 | same SIMBAD object
+Cr109 | NGC2262 | same SIMBAD object
+Cr116 | NGC2281 | same SIMBAD object
+Cr117 | NGC2286 | same SIMBAD object
+Cr122 | NGC2309 | same SIMBAD object
+Cr123 | NGC2311 | same SIMBAD object
+Cr126 | NGC2331 | same SIMBAD object
+Cr131 | NGC2354 | same SIMBAD object
+Cr133 | NGC2355 | same SIMBAD object
+Cr138 | NGC2368 | same SIMBAD object
+Cr144 | NGC2395 | same SIMBAD object
+Cr154 | NGC2420 | same SIMBAD object
+Cr157 | NGC2432 | same SIMBAD object
+Cr160 | NGC2447 | same SIMBAD object
+Cr161 | NGC2451 | same SIMBAD object
+Cr170 | NGC2506 | same SIMBAD object
+Cr175 | NGC2533 | same SIMBAD object
+Cr184 | NGC2587 | same SIMBAD object
+Cr188 | NGC2627 | same SIMBAD object
+Cr190 | NGC2635 | same SIMBAD object
+Cr192 | IC2395 | same SIMBAD object
+Cr207 | NGC2849 | same SIMBAD object
+Cr224 | NGC3293 | same SIMBAD object
+Cr229 | IC2602 | same SIMBAD object
+Cr237 | NGC3496 | same SIMBAD object
+Cr245 | IC2714 | same SIMBAD object
+Cr248 | NGC3766 | same SIMBAD object
+Cr252 | NGC4103 | same SIMBAD object
+Cr276 | NGC5281 | same SIMBAD object
+Cr278 | NGC5288 | same SIMBAD object
+Cr281 | NGC5606 | same SIMBAD object
+Cr297 | NGC6031 | same SIMBAD object
+Cr303 | NGC6134 | same SIMBAD object
+Cr309 | NGC6192 | same SIMBAD object
+Cr312 | NGC6204 | same SIMBAD object
+Cr313 | NGC6208 | same SIMBAD object
+Cr315 | NGC6231 | same SIMBAD object
+Cr323 | NGC6268 | same SIMBAD object
+Cr349 | IC4665 | same SIMBAD object
+Cr360 | NGC6514 | same SIMBAD object
+Cr373 | NGC6604 | same SIMBAD object
+Cr374 | NGC6603 | same SIMBAD object
+Cr384 | NGC6649 | same SIMBAD object
+Cr391 | NGC6705 | same SIMBAD object
+Cr393 | NGC6716 | same SIMBAD object
+Cr400 | NGC6802 | same SIMBAD object
+Cr416 | NGC6882 | 4.9' apart, 14.9' and 7.5' across
+Cr432 | IC1369 | same SIMBAD object
+Cr433 | NGC7044 | same SIMBAD object
+Cr439 | IC1396 | same SIMBAD object
+Cr442 | NGC7142 | same SIMBAD object
+Cr445 | IC1434 | same SIMBAD object
+Cr446 | NGC7226 | same SIMBAD object
+Cr457 | NGC7762 | same SIMBAD object
+Cr470 | IC5146 | same SIMBAD object
+Mel1 | NGC104 | same SIMBAD object
+Mel2 | NGC188 | same SIMBAD object
+Mel3 | NGC288 | same SIMBAD object
+Mel4 | NGC362 | same SIMBAD object
+Mel5 | NGC371 | same SIMBAD object
+Mel12 | NGC752 | same SIMBAD object
+Mel13 | NGC869 | same SIMBAD object
+Mel14 | NGC884 | same SIMBAD object
+Mel15 | IC1805 | same SIMBAD object
+Mel18 | NGC1245 | same SIMBAD object
+Mel22 | Cl Melotte 22 | already in the catalogue
+Mel25 | C41 | already in the catalogue
+Mel29 | NGC1807 | same SIMBAD object
+Mel39 | NGC2126 | same SIMBAD object
+Mel40 | NGC2158 | same SIMBAD object
+Mel42 | NGC2192 | same SIMBAD object
+Mel43 | NGC2194 | same SIMBAD object
+Mel44 | NGC2204 | same SIMBAD object
+Mel46 | NGC2243 | same SIMBAD object
+Mel50 | NGC2266 | same SIMBAD object
+Mel51 | NGC2281 | same SIMBAD object
+Mel59 | NGC2324 | same SIMBAD object
+Mel63 | NGC2355 | same SIMBAD object
+Mel64 | NGC2360 | same SIMBAD object
+Mel69 | NGC2420 | same SIMBAD object
+Mel70 | NGC2423 | same SIMBAD object
+Mel73 | NGC2432 | same SIMBAD object
+Mel78 | NGC2477 | same SIMBAD object
+Mel80 | NGC2506 | same SIMBAD object
+Mel81 | NGC2509 | same SIMBAD object
+Mel83 | NGC2539 | same SIMBAD object
+Mel87 | NGC2627 | same SIMBAD object
+Mel88 | NGC2632 | same SIMBAD object
+Mel89 | NGC2635 | same SIMBAD object
+Mel92 | NGC2660 | same SIMBAD object
+Mel96 | NGC2818 | same SIMBAD object
+Mel100 | NGC3293 | same SIMBAD object
+Mel102 | IC2602 | same SIMBAD object
+Mel106 | NGC3680 | same SIMBAD object
+Mel108 | NGC3960 | same SIMBAD object
+Mel109 | NGC4103 | same SIMBAD object
+Mel114 | NGC4755 | same SIMBAD object
+Mel120 | NGC5281 | same SIMBAD object
+Mel130 | NGC5822 | same SIMBAD object
+Mel131 | NGC5823 | same SIMBAD object
+Mel137 | NGC5999 | same SIMBAD object
+Mel138 | NGC6005 | same SIMBAD object
+Mel140 | NGC6067 | same SIMBAD object
+Mel146 | NGC6134 | same SIMBAD object
+Mel156 | NGC6253 | same SIMBAD object
+Mel169 | IC4651 | same SIMBAD object
+Mel179 | IC4665 | same SIMBAD object
+Mel197 | NGC6603 | same SIMBAD object
+Mel210 | IC4756 | same SIMBAD object
+Mel213 | NGC6705 | same SIMBAD object
+Mel222 | NGC6811 | same SIMBAD object
+Mel223 | NGC6819 | same SIMBAD object
+Mel229 | NGC6866 | same SIMBAD object
+Mel231 | NGC6939 | same SIMBAD object
+Mel232 | NGC6940 | same SIMBAD object
+Mel239 | IC1434 | same SIMBAD object
+Mel242 | NGC7492 | same SIMBAD object
+Mel244 | NGC7762 | same SIMBAD object
+Mel245 | NGC7789 | same SIMBAD object
+
+skipped
+Cr426 | SIMBAD marks the identification as an error
