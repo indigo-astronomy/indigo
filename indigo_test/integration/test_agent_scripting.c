@@ -28,6 +28,7 @@
 #include <signal.h>
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_token.h>
 #include <indigo/indigocat/indigocat_solar_system.h>
 #include <indigo_drivers/agent_scripting/indigo_agent_scripting.h>
 #include "../test_runner.h"
@@ -721,6 +722,29 @@ static void low_level_change_bindings(void) {
 	indigo_release_property(p);
 }
 
+static void change_bindings_forward_local_access_tokens(void) {
+	int before = atomic_load(&peer_changes);
+	indigo_set_master_token(0x1001);
+	ASSERT_TRUE(indigo_add_device_token(PEER, 0x2002));
+	peer.access_token = 0x2002;
+	ASSERT_TRUE(js("indigo_change_text_property('" PEER "','TARGET_TEXT',{FIRST:'authenticated'}); indigo_change_number_property('" PEER "','TARGET_NUMBER',{FIRST:12}); indigo_change_switch_property('" PEER "','TARGET_SWITCH',{ON:true});"));
+	bool device_forwarded = wait_counter(&peer_changes, before + 3);
+	indigo_property *request = request_snapshot();
+	bool device_token = request && request->access_token == 0x2002;
+	indigo_release_property(request);
+	ASSERT_TRUE(indigo_remove_device_token(PEER));
+	peer.access_token = 0x1001;
+	ASSERT_TRUE(js("indigo_change_text_property('" PEER "','TARGET_TEXT',{FIRST:'master'}); indigo_change_number_property('" PEER "','TARGET_NUMBER',{FIRST:13}); indigo_change_switch_property('" PEER "','TARGET_SWITCH',{ON:false});"));
+	bool master_forwarded = wait_counter(&peer_changes, before + 6);
+	request = request_snapshot();
+	bool master_token = request && request->access_token == 0x1001;
+	indigo_release_property(request);
+	peer.access_token = 0;
+	indigo_set_master_token(0);
+	ASSERT_TRUE(device_forwarded && device_token);
+	ASSERT_TRUE(master_forwarded && master_token);
+}
+
 static void enumeration_and_blob_enable(void) {
 	int enumerations = atomic_load(&peer_enumerations);
 	ASSERT_TRUE(js("indigo_enumerate_properties('" PEER "','PEER_TEXT');"));
@@ -1007,6 +1031,7 @@ static const indigo_test_case tests[] = {
 	{ "invalid rename recovery", invalid_rename_recovery },
 	{ "configuration save failure recovery", save_failure_recovery },
 	{ "low-level change bindings", low_level_change_bindings },
+	{ "change bindings forward local access tokens", change_bindings_forward_local_access_tokens },
 	{ "enumeration and BLOB enable bindings", enumeration_and_blob_enable },
 	{ "define update redefine delete bindings", define_update_redefine_delete },
 	{ "queued property snapshots", queued_property_snapshots },

@@ -2588,6 +2588,18 @@ $(INTEGRATION_BUILD)/test_agent_scripting_sequencer: integration/test_agent_scri
 test-agent-scripting-sequencer: check-lib $(INTEGRATION_BUILD)/test_agent_scripting_sequencer
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer
 
+# Opt-in native server acceptance: prepared JavaScript runs in the Scripting Agent.
+# SEQUENCER_ARGS may supply --output and --index-dir; indexes are never downloaded.
+.PHONY: test-sequencer-simulators
+test-sequencer-simulators:
+	python3 integration/run_sequencer_simulators.py $(SEQUENCER_ARGS)
+
+OPT_IN_DRIVER_TESTS += $(INTEGRATION_BUILD)/test_agent_scripting_sequencer_simulators
+
+$(INTEGRATION_BUILD)/test_agent_scripting_sequencer_simulators: integration/run_sequencer_simulators.py integration/sequencer_simulators.js | $(INTEGRATION_BUILD)
+	printf '%s\n' '#!/bin/sh' 'exec python3 "$$(dirname "$$0")/../../integration/run_sequencer_simulators.py" "$$@"' > $@
+	chmod +x $@
+
 # Cooperation of the production Imager, Guider and Mount agents with the CCD and mount simulators;
 # configuration is isolated through a private HOME.
 AGENT_COOPERATION_ARCHIVES = $(BUILD_DRIVERS)/indigo_agent_imager.a $(BUILD_DRIVERS)/indigo_agent_guider.a $(BUILD_DRIVERS)/indigo_agent_mount.a $(BUILD_DRIVERS)/indigo_ccd_simulator.a $(BUILD_DRIVERS)/indigo_mount_simulator.a

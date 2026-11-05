@@ -27,6 +27,7 @@
 #include <indigo/indigo_client_xml.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_driver_json.h>
+#include <indigo/indigo_token.h>
 #include "../test_runner.h"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
@@ -500,6 +501,46 @@ static void cached_blob_retirement_lifetimes(void) {
 	}
 }
 
+static void device_acl_requires_device_or_nonzero_master_token(void) {
+	const char *requests[] = { "<newSwitchVector device='Security' name='S'><oneSwitch name='ON'>On</oneSwitch></newSwitchVector>", "{\"newSwitchVector\":{\"device\":\"Security\",\"name\":\"S\",\"items\":[{\"name\":\"ON\",\"value\":true}]}}" };
+	bool rejected_without_master[2], rejected_with_master[2], accepted_device[2], accepted_master[2];
+	for (int protocol = 0; protocol < 2; protocol++) {
+		device.access_token = 0x1234;
+		indigo_set_master_token(0);
+		changes = 0;
+		parse(requests[protocol], strlen(requests[protocol]), protocol, false, INDIGO_VERSION_CURRENT);
+		rejected_without_master[protocol] = changes == 0;
+		indigo_set_master_token(0x5678);
+		changes = 0;
+		parse(requests[protocol], strlen(requests[protocol]), protocol, false, INDIGO_VERSION_CURRENT);
+		rejected_with_master[protocol] = changes == 0;
+		for (int master = 0; master < 2; master++) {
+			char request[512];
+			const char *token = master ? "5678" : "1234";
+			if (protocol) {
+				snprintf(request, sizeof(request), "{\"newSwitchVector\":{\"device\":\"Security\",\"name\":\"S\",\"token\":\"%s\",\"items\":[{\"name\":\"ON\",\"value\":true}]}}", token);
+			} else {
+				snprintf(request, sizeof(request), "<newSwitchVector device='Security' name='S' token='%s'><oneSwitch name='ON'>On</oneSwitch></newSwitchVector>", token);
+			}
+			changes = 0;
+			parse(request, strlen(request), protocol, false, INDIGO_VERSION_CURRENT);
+			if (master) {
+				accepted_master[protocol] = changes == 1;
+			} else {
+				accepted_device[protocol] = changes == 1;
+			}
+		}
+	}
+	device.access_token = 0;
+	indigo_set_master_token(0);
+	for (int protocol = 0; protocol < 2; protocol++) {
+		ASSERT_TRUE(rejected_without_master[protocol]);
+		ASSERT_TRUE(rejected_with_master[protocol]);
+		ASSERT_TRUE(accepted_device[protocol]);
+		ASSERT_TRUE(accepted_master[protocol]);
+	}
+}
+
 int main(void) {
 	indigo_test_use_private_home();
 	indigo_autoenumerate = false;
@@ -509,6 +550,7 @@ int main(void) {
 	indigo_attach_device(&device);
 	indigo_attach_client(&observer);
 	const indigo_test_case tests[] = {
+		{ "device ACL requires device or nonzero master token", device_acl_requires_device_or_nonzero_master_token },
 		{ "XML upload staging one shot", xml_upload_staging_is_one_shot },
 		{ "request item limits", request_item_limits },
 		{ "request text budgets and reset", request_text_budgets_and_reset },

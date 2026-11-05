@@ -198,4 +198,4 @@ indigo_cancel_timer(timer);
 ## Testing
 
 - 2026-09-24 12:56 3.0.0.13 linux x64 simulator 60/60 OK
-- 2026-10-24 20:08 3.0.0.14 mac arm64 simulator 63/63 OK
+- 2026-11-05 13:28 3.0.0.15 mac arm64 simulator 241/239 Failed
