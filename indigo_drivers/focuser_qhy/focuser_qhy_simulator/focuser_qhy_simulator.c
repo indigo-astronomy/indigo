@@ -35,9 +35,10 @@
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
 
 static const char *profile = "normal", *ready_file, *fault_file, *control_file;
-static const char *firmware = "1.2.3", *board_version = "QFOCUSER-1.0";
+// The handshake reply of a Q-Focuser with firmware 20231207 / board 108: "id" carries JSON escapes, "version" and "bv" are numbers.
+static const char *firmware = "20231207", *board_version = "108", *device_id = "@\\u0019SC8HP\\u0006TH2A";
 static FILE *events;
-static bool trace, headless, no_out_temp, reverse, hold, stalled;
+static bool trace, headless, no_out_temp, quoted_version, reverse, hold, stalled;
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1, speed = 1, outside_temperature = 18500, chip_temperature = 30200, voltage = 120;
 static serial_motion motion;
@@ -157,6 +158,11 @@ static bool fault(int command) {
 		reply("{\"idx\":%d}x}", command);
 		return true;
 	}
+	if (!strcmp(action, "escaped-quote")) {
+		// The closing quote of the string is escaped, so the string never ends.
+		reply("{\"idx\":%d,\"id\":\"x\\\"}", command);
+		return true;
+	}
 	if (!strcmp(action, "stall") && command == 6) {
 		stalled = true;
 		return false;
@@ -205,7 +211,11 @@ static void dispatch(const char *request) {
 	}
 	switch (command) {
 		case 1:
-			reply("{\"idx\":1,\"version\":\"%s\",\"bv\":\"%s\"}", firmware, board_version);
+			if (quoted_version) {
+				reply("{\"idx\":1,\"version\":\"%s\",\"bv\":\"%s\"}", firmware, board_version);
+			} else {
+				reply("{\"idx\":1,\"id\":\"%s\",\"version\":%s,\"bv\":%s}", device_id, firmware, board_version);
+			}
 			break;
 		case 3:
 			serial_motion_stop(&motion);
@@ -287,6 +297,8 @@ static bool parse_arguments(int argc, char **argv) {
 			trace = true;
 		} else if (!strcmp(argv[i], "--no-out-temp") || !strcmp(argv[i], "-T")) {
 			no_out_temp = true;
+		} else if (!strcmp(argv[i], "--quoted-version")) {
+			quoted_version = true;
 		} else if (i + 1 < argc && !strcmp(argv[i], "--ready-file")) {
 			ready_file = argv[++i];
 		} else if (i + 1 < argc && !strcmp(argv[i], "--profile")) {
@@ -299,6 +311,8 @@ static bool parse_arguments(int argc, char **argv) {
 			firmware = argv[++i];
 		} else if (i + 1 < argc && !strcmp(argv[i], "--board-version")) {
 			board_version = argv[++i];
+		} else if (i + 1 < argc && !strcmp(argv[i], "--id")) {
+			device_id = argv[++i];
 		} else if (i + 1 < argc && !strcmp(argv[i], "--model")) {
 			const char *model = argv[++i];
 			if (strcmp(model, "qhy-focuser") && strcmp(model, "qhy") && strcmp(model, "q-focuser")) {
@@ -306,7 +320,7 @@ static bool parse_arguments(int argc, char **argv) {
 				return false;
 			}
 		} else if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) {
-			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split] [--no-out-temp] [--firmware VALUE] [--board-version VALUE]\n", argv[0]);
+			printf("Usage: %s [--headless] [--trace] [--ready-file PATH] [--profile normal|split] [--no-out-temp] [--quoted-version] [--firmware VALUE] [--board-version VALUE] [--id VALUE]\n", argv[0]);
 			exit(0);
 		} else {
 			fprintf(stderr, "Unknown/incomplete option '%s'\n", argv[i]);

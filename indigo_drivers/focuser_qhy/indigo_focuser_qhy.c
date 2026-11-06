@@ -70,7 +70,7 @@ typedef struct {
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300000F
+#define DRIVER_VERSION       0x03000010
 #define DRIVER_NAME          "indigo_focuser_qhy"
 #define DRIVER_LABEL         "QHY Q-Focuser"
 #define FOCUSER_DEVICE_NAME  "Q-Focuser"
@@ -134,7 +134,7 @@ static bool qhy_parse_json(const char *json, qhy_json_field *fields, int capacit
 		}
 		const char *key = cursor;
 		while (*cursor && *cursor != '"') {
-			if (*cursor == '\\') {
+			if (*cursor == '\\' && !*++cursor) {
 				return false;
 			}
 			cursor++;
@@ -161,8 +161,9 @@ static bool qhy_parse_json(const char *json, qhy_json_field *fields, int capacit
 		}
 		const char *value = cursor;
 		if (fields[count].quoted) {
+			// An escape sequence (the firmware sends "id":"@\u0019SC8HP\u0006TH2A") belongs to the string; it is kept as received.
 			while (*cursor && *cursor != '"') {
-				if (*cursor == '\\') {
+				if (*cursor == '\\' && !*++cursor) {
 					return false;
 				}
 				cursor++;
@@ -240,9 +241,10 @@ static bool qhy_json_number(const qhy_json_field *fields, int count, const char 
 	return true;
 }
 
-static bool qhy_json_string(const qhy_json_field *fields, int count, const char *key, char *value, size_t size) {
+// The text of a field, quoted or not: firmware 20231207 sends "version":20231207,"bv":108 as numbers.
+static bool qhy_json_text(const qhy_json_field *fields, int count, const char *key, char *value, size_t size) {
 	const qhy_json_field *field = qhy_field(fields, count, key);
-	if (!field || !field->quoted || !field->value[0] || strlen(field->value) >= size) {
+	if (!field || !field->value[0] || strlen(field->value) >= size) {
 		return false;
 	}
 	snprintf(value, size, "%s", field->value);
@@ -257,7 +259,7 @@ static bool qhy_parse_response(const char *response, qhy_response *parsed) {
 		return false;
 	}
 	if (parsed->idx == 1) {
-		return qhy_json_string(fields, count, "version", parsed->version, sizeof(parsed->version)) && qhy_json_string(fields, count, "bv", parsed->board_version, sizeof(parsed->board_version));
+		return qhy_json_text(fields, count, "version", parsed->version, sizeof(parsed->version)) && qhy_json_text(fields, count, "bv", parsed->board_version, sizeof(parsed->board_version));
 	}
 	if (parsed->idx == 4) {
 		double outside, chip, voltage;
