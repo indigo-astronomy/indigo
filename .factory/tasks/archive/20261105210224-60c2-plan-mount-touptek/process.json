@@ -1,0 +1,93 @@
+{
+  "version": 2,
+  "task": "20261105210224-60c2-plan-mount-touptek",
+  "scope": [
+    "indigo_drivers/mount_lx200/*",
+    "indigo_test/integration/test_mount_lx200_simulator.c",
+    "indigo_docs/PROPERTIES.md",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261105210224-60c2-plan-mount-touptek.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "mount_lx200"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "build/integration/test_mount_lx200_simulator_sanitize"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261105210224-60c2-plan-mount-touptek.json": [
+      "100644",
+      "blob",
+      "ef36870c486078bffd761dc59e97f0662467cc84"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "0427256e80868eaecc30e8825ff8f7cd959577af"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "23803158fc2f38ff3fbcf309be670e626a124544"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "4d5c635b60ab4fdcd86c4dd8dbfd9abee163d12f"
+    ],
+    "indigo_drivers/mount_lx200/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "c41cfc185fef5d2b78ad4bf3d64650f1e28d18f8"
+    ],
+    "indigo_drivers/mount_lx200/README.md": [
+      "100644",
+      "blob",
+      "dd6e3c2bf52a19383314f91531b0c82f501eee7c"
+    ],
+    "indigo_drivers/mount_lx200/indigo_mount_lx200.c": [
+      "100644",
+      "blob",
+      "d23e73a070ed17a59f7dbe14cd73faf28a17d210"
+    ],
+    "indigo_drivers/mount_lx200/indigo_mount_lx200.driver": [
+      "100644",
+      "blob",
+      "a42e9c5831d66b85af514bf331a4d9341c85a8f6"
+    ],
+    "indigo_drivers/mount_lx200/mount_lx200_simulator/mount_lx200_simulator.c": [
+      "100644",
+      "blob",
+      "fa7c814aea930d9079bd8c273541f3dbccb50e66"
+    ],
+    "indigo_test/integration/test_mount_lx200_simulator.c": [
+      "100644",
+      "blob",
+      "2d9bdb138edd0e23368f969107c9945f2f22271b"
+    ]
+  }
+}
