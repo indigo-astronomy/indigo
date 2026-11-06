@@ -34,7 +34,9 @@
       "evidence": "verification.md"
     }
   ],
-  "risk_reviews": {},
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
   "reviews": [],
   "reviewed_content": {
     ".factory/completions/20261106215623-197e-fix-focuser-qhy-json-handshake.json": [

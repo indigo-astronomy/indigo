@@ -34,5 +34,10 @@ None recorded.
 ## Verdict and limitations
 Pass. Limitation: no hardware run; the reply format is modelled from the user's raw capture.
 
+## Diff risk signals
+The process check flags `MIGRATION_STATUS.md` under the `data-model` rule, because its name contains "migration". The file is the
+driver migration status table. This task changes only the automated-test count of the `focuser_qhy` row (44 / 0 -> 47 / 0). There is no
+data model, schema or stored-data change, and no data-model risk.
+
 ## Register reconciliation
 No canonical FND record created or changed.
