@@ -47,7 +47,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000015
+#define DRIVER_VERSION       0x03000016
 #define DRIVER_NAME          "indigo_mount_synscan"
 #define DRIVER_LABEL         "SynScan Mount"
 #define MOUNT_DEVICE_NAME    "Mount SynScan"
@@ -958,6 +958,46 @@ static void synscan_de2h(double ha, double dec, double latitude, double *az, dou
 	*alt = atan2(z, r);
 }
 
+static double synscan_range24(double hours) {
+	double range = fmod(hours, 24.0);
+	if (range < 0) {
+		range += 24.0;
+	}
+	return range;
+}
+
+// MOUNT_PARK_SET and MOUNT_HOME_SET: the position is the mechanical hour angle and declination of the axes;
+// DEFAULT is the home of an equatorial mount, CURRENT comes from the axis counters, which know the hour angle of the
+// date, not from the J2000 coordinates of the bus the mount base driver would take it from.
+static void synscan_set_position(indigo_device *device, indigo_property *set, indigo_item *default_item, indigo_item *current_item, indigo_property *position, indigo_item *ha_item, indigo_item *dec_item) {
+	if (default_item->sw.value) {
+		ha_item->number.value = 6;
+		dec_item->number.value = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0 ? 90 : -90;
+	} else if (current_item->sw.value) {
+		double ha = 0;
+		double dec = 0;
+		int side_of_pier = MOUNT_SIDE_EAST;
+		// read the counters now rather than take the last poll's, which can be a second old or, after a failed
+		// first reading at connect, those of a previous session
+		if (!synscan_update_axis_positions(device)) {
+			default_item->sw.value = false;
+			current_item->sw.value = false;
+			set->state = INDIGO_ALERT_STATE;
+			INDIGO_UPDATE_PROPERTY_STATE(position, INDIGO_ALERT_STATE, "Failed to read the axis positions");
+			return;
+		}
+		synscan_encoder_to_eq(device, PRIVATE_DATA->ra_position, PRIVATE_DATA->dec_position, &ha, &dec, &side_of_pier);
+		ha_item->number.value = ha * 12.0 / M_PI;
+		dec_item->number.value = dec * 180.0 / M_PI;
+	} else {
+		return;
+	}
+	default_item->sw.value = false;
+	current_item->sw.value = false;
+	position->state = INDIGO_OK_STATE;
+	indigo_update_property(device, position, NULL);
+}
+
 static bool synscan_read_mount_coordinates(indigo_device *device) {
 	// Reached from the guider's finalizers too, whose device_context is an indigo_guider_context,
 	// so resolve the master device before touching any MOUNT_* property.
@@ -970,21 +1010,23 @@ static bool synscan_read_mount_coordinates(indigo_device *device) {
 	double raw_dec = 0;
 	int side_of_pier = MOUNT_SIDE_EAST;
 	synscan_encoder_to_eq(device, PRIVATE_DATA->ra_position, PRIVATE_DATA->dec_position, &raw_ha, &raw_dec, &side_of_pier);
-	MOUNT_RAW_COORDINATES_RA_ITEM->number.value = lst - raw_ha * 12.0 / M_PI;
-	while (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0) {
-		MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
-	}
-	while (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0) {
-		MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
-	}
-	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec * 180.0 / M_PI;
+	// The axes know the hour angle of the date; the bus carries J2000 (MOUNT_EPOCH), so the raw and the
+	// aligned coordinates and the alignment points are all J2000.
+	double raw_ra_hours = synscan_range24(lst - raw_ha * 12.0 / M_PI);
+	double raw_dec_degrees = raw_dec * 180.0 / M_PI;
+	indigo_jnow_to_j2k(&raw_ra_hours, &raw_dec_degrees);
+	MOUNT_RAW_COORDINATES_RA_ITEM->number.value = synscan_range24(raw_ra_hours);
+	MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec_degrees;
 	indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier == MOUNT_SIDE_EAST ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 	indigo_raw_to_translated_with_lst(device, lst, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, side_of_pier, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 	if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 		double az = 0;
 		double alt = 0;
-		double aligned_ha = (lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value) * M_PI / 12.0;
-		double aligned_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * M_PI / 180.0;
+		double aligned_ra_hours = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+		double aligned_dec_degrees = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+		indigo_j2k_to_jnow(&aligned_ra_hours, &aligned_dec_degrees);
+		double aligned_ha = (lst - aligned_ra_hours) * M_PI / 12.0;
+		double aligned_dec = aligned_dec_degrees * M_PI / 180.0;
 		double latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * M_PI / 180.0;
 		synscan_de2h(aligned_ha, aligned_dec, latitude, &az, &alt);
 		MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
@@ -1049,10 +1091,12 @@ static void synscan_ha_dec_to_steps(indigo_device *device, double ha_hours, doub
 	}
 }
 
+// The J2000 coordinates of the bus, through the alignment model, to the axis steps of their hour angle of the date
 static void synscan_radec_to_steps(indigo_device *device, double ra_hours, double dec_degrees, long *ra_steps, long *dec_steps) {
 	double raw_ra = ra_hours;
 	double raw_dec = dec_degrees;
 	indigo_translated_to_raw(device, ra_hours, dec_degrees, &raw_ra, &raw_dec);
+	indigo_j2k_to_jnow(&raw_ra, &raw_dec);
 	double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	synscan_ha_dec_to_steps(device, lst - raw_ra, raw_dec, ra_steps, dec_steps);
 }
@@ -2075,6 +2119,22 @@ static void mount_connection_handler(indigo_device *device) {
 	}
 }
 
+static void mount_park_set_handler(indigo_device *device) {
+	MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_PARK_SET.on_change
+	synscan_set_position(device, MOUNT_PARK_SET_PROPERTY, MOUNT_PARK_SET_DEFAULT_ITEM, MOUNT_PARK_SET_CURRENT_ITEM, MOUNT_PARK_POSITION_PROPERTY, MOUNT_PARK_POSITION_HA_ITEM, MOUNT_PARK_POSITION_DEC_ITEM);
+	//- mount.MOUNT_PARK_SET.on_change
+	indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, NULL);
+}
+
+static void mount_home_set_handler(indigo_device *device) {
+	MOUNT_HOME_SET_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_HOME_SET.on_change
+	synscan_set_position(device, MOUNT_HOME_SET_PROPERTY, MOUNT_HOME_SET_DEFAULT_ITEM, MOUNT_HOME_SET_CURRENT_ITEM, MOUNT_HOME_POSITION_PROPERTY, MOUNT_HOME_POSITION_HA_ITEM, MOUNT_HOME_POSITION_DEC_ITEM);
+	//- mount.MOUNT_HOME_SET.on_change
+	indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, NULL);
+}
+
 static void mount_park_handler(indigo_device *device) {
 	//+ mount.MOUNT_PARK.on_change
 	if (!MOUNT_PARK_PARKED_ITEM->sw.value) {
@@ -2612,6 +2672,12 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		INDIGO_PROCESS_CONNECT(mount_connection_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PARK_SET_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_SET_PROPERTY, mount_park_set_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_HOME_SET_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_SET_PROPERTY, mount_home_set_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PARK_PROPERTY, mount_park_handler);
