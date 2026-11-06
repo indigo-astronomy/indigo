@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261106110333-a457-solver-json-xml-output",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit the approved changes, run the process check, fast-forward master and delete the task branch and worktree.",
+  "blocker": null
+}

@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "task": "20261106110333-a457-solver-json-xml-output",
+  "scope": [
+    "indigo_tools/indigo_solver.c",
+    "indigo_test/integration/test_indigo_solver_tool.c",
+    ".factory/completions/20261106110333-a457-solver-json-xml-output.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./build/integration/test_indigo_solver_tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261106110333-a457-solver-json-xml-output.json": [
+      "100644",
+      "blob",
+      "52f983b99bcebbbda89f0dc482ae608227c08893"
+    ],
+    "indigo_test/integration/test_indigo_solver_tool.c": [
+      "100644",
+      "blob",
+      "b9f5301108677eba5d06e94398b682b3abbe602f"
+    ],
+    "indigo_tools/indigo_solver.c": [
+      "100644",
+      "blob",
+      "3310087948afcde3bbfa550d07f1021abb4bc080"
+    ]
+  }
+}
