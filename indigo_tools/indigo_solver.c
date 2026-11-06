@@ -35,6 +35,8 @@
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_uni_io.h>
+#include <indigo/indigo_json.h>
+#include <indigo/indigo_xml.h>
 
 #include <agent_platesolver/indigo_solver.h>
 
@@ -57,6 +59,17 @@
 #define DEFAULT_DEPTH							0
 #define DEFAULT_CPU_LIMIT					180
 
+// any escape buffer index above the fixed ones selects the buffer that holds a string of any length
+#define LONG_ESCAPE_BUFFER				100
+
+typedef enum {
+	FORMAT_TEXT,
+	FORMAT_JSON,
+	FORMAT_XML
+} output_format;
+
+static const char *format_names[] = { "text", "json", "xml" };
+
 typedef struct {
 	char index_dir[PATH_MAX];
 	float fovs[INDIGO_SOLVER_INDEX_FOV_COUNT];
@@ -73,8 +86,27 @@ typedef struct {
 	int depth;
 	double cpu_limit;
 	int verbose;
+	output_format format;
 	const char *file_name;
 } solver_options;
+
+// The outcome of a run: the solution, or the reason the image was not solved
+typedef struct {
+	bool solved;
+	const char *message;
+	double time;
+	int image_width, image_height;
+	int matched, star_match_count;
+	double rms;
+	double ra, dec;
+	double angle;
+	double scale;
+	int parity;
+	char index[128];
+} solver_result;
+
+// the progress of -v goes to stderr with a structured format, so stdout holds the document alone
+static FILE *progress;
 
 static void default_index_dir(char *path, size_t size) {
 	char *env = getenv("INDIGO_CACHE_BASE");
@@ -107,8 +139,11 @@ static void print_usage(const char *name) {
 	printf("  -D, --downsample <n>      bin the image n x n before the star detection, 1 = none (default: %d)\n", DEFAULT_DOWNSAMPLE);
 	printf("  -t, --depth <n>           try the n brightest stars first and then all, 0 = 40, 100 and all (default: %d)\n", DEFAULT_DEPTH);
 	printf("  -c, --cpu-limit <sec>     give up after this many seconds, 0 = no limit (default: %g)\n", (double)DEFAULT_CPU_LIMIT);
+	printf("  -f, --format <format>     output format of the result, text, json or xml (default: text)\n");
 	printf("  -v, --verbose             report the progress and errors, -vv adds the debug log\n");
 	printf("  -h, --help                show this help\n\n");
+	printf("With json or xml the result, solved or not, is a single document on the standard output and the progress\n");
+	printf("of -v goes to the standard error.\n\n");
 	printf("The exit code is 0 when the image is solved, 1 when it is not and 2 on wrong arguments.\n");
 }
 
@@ -231,6 +266,14 @@ static bool parse_arguments(int argc, char **argv, solver_options *options) {
 			ok = parse_integer(value, &options->depth) && options->depth >= 0 && options->depth <= 1000;
 		} else if (!strcmp(arg, "-c") || !strcmp(arg, "--cpu-limit")) {
 			ok = parse_number(value, &options->cpu_limit) && options->cpu_limit >= 0;
+		} else if (!strcmp(arg, "-f") || !strcmp(arg, "--format")) {
+			ok = false;
+			for (int format = FORMAT_TEXT; format <= FORMAT_XML; format++) {
+				if (!strcmp(value, format_names[format])) {
+					options->format = format;
+					ok = true;
+				}
+			}
 		} else {
 			fprintf(stderr, "%s: unknown option '%s'\n", TOOL_NAME, arg);
 			return false;
@@ -283,7 +326,7 @@ static int select_candidate_fovs(solver_options *options, double scale, int widt
 		if (indigo_uni_is_readable(path)) {
 			installed[installed_count++] = options->fovs[i];
 		} else if (options->verbose) {
-			printf("Index %s is not installed\n", path);
+			fprintf(progress, "Index %s is not installed\n", path);
 		}
 	}
 	int count = 0;
@@ -338,7 +381,7 @@ static int depth_stages(int depth, int star_count, int *stages) {
 	return count;
 }
 
-static bool solve(solver_options *options, const void *data, long size) {
+static void solve(solver_options *options, const void *data, long size, solver_result *result) {
 	double start = indigo_monotonic_time();
 	const char *message = NULL;
 	bool solved = false;
@@ -358,15 +401,17 @@ static bool solve(solver_options *options, const void *data, long size) {
 	if (image == NULL) {
 		goto cleanup;
 	}
+	result->image_width = full_width;
+	result->image_height = full_height;
 	if (options->verbose) {
-		printf("Image %d x %d%s, binned %d x %d\n", full_width, full_height, bayered ? " Bayer mosaic" : "", bin, bin);
+		fprintf(progress, "Image %d x %d%s, binned %d x %d\n", full_width, full_height, bayered ? " Bayer mosaic" : "", bin, bin);
 	}
 	int width = image->width;
 	int height = image->height;
 	image_stars = indigo_safe_malloc(MAX_IMAGE_STAR_COUNT * sizeof(indigo_solver_star));
 	int star_count = indigo_solver_image_stars(image, image_stars, MAX_IMAGE_STAR_COUNT);
 	if (options->verbose) {
-		printf("%d stars detected\n", star_count);
+		fprintf(progress, "%d stars detected\n", star_count);
 	}
 	if (star_count < 4) {
 		message = "Not enough stars detected";
@@ -407,7 +452,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 			if (options->verbose) {
 				char label[128];
 				indigo_solver_index_label(candidates[i], label, sizeof(label));
-				printf("Solving with index %s...\n", label);
+				fprintf(progress, "Solving with index %s...\n", label);
 			}
 			if (loaded_fov != candidates[i]) {
 				indigo_solver_free_catalog(&catalog);
@@ -428,7 +473,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 				double extent = options->scale > 0 ? 0.5 * sqrt((double)full_width * full_width + (double)full_height * full_height) * options->scale : candidates[i];
 				int cone_star_count = indigo_solver_cone_catalog(&catalog, hint_ra * 15 * DEG_TO_RAD, hint_dec * DEG_TO_RAD, (options->radius + extent) * DEG_TO_RAD, &cone);
 				if (options->verbose) {
-					printf("%d catalog stars within %.2f° of the position hint\n", cone_star_count, options->radius + extent);
+					fprintf(progress, "%d catalog stars within %.2f° of the position hint\n", cone_star_count, options->radius + extent);
 				}
 				usable = usable && cone_star_count >= 4;
 				quads = &cone;
@@ -441,7 +486,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 					continue;
 				}
 				if (options->verbose) {
-					printf("Stage %d: %d brightest stars, %d quads, %d catalog quads\n", stage + 1, stages[stage], image_quad_count, quad_count);
+					fprintf(progress, "Stage %d: %d brightest stars, %d quads, %d catalog quads\n", stage + 1, stages[stage], image_quad_count, quad_count);
 				}
 				int quad_match_count = indigo_solver_match_quads(image_quads, image_quad_count, quads, quad_matches, MAX_QUAD_MATCH_COUNT, &limits);
 				star_match_count = indigo_solver_match_stars(quad_matches, quad_match_count, star_matches, MAX_STAR_MATCH_COUNT, &limits);
@@ -451,7 +496,7 @@ static bool solve(solver_options *options, const void *data, long size) {
 				if (indigo_solver_compute_center(star_matches, star_match_count, width, height, &ra, &dec, &rotation, &pixel, &parity, &matched, &rms)) {
 					if (options->parity != 0 && parity != options->parity) {
 						if (options->verbose) {
-							printf("Solution with parity %d rejected by the parity hint %d\n", parity, options->parity);
+							fprintf(progress, "Solution with parity %d rejected by the parity hint %d\n", parity, options->parity);
 						}
 						wrong_parity = true;
 						continue;
@@ -473,21 +518,15 @@ static bool solve(solver_options *options, const void *data, long size) {
 	if (options->epoch == 0) {
 		indigo_j2k_to_jnow(&ra_hours, &dec_degrees);
 	}
-	double scale = pixel * RAD_TO_DEG / bin;
-	char ra_string[32], dec_string[32];
-	indigo_dtos_r(ra_hours, "%d:%02d:%05.2f", ra_string, sizeof(ra_string));
-	indigo_dtos_r(dec_degrees, "%d:%02d:%04.1f", dec_string, sizeof(dec_string));
-	printf("Solved in %.2f s: %d of %d stars matched, rms %.2f\"\n", indigo_monotonic_time() - start, matched, star_match_count, rms * RAD_TO_DEG * 3600);
-	printf("RA:       %.6f h (%s)\n", ra_hours, ra_string);
-	printf("Dec:      %+.6f° (%s%s)\n", dec_degrees, dec_degrees < 0 ? "" : "+", dec_string);
-	printf("Epoch:    %s\n", options->epoch == 0 ? "JNow" : "J2000");
-	printf("Angle:    %.4f°\n", rotation * RAD_TO_DEG);
-	printf("Scale:    %.8f°/pixel (%.3f\"/pixel)\n", scale, scale * 3600);
-	printf("Field:    %.4f° x %.4f°\n", full_width * scale, full_height * scale);
-	printf("Parity:   %d\n", parity);
-	char label[128];
-	indigo_solver_index_label(fov, label, sizeof(label));
-	printf("Index:    %s\n", label);
+	result->matched = matched;
+	result->star_match_count = star_match_count;
+	result->rms = rms * RAD_TO_DEG * 3600;
+	result->ra = ra_hours;
+	result->dec = dec_degrees;
+	result->angle = rotation * RAD_TO_DEG;
+	result->scale = pixel * RAD_TO_DEG / bin;
+	result->parity = parity;
+	indigo_solver_index_label(fov, result->index, sizeof(result->index));
 cleanup:
 	indigo_solver_free_catalog(&catalog);
 	indigo_safe_free(star_matches);
@@ -495,10 +534,120 @@ cleanup:
 	indigo_safe_free(image_quads);
 	indigo_safe_free(image_stars);
 	indigo_safe_free(image);
-	if (!solved) {
-		fprintf(stderr, "Not solved: %s\n", message);
+	result->solved = solved;
+	result->message = solved ? NULL : message ? message : "Unknown error";
+	result->time = indigo_monotonic_time() - start;
+}
+
+static void print_text(solver_options *options, solver_result *result) {
+	if (!result->solved) {
+		return;
 	}
-	return solved;
+	char ra_string[32], dec_string[32];
+	indigo_dtos_r(result->ra, "%d:%02d:%05.2f", ra_string, sizeof(ra_string));
+	indigo_dtos_r(result->dec, "%d:%02d:%04.1f", dec_string, sizeof(dec_string));
+	printf("Solved in %.2f s: %d of %d stars matched, rms %.2f\"\n", result->time, result->matched, result->star_match_count, result->rms);
+	printf("RA:       %.6f h (%s)\n", result->ra, ra_string);
+	printf("Dec:      %+.6f° (%s%s)\n", result->dec, result->dec < 0 ? "" : "+", dec_string);
+	printf("Epoch:    %s\n", options->epoch == 0 ? "JNow" : "J2000");
+	printf("Angle:    %.4f°\n", result->angle);
+	printf("Scale:    %.8f°/pixel (%.3f\"/pixel)\n", result->scale, result->scale * 3600);
+	printf("Field:    %.4f° x %.4f°\n", result->image_width * result->scale, result->image_height * result->scale);
+	printf("Parity:   %d\n", result->parity);
+	printf("Index:    %s\n", result->index);
+}
+
+// The file name for a document: control characters and bytes that are not valid UTF-8 become '?', as the escape
+// helpers keep them and they make a JSON or XML document invalid
+static const char *document_file_name(const char *file_name) {
+	static char name[PATH_MAX];
+	const unsigned char *in = (const unsigned char *)file_name;
+	size_t length = 0;
+	while (*in && length < sizeof(name) - 1) {
+		int extra = *in < 0x80 ? 0 : (*in & 0xE0) == 0xC0 && *in >= 0xC2 ? 1 : (*in & 0xF0) == 0xE0 ? 2 : (*in & 0xF8) == 0xF0 && *in <= 0xF4 ? 3 : -1;
+		bool valid = extra >= 0;
+		for (int i = 1; valid && i <= extra; i++) {
+			valid = (in[i] & 0xC0) == 0x80;
+		}
+		if (!valid || length + extra >= sizeof(name) - 1) {
+			name[length++] = '?';
+			in++;
+		} else if (extra == 0) {
+			name[length++] = *in < 0x20 || *in == 0x7F ? '?' : *in;
+			in++;
+		} else {
+			memcpy(name + length, in, extra + 1);
+			length += extra + 1;
+			in += extra + 1;
+		}
+	}
+	name[length] = 0;
+	return name;
+}
+
+// RA in hours, Dec, angle and field in degrees, scale in degrees per pixel, rms in arcseconds, time in seconds
+static void print_json(solver_options *options, solver_result *result) {
+	printf("{\n");
+	printf("  \"file\": \"%s\",\n", indigo_json_escape_b(LONG_ESCAPE_BUFFER, document_file_name(options->file_name)));
+	printf("  \"solved\": %s,\n", result->solved ? "true" : "false");
+	printf("  \"time\": %.3f,\n", result->time);
+	if (result->solved) {
+		char ra_string[32], dec_string[32];
+		indigo_dtos_r(result->ra, "%d:%02d:%05.2f", ra_string, sizeof(ra_string));
+		indigo_dtos_r(result->dec, "%d:%02d:%04.1f", dec_string, sizeof(dec_string));
+		printf("  \"ra\": %.8f,\n", result->ra);
+		printf("  \"ra_hms\": \"%s\",\n", ra_string);
+		printf("  \"dec\": %.8f,\n", result->dec);
+		printf("  \"dec_dms\": \"%s%s\",\n", result->dec < 0 ? "" : "+", dec_string);
+		printf("  \"epoch\": \"%s\",\n", options->epoch == 0 ? "JNow" : "J2000");
+		printf("  \"angle\": %.6f,\n", result->angle);
+		printf("  \"scale\": %.10f,\n", result->scale);
+		printf("  \"field_width\": %.6f,\n", result->image_width * result->scale);
+		printf("  \"field_height\": %.6f,\n", result->image_height * result->scale);
+		printf("  \"image_width\": %d,\n", result->image_width);
+		printf("  \"image_height\": %d,\n", result->image_height);
+		printf("  \"parity\": %d,\n", result->parity);
+		printf("  \"matched_stars\": %d,\n", result->matched);
+		printf("  \"star_matches\": %d,\n", result->star_match_count);
+		printf("  \"rms\": %.3f,\n", result->rms);
+		printf("  \"index\": \"%s\"\n", indigo_json_escape(result->index));
+	} else {
+		printf("  \"message\": \"%s\"\n", indigo_json_escape_b(LONG_ESCAPE_BUFFER, result->message));
+	}
+	printf("}\n");
+}
+
+// The same values as the JSON document, one element each
+static void print_xml(solver_options *options, solver_result *result) {
+	printf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+	printf("<solution>\n");
+	printf("  <file>%s</file>\n", indigo_xml_escape_b(LONG_ESCAPE_BUFFER, document_file_name(options->file_name)));
+	printf("  <solved>%s</solved>\n", result->solved ? "true" : "false");
+	printf("  <time>%.3f</time>\n", result->time);
+	if (result->solved) {
+		char ra_string[32], dec_string[32];
+		indigo_dtos_r(result->ra, "%d:%02d:%05.2f", ra_string, sizeof(ra_string));
+		indigo_dtos_r(result->dec, "%d:%02d:%04.1f", dec_string, sizeof(dec_string));
+		printf("  <ra>%.8f</ra>\n", result->ra);
+		printf("  <ra_hms>%s</ra_hms>\n", ra_string);
+		printf("  <dec>%.8f</dec>\n", result->dec);
+		printf("  <dec_dms>%s%s</dec_dms>\n", result->dec < 0 ? "" : "+", dec_string);
+		printf("  <epoch>%s</epoch>\n", options->epoch == 0 ? "JNow" : "J2000");
+		printf("  <angle>%.6f</angle>\n", result->angle);
+		printf("  <scale>%.10f</scale>\n", result->scale);
+		printf("  <field_width>%.6f</field_width>\n", result->image_width * result->scale);
+		printf("  <field_height>%.6f</field_height>\n", result->image_height * result->scale);
+		printf("  <image_width>%d</image_width>\n", result->image_width);
+		printf("  <image_height>%d</image_height>\n", result->image_height);
+		printf("  <parity>%d</parity>\n", result->parity);
+		printf("  <matched_stars>%d</matched_stars>\n", result->matched);
+		printf("  <star_matches>%d</star_matches>\n", result->star_match_count);
+		printf("  <rms>%.3f</rms>\n", result->rms);
+		printf("  <index>%s</index>\n", indigo_xml_escape(result->index));
+	} else {
+		printf("  <message>%s</message>\n", indigo_xml_escape_b(LONG_ESCAPE_BUFFER, result->message));
+	}
+	printf("</solution>\n");
 }
 
 static void discard_log_message(indigo_log_levels level, const char *message) {
@@ -524,12 +673,29 @@ int main(int argc, char **argv) {
 	if (options.verbose == 0) {
 		indigo_log_message_handler = discard_log_message;
 	}
+	progress = options.format == FORMAT_TEXT ? stdout : stderr;
+	solver_result result = { 0 };
 	long size = 0;
 	void *data = read_file(options.file_name, &size);
 	if (data == NULL) {
-		return 1;
+		result.message = "Can't read the image file";
+	} else {
+		solve(&options, data, size, &result);
+		indigo_safe_free(data);
+		if (!result.solved) {
+			fprintf(stderr, "Not solved: %s\n", result.message);
+		}
 	}
-	bool solved = solve(&options, data, size);
-	indigo_safe_free(data);
-	return solved ? 0 : 1;
+	switch (options.format) {
+		case FORMAT_TEXT:
+			print_text(&options, &result);
+			break;
+		case FORMAT_JSON:
+			print_json(&options, &result);
+			break;
+		case FORMAT_XML:
+			print_xml(&options, &result);
+			break;
+	}
+	return result.solved ? 0 : 1;
 }

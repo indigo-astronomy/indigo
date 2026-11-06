@@ -182,15 +182,13 @@ static bool copy_file(const char *from, const char *to) {
 
 // -------------------------------------------------------------------------------- running the tool
 
-// Runs the tool with the arguments, stdout and stderr captured together; INDIGO_CACHE_BASE always points into the
-// private directory, so the default index directory never reaches the user's own cache
-static bool run_tool(tool_run *run, const char *cache_base, const char *format, ...) {
+// Runs the tool with the arguments, stdout and stderr captured together, or stdout alone with stderr discarded;
+// INDIGO_CACHE_BASE always points into the private directory, so the default index directory never reaches the
+// user's own cache
+static bool run_tool_with(tool_run *run, const char *cache_base, const char *redirect, const char *format, va_list args) {
 	char arguments[2048], command[4096];
-	va_list args;
-	va_start(args, format);
 	vsnprintf(arguments, sizeof(arguments), format, args);
-	va_end(args);
-	snprintf(command, sizeof(command), "INDIGO_CACHE_BASE='%s' '%s' %s 2>&1", cache_base, INDIGO_SOLVER_EXECUTABLE, arguments);
+	snprintf(command, sizeof(command), "INDIGO_CACHE_BASE='%s' '%s' %s %s", cache_base, INDIGO_SOLVER_EXECUTABLE, arguments, redirect);
 	FILE *pipe = popen(command, "r");
 	REQUIRE(pipe != NULL);
 	size_t length = fread(run->output, 1, sizeof(run->output) - 1, pipe);
@@ -199,6 +197,22 @@ static bool run_tool(tool_run *run, const char *cache_base, const char *format, 
 	REQUIRE(WIFEXITED(status));
 	run->exit_code = WEXITSTATUS(status);
 	return true;
+}
+
+static bool run_tool(tool_run *run, const char *cache_base, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool ok = run_tool_with(run, cache_base, "2>&1", format, args);
+	va_end(args);
+	return ok;
+}
+
+static bool run_tool_stdout(tool_run *run, const char *cache_base, const char *format, ...) {
+	va_list args;
+	va_start(args, format);
+	bool ok = run_tool_with(run, cache_base, "2>/dev/null", format, args);
+	va_end(args);
+	return ok;
 }
 
 static bool output_contains(tool_run *run, const char *text) {
@@ -268,6 +282,71 @@ static bool solution_matches_frame(tool_run *run, double tolerance, double scale
 	return true;
 }
 
+// The number following the JSON key ("key": value) or inside the XML element (<key>value</key>)
+static bool document_value(tool_run *run, bool json, const char *key, double *value) {
+	char pattern[64];
+	snprintf(pattern, sizeof(pattern), json ? "\"%s\": " : "<%s>", key);
+	const char *found = strstr(run->output, pattern);
+	if (found == NULL || sscanf(found + strlen(pattern), "%lf", value) != 1) {
+		fprintf(stderr, "No '%s' value in the output:\n%s\n", key, run->output);
+		return false;
+	}
+	return true;
+}
+
+// A JSON or XML document of the solved frame: the whole stdout is the document, with the same values the text
+// output has, checked against the rendered frame like solution_matches_frame()
+static bool document_matches_frame(tool_run *run, bool json) {
+	tool_solution solution;
+	double parity, image_width, image_height, matched, star_matches, rms, time;
+	REQUIRE(run->exit_code == 0);
+	if (json) {
+		REQUIRE(!strncmp(run->output, "{\n", 2));
+		REQUIRE(strlen(run->output) > 2 && !strcmp(run->output + strlen(run->output) - 2, "}\n"));
+		REQUIRE(output_contains(run, "\"solved\": true,"));
+		REQUIRE(output_contains(run, "\"epoch\": \"J2000\","));
+		REQUIRE(output_contains(run, "\"index\": \"5° Tycho-2 (FOV 4.5° - 10°)\"\n}\n"));
+		REQUIRE(output_contains(run, "\"ra_hms\": \""));
+		REQUIRE(output_contains(run, "\"dec_dms\": \"+5:"));
+		REQUIRE(strstr(run->output, "\"message\"") == NULL);
+	} else {
+		static const char *prolog = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<solution>\n";
+		REQUIRE(!strncmp(run->output, prolog, strlen(prolog)));
+		REQUIRE(strlen(run->output) > 12 && !strcmp(run->output + strlen(run->output) - 12, "</solution>\n"));
+		REQUIRE(output_contains(run, "<solved>true</solved>"));
+		REQUIRE(output_contains(run, "<epoch>J2000</epoch>"));
+		REQUIRE(output_contains(run, "<index>5° Tycho-2 (FOV 4.5° - 10°)</index>"));
+		REQUIRE(output_contains(run, "<ra_hms>"));
+		REQUIRE(output_contains(run, "<dec_dms>+5:"));
+		REQUIRE(strstr(run->output, "<message>") == NULL);
+	}
+	REQUIRE(document_value(run, json, "ra", &solution.ra));
+	REQUIRE(document_value(run, json, "dec", &solution.dec));
+	REQUIRE(document_value(run, json, "angle", &solution.angle));
+	REQUIRE(document_value(run, json, "scale", &solution.scale));
+	REQUIRE(document_value(run, json, "field_width", &solution.width));
+	REQUIRE(document_value(run, json, "field_height", &solution.height));
+	REQUIRE(document_value(run, json, "parity", &parity));
+	REQUIRE(document_value(run, json, "image_width", &image_width));
+	REQUIRE(document_value(run, json, "image_height", &image_height));
+	REQUIRE(document_value(run, json, "matched_stars", &matched));
+	REQUIRE(document_value(run, json, "star_matches", &star_matches));
+	REQUIRE(document_value(run, json, "rms", &rms));
+	REQUIRE(document_value(run, json, "time", &time));
+	double distance = indigo_angular_distance(solution.ra * 15 * DEG_TO_RAD, solution.dec * DEG_TO_RAD, image_ra, image_dec) / ARCSEC_TO_RAD;
+	REQUIRE(distance < 10);
+	REQUIRE(fabs(solution.scale / (IMAGE_SCALE * RAD_TO_DEG) - 1) < 0.003);
+	REQUIRE(fabs(solution.width - IMAGE_WIDTH * solution.scale) < 1e-5);
+	REQUIRE(fabs(solution.height - IMAGE_HEIGHT * solution.scale) < 1e-5);
+	REQUIRE(fabs(solution.angle - IMAGE_ANGLE * RAD_TO_DEG) < 0.3);
+	REQUIRE(parity == -1);
+	REQUIRE(image_width == IMAGE_WIDTH && image_height == IMAGE_HEIGHT);
+	REQUIRE(matched >= 4 && matched <= star_matches);
+	REQUIRE(rms >= 0 && rms < 10);
+	REQUIRE(time >= 0);
+	return true;
+}
+
 // -------------------------------------------------------------------------------- lifecycle
 
 static bool setup(void) {
@@ -330,7 +409,7 @@ static void help_lists_switches_and_defaults(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, work_dir, "-h"));
 	ASSERT_EQ_INT(0, run.exit_code);
-	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--verbose", "--help", "0.2,0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
+	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--format", "text, json or xml", "(default: text)", "--verbose", "--help", "0.2,0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
 	for (unsigned i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
 		ASSERT_TRUE(output_contains(&run, expected[i]));
 	}
@@ -449,6 +528,116 @@ static void depth_hint_and_verbose_progress(void) {
 	ASSERT_TRUE(output_contains(&run, "is not installed"));
 }
 
+// -f json writes the solution as one JSON document on stdout, with the same values as the text output; the progress
+// of -v goes to stderr, so stdout stays a valid document
+static void json_output_of_a_solution(void) {
+	tool_run run, text;
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-v -f json -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_TRUE(document_matches_frame(&run, true));
+	ASSERT_FALSE(strstr(run.output, "Solving with index") != NULL);
+	ASSERT_TRUE(run_tool(&text, empty_dir, "-v --format json -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(0, text.exit_code);
+	ASSERT_TRUE(output_contains(&text, "Solving with index 5° Tycho-2 (FOV 4.5° - 10°)..."));
+	ASSERT_TRUE(run_tool(&text, empty_dir, "-i '%s' -D 1 '%s'", index_dir, raw_path));
+	tool_solution solution;
+	double ra, dec;
+	ASSERT_TRUE(parse_solution(&text, &solution));
+	ASSERT_TRUE(document_value(&run, true, "ra", &ra));
+	ASSERT_TRUE(document_value(&run, true, "dec", &dec));
+	ASSERT_TRUE(fabs(ra - solution.ra) < 1e-6 && fabs(dec - solution.dec) < 1e-6);
+}
+
+// -f xml writes the same values as one XML document on stdout
+static void xml_output_of_a_solution(void) {
+	tool_run run;
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-v -f xml -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_TRUE(document_matches_frame(&run, false));
+	ASSERT_FALSE(strstr(run.output, "Solving with index") != NULL);
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f text -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
+}
+
+// The epoch of a JNow solution is named in the document too
+static void structured_output_names_the_epoch(void) {
+	tool_run run;
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -e 0 -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "\"epoch\": \"JNow\","));
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f xml -e 0 -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "<epoch>JNow</epoch>"));
+}
+
+// An image that is not solved, and a file that can't be read, give a document with the reason and exit code 1
+static void structured_output_when_not_solved(void) {
+	tool_run run;
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -i '%s' '%s'", empty_dir, raw_path));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "\"solved\": false,"));
+	ASSERT_TRUE(output_contains(&run, "\"message\": \"No index files found, download them with the Platesolver Agent or select another index directory\"\n}\n"));
+	ASSERT_FALSE(strstr(run.output, "\"ra\"") != NULL);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-f json -i '%s' '%s'", empty_dir, raw_path));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Not solved: No index files found"));
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f xml -i '%s' '%s'", index_dir, text_path));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "<solved>false</solved>"));
+	ASSERT_TRUE(output_contains(&run, "<message>Unsupported image format"));
+	ASSERT_FALSE(strstr(run.output, "<ra>") != NULL);
+	char missing[PATH_MAX + 16];
+	snprintf(missing, sizeof(missing), "%s/missing.raw", work_dir);
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -i '%s' '%s'", index_dir, missing));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "\"message\": \"Can't read the image file\""));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-f xml -i '%s' '%s'", index_dir, missing));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "can't open"));
+	ASSERT_TRUE(output_contains(&run, "<message>Can&apos;t read the image file</message>"));
+	// the text output keeps its messages on stderr and prints nothing on stdout
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-i '%s' '%s'", empty_dir, raw_path));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_EQ_INT(0, (int)strlen(run.output));
+}
+
+// The file name is escaped for the document
+static void structured_output_escapes_the_file_name(void) {
+	char path[PATH_MAX + 32];
+	snprintf(path, sizeof(path), "%s/frame \"a&b<c>\\.raw", work_dir);
+	ASSERT_TRUE(copy_file(raw_path, path));
+	tool_run run;
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -i '%s' -D 1 '%s'", index_dir, path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "/frame \\\"a&b<c>\\\\.raw\",\n"));
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f xml -i '%s' -D 1 '%s'", index_dir, path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "/frame &quot;a&amp;b&lt;c&gt;\\.raw</file>\n"));
+	unlink(path);
+	// control characters and bytes that are not UTF-8 would make the document invalid, they become '?'; UTF-8 stays
+	snprintf(path, sizeof(path), "%s/frame\x01\x1b\xe9\xc3\xa9.raw", work_dir);
+	ASSERT_TRUE(copy_file(raw_path, path));
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -i '%s' -D 1 '%s'", index_dir, path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "/frame???\xc3\xa9.raw\",\n"));
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f xml -i '%s' -D 1 '%s'", index_dir, path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "/frame???\xc3\xa9.raw</file>\n"));
+	unlink(path);
+}
+
+// An argument error gives no document, only the message on stderr and exit code 2
+static void structured_output_not_given_for_wrong_arguments(void) {
+	tool_run run;
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -x 3 -i '%s' '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(2, run.exit_code);
+	ASSERT_EQ_INT(0, (int)strlen(run.output));
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f xml -R 2 -i '%s' '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(2, run.exit_code);
+	ASSERT_EQ_INT(0, (int)strlen(run.output));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-f json -x 3 -i '%s' '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(2, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "unknown index scale '3'"));
+}
+
 // Without the scale the largest index is searched first, stage by stage: the first stage on every index, then the
 // next stage in the opposite order starting with the index loaded last. Only the 5° index matches the frame; the
 // depth 4 leaves the first stage without quads, so the 0.5° index is searched in the second stage before the 5° one
@@ -521,6 +710,8 @@ static void invalid_arguments_are_refused(void) {
 		{ "-x 3", "unknown index scale '3'" },
 		{ "-R 2", "the search radius needs both the RA and the Dec hint" },
 		{ "-R 2 -r 6", "the search radius needs both the RA and the Dec hint" },
+		{ "-f yaml", "invalid value 'yaml' for '-f'" },
+		{ "--format JSON", "invalid value 'JSON' for '--format'" },
 		{ "-q 1", "unknown option '-q'" },
 	};
 	tool_run run;
@@ -578,6 +769,12 @@ static const indigo_test_case tests[] = {
 	{ "index_selection_and_cpu_limit", index_selection_and_cpu_limit },
 	{ "invalid_arguments_are_refused", invalid_arguments_are_refused },
 	{ "unreadable_and_unsupported_files_fail", unreadable_and_unsupported_files_fail },
+	{ "json_output_of_a_solution", json_output_of_a_solution },
+	{ "xml_output_of_a_solution", xml_output_of_a_solution },
+	{ "structured_output_names_the_epoch", structured_output_names_the_epoch },
+	{ "structured_output_when_not_solved", structured_output_when_not_solved },
+	{ "structured_output_escapes_the_file_name", structured_output_escapes_the_file_name },
+	{ "structured_output_not_given_for_wrong_arguments", structured_output_not_given_for_wrong_arguments },
 };
 
 int main(void) {
