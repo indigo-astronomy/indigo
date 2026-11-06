@@ -45,7 +45,7 @@
 
 typedef enum {
 	MODEL_MEADE,
-	MODEL_ONSTEP, MODEL_10MIC, MODEL_GEMINI, MODEL_STARGO, MODEL_STARGO2, MODEL_AP, MODEL_AGOTINO, MODEL_ZWO, MODEL_NYX, MODEL_OAT, MODEL_TEEN, MODEL_GENERIC, MODEL_ASI, MODEL_ESP32GO, MODEL_CLASSIC
+	MODEL_ONSTEP, MODEL_10MIC, MODEL_GEMINI, MODEL_STARGO, MODEL_STARGO2, MODEL_AP, MODEL_AGOTINO, MODEL_ZWO, MODEL_NYX, MODEL_OAT, MODEL_TEEN, MODEL_GENERIC, MODEL_ASI, MODEL_ESP32GO, MODEL_CLASSIC, MODEL_TOUPTEK
 } simulator_model;
 
 typedef struct {
@@ -104,6 +104,13 @@ typedef struct {
 	// controller: park() returns 1 for !parkSaved and :hP# answers 0 without moving. TeenAstro
 	// 1.5, Park.ino and Command_others.ino.
 	bool teen_no_park_position;
+	// ToupTek SH20 in alt-az mode (Z in :GU#), in its bootloader (:GEM# answers F3), started parked,
+	// and a mount that takes :MP1# but never starts the park. See
+	// indigo_drivers/mount_lx200/PROTOCOL.md, ToupTek SH20.
+	bool touptek_altaz;
+	bool touptek_bootloader;
+	bool touptek_parked;
+	bool touptek_park_stalls;
 	simulator_model model;
 } simulator_options;
 
@@ -164,6 +171,9 @@ typedef struct {
 	bool onstep_time_ready;
 	// Whether a TeenAstro has a park position stored.
 	bool teen_park_saved;
+	// ToupTek SH20: the buzzer volume (0 to 2) and the guide rate (0.10 to 0.90 sidereal).
+	int touptek_buzzer;
+	double touptek_guide_rate;
 } simulator_state;
 
 static simulator_options options = {
@@ -233,14 +243,18 @@ static void usage(const char *name) {
 	printf("  --zwo-parked-no-stop    ZWO AM5: a parked mount reports no N in :GU#, as the hardware does\n");
 	printf("  --onstep-clock-unset    OnStepX restarted without a clock: :GX89# answers 1, no goto or tracking until :SC# and :SL#\n");
 	printf("  --teen-no-park-position TeenAstro with no stored park position: :hP# answers 0 until :hQ#\n");
+	printf("  --touptek-altaz         ToupTek SH20 in alt-az mode: Z in :GU#\n");
+	printf("  --touptek-bootloader    ToupTek SH20 in its bootloader: :GEM# answers F3\n");
+	printf("  --touptek-parked        ToupTek SH20 started parked, tracking at the lunar rate, buzzer low, guide rate 0.3\n");
+	printf("  --touptek-park-stalls   ToupTek SH20 that takes :MP1# but never starts the park\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --tcp                   Serve an opt-in localhost TCP transport\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
 
-static const char *model_names[] = { "meade", "onstep", "10mic", "gemini", "stargo", "stargo2", "ap", "agotino", "zwo", "nyx", "oat", "teen", "generic", "asi", "esp32go", "classic" };
-static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy", "Avalon", "Avalon", "AstroPhysics", "aGotino", "AM5", "NYX-101", "OpenAstroTracker", "TeenAstro", "Classic", "AM5", "esp32go", "" };
+static const char *model_names[] = { "meade", "onstep", "10mic", "gemini", "stargo", "stargo2", "ap", "agotino", "zwo", "nyx", "oat", "teen", "generic", "asi", "esp32go", "classic", "touptek" };
+static const char *products[] = { "Autostar", "On-Step", "10micron", "Losmandy", "Avalon", "Avalon", "AstroPhysics", "aGotino", "AM5", "NYX-101", "OpenAstroTracker", "TeenAstro", "Classic", "AM5", "esp32go", "", "SH20" };
 
 // The aGotino is an Arduino sketch that answers eleven LX200 commands and nothing else. Every
 // other request is read, matched against the few it knows and dropped without a reply, which is
@@ -302,6 +316,14 @@ static bool parse_args(int argc, char *argv[]) {
 			options.onstep_clock_unset = true;
 		} else if (!strcmp(argv[i], "--teen-no-park-position")) {
 			options.teen_no_park_position = true;
+		} else if (!strcmp(argv[i], "--touptek-altaz")) {
+			options.touptek_altaz = true;
+		} else if (!strcmp(argv[i], "--touptek-bootloader")) {
+			options.touptek_bootloader = true;
+		} else if (!strcmp(argv[i], "--touptek-parked")) {
+			options.touptek_parked = true;
+		} else if (!strcmp(argv[i], "--touptek-park-stalls")) {
+			options.touptek_park_stalls = true;
 		} else if (!strcmp(argv[i], "--unaligned")) {
 			options.unaligned = true;
 		} else if (!strcmp(argv[i], "--park-fails")) {
@@ -630,8 +652,8 @@ static char pier_side(void) {
 	if (*state.longitude == '-') {
 		longitude = -longitude;
 	}
-	if (options.model == MODEL_STARGO) {
-		// A StarGO keeps the longitude positive to the east.
+	if (options.model == MODEL_STARGO || options.model == MODEL_TOUPTEK) {
+		// A StarGO and a ToupTek SH20 keep the longitude positive to the east.
 		longitude = -longitude;
 	}
 	double hour_angle = fmod(18.697374558 + 24.06570982441908 * (days + hours / 24.0) - longitude / 15.0 - state.ra_cs / 360000.0, 24.0);
@@ -863,6 +885,124 @@ static void meade_flush_pending_reply(void) {
 	}
 }
 
+// The ToupTek SH20 dialect. It answers the commands its ASCOM server (TMount) and its INDI driver
+// send, in the format TMount reads; everything else falls through to the shared implementation:
+// coordinates, targets, manual motion, guiding and the date. Answers true when the command was
+// handled here. See indigo_drivers/mount_lx200/PROTOCOL.md, ToupTek SH20.
+static bool touptek_dispatch(const char *command) {
+	char response[64];
+	if (!strcmp(command, "GVP")) {
+		write_response("SH20#");
+	} else if (!strcmp(command, "GV")) {
+		write_response("1.0.3#");
+	} else if (!strcmp(command, "GEM")) {
+		write_response(options.touptek_bootloader ? "F3#" : "SH#");
+	} else if (!strcmp(command, "GU")) {
+		// G or Z, n not tracking, N not slewing (a park or a home slew is a slew), H at home.
+		snprintf(response, sizeof(response), "%c%s%s%s#", options.touptek_altaz ? 'Z' : 'G', state.tracking ? "" : "n", state.slewing ? "" : "N", state.at_home && !state.slewing ? "H" : "");
+		write_response(response);
+	} else if (!strcmp(command, "GTS")) {
+		write_response(state.tracking ? "1#" : "0#");
+	} else if (!strcmp(command, "GPS")) {
+		write_response(state.parked ? "2#" : parking_requested ? "1#" : "0#");
+	} else if (!strcmp(command, "Gm")) {
+		// 0 east, 1 west, as the ASCOM server reads the reply as an integer.
+		write_response(pier_side() == 'E' ? "0#" : "1#");
+	} else if (!strcmp(command, "GT")) {
+		write_response(state.tracking_rate == 'L' ? "1#" : state.tracking_rate == 'S' ? "2#" : "0#");
+	} else if (strlen(command) == 2 && command[0] == 'R' && command[1] >= '0' && command[1] <= '9') {
+		state.slew_rate = command[1] <= '1' ? 'G' : command[1] <= '4' ? 'C' : command[1] <= '7' ? 'M' : 'S';
+	} else if (!strncmp(command, "Sgr", 3)) {
+		double rate = atof(command + 3);
+		if (rate >= 0.1 && rate <= 0.9) {
+			state.touptek_guide_rate = rate;
+		}
+	} else if (!strcmp(command, "Ggr")) {
+		// 0.n# with one decimal, which is what the ASCOM server takes.
+		snprintf(response, sizeof(response), "%.1f#", state.touptek_guide_rate);
+		write_response(response);
+	} else if (!strncmp(command, "SBz", 3) && command[3] >= '0' && command[3] <= '2' && command[4] == 0) {
+		state.touptek_buzzer = command[3] - '0';
+		write_response("1");
+	} else if (!strcmp(command, "GBz")) {
+		snprintf(response, sizeof(response), "%d#", state.touptek_buzzer);
+		write_response(response);
+	} else if (!strcmp(command, "GTa")) {
+		snprintf(response, sizeof(response), "%c%c%+03d#", state.meridian_flip ? '1' : '0', state.meridian_track ? '1' : '0', state.meridian_limit);
+		write_response(response);
+	} else if (!strncmp(command, "STa", 3)) {
+		int limit = atoi(command + 5);
+		if (strlen(command) != 8 || (command[5] != '+' && command[5] != '-') || limit < -15 || limit > 15) {
+			write_response("e1#");
+		} else {
+			state.meridian_flip = command[3] == '1';
+			state.meridian_track = command[4] == '1';
+			state.meridian_limit = limit;
+			write_response("1");
+		}
+	} else if (!strcmp(command, "MH")) {
+		start_reference_motion(false);
+	} else if (!strcmp(command, "MFH")) {
+		// The search runs the axes onto the home sensors, so the mount moves even when it starts at
+		// home: the declination axis swings a degree away and comes back in about two seconds.
+		start_reference_motion(false);
+		serial_motion_sync(&dec_motion, 324000 - 3600);
+		serial_motion_start(&dec_motion, 324000, 1800);
+	} else if (!strcmp(command, "MP1")) {
+		if (!options.touptek_park_stalls) {
+			start_reference_motion(true);
+		}
+	} else if (!strcmp(command, "MP0")) {
+		state.parked = false;
+		parking_requested = false;
+	} else if (!strcmp(command, "SPc")) {
+		park_ra = state.ra_cs;
+		park_dec = state.dec_as;
+		write_response("1");
+	} else if (!strncmp(command, "SG", 2)) {
+		// The standard sign: :SG+02:00# is UTC+2. The state keeps the Meade sign the shared clock code uses.
+		state.time_offset = -atoi(command + 2);
+		state.offset_set = true;
+		write_response("1");
+	} else if (!strcmp(command, "GG")) {
+		snprintf(response, sizeof(response), "%+03d:00#", -state.time_offset);
+		write_response(response);
+	} else if (!strncmp(command, "Sg", 2) || !strncmp(command, "St", 2)) {
+		// :SgsDDD*MM:SS.000# and :StsDD*MM:SS.000#, signed, the longitude positive to the east.
+		char *field = command[1] == 'g' ? state.longitude : state.latitude;
+		const char *value = command + 2;
+		size_t length = strlen(value);
+		if ((value[0] != '+' && value[0] != '-') || length < 4 || length >= sizeof(state.longitude)) {
+			write_response("0");
+			return true;
+		}
+		memcpy(field, value, length + 1);
+		char *fraction = strchr(field, '.');
+		if (fraction != NULL) {
+			*fraction = 0;
+		}
+		write_response("1");
+	} else if (!strcmp(command, "Gg") || !strcmp(command, "Gt")) {
+		snprintf(response, sizeof(response), "%s#", command[1] == 'g' ? state.longitude : state.latitude);
+		write_response(response);
+	} else if (!strcmp(command, "MS")) {
+		serial_motion_start(&ra_motion, state.target_ra_cs, 1800000);
+		serial_motion_start(&dec_motion, state.target_dec_as, 162000);
+		state.at_home = false;
+		state.slewing = true;
+		state.tracking = true;
+		state.parked = false;
+		write_response("0#");
+	} else if (!strcmp(command, "CM")) {
+		serial_motion_sync(&ra_motion, state.target_ra_cs);
+		serial_motion_sync(&dec_motion, state.target_dec_as);
+		write_response("N/A#");
+	} else {
+		return false;
+	}
+	return true;
+}
+
 static void handle_command(const char *command) {
 	char response[128] = { 0 };
 	update_motion();
@@ -907,6 +1047,9 @@ static void handle_command(const char *command) {
 		fprintf(stderr, "-> :%s#\n", command);
 	}
 	if (options.model == MODEL_AP && ap_dispatch(command)) {
+		return;
+	}
+	if (options.model == MODEL_TOUPTEK && touptek_dispatch(command)) {
 		return;
 	}
 	if (!strncmp(command, "192", 3)) {
@@ -1617,11 +1760,34 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	signal(SIGPIPE, SIG_IGN);
-	if (model_is_zwo()) {
+	if (model_is_zwo() || options.model == MODEL_TOUPTEK) {
 		// The default park position of an AM is away from home, pointing horizontally to the
 		// west. The simulator keeps it on the equator, six hours from the home right ascension.
 		park_ra = 2160000;
 		park_dec = 0;
+	}
+	if (options.model == MODEL_TOUPTEK) {
+		// The site with the longitude positive to the east and the offset of UTC+2; the defaults
+		// of the other profiles carry the west positive longitude and the Meade sign.
+		strcpy(state.longitude, "+017*06:00");
+		strcpy(state.latitude, "+48*08:00");
+		state.time_offset = -2;
+		state.touptek_guide_rate = 0.5;
+		state.meridian_flip = false;
+		if (options.touptek_parked) {
+			// A mount that was parked and switched off: it stands at the park position, with the
+			// settings the last session left it with.
+			state.parked = true;
+			state.at_home = false;
+			state.ra_cs = 2160000;
+			state.dec_as = 0;
+			state.tracking_rate = 'L';
+			state.touptek_buzzer = 1;
+			state.touptek_guide_rate = 0.3;
+			state.meridian_flip = true;
+			state.meridian_track = true;
+			state.meridian_limit = 5;
+		}
 	}
 	serial_motion_sync(&ra_motion, state.ra_cs);
 	serial_motion_sync(&dec_motion, state.dec_as);

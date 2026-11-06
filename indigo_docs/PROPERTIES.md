@@ -1429,7 +1429,7 @@ Source: `indigo_drivers/mount_ioptron/indigo_mount_ioptron.c`.
 
 ### mount_lx200
 
-Custom properties: `X_ALTITUDE_LIMITS`, `X_AP_PARK_POSITION`, `X_AP_SYNC_MODE`, `X_GEMINI_PARK_POSITION`, `X_GEMINI_STARTUP`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`, `X_ZWO_MAX_SLEW_SPEED`, `X_ZWO_MERIDIAN`, `X_ZWO_MERIDIAN_LIMIT`.
+Custom properties: `X_ALTITUDE_LIMITS`, `X_AP_PARK_POSITION`, `X_AP_SYNC_MODE`, `X_GEMINI_PARK_POSITION`, `X_GEMINI_STARTUP`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_TOUPTEK_BUZZER`, `X_TOUPTEK_MERIDIAN`, `X_TOUPTEK_MERIDIAN_LIMIT`, `X_ZWO_BUZZER`, `X_ZWO_MAX_SLEW_SPEED`, `X_ZWO_MERIDIAN`, `X_ZWO_MERIDIAN_LIMIT`.
 
 Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `GUIDER_RATE`, `MOUNT_ALIGNMENT_RESET`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
 
@@ -1448,6 +1448,8 @@ On a Gemini, `MOUNT_GUIDE_RATE` and the guider's `GUIDER_RATE` show and set the 
 `X_ZWO_MERIDIAN` (ZWO AM, firmware 1.2.4 and later) sets what the mount does at the meridian: `AUTO_FLIP_AT_LIMIT` flips automatically at the limit, `TRACK_PASSED_MERIDIAN` keeps tracking past the meridian up to the limit. `X_ZWO_MERIDIAN_LIMIT.LIMIT` is that limit in degrees past the meridian (−15 to 15, negative before it). Both are read from the mount at connect.
 
 `X_ZWO_MAX_SLEW_SPEED` (ZWO AM) chooses the highest slew speed: `LOW` 720 times and `HIGH` 1440 times the sidereal rate.
+
+`X_MOUNT_TYPE.TOUPTEK` selects the ToupTek SH20, which autodetection recognises from its `:GVP#` product name. `X_MOUNT_MODE` shows its equatorial or alt-az mode, read only because a change needs a restart of the mount. `MOUNT_HOME` has three items: `HOME` slews to the home position, `SEARCH` searches for it with the home sensors, `AWAY` is the status alone. `MOUNT_PARK` shows the park state the mount reports. `X_TOUPTEK_BUZZER` sets the buzzer volume, `OFF`, `LOW` or `HIGH`. `X_TOUPTEK_MERIDIAN` and `X_TOUPTEK_MERIDIAN_LIMIT` (equatorial mode only) have the items and meaning of `X_ZWO_MERIDIAN` and `X_ZWO_MERIDIAN_LIMIT`. All three are read from the mount at connect.
 
 On a ZWO AM with firmware 1.2.4 and later, `MOUNT_ALIGNMENT_RESET` also clears the multi-star calibration of the mount with `:NSC#`. From firmware 1.1.1 the driver reads why tracking stopped and sends it as a message, for example when the mount reaches the meridian limit without an automatic flip.
 

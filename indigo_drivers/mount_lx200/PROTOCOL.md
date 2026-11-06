@@ -16,6 +16,9 @@ function section has one table per group, in this order:
 
 A function none of the five dialects of a group has is left out of that group's table.
 
+The sixteenth dialect, the ToupTek SH20, is described in a section of its own,
+[ToupTek SH20](#touptek-sh20), with one table for all its functions.
+
 ## Legend
 
 | Mark | Meaning |
@@ -56,6 +59,12 @@ as `:SgDDD*MM#` (0 to 359, positive to the west) unless the cell says otherwise.
 * `TeenAstro Command Index.webloc`: TeenAstro LX200 command list.
 * `aGotino Command Index.webloc`: the LX200 command parser of the aGotino sketch.
 * Avalon Instruments StarGO user manual, version 4.1.4.
+* ToupTek SH20: no protocol document is published. The INDI driver ToupTek contributed
+  (`drivers/telescope/toup_sh20.cpp`, INDI commit `64096c8d107f9fa9792860df74556a1b29b2176d`), the
+  ToupTek ASCOM server TMount from `ToupTekASCOMSetup.exe` (download list of 2026-09-16, SHA-256
+  `a7489d850e17a44e077d8229dd460a122c018334cc5a17700ea143c3ee687642`), read statically for
+  interoperability, and the ATLAS SH20 user manual (`ATLAS_SH20_en.pdf`). Where the INDI driver and
+  TMount disagree, the table follows TMount.
 * `indigo_mount_lx200.driver` (driver source) and the archived refactoring notes `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md`: what the driver
   sends, and the replies recorded from the controllers the driver was run against. StarGO2 and
   ESP32Go have no protocol document here and are described from these alone.
@@ -79,6 +88,7 @@ as `:SgDDD*MM#` (0 to 359, positive to the west) unless the cell says otherwise.
 | OpenAstroTracker | 19200 8N1 | — | |
 | ESP32Go | 115200 8N1 | TCP 10001 | About 12 s after a reset before it answers. |
 | Generic | serial | TCP 4030 (driver default) | |
+| ToupTek SH20 | 115200 8N1 (USB-C, CDC) | TCP 8080 at the hand controller, `192.168.4.1` in access point mode | Bluetooth LE as well, not used by the driver. |
 
 On a serial port the driver probes with `:GR#` ✓ (a reply of at least 6 characters counts) and
 cycles through 9600, 19200 and 115200 baud. Over TCP it sends `:GR#` ✓ every 5 s as a keep-alive
@@ -628,6 +638,42 @@ are used by the driver.
 | 43610, 43611, 43690, 43691 | — | command | Load / store configuration, reset to defaults |
 | 65533 … 65535 | — | command | Reboot (65533 with a cold start) |
 
+## ToupTek SH20
+
+The SH20 dialect derives from the ZWO AM one and differs from it in a number of commands. Every
+command starts with `:` and ends with `#`. A one-character reply such as `1` may come with or
+without `#`; the driver reads the first character and discards the rest before the next command.
+An error is `e` with the code and `#`, `e1#` to `e13#`; the driver passes the code to the client.
+✓ marks the commands the driver sends.
+
+| Function | Command → reply | Notes |
+| --- | --- | --- |
+| Product, firmware | `:GVP#` ✓ → `SH20#`, `:GV#` ✓ → version | The product name is inferred from the `SH20_VERSION` label TMount builds from it. Autodetected from `SH` and a digit. |
+| Bootloader check | `:GEM#` ✓ → contains `F3` or `Updating` in the bootloader | The driver refuses the connection then. Firmware updates (`:Update#`, `:Update01#`, `:Update02#`) are never sent. |
+| Hand controller | `:GMVP#`, `:GMV#` | Model and firmware of the hand controller, over Wi-Fi only. |
+| Coordinates | `:GR#` ✓ → `HH:MM:SS#`, `:GD#` ✓ → `sDD*MM:SS#` | |
+| Target | `:SrHH:MM:SS#` ✓ → `1`, `:SdsDD*MM:SS#` ✓ → `1` or `e2#` | |
+| Goto | `:MS#` ✓ → `0#` or `e…#` | `0#` is success, as TMount reads it; the INDI driver reads `1` as success. |
+| Sync | `:CM#` ✓ → `N/A#` or `e…#` | |
+| Stop | `:Q#` ✓, `:Qn#` `:Qs#` `:Qe#` `:Qw#` ✓ → ∅ | |
+| Move | `:Mn#` `:Ms#` `:Me#` `:Mw#` ✓ → ∅ | |
+| Rate | `:Rn#` → ∅, n 0 … 9: 0.25x, 0.5x, 1x, 2x, 4x, 8x, 20x, 60x, 720x, 1440x | The driver sends `:R1#`, `:R4#`, `:R7#`, `:R9#` ✓ as for the ZWO AM. |
+| Tracking | `:Te#` ✓ / `:Td#` ✓ → `1`; `:GTS#` ✓ → `1#` / `0#` | |
+| Tracking rate | `:TQ#` ✓ sidereal, `:TL#` ✓ lunar, `:TS#` ✓ solar → ∅; `:GT#` ✓ → `0#` / `1#` / `2#` | ASCII digits; the INDI driver reads them as binary. |
+| Guiding | `:MgnDDDD#` `:MgsDDDD#` `:MgeDDDD#` `:MgwDDDD#` ✓ → ∅ | 0 to 3000 ms. |
+| Guide rate | `:Sgr0.nn#` ✓ → ∅; `:Ggr#` ✓ → `0.n#` | 0.10 … 0.90, one rate for both axes. The ZWO AM uses `:Rg`. |
+| Park | `:MP1#` ✓ park, `:MP0#` ✓ unpark → ∅; `:GPS#` ✓ → `0#` not parked, `1#` parking, `2#` parked, `e…#` | |
+| Park position | `:SPc#` ✓ → `1` | Stores the current position. |
+| Home | `:MH#` ✓ goto home, `:MFH#` ✓ search the home position → ∅; `:SH#` set home | Both end at `H` in `:GU#`. |
+| Status | `:GU#` ✓ → `G` or `Z` (equatorial or alt-az), `n` not tracking, `N` not slewing, `H` at home, more flags | TMount reads a missing `N` as a slew. |
+| Side of pier | `:Gm#` ✓ → `0#` east, `1#` west | Equatorial mode only. |
+| Mode | `:AP#` equatorial, `:AA#` alt-az | Takes effect after a restart of the mount. The driver shows the mode and does not set it. |
+| Meridian | `:STaFTsLL#` ✓ → `1`; `:GTa#` ✓ → `FTsLL#` | F flip at the limit, T track past the meridian, sLL the limit −15 … +15°. As on the ZWO AM. |
+| Buzzer | `:SBzn#` ✓ → `1`; `:GBz#` ✓ → `n#` | 0 off, 1 low, 2 high. The ZWO AM uses `:SBu`/`:GBu#`. |
+| Site | `:StsDD*MM:SS.000#` ✓, `:SgsDDD*MM:SS.000#` ✓ → `1`; `:Gt#` ✓, `:Gg#` ✓ | Longitude signed, positive to the east, −180 … +180. |
+| Time | `:SGsHH:MM#` ✓, `:SCMM/DD/YY#` ✓, `:SLHH:MM:SS#` ✓ → `1`; `:GG#` ✓, `:GC#` ✓, `:GL#` ✓ | The UTC offset has the standard sign (UTC+1 is `:SG+01:00#`), the opposite of Meade. The driver sends the offset first. |
+| Other | `:Sh`/`:Gh#`, `:So`/`:Go#`, `:SRl`/`:GRl#`, `:Rv`, `:TC`, `:NSC#`, `:GS#`, `:GZ#`, `:GA#`, `:Gr#`, `:Gd#`, wireless setup (`:GMINF#`, `:SMINF`, `:GBTN#`, `:SBTN`, `:RBTFN#`, `:EBINF`) | Present in TMount, meaning not established; not sent by the driver. |
+
 ## Commands whose meaning depends on the dialect
 
 The same letters mean different things on different controllers. The driver keeps them apart by
@@ -638,11 +684,11 @@ dialect; a client that talks to a mount directly has to do the same.
 | `:Ga#` | 12-hour local time (Meade, OnStep, NYX, TeenAstro, OAT); target altitude (10micron) |
 | `:GH#` | Daylight saving flag (Autostar II, ZWO); hour angle (Gemini) |
 | `:Gh#` / `:Go#` | High and low altitude limits (Meade, 10micron); horizon and overhead limits (OnStep, NYX); `:Gh#` is "has homed" on ZWO |
-| `:Gm#` | Distance to the meridian (Meade Max); side of pier (Gemini, OnStep, NYX, ZWO, TeenAstro) |
+| `:Gm#` | Distance to the meridian (Meade Max); side of pier (Gemini, OnStep, NYX, ZWO, TeenAstro), as `0`/`1` on the ToupTek SH20 |
 | `:Gv#` | Velocity (Gemini); site elevation (OnStepX, NYX) |
 | `:GW#` | Alignment status (Autostar); RA velocity (Gemini L5); four-character status (OnStepX); axis mode `PT0`/`AT0` (StarGO) |
 | `:GX9E#` | Compass heading (NYX); dew point (OnStepX) |
-| `:SB…#` | Serial speed (Meade, 10micron, OnStep, NYX); LED brightness (Gemini); `:SBu…#` buzzer (ZWO) |
+| `:SB…#` | Serial speed (Meade, 10micron, OnStep, NYX); LED brightness (Gemini); `:SBu…#` buzzer (ZWO); `:SBz…#` buzzer (ToupTek SH20) |
 | `:hC#` | Park at the startup position (Gemini); calibrate home (Autostar II); goto home (OnStep, NYX, ZWO, TeenAstro) |
 | `:hF#` | Home search and align (Classic, Autostar, 10micron); goto home while tracking (OAT); reset the mount at home (OnStep, NYX); sync at home (TeenAstro) |
 | `:hS#` | Home search saving the position (Classic); set park position (Autostar II); seek home and store (10micron); set home (ESP32Go) |

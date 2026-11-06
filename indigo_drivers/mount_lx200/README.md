@@ -13,6 +13,7 @@
 * TeenAstro controllers (https://groups.io/g/TeenAstro)
 * aGotino controllers (https://github.com/mappite/aGotino)
 * ESP32Go controllers (https://github.com/masutokw/esp32go)
+* ToupTek SH20 mount (ToupTek dialect)
 
 Connection over serial port or network.
 
@@ -36,9 +37,11 @@ A non-standard switch properties "Alignment mode" and "Mount type" are provided 
 
 Astro-Physics mount can't be detected automatically, use Mount type property om nount device to select it first.
 
-Use URL in form lx200://host:port to connect to the mount over network (default port is 4030, 9999 for NYX-101). An ESP32Go serves LX200 on port 10001, so its port has to be given explicitly.
+Use URL in form lx200://host:port to connect to the mount over network (default port is 4030, 9999 for NYX-101, 8080 for ToupTek SH20). An ESP32Go serves LX200 on port 10001, so its port has to be given explicitly.
 
 An ESP32Go has no command that stops tracking and none that releases a mount sent to its home position, so this driver offers neither a tracking switch nor a park control for it. Its home control sends the mount to the home position and its "set home" stores the position the mount stands on. Over a serial port the controller answers at 115200 baud, and it needs about twelve seconds after a reset before it replies.
+
+The ToupTek SH20 is detected automatically as the ToupTek dialect. Over a serial port it answers at 115200 baud, and over Wi-Fi its hand controller is reached at lx200://192.168.4.1. Its home control has an additional "Search" item that finds the home position with the home sensors.
 
 ## Status: Stable
 
@@ -48,6 +51,7 @@ Driver is developed and tested with:
 * ZWO AM5
 * Pegasus NYX-101
 * ESP32Go
+* MLAstro SAL33 (OnStep)
 * Simulators
 
 ## Testing
@@ -60,7 +64,6 @@ Driver is developed and tested with:
 - 2026-09-23 20:26 3.0.0.65 mac arm64 MountSim 2.3 (LX200Classic) 15/15 OK
 - 2026-09-24 23:20 3.0.0.65 mac arm64 Pegasus NYX-101 35/35 OK
 - 2026-09-24 23:26 3.0.0.65 mac arm64 Pegasus NYX-101 (WiFi) 35/35 OK
-- 2026-09-27 02:25 3.0.0.69 linux x64 simulator 103/103 OK
 - 2026-10-01 22:47 3.0.0.69 linux x64 On-Step 35/35 OK
 - 2026-10-06 23:50 3.0.0.77 linux arm64 NYX-101 35/35 OK
 - 2026-10-06 23:58 3.0.0.77 linux arm64 esp32go 35/35 OK
@@ -70,3 +73,4 @@ Driver is developed and tested with:
 - 2026-10-07 02:01 3.0.0.80 linux arm64 simulator 150/150 OK
 - 2026-10-07 02:19 3.0.0.80 linux arm64 aGotino 35/35 OK
 - 2026-10-15 02:39 3.0.0.81 mac arm64 simulator 150/150 OK
+- 2026-11-06 08:43 3.0.0.83 linux x64 simulator 163/163 OK

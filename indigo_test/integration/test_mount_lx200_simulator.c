@@ -460,7 +460,8 @@ static const lx_profile profiles[] = {
 	{ "oat", "OAT", "OpenAstroTech", "RG", "MT1", true, true, false, true, false, 3 },
 	{ "teen", "TEEN_ASTRO", "TeenAstro", "RG", "Te", true, true, true, true, false, 3 },
 	{ "generic", "GENERIC", "Generic", "RG", NULL, false, true, false, false, true, 1 },
-	{ "esp32go", "ESP32GO", "ESP32Go", "RG", NULL, false, true, true, false, false, 3 }
+	{ "esp32go", "ESP32GO", "ESP32Go", "RG", NULL, false, true, true, false, false, 3 },
+	{ "touptek", "TOUPTEK", "ToupTek", "R1", "Te", true, true, true, true, true, 3 }
 };
 
 static void check_profile(int index) {
@@ -3154,7 +3155,7 @@ static void check_home_profile(int index) {
 	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(profile->model, "stargo") ? "X361" : "hC", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, !strcmp(profile->model, "stargo") ? "X361" : !strcmp(profile->model, "touptek") ? "MH" : "hC", 0));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
@@ -3188,11 +3189,11 @@ static void check_park_profile(int index) {
 	SERIAL_CHECK_TRUE(start_profile(&simulator, profile->model, profile->type));
 	online = true;
 	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
-	SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "KA" : index == 3 ? "hC" : index == 4 ? "X362" : "hP", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "KA" : index == 3 ? "hC" : index == 4 ? "X362" : index == 14 ? "MP1" : "hP", 0));
 	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
 	if (index != 0 && index != 10) {
 		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
-		SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "PO" : index == 3 ? "hW" : index == 4 ? "X370" : index == 8 ? "Spu" : "hR", 0));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, index == 2 || index == 6 ? "PO" : index == 3 ? "hW" : index == 4 ? "X370" : index == 8 ? "Spu" : index == 14 ? "MP0" : "hR", 0));
 	}
 cleanup:
 	if (online) { stop_serial_driver(&lx200_mount); }
@@ -3448,7 +3449,8 @@ static void lx200_driver_metadata_and_base_properties(void) {
 	const char *base[] = { INFO_PROPERTY_NAME, CONFIG_PROPERTY_NAME, PROFILE_PROPERTY_NAME, PROFILE_NAME_PROPERTY_NAME, CONNECTION_PROPERTY_NAME, DEVICE_PORT_PROPERTY_NAME, DEVICE_BAUDRATE_PROPERTY_NAME, MOUNT_TYPE_PROPERTY_NAME };
 	assert_defined_properties(base, ARRAY_SIZE(base));
 	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
-	SERIAL_CHECK_EQ_INT(16, find_cached_property(MOUNT_TYPE_PROPERTY_NAME)->count);
+	// Fifteen dialects, DETECT and, since driver version 0x53, TOUPTEK.
+	SERIAL_CHECK_EQ_INT(17, find_cached_property(MOUNT_TYPE_PROPERTY_NAME)->count);
 	for (int i = 0; i < ARRAY_SIZE(profiles); i++) {
 		assert_property_has_item(MOUNT_TYPE_PROPERTY_NAME, profiles[i].type);
 	}
@@ -4770,6 +4772,462 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+// ToupTek SH20. The dialect follows the INDI driver ToupTek contributed and the ASCOM server of the
+// mount, see indigo_drivers/mount_lx200/PROTOCOL.md, ToupTek SH20.
+
+static bool start_touptek(external_serial_simulator *simulator, const char **options) {
+	const char *arguments[10] = { "--model", "touptek" };
+	int count = 2;
+	for (int i = 0; options != NULL && options[i] != NULL && count < 9; i++) {
+		arguments[count++] = options[i];
+	}
+	arguments[count] = NULL;
+	if (!start_external_serial_simulator_with_args(simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments) || !bring_up_serial_driver(&lx200_mount)) {
+		return false;
+	}
+	enumerate_simulator_device();
+	if (connect_serial_device(&lx200_mount, simulator->port)) {
+		return true;
+	}
+	wait_for_property_not_busy(CONNECTION_PROPERTY_NAME);
+	disconnect_serial_device(&lx200_mount);
+	tear_down_serial_driver(&lx200_mount);
+	return false;
+}
+
+static void lx200_touptek_profile(void) {
+	check_profile(14);
+}
+
+static void lx200_home_touptek(void) {
+	check_home_profile(14);
+}
+
+static void lx200_park_touptek(void) {
+	check_park_profile(14);
+}
+
+// A mount that was parked and switched off with the lunar rate, the low buzzer, a guide rate of 0.3
+// and its meridian settings: connect publishes all of it from the mount, identifies the SH20 from
+// :GVP#, and sends no command of another dialect.
+static void lx200_touptek_connect_publishes_the_device_state(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--touptek-parked", NULL };
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, options));
+	online = true;
+	assert_switch_item_value(MOUNT_TYPE_PROPERTY_NAME, "TOUPTEK", true);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_VENDOR_ITEM_NAME)->text.value, "ToupTek"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_MODEL_ITEM_NAME)->text.value, "SH20"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(MOUNT_INFO_PROPERTY_NAME, MOUNT_INFO_FIRMWARE_ITEM_NAME)->text.value, "1.0.3"));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	assert_switch_item_value(MOUNT_MODE_PROPERTY_NAME, "EQUATORIAL", true);
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true);
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "LOW", true);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 30) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 30) < 0.001);
+	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP_AT_LIMIT"));
+	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "TRACK_PASSED_MERIDIAN"));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") - 5) < 0.001);
+	SERIAL_CHECK_EQ_INT(3, find_cached_property(MOUNT_HOME_PROPERTY_NAME)->count);
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_PARK_SET_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	// The site the mount keeps, with the longitude positive to the east.
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) - (48 + 8 / 60.0)) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - (17 + 6 / 60.0)) < 0.001);
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "GEM", NULL));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GPS", NULL) > 0);
+	SERIAL_CHECK_TRUE(event_count(&simulator, "GTS", NULL) > 0);
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	static const char *foreign[] = { "GVN", "GVF", "GW", "U", "P", "Gps", "Spu", "hP", "hC", "GAT", "GBu", "GRl", "GH", "Rg0.3", "D", "GXI" };
+	for (int i = 0; i < ARRAY_SIZE(foreign); i++) {
+		if (event_count(&simulator, foreign[i], NULL) != 0) {
+			fprintf(stderr, "Unexpected command %s for the ToupTek SH20\n", foreign[i]);
+		}
+		SERIAL_CHECK_EQ_INT(0, event_count(&simulator, foreign[i], NULL));
+	}
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// :MS# answers 0# to a goto it takes and e with the code otherwise, a target the mount refuses
+// stops the request before the goto, and :CM# answers N/A# or an error.
+static void lx200_touptek_goto_sync_and_refusals(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sr07:00:00", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sd+20*00:00", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 7, 0.001));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, 20, 0.001));
+	// A refused goto ends ALERT with the code, and the next one is taken.
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MS", "e5#"));
+	SERIAL_CHECK_TRUE(lx_coordinates(9, 10, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "error e5") != NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(9, 10, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	// A declination the mount refuses ends the request before :MS#.
+	int slews = event_count(&simulator, "MS", NULL);
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Sd+30*00:00", "e2#"));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 30, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "error e2") != NULL);
+	SERIAL_CHECK_EQ_INT(slews, settled_event_count(&simulator, "MS"));
+	// Sync: N/A# is taken, e and the code is refused.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true, INDIGO_OK_STATE));
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "CM", "e9#"));
+	SERIAL_CHECK_TRUE(lx_coordinates(10, 15, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "error e9") != NULL);
+	SERIAL_CHECK_TRUE(lx_coordinates(10, 15, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(slews, settled_event_count(&simulator, "MS"));
+	SERIAL_CHECK_TRUE(wait_for_number_item_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, 10, 0.001));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The guide rate goes out as :Sgr0.nn# and comes back from :Ggr#, the buzzer as :SBzn# with :GBz#,
+// the meridian behaviour as :STa with :GTa#, tracking as :Te#/:Td# with :GTS#, and the settings
+// survive a reconnect.
+static void lx200_touptek_rates_buzzer_and_meridian(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 70, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sgr0.70", 0));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME) - 70) < 0.001);
+	const char *items[] = { "OFF", "HIGH", "LOW" };
+	const char *commands[] = { "SBz0", "SBz2", "SBz1" };
+	for (int i = 0; i < 3; i++) {
+		SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_BUZZER", items[i], true, INDIGO_OK_STATE));
+		SERIAL_CHECK_TRUE(wait_event(&simulator, commands[i], 0));
+	}
+	// A volume the mount refuses ends ALERT and shows the volume it kept.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SBz0", "e1#"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_BUZZER", "OFF", true, INDIGO_ALERT_STATE));
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "LOW", true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_MERIDIAN", "TRACK_PASSED_MERIDIAN", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa01+00", 0));
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, "X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT", -7, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa01-07", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, "X_TOUPTEK_MERIDIAN", "AUTO_FLIP_AT_LIMIT", true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "STa11-07", 0));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Te", 0));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	// A tracking switch the mount refuses ends ALERT and shows the tracking the mount has.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Td", "0"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	assert_switch_item_value(MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "TS", 0));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true);
+	assert_switch_item_value("X_TOUPTEK_BUZZER", "LOW", true);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME) - 70) < 0.001);
+	SERIAL_CHECK_TRUE(cached_switch_value("X_TOUPTEK_MERIDIAN", "AUTO_FLIP_AT_LIMIT"));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value("X_TOUPTEK_MERIDIAN_LIMIT", "LIMIT") + 7) < 0.001);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// :MP1# parks without a reply and :GPS# tells the park is done; the park survives a reconnect,
+// refuses motion, and :MP0# releases it without moving the mount. :SPc# stores the park position.
+static void lx200_touptek_park_unpark_and_park_position(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MP1", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	// The park position is on the equator.
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) < 1);
+	int motions = motion_command_count(&simulator);
+	SERIAL_CHECK_TRUE(lx_coordinates(7, 15, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_EQ_INT(motions, motion_command_count(&simulator));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, settled_event_count(&simulator, "MP0"));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(motions, motion_command_count(&simulator));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "SPc", NULL));
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SPc", "e4#"));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_SET_PROPERTY_NAME, MOUNT_PARK_SET_CURRENT_ITEM_NAME, true, INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "error e4") != NULL || strstr(lx_last_message, "park position failed") != NULL);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A mount that takes :MP1# and never starts the park: the request ends ALERT instead of staying
+// busy, the mount is shown unparked, and an abort before that clears the pending park.
+static void lx200_touptek_park_that_never_starts_ends_alert(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *options[] = { "--touptek-park-stalls", NULL };
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, options));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MP1", 0));
+	*lx_last_message = 0;
+	unsigned int revision = property_revision(MOUNT_PARK_PROPERTY_NAME);
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_PARK_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "did not start") != NULL);
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	// Aborted while busy, the park is over at once and nothing latches later.
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_PARK_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(event_count(&simulator, "Q", NULL) > 0);
+	indigo_usleep(6000000);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_PARK_PROPERTY_NAME)->state == INDIGO_OK_STATE);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// HOME slews to the home position with :MH#, SEARCH looks for it with :MFH#; both end at H in :GU#.
+// An abort ends a running one with the mount away from home.
+static void lx200_touptek_home_and_home_search(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(lx_number(&lx200_mount, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_EPOCH_ITEM_NAME, 2000, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MH", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
+	// The search is also taken at home. The mount reports H before it starts to move, so the search
+	// may end only after it was seen moving, which takes the simulated search about two seconds.
+	double search_started = indigo_monotonic_time();
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_SEARCH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MFH", 0));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(indigo_monotonic_time() - search_started > 1.5);
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "MH", NULL));
+	// Away again, a running home search is aborted.
+	SERIAL_CHECK_TRUE(lx_coordinates(8, 20, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_SEARCH_ITEM_NAME, true, INDIGO_BUSY_STATE));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "MFH", 1));
+	SERIAL_CHECK_TRUE(lx_switch(&lx200_mount, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_property_state(MOUNT_HOME_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	assert_switch_item_value(MOUNT_HOME_PROPERTY_NAME, MOUNT_AWAY_ITEM_NAME, true);
+	// A home slew the mount never starts ends ALERT instead of staying busy.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "MH", "DROP"));
+	*lx_last_message = 0;
+	unsigned int revision = property_revision(MOUNT_HOME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, lx200_mount.device_name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(MOUNT_HOME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "did not start") != NULL);
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The site goes out to the second with the longitude positive to the east, -180 .. +180, and the
+// UTC offset with the standard sign before the date and the time; both read back after a reconnect.
+static void lx200_touptek_site_and_time_signs(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	const char *site_items[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME };
+	double east[] = { 48.5, 17.25 };
+	unsigned int revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 2, site_items, east));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "St+48*30:00.000", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sg+017*15:00.000", 0));
+	double west[] = { -33.75, 340 };
+	revision = property_revision(GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property(&simulator_test_client, lx200_mount.device_name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 2, site_items, west));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "St-33*45:00.000", 0));
+	SERIAL_CHECK_TRUE(wait_event(&simulator, "Sg-020*00:00.000", 0));
+	const char *time_items[] = { UTC_TIME_ITEM_NAME, UTC_OFFSET_ITEM_NAME };
+	const char *values[] = { "2026-09-15T23:30:45", "2" };
+	// The connect wrote the host clock to the simulator, which starts unset, and may have sent the
+	// same offset already, so only the commands of this request are counted.
+	int offsets = event_count(&simulator, "SG+02:00", NULL);
+	revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, UTC_TIME_PROPERTY_NAME, 2, time_items, values));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE, revision));
+	double offset_time = 0, date_time = 0, clock_time = 0;
+	SERIAL_CHECK_EQ_INT(offsets + 1, event_count(&simulator, "SG+02:00", &offset_time));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "SC09/16/26", &date_time));
+	SERIAL_CHECK_EQ_INT(1, event_count(&simulator, "SL01:30:45", &clock_time));
+	SERIAL_CHECK_TRUE(offset_time < date_time && date_time < clock_time);
+	// A refused offset ends the request ALERT before the date and the time.
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "SG-05:00", "0"));
+	const char *refused[] = { "2026-09-15T23:30:45", "-5" };
+	revision = property_revision(UTC_TIME_PROPERTY_NAME);
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property(&simulator_test_client, lx200_mount.device_name, UTC_TIME_PROPERTY_NAME, 2, time_items, refused));
+	SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(UTC_TIME_PROPERTY_NAME, INDIGO_ALERT_STATE, revision));
+	SERIAL_CHECK_EQ_INT(0, settled_event_count(&simulator, "SL18:30:45"));
+	disconnect_serial_device(&lx200_mount);
+	SERIAL_CHECK_TRUE(connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME) + 33.75) < 0.001);
+	SERIAL_CHECK_TRUE(fabs(cached_number_value(GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME) - 340) < 0.001);
+	SERIAL_CHECK_TRUE(wait_for_property_state(UTC_TIME_PROPERTY_NAME, INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(UTC_TIME_PROPERTY_NAME, UTC_OFFSET_ITEM_NAME)->text.value, "2"));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// The side of the pier is 0 east and 1 west in :Gm#; in alt-az mode it is neither defined nor asked,
+// and neither are the meridian settings.
+static void lx200_touptek_side_of_pier_and_altaz_mode(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, NULL));
+	online = true;
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 1));
+	SERIAL_CHECK_TRUE(cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) != cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME));
+	bool east = cached_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME);
+	SERIAL_CHECK_TRUE(inject_reply(&simulator, "Gm", east ? "1#" : "0#"));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, east ? MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME : MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, true));
+	SERIAL_CHECK_TRUE(wait_for_switch_value(MOUNT_SIDE_OF_PIER_PROPERTY_NAME, east ? MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME : MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, true));
+	stop_serial_driver(&lx200_mount);
+	online = false;
+	stop_external_serial_simulator(&simulator);
+	const char *options[] = { "--touptek-altaz", NULL };
+	SERIAL_CHECK_TRUE(start_touptek(&simulator, options));
+	online = true;
+	assert_switch_item_value(MOUNT_MODE_PROPERTY_NAME, "ALTAZ", true);
+	SERIAL_CHECK_TRUE(!has_defined_property(MOUNT_SIDE_OF_PIER_PROPERTY_NAME));
+	SERIAL_CHECK_TRUE(!has_defined_property("X_TOUPTEK_MERIDIAN"));
+	SERIAL_CHECK_TRUE(!has_defined_property("X_TOUPTEK_MERIDIAN_LIMIT"));
+	SERIAL_CHECK_TRUE(has_defined_property("X_TOUPTEK_BUZZER"));
+	SERIAL_CHECK_TRUE(wait_complete_polls(&simulator, 2));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "Gm", NULL));
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "GTa", NULL));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// A mount in its bootloader takes only a firmware update: the connection is refused with ALERT and
+// no mount property is left defined.
+static void lx200_touptek_bootloader_is_refused(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	const char *arguments[] = { "--model", "touptek", "--touptek-bootloader", NULL };
+	SERIAL_CHECK_TRUE(start_external_serial_simulator_with_args(&simulator, MOUNT_LX200_SIMULATOR_EXECUTABLE, arguments));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&lx200_mount));
+	online = true;
+	enumerate_simulator_device();
+	*lx_last_message = 0;
+	SERIAL_CHECK_TRUE(!connect_serial_device(&lx200_mount, simulator.port));
+	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	assert_switch_item_value(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+	SERIAL_CHECK_TRUE(strstr(lx_last_message, "firmware update mode") != NULL);
+	SERIAL_CHECK_TRUE(find_cached_property(MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == NULL);
+	SERIAL_CHECK_EQ_INT(0, event_count(&simulator, "GTS", NULL));
+cleanup:
+	if (online) { stop_serial_driver(&lx200_mount); }
+	stop_external_serial_simulator(&simulator);
+}
+
+// Pulses go out as :Mg[nsew]DDDD#; the software timing from the simulator receipt to the public OK
+// callback is measured for 20, 100 and 500 ms pulses in every direction.
+static void lx200_touptek_guider_pulses_and_timing(void) {
+	external_serial_simulator simulator = { 0 };
+	bool online = false;
+	SERIAL_CHECK_TRUE(start_secondary_profile(&simulator, &lx200_guider, "touptek", NULL));
+	online = true;
+	const char *properties[] = { GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_RA_PROPERTY_NAME };
+	const char *items[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, GUIDER_GUIDE_WEST_ITEM_NAME };
+	const char directions[] = { 'n', 's', 'e', 'w' };
+	const int durations[] = { 20, 100, 500 };
+	double errors[24], percentages[24];
+	int samples = 0;
+	for (int direction = 0; direction < 4; direction++) {
+		for (int sample = -1; sample < 6; sample++) {
+			int duration = sample < 0 ? 20 : durations[sample % 3];
+			char command[32];
+			snprintf(command, sizeof(command), "Mg%c%04d", directions[direction], duration);
+			int before = event_count(&simulator, command, NULL);
+			unsigned int revision = property_revision(properties[direction]);
+			int axis = direction < 2 ? 1 : 0;
+			atomic_store(guide_completed + axis, 0);
+			SERIAL_CHECK_TRUE(lx_number(&lx200_guider, properties[direction], items[direction], duration, INDIGO_BUSY_STATE));
+			SERIAL_CHECK_TRUE(wait_event(&simulator, command, before));
+			SERIAL_CHECK_TRUE(wait_for_property_state_seen_after(properties[direction], INDIGO_OK_STATE, revision));
+			double entered = 0;
+			event_count(&simulator, command, &entered);
+			double completed = atomic_load(guide_completed + axis) / 1e9;
+			double error = (completed - entered) * 1000 - duration;
+			SERIAL_CHECK_TRUE(isfinite(error) && completed >= entered && completed - entered < 5);
+			if (sample >= 0) {
+				percentages[samples] = error * 100 / duration;
+				errors[samples++] = error;
+			}
+		}
+	}
+	for (int i = 0; i < samples; i++) {
+		for (int j = i + 1; j < samples; j++) {
+			if (errors[j] < errors[i]) {
+				double swap = errors[i];
+				errors[i] = errors[j];
+				errors[j] = swap;
+			}
+		}
+	}
+	double sum = 0, square = 0, absolute = 0, percent_sum = 0, percent_max = 0;
+	for (int i = 0; i < samples; i++) {
+		sum += errors[i];
+		percent_sum += percentages[i];
+		percent_max = fmax(percent_max, fabs(percentages[i]));
+		square += errors[i] * errors[i];
+		absolute = fmax(absolute, fabs(errors[i]));
+	}
+	printf("  ToupTek guider software latency, simulator receipt to public OK callback; idle; 20/100/500 ms; n=%d min=%.3f mean=%.3f median=%.3f max=%.3f stddev=%.3f max_abs=%.3f ms\n", samples, errors[0], sum / samples, (errors[11] + errors[12]) / 2, errors[samples - 1], sqrt(fmax(0, square / samples - sum * sum / samples / samples)), absolute);
+	printf("  ToupTek guider signed mean error=%.3f%% maximum absolute error=%.3f%%; no physical relay timing measured\n", percent_sum / samples, percent_max);
+	SERIAL_CHECK_EQ_INT(24, samples);
+	SERIAL_CHECK_TRUE(absolute < 250);
+cleanup:
+	if (online) {
+		stop_serial_driver(&lx200_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(int argc, char **argv) {
 	setbuf(stdout, NULL);
 	simulator_test_client.update_property = timed_client_update;
@@ -4827,6 +5285,19 @@ int main(int argc, char **argv) {
 		{ "lx200_guider_ap_duration_commands", lx200_guider_ap_duration_commands },
 		{ "lx200_disconnect_cancels_pulses_and_reconnects", lx200_disconnect_cancels_pulses_and_reconnects },
 		{ "lx200_zwo_rates_and_buzzer", lx200_zwo_rates_and_buzzer },
+		{ "lx200_touptek_profile", lx200_touptek_profile },
+		{ "lx200_home_touptek", lx200_home_touptek },
+		{ "lx200_park_touptek", lx200_park_touptek },
+		{ "lx200_touptek_connect_publishes_the_device_state", lx200_touptek_connect_publishes_the_device_state },
+		{ "lx200_touptek_goto_sync_and_refusals", lx200_touptek_goto_sync_and_refusals },
+		{ "lx200_touptek_rates_buzzer_and_meridian", lx200_touptek_rates_buzzer_and_meridian },
+		{ "lx200_touptek_park_unpark_and_park_position", lx200_touptek_park_unpark_and_park_position },
+		{ "lx200_touptek_park_that_never_starts_ends_alert", lx200_touptek_park_that_never_starts_ends_alert },
+		{ "lx200_touptek_home_and_home_search", lx200_touptek_home_and_home_search },
+		{ "lx200_touptek_site_and_time_signs", lx200_touptek_site_and_time_signs },
+		{ "lx200_touptek_side_of_pier_and_altaz_mode", lx200_touptek_side_of_pier_and_altaz_mode },
+		{ "lx200_touptek_bootloader_is_refused", lx200_touptek_bootloader_is_refused },
+		{ "lx200_touptek_guider_pulses_and_timing", lx200_touptek_guider_pulses_and_timing },
 		{ "lx200_zwo_meridian_slew_speed_and_alignment", lx200_zwo_meridian_slew_speed_and_alignment },
 		{ "lx200_zwo_old_firmware", lx200_zwo_old_firmware },
 		{ "lx200_zwo_park_goes_home_first", lx200_zwo_park_goes_home_first },
