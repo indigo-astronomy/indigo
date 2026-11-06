@@ -20,6 +20,11 @@ mount's motion safety.
 | Dependencies and configuration | No | No new dependencies |
 | Abuse and failure behavior | Yes | Refusals end ALERT. A park or home that never starts times out to ALERT. A bootloader refuses the connection. Firmware-update commands are never sent |
 
+## Diff risk signals
+The process check flags `MIGRATION_STATUS.md` under the `data-model` rule, because its name contains "migration". The file is the
+driver migration status table. This task changes only the automated-test count of the `mount_lx200` row (153 / 35 → 166 / 35). There is no
+data model, schema or stored-data change, and no data-model risk.
+
 ## Automated checks
 The simulator suite, including fault-injection cases, and the sanitizer build are listed in verification.md.
 

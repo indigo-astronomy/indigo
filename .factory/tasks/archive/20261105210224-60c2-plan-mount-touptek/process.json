@@ -36,7 +36,9 @@
       "evidence": "verification.md"
     }
   ],
-  "risk_reviews": {},
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
   "reviews": [],
   "reviewed_content": {
     ".factory/completions/20261105210224-60c2-plan-mount-touptek.json": [
