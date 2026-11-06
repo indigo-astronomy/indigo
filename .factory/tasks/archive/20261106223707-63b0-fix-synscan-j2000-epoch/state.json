@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261106223707-63b0-fix-synscan-j2000-epoch",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit the product and factory changes on the task branch, run the committed-range process check, integrate after owner authorization.",
+  "blocker": null
+}
