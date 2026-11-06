@@ -1,0 +1,81 @@
+{
+  "version": 2,
+  "task": "20261106215623-197e-fix-focuser-qhy-json-handshake",
+  "scope": [
+    "indigo_drivers/focuser_qhy/*",
+    "indigo_test/integration/test_focuser_qhy_simulator.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261106215623-197e-fix-focuser-qhy-json-handshake.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "focuser_qhy"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/integration/test_focuser_qhy_simulator_asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261106215623-197e-fix-focuser-qhy-json-handshake.json": [
+      "100644",
+      "blob",
+      "ee066e3da20d4fd3ee2e3127b44253e3f9125fe5"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "b4d58893e479d96752f9bc4508eb5e2a4237dce4"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "d86502eff47992831dcfc241b079f9307ab312f9"
+    ],
+    "indigo_drivers/focuser_qhy/README.md": [
+      "100644",
+      "blob",
+      "dd36a0635921b11fee19fdaff0288edd849baf79"
+    ],
+    "indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c": [
+      "100644",
+      "blob",
+      "72a8c31b295302f3241ae948b2691cc5d6e31867"
+    ],
+    "indigo_drivers/focuser_qhy/indigo_focuser_qhy.c": [
+      "100644",
+      "blob",
+      "a52d4d1a19e8fe8cd4ed20ed6a1ec4f08d9bab2c"
+    ],
+    "indigo_drivers/focuser_qhy/indigo_focuser_qhy.driver": [
+      "100644",
+      "blob",
+      "ec4a99011dc59ab7f76bdcb50728f9b8f027a82a"
+    ],
+    "indigo_test/integration/test_focuser_qhy_simulator.c": [
+      "100644",
+      "blob",
+      "4c81b0423796987299e7ff8d3d76cc91d7a2f209"
+    ]
+  }
+}
