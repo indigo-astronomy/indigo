@@ -28,5 +28,21 @@
   ],
   "risk_reviews": {},
   "reviews": [],
-  "reviewed_content": {}
+  "reviewed_content": {
+    ".factory/completions/20261107211539-54a2-solver-tool-wcs-format.json": [
+      "100644",
+      "blob",
+      "21df21a5660bc30b87632024413c9dc18e7c295a"
+    ],
+    "indigo_test/integration/test_indigo_solver_tool.c": [
+      "100644",
+      "blob",
+      "baca2a5fc25d97f44f0c3f0a8a684e70b8ec267c"
+    ],
+    "indigo_tools/indigo_solver.c": [
+      "100644",
+      "blob",
+      "cf892154ad7f75100ab63cf1b1047eb5b2adb068"
+    ]
+  }
 }
