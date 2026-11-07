@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "task": "20261107114222-213d-solver-tool-wcs-output",
+  "scope": [
+    "indigo_tools/indigo_solver.c",
+    "indigo_test/integration/test_indigo_solver_tool.c",
+    ".factory/completions/20261107114222-213d-solver-tool-wcs-output.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261107114222-213d-solver-tool-wcs-output.json": [
+      "100644",
+      "blob",
+      "b1c3adad5a6e7f648046fc7d7dbd2e6279009446"
+    ],
+    "indigo_test/integration/test_indigo_solver_tool.c": [
+      "100644",
+      "blob",
+      "fa57547bcc845137308ba862e0db6d7e21370468"
+    ],
+    "indigo_tools/indigo_solver.c": [
+      "100644",
+      "blob",
+      "a6c52d986cdfc74e9d2b8621e0fa31ac5ff944a5"
+    ]
+  }
+}
