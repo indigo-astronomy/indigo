@@ -1240,6 +1240,14 @@ bool primalucelib_cover_calibration_step(primalucelib_link *link, const char *st
 	return primalucelib_request(link, PRIMALUCE_REQUEST_COVER_CALIBRATION_STEP, step) && primalucelib_reply_is_acknowledged(link, PRIMALUCE_REPLY_COVER_CALIBRATION_ACK);
 }
 
+bool primalucelib_cover_get_travel(primalucelib_link *link, int *travel) {
+	if (!primalucelib_request(link, PRIMALUCE_REQUEST_COVER_GET_TRAVEL) || !primalucelib_reply_has(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX)) {
+		return false;
+	}
+	*travel = (int)primalucelib_reply_number(link, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX);
+	return true;
+}
+
 bool primalucelib_cover_set_preset_position(primalucelib_link *link, int index, int steps) {
 	char key[16];
 	snprintf(key, sizeof(key), PRIMALUCE_KEY_STORED_POSITION_PREFIX "%d", index);

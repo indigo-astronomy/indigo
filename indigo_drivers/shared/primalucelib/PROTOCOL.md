@@ -18,6 +18,10 @@ Each command below says how it is known:
   `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_alto.md`.
 - **DOC**: described in the PrimaLuce Lab "Communication Protocol" v4.0 (05 Dec 2022, ESATTO,
   SESTOSENSO2 and ARCO models) and not used by `indigo_focuser_primaluce`.
+- **DOC (ALTO)**: described in the PrimaLuce Lab "ALTO Control Specifications: Communication Protocol" v1.3
+  (18 Mar 2023, software 1.3.3) and used the same way by PrimaLuce's own software: PLAY 1.9.8
+  (`TelescopeManager.exe`), the ALTO web page (web firmware 1.01) and the ALTO application firmware 1.03.11, all
+  inspected by their embedded strings only. Not observed on hardware by INDIGO.
 - **SIM**: used by `indigo_focuser_primaluce` and covered by its simulator, but not observed on
   hardware. The older angle requests remain in this class.
 - **INDI**: taken from the INDI drivers (`primalucacommandset.cpp`, `alto.cpp`, `giotto.cpp`,
@@ -290,8 +294,8 @@ firmware 1.03.09, web 1.1, probed on 2026-10-24 (**HW (GIOTTO)**; transcript sum
 
 ## ALTO cover
 
-Sources: no PrimaLuce document; the INDI `alto.cpp` and an ALTO1 with application firmware 1.03.11, web 1.01, probed
-on 2026-10-24 (**HW (ALTO1)**; summary in `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_alto.md`). Used by `indigo_aux_alto`.
+Sources: the PrimaLuce ALTO protocol v1.3 and PrimaLuce's own software (**DOC (ALTO)**), the INDI `alto.cpp`, and an
+ALTO1 with application firmware 1.03.11, web 1.01, probed on 2026-10-24 (**HW (ALTO1)**; summary in `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/aux_alto.md`). Used by `indigo_aux_alto`.
 
 | Purpose | Request | Reply | Known |
 | --- | --- | --- | --- |
@@ -301,7 +305,7 @@ on 2026-10-24 (**HW (ALTO1)**; summary in `.factory/tasks/archive/20261027203747
 | Stop | `{"req":{"cmd":{"MOT1":{"MOT_STOP":""}}}}` | `"done"`, decelerated stop within about 1 s; `MOT_ABORT` stops at once | HW (ALTO1) |
 | Preset | `{"req":{"set":{"PRESET_1":{"NAME":"Flats","M1POS":119804}}}}` | `"done"` per member, `M1POS` in steps, refused without a name; 3 presets | HW (ALTO1) |
 | Recall preset | `{"req":{"cmd":{"PRESET":1}}}` | `"done"` and the cover moves; `"Error: empty preset"` | HW (ALTO1) |
-| Calibration | `{"req":{"cmd":{"MOT1":{"CAL_ALTO":"Init"}}}}` | `Init`, `Close_Fast`/`Close_Slow`, `MOT_STOP`, `StoreAsClosedPos`, `Open_Fast`/`Open_Slow`, `MOT_STOP`, `StoreAsMaxOpenPos` | INDI |
+| Calibration | `{"req":{"cmd":{"MOT1":{"CAL_ALTO":"Init"}}}}` | `"done"` per step; `Init`, `Close_Fast`/`Close_Slow`, `Motor_Stop`, `StoreAsClosedPos`, `Open_Fast`/`Open_Slow`, `Motor_Stop`, `StoreAsMaxOpenPos`, in this order | DOC (ALTO), HW (ALTO1) |
 
 - **`POSITION` is not validated:** 101, -1, 50.5 and `"x"` are all acknowledged `"done"` and can start a move; send only
   integers 0 to 100.
@@ -310,3 +314,16 @@ on 2026-10-24 (**HW (ALTO1)**; summary in `.factory/tasks/archive/20261027203747
 - **`SPEED`** is the current motor speed: a `set` is acknowledged and ignored.
 - **Unknown keys:** top level `"ERROR: Obj's name not found or invalid command"`, inside `MOT1` `"Error: parameter not found"`.
 - INDI fixed two inversions in its first version: park/unpark (0 is closed) and swapped open/close calibration steps.
+- **Calibration stop:** the arm is stopped with `CAL_ALTO` `Motor_Stop` (DOC (ALTO)); INDI sends `MOT_STOP` instead.
+  PrimaLuce's web page sends `Motor_Stop` from its Stop button and only the `StoreAs...` step from its store buttons.
+  An ALTO1 acknowledged every `Motor_Stop` and stopped the arm (HW (ALTO1), 2026-11-07). Whether the firmware accepts a
+  store after a plain `MOT_STOP` is not known.
+- **Calibration range (HW (ALTO1)):** `Init` counts in a provisional range: `CAL_MAXPOS` 2097136 (also in the document's
+  full state example) with the step count moved to its middle, so an open cover reads `POSITION` 50 and a percentage
+  means nothing until the calibration ends. `StoreAsClosedPos` makes the current position 0. The calibration speeds are
+  far below a move: about 3.5° of arm rotation per second fast and 3° slow, against 270° in about 34 s for a move.
+- **New travel (HW (ALTO1)):** 170 ms after acknowledging `StoreAsMaxOpenPos` the cover still reported the provisional
+  `CAL_MAXPOS` 2097136; the stored travel (237189 steps for 270°) appeared later. Poll `CAL_MAXPOS` until it changes.
+- **Errors in the ALTO document:** the replies of its `POSITION` and `POSITION_STEP` examples show `"get"` instead of
+  `"set"`, and `"POSITION"` instead of `"POSITION_STEP"`; an ALTO1 acknowledges a `POSITION` set under `"set"`
+  (HW (ALTO1)).

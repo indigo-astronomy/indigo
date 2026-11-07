@@ -20,9 +20,14 @@
 
 // Physical PrimaLuce Lab ALTO test for indigo_aux_alto. THE COVER MOVES over its whole travel; keep its path clear.
 // The run restores the position it found, the LEDs and the preset it uses. Calibration is not run.
+//
+// The unplug scenario is opt-in through --hotplug: it prints HOTPLUG_READY and waits for the USB cable to be pulled and
+// put back. Prefer a /dev/serial/by-id/... port, because the scenario relies on the port coming back under the name it
+// left.
 
 #include <math.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <indigo_drivers/aux_alto/indigo_aux_alto.h>
 #include "hardware_test_common.h"
 
@@ -30,11 +35,14 @@
 #define SHORT_TIMEOUT 15.0
 // A full stroke takes about 34 s on an ALTO1.
 #define MOVE_TIMEOUT 60.0
+// Time given to whoever pulls or puts back the cable.
+#define HOTPLUG_TIMEOUT 300.0
 #define USED_PRESET "PRESET_3"
 #define UNNAMED_PRESET "PRESET_2"
 
 static int cover = -1;
 static const char *serial_port = NULL;
+static bool hotplug = false;
 static bool state_captured = false;
 static double initial_position = 100;
 static char initial_leds[INDIGO_NAME_SIZE] = "ON";
@@ -200,6 +208,40 @@ static void alto_reinitializes(void) {
 	ASSERT_TRUE(move_to(100));
 }
 
+static bool wait_for_port(bool present, double timeout) {
+	double deadline = indigo_monotonic_time() + timeout;
+	while (indigo_monotonic_time() < deadline) {
+		if ((access(serial_port, F_OK) == 0) == present) {
+			return true;
+		}
+		indigo_usleep(100000);
+	}
+	fprintf(stderr, "    %s did not %s within %.0f s\n", serial_port, present ? "come back" : "disappear", timeout);
+	return false;
+}
+
+// The USB cable is pulled while the cover is idle: the next poll fails and the cover properties go ALERT, the driver
+// disconnects without hanging, and once the cable is back the cover connects, reads its position and moves again.
+static void alto_survives_the_usb_unplug(void) {
+	ASSERT_TRUE(position_is(100));
+	unsigned before = hw_revision(cover, "X_COVER_POSITION");
+	printf("HOTPLUG_READY\n");
+	ASSERT_TRUE(wait_for_port(false, HOTPLUG_TIMEOUT));
+	printf("HOTPLUG_REMOVED\n");
+	ASSERT_TRUE(hw_wait_state(cover, "X_COVER_POSITION", before, INDIGO_ALERT_STATE, SHORT_TIMEOUT));
+	ASSERT_TRUE(hw_property_state(cover, AUX_COVER_PROPERTY_NAME) == INDIGO_ALERT_STATE);
+	ASSERT_TRUE(hw_disconnect(cover, SHORT_TIMEOUT));
+	ASSERT_TRUE(wait_for_port(true, HOTPLUG_TIMEOUT));
+	printf("HOTPLUG_RECOVERED\n");
+	// udev recreates the by-id symlink a moment before the node is usable.
+	indigo_usleep(1000000);
+	ASSERT_TRUE(hw_connect(cover, SHORT_TIMEOUT));
+	ASSERT_TRUE(position_is(100));
+	ASSERT_TRUE(hw_property_state(cover, "X_COVER_POSITION") == INDIGO_OK_STATE);
+	ASSERT_TRUE(move_to(90));
+	ASSERT_TRUE(move_to(100));
+}
+
 int main(int argc, char **argv) {
 	if (argc < 2 || strcmp(argv[1], "--run")) {
 		fprintf(stderr, "Physical ALTO test: run explicitly with --run (or make test-aux-alto-hw).\n");
@@ -209,6 +251,8 @@ int main(int argc, char **argv) {
 	for (int i = 2; i < argc; i++) {
 		if (!strcmp(argv[i], "--debug")) {
 			indigo_set_log_level(INDIGO_LOG_DEBUG);
+		} else if (!strcmp(argv[i], "--hotplug")) {
+			hotplug = true;
 		}
 	}
 	if (!indigo_test_use_private_home()) {
@@ -224,8 +268,11 @@ int main(int argc, char **argv) {
 		{ "alto_changes_the_leds", alto_changes_the_leds },
 		{ "alto_reconnects", alto_reconnects },
 		{ "alto_rejects_shutdown_while_connected", alto_rejects_shutdown_while_connected },
-		{ "alto_reinitializes", alto_reinitializes }
+		{ "alto_reinitializes", alto_reinitializes },
+		// Opt-in, see --hotplug; it stays last because the count below leaves it out.
+		{ "alto_survives_the_usb_unplug", alto_survives_the_usb_unplug }
 	};
+	int count = ARRAY_SIZE(tests) - (hotplug ? 0 : 1);
 	int result = 1;
 	bool started = false, initialized = false;
 	HW_CHECK(hw_start() == INDIGO_OK);
@@ -252,7 +299,7 @@ int main(int argc, char **argv) {
 	state_captured = true;
 	// The cases start from fully open.
 	HW_CHECK(move_to(100));
-	result = indigo_run_tests("ALTO hardware", tests, ARRAY_SIZE(tests));
+	result = indigo_run_tests("ALTO hardware", tests, count);
 cleanup:
 	restore_initial_state();
 	if (!hw_disconnect(cover, SHORT_TIMEOUT)) {

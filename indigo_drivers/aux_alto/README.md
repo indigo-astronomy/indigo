@@ -33,6 +33,7 @@ indigo_server indigo_aux_alto
 
 ## Testing
 
-- 2026-10-24 16:49 3.0.0.1 linux x64 ALTO1 9/9 OK
-- 2026-10-25 03:18 3.0.0.7 linux x64 simulator 33/33 OK
 - 2026-11-02 19:00 3.0.0.8 mac arm64 simulator 34/34 OK
+- 2026-11-07 12:06 3.0.0.11 linux x64 ALTO1 (hot-plug) 10/10 OK
+- 2026-11-07 12:23 3.0.0.11 linux x64 simulator 36/36 OK
+- 2026-11-07 12:33 3.0.0.11 linux x64 ALTO1 9/9 OK

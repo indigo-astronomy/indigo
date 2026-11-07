@@ -40,7 +40,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000009
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_aux_alto"
 #define DRIVER_LABEL         "PrimaluceLab ALTO Cover"
 #define AUX_DEVICE_NAME      "PrimaluceLab ALTO"
@@ -63,6 +63,9 @@
 #define MOTION_TIMEOUT       60
 // Polls after the start during which a stopped motor that is not at the target is still starting.
 #define START_POLLS          2
+// The new travel is polled this often (seconds) and this many times after StoreAsMaxOpenPos.
+#define CALIBRATION_TRAVEL_POLL 0.5
+#define CALIBRATION_TRAVEL_POLLS 20
 
 //- define
 
@@ -222,8 +225,11 @@ typedef struct {
 	int stalled_polls, poll_failures, motion_polls;
 	double motion_started;
 	bool moving, external_motion, abort_requested, poll_alert;
-	// 0 outside a calibration, 1 while the closed position is searched, 2 while the open position is searched.
+	// 0 outside a calibration, 1 while the closed position is searched, 2 while the open position is searched, 3 while
+	// the new travel is awaited.
 	int calibration_phase;
+	// CAL_MAXPOS before StoreAsMaxOpenPos, and the polls for the new one.
+	int calibration_previous_travel, calibration_travel_polls;
 	int preset_steps[PRIMALUCE_COVER_PRESET_COUNT];
 	char preset_names[PRIMALUCE_COVER_PRESET_COUNT][INDIGO_VALUE_SIZE];
 	indigo_item *leds_item, *wifi_item;
@@ -236,6 +242,7 @@ typedef struct {
 //+ code
 
 static void cover_motion_finalizer(indigo_device *device);
+static void calibration_end_finalizer(indigo_device *device);
 
 static indigo_item *selected_item(indigo_property *property) {
 	for (int i = 0; i < property->count; i++) {
@@ -336,6 +343,26 @@ static void cover_refuse(indigo_device *device, indigo_property *property, const
 	cover_show_ends(device, PRIVATE_DATA->last_position);
 	property->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, property, "%s", message);
+}
+
+// Shows the position again after a calibration, which hides it: CAL_ALTO Init counts the steps in a provisional range of
+// 2097136 with the arm in its middle (ALTO1, firmware 1.03.11), so the percentage means nothing until it ends.
+static void cover_show_position(indigo_device *device) {
+	int position;
+	char *state;
+	indigo_property_state result = INDIGO_OK_STATE;
+	if (primalucelib_cover_get_motion(LINK, &position, &state)) {
+		PRIVATE_DATA->last_position = position;
+	} else {
+		// As a failed poll: the next good poll restores OK.
+		result = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->poll_alert = true;
+	}
+	X_COVER_POSITION_ITEM->number.value = X_COVER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position;
+	cover_show_ends(device, PRIVATE_DATA->last_position);
+	AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = result;
+	indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+	indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
 }
 
 // Publishes a move the controller accepted, to target %; the caller schedules cover_motion_finalizer.
@@ -441,6 +468,35 @@ static void cover_motion_finalizer(indigo_device *device) {
 	}
 }
 
+// The cover stores the new travel a moment after it acknowledges StoreAsMaxOpenPos: an ALTO1 (firmware 1.03.11) still
+// reported the provisional CAL_MAXPOS 2097136 170 ms after the acknowledgement, so the travel is polled until it
+// changes or the polls run out. The provisional CAL_MAXPOS is never taken, even when the read before the store failed.
+static void calibration_end_finalizer(indigo_device *device) {
+	int travel = 0;
+	bool read = primalucelib_cover_get_travel(LINK, &travel);
+	bool stored = read && travel > 0 && travel != PRIVATE_DATA->calibration_previous_travel && travel != PRIMALUCE_COVER_PROVISIONAL_TRAVEL;
+	if (!stored && ++PRIVATE_DATA->calibration_travel_polls < CALIBRATION_TRAVEL_POLLS) {
+		indigo_execute_handler_in(device, CALIBRATION_TRAVEL_POLL, calibration_end_finalizer);
+		return;
+	}
+	PRIVATE_DATA->calibration_phase = 0;
+	if (stored) {
+		PRIVATE_DATA->travel = travel;
+		for (int i = 0; i < PRIMALUCE_COVER_PRESET_COUNT; i++) {
+			X_PRESETS_PROPERTY->items[i].number.value = X_PRESETS_PROPERTY->items[i].number.target = steps_to_percent(device, PRIVATE_DATA->preset_steps[i]);
+		}
+		indigo_update_property(device, X_PRESETS_PROPERTY, NULL);
+	}
+	cover_show_position(device);
+	if (stored) {
+		X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CALIBRATION_PROPERTY, "Calibration complete, travel %d steps", PRIVATE_DATA->travel);
+	} else {
+		X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CALIBRATION_PROPERTY, "The cover did not report its new travel, reconnect it to read the calibration");
+	}
+}
+
 static bool alto_open(indigo_device *device, const char **error_message) {
 	if (primalucelib_open(LINK, DRIVER_NAME, DEVICE_PORT_ITEM->text.value, error_message)) {
 		char *text = primalucelib_get_model_name(LINK);
@@ -481,7 +537,8 @@ static void aux_timer_callback(indigo_device *device) {
 	//+ aux.on_timer
 	int position;
 	char *state;
-	if (!PRIVATE_DATA->moving && !PRIVATE_DATA->external_motion) {
+	// A calibration hides the position, see cover_show_position().
+	if (!PRIVATE_DATA->moving && !PRIVATE_DATA->external_motion && !PRIVATE_DATA->calibration_phase) {
 		bool polled = primalucelib_cover_get_motion(LINK, &position, &state);
 		// Outside a move a BUSY cover property means a request accepted meanwhile, whose handler is queued: the
 		// poll neither publishes over it nor follows motion it sees (the request's own move takes over); the next
@@ -497,7 +554,7 @@ static void aux_timer_callback(indigo_device *device) {
 				indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 				indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
 			}
-			if (!primalucelib_is_motor_stopped(state) && !PRIVATE_DATA->calibration_phase) {
+			if (!primalucelib_is_motor_stopped(state)) {
 				// Motion started elsewhere (the web page, a preset recalled by another client) is followed.
 				PRIVATE_DATA->external_motion = true;
 				PRIVATE_DATA->target = position;
@@ -849,11 +906,12 @@ static void aux_x_preset_recall_handler(indigo_device *device) {
 }
 
 static void aux_x_calibration_handler(indigo_device *device) {
-	X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_CALIBRATION.on_change
-	// The INDI sequence (not verified on hardware): Init, drive the cover to closed and store, drive it to
-	// fully open and store, which ends the calibration. Between the steps the property is OK, so that the
-	// next STORE or CANCEL is accepted; the message says what comes next.
+	// The sequence of the PrimaLuce protocol v1.3 (verified on an ALTO1 with firmware 1.03.11): Init, drive the
+	// cover to closed, stop it with the calibration's Motor_Stop and store, drive it to fully open, stop and
+	// store, which ends the calibration once the new travel is read. Between the steps the property is OK, so
+	// that the next STORE or CANCEL is accepted; the message says what comes next. The position is hidden (IDLE)
+	// while the calibration runs.
 	bool start = X_CALIBRATION_START_ITEM->sw.value, store = X_CALIBRATION_STORE_ITEM->sw.value, cancel = X_CALIBRATION_CANCEL_ITEM->sw.value;
 	X_CALIBRATION_START_ITEM->sw.value = X_CALIBRATION_STORE_ITEM->sw.value = X_CALIBRATION_CANCEL_ITEM->sw.value = false;
 	if (start) {
@@ -862,14 +920,17 @@ static void aux_x_calibration_handler(indigo_device *device) {
 			indigo_update_property(device, X_CALIBRATION_PROPERTY, "The cover is moving");
 		} else if (primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_INIT)) {
 			PRIVATE_DATA->calibration_phase = 1;
+			AUX_COVER_PROPERTY->state = X_COVER_POSITION_PROPERTY->state = INDIGO_IDLE_STATE;
+			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+			indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
 			X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_CALIBRATION_PROPERTY, "Close the cover fully with X_CALIBRATION_MOTION, stop it and press STORE");
+			indigo_update_property(device, X_CALIBRATION_PROPERTY, "Close the cover fully with X_CALIBRATION_MOTION, stop it and press STORE; the position is shown again when the calibration ends");
 		} else {
 			X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
 			update_with_refusal(device, X_CALIBRATION_PROPERTY);
 		}
 	} else if (store && PRIVATE_DATA->calibration_phase == 1) {
-		if (primalucelib_cover_stop(LINK) && primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_STORE_CLOSED)) {
+		if (primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_MOTOR_STOP) && primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_STORE_CLOSED)) {
 			PRIVATE_DATA->calibration_phase = 2;
 			X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, X_CALIBRATION_PROPERTY, "Closed position stored; open the cover fully, stop it and press STORE");
@@ -878,18 +939,15 @@ static void aux_x_calibration_handler(indigo_device *device) {
 			update_with_refusal(device, X_CALIBRATION_PROPERTY);
 		}
 	} else if (store && PRIVATE_DATA->calibration_phase == 2) {
-		if (primalucelib_cover_stop(LINK) && primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_STORE_OPEN)) {
-			PRIVATE_DATA->calibration_phase = 0;
-			if (primalucelib_get_state(LINK)) {
-				PRIVATE_DATA->travel = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_FOCUSER_CALIBRATION_MAX);
-				PRIVATE_DATA->last_position = (int)primalucelib_reply_number(LINK, PRIMALUCE_REPLY_COVER_POSITION);
-			}
-			X_COVER_POSITION_ITEM->number.value = X_COVER_POSITION_ITEM->number.target = PRIVATE_DATA->last_position;
-			cover_show_ends(device, PRIVATE_DATA->last_position);
-			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
-			indigo_update_property(device, X_COVER_POSITION_PROPERTY, NULL);
-			X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_CALIBRATION_PROPERTY, "Calibration complete, travel %d steps", PRIVATE_DATA->travel);
+		// The travel before the store tells a stale one from the new one, see calibration_end_finalizer().
+		PRIVATE_DATA->calibration_previous_travel = 0;
+		primalucelib_cover_get_travel(LINK, &PRIVATE_DATA->calibration_previous_travel);
+		if (primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_MOTOR_STOP) && primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_STORE_OPEN)) {
+			PRIVATE_DATA->calibration_phase = 3;
+			PRIVATE_DATA->calibration_travel_polls = 0;
+			X_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_CALIBRATION_PROPERTY, "Open position stored, reading the new travel");
+			indigo_execute_handler_in(device, CALIBRATION_TRAVEL_POLL, calibration_end_finalizer);
 		} else {
 			X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
 			update_with_refusal(device, X_CALIBRATION_PROPERTY);
@@ -900,15 +958,14 @@ static void aux_x_calibration_handler(indigo_device *device) {
 	} else if (cancel && PRIVATE_DATA->calibration_phase) {
 		primalucelib_cover_stop(LINK);
 		PRIVATE_DATA->calibration_phase = 0;
+		cover_show_position(device);
 		X_CALIBRATION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_CALIBRATION_PROPERTY, "Calibration cancelled");
 	} else {
 		X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
 	}
-	return;
 	//- aux.X_CALIBRATION.on_change
-	indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
 }
 
 static void aux_x_calibration_motion_handler(indigo_device *device) {
@@ -934,7 +991,13 @@ static void aux_x_calibration_motion_handler(indigo_device *device) {
 		indigo_update_property(device, X_CALIBRATION_MOTION_PROPERTY, "Start a calibration first");
 		return;
 	}
-	if ((stop && !primalucelib_cover_stop(LINK)) || (step != NULL && !primalucelib_cover_calibration_step(LINK, step))) {
+	if (PRIVATE_DATA->calibration_phase == 3) {
+		// Both positions are stored; what the cover does with a motion step now is not known.
+		X_CALIBRATION_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CALIBRATION_MOTION_PROPERTY, "Wait until the new travel is read");
+		return;
+	}
+	if ((stop && !primalucelib_cover_calibration_step(LINK, PRIMALUCE_COVER_CALIBRATION_MOTOR_STOP)) || (step != NULL && !primalucelib_cover_calibration_step(LINK, step))) {
 		X_CALIBRATION_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		update_with_refusal(device, X_CALIBRATION_MOTION_PROPERTY);
 		return;

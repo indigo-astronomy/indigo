@@ -1,0 +1,152 @@
+{
+  "version": 2,
+  "task": "20261107083811-8588-alto-calibration-motor-stop",
+  "scope": [
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver",
+    "indigo_drivers/aux_alto/indigo_aux_alto.c",
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c",
+    "indigo_drivers/aux_alto/README.md",
+    "indigo_drivers/shared/primalucelib/primalucelib.h",
+    "indigo_drivers/shared/primalucelib/primalucelib.c",
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_test/integration/test_aux_alto_simulator.c",
+    "indigo_test/unit/test_primalucelib.c",
+    "indigo_test/hardware/test_aux_alto_hw.c",
+    "indigo_test/Makefile",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261107083811-8588-alto-calibration-motor-stop.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto",
+        "--hw",
+        "--port",
+        "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_b00016cac822f011929b15d936263638-if00-port0"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "aux_alto",
+        "--hot-plug",
+        "--port",
+        "/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_b00016cac822f011929b15d936263638-if00-port0"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/unit/test_primalucelib"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261107083811-8588-alto-calibration-motor-stop.json": [
+      "100644",
+      "blob",
+      "1c9efb7e8d0f059413c1602b6e5a4d2a03e70d54"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "888a4c525ae6bd55d57ae0b3b31660a282a1dbe9"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "0401a3e7b044ca44c60f1dde90b12a2d24e2c804"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "43eba3be061d9e0971d504d5ddb0999cb3f42f43"
+    ],
+    "indigo_drivers/aux_alto/README.md": [
+      "100644",
+      "blob",
+      "5194e29be87952aeaaedcb46b16c18fe72b48789"
+    ],
+    "indigo_drivers/aux_alto/alto_simulator/alto_simulator.c": [
+      "100644",
+      "blob",
+      "a60670efd96d41d01055a3bebe4b9ebef1027e62"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.c": [
+      "100644",
+      "blob",
+      "24129bf2a5987ca781b9fb4208fbb5154784e2ce"
+    ],
+    "indigo_drivers/aux_alto/indigo_aux_alto.driver": [
+      "100644",
+      "blob",
+      "4973c0c96ad1d12b429f2ccb0540c36f7f6890ee"
+    ],
+    "indigo_drivers/shared/primalucelib/PROTOCOL.md": [
+      "100644",
+      "blob",
+      "ff4b9783ccc7dcea29043348d6998403181e2878"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.c": [
+      "100644",
+      "blob",
+      "ca72a3a1d61fe44e75de195f55189bab720371f4"
+    ],
+    "indigo_drivers/shared/primalucelib/primalucelib.h": [
+      "100644",
+      "blob",
+      "f8eb97cdfa3e2c9523b113a1416e8ff70df39b23"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "9085063be211c5de2c8e459af646c27038cdc12a"
+    ],
+    "indigo_test/hardware/test_aux_alto_hw.c": [
+      "100644",
+      "blob",
+      "4ef035d6ff0f5391c04b8fa3f9b1f3800b25e387"
+    ],
+    "indigo_test/integration/test_aux_alto_simulator.c": [
+      "100644",
+      "blob",
+      "bb78b3adc613d072d508c989053535a2dc91530e"
+    ],
+    "indigo_test/unit/test_primalucelib.c": [
+      "100644",
+      "blob",
+      "8a86102b09cab67a629e2191d36323be1dc56277"
+    ]
+  }
+}

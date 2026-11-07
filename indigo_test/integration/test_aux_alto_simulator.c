@@ -157,6 +157,33 @@ static bool journal_line_has(int index, const char *fragment) {
 	return found;
 }
 
+// The 0 based index of the last request of the journal containing fragment, or -1.
+static int last_request(const char *fragment) {
+	FILE *file = fopen(event_path, "r");
+	if (file == NULL) {
+		return -1;
+	}
+	char line[4096];
+	int last = -1;
+	for (int i = 0; fgets(line, sizeof(line), file) != NULL; i++) {
+		if (strstr(line, fragment) != NULL) {
+			last = i;
+		}
+	}
+	fclose(file);
+	return last;
+}
+
+// The last request containing first is immediately followed by the last request containing second.
+static bool requests_adjacent(const char *first, const char *second) {
+	int index = last_request(first);
+	if (index < 0 || last_request(second) != index + 1) {
+		print_journal("Unexpected request order");
+		return false;
+	}
+	return true;
+}
+
 // ----------------------------------------------------------------- helpers
 
 // The bus delivers the message of an update through send_message, which the common test client does not
@@ -193,8 +220,8 @@ static void clear_messages(void) {
 	pthread_mutex_unlock(&message_mutex);
 }
 
-static bool message_seen(const char *fragment) {
-	for (int i = 0; i < 200; i++) {
+static bool message_seen_within(const char *fragment, int seconds) {
+	for (int i = 0; i < seconds * 40; i++) {
 		pthread_mutex_lock(&message_mutex);
 		bool found = strstr(messages, fragment) != NULL;
 		pthread_mutex_unlock(&message_mutex);
@@ -205,6 +232,25 @@ static bool message_seen(const char *fragment) {
 	}
 	fprintf(stderr, "No message containing '%s'\n", fragment);
 	return false;
+}
+
+static bool message_seen(const char *fragment) {
+	return message_seen_within(fragment, 5);
+}
+
+// The travel of the last "Calibration complete, travel <n> steps" message, or -1.
+static int completed_travel(void) {
+	int travel = -1;
+	pthread_mutex_lock(&message_mutex);
+	const char *found = NULL;
+	for (const char *next = strstr(messages, "Calibration complete, travel "); next != NULL; next = strstr(next + 1, "Calibration complete, travel ")) {
+		found = next;
+	}
+	if (found != NULL) {
+		travel = atoi(found + strlen("Calibration complete, travel "));
+	}
+	pthread_mutex_unlock(&message_mutex);
+	return travel;
 }
 
 // Each wait of the shared harness lasts up to 10 s.
@@ -834,9 +880,12 @@ cleanup:
 	driver_stop();
 }
 
-// The INDI calibration sequence against the simulator's model (not verified on hardware).
+// The calibration sequence of the PrimaLuce protocol v1.3 as an ALTO1 (firmware 1.03.11) ran it: the arm is stopped with
+// CAL_ALTO Motor_Stop, never MOT_STOP, before each position is stored; the position is hidden while Init's provisional
+// range applies; and the new travel is read only once the cover reports it, not the stale provisional one.
 static void calibration(void) {
 	SERIAL_CHECK_TRUE(driver_start());
+	int stops = requests("\"MOT_STOP\"");
 	clear_messages();
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "CLOSE_FAST", INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(message_seen("Start a calibration first"));
@@ -847,6 +896,10 @@ static void calibration(void) {
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "START", INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"Init\"}}}}", 1));
 	SERIAL_CHECK_TRUE(message_seen("Close the cover fully"));
+	SERIAL_CHECK_TRUE(message_seen("the position is shown again when the calibration ends"));
+	// The position of the provisional range (50 % here) is not shown.
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, property_state(X_COVER_POSITION_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, property_state(AUX_COVER_PROPERTY_NAME));
 	// Moves wait for the calibration.
 	clear_messages();
 	SERIAL_CHECK_TRUE(switch_change(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, INDIGO_ALERT_STATE));
@@ -855,25 +908,106 @@ static void calibration(void) {
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_ALTO\":\"Close_Fast\"", 1));
 	indigo_usleep(1000000);
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "STOP", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("{\"req\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"Motor_Stop\"}}}}", 1));
+	// No poll published a position meanwhile.
+	indigo_usleep(2500000);
+	SERIAL_CHECK_TRUE(number_is(X_COVER_POSITION_PROPERTY_NAME, X_COVER_POSITION_ITEM_NAME, 100, 0));
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, property_state(X_COVER_POSITION_PROPERTY_NAME));
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "STORE", INDIGO_OK_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_ALTO\":\"StoreAsClosedPos\"", 1));
+	SERIAL_CHECK_EQ_INT(2, requests("\"CAL_ALTO\":\"Motor_Stop\""));
+	SERIAL_CHECK_TRUE(requests_adjacent("\"CAL_ALTO\":\"Motor_Stop\"", "\"CAL_ALTO\":\"StoreAsClosedPos\""));
+	// The arm opens for 2 s at 48000 steps/s and is stopped; were it not, it would run on while the store waits.
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "OPEN_FAST", INDIGO_OK_STATE));
 	indigo_usleep(2000000);
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "STOP", INDIGO_OK_STATE));
+	indigo_usleep(1500000);
 	clear_messages();
-	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "STORE", INDIGO_OK_STATE));
+	int travel_reads = requests("\"CAL_MAXPOS\"");
+	// The property is BUSY until the new travel is reported; the simulator reports the provisional 2097136 for 1 s.
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "STORE", INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_ALTO\":\"StoreAsMaxOpenPos\"", 1));
 	SERIAL_CHECK_TRUE(message_seen("Calibration complete, travel"));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property_state(X_CALIBRATION_PROPERTY_NAME));
+	int travel = completed_travel();
+	if (travel < 85000 || travel > 130000) {
+		fprintf(stderr, "Calibration travel %d, expected about 98000 steps\n", travel);
+	}
+	SERIAL_CHECK_TRUE(travel >= 85000 && travel <= 130000);
+	// Read before the store, then until the stale value is gone.
+	SERIAL_CHECK_TRUE(requests("\"CAL_MAXPOS\"") >= travel_reads + 3);
+	SERIAL_CHECK_EQ_INT(4, requests("\"CAL_ALTO\":\"Motor_Stop\""));
+	SERIAL_CHECK_TRUE(requests_adjacent("\"CAL_ALTO\":\"Motor_Stop\"", "\"CAL_ALTO\":\"StoreAsMaxOpenPos\""));
+	// No calibration step used the ordinary motor stop.
+	SERIAL_CHECK_EQ_INT(stops, requests("\"MOT_STOP\""));
 	SERIAL_CHECK_TRUE(cover_is(100));
 	// The new travel is used.
 	SERIAL_CHECK_TRUE(number_change(X_COVER_POSITION_PROPERTY_NAME, X_COVER_POSITION_ITEM_NAME, 50, INDIGO_BUSY_STATE));
 	SERIAL_CHECK_TRUE(cover_is(50));
-	// A cancelled calibration stops the motor.
+	// A cancelled calibration stops the motor with the ordinary motor stop and shows the position again.
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "START", INDIGO_OK_STATE));
-	int stops = requests("\"MOT_STOP\"");
+	SERIAL_CHECK_EQ_INT(INDIGO_IDLE_STATE, property_state(X_COVER_POSITION_PROPERTY_NAME));
+	stops = requests("\"MOT_STOP\"");
 	clear_messages();
 	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "CANCEL", INDIGO_ALERT_STATE));
 	SERIAL_CHECK_TRUE(message_seen("Calibration cancelled"));
 	SERIAL_CHECK_EQ_INT(stops + 1, requests("\"MOT_STOP\""));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property_state(X_COVER_POSITION_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property_state(AUX_COVER_PROPERTY_NAME));
+cleanup:
+	driver_stop();
+}
+
+// A refused calibration stop ends STOP and STORE ALERT with the controller's reason, and nothing is stored after it.
+static void calibration_stop_refused(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "START", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "CLOSE_FAST", INDIGO_OK_STATE));
+	clear_messages();
+	SERIAL_CHECK_TRUE(fault("\"Motor_Stop\"", "reject"));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "STOP", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Error: invalid command"));
+	clear_messages();
+	SERIAL_CHECK_TRUE(fault("\"Motor_Stop\"", "reject"));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "STORE", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Error: invalid command"));
+	SERIAL_CHECK_EQ_INT(2, requests("\"CAL_ALTO\":\"Motor_Stop\""));
+	SERIAL_CHECK_EQ_INT(0, requests("\"StoreAs"));
+	// The calibration is still running: the next stop and store complete the first phase.
+	clear_messages();
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "STORE", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_ALTO\":\"StoreAsClosedPos\"", 1));
+	SERIAL_CHECK_TRUE(message_seen("Closed position stored"));
+cleanup:
+	driver_stop();
+}
+
+// A cover that never reports a new travel after StoreAsMaxOpenPos ends the calibration ALERT after the polls run out,
+// keeps the previous travel and shows the position again.
+static void calibration_travel_not_reported(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "START", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "CLOSE_FAST", INDIGO_OK_STATE));
+	indigo_usleep(500000);
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "STORE", INDIGO_OK_STATE));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "OPEN_FAST", INDIGO_OK_STATE));
+	indigo_usleep(500000);
+	clear_messages();
+	// The read before the store fails as well, so only the provisional value itself tells it from a new travel.
+	SERIAL_CHECK_TRUE(fault("\"CAL_MAXPOS\":\"\"", "garbage"));
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_PROPERTY_NAME, "STORE", INDIGO_BUSY_STATE));
+	// While the travel is awaited, motion steps are refused and nothing reaches the cover.
+	SERIAL_CHECK_TRUE(wait_for_requests("\"CAL_ALTO\":\"StoreAsMaxOpenPos\"", 1));
+	int steps_sent = requests("\"CAL_ALTO\"");
+	SERIAL_CHECK_TRUE(switch_change(X_CALIBRATION_MOTION_PROPERTY_NAME, "CLOSE_FAST", INDIGO_ALERT_STATE));
+	SERIAL_CHECK_TRUE(message_seen("Wait until the new travel is read"));
+	SERIAL_CHECK_EQ_INT(steps_sent, requests("\"CAL_ALTO\""));
+	SERIAL_CHECK_TRUE(message_seen_within("did not report its new travel", 15));
+	SERIAL_CHECK_EQ_INT(INDIGO_ALERT_STATE, property_state(X_CALIBRATION_PROPERTY_NAME));
+	SERIAL_CHECK_EQ_INT(-1, completed_travel());
+	SERIAL_CHECK_EQ_INT(INDIGO_OK_STATE, property_state(X_COVER_POSITION_PROPERTY_NAME));
+	// The calibration is over: moves are accepted again.
+	SERIAL_CHECK_TRUE(switch_change(AUX_COVER_PROPERTY_NAME, AUX_COVER_CLOSE_ITEM_NAME, INDIGO_BUSY_STATE));
 cleanup:
 	driver_stop();
 }
@@ -1044,6 +1178,8 @@ int main(void) {
 		{ "leds", leds, "normal" },
 		{ "refused_simulator_led_write_retains_state", refused_simulator_led_write_retains_state, "normal" },
 		{ "calibration", calibration, "normal" },
+		{ "calibration_stop_refused", calibration_stop_refused, "normal" },
+		{ "calibration_travel_not_reported", calibration_travel_not_reported, "stale-travel" },
 		{ "wifi_credentials", wifi_credentials, "normal" },
 		{ "wifi_modes", wifi_modes, "normal" },
 		{ "wifi_restart_waits_for_the_cover", wifi_restart_waits_for_the_cover, "normal" },
