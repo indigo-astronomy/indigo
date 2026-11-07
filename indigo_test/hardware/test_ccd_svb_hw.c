@@ -356,6 +356,22 @@ static bool restore_property(indigo_property *p) {
 	return indigo_change_property(&client, p) == INDIGO_OK && wait_state(camera, p->name, before, INDIGO_OK_STATE);
 }
 
+// The SDK refuses a gain write between the open and the first exposure write on some cameras (a user's SV705C and
+// SV905C2, 2026-11-07); the driver writes the exposure at connect for that reason, so the first gain write of the
+// run goes before the first exposure.
+static bool gain_before_first_exposure(void) {
+	indigo_property *gain = snapshot(camera, "CCD_GAIN");
+	bool ok = true;
+	if (gain && gain->perm == INDIGO_RW_PERM) {
+		double value = gain->items[0].number.value;
+		double changed = value < gain->items[0].number.max ? value + 1 : value - 1;
+		ok = number_value(camera, "CCD_GAIN", "GAIN", changed, INDIGO_OK_STATE) && restore_property(gain);
+		printf("    hardware gain before the first exposure: %s\n", ok ? "PASS" : "FAIL");
+	}
+	indigo_release_property(gain);
+	return ok;
+}
+
 static bool format_geometry_and_controls(void) {
 	indigo_property *pixel = snapshot(camera, "X_PIXEL_FORMAT");
 	indigo_property *frame = snapshot(camera, "CCD_FRAME");
@@ -801,6 +817,7 @@ static void hardware_workflows(void) {
 	CHECK(switch_value(camera, "CONNECTION", "CONNECTED", INDIGO_OK_STATE));
 	CHECK(switch_value(camera, "CCD_UPLOAD_MODE", "CLIENT", INDIGO_OK_STATE));
 	CHECK(switch_value(camera, "CCD_IMAGE_FORMAT", "RAW", INDIGO_OK_STATE));
+	CHECK(gain_before_first_exposure());
 	CHECK(format_geometry_and_controls());
 	for (int i = 0; i < 3; i++) {
 		unsigned before = frames();

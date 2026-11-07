@@ -69,6 +69,7 @@ typedef struct {
 	atomic_long last_video_buffer_size;
 	atomic_int missing_control, readonly_control, reverse_controls, malformed_caps, read_value_control;
 	atomic_long read_value;
+	atomic_int accepts_gain_before_exposure, exposure_written;
 	_Atomic double deadline;
 } mock_camera;
 
@@ -653,6 +654,7 @@ SVB_ERROR_CODE SVBOpenCamera(int id) {
 		atomic_fetch_add(&concurrent_sdk, 1);
 	}
 	atomic_fetch_add(&c->opens, 1);
+	atomic_store(&c->exposure_written, 0);
 	return SVB_SUCCESS;
 }
 
@@ -802,6 +804,14 @@ SVB_ERROR_CODE SVBSetControlValue(int id, SVB_CONTROL_TYPE control, long value, 
 	SDK_CHECK(id, true);
 	if (atomic_load(&camera(id)->write_config_fail) == control + 1) {
 		return SVB_ERROR_GENERAL_ERROR;
+	}
+	// SDK v1.13.4 refuses a gain write after SVBOpenCamera() until the exposure has been written once (seen on the
+	// SV705C, SV905C2 and SV605CC); a fixture opts a camera out of it with accepts_gain_before_exposure.
+	if (control == SVB_GAIN && !atomic_load(&camera(id)->accepts_gain_before_exposure) && !atomic_load(&camera(id)->exposure_written)) {
+		return SVB_ERROR_GENERAL_ERROR;
+	}
+	if (control == SVB_EXPOSURE) {
+		atomic_store(&camera(id)->exposure_written, 1);
 	}
 	atomic_store(&camera(id)->config[control], value);
 	return SVB_SUCCESS;
@@ -1431,6 +1441,19 @@ static double number_value(int index, const char *property, const char *item) {
 static bool take_image(int index, double exposure) {
 	int expected = blobs + 1;
 	return set_switch(index, "CCD_IMAGE_FORMAT", "RAW", true) && indigo_change_number_property_1(&test_client, observed[index].name, "CCD_EXPOSURE", "EXPOSURE", exposure) == INDIGO_OK && wait_state(index, "CCD_EXPOSURE", INDIGO_OK_STATE) && wait_count(&blobs, expected);
+}
+
+// A user's SV705C and SV905C2 refused every gain request of INDIGO 3.0-8/3.0-9 (ALERT at the old value): the SDK
+// refuses a gain write between SVBOpenCamera() and the first exposure write, and the exposure write the 3.0-7 driver
+// made at connect for that reason was lost in the generator migration.
+static void gain_is_accepted_before_the_first_exposure(void) {
+	ASSERT_TRUE(connect_device(0, true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&test_client, observed[0].name, "CCD_GAIN", "GAIN", 20));
+	ASSERT_TRUE(wait_state(0, "CCD_GAIN", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(20, number_value(0, "CCD_GAIN", "GAIN"));
+	ASSERT_EQ_INT(20, cameras[0].config[SVB_GAIN]);
+	ASSERT_EQ_INT(1, atomic_load(&cameras[0].exposure_written));
+	ASSERT_EQ_INT(0, atomic_load(&cameras[0].starts));
 }
 
 static bool hold_device_queue(void) {
@@ -2640,6 +2663,7 @@ int main(int argc, char **argv) {
 		{ "Open Init rollback", open_init_rollback },
 		{ "Formats and ROI", formats_and_roi },
 		{ "Configuration roundtrip", configuration_roundtrip },
+		{ "Gain before the first exposure", gain_is_accepted_before_the_first_exposure },
 		{ "Readout error and subsequent acquisition", failed_readout_recovers }
 	};
 	int result = 0, selected = 0;

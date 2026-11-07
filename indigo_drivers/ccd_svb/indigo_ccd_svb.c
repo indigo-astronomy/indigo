@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000022
+#define DRIVER_VERSION       0x03000023
 #define DRIVER_NAME          "indigo_ccd_svb"
 #define DRIVER_LABEL         "SVBONY Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -802,7 +802,7 @@ static bool initialize_camera(indigo_device *device) {
 }
 
 static bool svb_set_number(indigo_device *device, indigo_property *property, SVB_CONTROL_TYPE control, long target) {
-	long value;
+	long value = 0;
 	SVB_BOOL automatic;
 	SVB_ERROR_CODE write_result = SVBSetControlValue(PRIVATE_DATA->dev_id, control, target, SVB_FALSE);
 	SVB_ERROR_CODE read_result = SVBGetControlValue(PRIVATE_DATA->dev_id, control, &value, &automatic);
@@ -813,6 +813,11 @@ static bool svb_set_number(indigo_device *device, indigo_property *property, SVB
 		property->items->number.value = property->items->number.target = value;
 	} else {
 		property->items->number.target = property->items->number.value;
+	}
+	if (write_result || read_result) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s: SVBSetControlValue(%d, %d, %ld) = %d, SVBGetControlValue(%d, %d) = %d -> %ld", property->name, PRIVATE_DATA->dev_id, control, target, write_result, PRIVATE_DATA->dev_id, control, read_result, value);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s: SVBSetControlValue(%d, %d, %ld) -> %ld", property->name, PRIVATE_DATA->dev_id, control, target, value);
 	}
 	property->state = write_result || read_result ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 	return property->state == INDIGO_OK_STATE;
@@ -945,6 +950,13 @@ static void ccd_connection_handler(indigo_device *device) {
 			//+ ccd.on_connect
 			indigo_lock_master_device(device);
 			connection_result = initialize_camera(device);
+			if (connection_result) {
+				// The SDK refuses a gain write after SVBOpenCamera() until the exposure has been written once (SV305PRO, SV705C, SV905C2); the next exposure request writes the requested duration anyway.
+				SVB_ERROR_CODE result = SVBSetControlValue(PRIVATE_DATA->dev_id, SVB_EXPOSURE, (long)s2us(1), SVB_FALSE);
+				if (result != SVB_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_EXPOSURE, %ld) = %d", PRIVATE_DATA->dev_id, (long)s2us(1), result);
+				}
+			}
 			indigo_unlock_master_device(device);
 			//- ccd.on_connect
 		}
