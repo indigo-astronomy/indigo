@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "task": "20261107211539-54a2-solver-tool-wcs-format",
+  "scope": [
+    "indigo_tools/indigo_solver.c",
+    "indigo_test/integration/test_indigo_solver_tool.c",
+    ".factory/completions/20261107211539-54a2-solver-tool-wcs-format.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {}
+}
