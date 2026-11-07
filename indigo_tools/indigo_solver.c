@@ -30,6 +30,7 @@
 #include <math.h>
 #include <limits.h>
 #include <errno.h>
+#include <time.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_align.h>
@@ -87,6 +88,7 @@ typedef struct {
 	double cpu_limit;
 	int verbose;
 	output_format format;
+	const char *wcs_file_name;
 	const char *file_name;
 } solver_options;
 
@@ -99,6 +101,7 @@ typedef struct {
 	int matched, star_match_count;
 	double rms;
 	double ra, dec;
+	double ra_j2000, dec_j2000;
 	double angle;
 	double scale;
 	int parity;
@@ -140,11 +143,14 @@ static void print_usage(const char *name) {
 	printf("  -t, --depth <n>           try the n brightest stars first and then all, 0 = 40, 100 and all (default: %d)\n", DEFAULT_DEPTH);
 	printf("  -c, --cpu-limit <sec>     give up after this many seconds, 0 = no limit (default: %g)\n", (double)DEFAULT_CPU_LIMIT);
 	printf("  -f, --format <format>     output format of the result, text, json or xml (default: text)\n");
+	printf("  -w, --wcs <file>          write the solution to this file as a WCS FITS header, as Astrometry.net and ASTAP do\n");
 	printf("  -v, --verbose             report the progress and errors, -vv adds the debug log\n");
 	printf("  -h, --help                show this help\n\n");
 	printf("With json or xml the result, solved or not, is a single document on the standard output and the progress\n");
 	printf("of -v goes to the standard error.\n\n");
-	printf("The exit code is 0 when the image is solved, 1 when it is not and 2 on wrong arguments.\n");
+	printf("The WCS file is written only when the image is solved, an existing file is left as it is otherwise.\n\n");
+	printf("The exit code is 0 when the image is solved, 1 when it is not, 2 on wrong arguments and 3 when the image is\n");
+	printf("solved but the WCS file can't be written.\n");
 }
 
 static bool parse_number(const char *string, double *value) {
@@ -274,6 +280,9 @@ static bool parse_arguments(int argc, char **argv, solver_options *options) {
 					ok = true;
 				}
 			}
+		} else if (!strcmp(arg, "-w") || !strcmp(arg, "--wcs")) {
+			options->wcs_file_name = value;
+			ok = *value != 0;
 		} else {
 			fprintf(stderr, "%s: unknown option '%s'\n", TOOL_NAME, arg);
 			return false;
@@ -285,6 +294,10 @@ static bool parse_arguments(int argc, char **argv, solver_options *options) {
 	}
 	if (options->file_name == NULL) {
 		fprintf(stderr, "%s: no image file given, see '%s -h'\n", TOOL_NAME, TOOL_NAME);
+		return false;
+	}
+	if (options->wcs_file_name != NULL && !strcmp(options->wcs_file_name, options->file_name)) {
+		fprintf(stderr, "%s: the WCS file can't be the image file '%s'\n", TOOL_NAME, options->file_name);
 		return false;
 	}
 	if (options->radius > 0 && !(options->ra_set && options->dec_set)) {
@@ -523,6 +536,8 @@ static void solve(solver_options *options, const void *data, long size, solver_r
 	result->rms = rms * RAD_TO_DEG * 3600;
 	result->ra = ra_hours;
 	result->dec = dec_degrees;
+	result->ra_j2000 = ra * RAD_TO_DEG / 15;
+	result->dec_j2000 = dec * RAD_TO_DEG;
 	result->angle = rotation * RAD_TO_DEG;
 	result->scale = pixel * RAD_TO_DEG / bin;
 	result->parity = parity;
@@ -650,6 +665,97 @@ static void print_xml(solver_options *options, solver_result *result) {
 	printf("</solution>\n");
 }
 
+// One 80 character FITS header card: strings start in column 11, other values end in column 30, the comment is cut
+// at the end of the card
+static void fits_card(FILE *file, const char *key, const char *value, const char *comment) {
+	char card[128];
+	int length = snprintf(card, sizeof(card), "%-8.8s", key);
+	if (value != NULL) {
+		length += snprintf(card + length, sizeof(card) - length, *value == '\'' ? "= %-20s" : "= %20s", value);
+	}
+	if (comment != NULL && length < 80) {
+		snprintf(card + length, sizeof(card) - length, " / %s", comment);
+	}
+	fprintf(file, "%-80.80s", card);
+}
+
+static void fits_number_card(FILE *file, const char *key, double value, const char *comment) {
+	char string[32];
+	snprintf(string, sizeof(string), "%.12G", value);
+	fits_card(file, key, string, comment);
+}
+
+// The solution as a .wcs file of Astrometry.net and ASTAP: a FITS header without data, padded to 2880 bytes, the same
+// as Ain Platesolver writes. The TAN projection is centred on the image centre; x grows to the right and y with the
+// rows as stored, i.e. FITS pixel coordinates of a FITS image. x maps to -RA and y to +Dec before the rotation, and
+// the coordinates are J2000 whatever the epoch of the printed result.
+static bool write_wcs(solver_options *options, solver_result *result) {
+	FILE *file = fopen(options->wcs_file_name, "wb");
+	if (file == NULL) {
+		fprintf(stderr, "%s: can't create '%s': %s\n", TOOL_NAME, options->wcs_file_name, strerror(errno));
+		return false;
+	}
+	double angle = (result->angle + (result->parity == -1 ? 180 : 0)) * DEG_TO_RAD;
+	double flip = result->parity == -1 ? -1 : 1;
+	double scale = result->scale;
+	char string[96];
+	fits_card(file, "SIMPLE", "T", "file does conform to FITS standard");
+	fits_card(file, "BITPIX", "8", "no image data, the WCS header only");
+	fits_card(file, "NAXIS", "0", NULL);
+	fits_card(file, "WCSAXES", "2", "number of WCS axes");
+	fits_card(file, "CTYPE1", "'RA---TAN'", "TAN (gnomonic) projection");
+	fits_card(file, "CTYPE2", "'DEC--TAN'", "TAN (gnomonic) projection");
+	fits_card(file, "CUNIT1", "'deg'", "unit of CRVAL1 and CD1_n");
+	fits_card(file, "CUNIT2", "'deg'", "unit of CRVAL2 and CD2_n");
+	fits_card(file, "RADESYS", "'ICRS'", "reference system of the catalogs");
+	fits_card(file, "EQUINOX", "2000.0", "equinox of the coordinates");
+	fits_number_card(file, "CRVAL1", result->ra_j2000 * 15, "RA of the reference pixel, degrees");
+	fits_number_card(file, "CRVAL2", result->dec_j2000, "Dec of the reference pixel, degrees");
+	fits_number_card(file, "CRPIX1", (result->image_width + 1) / 2.0, "X of the reference pixel, the image center");
+	fits_number_card(file, "CRPIX2", (result->image_height + 1) / 2.0, "Y of the reference pixel, the image center");
+	fits_number_card(file, "CD1_1", -scale * cos(angle), "transformation matrix, degrees per pixel");
+	fits_number_card(file, "CD1_2", scale * sin(angle) * flip, "transformation matrix, degrees per pixel");
+	fits_number_card(file, "CD2_1", scale * sin(angle), "transformation matrix, degrees per pixel");
+	fits_number_card(file, "CD2_2", scale * cos(angle) * flip, "transformation matrix, degrees per pixel");
+	fits_number_card(file, "IMAGEW", result->image_width, "image width, pixels");
+	fits_number_card(file, "IMAGEH", result->image_height, "image height, pixels");
+	fits_card(file, "PLTSOLVD", "T", "plate solved");
+	time_t now = time(NULL);
+	struct tm *utc = gmtime(&now);
+	if (utc != NULL && strftime(string, sizeof(string), "'%Y-%m-%dT%H:%M:%S'", utc) > 0) {
+		fits_card(file, "DATE", string, "creation date of this file, UTC");
+	}
+	fits_card(file, "CREATOR", "'" TOOL_NAME "'", "software that solved the image");
+	// a header holds printable ASCII only, the image name is the last component of its path
+	const char *name = options->file_name;
+	for (const char *c = options->file_name; *c; c++) {
+		if (*c == '/' || *c == '\\') {
+			name = c + 1;
+		}
+	}
+	int length = snprintf(string, sizeof(string), "COMMENT Solution of %s", name);
+	for (int i = 0; i < length && i < (int)sizeof(string) - 1; i++) {
+		if (string[i] < 0x20 || string[i] > 0x7E) {
+			string[i] = '?';
+		}
+	}
+	fprintf(file, "%-80.80s", string);
+	fits_card(file, "END", NULL, NULL);
+	long size = ftell(file);
+	bool ok = size > 0;
+	for (long i = size % 2880; ok && i > 0 && i < 2880; i++) {
+		fputc(' ', file);
+	}
+	ok = ok && !ferror(file);
+	if (fclose(file) != 0) {
+		ok = false;
+	}
+	if (!ok) {
+		fprintf(stderr, "%s: can't write '%s'\n", TOOL_NAME, options->wcs_file_name);
+	}
+	return ok;
+}
+
 static void discard_log_message(indigo_log_levels level, const char *message) {
 }
 
@@ -696,6 +802,9 @@ int main(int argc, char **argv) {
 		case FORMAT_XML:
 			print_xml(&options, &result);
 			break;
+	}
+	if (result.solved && options.wcs_file_name != NULL && !write_wcs(&options, &result)) {
+		return 3;
 	}
 	return result.solved ? 0 : 1;
 }

@@ -20,7 +20,8 @@
 
 /** Test of the indigo_solver command line tool: the built executable is run on a synthetic Tycho-2 style index and
  synthetic RAW and FITS frames of the indexed field in a private directory; its output, messages and exit codes are
- checked for every hint switch. No network, no real index files.
+ checked for every hint switch, and the WCS file it writes is checked against the catalog positions of the rendered
+ stars. No network, no real index files.
  */
 
 #include <stdio.h>
@@ -69,8 +70,9 @@ typedef struct {
 	int parity;
 } tool_solution;
 
-static char work_dir[PATH_MAX], index_dir[PATH_MAX], two_index_dir[PATH_MAX], three_index_dir[PATH_MAX], empty_dir[PATH_MAX], raw_path[PATH_MAX], fits_path[PATH_MAX], text_path[PATH_MAX];
+static char work_dir[PATH_MAX], index_dir[PATH_MAX], two_index_dir[PATH_MAX], three_index_dir[PATH_MAX], empty_dir[PATH_MAX], raw_path[PATH_MAX], fits_path[PATH_MAX], text_path[PATH_MAX], mirrored_path[PATH_MAX], wcs_path[PATH_MAX];
 static float ra0, dec0, image_ra, image_dec;
+static indigo_solver_index_star frame_stars[CATALOG_STAR_COUNT];
 static uint32_t rng_state = 20261028;
 
 static float frand(void) {
@@ -137,6 +139,7 @@ static indigo_raw_header *render_image(const char *index_path, long *size) {
 	}
 	indigo_solver_index_star stars[CATALOG_STAR_COUNT];
 	memcpy(stars, index.stars, sizeof(stars));
+	memcpy(frame_stars, index.stars, sizeof(frame_stars));
 	indigo_solver_free_catalog(&index);
 	for (int i = 0; i < CATALOG_STAR_COUNT; i++) {
 		float x, y;
@@ -347,6 +350,126 @@ static bool document_matches_frame(tool_run *run, bool json) {
 	return true;
 }
 
+// -------------------------------------------------------------------------------- WCS files
+
+typedef struct {
+	char data[4 * 2880];
+	long size;
+	double crval1, crval2, crpix1, crpix2, cd1_1, cd1_2, cd2_1, cd2_2;
+} wcs_file;
+
+// The value of the header card with this keyword, NULL without one; the cards before END only
+static const char *wcs_card_value(wcs_file *wcs, const char *key) {
+	char keyword[9];
+	snprintf(keyword, sizeof(keyword), "%-8s", key);
+	for (long offset = 0; offset + 80 <= wcs->size; offset += 80) {
+		const char *card = wcs->data + offset;
+		if (!strncmp(card, "END     ", 8)) {
+			return NULL;
+		}
+		if (!strncmp(card, keyword, 8) && card[8] == '=' && card[9] == ' ') {
+			return card + 10;
+		}
+	}
+	return NULL;
+}
+
+static bool wcs_card_number(wcs_file *wcs, const char *key, double *value) {
+	const char *card = wcs_card_value(wcs, key);
+	if (card == NULL || sscanf(card, "%lf", value) != 1) {
+		fprintf(stderr, "No number for '%s' in the WCS file\n", key);
+		return false;
+	}
+	return true;
+}
+
+static bool wcs_card_is(wcs_file *wcs, const char *key, const char *value) {
+	const char *card = wcs_card_value(wcs, key);
+	if (card == NULL || strncmp(card, value, strlen(value))) {
+		fprintf(stderr, "'%s' is not '%s' in the WCS file\n", key, value);
+		return false;
+	}
+	return true;
+}
+
+// A .wcs file as Astrometry.net and ASTAP write it: a FITS header without data, printable ASCII cards of 80
+// characters up to END, padded with spaces to whole 2880 byte records, with a TAN projection in J2000
+static bool read_wcs_file(const char *path, wcs_file *wcs) {
+	FILE *file = fopen(path, "rb");
+	REQUIRE(file != NULL);
+	wcs->size = (long)fread(wcs->data, 1, sizeof(wcs->data), file);
+	fclose(file);
+	REQUIRE(wcs->size == 2880);
+	for (long i = 0; i < wcs->size; i++) {
+		REQUIRE(wcs->data[i] >= 0x20 && wcs->data[i] <= 0x7E);
+	}
+	long end = -1;
+	for (long offset = 0; offset < wcs->size && end < 0; offset += 80) {
+		if (!strncmp(wcs->data + offset, "END     ", 8)) {
+			end = offset;
+		}
+	}
+	REQUIRE(end > 0);
+	for (long i = end + 3; i < wcs->size; i++) {
+		REQUIRE(wcs->data[i] == ' ');
+	}
+	REQUIRE(!strncmp(wcs->data, "SIMPLE  =                    T", 30));
+	REQUIRE(wcs_card_is(wcs, "NAXIS", "                   0"));
+	REQUIRE(wcs_card_is(wcs, "CTYPE1", "'RA---TAN'"));
+	REQUIRE(wcs_card_is(wcs, "CTYPE2", "'DEC--TAN'"));
+	REQUIRE(wcs_card_is(wcs, "RADESYS", "'ICRS'"));
+	REQUIRE(wcs_card_is(wcs, "CREATOR", "'indigo_solver'"));
+	double equinox, width, height;
+	REQUIRE(wcs_card_number(wcs, "EQUINOX", &equinox) && equinox == 2000);
+	REQUIRE(wcs_card_number(wcs, "IMAGEW", &width) && width == IMAGE_WIDTH);
+	REQUIRE(wcs_card_number(wcs, "IMAGEH", &height) && height == IMAGE_HEIGHT);
+	REQUIRE(wcs_card_number(wcs, "CRVAL1", &wcs->crval1));
+	REQUIRE(wcs_card_number(wcs, "CRVAL2", &wcs->crval2));
+	REQUIRE(wcs_card_number(wcs, "CRPIX1", &wcs->crpix1));
+	REQUIRE(wcs_card_number(wcs, "CRPIX2", &wcs->crpix2));
+	REQUIRE(wcs_card_number(wcs, "CD1_1", &wcs->cd1_1));
+	REQUIRE(wcs_card_number(wcs, "CD1_2", &wcs->cd1_2));
+	REQUIRE(wcs_card_number(wcs, "CD2_1", &wcs->cd2_1));
+	REQUIRE(wcs_card_number(wcs, "CD2_2", &wcs->cd2_2));
+	return true;
+}
+
+// The sky position of the FITS pixel (x, y), 1 based, by the TAN projection of the file, in radians
+static void wcs_pixel_to_sky(wcs_file *wcs, double x, double y, double *ra, double *dec) {
+	double xi = (wcs->cd1_1 * (x - wcs->crpix1) + wcs->cd1_2 * (y - wcs->crpix2)) * DEG_TO_RAD;
+	double eta = (wcs->cd2_1 * (x - wcs->crpix1) + wcs->cd2_2 * (y - wcs->crpix2)) * DEG_TO_RAD;
+	double crval_ra = wcs->crval1 * DEG_TO_RAD, crval_dec = wcs->crval2 * DEG_TO_RAD;
+	double denominator = cos(crval_dec) - eta * sin(crval_dec);
+	*dec = atan2(sin(crval_dec) + eta * cos(crval_dec), hypot(xi, denominator));
+	*ra = crval_ra + atan2(xi, denominator);
+}
+
+// Every catalog star rendered into the frame is where the WCS file puts its pixel, within the tolerance (arcseconds);
+// a mirrored frame has its columns in the reverse order
+static bool wcs_file_matches_frame(const char *path, bool mirrored, double tolerance) {
+	wcs_file wcs;
+	REQUIRE(read_wcs_file(path, &wcs));
+	int checked = 0;
+	for (int i = 0; i < CATALOG_STAR_COUNT; i++) {
+		float x, y;
+		if (indigo_radec_to_xy(image_ra, image_dec, IMAGE_ANGLE, IMAGE_SCALE, IMAGE_WIDTH, IMAGE_HEIGHT, -1, frame_stars[i].ra, frame_stars[i].dec, &x, &y)) {
+			if (mirrored) {
+				x = IMAGE_WIDTH - 1 - x;
+			}
+			double ra, dec;
+			wcs_pixel_to_sky(&wcs, x + 1, y + 1, &ra, &dec);
+			double distance = indigo_angular_distance(ra, dec, frame_stars[i].ra, frame_stars[i].dec) / ARCSEC_TO_RAD;
+			if (distance >= tolerance) {
+				fprintf(stderr, "Star %d at pixel %.1f, %.1f is %.1f\" from its position by the WCS file\n", i, x + 1, y + 1, distance);
+			}
+			REQUIRE(distance < tolerance);
+			checked++;
+		}
+	}
+	REQUIRE(checked >= 10);
+	return true;
+}
+
 // -------------------------------------------------------------------------------- lifecycle
 
 static bool setup(void) {
@@ -373,6 +496,22 @@ static bool setup(void) {
 	free(image);
 	REQUIRE(ok);
 	REQUIRE(write_file(text_path, "not an image\n", 13));
+	// the frame with its columns in the reverse order has the other parity
+	snprintf(mirrored_path, sizeof(mirrored_path), "%s/mirrored.raw", work_dir);
+	snprintf(wcs_path, sizeof(wcs_path), "%s/frame.wcs", work_dir);
+	image = render_image(index_path, &size);
+	REQUIRE(image != NULL);
+	uint16_t *pixels = (uint16_t *)(image + 1);
+	for (int y = 0; y < IMAGE_HEIGHT; y++) {
+		for (int x = 0; x < IMAGE_WIDTH / 2; x++) {
+			uint16_t pixel = pixels[y * IMAGE_WIDTH + x];
+			pixels[y * IMAGE_WIDTH + x] = pixels[y * IMAGE_WIDTH + IMAGE_WIDTH - 1 - x];
+			pixels[y * IMAGE_WIDTH + IMAGE_WIDTH - 1 - x] = pixel;
+		}
+	}
+	ok = write_file(mirrored_path, image, size);
+	free(image);
+	REQUIRE(ok);
 	// the matching 5° index and, as the 0.5° index, another random patch around the same centre that matches nothing
 	snprintf(two_index_dir, sizeof(two_index_dir), "%s/two", work_dir);
 	REQUIRE(mkdir(two_index_dir, 0755) == 0);
@@ -409,7 +548,7 @@ static void help_lists_switches_and_defaults(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, work_dir, "-h"));
 	ASSERT_EQ_INT(0, run.exit_code);
-	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--format", "text, json or xml", "(default: text)", "--verbose", "--help", "0.2,0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
+	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--format", "text, json or xml", "(default: text)", "--wcs", "The WCS file is written only when the image is solved, an existing file is left as it is otherwise", "--verbose", "--help", "0.2,0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
 	for (unsigned i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
 		ASSERT_TRUE(output_contains(&run, expected[i]));
 	}
@@ -713,6 +852,7 @@ static void invalid_arguments_are_refused(void) {
 		{ "-f yaml", "invalid value 'yaml' for '-f'" },
 		{ "--format JSON", "invalid value 'JSON' for '--format'" },
 		{ "-q 1", "unknown option '-q'" },
+		{ "-w ''", "invalid value '' for '-w'" },
 	};
 	tool_run run;
 	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
@@ -729,6 +869,14 @@ static void invalid_arguments_are_refused(void) {
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' '%s' -D", index_dir, raw_path));
 	ASSERT_EQ_INT(2, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "unknown option or missing value for '-D'"));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' '%s' --wcs", index_dir, raw_path));
+	ASSERT_EQ_INT(2, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "unknown option or missing value for '--wcs'"));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -w '%s' '%s'", index_dir, raw_path, raw_path));
+	ASSERT_EQ_INT(2, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "the WCS file can't be the image file"));
+	struct stat status;
+	ASSERT_TRUE(stat(raw_path, &status) == 0 && status.st_size == (off_t)(sizeof(indigo_raw_header) + IMAGE_WIDTH * IMAGE_HEIGHT * 2));
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -v", index_dir));
 	ASSERT_EQ_INT(2, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "no image file given"));
@@ -749,6 +897,75 @@ static void unreadable_and_unsupported_files_fail(void) {
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-v -i '%s' '%s'", index_dir, text_path));
 	ASSERT_EQ_INT(1, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "libraw"));
+}
+
+// -w writes the solution as a WCS FITS header that puts every rendered star on its catalog position; the text
+// output stays as it is
+static void wcs_file_of_a_solution(void) {
+	tool_run run;
+	remove(wcs_path);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s' '%s'", index_dir, wcs_path, raw_path));
+	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
+	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 10));
+	wcs_file wcs;
+	ASSERT_TRUE(read_wcs_file(wcs_path, &wcs));
+	ASSERT_TRUE(wcs.crpix1 == (IMAGE_WIDTH + 1) / 2.0 && wcs.crpix2 == (IMAGE_HEIGHT + 1) / 2.0);
+	ASSERT_TRUE(strstr(wcs.data, "COMMENT Solution of frame.raw ") != NULL);
+	remove(wcs_path);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --wcs '%s' '%s'", index_dir, wcs_path, fits_path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 30));
+}
+
+// The mirrored frame has parity 1, the WCS file has the columns the other way round
+static void wcs_file_of_a_mirrored_frame(void) {
+	tool_run run;
+	remove(wcs_path);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s' '%s'", index_dir, wcs_path, mirrored_path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Parity:   1\n"));
+	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, true, 10));
+}
+
+// The WCS file is in J2000 when the result is printed in JNow
+static void wcs_file_of_a_jnow_solution(void) {
+	tool_run run;
+	remove(wcs_path);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -e 0 -w '%s' '%s'", index_dir, wcs_path, raw_path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Epoch:    JNow"));
+	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 10));
+}
+
+// With a structured output the document alone is on stdout and the WCS file is written as well
+static void wcs_file_with_structured_output(void) {
+	tool_run run;
+	remove(wcs_path);
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -i '%s' -D 1 -w '%s' '%s'", index_dir, wcs_path, raw_path));
+	ASSERT_TRUE(document_matches_frame(&run, true));
+	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 10));
+}
+
+// An image that is not solved leaves no WCS file
+static void wcs_file_not_written_when_not_solved(void) {
+	tool_run run;
+	remove(wcs_path);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s' -r %.6f -d %.6f -R 2 '%s'", index_dir, wcs_path, (ra0 + 30 * DEG_TO_RAD) * RAD_TO_DEG / 15, dec0 * RAD_TO_DEG, raw_path));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Not solved: No solution found"));
+	ASSERT_FALSE(access(wcs_path, F_OK) == 0);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -w '%s' '%s'", index_dir, wcs_path, text_path));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_FALSE(access(wcs_path, F_OK) == 0);
+}
+
+// A solved image whose WCS file can't be created exits with 3 and still prints the solution
+static void wcs_file_that_cannot_be_written(void) {
+	tool_run run;
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s/missing/frame.wcs' '%s'", index_dir, work_dir, raw_path));
+	ASSERT_EQ_INT(3, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Solved in "));
+	ASSERT_TRUE(output_contains(&run, "indigo_solver: can't create '"));
 }
 
 static const indigo_test_case tests[] = {
@@ -775,6 +992,12 @@ static const indigo_test_case tests[] = {
 	{ "structured_output_when_not_solved", structured_output_when_not_solved },
 	{ "structured_output_escapes_the_file_name", structured_output_escapes_the_file_name },
 	{ "structured_output_not_given_for_wrong_arguments", structured_output_not_given_for_wrong_arguments },
+	{ "wcs_file_of_a_solution", wcs_file_of_a_solution },
+	{ "wcs_file_of_a_mirrored_frame", wcs_file_of_a_mirrored_frame },
+	{ "wcs_file_of_a_jnow_solution", wcs_file_of_a_jnow_solution },
+	{ "wcs_file_with_structured_output", wcs_file_with_structured_output },
+	{ "wcs_file_not_written_when_not_solved", wcs_file_not_written_when_not_solved },
+	{ "wcs_file_that_cannot_be_written", wcs_file_that_cannot_be_written },
 };
 
 int main(void) {
