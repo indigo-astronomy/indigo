@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "task": "20261107080809-a02b-fix-ccd-svb-gain-after-open",
+  "scope": [
+    "indigo_drivers/ccd_svb/*",
+    "indigo_test/integration/test_ccd_svb_sdk.c",
+    "indigo_test/hardware/test_ccd_svb_hw.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261107080809-a02b-fix-ccd-svb-gain-after-open.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_svb"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "ccd_svb",
+        "--hw"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261107080809-a02b-fix-ccd-svb-gain-after-open.json": [
+      "100644",
+      "blob",
+      "6219ae9e537eddbea3f8a675f98c5622aa1ec1b0"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "d674275747940b2b537e38c57e2de8f82c2b067b"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "0f6a67b7386cf6daf840970e187dcb1d485dcc8f"
+    ],
+    "indigo_drivers/ccd_svb/README.md": [
+      "100644",
+      "blob",
+      "d021eeb94558e0901b5b7c6f254b95dc4ec33d07"
+    ],
+    "indigo_drivers/ccd_svb/indigo_ccd_svb.c": [
+      "100644",
+      "blob",
+      "220d34fc963b748c36bfd4d1e40a133192afe3ea"
+    ],
+    "indigo_drivers/ccd_svb/indigo_ccd_svb.driver": [
+      "100644",
+      "blob",
+      "364ddbfc0281c24b33723f393f85bb431455e236"
+    ],
+    "indigo_test/hardware/test_ccd_svb_hw.c": [
+      "100644",
+      "blob",
+      "847867fd1ee52db52bf1b65f40613cd4582215b6"
+    ],
+    "indigo_test/integration/test_ccd_svb_sdk.c": [
+      "100644",
+      "blob",
+      "ab6162054ceb11d0e2a0ba713f93dee636261618"
+    ]
+  }
+}

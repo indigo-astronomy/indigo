@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261107080809-a02b-fix-ccd-svb-gain-after-open",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Commit the product and factory changes on the task branch, run the committed-range process check, integrate after owner authorization.",
+  "blocker": null
+}
