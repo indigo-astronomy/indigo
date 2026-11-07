@@ -20,7 +20,7 @@
 
 /** Test of the indigo_solver command line tool: the built executable is run on a synthetic Tycho-2 style index and
  synthetic RAW and FITS frames of the indexed field in a private directory; its output, messages and exit codes are
- checked for every hint switch, and the WCS file it writes is checked against the catalog positions of the rendered
+ checked for every hint switch, and the WCS header of the wcs format is checked against the catalog positions of the rendered
  stars. No network, no real index files.
  */
 
@@ -216,6 +216,23 @@ static bool run_tool_stdout(tool_run *run, const char *cache_base, const char *f
 	bool ok = run_tool_with(run, cache_base, "2>/dev/null", format, args);
 	va_end(args);
 	return ok;
+}
+
+// Runs the tool with stdout redirected to the WCS file of the test, as a user saves the wcs format, and stderr
+// captured
+static bool run_tool_wcs(tool_run *run, const char *cache_base, const char *format, ...) {
+	char redirect[PATH_MAX + 16];
+	snprintf(redirect, sizeof(redirect), "2>&1 >'%s'", wcs_path);
+	va_list args;
+	va_start(args, format);
+	bool ok = run_tool_with(run, cache_base, redirect, format, args);
+	va_end(args);
+	return ok;
+}
+
+static long file_size(const char *path) {
+	struct stat status;
+	return stat(path, &status) == 0 ? (long)status.st_size : -1;
 }
 
 static bool output_contains(tool_run *run, const char *text) {
@@ -548,7 +565,7 @@ static void help_lists_switches_and_defaults(void) {
 	tool_run run;
 	ASSERT_TRUE(run_tool(&run, work_dir, "-h"));
 	ASSERT_EQ_INT(0, run.exit_code);
-	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--format", "text, json or xml", "(default: text)", "--wcs", "The WCS file is written only when the image is solved, an existing file is left as it is otherwise", "--verbose", "--help", "0.2,0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
+	const char *expected[] = { "Usage: indigo_solver [options] image_file", "--index-dir", "--index", "--scale", "--ra", "--dec", "--radius", "--epoch", "--parity", "--downsample", "--depth", "--cpu-limit", "--format", "text, json, xml or wcs", "(default: text)", "With wcs the solution is a WCS FITS header on the standard output", "always in J2000; nothing is written to the standard output when the image is not solved", "2 on wrong arguments.\n", "--verbose", "--help", "0.2,0.5,1,2,5,10,20", "(default: 2)", "(default: 180)", "(default: 2000)" };
 	for (unsigned i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
 		ASSERT_TRUE(output_contains(&run, expected[i]));
 	}
@@ -772,6 +789,9 @@ static void structured_output_not_given_for_wrong_arguments(void) {
 	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f xml -R 2 -i '%s' '%s'", index_dir, raw_path));
 	ASSERT_EQ_INT(2, run.exit_code);
 	ASSERT_EQ_INT(0, (int)strlen(run.output));
+	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f wcs -x 3 -i '%s' '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(2, run.exit_code);
+	ASSERT_EQ_INT(0, (int)strlen(run.output));
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-f json -x 3 -i '%s' '%s'", index_dir, raw_path));
 	ASSERT_EQ_INT(2, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "unknown index scale '3'"));
@@ -852,7 +872,8 @@ static void invalid_arguments_are_refused(void) {
 		{ "-f yaml", "invalid value 'yaml' for '-f'" },
 		{ "--format JSON", "invalid value 'JSON' for '--format'" },
 		{ "-q 1", "unknown option '-q'" },
-		{ "-w ''", "invalid value '' for '-w'" },
+		{ "--format WCS", "invalid value 'WCS' for '--format'" },
+		{ "-w frame.wcs", "unknown option '-w'" },
 	};
 	tool_run run;
 	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
@@ -869,14 +890,6 @@ static void invalid_arguments_are_refused(void) {
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' '%s' -D", index_dir, raw_path));
 	ASSERT_EQ_INT(2, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "unknown option or missing value for '-D'"));
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' '%s' --wcs", index_dir, raw_path));
-	ASSERT_EQ_INT(2, run.exit_code);
-	ASSERT_TRUE(output_contains(&run, "unknown option or missing value for '--wcs'"));
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -w '%s' '%s'", index_dir, raw_path, raw_path));
-	ASSERT_EQ_INT(2, run.exit_code);
-	ASSERT_TRUE(output_contains(&run, "the WCS file can't be the image file"));
-	struct stat status;
-	ASSERT_TRUE(stat(raw_path, &status) == 0 && status.st_size == (off_t)(sizeof(indigo_raw_header) + IMAGE_WIDTH * IMAGE_HEIGHT * 2));
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -v", index_dir));
 	ASSERT_EQ_INT(2, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "no image file given"));
@@ -899,73 +912,72 @@ static void unreadable_and_unsupported_files_fail(void) {
 	ASSERT_TRUE(output_contains(&run, "libraw"));
 }
 
-// -w writes the solution as a WCS FITS header that puts every rendered star on its catalog position; the text
-// output stays as it is
-static void wcs_file_of_a_solution(void) {
+// -f wcs gives the solution as a WCS FITS header alone on stdout, which puts every rendered star on its catalog
+// position; nothing else is printed without -v
+static void wcs_output_of_a_solution(void) {
 	tool_run run;
 	remove(wcs_path);
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s' '%s'", index_dir, wcs_path, raw_path));
-	ASSERT_TRUE(solution_matches_frame(&run, 10, 0.003));
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-f wcs -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_EQ_INT(0, (int)strlen(run.output));
 	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 10));
 	wcs_file wcs;
 	ASSERT_TRUE(read_wcs_file(wcs_path, &wcs));
 	ASSERT_TRUE(wcs.crpix1 == (IMAGE_WIDTH + 1) / 2.0 && wcs.crpix2 == (IMAGE_HEIGHT + 1) / 2.0);
 	ASSERT_TRUE(strstr(wcs.data, "COMMENT Solution of frame.raw ") != NULL);
 	remove(wcs_path);
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --wcs '%s' '%s'", index_dir, wcs_path, fits_path));
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-i '%s' --format wcs '%s'", index_dir, fits_path));
 	ASSERT_EQ_INT(0, run.exit_code);
 	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 30));
 }
 
-// The mirrored frame has parity 1, the WCS file has the columns the other way round
-static void wcs_file_of_a_mirrored_frame(void) {
+// The mirrored frame has parity 1, the WCS header has the columns the other way round
+static void wcs_output_of_a_mirrored_frame(void) {
 	tool_run run;
 	remove(wcs_path);
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s' '%s'", index_dir, wcs_path, mirrored_path));
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-f wcs -i '%s' -D 1 '%s'", index_dir, mirrored_path));
 	ASSERT_EQ_INT(0, run.exit_code);
-	ASSERT_TRUE(output_contains(&run, "Parity:   1\n"));
 	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, true, 10));
 }
 
-// The WCS file is in J2000 when the result is printed in JNow
-static void wcs_file_of_a_jnow_solution(void) {
+// The WCS header is in J2000 when the JNow epoch is selected
+static void wcs_output_of_a_jnow_solution(void) {
 	tool_run run;
 	remove(wcs_path);
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -e 0 -w '%s' '%s'", index_dir, wcs_path, raw_path));
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-f wcs -e 0 -i '%s' -D 1 '%s'", index_dir, raw_path));
 	ASSERT_EQ_INT(0, run.exit_code);
-	ASSERT_TRUE(output_contains(&run, "Epoch:    JNow"));
 	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 10));
 }
 
-// With a structured output the document alone is on stdout and the WCS file is written as well
-static void wcs_file_with_structured_output(void) {
+// The progress of -v goes to stderr, stdout holds the WCS header alone
+static void wcs_output_with_verbose_progress(void) {
 	tool_run run;
 	remove(wcs_path);
-	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -i '%s' -D 1 -w '%s' '%s'", index_dir, wcs_path, raw_path));
-	ASSERT_TRUE(document_matches_frame(&run, true));
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-v -f wcs -i '%s' -D 1 '%s'", index_dir, raw_path));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Solving with index "));
+	ASSERT_TRUE(output_contains(&run, "stars detected"));
+	ASSERT_FALSE(strstr(run.output, "Solved in ") != NULL);
 	ASSERT_TRUE(wcs_file_matches_frame(wcs_path, false, 10));
 }
 
-// An image that is not solved leaves no WCS file
-static void wcs_file_not_written_when_not_solved(void) {
+// An image that is not solved gives nothing on stdout, the reason on stderr and exit code 1
+static void wcs_output_when_not_solved(void) {
 	tool_run run;
-	remove(wcs_path);
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s' -r %.6f -d %.6f -R 2 '%s'", index_dir, wcs_path, (ra0 + 30 * DEG_TO_RAD) * RAD_TO_DEG / 15, dec0 * RAD_TO_DEG, raw_path));
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-f wcs -i '%s' -D 1 -r %.6f -d %.6f -R 2 '%s'", index_dir, (ra0 + 30 * DEG_TO_RAD) * RAD_TO_DEG / 15, dec0 * RAD_TO_DEG, raw_path));
 	ASSERT_EQ_INT(1, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "Not solved: No solution found"));
-	ASSERT_FALSE(access(wcs_path, F_OK) == 0);
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -w '%s' '%s'", index_dir, wcs_path, text_path));
+	ASSERT_EQ_INT(0, (int)file_size(wcs_path));
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-f wcs -i '%s' '%s'", index_dir, text_path));
 	ASSERT_EQ_INT(1, run.exit_code);
-	ASSERT_FALSE(access(wcs_path, F_OK) == 0);
-}
-
-// A solved image whose WCS file can't be created exits with 3 and still prints the solution
-static void wcs_file_that_cannot_be_written(void) {
-	tool_run run;
-	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -D 1 -w '%s/missing/frame.wcs' '%s'", index_dir, work_dir, raw_path));
-	ASSERT_EQ_INT(3, run.exit_code);
-	ASSERT_TRUE(output_contains(&run, "Solved in "));
-	ASSERT_TRUE(output_contains(&run, "indigo_solver: can't create '"));
+	ASSERT_TRUE(output_contains(&run, "Not solved: Unsupported image format"));
+	ASSERT_EQ_INT(0, (int)file_size(wcs_path));
+	char missing[PATH_MAX + 16];
+	snprintf(missing, sizeof(missing), "%s/missing.raw", work_dir);
+	ASSERT_TRUE(run_tool_wcs(&run, empty_dir, "-f wcs -i '%s' '%s'", index_dir, missing));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "can't open"));
+	ASSERT_EQ_INT(0, (int)file_size(wcs_path));
 }
 
 static const indigo_test_case tests[] = {
@@ -992,12 +1004,11 @@ static const indigo_test_case tests[] = {
 	{ "structured_output_when_not_solved", structured_output_when_not_solved },
 	{ "structured_output_escapes_the_file_name", structured_output_escapes_the_file_name },
 	{ "structured_output_not_given_for_wrong_arguments", structured_output_not_given_for_wrong_arguments },
-	{ "wcs_file_of_a_solution", wcs_file_of_a_solution },
-	{ "wcs_file_of_a_mirrored_frame", wcs_file_of_a_mirrored_frame },
-	{ "wcs_file_of_a_jnow_solution", wcs_file_of_a_jnow_solution },
-	{ "wcs_file_with_structured_output", wcs_file_with_structured_output },
-	{ "wcs_file_not_written_when_not_solved", wcs_file_not_written_when_not_solved },
-	{ "wcs_file_that_cannot_be_written", wcs_file_that_cannot_be_written },
+	{ "wcs_output_of_a_solution", wcs_output_of_a_solution },
+	{ "wcs_output_of_a_mirrored_frame", wcs_output_of_a_mirrored_frame },
+	{ "wcs_output_of_a_jnow_solution", wcs_output_of_a_jnow_solution },
+	{ "wcs_output_with_verbose_progress", wcs_output_with_verbose_progress },
+	{ "wcs_output_when_not_solved", wcs_output_when_not_solved },
 };
 
 int main(void) {
