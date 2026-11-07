@@ -26,8 +26,8 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 
 ## Git delivery tracking
 - Task branch / main target / remote: task/20261107080809-a02b-fix-ccd-svb-gain-after-open / master / origin
-- Base revision and latest merged target revision: 0d1e4672e452d5f4182bada9276c32cb0714deee (origin/master equal at task start)
-- Tested candidate revision: record after the commits in the external delivery log
+- Base revision: 0d1e4672e452d5f4182bada9276c32cb0714deee (origin/master equal at task start); latest merged target revision: c669fc0d67728c7795ab679eb94563dfd1df669d (master advanced by the aux_alto and indigo_solver tasks, merged into the task branch on 2026-11-07 as 73b14b714907e3275265bcd6da51c0ed97062567, auto-merged without conflicts)
+- Tested candidate revision: 1bb3d9345 + 1f443cc4b (recorded runs); synchronized candidate 73b14b714 (fake SDK rerun, see verification.md)
 - Check evidence on synchronized candidate: [verification.md](verification.md)
 - Integration / publication / cleanup: pending
 - Existing authorization and protected-branch requirements: owner approval of the planned commits; no push without authorization

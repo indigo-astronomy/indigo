@@ -52,6 +52,17 @@ and pass only with the exposure write at connect.
 - Fake SDK addition from hardware observation (indigo_test/AGENTS.md): the gain refusal between open and the first
   exposure write comes from the user's SV705C/SV905C2 report and the SV305PRO reproduction above.
 
+## Synchronized candidate
+master advanced before integration (aux_alto and indigo_solver tasks); master c669fc0d6 was merged into the task
+branch as 73b14b714 without conflicts. The only shared paths are MIGRATION_STATUS.md and TEST_SUMMARY.md, both
+merged line-wise with the other tasks' rows; no ccd_svb source or test file changed. Rerun on the merged candidate:
+
+| When | Command | Result |
+| --- | --- | --- |
+| 2026-11-07 13:07 CET | `python3 tools/run_driver_test.py ccd_svb --no-record` (mac arm64, working tree clean at 73b14b714) | ccd_svb: 49/49 OK |
+
+The hardware run was not repeated: the merge changed no file the driver or its hardware suite is built from.
+
 ## Verification verdict rationale
 The defect is reproduced hardware-free and on hardware against the pre-fix driver, every acceptance criterion
 passes in the final recorded runs, the pre-existing cases pass, and the independent review found no blocking issue
