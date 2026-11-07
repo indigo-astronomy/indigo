@@ -3214,10 +3214,11 @@ $(TEST_BUILD)/hardware/test_aux_giotto_hw: hardware/test_aux_giotto_hw.c hardwar
 
 # A physical PrimaLuce Lab ALTO is opt-in and excluded from normal integration tests. THE COVER MOVES over its whole
 # travel; the run restores the position, the LEDs and the preset it uses. Set ALTO_HW_PORT (or
-# 'run_driver_test.py aux_alto --hw --port') to the port.
+# 'run_driver_test.py aux_alto --hw --port') to the port. HW_HOTPLUG=1 ('run_driver_test.py aux_alto --hot-plug') adds the
+# USB unplug and replug case.
 .PHONY: test-aux-alto-hw
 test-aux-alto-hw: check-lib $(TEST_BUILD)/hardware/test_aux_alto_hw
-	$(TEST_BUILD)/hardware/test_aux_alto_hw --run $(if $(filter 1,$(HW_DEBUG)),--debug)
+	$(TEST_BUILD)/hardware/test_aux_alto_hw --run $(if $(filter 1,$(HW_HOTPLUG)),--hotplug) $(if $(filter 1,$(HW_DEBUG)),--debug)
 
 AUX_ALTO_HW_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_alto.a $(PRIMALUCELIB) $(TEST_LDFLAGS) -lm
 

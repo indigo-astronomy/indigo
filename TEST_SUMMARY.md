@@ -44,9 +44,10 @@
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 |  | 2026-09-27 21:22 | 3.0.0.15 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-30 18:14 | 3.0.0.15 | linux arm64 | StarlightXpress AO | 16 / 16 | ✅ OK |
-| aux_alto | 2026-10-24 16:49 | 3.0.0.1 | linux x64 | ALTO1 | 9 / 9 | ✅ OK |
-|  | 2026-10-25 03:18 | 3.0.0.7 | linux x64 | simulator | 33 / 33 | ✅ OK |
-|  | 2026-11-02 19:00 | 3.0.0.8 | mac arm64 | simulator | 34 / 34 | ✅ OK |
+| aux_alto | 2026-11-02 19:00 | 3.0.0.8 | mac arm64 | simulator | 34 / 34 | ✅ OK |
+|  | 2026-11-07 12:06 | 3.0.0.11 | linux x64 | ALTO1 (hot-plug) | 10 / 10 | ✅ OK |
+|  | 2026-11-07 12:23 | 3.0.0.11 | linux x64 | simulator | 36 / 36 | ✅ OK |
+|  | 2026-11-07 12:33 | 3.0.0.11 | linux x64 | ALTO1 | 9 / 9 | ✅ OK |
 | aux_arteskyflat | 2026-09-27 20:47 | 3.0.0.9 | mac arm64 | simulator | 9 / 9 | ✅ OK |
 |  | 2026-10-09 13:18 | 3.0.0.9 | linux arm64 | Artesky Flat Box Arduino simulator (ESP32-S3) | 6 / 6 | ✅ OK |
 | aux_asiair | 2026-09-27 02:07 | 3.0.0.7 | linux x64 | fake SDK | 20 / 20 | ✅ OK |

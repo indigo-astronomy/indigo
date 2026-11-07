@@ -235,14 +235,17 @@ extern "C" {
 #define PRIMALUCE_FOCUSER_CALIBRATION_STOP_MOTOR  "StopMotor"
 #define PRIMALUCE_FOCUSER_CALIBRATION_AUTO_START  "start_auto_cal"
 #define PRIMALUCE_FOCUSER_CALIBRATION_AUTO_STOP   "stop_calib"
-// CAL_ALTO steps (from the INDI driver, not verified on hardware).
+// CAL_ALTO steps (PrimaLuce ALTO protocol v1.3, verified on an ALTO1). Motor_Stop stops the arm within a calibration.
 #define PRIMALUCE_COVER_CALIBRATION_INIT          "Init"
 #define PRIMALUCE_COVER_CALIBRATION_OPEN_FAST     "Open_Fast"
 #define PRIMALUCE_COVER_CALIBRATION_OPEN_SLOW     "Open_Slow"
 #define PRIMALUCE_COVER_CALIBRATION_CLOSE_FAST    "Close_Fast"
 #define PRIMALUCE_COVER_CALIBRATION_CLOSE_SLOW    "Close_Slow"
+#define PRIMALUCE_COVER_CALIBRATION_MOTOR_STOP    "Motor_Stop"
 #define PRIMALUCE_COVER_CALIBRATION_STORE_CLOSED  "StoreAsClosedPos"
 #define PRIMALUCE_COVER_CALIBRATION_STORE_OPEN    "StoreAsMaxOpenPos"
+// The CAL_MAXPOS of the provisional range CAL_ALTO Init counts in (ALTO1, firmware 1.03.11); never a stored travel.
+#define PRIMALUCE_COVER_PROVISIONAL_TRAVEL        2097136
 // MODNAME prefixes.
 #define PRIMALUCE_MODEL_NAME_SESTOSENSO           "SESTOSENSO"
 #define PRIMALUCE_MODEL_NAME_SESTOSENSO3          "SESTOSENSO3"
@@ -375,6 +378,7 @@ extern "C" {
 // index 1 to PRIMALUCE_COVER_PRESET_COUNT, steps
 #define PRIMALUCE_REQUEST_COVER_SET_PRESET_POSITION       "{\"req\":{\"set\":{\"PRESET_%d\":{\"M1POS\":%d}}}}"
 #define PRIMALUCE_REQUEST_COVER_STOP                      "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}"
+#define PRIMALUCE_REQUEST_COVER_GET_TRAVEL                "{\"req\":{\"get\":{\"MOT1\":{\"CAL_MAXPOS\":\"\"}}}}"
 // PRIMALUCE_COVER_CALIBRATION_*
 #define PRIMALUCE_REQUEST_COVER_CALIBRATION_STEP          "{\"req\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"%s\"}}}}"
 
@@ -732,7 +736,7 @@ extern bool primalucelib_panel_recall_preset(primalucelib_link *link, int index)
 extern bool primalucelib_panel_set_fading(primalucelib_link *link, bool enabled);
 extern bool primalucelib_panel_set_light_at_power_on(primalucelib_link *link, bool enabled);
 
-#pragma mark - Cover (ALTO, verified on an ALTO1 with application firmware 1.03.11; calibration from the INDI driver)
+#pragma mark - Cover (ALTO, verified on an ALTO1 with application firmware 1.03.11, calibration included)
 
 // A refused set or cmd fails with the controller's reason in primalucelib_last_error(). The controller acknowledges any
 // POSITION, so only PRIMALUCE_COVER_CLOSED to PRIMALUCE_COVER_OPEN may be passed.
@@ -746,6 +750,9 @@ extern bool primalucelib_cover_get_environment(primalucelib_link *link, double *
 // Decelerated stop.
 extern bool primalucelib_cover_stop(primalucelib_link *link);
 extern bool primalucelib_cover_calibration_step(primalucelib_link *link, const char *step);
+// The travel in steps (MOT1.CAL_MAXPOS). CAL_ALTO Init reports a provisional 2097136 until StoreAsMaxOpenPos, and an
+// ALTO1 (firmware 1.03.11) still reported it right after acknowledging StoreAsMaxOpenPos.
+extern bool primalucelib_cover_get_travel(primalucelib_link *link, int *travel);
 // Presets are numbered 1 to PRIMALUCE_COVER_PRESET_COUNT, positions in steps; a preset without a name refuses a position.
 extern bool primalucelib_cover_set_preset_position(primalucelib_link *link, int index, int steps);
 extern bool primalucelib_cover_set_preset_name(primalucelib_link *link, int index, const char *name);

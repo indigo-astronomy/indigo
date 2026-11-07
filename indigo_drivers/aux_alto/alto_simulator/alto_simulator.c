@@ -28,7 +28,10 @@
 #include "../../../indigo_test/simulator_common/serial_motion.h"
 
 // Version 2: refused preset and LED writes retain the previous state.
-#define ALTO_SIMULATOR_VERSION 2
+// Version 3: CAL_ALTO Motor_Stop stops the arm during a calibration (PrimaLuce protocol v1.3).
+// Version 4: CAL_ALTO Init counts in a provisional range with the arm in its middle, and CAL_MAXPOS reports that range
+// for a moment after StoreAsMaxOpenPos (both seen on an ALTO1, firmware 1.03.11); profile stale-travel.
+#define ALTO_SIMULATOR_VERSION 4
 
 #define PRESET_COUNT     3
 #define MAX_TOKENS       256
@@ -36,10 +39,15 @@
 #define INVALID          "Error: invalid command"
 #define NOT_FOUND        "ERROR: Obj's name not found or invalid command"
 #define PARAMETER_ERROR  "Error: parameter not found"
-// Steps per second; a decelerated stop runs this far on.
+// Steps per second; a decelerated stop runs this far on. Time is compressed so the suite stays fast: an ALTO1 moves at
+// about 7400 steps/s and calibrates at about 3000 (fast) and 2600 (slow); no driver logic depends on the speed.
 #define SPEED            48000.0
 #define SLOW_SPEED       12000.0
 #define STOP_DISTANCE    2000.0
+// CAL_ALTO Init: the provisional range (also in the full state example of the PrimaLuce protocol v1.3).
+#define PROVISIONAL_TRAVEL 2097136
+// An ALTO1 still reported the provisional CAL_MAXPOS 170 ms after acknowledging StoreAsMaxOpenPos.
+#define STALE_TRAVEL_TIME  1.0
 
 typedef struct {
 	bool headless;
@@ -72,6 +80,10 @@ static bool stalled = false;
 static int calibration_restart = 0;
 static const char *motor_error = "";
 static bool calibrating = false;
+// CAL_MAXPOS reports stale_travel until stale_travel_until (serial_motion_time()); the stale-travel profile keeps it.
+static int stale_travel = 0;
+static double stale_travel_until = 0;
+static bool travel_stays_stale = false;
 static char leds[16] = "on";
 static struct {
 	char name[33];
@@ -84,7 +96,8 @@ static void usage(const char *name) {
 	printf("  --headless              Disable interactive output suitable for terminals\n");
 	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
-	printf("  --profile <name>        normal, closed, needs-calibration, uncalibrated, unsupported or long-firmware, default is normal\n");
+	printf("  --profile <name>        normal, closed, needs-calibration, uncalibrated, unsupported, long-firmware or stale-travel,\n");
+	printf("                          default is normal\n");
 	printf("  -h, --help              Show this help and exit\n");
 	printf("\n");
 	printf("INDIGO_ALTO_EVENTS names a file receiving every accepted request.\n");
@@ -143,6 +156,8 @@ static void apply_profile(void) {
 		calibration_max = 0;
 		calibration_restart = 1;
 		serial_motion_sync(&motion, 0);
+	} else if (!strcmp(options.profile, "stale-travel")) {
+		travel_stays_stale = true;
 	} else if (!strcmp(options.profile, "unsupported")) {
 		model = "GIOTTO";
 	} else if (!strcmp(options.profile, "long-firmware")) {
@@ -154,6 +169,11 @@ static void apply_profile(void) {
 		firmware = long_firmware[0];
 		web_firmware = long_firmware[1];
 	}
+}
+
+// The CAL_MAXPOS the controller reports, see stale_travel.
+static int reported_travel(void) {
+	return stale_travel_until > 0 && (travel_stays_stale || serial_motion_time() < stale_travel_until) ? stale_travel : calibration_max;
 }
 
 static int steps(void) {
@@ -183,6 +203,21 @@ static const char *motor_state(void) {
 static void move_to_steps(double target, double speed) {
 	stalled = false;
 	serial_motion_start(&motion, target, speed);
+}
+
+// A decelerated stop runs on a little; a stalled arm stops where it is.
+static void decelerated_stop(void) {
+	if (moving()) {
+		if (stalled) {
+			stalled = false;
+		} else {
+			double direction = motion.target < motion.position ? -1 : 1;
+			double target = motion.position + direction * STOP_DISTANCE;
+			if (fabs(target - motion.position) < fabs(motion.target - motion.position)) {
+				serial_motion_start(&motion, target, SPEED);
+			}
+		}
+	}
 }
 
 // One-shot fault injection, as in the GIOTTO simulator. 'external' applies at once.
@@ -401,7 +436,7 @@ static void append_status(char *buffer) {
 static void append_motor(char *buffer) {
 	append(buffer, "\"MOT1\":{\"SPEED\":0,\"TVAL_HOLD\":9,\"TVAL_RUN\":18,\"TVAL_ACC\":18,\"TVAL_DEC\":18,");
 	append_status(buffer);
-	append(buffer, ",\"SUBMODEL\":\"%s\",\"NTC_T\":30.80000,\"CAL_STATUS\":\"stop\",\"CAL_MAXPOS\":%d,\"TVAL_MIN\":3,\"TVAL_MAX\":20,\"CAL_MINPOS\":0,\"CAL_HOMEP\":1000,\"HOLDCURR_STATUS\":1,\"ABS_POS_STEP\":%d,\"POSITION_STEP\":%d,\"POSITION\":%d,\"ERROR\":\"%s\"}", model, calibration_max, steps(), steps(), position(), motor_error);
+	append(buffer, ",\"SUBMODEL\":\"%s\",\"NTC_T\":30.80000,\"CAL_STATUS\":\"stop\",\"CAL_MAXPOS\":%d,\"TVAL_MIN\":3,\"TVAL_MAX\":20,\"CAL_MINPOS\":0,\"CAL_HOMEP\":1000,\"HOLDCURR_STATUS\":1,\"ABS_POS_STEP\":%d,\"POSITION_STEP\":%d,\"POSITION\":%d,\"ERROR\":\"%s\"}", model, reported_travel(), steps(), steps(), position(), motor_error);
 }
 
 static void append_preset(char *buffer, int index) {
@@ -438,7 +473,7 @@ static void get_motor_member(char *buffer, const char *json, const jsmntok_t *to
 	} else if (token_is(json, token, "NTC_T")) {
 		append(buffer, "\"NTC_T\":46.88000");
 	} else if (token_is(json, token, "CAL_MAXPOS")) {
-		append(buffer, "\"CAL_MAXPOS\":%d", calibration_max);
+		append(buffer, "\"CAL_MAXPOS\":%d", reported_travel());
 	} else if (token_is(json, token, "SPEED")) {
 		append(buffer, "\"SPEED\":0");
 	} else {
@@ -567,22 +602,32 @@ static void set_member(char *buffer, const char *json, const jsmntok_t *tokens, 
 
 static const char *calibration_step(const char *json, const jsmntok_t *value) {
 	if (token_is(json, value, "Init")) {
+		// The arm stays where it is; the step count moves to the middle of the provisional range (an open ALTO1 read
+		// POSITION 50 right after Init).
 		calibrating = true;
+		calibration_max = PROVISIONAL_TRAVEL;
+		serial_motion_sync(&motion, PROVISIONAL_TRAVEL / 2);
 		return "done";
 	}
 	if (!calibrating) {
 		return INVALID;
 	}
-	// The INDI sequence: drive to each end, stop, store; the stored positions set the travel.
+	// The PrimaLuce sequence (protocol v1.3): drive to each end, Motor_Stop, store; the stored positions set the travel.
 	if (token_is(json, value, "Close_Fast") || token_is(json, value, "Close_Slow")) {
 		move_to_steps(motion.position - 1000000, token_is(json, value, "Close_Fast") ? SPEED : SLOW_SPEED);
 	} else if (token_is(json, value, "Open_Fast") || token_is(json, value, "Open_Slow")) {
 		move_to_steps(motion.position + 1000000, token_is(json, value, "Open_Fast") ? SPEED : SLOW_SPEED);
+	} else if (token_is(json, value, "Motor_Stop")) {
+		decelerated_stop();
 	} else if (token_is(json, value, "StoreAsClosedPos")) {
+		// The document stores a stopped arm; the reply of a real ALTO to a store while it moves is not known, so the
+		// store stops the arm instead of inventing a refusal.
 		serial_motion_stop(&motion);
 		serial_motion_sync(&motion, 0);
 	} else if (token_is(json, value, "StoreAsMaxOpenPos")) {
 		serial_motion_stop(&motion);
+		stale_travel = calibration_max;
+		stale_travel_until = serial_motion_time() + STALE_TRAVEL_TIME;
 		calibration_max = steps();
 		calibration_restart = 0;
 		motor_error = "";
@@ -623,17 +668,8 @@ static void command(char *buffer, const char *json, const jsmntok_t *tokens, con
 		const jsmntok_t *verb = tokens + 7;
 		const char *result = INVALID;
 		if (token_is(json, verb, "MOT_STOP")) {
-			// A decelerated stop runs on a little; a stalled arm stops where it is.
-			if (refused == NULL && moving()) {
-				if (stalled) {
-					stalled = false;
-				} else {
-					double direction = motion.target < motion.position ? -1 : 1;
-					double target = motion.position + direction * STOP_DISTANCE;
-					if (fabs(target - motion.position) < fabs(motion.target - motion.position)) {
-						serial_motion_start(&motion, target, SPEED);
-					}
-				}
+			if (refused == NULL) {
+				decelerated_stop();
 			}
 			result = "done";
 		} else if (token_is(json, verb, "MOT_ABORT")) {

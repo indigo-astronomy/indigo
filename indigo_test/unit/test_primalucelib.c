@@ -965,18 +965,25 @@ cleanup:
 }
 
 static void cover_commands(void) {
-	int position = -1;
-	CHECK(start_peer("{\"res\":{\"get\":{\"MOT1\":{\"POSITION\":100}}}}\n", "{\"res\":{\"set\":{\"MOT1\":{\"POSITION\":\"done\"}}}}\n", "{\"res\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"stop\",\"BUSY\":0}}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"done\"}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"done\"}}}}\n", NULL));
+	int position = -1, travel = -1;
+	CHECK(start_peer("{\"res\":{\"get\":{\"MOT1\":{\"POSITION\":100}}}}\n", "{\"res\":{\"set\":{\"MOT1\":{\"POSITION\":\"done\"}}}}\n", "{\"res\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"stop\",\"BUSY\":0}}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"done\"}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"done\"}}}}\n", "{\"res\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"done\"}}}}\n", "{\"res\":{\"get\":{\"MOT1\":{\"CAL_MAXPOS\":237189}}}}\n", NULL));
 	CHECK(primalucelib_cover_get_position(&test_link, &position));
 	CHECK(position == PRIMALUCE_COVER_OPEN);
 	CHECK(primalucelib_cover_set_position(&test_link, PRIMALUCE_COVER_CLOSED));
 	CHECK(primalucelib_is_motor_stopped(primalucelib_cover_get_motor_state(&test_link)));
 	CHECK(primalucelib_cover_stop(&test_link));
 	CHECK(primalucelib_cover_calibration_step(&test_link, PRIMALUCE_COVER_CALIBRATION_CLOSE_FAST));
+	// The calibration stop of the PrimaLuce protocol v1.3, not MOT_STOP.
+	CHECK(primalucelib_cover_calibration_step(&test_link, PRIMALUCE_COVER_CALIBRATION_MOTOR_STOP));
+	// The travel an ALTO1 (firmware 1.03.11) stored after a calibration.
+	CHECK(primalucelib_cover_get_travel(&test_link, &travel));
+	CHECK(travel == 237189);
 	CHECK(request_matches(0, "{\"req\":{\"get\":{\"MOT1\":{\"POSITION\":\"\"}}}}"));
 	CHECK(request_matches(1, "{\"req\":{\"set\":{\"MOT1\":{\"POSITION\":0}}}}"));
 	CHECK(request_matches(2, "{\"req\":{\"get\":{\"MOT1\":{\"STATUS\":\"\"}}}}"));
 	CHECK(request_matches(4, "{\"req\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"Close_Fast\"}}}}"));
+	CHECK(request_matches(5, "{\"req\":{\"cmd\":{\"MOT1\":{\"CAL_ALTO\":\"Motor_Stop\"}}}}"));
+	CHECK(request_matches(6, "{\"req\":{\"get\":{\"MOT1\":{\"CAL_MAXPOS\":\"\"}}}}"));
 cleanup:
 	stop_peer();
 }
