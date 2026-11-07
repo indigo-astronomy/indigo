@@ -43,6 +43,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <indigo/indigo_align.h>
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_driver.h>
@@ -842,10 +843,14 @@ static void synscan_reports_side_of_pier(void) {
 		double lst = 0, raw_ra = 0, raw_dec = 0, north = 0, south = 0;
 		bool east = false, west = false;
 		ASSERT_TRUE(number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst));
-		ASSERT_TRUE(slew_coordinates(mount, fmod(lst - hour_angles[i] + 24.0, 24.0), test_declination, MOTION_TIMEOUT));
+		// the hour angle is of the date, the coordinates of the bus are J2000
+		double target_ra = fmod(lst - hour_angles[i] + 24.0, 24.0), target_dec = test_declination;
+		indigo_jnow_to_j2k(&target_ra, &target_dec);
+		ASSERT_TRUE(slew_coordinates(mount, target_ra, target_dec, MOTION_TIMEOUT));
 		ASSERT_TRUE(number_item(mount, MOUNT_LST_TIME_PROPERTY_NAME, MOUNT_LST_TIME_ITEM_NAME, &lst));
 		ASSERT_TRUE(number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_RA_ITEM_NAME, &raw_ra));
 		ASSERT_TRUE(number_item(mount, MOUNT_RAW_COORDINATES_PROPERTY_NAME, MOUNT_RAW_COORDINATES_DEC_ITEM_NAME, &raw_dec));
+		indigo_j2k_to_jnow(&raw_ra, &raw_dec);
 		ASSERT_TRUE(switch_item(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, &east));
 		ASSERT_TRUE(switch_item(mount, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, &west));
 		double ha = ra_difference(lst, raw_ra);

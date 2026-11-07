@@ -304,7 +304,7 @@
 |  | 2026-10-09 21:53 | 3.0.0.11 | linux arm64 | Prodigy Arduino simulator (ESP32-S3) | 13 / 13 | ✅ OK |
 |  | 2026-10-10 03:54 | 3.0.0.12 | mac arm64 | simulator | 62 / 62 | ✅ OK |
 | focuser_qhy | 2026-09-27 12:50 | 3.0.0.10 | linux x64 | simulator | 32 / 32 | ✅ OK |
-|  | 2026-10-19 20:22 | 3.0.0.14 | mac arm64 | simulator | 44 / 44 | ✅ OK |
+|  | 2026-11-06 23:09 | 3.0.0.16 | mac arm64 | simulator | 47 / 47 | ✅ OK |
 | focuser_robofocus | 2026-10-09 22:09 | 3.0.0.6 | linux arm64 | RoboFocus Arduino simulator (ESP32-S3) | 11 / 11 | ✅ OK |
 |  | 2026-10-10 02:52 | 3.0.0.7 | mac arm64 | simulator | 34 / 34 | ✅ OK |
 | focuser_steeldrive2 | 2026-09-27 13:10 | 3.0.0.19 | linux x64 | simulator | 56 / 56 | ✅ OK |
@@ -396,8 +396,8 @@
 |  | 2026-10-04 11:20 | 3.0.0.15 | linux arm64 | simulator | 29 / 29 | ✅ OK |
 |  | 2026-10-07 03:01 | 3.0.0.18 | linux arm64 | AstroEQ 8.25 (ESP32-S3) | 19 / 19 | ✅ OK |
 |  | 2026-10-07 07:05 | 3.0.0.18 | linux arm64 | AZGTi | 19 / 19 | ✅ OK |
-|  | 2026-10-23 20:44 | 3.0.0.21 | mac arm64 | simulator | 94 / 94 | ✅ OK |
 |  | 2026-10-23 21:14 | 3.0.0.21 | mac arm64 | AZGTi | 19 / 19 | ✅ OK |
+|  | 2026-11-07 00:30 | 3.0.0.22 | mac arm64 | simulator | 96 / 96 | ✅ OK |
 | mount_temma | 2026-09-23 13:37 | 3.0.0.15 | mac arm64 | MountSim 2.3 (Temma) | 12 / 12 | ✅ OK |
 |  | 2026-09-27 00:16 | 3.0.0.22 | linux x64 | simulator | 15 / 15 | ✅ OK |
 |  | 2026-10-26 19:41 | 3.0.0.27 | mac arm64 | simulator | 30 / 30 | ✅ OK |

@@ -348,7 +348,8 @@ static bool exchange(indigo_uni_handle *handle, const char *request, const char 
 static void simulator_protocol(void) {
 	indigo_uni_handle *handle = indigo_uni_open_serial_with_speed(fixture.port, 9600, INDIGO_LOG_DEBUG);
 	SERIAL_CHECK_TRUE(handle != NULL);
-	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":1}", "{\"idx\":1,\"version\":\"1.2.3\",\"bv\":\"QFOCUSER-1.0\"}"));
+	// The reply of firmware 20231207: "id" with JSON escapes, numeric "version" and "bv".
+	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":1}", "{\"idx\":1,\"id\":\"@\\u0019SC8HP\\u0006TH2A\",\"version\":20231207,\"bv\":108}"));
 	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":4}", "{\"idx\":4,\"o_t\":18500,\"c_t\":30200,\"c_r\":120}"));
 	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":5}", "{\"idx\":5,\"pos\":50000}"));
 	SERIAL_CHECK_TRUE(exchange(handle, "{\"cmd_id\":13,\"speed\":8}", "{\"idx\":13}"));
@@ -387,8 +388,8 @@ static void capabilities(void) {
 	SERIAL_CHECK_TRUE(wait_for_number_item_value(FOCUSER_TEMPERATURE_PROPERTY_NAME, FOCUSER_TEMPERATURE_ITEM_NAME, 18.5, .01));
 	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":1}") == 1 && commands("{\"cmd_id\":13,\"speed\":1}") == 1 && commands("{\"cmd_id\":7,\"rev\":0}") == 1);
 	// INFO holds what the controller reported.
-	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "1.2.3"));
-	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME)->text.value, "QFOCUSER-1.0"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "20231207"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME)->text.value, "108"));
 	// Connect sequence: version, position, speed, reverse, temperature/voltage.
 	const char *sequence[] = { "{\"cmd_id\":1}", "{\"cmd_id\":5}", "{\"cmd_id\":13,\"speed\":1}", "{\"cmd_id\":7,\"rev\":0}", "{\"cmd_id\":4}" };
 	for (int i = 0; i < 5; i++) {
@@ -804,10 +805,29 @@ cleanup:
 	driver_stop();
 }
 
-static void rejected_connection(void) {
+// Quoted "version" and "bv" (the form the driver accepted before firmware 20231207 was seen) connect as well.
+static void quoted_version(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":1}") == 1);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "1.2.3"));
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_HW_REVISION_ITEM_NAME)->text.value, "108"));
+cleanup:
+	driver_stop();
+}
+
+// Escaped quotes and backslashes inside a well-formed "id" string neither end the string nor break the handshake.
+static void escaped_id(void) {
+	SERIAL_CHECK_TRUE(driver_start());
+	SERIAL_CHECK_TRUE(commands("{\"cmd_id\":1}") == 1);
+	SERIAL_CHECK_TRUE(!strcmp(find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value, "20231207"));
+cleanup:
+	driver_stop();
+}
+
+static void connection_refused(const char *command, const char *action) {
 	SERIAL_CHECK_TRUE(bring_up_serial_driver(&qhy_focuser));
 	int descriptors = open_descriptors();
-	SERIAL_CHECK_TRUE(inject(current_profile, !strcmp(current_profile, "VERSION") ? "missing" : "wrong"));
+	SERIAL_CHECK_TRUE(inject(command, action));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, qhy_focuser.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, fixture.port));
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, qhy_focuser.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
 	SERIAL_CHECK_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
@@ -815,6 +835,15 @@ static void rejected_connection(void) {
 	SERIAL_CHECK_TRUE(connect_serial_device(&qhy_focuser, fixture.port));
 cleanup:
 	driver_stop();
+}
+
+static void rejected_connection(void) {
+	connection_refused(current_profile, !strcmp(current_profile, "VERSION") ? "missing" : "wrong");
+}
+
+// A handshake string whose closing quote is escaped never ends: the reply is malformed and refused.
+static void escaped_quote_connection(void) {
+	connection_refused("VERSION", "escaped-quote");
 }
 
 static void setting_failure(void) {
@@ -1016,7 +1045,7 @@ cleanup:
 	driver_stop();
 }
 
-typedef struct { const char *name; void (*run)(void); const char *profile; bool no_out_temp; bool second; } qhy_test;
+typedef struct { const char *name; void (*run)(void); const char *profile; bool no_out_temp; bool second; const char *extra[3]; } qhy_test;
 
 static int run_cases(const qhy_test *cases, int count) {
 	int failures = 0;
@@ -1038,10 +1067,15 @@ static int run_cases(const qhy_test *cases, int count) {
 		current_profile = cases[i].profile;
 		unlink(fault_path);
 		unlink(control_path);
-		const char *args[5] = { "--profile", !strcmp(current_profile, "split") ? "split" : "normal", NULL, NULL, NULL };
+		const char *args[7] = { "--profile", !strcmp(current_profile, "split") ? "split" : "normal" };
+		int argument_count = 2;
 		if (cases[i].no_out_temp) {
-			args[2] = "--no-out-temp";
+			args[argument_count++] = "--no-out-temp";
 		}
+		for (int j = 0; j < 3 && cases[i].extra[j]; j++) {
+			args[argument_count++] = cases[i].extra[j];
+		}
+		args[argument_count] = NULL;
 		if (!start_external_serial_simulator_with_args(&fixture, FOCUSER_QHY_SIMULATOR_EXECUTABLE, args)) {
 			failures++;
 			break;
@@ -1114,7 +1148,10 @@ int main(void) {
 		{ "compensation_manual_invalid", compensation_manual_and_invalid, "normal", false, false },
 		{ "rejected_change", rejected_change_alerts_and_keeps_values, "normal", false, false },
 		{ "position_request_survives_poll", position_request_survives_poll, "normal", false, false },
+		{ "quoted_version_handshake", quoted_version, "normal", false, false, { "--quoted-version", "--firmware", "1.2.3" } },
 		{ "init_version_failure", rejected_connection, "VERSION", false, false },
+		{ "init_version_escaped_quote", escaped_quote_connection, "normal", false, false },
+		{ "escaped_id_handshake", escaped_id, "normal", false, false, { "--id", "a\\\"b\\\\c" } },
 		{ "init_position_failure", rejected_connection, "POSITION", false, false },
 		{ "init_speed_failure", rejected_connection, "SPEED", false, false },
 		{ "init_reverse_failure", rejected_connection, "REVERSE", false, false },

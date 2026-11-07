@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261106215623-197e-fix-focuser-qhy-json-handshake",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of the two planned commits, then fast-forward master and delete the task branch.",
+  "blocker": null
+}

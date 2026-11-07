@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "task": "20261106223707-63b0-fix-synscan-j2000-epoch",
+  "scope": [
+    "indigo_drivers/mount_synscan/*",
+    "indigo_test/integration/test_mount_synscan_simulator.c",
+    "indigo_test/hardware/test_mount_synscan_hw.c",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261106223707-63b0-fix-synscan-j2000-epoch.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "mount_synscan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "build/hardware/test_mount_synscan_hw"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261106223707-63b0-fix-synscan-j2000-epoch.json": [
+      "100644",
+      "blob",
+      "bcc96fc5c42b156ebfac33e9636ae25255fa63a5"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "fb428a98775dbea046a1770d3b6ec184d4df36aa"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "b2df2a72733a16bdb5a903838324e6b26c3652a0"
+    ],
+    "indigo_drivers/mount_synscan/README.md": [
+      "100644",
+      "blob",
+      "5d733a6185ec1dafc2e958c1f6da571db2c173bf"
+    ],
+    "indigo_drivers/mount_synscan/indigo_mount_synscan.c": [
+      "100644",
+      "blob",
+      "291ee1d4106f3ac3549fe92aaf4fd5154e5d44a1"
+    ],
+    "indigo_drivers/mount_synscan/indigo_mount_synscan.driver": [
+      "100644",
+      "blob",
+      "2ce062084511404a2822655575f31fcb33e8b44f"
+    ],
+    "indigo_test/hardware/test_mount_synscan_hw.c": [
+      "100644",
+      "blob",
+      "2a9a433b1b1b2763aeb4762cf4721285bb8a8036"
+    ],
+    "indigo_test/integration/test_mount_synscan_simulator.c": [
+      "100644",
+      "blob",
+      "9752e5259c42c78096ec17d8712be8d91dcf4f48"
+    ]
+  }
+}
