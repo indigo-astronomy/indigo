@@ -5,6 +5,9 @@
 	conversion routines.
 
 	(C)2000 by Rumen G. Bogdanovski
+
+	You may use this software under the terms of 'INDIGO Astronomy
+	open-source license' (see COPYING).
 ***************************************************************/
 #include<stdlib.h>
 #include<stdio.h>

@@ -5,6 +5,9 @@
 	conversion routines prototypes.
 	
 	(C)2000 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+
+	You may use this software under the terms of 'INDIGO Astronomy
+	open-source license' (see COPYING).
 ***************************************************************/
 #if !defined(__DEG2STR_H)
 #define __DEG2STR_H

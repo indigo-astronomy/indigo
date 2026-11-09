@@ -2,6 +2,9 @@
 	Celestron NexStar compatible telescope control library
 
 	(C)2013-2026 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+
+	You may use this software under the terms of 'INDIGO Astronomy
+	open-source license' (see COPYING).
 ***************************************************************/
 #include <stdio.h>
 #include <math.h>
