@@ -63,7 +63,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_raw_image \
 	$(UNIT_BUILD)/test_star_detection \
 	$(UNIT_BUILD)/test_raw_to_fits \
-	$(UNIT_BUILD)/test_recording_io
+	$(UNIT_BUILD)/test_recording_io \
+	$(UNIT_BUILD)/test_bahtinov
 ifeq ($(OS_DETECTED),Darwin)
 UNIT_TESTS += $(UNIT_BUILD)/test_usbserial_enumeration_macos $(UNIT_BUILD)/test_service_discovery
 endif
@@ -487,6 +488,9 @@ $(UNIT_BUILD)/test_raw_image_sanitize: unit/test_raw_image.c test_runner.h $(UNI
 .PHONY: test-raw-image-sanitize
 test-raw-image-sanitize: $(UNIT_BUILD)/test_raw_image_sanitize
 	UBSAN_OPTIONS=halt_on_error=1 $(UNIT_BUILD)/test_raw_image_sanitize
+
+$(UNIT_BUILD)/test_bahtinov: unit/test_bahtinov.c test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_base64: unit/test_base64.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)

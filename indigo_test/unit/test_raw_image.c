@@ -31,6 +31,7 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_raw_utils.h>
+#include <indigo/indigo_bahtinov.h>
 
 #include "../test_runner.h"
 

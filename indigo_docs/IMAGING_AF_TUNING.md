@@ -36,7 +36,7 @@ The mentioned focus estimators (except **Iterative (Bahtinov)**) will not work c
 
 - **U-Curve sample step** - With this step the focusing difference should be clearly visible. The value is in focuser steps. This is the step used by **U-Curve (HFD)** estimator to obtain the fitting points. Reasonable value to start with is 3 - 5 times the critical focus zone (CFZ). **U-Curve sample step** is also used as a safety limit. The focusing will fail if the focus is not reached within *10 * U-Curve sample step * U-Curve fitting samples*.
 
-- **Bahtinov sigma** - this is the threshold value used by **Bahtinov** estimator to detect the diffraction spikes. The larger the value the more immune to noise but may fail to detect the spikes.
+- **Bahtinov mask angle** - the angle between the central and the outer diffraction spikes of the used Bahtinov mask in degrees (e.g. 12.6). With 0 the angle is learned automatically from the first frame with a clear pattern and reported in a message. Setting the angle makes the **Bahtinov** estimator more reliable with faint or narrowband (dotted) patterns, where the outer spikes are hard to detect without knowing their direction.
 
 - **Backlash** - this value is the backlash of the focuser in focuser steps.
 

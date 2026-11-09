@@ -116,7 +116,7 @@
 															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'ITERATIVE_INITIAL')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'ITERATIVE_INITIAL'" :icon="'glyphicons-resize-full'" :tooltip="'Iterative initial step'"></indigo-edit-number>
 															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'ITERATIVE_FINAL')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'ITERATIVE_FINAL'" :icon="'glyphicons-resize-small'" :tooltip="'Iterative final step'"></indigo-edit-number>
 														</template>
-														<indigo-edit-number v-if="window.imagerFocusEstimatorIs('BAHTINOV') && window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'BAHTINOV_SIGMA')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'BAHTINOV_SIGMA'" :icon="'glyphicons-adjust'" :tooltip="'Bahtinov sigma'"></indigo-edit-number>
+														<indigo-edit-number v-if="window.imagerFocusEstimatorIs('BAHTINOV') && window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'BAHTINOV_ANGLE')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'BAHTINOV_ANGLE'" :icon="'glyphicons-adjust'" :tooltip="'Bahtinov mask angle (0 = learn)'"></indigo-edit-number>
 													</template>
 													<div v-if="window.imagerFocusControlsNeedRowBreak()" class="w-100"></div>
 												</template>
@@ -450,7 +450,7 @@
 						count++;
 				}
 
-				if (imagerFocusEstimatorIs("BAHTINOV") && imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "BAHTINOV_SIGMA"))
+				if (imagerFocusEstimatorIs("BAHTINOV") && imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "BAHTINOV_ANGLE"))
 					count++;
 				if (imagerFocusEstimatorSelected()) {
 					if (imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "BACKLASH"))

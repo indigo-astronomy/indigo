@@ -144,7 +144,7 @@ Success sets the process OK and clears FOCUSING. Failure or abort sets it ALERT 
 | --- | --- |
 | `ITERATIVE_INITIAL`, `ITERATIVE_FINAL` | Focuser steps: coarse starting increment and fine ending increment for iterative methods. |
 | `U_CURVE_SAMPLES`, `U_CURVE_STEP` | Integer sample count (6–24 in this source) and focuser steps between fit samples. |
-| `BAHTINOV_SIGMA` | Dimensionless diffraction-spike detection threshold. |
+| `BAHTINOV_ANGLE` | Bahtinov mask angle in degrees between the central and an outer spike; 0 learns it from the first confident frame. |
 | `BRACKETING_STEP` | Signed steps between frames in macro/bracketing mode. |
 | `BACKLASH`, `BACKLASH_OVERSHOOT_FACTOR` | Focuser steps and factor. Factor 1 uses ordinary compensation; greater than 1 uses overshoot/return compensation. Updating BACKLASH also updates the selected focuser's backlash proxy when present. |
 | `STACK` | Frames evaluated per focus measurement (1–5). |
@@ -166,7 +166,7 @@ These are source initialization limits/defaults, not an equipment-specific tunin
 | `ITERATIVE_FINAL` | Iterative final step | 1…65535 | 1 | 5 |
 | `U_CURVE_SAMPLES` | U-Curve fitting samples | 6…24 | 1 | 10 |
 | `U_CURVE_STEP` | U-Curve sample step | 1…65535 | 1 | 20 |
-| `BAHTINOV_SIGMA` | Bahtinov sigma | 0…3 | 0 | 0.15 |
+| `BAHTINOV_ANGLE` | Bahtinov mask angle (0 = learn) | 0…45 | 0.1 | 0 |
 | `BRACKETING_STEP` | Bracketing step | -0xFFFF…65535 | 1 | 1 |
 | `BACKLASH` | Backlash | 0…65535 | 1 | 0 |
 | `BACKLASH_OVERSHOOT_FACTOR` | Backlash overshoot factor (1 disabled) | 1…3 | 0.5 | 1 |

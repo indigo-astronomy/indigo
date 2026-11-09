@@ -213,6 +213,7 @@
     <ClInclude Include="indigo\indigo_ao_driver.h" />
     <ClInclude Include="indigo\indigo_aux_driver.h" />
     <ClInclude Include="indigo\indigo_avi.h" />
+    <ClInclude Include="indigo\indigo_bahtinov.h" />
     <ClInclude Include="indigo\indigo_base64.h" />
     <ClInclude Include="indigo\indigo_base64_luts.h" />
     <ClInclude Include="indigo\indigo_bus.h" />
@@ -350,6 +351,7 @@
     <ClCompile Include="indigo_ao_driver.c" />
     <ClCompile Include="indigo_aux_driver.c" />
     <ClCompile Include="indigo_avi.c" />
+    <ClCompile Include="indigo_bahtinov.c" />
     <ClCompile Include="indigo_base64.c" />
     <ClCompile Include="indigo_bus.c" />
     <ClCompile Include="indigo_ccd_driver.c" />
