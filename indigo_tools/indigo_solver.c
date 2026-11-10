@@ -40,6 +40,10 @@
 
 #include <agent_platesolver/indigo_solver.h>
 
+#if defined(INDIGO_WINDOWS)
+#include <windows.h>
+#endif
+
 #define TOOL_NAME									"indigo_solver"
 
 // the same limits as the Platesolver Agent
@@ -988,7 +992,26 @@ static int remove_indexes(solver_options *options) {
 	return failed ? 1 : 0;
 }
 
+#if defined(INDIGO_WINDOWS)
+static UINT console_code_page;
+
+static void restore_console_code_page(void) {
+	SetConsoleOutputCP(console_code_page);
+}
+
+// the output is UTF-8 (the degree sign), which the console would decode with its legacy code page
+static void use_utf8_console(void) {
+	console_code_page = GetConsoleOutputCP();
+	if (console_code_page != 0 && console_code_page != CP_UTF8 && SetConsoleOutputCP(CP_UTF8)) {
+		atexit(restore_console_code_page);
+	}
+}
+#endif
+
 int main(int argc, char **argv) {
+#if defined(INDIGO_WINDOWS)
+	use_utf8_console();
+#endif
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			print_usage(TOOL_NAME);
