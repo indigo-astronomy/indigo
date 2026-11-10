@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "task": "20261110132001-bde7-solver-tool-self-contained",
+  "scope": [
+    "indigo_tools/Makefile",
+    "indigo_tools/indigo_solver.c",
+    "indigo_tools/indigo_solver.vcxproj",
+    ".factory/completions/20261110132001-bde7-solver-tool-self-contained.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261110132001-bde7-solver-tool-self-contained.json": [
+      "100644",
+      "blob",
+      "a57746844dd34c51214f246aa0a4512c0e7fdff5"
+    ],
+    "indigo_tools/Makefile": [
+      "100644",
+      "blob",
+      "b9ebdd7c675102393b1f6313e5c5b06559f47ed1"
+    ],
+    "indigo_tools/indigo_solver.c": [
+      "100644",
+      "blob",
+      "518172dd86d981bd3d79f645f047b3b53d153df5"
+    ],
+    "indigo_tools/indigo_solver.vcxproj": [
+      "100644",
+      "blob",
+      "f410556cac4ac312a1ed43e279f5c0d358af2959"
+    ]
+  }
+}
