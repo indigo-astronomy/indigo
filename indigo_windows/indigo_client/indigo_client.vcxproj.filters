@@ -12,15 +12,6 @@
     <Filter Include="Header Files\indigo">
       <UniqueIdentifier>{096a4aed-b0f5-4a72-b65b-894b123e6a3b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\zlib">
-      <UniqueIdentifier>{b4c366af-a821-49e9-bdeb-6c47278438a2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\bonjour">
-      <UniqueIdentifier>{315c8ae2-a015-4e44-a9f6-395057925951}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\pthreads4w">
-      <UniqueIdentifier>{2e96c3d2-3e7d-4136-8fdb-16bf35ec7c7c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\indigo">
       <UniqueIdentifier>{bd146faa-d382-44b0-ae6f-96527c231440}</UniqueIdentifier>
     </Filter>
@@ -29,12 +20,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_base64.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
@@ -53,6 +38,15 @@
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_config.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_fits.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_md5.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_raw_utils.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_service_discovery.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
@@ -67,63 +61,6 @@
     </ClInclude>
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h">
       <Filter>Header Files\indigo</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\crc32.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\deflate.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\gzguts.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\inffast.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\inffixed.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\inflate.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\inftrees.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\trees.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\zconf.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\zlib.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\zlib\include\zutil.h">
-      <Filter>Header Files\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\bonjour-sdk\CommonServices.h">
-      <Filter>Header Files\bonjour</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\bonjour-sdk\DebugServices.h">
-      <Filter>Header Files\bonjour</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\bonjour-sdk\dns_sd.h">
-      <Filter>Header Files\bonjour</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\bonjour-sdk\dnssd_ipc.h">
-      <Filter>Header Files\bonjour</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\pthreads4w\include\_ptw32.h">
-      <Filter>Header Files\pthreads4w</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\pthreads4w\include\pthread.h">
-      <Filter>Header Files\pthreads4w</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\pthreads4w\include\sched.h">
-      <Filter>Header Files\pthreads4w</Filter>
-    </ClInclude>
-    <ClInclude Include="..\externals\pthreads4w\include\semaphore.h">
-      <Filter>Header Files\pthreads4w</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -142,6 +79,15 @@
     <ClCompile Include="..\..\indigo_libs\indigo_client_xml.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_fits.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_md5.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_raw_utils.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\indigo_libs\indigo_service_discovery.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
@@ -157,13 +103,13 @@
     <ClCompile Include="..\..\indigo_libs\indigo_xml.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="..\externals\bonjour-sdk\dnssd_clientlib.c">
+    <ClCompile Include="..\..\indigo_libs\externals\bonjour-sdk\dnssd_clientlib.c">
       <Filter>Source Files\bonjour</Filter>
     </ClCompile>
-    <ClCompile Include="..\externals\bonjour-sdk\dnssd_clientstub.c">
+    <ClCompile Include="..\..\indigo_libs\externals\bonjour-sdk\dnssd_clientstub.c">
       <Filter>Source Files\bonjour</Filter>
     </ClCompile>
-    <ClCompile Include="..\externals\bonjour-sdk\dnssd_ipc.c">
+    <ClCompile Include="..\..\indigo_libs\externals\bonjour-sdk\dnssd_ipc.c">
       <Filter>Source Files\bonjour</Filter>
     </ClCompile>
   </ItemGroup>

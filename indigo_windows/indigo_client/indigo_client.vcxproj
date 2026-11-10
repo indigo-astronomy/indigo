@@ -63,38 +63,30 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Platform)\Intermediate\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>..\$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Platform)\Intermediate\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Platform)\Intermediate\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>..\$(Configuration)\$(Platform)\</OutDir>
-    <IntDir>$(Platform)\Intermediate\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;INDIGOCLIENT_EXPORTS;_WINDOWS;_USRDLL;INDIGO_WINDOWS;WIN32;NDEBUG;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\externals\pthreads4w\include\;..\externals\bonjour-sdk;..\externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\externals\bonjour-sdk;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\externals\zlib\lib\$(Platform)\;..\externals\pthreads4w\lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo_client.def</ModuleDefinitionFile>
     </Link>
@@ -104,14 +96,14 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;INDIGOCLIENT_EXPORTS;_WINDOWS;_USRDLL;INDIGO_WINDOWS;WIN32;NDEBUG;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\externals\pthreads4w\include\;..\externals\bonjour-sdk;..\externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\externals\bonjour-sdk;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\externals\zlib\lib\x64\;..\externals\pthreads4w\lib\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo_client.def</ModuleDefinitionFile>
     </Link>
@@ -123,16 +115,16 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;INDIGOCLIENT_EXPORTS;_WINDOWS;_USRDLL;INDIGO_WINDOWS;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\externals\pthreads4w\include\;..\externals\bonjour-sdk;..\externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\externals\bonjour-sdk;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\externals\zlib\lib\$(Platform)\;..\externals\pthreads4w\lib\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo_client.def</ModuleDefinitionFile>
     </Link>
@@ -144,17 +136,17 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;INDIGOCLIENT_EXPORTS;_WINDOWS;_USRDLL;INDIGO_WINDOWS;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\externals\pthreads4w\include\;..\externals\bonjour-sdk;..\externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\externals\bonjour-sdk;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\externals\zlib\lib\x64\;..\externals\pthreads4w\lib\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;zlibwapi.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo_client.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -165,47 +157,32 @@
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_client.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_client_xml.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_config.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_fits.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_md5.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_raw_utils.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_service_discovery.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_uni_io.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_version.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h" />
-    <ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h" />
-    <ClInclude Include="..\externals\bonjour-sdk\CommonServices.h" />
-    <ClInclude Include="..\externals\bonjour-sdk\DebugServices.h" />
-    <ClInclude Include="..\externals\bonjour-sdk\dnssd_ipc.h" />
-    <ClInclude Include="..\externals\bonjour-sdk\dns_sd.h" />
-    <ClInclude Include="..\externals\pthreads4w\include\pthread.h" />
-    <ClInclude Include="..\externals\pthreads4w\include\sched.h" />
-    <ClInclude Include="..\externals\pthreads4w\include\semaphore.h" />
-    <ClInclude Include="..\externals\pthreads4w\include\_ptw32.h" />
-    <ClInclude Include="..\externals\zlib\include\crc32.h" />
-    <ClInclude Include="..\externals\zlib\include\deflate.h" />
-    <ClInclude Include="..\externals\zlib\include\gzguts.h" />
-    <ClInclude Include="..\externals\zlib\include\inffast.h" />
-    <ClInclude Include="..\externals\zlib\include\inffixed.h" />
-    <ClInclude Include="..\externals\zlib\include\inflate.h" />
-    <ClInclude Include="..\externals\zlib\include\inftrees.h" />
-    <ClInclude Include="..\externals\zlib\include\trees.h" />
-    <ClInclude Include="..\externals\zlib\include\zconf.h" />
-    <ClInclude Include="..\externals\zlib\include\zlib.h" />
-    <ClInclude Include="..\externals\zlib\include\zutil.h" />
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_libs\indigo_base64.c" />
     <ClCompile Include="..\..\indigo_libs\indigo_bus.c" />
     <ClCompile Include="..\..\indigo_libs\indigo_client.c" />
     <ClCompile Include="..\..\indigo_libs\indigo_client_xml.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_fits.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_md5.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_raw_utils.c" />
     <ClCompile Include="..\..\indigo_libs\indigo_service_discovery.c" />
+    <ClCompile Include="..\..\indigo_libs\indigo_token.c" />
     <ClCompile Include="..\..\indigo_libs\indigo_uni_io.c" />
     <ClCompile Include="..\..\indigo_libs\indigo_version.c" />
     <ClCompile Include="..\..\indigo_libs\indigo_xml.c" />
-    <ClCompile Include="..\..\indigo_libs\indigo_token.c" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="..\externals\bonjour-sdk\dnssd_clientlib.c" />
-    <ClCompile Include="..\externals\bonjour-sdk\dnssd_clientstub.c" />
-    <ClCompile Include="..\externals\bonjour-sdk\dnssd_ipc.c" />
+    <ClCompile Include="..\..\indigo_libs\externals\bonjour-sdk\dnssd_clientlib.c" />
+    <ClCompile Include="..\..\indigo_libs\externals\bonjour-sdk\dnssd_clientstub.c" />
+    <ClCompile Include="..\..\indigo_libs\externals\bonjour-sdk\dnssd_ipc.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

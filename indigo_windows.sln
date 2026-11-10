@@ -4,6 +4,8 @@ VisualStudioVersion = 17.14.37614.0 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo", "indigo_libs\indigo.vcxproj", "{AA10BE9E-6416-4F58-B821-2D0E479EB81B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_client", "indigo_windows\indigo_client\indigo_client.vcxproj", "{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_server", "indigo_server\indigo_server.vcxproj", "{92C45E91-5D4C-4AD8-970C-975BA4141759}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_gps_simulator", "indigo_drivers\gps_simulator\indigo_gps_simulator.vcxproj", "{F2F7FD9B-918D-400F-B956-4B61DA9AC713}"
@@ -292,6 +294,14 @@ Global
 		{AA10BE9E-6416-4F58-B821-2D0E479EB81B}.Release|ARM64.Build.0 = Release|ARM64
 		{AA10BE9E-6416-4F58-B821-2D0E479EB81B}.Release|x64.ActiveCfg = Release|x64
 		{AA10BE9E-6416-4F58-B821-2D0E479EB81B}.Release|x64.Build.0 = Release|x64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Debug|ARM64.Build.0 = Debug|ARM64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Debug|x64.ActiveCfg = Debug|x64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Debug|x64.Build.0 = Debug|x64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Release|ARM64.ActiveCfg = Release|ARM64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Release|ARM64.Build.0 = Release|ARM64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Release|x64.ActiveCfg = Release|x64
+		{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}.Release|x64.Build.0 = Release|x64
 		{92C45E91-5D4C-4AD8-970C-975BA4141759}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{92C45E91-5D4C-4AD8-970C-975BA4141759}.Debug|ARM64.Build.0 = Debug|ARM64
 		{92C45E91-5D4C-4AD8-970C-975BA4141759}.Debug|x64.ActiveCfg = Debug|x64

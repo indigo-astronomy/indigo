@@ -89,7 +89,7 @@ Name: "modifypath"; Description: "Add the INDIGO ""bin"" folder to my PATH envir
 
 ; The Visual Studio build puts everything into one folder, the installation
 ; splits it up:
-;   {app}\bin      the exe files, indigo.dll and the DLLs the exe files
+;   {app}\bin      the exe files, indigo.dll, indigo_client.dll and the DLLs the exe files
 ;                  import, Windows looks for these next to the exe file
 ;   {app}\drivers  the driver/agent DLLs and the vendor SDK DLLs they use,
 ;                  indigo.dll adds this folder to the DLL search path
@@ -98,7 +98,7 @@ Name: "modifypath"; Description: "Add the INDIGO ""bin"" folder to my PATH envir
 ;                  make_indigo_drivers.exe, indigo_server.exe reads it from
 ;                  the "share" folder next to its "bin" folder
 ; keep in sync with the runtime DLL lines in [Files]
-#define RuntimeDlls "indigo.dll,pthreadVC3.dll,libusb-1.0.dll,zlib.dll,libraw.dll,hidapi.dll"
+#define RuntimeDlls "indigo.dll,indigo_client.dll,pthreadVC3.dll,libusb-1.0.dll,zlib.dll,libraw.dll,hidapi.dll"
 
 [InstallDelete]
 ; Older installers put every DLL and the driver list into {app}\bin, where
@@ -110,6 +110,7 @@ Type: files; Name: "{app}\bin\indigo_drivers"
 Source: "indigo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\*.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#BuildDir}\indigo.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#BuildDir}\indigo_client.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#BuildDir}\pthreadVC3.dll"; DestDir: "{app}\bin"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#BuildDir}\libusb-1.0.dll"; DestDir: "{app}\bin"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#BuildDir}\zlib.dll"; DestDir: "{app}\bin"; Flags: ignoreversion skipifsourcedoesntexist
