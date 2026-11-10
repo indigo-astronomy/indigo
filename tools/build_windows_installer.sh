@@ -19,7 +19,7 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# Builds the Windows INDIGO binaries with MSBuild (Visual Studio) and
+# Builds the Windows INDIGO binaries from scratch with MSBuild (Visual Studio) and
 # packages the whole build output (indigo_server, tools, indigo.dll and
 # every driver/agent DLL) into a Windows installer
 # (indigo_windows/installer/indigo.iss) and indigo_solver alone into a second
@@ -93,6 +93,17 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
         echo "       MSBUILD=/path/to/MSBuild.exe and re-run this script." >&2
         exit 1
     fi
+
+    # The installers package the whole output folder, so nothing left over from
+    # an earlier build may stay in it. The Clean target removes the intermediate
+    # files, the folder itself also holds files of projects that no longer exist.
+    echo "==> Cleaning the previous build"
+    "$MSBUILD" "$REPO_ROOT/indigo_windows.sln" \
+        "-t:Clean" \
+        "-p:Configuration=$INDIGO_BUILD_CONFIGURATION" \
+        "-p:Platform=$INDIGO_BUILD_PLATFORM" \
+        "-m"
+    rm -rf "$REPO_ROOT/build/$INDIGO_BUILD_CONFIGURATION/$INDIGO_BUILD_PLATFORM"
 
     echo "==> Building indigo_windows.sln with $MSBUILD"
     "$MSBUILD" "$REPO_ROOT/indigo_windows.sln" \
