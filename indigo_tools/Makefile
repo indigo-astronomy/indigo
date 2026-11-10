@@ -97,5 +97,15 @@ $(BUILD_BIN)/indigo_solver_indexer: indigo_solver_indexer.o indigo_solver_core.o
 indigo_solver_core.o: $(SOLVER_AGENT_DIR)/indigo_solver.c $(SOLVER_AGENT_DIR)/indigo_solver.h $(SOLVER_AGENT_DIR)/indigo_solver_utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BUILD_BIN)/indigo_solver: indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o
-	$(CC) $(CFLAGS)  -o $@ indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o $(LDFLAGS) $(INDIGO_LIBS) -lindigocat
+# It depends on no INDIGO library: the framework sources it uses are built into it as the client library builds them,
+# with the static libraw and libjpeg the camera raw and JPEG files need.
+SOLVER_LIB_OBJECTS = indigo_bus.o indigo_uni_io.o indigo_token.o indigo_raw_utils.o indigo_timer.o indigo_align.o indigo_dslr_raw.o
+
+$(SOLVER_LIB_OBJECTS): %.o: ../indigo_libs/%.c
+	$(CC) $(CFLAGS) -DINDIGO_CLIENT -c -o $@ $<
+
+# the tool sees the same structures as these sources; the solver core is shared with the indexer, which links libindigo
+indigo_solver.o: CFLAGS += -DINDIGO_CLIENT
+
+$(BUILD_BIN)/indigo_solver: indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o $(SOLVER_LIB_OBJECTS)
+	$(CC) $(CFLAGS)  -o $@ indigo_solver.o indigo_solver_core.o indigo_solver_utils.o indigo_solver_healpix.o $(SOLVER_LIB_OBJECTS) $(LDFLAGS) $(BUILD_LIB)/libraw.a $(BUILD_LIB)/libjpeg.a -lstdc++ -lz

@@ -68,15 +68,15 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\bin_externals\zlib\include;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\build\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>wininet.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>wininet.lib;ws2_32.lib;pthreadVC3.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -84,31 +84,31 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\bin_externals\zlib\include;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>wininet.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\build\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>wininet.lib;ws2_32.lib;pthreadVC3.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\bin_externals\zlib\include;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>wininet.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\build\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>wininet.lib;ws2_32.lib;pthreadVC3.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -116,22 +116,25 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;INDIGO_CLIENT;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;_USE_MATH_DEFINES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\indigo_libs\bin_externals\pthreads4w\include\;..\indigo_libs\bin_externals\zlib\include;..\indigo_libs\externals\libjpeg;..\indigo_libs\externals\libraw\libraw;..\indigo_libs\;..\indigo_drivers\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>wininet.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\build\$(Configuration)\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>wininet.lib;ws2_32.lib;pthreadVC3.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\indigo_libs\bin_externals\pthreads4w\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\zlib\lib\windows\$(Platform)\;..\indigo_libs\bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <!-- the tool links no INDIGO library, indigo is built first for the libjpeg configuration header and the runtime
+         DLLs it copies next to the executables -->
     <ProjectReference Include="..\indigo_libs\indigo.vcxproj">
       <Project>{aa10be9e-6416-4f58-b821-2d0e479eb81b}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -141,6 +144,14 @@
     </ClCompile>
     <ClCompile Include="..\indigo_drivers\agent_platesolver\indigo_solver_utils.c" />
     <ClCompile Include="..\indigo_drivers\agent_platesolver\indigo_solver_healpix.c" />
+    <!-- the framework sources the tool uses, built into it as the client library builds them -->
+    <ClCompile Include="..\indigo_libs\indigo_bus.c" />
+    <ClCompile Include="..\indigo_libs\indigo_uni_io.c" />
+    <ClCompile Include="..\indigo_libs\indigo_token.c" />
+    <ClCompile Include="..\indigo_libs\indigo_raw_utils.c" />
+    <ClCompile Include="..\indigo_libs\indigo_timer.c" />
+    <ClCompile Include="..\indigo_libs\indigo_align.c" />
+    <ClCompile Include="..\indigo_libs\indigo_dslr_raw.c" />
     <ClCompile Include="..\indigo_libs\externals\libjpeg\jaricom.c" />
     <ClCompile Include="..\indigo_libs\externals\libjpeg\jcapimin.c" />
     <ClCompile Include="..\indigo_libs\externals\libjpeg\jcapistd.c" />

@@ -37,8 +37,6 @@
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_uni_io.h>
-#include <indigo/indigo_json.h>
-#include <indigo/indigo_xml.h>
 
 #include <agent_platesolver/indigo_solver.h>
 
@@ -60,9 +58,6 @@
 #define DEFAULT_DOWNSAMPLE				2
 #define DEFAULT_DEPTH							0
 #define DEFAULT_CPU_LIMIT					180
-
-// any escape buffer index above the fixed ones selects the buffer that holds a string of any length
-#define LONG_ESCAPE_BUFFER				100
 
 typedef enum {
 	FORMAT_TEXT,
@@ -639,7 +634,7 @@ static void print_text(solver_options *options, solver_result *result) {
 }
 
 // The file name for a document: control characters and bytes that are not valid UTF-8 become '?', as the escape
-// helpers keep them and they make a JSON or XML document invalid
+// functions keep them and they make a JSON or XML document invalid
 static const char *document_file_name(const char *file_name) {
 	static char name[PATH_MAX];
 	const unsigned char *in = (const unsigned char *)file_name;
@@ -666,10 +661,80 @@ static const char *document_file_name(const char *file_name) {
 	return name;
 }
 
+// The string as JSON string content or XML text: the quotes, the backslash, newline, carriage return and tab are
+// escaped for JSON, the five predefined entities for XML; the result is valid until the next call
+static const char *escape(const char *string, bool xml) {
+	static char *buffer = NULL;
+	static size_t buffer_size = 0;
+	size_t size = 6 * strlen(string) + 1;
+	if (size > buffer_size) {
+		buffer = indigo_safe_realloc(buffer, size);
+		buffer_size = size;
+	}
+	char *out = buffer;
+	for (const char *in = string; *in; in++) {
+		const char *replacement = NULL;
+		if (xml) {
+			switch (*in) {
+				case '&':
+					replacement = "&amp;";
+					break;
+				case '<':
+					replacement = "&lt;";
+					break;
+				case '>':
+					replacement = "&gt;";
+					break;
+				case '"':
+					replacement = "&quot;";
+					break;
+				case '\'':
+					replacement = "&apos;";
+					break;
+			}
+		} else {
+			switch (*in) {
+				case '"':
+					replacement = "\\\"";
+					break;
+				case '\\':
+					replacement = "\\\\";
+					break;
+				case '\n':
+					replacement = "\\n";
+					break;
+				case '\r':
+					replacement = "\\r";
+					break;
+				case '\t':
+					replacement = "\\t";
+					break;
+			}
+		}
+		if (replacement == NULL) {
+			*out++ = *in;
+		} else {
+			size_t length = strlen(replacement);
+			memcpy(out, replacement, length);
+			out += length;
+		}
+	}
+	*out = 0;
+	return buffer;
+}
+
+static const char *json_escape(const char *string) {
+	return escape(string, false);
+}
+
+static const char *xml_escape(const char *string) {
+	return escape(string, true);
+}
+
 // RA in hours, Dec, angle and field in degrees, scale in degrees per pixel, rms in arcseconds, time in seconds
 static void print_json(solver_options *options, solver_result *result) {
 	printf("{\n");
-	printf("  \"file\": \"%s\",\n", indigo_json_escape_b(LONG_ESCAPE_BUFFER, document_file_name(options->file_name)));
+	printf("  \"file\": \"%s\",\n", json_escape(document_file_name(options->file_name)));
 	printf("  \"solved\": %s,\n", result->solved ? "true" : "false");
 	printf("  \"time\": %.3f,\n", result->time);
 	if (result->solved) {
@@ -691,9 +756,9 @@ static void print_json(solver_options *options, solver_result *result) {
 		printf("  \"matched_stars\": %d,\n", result->matched);
 		printf("  \"star_matches\": %d,\n", result->star_match_count);
 		printf("  \"rms\": %.3f,\n", result->rms);
-		printf("  \"index\": \"%s\"\n", indigo_json_escape(result->index));
+		printf("  \"index\": \"%s\"\n", json_escape(result->index));
 	} else {
-		printf("  \"message\": \"%s\"\n", indigo_json_escape_b(LONG_ESCAPE_BUFFER, result->message));
+		printf("  \"message\": \"%s\"\n", json_escape(result->message));
 	}
 	printf("}\n");
 }
@@ -702,7 +767,7 @@ static void print_json(solver_options *options, solver_result *result) {
 static void print_xml(solver_options *options, solver_result *result) {
 	printf("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 	printf("<solution>\n");
-	printf("  <file>%s</file>\n", indigo_xml_escape_b(LONG_ESCAPE_BUFFER, document_file_name(options->file_name)));
+	printf("  <file>%s</file>\n", xml_escape(document_file_name(options->file_name)));
 	printf("  <solved>%s</solved>\n", result->solved ? "true" : "false");
 	printf("  <time>%.3f</time>\n", result->time);
 	if (result->solved) {
@@ -724,9 +789,9 @@ static void print_xml(solver_options *options, solver_result *result) {
 		printf("  <matched_stars>%d</matched_stars>\n", result->matched);
 		printf("  <star_matches>%d</star_matches>\n", result->star_match_count);
 		printf("  <rms>%.3f</rms>\n", result->rms);
-		printf("  <index>%s</index>\n", indigo_xml_escape(result->index));
+		printf("  <index>%s</index>\n", xml_escape(result->index));
 	} else {
-		printf("  <message>%s</message>\n", indigo_xml_escape_b(LONG_ESCAPE_BUFFER, result->message));
+		printf("  <message>%s</message>\n", xml_escape(result->message));
 	}
 	printf("</solution>\n");
 }
