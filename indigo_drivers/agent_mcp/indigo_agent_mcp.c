@@ -39,7 +39,7 @@
 #include "indigo_agent_mcp_help.h"
 
 #define DRIVER_NAME "indigo_agent_mcp"
-#define DRIVER_VERSION 0x03000003
+#define DRIVER_VERSION 0x03000004
 #define MCP_AGENT_VERSION "3.0.0.3"
 #define MCP_VERSION "2025-11-25"
 #define MCP_BODY_LIMIT (64 * 1024)
@@ -346,6 +346,15 @@ static void string_field(json_buffer *buffer, const char *name, const char *valu
 	append_string(buffer, value);
 }
 
+// Local copies of the indigo_bus.c tables; MSVC cannot import data exported by indigo.dll into a DLL built with INDIGO_WINDOWS_DLL
+static const char *state_text(indigo_property_state state) {
+	return state == INDIGO_OK_STATE ? "Ok" : state == INDIGO_BUSY_STATE ? "Busy" : state == INDIGO_ALERT_STATE ? "Alert" : "Idle";
+}
+
+static const char *rule_text(indigo_rule rule) {
+	return rule == INDIGO_ONE_OF_MANY_RULE ? "OneOfMany" : rule == INDIGO_AT_MOST_ONE_RULE ? "AtMostOne" : rule == INDIGO_ANY_OF_MANY_RULE ? "AnyOfMany" : "UNDEFINED";
+}
+
 static void property_json(json_buffer *buffer, const indigo_property *property, bool values) {
 	append_json(buffer, "{");
 	string_field(buffer, "device", property->device);
@@ -358,12 +367,12 @@ static void property_json(json_buffer *buffer, const indigo_property *property, 
 	append_json(buffer, ",");
 	string_field(buffer, "type", property->type == INDIGO_TEXT_VECTOR ? "text" : property->type == INDIGO_NUMBER_VECTOR ? "number" : property->type == INDIGO_SWITCH_VECTOR ? "switch" : property->type == INDIGO_LIGHT_VECTOR ? "light" : "blob");
 	append_json(buffer, ",");
-	string_field(buffer, "state", indigo_property_state_text[property->state]);
+	string_field(buffer, "state", state_text(property->state));
 	append_json(buffer, ",");
 	string_field(buffer, "permission", property->perm == INDIGO_RO_PERM ? "ro" : property->perm == INDIGO_WO_PERM ? "wo" : "rw");
 	if (property->type == INDIGO_SWITCH_VECTOR) {
 		append_json(buffer, ",");
-		string_field(buffer, "rule", indigo_switch_rule_text[property->rule]);
+		string_field(buffer, "rule", rule_text(property->rule));
 	}
 	append_json(buffer, ",\"items\":[");
 	for (int i = 0; i < property->count; i++) {
@@ -407,7 +416,7 @@ static void property_json(json_buffer *buffer, const indigo_property *property, 
 					append_json(buffer, item->sw.value ? "true" : "false");
 					break;
 				case INDIGO_LIGHT_VECTOR:
-					append_string(buffer, indigo_property_state_text[item->light.value]);
+					append_string(buffer, state_text(item->light.value));
 					break;
 				default:
 					append_json(buffer, "null");
