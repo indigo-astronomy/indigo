@@ -22,7 +22,8 @@
 # Builds the Windows INDIGO binaries with MSBuild (Visual Studio) and
 # packages the whole build output (indigo_server, tools, indigo.dll and
 # every driver/agent DLL) into a Windows installer
-# (indigo_windows/installer/indigo.iss) using Inno Setup 6.
+# (indigo_windows/installer/indigo.iss) and indigo_solver alone into a second
+# one (indigo_windows/installer/indigo_solver.iss) using Inno Setup 6.
 #
 # Run this from a bash shell that has the usual POSIX build tools on PATH
 # (e.g. Git for Windows' bash, or MSYS2).
@@ -146,7 +147,8 @@ fi
 
 mkdir -p "$REPO_ROOT/dist"
 
-echo "==> Building installer with $ISCC"
+echo "==> Building installers with $ISCC"
 "$ISCC" "$REPO_ROOT/indigo_windows/installer/indigo.iss"
+"$ISCC" "$REPO_ROOT/indigo_windows/installer/indigo_solver.iss"
 
-echo "==> Done. Installer written to $REPO_ROOT/dist/"
+echo "==> Done. Installers written to $REPO_ROOT/dist/"

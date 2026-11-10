@@ -4937,6 +4937,9 @@
 		59E2DA682638384900D3D4B5 /* Protocol_V3.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.10.pdf; sourceTree = "<group>"; };
 		59E4ADBA30600C0A002B1629 /* test_mount_synscan_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_synscan_hw.c; sourceTree = "<group>"; };
 		59E4ADBB3060448A002B1629 /* TEST_SUMMARY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TEST_SUMMARY.md; sourceTree = "<group>"; };
+		4289ECAE64E79E7DEB0A6A73 /* indigo.iss */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo.iss; sourceTree = "<group>"; };
+		ADA24BABD608401A83474BB2 /* indigo_solver.iss */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_solver.iss; sourceTree = "<group>"; };
+		503A3CCA02B8BA7751F4DE31 /* path.iss */ = {isa = PBXFileReference; lastKnownFileType = text; path = path.iss; sourceTree = "<group>"; };
 		59E4ADBC30607CA4002B1629 /* build_windows_installer.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_windows_installer.sh; sourceTree = "<group>"; };
 		59E4ADBD30607CA4002B1629 /* make_test_summary.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = make_test_summary.py; sourceTree = "<group>"; };
 		59E4ADBF30607CA4002B1629 /* update_DELTA_UT1_UTC.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = update_DELTA_UT1_UTC.sh; sourceTree = "<group>"; };
@@ -16541,10 +16544,21 @@
 			path = indigo;
 			sourceTree = "<group>";
 		};
+		1CC79E9ADF7A94CFFF4A8001 /* installer */ = {
+			isa = PBXGroup;
+			children = (
+				4289ECAE64E79E7DEB0A6A73 /* indigo.iss */,
+				ADA24BABD608401A83474BB2 /* indigo_solver.iss */,
+				503A3CCA02B8BA7751F4DE31 /* path.iss */,
+			);
+			path = installer;
+			sourceTree = "<group>";
+		};
 		9DCB034822E9D8D600A7A2E5 /* indigo_windows */ = {
 			isa = PBXGroup;
 			children = (
 				9DF148132D52384D00049345 /* gcc */,
+				1CC79E9ADF7A94CFFF4A8001 /* installer */,
 				9DCB036622E9D8D600A7A2E5 /* README.md */,
 			);
 			path = indigo_windows;
