@@ -1,0 +1,95 @@
+{
+  "version": 2,
+  "task": "20261110112225-c7fc-solver-index-download",
+  "scope": [
+    "indigo_drivers/agent_platesolver/indigo_solver.c",
+    "indigo_drivers/agent_platesolver/indigo_solver.h",
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c",
+    "indigo_tools/indigo_solver.c",
+    "indigo_tools/indigo_solver.vcxproj",
+    "indigo_test/unit/test_agent_platesolver_core.c",
+    "indigo_test/integration/test_indigo_solver_tool.c",
+    ".factory/completions/20261110112225-c7fc-solver-index-download.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./build/unit/test_agent_platesolver_core"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-agent-platesolver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261110112225-c7fc-solver-index-download.json": [
+      "100644",
+      "blob",
+      "43302916f010efd2e02ea1f2cdb5beb0f6a03316"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_agent_platesolver.c": [
+      "100644",
+      "blob",
+      "d2e04c5d966c1f2f716cc51bb3cdb3f3bbb820cd"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver.c": [
+      "100644",
+      "blob",
+      "2953850178ec5a58a0c174358a9f11790b0becaf"
+    ],
+    "indigo_drivers/agent_platesolver/indigo_solver.h": [
+      "100644",
+      "blob",
+      "b1fe549234fee4f5f5570edc8a18869b0ce2fde5"
+    ],
+    "indigo_test/integration/test_indigo_solver_tool.c": [
+      "100644",
+      "blob",
+      "2c2147111bfc9c5b6a5ff25070b3b1d6660ba781"
+    ],
+    "indigo_test/unit/test_agent_platesolver_core.c": [
+      "100644",
+      "blob",
+      "8a8136c4c5c9dc76583e95cc129034136ce87d25"
+    ],
+    "indigo_tools/indigo_solver.c": [
+      "100644",
+      "blob",
+      "dc26518a4dc4069d2b50bb34827395c80c50504e"
+    ],
+    "indigo_tools/indigo_solver.vcxproj": [
+      "100644",
+      "blob",
+      "8c9bfe3e4d38f63ec227c4c72decc3ebbb2503e0"
+    ]
+  }
+}
