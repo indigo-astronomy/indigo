@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261110143423-725d-solver-windows-installer",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of the product and factory: commits.",
+  "blocker": null
+}

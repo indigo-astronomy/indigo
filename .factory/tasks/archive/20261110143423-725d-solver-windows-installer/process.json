@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "task": "20261110143423-725d-solver-windows-installer",
+  "scope": [
+    "indigo_windows/installer/indigo.iss",
+    "indigo_windows/installer/indigo_solver.iss",
+    "indigo_windows/installer/path.iss",
+    "tools/build_windows_installer.sh",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/completions/20261110143423-725d-solver-windows-installer.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "bash",
+        "-n",
+        "tools/build_windows_installer.sh"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261110143423-725d-solver-windows-installer.json": [
+      "100644",
+      "blob",
+      "38b93778303827f9d6564e3c378ea88d4e069268"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "d3c220494107fc459c39c891480094e0eeaad071"
+    ],
+    "indigo_windows/installer/indigo.iss": [
+      "100644",
+      "blob",
+      "8496db11842a1d9e6177d0111a856b4d5d081b4c"
+    ],
+    "indigo_windows/installer/indigo_solver.iss": [
+      "100644",
+      "blob",
+      "97128a95a5bdba0fafaea05e35aa46e0e78ca38c"
+    ],
+    "indigo_windows/installer/path.iss": [
+      "100644",
+      "blob",
+      "41fe9d945034688bd19554f2a564d4546febc150"
+    ],
+    "tools/build_windows_installer.sh": [
+      "100755",
+      "blob",
+      "a37533d6716da49b9ed3b576809880e3811c8c79"
+    ]
+  }
+}
