@@ -32,6 +32,16 @@
 #include <stdbool.h>
 #include <math.h>
 #include <setjmp.h>
+#include <errno.h>
+#if defined(INDIGO_WINDOWS)
+#include <windows.h>
+#include <wininet.h>
+#else
+#include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#endif
 
 #include <jpeglib.h>
 
@@ -891,6 +901,195 @@ bool indigo_solver_select_index(const char *index_directory, const float *fovs, 
 	*fov_out = selected;
 	indigo_debug("%s: field %.2f° x %.2f°, using %s", __FUNCTION__, field_width * RAD_TO_DEG, field_height * RAD_TO_DEG, path);
 	return true;
+}
+
+const char *indigo_solver_index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "1216 MB", "911 MB", "538 MB", "358 MB", "178 MB", "92 MB", "36 MB" };
+
+void indigo_solver_index_url(char *url, size_t size, const char *base_url, float fov) {
+	char file_name[64];
+	indigo_solver_index_path(file_name, sizeof(file_name), NULL, fov);
+	if (base_url == NULL || base_url[0] == 0) {
+		base_url = INDIGO_SOLVER_INDEX_URL;
+	}
+	size_t length = strlen(base_url);
+	snprintf(url, size, "%s%s%s", base_url, base_url[length - 1] == '/' ? "" : "/", file_name);
+}
+
+bool indigo_solver_validate_index(const char *path, float fov) {
+	FILE *file = fopen(path, "rb");
+	if (file == NULL) {
+		return false;
+	}
+	indigo_solve_index_header header;
+	bool valid = indigo_solver_index_read_header(file, &header) && header.fov == fov && header.star_count > 0 && header.quad_count > 0;
+	fclose(file);
+	return valid;
+}
+
+void indigo_solver_remove_partial_indexes(const char *directory) {
+	char path[PATH_MAX + 8];
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		char index[PATH_MAX];
+		indigo_solver_index_path(index, sizeof(index), directory, indigo_solver_index_fovs[i]);
+		snprintf(path, sizeof(path), "%s.part", index);
+		if (indigo_uni_is_readable(path)) {
+			indigo_uni_remove(path);
+		}
+	}
+}
+
+#if defined(INDIGO_WINDOWS)
+
+// Fetches the index natively over HTTP(S), so that no external curl executable is needed on Windows; an abort is
+// noticed after every block read
+static bool fetch_index(const char *url, const char *part_path, indigo_solver_download *download, const char **message) {
+	indigo_debug("%s: GET %s", __FUNCTION__, url);
+	bool res = false;
+	*message = "the download failed";
+	if (download->aborted) {
+		return false;
+	}
+	HINTERNET session = InternetOpenA("INDIGO Solver", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	if (session == NULL) {
+		indigo_error("%s: InternetOpen() failed (%s)", __FUNCTION__, indigo_last_windows_error());
+		return false;
+	}
+	HINTERNET request = InternetOpenUrlA(session, url, NULL, 0, INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE, 0);
+	if (request == NULL) {
+		indigo_error("%s: InternetOpenUrl() failed (%s)", __FUNCTION__, indigo_last_windows_error());
+	} else {
+		DWORD status = 0, status_size = sizeof(status);
+		if (!HttpQueryInfoA(request, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &status, &status_size, NULL) || status != 200) {
+			indigo_error("%s: HTTP status %lu", __FUNCTION__, (unsigned long)status);
+		} else {
+			FILE *file = fopen(part_path, "wb");
+			if (file != NULL) {
+				unsigned char *buffer = indigo_safe_malloc(64 * 1024);
+				DWORD bytes_read = 0;
+				res = true;
+				while (true) {
+					if (!InternetReadFile(request, buffer, 64 * 1024, &bytes_read)) {
+						indigo_error("%s: InternetReadFile() failed (%s)", __FUNCTION__, indigo_last_windows_error());
+						res = false;
+						break;
+					}
+					if (bytes_read == 0) {
+						break;
+					}
+					if (fwrite(buffer, 1, bytes_read, file) != bytes_read) {
+						indigo_error("%s: failed to write %s", __FUNCTION__, part_path);
+						*message = "the index file can't be written";
+						res = false;
+						break;
+					}
+					if (download->aborted) {
+						res = false;
+						break;
+					}
+				}
+				free(buffer);
+				fclose(file);
+			} else {
+				indigo_error("%s: failed to create %s (%s)", __FUNCTION__, part_path, strerror(errno));
+				*message = "the index file can't be written";
+			}
+		}
+		InternetCloseHandle(request);
+	}
+	InternetCloseHandle(session);
+	return res;
+}
+
+#else
+
+// Fetches the index with curl; curl runs in its own process group, so that indigo_solver_abort_download() stops the
+// transfer and a terminal interrupt reaches the caller only
+static bool fetch_index(const char *url, const char *part_path, indigo_solver_download *download, const char **message) {
+	indigo_debug("%s: curl -L -s -f -o %s --url %s", __FUNCTION__, part_path, url);
+	pid_t pid = fork();
+	if (pid < 0) {
+		indigo_error("%s: failed to execute curl (%s)", __FUNCTION__, strerror(errno));
+		*message = "curl can't be executed";
+		return false;
+	}
+	if (pid == 0) {
+		// the server blocks SIGTERM, SIGINT, SIGHUP and SIGCHLD for its sigwait() thread, the mask survives exec()
+		sigset_t empty_set;
+		sigemptyset(&empty_set);
+		sigprocmask(SIG_SETMASK, &empty_set, NULL);
+		setpgid(0, 0);
+		execlp("curl", "curl", "-L", "-s", "-f", "-o", part_path, "--url", url, (char *)NULL);
+		_exit(127);
+	}
+	setpgid(pid, pid);
+	download->pid = pid;
+	// an abort requested between fork() and the assignment above did not see the child
+	if (download->aborted) {
+		kill(-pid, SIGTERM);
+	}
+	int status = 0;
+	pid_t waited;
+	do {
+		waited = waitpid(pid, &status, 0);
+	} while (waited < 0 && errno == EINTR);
+	download->pid = 0;
+	if (waited != pid || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
+		if (WIFEXITED(status) && WEXITSTATUS(status) == 127) {
+			indigo_error("%s: curl is not available", __FUNCTION__);
+			*message = "curl is not available";
+		} else {
+			indigo_error("%s: curl failed with status %d", __FUNCTION__, waited == pid && WIFEXITED(status) ? WEXITSTATUS(status) : -1);
+			*message = "the download failed";
+		}
+		return false;
+	}
+	return true;
+}
+
+#endif
+
+bool indigo_solver_download_index(const char *directory, const char *base_url, float fov, indigo_solver_download *download, const char **message) {
+	char path[PATH_MAX], part_path[PATH_MAX + 8], url[4096];
+	const char *reason = NULL;
+	indigo_solver_index_path(path, sizeof(path), directory, fov);
+	snprintf(part_path, sizeof(part_path), "%s.part", path);
+	indigo_solver_index_url(url, sizeof(url), base_url, fov);
+	if (strlen(url) == sizeof(url) - 1) {
+		if (message != NULL) {
+			*message = "the URL is too long";
+		}
+		return false;
+	}
+	bool res = !download->aborted && fetch_index(url, part_path, download, &reason);
+	if (download->aborted) {
+		reason = "aborted";
+		res = false;
+	} else if (res && !indigo_solver_validate_index(part_path, fov)) {
+		indigo_error("%s: %s is not a valid index of %g°", __FUNCTION__, url, fov);
+		reason = "the downloaded file is not a valid index";
+		res = false;
+	} else if (res && rename(part_path, path)) {
+		indigo_error("%s: failed to rename %s (%s)", __FUNCTION__, part_path, strerror(errno));
+		reason = "the index file can't be installed";
+		res = false;
+	}
+	if (!res) {
+		indigo_uni_remove(part_path);
+	}
+	if (message != NULL) {
+		*message = reason;
+	}
+	return res;
+}
+
+void indigo_solver_abort_download(indigo_solver_download *download, bool immediately) {
+	download->aborted = true;
+#if !defined(INDIGO_WINDOWS)
+	pid_t pid = download->pid;
+	if (pid > 0) {
+		kill(-pid, immediately ? SIGKILL : SIGTERM);
+	}
+#endif
 }
 
 static inline int bucket_key(int hx3, int hy3) {

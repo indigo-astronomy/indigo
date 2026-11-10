@@ -31,6 +31,7 @@
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
+#include <signal.h>
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_align.h>
@@ -72,6 +73,16 @@ typedef enum {
 
 static const char *format_names[] = { "text", "json", "xml", "wcs" };
 
+// besides solving an image the tool lists, downloads and removes the indexes
+typedef enum {
+	MODE_SOLVE,
+	MODE_LIST,
+	MODE_DOWNLOAD,
+	MODE_REMOVE
+} tool_mode;
+
+static const char *mode_options[] = { NULL, "--list", "--download", "--remove" };
+
 typedef struct {
 	char index_dir[PATH_MAX];
 	float fovs[INDIGO_SOLVER_INDEX_FOV_COUNT];
@@ -90,6 +101,9 @@ typedef struct {
 	int verbose;
 	output_format format;
 	const char *file_name;
+	tool_mode mode;
+	const char *index_url;
+	const char *solving_option;
 } solver_options;
 
 // The outcome of a run: the solution, or the reason the image was not solved
@@ -124,7 +138,8 @@ static void print_usage(const char *name) {
 	char index_dir[PATH_MAX];
 	default_index_dir(index_dir, sizeof(index_dir));
 	printf("INDIGO Solver - plate solves an image file with the indexes of the Platesolver Agent\n\n");
-	printf("Usage: %s [options] image_file\n\n", name);
+	printf("Usage: %s [options] image_file\n", name);
+	printf("       %s [-i <dir>] -l | --download <scales> | --remove <scales>\n\n", name);
 	printf("The image can be INDIGO RAW, FITS, JPEG or a camera raw file.\n\n");
 	printf("Options:\n");
 	printf("  -i, --index-dir <dir>     directory with the index files (default: %s)\n", index_dir);
@@ -145,11 +160,20 @@ static void print_usage(const char *name) {
 	printf("  -f, --format <format>     output format of the result, text, json, xml or wcs (default: text)\n");
 	printf("  -v, --verbose             report the progress and errors, -vv adds the debug log\n");
 	printf("  -h, --help                show this help\n\n");
+	printf("Index management:\n");
+	printf("  -l, --list                list the published indexes and the ones installed in the index directory\n");
+	printf("      --download <scales>   download the indexes of the comma separated quad scales or all, valid\n");
+	printf("                            installed indexes are kept, invalid ones replaced\n");
+	printf("      --remove <scales>     remove the installed indexes of the comma separated quad scales or all\n");
+	printf("      --index-url <url>     download the indexes from this URL (default:\n");
+	printf("                            %s)\n\n", INDIGO_SOLVER_INDEX_URL);
 	printf("With json or xml the result, solved or not, is a single document on the standard output and the progress\n");
 	printf("of -v goes to the standard error.\n\n");
 	printf("With wcs the solution is a WCS FITS header on the standard output, as the .wcs files of Astrometry.net and\n");
 	printf("ASTAP, always in J2000; nothing is written to the standard output when the image is not solved.\n\n");
-	printf("The exit code is 0 when the image is solved, 1 when it is not and 2 on wrong arguments.\n");
+	printf("The exit code is 0 when the image is solved, 1 when it is not and 2 on wrong arguments. With --list,\n");
+	printf("--download and --remove it is 0 on success, 1 when an index can't be downloaded or removed or the\n");
+	printf("download is interrupted and 2 on wrong arguments.\n");
 }
 
 static bool parse_number(const char *string, double *value) {
@@ -186,6 +210,13 @@ static bool parse_sexagesimal(const char *string, double *value) {
 }
 
 static bool parse_fovs(const char *string, solver_options *options) {
+	if (!strcmp(string, "all")) {
+		for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+			options->fovs[i] = indigo_solver_index_fovs[i];
+		}
+		options->fov_count = INDIGO_SOLVER_INDEX_FOV_COUNT;
+		return true;
+	}
 	char copy[256];
 	snprintf(copy, sizeof(copy), "%s", string);
 	options->fov_count = 0;
@@ -212,6 +243,15 @@ static bool parse_fovs(const char *string, solver_options *options) {
 	return options->fov_count > 0;
 }
 
+static bool set_mode(solver_options *options, tool_mode mode) {
+	if (options->mode != MODE_SOLVE) {
+		fprintf(stderr, "%s: only one of --list, --download and --remove can be given\n", TOOL_NAME);
+		return false;
+	}
+	options->mode = mode;
+	return true;
+}
+
 static bool parse_arguments(int argc, char **argv, solver_options *options) {
 	default_index_dir(options->index_dir, sizeof(options->index_dir));
 	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
@@ -235,6 +275,12 @@ static bool parse_arguments(int argc, char **argv, solver_options *options) {
 			options->verbose += 2;
 			continue;
 		}
+		if (!strcmp(arg, "-l") || !strcmp(arg, "--list")) {
+			if (!set_mode(options, MODE_LIST)) {
+				return false;
+			}
+			continue;
+		}
 		if (arg[0] != '-' || arg[1] == 0) {
 			if (options->file_name != NULL) {
 				fprintf(stderr, "%s: only one image file can be solved, '%s' and '%s' given\n", TOOL_NAME, options->file_name, arg);
@@ -251,6 +297,15 @@ static bool parse_arguments(int argc, char **argv, solver_options *options) {
 		bool ok = true;
 		if (!strcmp(arg, "-i") || !strcmp(arg, "--index-dir")) {
 			snprintf(options->index_dir, sizeof(options->index_dir), "%s", value);
+			continue;
+		} else if (!strcmp(arg, "--download") || !strcmp(arg, "--remove")) {
+			if (!set_mode(options, arg[2] == 'd' ? MODE_DOWNLOAD : MODE_REMOVE)) {
+				return false;
+			}
+			ok = parse_fovs(value, options);
+		} else if (!strcmp(arg, "--index-url")) {
+			options->index_url = value;
+			ok = value[0] != 0;
 		} else if (!strcmp(arg, "-x") || !strcmp(arg, "--index")) {
 			ok = parse_fovs(value, options);
 		} else if (!strcmp(arg, "-s") || !strcmp(arg, "--scale")) {
@@ -283,10 +338,29 @@ static bool parse_arguments(int argc, char **argv, solver_options *options) {
 			fprintf(stderr, "%s: unknown option '%s'\n", TOOL_NAME, arg);
 			return false;
 		}
+		// every option but -i, -v, --index-url and the index management modes is a solving option
+		if (arg[1] != '-' || (strcmp(arg, "--download") && strcmp(arg, "--remove") && strcmp(arg, "--index-url"))) {
+			options->solving_option = arg;
+		}
 		if (!ok) {
 			fprintf(stderr, "%s: invalid value '%s' for '%s', see '%s -h'\n", TOOL_NAME, value, arg, TOOL_NAME);
 			return false;
 		}
+	}
+	if (options->index_url != NULL && options->mode != MODE_DOWNLOAD) {
+		fprintf(stderr, "%s: --index-url can be used with --download only\n", TOOL_NAME);
+		return false;
+	}
+	if (options->mode != MODE_SOLVE) {
+		if (options->file_name != NULL) {
+			fprintf(stderr, "%s: an image file can't be solved with %s\n", TOOL_NAME, mode_options[options->mode]);
+			return false;
+		}
+		if (options->solving_option != NULL) {
+			fprintf(stderr, "%s: '%s' can't be used with %s\n", TOOL_NAME, options->solving_option, mode_options[options->mode]);
+			return false;
+		}
+		return true;
 	}
 	if (options->file_name == NULL) {
 		fprintf(stderr, "%s: no image file given, see '%s -h'\n", TOOL_NAME, TOOL_NAME);
@@ -429,7 +503,7 @@ static void solve(solver_options *options, const void *data, long size, solver_r
 	float candidates[INDIGO_SOLVER_INDEX_FOV_COUNT];
 	int candidate_count = select_candidate_fovs(options, options->scale, full_width, full_height, candidates);
 	if (candidate_count == 0) {
-		message = "No index files found, download them with the Platesolver Agent or select another index directory";
+		message = "No index files found, download them with --download or the Platesolver Agent, or select another index directory";
 		goto cleanup;
 	}
 	double hint_ra = options->ra, hint_dec = options->dec;
@@ -752,6 +826,101 @@ static void print_wcs(solver_options *options, solver_result *result) {
 static void discard_log_message(indigo_log_levels level, const char *message) {
 }
 
+// -------------------------------------------------------------------------------- Index management
+
+static indigo_solver_download download;
+
+// the interrupt stops curl, which runs in its own process group, and the partial file is removed
+static void interrupt_download(int sig) {
+	indigo_solver_abort_download(&download, false);
+}
+
+static int index_position(float fov) {
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		if (indigo_solver_index_fovs[i] == fov) {
+			return i;
+		}
+	}
+	return 0;
+}
+
+static int list_indexes(solver_options *options) {
+	printf("Index directory: %s\n", options->index_dir);
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		float fov = indigo_solver_index_fovs[i];
+		char path[PATH_MAX], label[128];
+		indigo_solver_index_path(path, sizeof(path), options->index_dir, fov);
+		indigo_solver_index_label(fov, label, sizeof(label));
+		const char *state = "-";
+		if (indigo_uni_is_readable(path)) {
+			state = indigo_solver_validate_index(path, fov) ? "installed" : "invalid";
+		}
+		printf("  %-5g %-10s %s, %s\n", fov, state, label, indigo_solver_index_sizes[i]);
+	}
+	return 0;
+}
+
+static int download_indexes(solver_options *options) {
+	if (!indigo_uni_mkdir(options->index_dir)) {
+		fprintf(stderr, "%s: can't create the index directory '%s': %s\n", TOOL_NAME, options->index_dir, strerror(errno));
+		return 1;
+	}
+	signal(SIGINT, interrupt_download);
+	signal(SIGTERM, interrupt_download);
+	bool failed = false;
+	for (int i = 0; i < options->fov_count && !download.aborted; i++) {
+		float fov = options->fovs[i];
+		char path[PATH_MAX], label[128];
+		indigo_solver_index_path(path, sizeof(path), options->index_dir, fov);
+		indigo_solver_index_label(fov, label, sizeof(label));
+		if (indigo_uni_is_readable(path)) {
+			if (indigo_solver_validate_index(path, fov)) {
+				printf("%s is already installed\n", label);
+				continue;
+			}
+			printf("%s is invalid, it is replaced\n", label);
+			if (!indigo_uni_remove(path)) {
+				fprintf(stderr, "%s: %s can't be removed: %s\n", TOOL_NAME, path, strerror(errno));
+				failed = true;
+				continue;
+			}
+		}
+		printf("Downloading %s, %s...\n", label, indigo_solver_index_sizes[index_position(fov)]);
+		fflush(stdout);
+		const char *message = NULL;
+		if (indigo_solver_download_index(options->index_dir, options->index_url, fov, &download, &message)) {
+			printf("Installed %s\n", path);
+		} else if (!download.aborted) {
+			fprintf(stderr, "%s: %s can't be downloaded: %s\n", TOOL_NAME, label, message);
+			failed = true;
+		}
+	}
+	if (download.aborted) {
+		fprintf(stderr, "%s: the download was interrupted\n", TOOL_NAME);
+		return 1;
+	}
+	return failed ? 1 : 0;
+}
+
+static int remove_indexes(solver_options *options) {
+	bool failed = false;
+	for (int i = 0; i < options->fov_count; i++) {
+		float fov = options->fovs[i];
+		char path[PATH_MAX], label[128];
+		indigo_solver_index_path(path, sizeof(path), options->index_dir, fov);
+		indigo_solver_index_label(fov, label, sizeof(label));
+		if (!indigo_uni_is_readable(path)) {
+			printf("%s is not installed\n", label);
+		} else if (indigo_uni_remove(path)) {
+			printf("Removed %s\n", path);
+		} else {
+			fprintf(stderr, "%s: %s can't be removed: %s\n", TOOL_NAME, path, strerror(errno));
+			failed = true;
+		}
+	}
+	return failed ? 1 : 0;
+}
+
 int main(int argc, char **argv) {
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
@@ -771,6 +940,16 @@ int main(int argc, char **argv) {
 	indigo_set_log_level(options.verbose > 1 ? INDIGO_LOG_DEBUG : INDIGO_LOG_ERROR);
 	if (options.verbose == 0) {
 		indigo_log_message_handler = discard_log_message;
+	}
+	switch (options.mode) {
+		case MODE_LIST:
+			return list_indexes(&options);
+		case MODE_DOWNLOAD:
+			return download_indexes(&options);
+		case MODE_REMOVE:
+			return remove_indexes(&options);
+		default:
+			break;
 	}
 	progress = options.format == FORMAT_TEXT ? stdout : stderr;
 	solver_result result = { 0 };

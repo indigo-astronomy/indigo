@@ -21,7 +21,8 @@
 /** Test of the indigo_solver command line tool: the built executable is run on a synthetic Tycho-2 style index and
  synthetic RAW and FITS frames of the indexed field in a private directory; its output, messages and exit codes are
  checked for every hint switch, and the WCS header of the wcs format is checked against the catalog positions of the rendered
- stars. No network, no real index files.
+ stars. The index management modes download from file:// URLs of the test directories with curl. No network, no real
+ index files.
  */
 
 #include <stdio.h>
@@ -30,6 +31,8 @@
 #include <math.h>
 #include <unistd.h>
 #include <limits.h>
+#include <fcntl.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 
@@ -730,7 +733,7 @@ static void structured_output_when_not_solved(void) {
 	ASSERT_TRUE(run_tool_stdout(&run, empty_dir, "-f json -i '%s' '%s'", empty_dir, raw_path));
 	ASSERT_EQ_INT(1, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "\"solved\": false,"));
-	ASSERT_TRUE(output_contains(&run, "\"message\": \"No index files found, download them with the Platesolver Agent or select another index directory\"\n}\n"));
+	ASSERT_TRUE(output_contains(&run, "\"message\": \"No index files found, download them with --download or the Platesolver Agent, or select another index directory\"\n}\n"));
 	ASSERT_FALSE(strstr(run.output, "\"ra\"") != NULL);
 	ASSERT_TRUE(run_tool(&run, empty_dir, "-f json -i '%s' '%s'", empty_dir, raw_path));
 	ASSERT_EQ_INT(1, run.exit_code);
@@ -980,6 +983,238 @@ static void wcs_output_when_not_solved(void) {
 	ASSERT_EQ_INT(0, (int)file_size(wcs_path));
 }
 
+// -------------------------------------------------------------------------------- index management
+
+static bool exists(const char *path) {
+	struct stat status;
+	return stat(path, &status) == 0;
+}
+
+static bool curl_available(void) {
+	if (system("command -v curl >/dev/null 2>&1") != 0) {
+		fprintf(stderr, "curl is not installed, the index download needs it\n");
+		return false;
+	}
+	return true;
+}
+
+// The listed state of the index of the given scale, "-", "installed" or "invalid"
+static bool listed_state(tool_run *run, float fov, const char *state) {
+	char line[64];
+	snprintf(line, sizeof(line), "\n  %-5g %-10s ", fov, state);
+	return output_contains(run, line);
+}
+
+// The indexes are listed, downloaded into a new directory, used for solving and removed
+static void index_management_lists_downloads_and_removes(void) {
+	ASSERT_TRUE(curl_available());
+	char managed[PATH_MAX + 16], path[PATH_MAX], part[PATH_MAX + 8], source[PATH_MAX];
+	snprintf(managed, sizeof(managed), "%s/managed/indexes", work_dir);
+	tool_run run;
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --list", managed));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Index directory: "));
+	ASSERT_TRUE(output_contains(&run, managed));
+	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
+		char label[128], line[256];
+		indigo_solver_index_label(indigo_solver_index_fovs[i], label, sizeof(label));
+		snprintf(line, sizeof(line), "%s, %s\n", label, indigo_solver_index_sizes[i]);
+		ASSERT_TRUE(listed_state(&run, indigo_solver_index_fovs[i], "-"));
+		ASSERT_TRUE(output_contains(&run, line));
+	}
+	ASSERT_FALSE(exists(managed));
+	// the directory is created, the index is downloaded and is the same file as the published one
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --download 5 --index-url 'file://%s'", managed, index_dir));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "Downloading 5° Tycho-2 (FOV 4.5° - 10°), 178 MB...\n"));
+	indigo_solver_index_path(path, sizeof(path), managed, 5);
+	indigo_solver_index_path(source, sizeof(source), index_dir, 5);
+	char installed[PATH_MAX + 16];
+	snprintf(installed, sizeof(installed), "Installed %s\n", path);
+	ASSERT_TRUE(output_contains(&run, installed));
+	ASSERT_EQ_INT((int)file_size(source), (int)file_size(path));
+	snprintf(part, sizeof(part), "%s.part", path);
+	ASSERT_FALSE(exists(part));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -x 5 '%s'", managed, raw_path));
+	ASSERT_TRUE(solution_matches_frame(&run, 30, 0.005));
+	// an installed index is kept, a listed one is installed
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --download 5 --index-url 'file://%s'", managed, index_dir));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "5° Tycho-2 (FOV 4.5° - 10°) is already installed\n"));
+	ASSERT_FALSE(strstr(run.output, "Downloading") != NULL);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -l", managed));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(listed_state(&run, 5, "installed"));
+	ASSERT_TRUE(listed_state(&run, 2, "-"));
+	// a damaged file is listed as invalid
+	char damaged[PATH_MAX];
+	indigo_solver_index_path(damaged, sizeof(damaged), managed, 2);
+	ASSERT_TRUE(copy_file(text_path, damaged));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' -l", managed));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(listed_state(&run, 2, "invalid"));
+	// an invalid index is replaced by the download
+	char invalid_five[PATH_MAX + 16];
+	snprintf(invalid_five, sizeof(invalid_five), "%s/invalid", work_dir);
+	ASSERT_EQ_INT(0, mkdir(invalid_five, 0755));
+	char invalid_path[PATH_MAX];
+	indigo_solver_index_path(invalid_path, sizeof(invalid_path), invalid_five, 5);
+	ASSERT_TRUE(copy_file(text_path, invalid_path));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --download 5 --index-url 'file://%s'", invalid_five, index_dir));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "5° Tycho-2 (FOV 4.5° - 10°) is invalid, it is replaced\n"));
+	ASSERT_EQ_INT((int)file_size(source), (int)file_size(invalid_path));
+	// removal of the installed indexes, a missing one is reported and is no error
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --remove 5,2,20", managed));
+	ASSERT_EQ_INT(0, run.exit_code);
+	char removed[PATH_MAX + 16];
+	snprintf(removed, sizeof(removed), "Removed %s\n", path);
+	ASSERT_TRUE(output_contains(&run, removed));
+	ASSERT_TRUE(output_contains(&run, "20° Tycho-2 (FOV > 20°) is not installed\n"));
+	ASSERT_FALSE(exists(path));
+	ASSERT_FALSE(exists(damaged));
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --remove all", managed));
+	ASSERT_EQ_INT(0, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "5° Tycho-2 (FOV 4.5° - 10°) is not installed\n"));
+	ASSERT_TRUE(output_contains(&run, "0.2° Gaia DR3 (FOV 0.2° - 0.45°) is not installed\n"));
+	ASSERT_TRUE(exists(source));
+}
+
+// A failed download leaves neither the index nor the partial file, the other indexes are still downloaded
+static void index_download_failures(void) {
+	ASSERT_TRUE(curl_available());
+	char managed[PATH_MAX + 16], path[PATH_MAX], part[PATH_MAX + 8];
+	snprintf(managed, sizeof(managed), "%s/failures", work_dir);
+	tool_run run;
+	// 1° is not published there, the 0.5° index of the mirror has the header of a 5° index
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --download 1,0.5,5 --index-url 'file://%s'", managed, two_index_dir));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "1° Tycho-2 (FOV 1° - 2°) can't be downloaded: the download failed\n"));
+	ASSERT_TRUE(output_contains(&run, "0.5° Gaia DR3 (FOV 0.45° - 1°) can't be downloaded: the downloaded file is not a valid index\n"));
+	float failed[] = { 1, 0.5 };
+	for (int i = 0; i < 2; i++) {
+		indigo_solver_index_path(path, sizeof(path), managed, failed[i]);
+		snprintf(part, sizeof(part), "%s.part", path);
+		ASSERT_FALSE(exists(path));
+		ASSERT_FALSE(exists(part));
+	}
+	indigo_solver_index_path(path, sizeof(path), managed, 5);
+	ASSERT_TRUE(exists(path));
+	// a URL that looks like a curl option is passed to curl as the URL
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --download 2 --index-url '-K%s'", managed, text_path));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "2° Tycho-2 (FOV 2° - 4.5°) can't be downloaded: the download failed\n"));
+	// a directory that can't be created
+	char blocked[PATH_MAX + 16];
+	snprintf(blocked, sizeof(blocked), "%s/indexes", text_path);
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' --download 5 --index-url 'file://%s'", blocked, index_dir));
+	ASSERT_EQ_INT(1, run.exit_code);
+	ASSERT_TRUE(output_contains(&run, "can't create the index directory"));
+}
+
+// The index management modes are exclusive and take no solving options
+static void index_management_arguments_are_refused(void) {
+	static const struct {
+		const char *arguments;
+		const char *message;
+	} cases[] = {
+		{ "--list frame.raw", "an image file can't be solved with --list" },
+		{ "--download 5 frame.raw", "an image file can't be solved with --download" },
+		{ "-l --remove 5", "only one of --list, --download and --remove can be given" },
+		{ "--download 5 --remove 5", "only one of --list, --download and --remove can be given" },
+		{ "--download 5 -x 5", "'-x' can't be used with --download" },
+		{ "--remove 5 --format json", "'--format' can't be used with --remove" },
+		{ "-s 0.001 --list", "'-s' can't be used with --list" },
+		{ "--list --index-url file:///tmp", "--index-url can be used with --download only" },
+		{ "--index-url file:///tmp frame.raw", "--index-url can be used with --download only" },
+		{ "--download 3", "unknown index scale '3'" },
+		{ "--remove 5,abc", "unknown index scale 'abc'" },
+		{ "--download ''", "invalid value '' for '--download'" },
+		{ "--download 5 --index-url ''", "invalid value '' for '--index-url'" },
+		{ "--remove", "unknown option or missing value for '--remove'" },
+	};
+	tool_run run;
+	for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+		ASSERT_TRUE(run_tool(&run, empty_dir, "-i '%s' %s", empty_dir, cases[i].arguments));
+		if (run.exit_code != 2) {
+			fprintf(stderr, "Arguments '%s'\n", cases[i].arguments);
+		}
+		ASSERT_EQ_INT(2, run.exit_code);
+		ASSERT_TRUE(output_contains(&run, cases[i].message));
+	}
+	ASSERT_TRUE(run_tool(&run, empty_dir, "-h"));
+	const char *expected[] = { "Usage: indigo_solver [options] image_file\n       indigo_solver [-i <dir>] -l | --download <scales> | --remove <scales>", "-l, --list", "--download <scales>", "--remove <scales>", "--index-url <url>", INDIGO_SOLVER_INDEX_URL, "1 when an index can't be downloaded or removed" };
+	for (unsigned i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
+		ASSERT_TRUE(output_contains(&run, expected[i]));
+	}
+}
+
+// SIGINT, the terminal interrupt, stops the transfer of a source that never ends and removes the partial file
+static void interrupted_download_removes_partial_file(void) {
+	ASSERT_TRUE(curl_available());
+	char mirror[PATH_MAX + 16], managed[PATH_MAX + 16], source[PATH_MAX], path[PATH_MAX], part[PATH_MAX + 8], errors[PATH_MAX + 16];
+	snprintf(mirror, sizeof(mirror), "%s/endless", work_dir);
+	snprintf(managed, sizeof(managed), "%s/interrupted", work_dir);
+	snprintf(errors, sizeof(errors), "%s/interrupted.txt", work_dir);
+	ASSERT_EQ_INT(0, mkdir(mirror, 0755));
+	indigo_solver_index_path(source, sizeof(source), mirror, 1);
+	ASSERT_EQ_INT(0, mkfifo(source, 0600));
+	int fifo = open(source, O_RDWR | O_CLOEXEC);
+	ASSERT_TRUE(fifo >= 0);
+	ASSERT_EQ_INT(16, (int)write(fifo, "partial content\n", 16));
+	indigo_solver_index_path(path, sizeof(path), managed, 1);
+	snprintf(part, sizeof(part), "%s.part", path);
+	char command[4 * PATH_MAX];
+	snprintf(command, sizeof(command), "exec '%s' -i '%s' --download 1,5 --index-url 'file://%s' >'%s' 2>&1", INDIGO_SOLVER_EXECUTABLE, managed, mirror, errors);
+	pid_t pid = fork();
+	ASSERT_TRUE(pid >= 0);
+	if (pid == 0) {
+		// a group of its own, so the interrupt reaches the whole group like a terminal interrupt does
+		setpgid(0, 0);
+		execl("/bin/sh", "sh", "-c", command, (char *)NULL);
+		_exit(127);
+	}
+	bool started = false;
+	for (int i = 0; i < 500 && !started; i++) {
+		started = exists(part);
+		indigo_usleep(10000);
+	}
+	setpgid(pid, pid);
+	kill(-pid, SIGINT);
+	// when curl is not stopped the source is closed after 3 s, so that the test fails instead of blocking
+	int status = 0;
+	pid_t waited = 0;
+	for (int i = 0; i < 300 && waited == 0; i++) {
+		waited = waitpid(pid, &status, WNOHANG);
+		indigo_usleep(10000);
+	}
+	close(fifo);
+	if (waited == 0) {
+		waitpid(pid, &status, 0);
+	}
+	ASSERT_TRUE(started);
+	ASSERT_TRUE(waited == pid);
+	ASSERT_TRUE(WIFEXITED(status));
+	ASSERT_EQ_INT(1, WEXITSTATUS(status));
+	ASSERT_FALSE(exists(part));
+	ASSERT_FALSE(exists(path));
+	// the interrupt stops the whole run, the next index is not downloaded
+	indigo_solver_index_path(path, sizeof(path), managed, 5);
+	ASSERT_FALSE(exists(path));
+	tool_run run = { 0 };
+	FILE *file = fopen(errors, "r");
+	ASSERT_TRUE(file != NULL);
+	size_t length = fread(run.output, 1, sizeof(run.output) - 1, file);
+	run.output[length] = 0;
+	fclose(file);
+	ASSERT_TRUE(output_contains(&run, "the download was interrupted\n"));
+	ASSERT_FALSE(strstr(run.output, "can't be downloaded") != NULL);
+	// curl ran in the process group of its own and has ended with the tool
+	char check[2 * PATH_MAX];
+	snprintf(check, sizeof(check), "ps -A -o args= | awk -v part='%s' 'index($0, \"curl \") == 1 && index($0, part) { found = 1 } END { exit !found }'", part);
+	ASSERT_TRUE(system(check) != 0);
+}
+
 static const indigo_test_case tests[] = {
 	{ "help_lists_switches_and_defaults", help_lists_switches_and_defaults },
 	{ "no_arguments_show_help", no_arguments_show_help },
@@ -1009,6 +1244,10 @@ static const indigo_test_case tests[] = {
 	{ "wcs_output_of_a_jnow_solution", wcs_output_of_a_jnow_solution },
 	{ "wcs_output_with_verbose_progress", wcs_output_with_verbose_progress },
 	{ "wcs_output_when_not_solved", wcs_output_when_not_solved },
+	{ "index_management_lists_downloads_and_removes", index_management_lists_downloads_and_removes },
+	{ "index_download_failures", index_download_failures },
+	{ "index_management_arguments_are_refused", index_management_arguments_are_refused },
+	{ "interrupted_download_removes_partial_file", interrupted_download_removes_partial_file },
 };
 
 int main(void) {

@@ -51,6 +51,46 @@ extern const float indigo_solver_index_fovs[INDIGO_SOLVER_INDEX_FOV_COUNT];
  */
 extern void indigo_solver_index_label(float fov, char *label, size_t size);
 
+/** Base URL of the published indexes, built by indigo_solver_indexer; the index file name is appended to it.
+ */
+#define INDIGO_SOLVER_INDEX_URL	"https://github.com/indigo-astronomy/indigo/releases/download/index_release_v2"
+
+/** Approximate sizes of the published index files, in the order of indigo_solver_index_fovs.
+ */
+extern const char *indigo_solver_index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT];
+
+/** The URL of the index of the given scale: its file name under base_url, NULL = INDIGO_SOLVER_INDEX_URL.
+ */
+extern void indigo_solver_index_url(char *url, size_t size, const char *base_url, float fov);
+/** True for an index file with a valid header of the given scale and with some stars and quads.
+ */
+extern bool indigo_solver_validate_index(const char *path, float fov);
+/** Removes the partial files of interrupted downloads from directory (NULL = current working directory); an
+ interrupted transfer is never taken for an installed index.
+ */
+extern void indigo_solver_remove_partial_indexes(const char *directory);
+
+/** A download in progress: cleared before indigo_solver_download_index() and stopped from any thread or from a signal
+ handler with indigo_solver_abort_download(); pid is the process group of curl while it runs, 0 otherwise (not
+ used on Windows).
+ */
+typedef struct {
+	volatile bool aborted;
+	volatile int pid;
+} indigo_solver_download;
+
+/** Downloads the index of the given scale from base_url (NULL = INDIGO_SOLVER_INDEX_URL) into directory (NULL =
+ current working directory), which must exist and must not hold the index yet: the file is fetched into the index
+ path with the .part suffix, with curl (WinINet on Windows), accepted only by indigo_solver_validate_index() and then
+ renamed to the index path. On Windows an abort is noticed between the blocks read. On failure or abort the partial file is removed and message, when not NULL, holds the
+ reason ("aborted" for an abort).
+ */
+extern bool indigo_solver_download_index(const char *directory, const char *base_url, float fov, indigo_solver_download *download, const char **message);
+/** Stops the download, it fails with "aborted"; immediately ends curl with SIGKILL instead of SIGTERM. Safe in a
+ signal handler.
+ */
+extern void indigo_solver_abort_download(indigo_solver_download *download, bool immediately);
+
 /** Any supported input image as a newly allocated INDIGO RAW MONO16 image: INDIGO RAW (MONO16 as it is, MONO8 spread
  over 16 bits, RGB24/RGB48 averaged to mono), FITS (BITPIX 8, 16, 32, -32, -64 with BZERO/BSCALE, NAXIS 2 or 3 with the
  planes weighted, BITPIX 16 without BZERO read as unsigned so negative values wrap above 32767), JPEG (components

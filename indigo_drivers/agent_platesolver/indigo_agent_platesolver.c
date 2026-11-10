@@ -24,7 +24,7 @@
  \file indigo_agent_platesolver.c
  */
 
-#define DRIVER_VERSION 0x0300001F
+#define DRIVER_VERSION 0x03000020
 #define DRIVER_NAME	"indigo_agent_platesolver"
 
 #include <stdio.h>
@@ -36,15 +36,6 @@
 #include <pthread.h>
 #include <errno.h>
 #include <limits.h>
-#include <sys/types.h>
-#if defined(INDIGO_WINDOWS)
-#include <windows.h>
-#include <wininet.h>
-#else
-#include <unistd.h>
-#include <signal.h>
-#include <sys/wait.h>
-#endif
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_client.h>
@@ -64,10 +55,6 @@
 #define AGENT_SOLVER_INDEX_PROPERTY				(SOLVER_DEVICE_PRIVATE_DATA->index_property)
 #define AGENT_SOLVER_INDEX_PROPERTY_NAME	"X_AGENT_SOLVER_INDEX"
 
-// Quad indexes built by indigo_solver_indexer are downloaded from here as index-<scale>deg-tyc2.isix (Tycho-2) and
-// index-<scale>deg-gaia.isix (Gaia DR3, scales below 1 degree), the scale zero padded so the files sort by it
-#define AGENT_SOLVER_INDEX_URL						"https://github.com/indigo-astronomy/indigo/releases/download/index_release_v2"
-
 #define MAX_IMAGE_STAR_COUNT							500
 #define MAX_IMAGE_QUAD_COUNT							1000000
 #define MAX_QUAD_MATCH_COUNT							1000000
@@ -76,19 +63,12 @@
 
 static char base_dir[512];
 
-// approximate sizes of the published index files, in the order of indigo_solver_index_fovs
-static const char *index_sizes[INDIGO_SOLVER_INDEX_FOV_COUNT] = { "1216 MB", "911 MB", "538 MB", "358 MB", "178 MB", "92 MB", "36 MB" };
-
-
 typedef struct {
 	platesolver_private_data platesolver;
 	indigo_property *index_property;
 	int index_pending;
-	volatile bool index_download_aborted;
+	indigo_solver_download download;
 	volatile bool abort_requested;
-#if !defined(INDIGO_WINDOWS)
-	volatile pid_t download_pid;
-#endif
 	char loaded_index[PATH_MAX];
 	indigo_solver_catalog catalog;
 } solver_private_data;
@@ -140,7 +120,7 @@ static void index_item_label(int index, char *label, size_t size, bool with_size
 	indigo_solver_index_label(indigo_solver_index_fovs[index], label, size);
 	size_t length = strlen(label);
 	if (with_size && length > 0 && label[length - 1] == ')') {
-		snprintf(label + length - 1, size - length + 1, ", %s)", index_sizes[index]);
+		snprintf(label + length - 1, size - length + 1, ", %s)", indigo_solver_index_sizes[index]);
 	}
 }
 
@@ -148,19 +128,6 @@ static bool index_installed(float fov) {
 	char path[PATH_MAX];
 	indigo_solver_index_path(path, sizeof(path), base_dir, fov);
 	return indigo_uni_is_readable(path);
-}
-
-// an interrupted transfer is never taken for an installed index, so partial files are removed on start
-static void remove_partial_index_files(void) {
-	char path[PATH_MAX + 8];
-	for (int i = 0; i < INDIGO_SOLVER_INDEX_FOV_COUNT; i++) {
-		char index[PATH_MAX];
-		indigo_solver_index_path(index, sizeof(index), base_dir, indigo_solver_index_fovs[i]);
-		snprintf(path, sizeof(path), "%s.part", index);
-		if (indigo_uni_is_readable(path)) {
-			indigo_uni_remove(path);
-		}
-	}
 }
 
 static void free_catalog(indigo_device *device) {
@@ -180,115 +147,6 @@ static bool load_catalog(indigo_device *device, const char *path) {
 	}
 	snprintf(SOLVER_DEVICE_PRIVATE_DATA->loaded_index, sizeof(SOLVER_DEVICE_PRIVATE_DATA->loaded_index), "%s", path);
 	return true;
-}
-
-#if defined(INDIGO_WINDOWS)
-
-/* Fetches the index natively over HTTP(S) into part_path, so that the agent does not depend on an external curl
-   executable on Windows; the transfer is interrupted by solver_abort() or kill_children(). */
-static bool download_index_file(indigo_device *device, const char *url, const char *part_path) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> GET %s", url);
-	bool res = false;
-	HINTERNET session = InternetOpenA("Platesolver Agent", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	if (session == NULL) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "InternetOpen() failed (%s)", indigo_last_windows_error());
-		return false;
-	}
-	HINTERNET request = InternetOpenUrlA(session, url, NULL, 0, INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE, 0);
-	if (request == NULL) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "InternetOpenUrl() failed (%s)", indigo_last_windows_error());
-	} else {
-		DWORD status = 0, status_size = sizeof(status);
-		if (!HttpQueryInfoA(request, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &status, &status_size, NULL) || status != 200) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "HTTP status %lu", (unsigned long)status);
-		} else {
-			FILE *file = fopen(part_path, "wb");
-			if (file != NULL) {
-				unsigned char *buffer = indigo_safe_malloc(64 * 1024);
-				DWORD bytes_read = 0;
-				res = true;
-				while (true) {
-					if (!InternetReadFile(request, buffer, 64 * 1024, &bytes_read)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "InternetReadFile() failed (%s)", indigo_last_windows_error());
-						res = false;
-						break;
-					}
-					if (bytes_read == 0) {
-						break;
-					}
-					if (fwrite(buffer, 1, bytes_read, file) != bytes_read) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write %s", part_path);
-						res = false;
-						break;
-					}
-					if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
-						res = false;
-						break;
-					}
-				}
-				free(buffer);
-				fclose(file);
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create %s (%s)", part_path, strerror(errno));
-			}
-		}
-		InternetCloseHandle(request);
-	}
-	InternetCloseHandle(session);
-	return res;
-}
-
-#else
-
-/* Fetches the index with curl into part_path; curl runs in its own process group, so that solver_abort() and
-   kill_children() stop the transfer. */
-static bool download_index_file(indigo_device *device, const char *url, const char *part_path) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> curl -L -s -f -o %s %s", part_path, url);
-	pid_t pid = fork();
-	if (pid < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute curl (%s)", strerror(errno));
-		return false;
-	}
-	if (pid == 0) {
-		setpgid(0, 0);
-		execlp("curl", "curl", "-L", "-s", "-f", "-o", part_path, url, (char *)NULL);
-		_exit(127);
-	}
-	setpgid(pid, pid);
-	SOLVER_DEVICE_PRIVATE_DATA->download_pid = pid;
-	/* an abort requested between fork() and the assignment above did not see the child */
-	if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
-		kill(-pid, SIGTERM);
-	}
-	int status = 0;
-	pid_t waited;
-	do {
-		waited = waitpid(pid, &status, 0);
-	} while (waited < 0 && errno == EINTR);
-	SOLVER_DEVICE_PRIVATE_DATA->download_pid = 0;
-	if (waited != pid || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		if (WIFEXITED(status) && WEXITSTATUS(status) == 127) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "curl is not available");
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "curl failed with status %d", waited == pid && WIFEXITED(status) ? WEXITSTATUS(status) : -1);
-		}
-		return false;
-	}
-	return true;
-}
-
-#endif
-
-// a downloaded file is accepted only with a valid header for the requested scale
-static bool validate_index_file(const char *path, float fov) {
-	FILE *file = fopen(path, "rb");
-	if (file == NULL) {
-		return false;
-	}
-	indigo_solve_index_header header;
-	bool valid = indigo_solver_index_read_header(file, &header) && header.fov == fov && header.star_count > 0 && header.quad_count > 0;
-	fclose(file);
-	return valid;
 }
 
 static void unselect_missing_indexes(indigo_device *device) {
@@ -332,7 +190,7 @@ static void rebuild_use_index(indigo_device *device) {
 // Downloads every newly selected index and removes every unselected one, then republishes the usable set
 static void sync_installed_indexes(indigo_device *device) {
 	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-	char path[PATH_MAX], part_path[PATH_MAX + 8], url[INDIGO_VALUE_SIZE];
+	char path[PATH_MAX], url[INDIGO_VALUE_SIZE];
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < AGENT_SOLVER_INDEX_PROPERTY->count; i++) {
 		indigo_item *item = AGENT_SOLVER_INDEX_PROPERTY->items + i;
@@ -345,21 +203,18 @@ static void sync_installed_indexes(indigo_device *device) {
 			if (indigo_uni_is_readable(path)) {
 				continue;
 			}
-			if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
+			if (SOLVER_DEVICE_PRIVATE_DATA->download.aborted) {
 				goto aborted;
 			}
-			snprintf(part_path, sizeof(part_path), "%s.part", path);
 			char *file_name = strrchr(path, '/');
 			file_name = file_name ? file_name + 1 : path;
-			snprintf(url, sizeof(url), "%s/%s", AGENT_SOLVER_INDEX_URL, file_name);
+			indigo_solver_index_url(url, sizeof(url), NULL, fov);
 			indigo_send_message(device, IDLE_PROPERTY, "Downloading %s...", file_name);
-			bool downloaded = download_index_file(device, url, part_path);
-			if (SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
-				indigo_uni_remove(part_path);
+			bool downloaded = indigo_solver_download_index(base_dir, NULL, fov, &SOLVER_DEVICE_PRIVATE_DATA->download, NULL);
+			if (SOLVER_DEVICE_PRIVATE_DATA->download.aborted) {
 				goto aborted;
 			}
-			if (!downloaded || !validate_index_file(part_path, fov) || rename(part_path, path)) {
-				indigo_uni_remove(part_path);
+			if (!downloaded) {
 				item->sw.value = false;
 				AGENT_SOLVER_INDEX_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_SOLVER_INDEX_PROPERTY, "Index download failed: '%s'", url);
@@ -402,7 +257,7 @@ static void index_handler(indigo_device *device) {
 	pthread_mutex_lock(&index_pending_mutex);
 	bool more = --SOLVER_DEVICE_PRIVATE_DATA->index_pending > 0;
 	pthread_mutex_unlock(&index_pending_mutex);
-	if (more && !SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted) {
+	if (more && !SOLVER_DEVICE_PRIVATE_DATA->download.aborted) {
 		return;
 	}
 	if (AGENT_SOLVER_INDEX_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -414,14 +269,8 @@ static void index_handler(indigo_device *device) {
 // -------------------------------------------------------------------------------- Solving
 
 static void solver_abort(indigo_device *device) {
-	SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted = true;
 	SOLVER_DEVICE_PRIVATE_DATA->abort_requested = true;
-#if !defined(INDIGO_WINDOWS)
-	pid_t pid = SOLVER_DEVICE_PRIVATE_DATA->download_pid;
-	if (pid > 0) {
-		kill(-pid, SIGTERM);
-	}
-#endif
+	indigo_solver_abort_download(&SOLVER_DEVICE_PRIVATE_DATA->download, false);
 }
 
 // Orders the selected indexes: the one fitting the field size first, when the scale is known, then the others
@@ -741,7 +590,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_SOLVER_INDEX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_SOLVER_INDEX
 		INDIGO_REJECT_CHANGE_IF(AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE, AGENT_SOLVER_INDEX_PROPERTY, "Solving in progress, index change is not possible");
-		SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted = false;
+		SOLVER_DEVICE_PRIVATE_DATA->download.aborted = false;
 		index_request_queued(device);
 		INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(AGENT_SOLVER_INDEX_PROPERTY, index_handler);
 		return INDIGO_OK;
@@ -769,14 +618,8 @@ static indigo_client *agent_client = NULL;
 static void kill_children() {
 	indigo_device *device = agent_device;
 	if (device && device->private_data) {
-		SOLVER_DEVICE_PRIVATE_DATA->index_download_aborted = true;
 		SOLVER_DEVICE_PRIVATE_DATA->abort_requested = true;
-#if !defined(INDIGO_WINDOWS)
-		pid_t pid = SOLVER_DEVICE_PRIVATE_DATA->download_pid;
-		if (pid > 0) {
-			kill(-pid, SIGKILL);
-		}
-#endif
+		indigo_solver_abort_download(&SOLVER_DEVICE_PRIVATE_DATA->download, true);
 	}
 }
 
@@ -822,7 +665,7 @@ indigo_result indigo_agent_platesolver(indigo_driver_action action, indigo_drive
 				snprintf(base_dir, sizeof(base_dir), "%s/.indigo/solver", indigo_uni_home_folder());
 			}
 			indigo_uni_mkdir(base_dir);
-			remove_partial_index_files();
+			indigo_solver_remove_partial_indexes(base_dir);
 			void *private_data = indigo_safe_malloc(sizeof(solver_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
