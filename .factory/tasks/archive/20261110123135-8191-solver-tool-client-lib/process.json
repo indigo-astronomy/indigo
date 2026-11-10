@@ -1,0 +1,50 @@
+{
+  "version": 2,
+  "task": "20261110123135-8191-solver-tool-client-lib",
+  "scope": [
+    "indigo_windows/indigo_client/indigo_client.vcxproj",
+    "indigo_windows/indigo_client/indigo_client.vcxproj.filters",
+    "indigo_windows.sln",
+    "indigo_windows/installer/indigo.iss",
+    ".factory/completions/20261110123135-8191-solver-tool-client-lib.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261110123135-8191-solver-tool-client-lib.json": [
+      "100644",
+      "blob",
+      "78b513987e4bf88f4ce2a997b8b82fa45f4653b4"
+    ],
+    "indigo_windows.sln": [
+      "100644",
+      "blob",
+      "c8b61f46946c53728ee3e335d506c098194614ed"
+    ],
+    "indigo_windows/indigo_client/indigo_client.vcxproj": [
+      "100644",
+      "blob",
+      "039831137d7189588c095676224874cc06c1b8b6"
+    ],
+    "indigo_windows/indigo_client/indigo_client.vcxproj.filters": [
+      "100644",
+      "blob",
+      "3b9f3a5f08d924b51983a980072ce4016192bd48"
+    ],
+    "indigo_windows/installer/indigo.iss": [
+      "100644",
+      "blob",
+      "9e0f0f3d23de6590ab419269bcf1cdd9ad190ee6"
+    ]
+  }
+}
