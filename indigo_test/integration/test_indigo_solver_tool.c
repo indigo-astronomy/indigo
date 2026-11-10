@@ -575,6 +575,11 @@ static void help_lists_switches_and_defaults(void) {
 	char directory[PATH_MAX + 32];
 	snprintf(directory, sizeof(directory), "(default: %s)", index_dir);
 	ASSERT_TRUE(output_contains(&run, directory));
+	// the version and the build as indigo_prop_tool shows them, then the build date
+	char version[64];
+	snprintf(version, sizeof(version), "INDIGO Solver v.%d.%d-%s built on ", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+	ASSERT_TRUE(strncmp(run.output, version, strlen(version)) == 0);
+	ASSERT_TRUE(output_contains(&run, ".\nPart of the INDIGO project, https://www.indigo-astronomy.org\n\n"));
 	ASSERT_TRUE(run_tool(&run, work_dir, "--help %s", raw_path));
 	ASSERT_EQ_INT(0, run.exit_code);
 	ASSERT_TRUE(output_contains(&run, "Usage: indigo_solver"));

@@ -132,7 +132,9 @@ static void default_index_dir(char *path, size_t size) {
 static void print_usage(const char *name) {
 	char index_dir[PATH_MAX];
 	default_index_dir(index_dir, sizeof(index_dir));
-	printf("INDIGO Solver - plate solves an image file with the indexes of the Platesolver Agent\n\n");
+	printf("INDIGO Solver v.%d.%d-%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
+	printf("Part of the INDIGO project, https://www.indigo-astronomy.org\n\n");
+	printf("Plate solves an image file with the indexes of the Platesolver Agent.\n\n");
 	printf("Usage: %s [options] image_file\n", name);
 	printf("       %s [-i <dir>] -l | --download <scales> | --remove <scales>\n\n", name);
 	printf("The image can be INDIGO RAW, FITS, JPEG or a camera raw file.\n\n");
