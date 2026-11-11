@@ -1,0 +1,63 @@
+{
+  "version": 2,
+  "task": "20261111124815-702b-solver-deb-package",
+  "scope": [
+    "Makefile",
+    "tools/build_debs.sh",
+    ".factory/completions/20261111124815-702b-solver-deb-package.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "package-solver"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "package"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "make",
+        "-n",
+        "deb-arm64-pkg"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261111124815-702b-solver-deb-package.json": [
+      "100644",
+      "blob",
+      "4f6a7e53515d2edce3d5eac84a5fc6814ad61938"
+    ],
+    "Makefile": [
+      "100644",
+      "blob",
+      "b1be4558a07dd57a57697b162762d8e499e79b8e"
+    ],
+    "tools/build_debs.sh": [
+      "100644",
+      "blob",
+      "eb4e1e1b85e50a8ae97ac4bcb67da13f05a175c8"
+    ]
+  }
+}

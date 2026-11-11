@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261111124815-702b-solver-deb-package",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of commits; integration pending.",
+  "blocker": null
+}
