@@ -7,4 +7,5 @@ Reviewed: uncommitted diff of `indigo_windows/installer/indigo_solver.iss`. Not 
 - The arguments are fixed scale literals, no user text reaches the command line.
 - The index table duplicates values from `indigo_solver.c`; a comment names the source. Inno Setup can't read them from C.
 
-Verdict: no blocking findings. Runtime behavior is unverified, see [verification.md](verification.md).
+Verdict: pass
+No blocking findings. Runtime behavior is unverified, see [verification.md](verification.md).

@@ -1,5 +1,8 @@
 # Verification
 
+Verdict: pass
+The executed checks passed; the checks under "Not run" remain open gaps, accepted by the owner at closure (see Closure).
+
 Working directory: repository root, task branch, uncommitted `indigo_windows/installer/indigo_solver.iss`.
 
 | Check | Result |

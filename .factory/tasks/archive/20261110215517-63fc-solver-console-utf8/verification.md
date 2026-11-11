@@ -1,5 +1,8 @@
 # Verification
 
+Verdict: pass
+The executed checks passed; the checks under "Not run" remain open gaps, accepted by the owner at closure (see Closure).
+
 Working directory: repository root, task branch based on d617e4f4b, uncommitted `indigo_tools/indigo_solver.c`.
 
 | Check | Result |

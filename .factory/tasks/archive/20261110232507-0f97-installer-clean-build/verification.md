@@ -1,5 +1,8 @@
 # Verification
 
+Verdict: pass
+The executed checks passed; the checks under "Not run" remain open gaps, accepted by the owner at closure (see Closure).
+
 Run in a throwaway detached worktree of master da50114b3 with the modified script (LF, as committed) copied in, and a planted `build/Release/x64/indigo_stale_leftover.dll`.
 
 | Check | Result |
