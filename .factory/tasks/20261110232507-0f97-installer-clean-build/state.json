@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "active_task": "20261110232507-0f97-installer-clean-build",
-  "phase": "verification",
-  "status": "active",
-  "assigned_role": "coordinator",
-  "next_action": "Owner decision on fast-forwarding master; run the process check, archive-task and findings check once Python is available.",
-  "blocker": "Python is not available on this host, so the Factory helpers (process check, archive-task, findings check) can't run."
-}

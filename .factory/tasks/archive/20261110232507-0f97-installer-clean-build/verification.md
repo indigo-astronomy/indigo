@@ -15,3 +15,7 @@ Run in a throwaway detached worktree of master da50114b3 with the modified scrip
 - Installing the setups from this run.
 - ARM64 and Debug configurations.
 - `.factory/scripts` process check, findings check and archive-task: Python is not available on this host.
+
+## Closure
+Closure on Linux (2026-11-11): nothing further can be run on this host; installing the setups and the ARM64/Debug configurations remain not run.
+`./.factory/scripts/findings check`: pass (25 active, 292 archived). The task was closed and archived on the owner's request ("finish them and archive", 2026-11-11), with the not-run items above accepted as remaining gaps; its product commits were already on master.

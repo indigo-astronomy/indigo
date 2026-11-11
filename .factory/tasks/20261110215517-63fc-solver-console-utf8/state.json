@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "active_task": "20261110215517-63fc-solver-console-utf8",
-  "phase": "verification",
-  "status": "active",
-  "assigned_role": "coordinator",
-  "next_action": "Owner approval of the commits.",
-  "blocker": "Python is not available on this host, so the Factory helpers (process check, archive-task, findings check) can't run."
-}

@@ -23,3 +23,6 @@ Low risk (packaging script), strong tier as hosted. No budget defined.
 - Evidence: [verification.md](verification.md), [quality-review.md](quality-review.md)
 - Owner approved the commits without reporting a retest of the rebuilt setup; the helper checks remain not run
 - Next step: owner decision on fast-forwarding master; run the Factory helpers once Python is available
+
+## Closure
+- 2026-11-11, Claude Code (claude-opus-5-5) on Debian 13 arm64 with Python: Factory helpers run, task closed and archived on the owner's request from branch task/20261111124815-702b-solver-deb-package. No local task branch remains. Remaining gaps: [verification.md](verification.md).
