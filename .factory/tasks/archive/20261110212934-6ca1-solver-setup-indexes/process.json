@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "task": "20261110212934-6ca1-solver-setup-indexes",
+  "scope": [
+    ".factory/completions/20261110212934-6ca1-solver-setup-indexes.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261110212934-6ca1-solver-setup-indexes.json": [
+      "100644",
+      "blob",
+      "aa3c9f3eddbd9324925a826ed8ea547f6fd128fa"
+    ]
+  }
+}

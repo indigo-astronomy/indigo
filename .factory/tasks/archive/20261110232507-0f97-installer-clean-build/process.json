@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "task": "20261110232507-0f97-installer-clean-build",
+  "scope": [
+    ".factory/completions/20261110232507-0f97-installer-clean-build.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261110232507-0f97-installer-clean-build.json": [
+      "100644",
+      "blob",
+      "aa197842ade50458ac089b52c88bbfc8fa583d25"
+    ]
+  }
+}

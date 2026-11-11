@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "task": "20261110215517-63fc-solver-console-utf8",
+  "scope": [
+    ".factory/completions/20261110215517-63fc-solver-console-utf8.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-indigo-solver-tool"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261110215517-63fc-solver-console-utf8.json": [
+      "100644",
+      "blob",
+      "26f8e1d6175f190962c1d03ae183a5ea57dc92c1"
+    ]
+  }
+}
