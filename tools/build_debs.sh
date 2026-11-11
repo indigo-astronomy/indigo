@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2019-2025 CloudMakers, s. r. o.
+# Copyright (c) 2019-2026 CloudMakers, s. r. o.
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -29,11 +29,12 @@ RUN rm indigo-$3.tar.gz
 WORKDIR indigo-$3/indigo_drivers/ccd_qhy/bin_externals/pthread_yield_compat
 RUN make patchlib
 WORKDIR ../../../../
-RUN make package
+RUN make package package-solver
 EOF
 docker build -t indigo .
 docker create --name indigo indigo
 docker cp indigo:/indigo-$3/$2 .
+docker cp indigo:/indigo-$3/$4 .
 docker container rm indigo
 docker image rm indigo
 rm Dockerfile

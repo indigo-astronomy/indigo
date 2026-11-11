@@ -54,6 +54,7 @@ else
   INDIGO_PACKAGE = indigo
   INDIGO_PACKAGE_OTHER = indigo3
 endif
+INDIGO_SOLVER_PACKAGE = $(INDIGO_PACKAGE)-solver
 
 INDIGO_ROOT = $(shell pwd)
 BUILD_ROOT = $(INDIGO_ROOT)/build
@@ -285,8 +286,8 @@ endif
 	printf "Installed-Size: $(shell echo `du -s $$(INSTALL_ROOT) | cut -f1`)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	printf "Provides: indigo\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	printf "Replaces: fxload,libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb,$(INDIGO_PACKAGE_OTHER)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Provides: indigo, $(INDIGO_SOLVER_PACKAGE) (= $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD))\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Replaces: fxload,libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb,$(INDIGO_PACKAGE_OTHER),$(INDIGO_SOLVER_PACKAGE)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Conflicts: $(INDIGO_PACKAGE_OTHER)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Homepage: http://www.indigo-astronomy.org\n" >> $(INSTALL_ROOT)/DEBIAN/control
@@ -331,6 +332,49 @@ endif
 #	rm -rf $(INSTALL_ROOT)
 endif
 
+# The command line plate solver alone, for users who do not need the whole framework. The main package ships the
+# same /usr/bin/indigo_solver and replaces and provides this one, so installing it over the solver package takes the
+# file over and dpkg drops the emptied solver package. The packages do not declare Conflicts, as apt would resolve one
+# by offering to remove the main package; the solver's preinst refuses to install while the main package is installed.
+ifeq ($(OS_DETECTED),Linux)
+package-solver: INSTALL_ROOT = $(INDIGO_ROOT)/$(INDIGO_SOLVER_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH)
+package-solver: reconfigure init all
+	rm -rf $(INSTALL_ROOT)
+	install -d $(INSTALL_ROOT)/usr/bin
+	install -m 0755 $(BUILD_BIN)/indigo_solver $(INSTALL_ROOT)/usr/bin
+	install -d $(INSTALL_ROOT)/DEBIAN
+	printf "Package: $(INDIGO_SOLVER_PACKAGE)\n" > $(INSTALL_ROOT)/DEBIAN/control
+	printf "Version: $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Installed-Size: %s\n" "$$(du -s $(INSTALL_ROOT) | cut -f1)" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Homepage: http://www.indigo-astronomy.org\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Depends: libc6, libstdc++6, libgcc-s1, zlib1g\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Description: INDIGO plate solver command line tool\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf " Standalone command line version of the INDIGO plate solver, also included in the INDIGO framework package.\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	cat $(INSTALL_ROOT)/DEBIAN/control
+	echo "#!/bin/sh" > $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "case \"\$$(dpkg-query -W -f='\$${db:Status-Status}' $(INDIGO_PACKAGE) 2>/dev/null)\" in" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "\"\"|not-installed|config-files) exit 0 ;;" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "esac" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo \"======================================================================\" >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo \"  $(INDIGO_SOLVER_PACKAGE) WAS NOT INSTALLED\" >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo \"  $(INDIGO_PACKAGE) is already installed and it includes indigo_solver,\" >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo \"  so $(INDIGO_SOLVER_PACKAGE) is not needed. Nothing was changed.\" >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo \"======================================================================\" >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "echo >&2" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	echo "exit 1" >> $(INSTALL_ROOT)/DEBIAN/preinst
+	chmod a+x $(INSTALL_ROOT)/DEBIAN/preinst
+	cat $(INSTALL_ROOT)/DEBIAN/preinst
+	rm -f $(INSTALL_ROOT).deb
+	fakeroot dpkg --build $(INSTALL_ROOT)
+endif
+
 clean: init
 	@$(MAKE)	-C indigo_libs clean
 	@$(MAKE)	-C indigo_tools clean
@@ -359,6 +403,8 @@ ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean-all
 	rm -f $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH).deb
 	rm -rf $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH)
+	rm -f $(INDIGO_ROOT)/$(INDIGO_SOLVER_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH).deb
+	rm -rf $(INDIGO_ROOT)/$(INDIGO_SOLVER_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH)
 endif
 	@$(MAKE)	-C indigo_server clean-all
 	rm -rf $(BUILD_ROOT)
@@ -435,16 +481,16 @@ $(INDIGO_SRC_TARBALL):
 	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 
 deb-i386-pkg:
-	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD) "$(INDIGO_SOLVER_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb"
 
 deb-amd64-pkg:
-	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD) "$(INDIGO_SOLVER_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb"
 
 deb-armhf-pkg:
-	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD) "$(INDIGO_SOLVER_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb"
 
 deb-arm64-pkg:
-	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bookworm-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD) "$(INDIGO_SOLVER_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb"
 
 deb-i386: $(INDIGO_SRC_TARBALL)
 	$(MAKE) deb-i386-pkg
