@@ -2,6 +2,57 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-11] - 11 Nov Wed 2026
+## Overall:
+- packaging:
+	- Windows: separate INDIGO Solver installer added, it puts indigo_solver on the PATH and offers to download the selected indexes
+	- Windows: indigo_client.dll is installed next to the executables
+	- Windows gcc build: libindigocat (star, deep sky and solar system catalogues) added
+
+- indigo_libs:
+	- Sharpless, Barnard, van den Bergh, Abell, Collinder and Melotte deep sky catalogues added, with the DARK_NEBULA object type
+	- Bahtinov mask analysis moved from indigo_raw_utils.h to indigo_bahtinov.h, indigo_bahtinov_analyze() added
+	- libindigo_client includes the RAW image utilities
+	- PROFILE_NAME is hidden on agent devices, regular device profiles remain available
+
+- indigo_tools:
+	- indigo_solver: -f json, xml and wcs output formats of the solution added
+	- indigo_solver: --list, --download, --remove and --index-url index management added
+	- indigo_solver: built from the INDIGO sources it needs, without an INDIGO library
+	- indigo_solver: the help shows the version and the build date
+
+
+## New drivers:
+- indigo_agent_mcp:
+	- MCP agent, a Model Context Protocol server at http://127.0.0.1:7624/mcp that lets AI clients discover, read and set the properties of INDIGO devices and agents through get_help, list_devices, list_properties, get_property and set_property, with embedded operating manuals, added
+
+
+## Driver changes:
+- indigo_agent_imager:
+	- Bahtinov focus estimator reworked, AGENT_IMAGER_FOCUS.BAHTINOV_SIGMA replaced by BAHTINOV_ANGLE, the mask angle between the central and an outer spike, 0 learns it from the first confident frame
+
+- indigo_agent_platesolver:
+	- fix an aborted index download not stopping, curl inherited the signals the server blocks
+
+- indigo_aux_alto:
+	- fix the calibration, the arm is stopped with CAL_ALTO Motor_Stop, the position is hidden while the calibration runs and the new travel is awaited after StoreAsMaxOpenPos
+
+- indigo_ccd_svb:
+	- fix CCD_GAIN refused before the first exposure, which also turned the restored configuration ALERT and made the Imager Agent refuse the camera
+
+- indigo_focuser_qhy:
+	- fix the focuser not connecting to firmware 20231207, the handshake reply with JSON escapes and numeric versions was refused
+
+- indigo_mount_lx200:
+	- ToupTek SH20 support added, following the ATLAS SH20 protocol V1.3
+
+- indigo_mount_nexstar:
+	- libnexstar relicensed under the INDIGO Astronomy open-source license
+
+- indigo_mount_synscan:
+	- fix J2000 targets pointed at their place in 2000, about 21' off in 2026, the coordinates are precessed to the date
+
+
 # [3.0-10] - 04 Nov Wed 2026
 ## Overall:
 - packaging:
