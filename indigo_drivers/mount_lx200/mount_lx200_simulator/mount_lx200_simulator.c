@@ -171,7 +171,7 @@ typedef struct {
 	bool onstep_time_ready;
 	// Whether a TeenAstro has a park position stored.
 	bool teen_park_saved;
-	// ToupTek SH20: the buzzer volume (0 to 2) and the guide rate (0.10 to 0.90 sidereal).
+	// ToupTek SH20: the buzzer volume (0 to 2) and the guide rate (0.1 to 0.9 sidereal).
 	int touptek_buzzer;
 	double touptek_guide_rate;
 } simulator_state;
@@ -885,10 +885,10 @@ static void meade_flush_pending_reply(void) {
 	}
 }
 
-// The ToupTek SH20 dialect. It answers the commands its ASCOM server (TMount) and its INDI driver
-// send, in the format TMount reads; everything else falls through to the shared implementation:
-// coordinates, targets, manual motion, guiding and the date. Answers true when the command was
-// handled here. See indigo_drivers/mount_lx200/PROTOCOL.md, ToupTek SH20.
+// The ToupTek SH20 dialect, as the ATLAS SH20 Developer Protocol V1.3 (firmware 0.5.2.20261029)
+// describes it; everything else falls through to the shared implementation: coordinates, targets,
+// manual motion, guiding and the date. Answers true when the command was handled here. See
+// indigo_drivers/mount_lx200/PROTOCOL.md, ToupTek SH20.
 static bool touptek_dispatch(const char *command) {
 	char response[64];
 	if (!strcmp(command, "GVP")) {
@@ -905,6 +905,9 @@ static bool touptek_dispatch(const char *command) {
 		write_response(state.tracking ? "1#" : "0#");
 	} else if (!strcmp(command, "GPS")) {
 		write_response(state.parked ? "2#" : parking_requested ? "1#" : "0#");
+	} else if (!strcmp(command, "GHS")) {
+		// 0 not at home, 1 busy (3, 4 and 5 are further busy stages), 2 at home.
+		write_response(state.at_home && !state.slewing ? "2#" : homing_requested ? "1#" : "0#");
 	} else if (!strcmp(command, "Gm")) {
 		// 0 east, 1 west, as the ASCOM server reads the reply as an integer.
 		write_response(pier_side() == 'E' ? "0#" : "1#");
@@ -913,9 +916,9 @@ static bool touptek_dispatch(const char *command) {
 	} else if (strlen(command) == 2 && command[0] == 'R' && command[1] >= '0' && command[1] <= '9') {
 		state.slew_rate = command[1] <= '1' ? 'G' : command[1] <= '4' ? 'C' : command[1] <= '7' ? 'M' : 'S';
 	} else if (!strncmp(command, "Sgr", 3)) {
-		double rate = atof(command + 3);
-		if (rate >= 0.1 && rate <= 0.9) {
-			state.touptek_guide_rate = rate;
+		// :Sgr0.n#, n 1 to 9, without a reply; any other form is ignored.
+		if (!strncmp(command + 3, "0.", 2) && command[5] >= '1' && command[5] <= '9' && command[6] == 0) {
+			state.touptek_guide_rate = (command[5] - '0') / 10.0;
 		}
 	} else if (!strcmp(command, "Ggr")) {
 		// 0.n# with one decimal, which is what the ASCOM server takes.
@@ -923,7 +926,7 @@ static bool touptek_dispatch(const char *command) {
 		write_response(response);
 	} else if (!strncmp(command, "SBz", 3) && command[3] >= '0' && command[3] <= '2' && command[4] == 0) {
 		state.touptek_buzzer = command[3] - '0';
-		write_response("1");
+		write_response("1#");
 	} else if (!strcmp(command, "GBz")) {
 		snprintf(response, sizeof(response), "%d#", state.touptek_buzzer);
 		write_response(response);
@@ -931,57 +934,48 @@ static bool touptek_dispatch(const char *command) {
 		snprintf(response, sizeof(response), "%c%c%+03d#", state.meridian_flip ? '1' : '0', state.meridian_track ? '1' : '0', state.meridian_limit);
 		write_response(response);
 	} else if (!strncmp(command, "STa", 3)) {
-		int limit = atoi(command + 5);
-		if (strlen(command) != 8 || (command[5] != '+' && command[5] != '-') || limit < -15 || limit > 15) {
-			write_response("e1#");
+		// :STaab+00#: a automatic flip, b resume tracking after the flip; the offset is always +00.
+		if (strlen(command) != 8 || (command[3] != '0' && command[3] != '1') || (command[4] != '0' && command[4] != '1') || strcmp(command + 5, "+00")) {
+			write_response("0#");
 		} else {
 			state.meridian_flip = command[3] == '1';
 			state.meridian_track = command[4] == '1';
-			state.meridian_limit = limit;
-			write_response("1");
+			write_response("1#");
 		}
 	} else if (!strcmp(command, "MH")) {
 		start_reference_motion(false);
-	} else if (!strcmp(command, "MFH")) {
-		// The search runs the axes onto the home sensors, so the mount moves even when it starts at
-		// home: the declination axis swings a degree away and comes back in about two seconds.
-		start_reference_motion(false);
-		serial_motion_sync(&dec_motion, 324000 - 3600);
-		serial_motion_start(&dec_motion, 324000, 1800);
 	} else if (!strcmp(command, "MP1")) {
 		if (!options.touptek_park_stalls) {
 			start_reference_motion(true);
 		}
 	} else if (!strcmp(command, "MP0")) {
-		state.parked = false;
-		parking_requested = false;
+		// The park is released only from a completed park, GPS 2.
+		if (state.parked) {
+			state.parked = false;
+		}
 	} else if (!strcmp(command, "SPc")) {
 		park_ra = state.ra_cs;
 		park_dec = state.dec_as;
-		write_response("1");
+		write_response("1#");
 	} else if (!strncmp(command, "SG", 2)) {
 		// The standard sign: :SG+02:00# is UTC+2. The state keeps the Meade sign the shared clock code uses.
 		state.time_offset = -atoi(command + 2);
 		state.offset_set = true;
-		write_response("1");
+		write_response("1#");
 	} else if (!strcmp(command, "GG")) {
 		snprintf(response, sizeof(response), "%+03d:00#", -state.time_offset);
 		write_response(response);
 	} else if (!strncmp(command, "Sg", 2) || !strncmp(command, "St", 2)) {
-		// :SgsDDD*MM:SS.000# and :StsDD*MM:SS.000#, signed, the longitude positive to the east.
+		// :SgsDDD*MM:SS# and :StsDD*MM:SS#, signed, the longitude positive to the east, whole seconds.
 		char *field = command[1] == 'g' ? state.longitude : state.latitude;
 		const char *value = command + 2;
 		size_t length = strlen(value);
-		if ((value[0] != '+' && value[0] != '-') || length < 4 || length >= sizeof(state.longitude)) {
-			write_response("0");
+		if ((value[0] != '+' && value[0] != '-') || length < 4 || length >= sizeof(state.longitude) || strchr(value, '.') != NULL) {
+			write_response("0#");
 			return true;
 		}
 		memcpy(field, value, length + 1);
-		char *fraction = strchr(field, '.');
-		if (fraction != NULL) {
-			*fraction = 0;
-		}
-		write_response("1");
+		write_response("1#");
 	} else if (!strcmp(command, "Gg") || !strcmp(command, "Gt")) {
 		snprintf(response, sizeof(response), "%s#", command[1] == 'g' ? state.longitude : state.latitude);
 		write_response(response);
@@ -992,11 +986,11 @@ static bool touptek_dispatch(const char *command) {
 		state.slewing = true;
 		state.tracking = true;
 		state.parked = false;
-		write_response("0#");
+		write_response("1#");
 	} else if (!strcmp(command, "CM")) {
 		serial_motion_sync(&ra_motion, state.target_ra_cs);
 		serial_motion_sync(&dec_motion, state.target_dec_as);
-		write_response("N/A#");
+		write_response("1#");
 	} else {
 		return false;
 	}
@@ -1786,7 +1780,6 @@ int main(int argc, char *argv[]) {
 			state.touptek_guide_rate = 0.3;
 			state.meridian_flip = true;
 			state.meridian_track = true;
-			state.meridian_limit = 5;
 		}
 	}
 	serial_motion_sync(&ra_motion, state.ra_cs);

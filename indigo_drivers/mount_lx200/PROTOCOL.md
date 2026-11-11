@@ -59,12 +59,14 @@ as `:SgDDD*MM#` (0 to 359, positive to the west) unless the cell says otherwise.
 * `TeenAstro Command Index.webloc`: TeenAstro LX200 command list.
 * `aGotino Command Index.webloc`: the LX200 command parser of the aGotino sketch.
 * Avalon Instruments StarGO user manual, version 4.1.4.
-* ToupTek SH20: no protocol document is published. The INDI driver ToupTek contributed
-  (`drivers/telescope/toup_sh20.cpp`, INDI commit `64096c8d107f9fa9792860df74556a1b29b2176d`), the
-  ToupTek ASCOM server TMount from `ToupTekASCOMSetup.exe` (download list of 2026-09-16, SHA-256
+* ToupTek SH20: the ATLAS SH20 Developer Protocol V1.3 (`ATLAS_Command_Protocol_V1.3_EN.pdf`,
+  2026-10-30, firmware 0.5.2.20261029). Commands it does not describe come from the INDI driver
+  ToupTek contributed (`drivers/telescope/toup_sh20.cpp`, INDI commit
+  `64096c8d107f9fa9792860df74556a1b29b2176d`), the ToupTek ASCOM server TMount from
+  `ToupTekASCOMSetup.exe` (download list of 2026-09-16, SHA-256
   `a7489d850e17a44e077d8229dd460a122c018334cc5a17700ea143c3ee687642`), read statically for
-  interoperability, and the ATLAS SH20 user manual (`ATLAS_SH20_en.pdf`). Where the INDI driver and
-  TMount disagree, the table follows TMount.
+  interoperability, and the ATLAS SH20 user manual (`ATLAS_SH20_en.pdf`). Where they disagree with
+  V1.3, the table follows V1.3.
 * `indigo_mount_lx200.driver` (driver source) and the archived refactoring notes `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md`: what the driver
   sends, and the replies recorded from the controllers the driver was run against. StarGO2 and
   ESP32Go have no protocol document here and are described from these alone.
@@ -641,10 +643,10 @@ are used by the driver.
 ## ToupTek SH20
 
 The SH20 dialect derives from the ZWO AM one and differs from it in a number of commands. Every
-command starts with `:` and ends with `#`. A one-character reply such as `1` may come with or
-without `#`; the driver reads the first character and discards the rest before the next command.
-An error is `e` with the code and `#`, `e1#` to `e13#`; the driver passes the code to the client.
-✓ marks the commands the driver sends.
+command starts with `:` and ends with `#`. A setting answers `1#` for success and `0#` for
+rejection; the driver reads the first character and discards the rest before the next command.
+Firmware before V1.3 answered an error with `e`, the code and `#`, `e1#` to `e13#`; the driver still
+passes such a code to the client. ✓ marks the commands the driver sends.
 
 | Function | Command → reply | Notes |
 | --- | --- | --- |
@@ -652,27 +654,28 @@ An error is `e` with the code and `#`, `e1#` to `e13#`; the driver passes the co
 | Bootloader check | `:GEM#` ✓ → contains `F3` or `Updating` in the bootloader | The driver refuses the connection then. Firmware updates (`:Update#`, `:Update01#`, `:Update02#`) are never sent. |
 | Hand controller | `:GMVP#`, `:GMV#` | Model and firmware of the hand controller, over Wi-Fi only. |
 | Coordinates | `:GR#` ✓ → `HH:MM:SS#`, `:GD#` ✓ → `sDD*MM:SS#` | |
-| Target | `:SrHH:MM:SS#` ✓ → `1`, `:SdsDD*MM:SS#` ✓ → `1` or `e2#` | |
-| Goto | `:MS#` ✓ → `0#` or `e…#` | `0#` is success, as TMount reads it; the INDI driver reads `1` as success. |
-| Sync | `:CM#` ✓ → `N/A#` or `e…#` | |
+| Target | `:SrHH:MM:SS#` ✓ → `1#`, `:SdsDD*MM:SS#` ✓ → `1#` | |
+| Goto | `:MS#` ✓ → `1#` accepted, `0#` rejected | `1#` means accepted, not arrived. Firmware before V1.3 answered `0#` for success, as TMount reads it. |
+| Sync | `:CM#` ✓ → `1#` | Earlier firmware answered `N/A#`. |
+| Goto and sync in one command | `:SMeqHH:MM:SS&sDD*MM:SS#`, `:SMMCHH:MM:SS&sDD*MM:SS#` → `1#` / `0#` | V1.3; not sent by the driver. |
 | Stop | `:Q#` ✓, `:Qn#` `:Qs#` `:Qe#` `:Qw#` ✓ → ∅ | |
 | Move | `:Mn#` `:Ms#` `:Me#` `:Mw#` ✓ → ∅ | |
 | Rate | `:Rn#` → ∅, n 0 … 9: 0.25x, 0.5x, 1x, 2x, 4x, 8x, 20x, 60x, 720x, 1440x | The driver sends `:R1#`, `:R4#`, `:R7#`, `:R9#` ✓ as for the ZWO AM. |
-| Tracking | `:Te#` ✓ / `:Td#` ✓ → `1`; `:GTS#` ✓ → `1#` / `0#` | |
+| Tracking | `:Te#` ✓ / `:Td#` ✓ → `1#` / `0#`; `:GTS#` ✓ → `1#` / `0#` | |
 | Tracking rate | `:TQ#` ✓ sidereal, `:TL#` ✓ lunar, `:TS#` ✓ solar → ∅; `:GT#` ✓ → `0#` / `1#` / `2#` | ASCII digits; the INDI driver reads them as binary. |
 | Guiding | `:MgnDDDD#` `:MgsDDDD#` `:MgeDDDD#` `:MgwDDDD#` ✓ → ∅ | 0 to 3000 ms. |
-| Guide rate | `:Sgr0.nn#` ✓ → ∅; `:Ggr#` ✓ → `0.n#` | 0.10 … 0.90, one rate for both axes. The ZWO AM uses `:Rg`. |
-| Park | `:MP1#` ✓ park, `:MP0#` ✓ unpark → ∅; `:GPS#` ✓ → `0#` not parked, `1#` parking, `2#` parked, `e…#` | |
-| Park position | `:SPc#` ✓ → `1` | Stores the current position. |
-| Home | `:MH#` ✓ goto home, `:MFH#` ✓ search the home position → ∅; `:SH#` set home | Both end at `H` in `:GU#`. |
-| Status | `:GU#` ✓ → `G` or `Z` (equatorial or alt-az), `n` not tracking, `N` not slewing, `H` at home, more flags | TMount reads a missing `N` as a slew. |
+| Guide rate | `:Sgr0.n#` ✓ → ∅; `:Ggr#` ✓ → `0.n#` | 0.1 … 0.9, n 1 … 9, one rate for both axes. The ZWO AM uses `:Rg`. |
+| Park | `:MP1#` ✓ park, `:MP0#` ✓ unpark → ∅; `:GPS#` ✓ → `0#` not parked, `1#` parking, `2#` parked | The driver sends `:MP0#` only at `2#` and confirms the unpark with `0#`; at `1#` the park has to be aborted first. |
+| Park position | `:SPc#` ✓ → `1#` | Stores the current position. |
+| Home | `:MH#` ✓ goto home → ∅; `:GHS#` ✓ → `0#` not at home, `2#` at home, `1#` `3#` `4#` `5#` busy | The home slew ends at `2#`; `0#` after a busy state is a failure. `:MFH#` (home search) is not in V1.3 and is not sent. |
+| Status | `:GU#` ✓ → five characters: `n`/`0` tracking off/on, `N`/`0` no slew/slew, `H` at home, `G` equatorial, `Z` alt-az | TMount reads a missing `N` as a slew. |
 | Side of pier | `:Gm#` ✓ → `0#` east, `1#` west | Equatorial mode only. |
-| Mode | `:AP#` equatorial, `:AA#` alt-az | Takes effect after a restart of the mount. The driver shows the mode and does not set it. |
-| Meridian | `:STaFTsLL#` ✓ → `1`; `:GTa#` ✓ → `FTsLL#` | F flip at the limit, T track past the meridian, sLL the limit −15 … +15°. As on the ZWO AM. |
-| Buzzer | `:SBzn#` ✓ → `1`; `:GBz#` ✓ → `n#` | 0 off, 1 low, 2 high. The ZWO AM uses `:SBu`/`:GBu#`. |
-| Site | `:StsDD*MM:SS.000#` ✓, `:SgsDDD*MM:SS.000#` ✓ → `1`; `:Gt#` ✓, `:Gg#` ✓ | Longitude signed, positive to the east, −180 … +180. |
-| Time | `:SGsHH:MM#` ✓, `:SCMM/DD/YY#` ✓, `:SLHH:MM:SS#` ✓ → `1`; `:GG#` ✓, `:GC#` ✓, `:GL#` ✓ | The UTC offset has the standard sign (UTC+1 is `:SG+01:00#`), the opposite of Meade. The driver sends the offset first. |
-| Other | `:Sh`/`:Gh#`, `:So`/`:Go#`, `:SRl`/`:GRl#`, `:Rv`, `:TC`, `:NSC#`, `:GS#`, `:GZ#`, `:GA#`, `:Gr#`, `:Gd#`, wireless setup (`:GMINF#`, `:SMINF`, `:GBTN#`, `:SBTN`, `:RBTFN#`, `:EBINF`) | Present in TMount, meaning not established; not sent by the driver. |
+| Mode | `:AP#` equatorial, `:AA#` alt-az → `1#`; `:GEM#` → `1#` equatorial, `0#` alt-az | V1.3: the change stops motion and tracking, `:AP#` sets the upper altitude limit to 90°, `:AA#` to 87° and disables automatic flips. TMount documented a restart. The driver reads the mode from `:GU#` and does not set it. |
+| Meridian | `:STaab+00#` ✓ → `1#` / `0#`; `:GTa#` ✓ → `ab+00#` | Equatorial mode only. a automatic flip, b resume tracking after the flip; the offset is always `+00`. The command letters are the ZWO AM ones, the meaning of b and the fixed offset are not. |
+| Buzzer | `:SBzn#` ✓ → `1#`; `:GBz#` ✓ → `n#` | 0 off, 1 low, 2 high. The ZWO AM uses `:SBu`/`:GBu#`. |
+| Site | `:StsDD*MM:SS#` ✓, `:SgsDDD*MM:SS#` ✓ → `1#`; `:Gt#` ✓, `:Gg#` ✓ | Whole seconds; only target coordinates take decimals. Longitude signed, positive to the east, −180 … +180. |
+| Time | `:SGsHH:MM#` ✓, `:SCMM/DD/YY#` ✓, `:SLHH:MM:SS#` ✓ → `1#`; `:GG#` ✓, `:GC#` ✓, `:GL#` ✓ | The UTC offset has the standard sign (UTC+1 is `:SG+01:00#`), the opposite of Meade, in 15-minute steps; the driver sends whole hours. The driver sends the offset first. `:SDST0#`/`:GDST#` (device DST, to be kept off) are not sent. |
+| Not sent by the driver | V1.3: `:GES#` detailed status, `:RVnnnn.nn#`/`:GRV#` manual rate, `:SRl720#`/`:SRl1440#`/`:GRl#` speed limit, `:Sh`/`:Gh#`, `:So`/`:Go#`, `:SLE#`/`:SLD#`/`:GLC#` altitude limits, `:SasDD*MM:SS#`/`:SzDDD*MM:SS#`/`:MAz#`/`:Ga#`/`:Gz#` horizontal goto, `:Gr#`/`:Gd#` stored target, `:GS#`, `:GA#`, `:GZ#`, `:GmV#` input voltage. TMount only: `:TC`, `:NSC#`, wireless setup (`:GMINF#`, `:SMINF`, `:GBTN#`, `:SBTN`, `:RBTFN#`, `:EBINF`). | |
 
 ## Commands whose meaning depends on the dialect
 

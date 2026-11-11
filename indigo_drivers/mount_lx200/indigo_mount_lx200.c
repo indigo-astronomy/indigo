@@ -46,7 +46,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000053
+#define DRIVER_VERSION       0x03000054
 #define DRIVER_NAME          "indigo_mount_lx200"
 #define DRIVER_LABEL         "LX200 Mount"
 #define MOUNT_DEVICE_NAME    "Mount LX200"
@@ -66,6 +66,7 @@
 #define ZWO_PARK_START_TIMEOUT 5.0
 #define TOUPTEK_PARK_START_TIMEOUT 5.0
 #define TOUPTEK_HOME_START_TIMEOUT 5.0
+#define TOUPTEK_UNPARK_CONFIRMATION_READS 10
 
 #ifndef MAX
 #define MAX(a,               b) ((a) > (b) ? (a) : (b))
@@ -239,19 +240,13 @@ typedef enum {
 #define TOUPTEK_BUZZER_LOW_ITEM_NAME   "LOW"
 #define TOUPTEK_BUZZER_HIGH_ITEM_NAME  "HIGH"
 
-#define TOUPTEK_MERIDIAN_PROPERTY               (PRIVATE_DATA->touptek_meridian_property)
-#define TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM         (TOUPTEK_MERIDIAN_PROPERTY->items + 0)
-#define TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM      (TOUPTEK_MERIDIAN_PROPERTY->items + 1)
+#define TOUPTEK_MERIDIAN_PROPERTY                  (PRIVATE_DATA->touptek_meridian_property)
+#define TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM            (TOUPTEK_MERIDIAN_PROPERTY->items + 0)
+#define TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM      (TOUPTEK_MERIDIAN_PROPERTY->items + 1)
 
-#define TOUPTEK_MERIDIAN_PROPERTY_NAME          "X_TOUPTEK_MERIDIAN"
-#define TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME    "AUTO_FLIP_AT_LIMIT"
-#define TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM_NAME "TRACK_PASSED_MERIDIAN"
-
-#define TOUPTEK_MERIDIAN_LIMIT_PROPERTY      (PRIVATE_DATA->touptek_meridian_limit_property)
-#define TOUPTEK_MERIDIAN_LIMIT_ITEM          (TOUPTEK_MERIDIAN_LIMIT_PROPERTY->items + 0)
-
-#define TOUPTEK_MERIDIAN_LIMIT_PROPERTY_NAME "X_TOUPTEK_MERIDIAN_LIMIT"
-#define TOUPTEK_MERIDIAN_LIMIT_ITEM_NAME     "LIMIT"
+#define TOUPTEK_MERIDIAN_PROPERTY_NAME             "X_TOUPTEK_MERIDIAN"
+#define TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME       "AUTO_FLIP"
+#define TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM_NAME "RESUME_TRACKING"
 
 #define NYX_WIFI_AP_PROPERTY           (PRIVATE_DATA->nyx_wifi_ap_property)
 #define NYX_WIFI_AP_SSID_ITEM          (NYX_WIFI_AP_PROPERTY->items + 0)
@@ -365,7 +360,6 @@ typedef struct {
 	indigo_property *zwo_max_slew_speed_property;
 	indigo_property *touptek_buzzer_property;
 	indigo_property *touptek_meridian_property;
-	indigo_property *touptek_meridian_limit_property;
 	indigo_property *nyx_wifi_ap_property;
 	indigo_property *nyx_wifi_cl_property;
 	indigo_property *nyx_wifi_reset_property;
@@ -423,8 +417,8 @@ typedef struct {
 	// done, and when a park that never started is given up.
 	bool touptek_park_pending, touptek_park_moved;
 	double touptek_park_deadline;
-	// The same for a slew to the home position or a search for it, which ends at H in :GU# only
-	// after the mount was seen moving: a search started at home reports H before it moves.
+	// The same for a slew to the home position, which ends when :GHS# reports 2; 0 after the
+	// slew was seen busy is a failure.
 	bool touptek_home_pending, touptek_home_moved;
 	double touptek_home_deadline;
 	char gemini_velocity;
@@ -434,7 +428,7 @@ typedef struct {
 	bool goto_issued;
 	// The guider device, which shows the guiding speed of a Gemini as GUIDER_RATE.
 	indigo_device *guider_device;
-	bool park_allowed, unpark_allowed, home_allowed, home_search_allowed;
+	bool park_allowed, unpark_allowed, home_allowed;
 	double timeout;
 	char response[128];
 	bool use_dst_commands;
@@ -546,9 +540,10 @@ static char *meade_error_string(indigo_device *device, unsigned int code) {
 	return NULL;
 }
 
-// A ToupTek SH20 refuses a command with e, the error code and #, for example e2#. Its own ASCOM
-// server reads e1# to e13# without publishing what the codes mean, so the client gets the code.
-// meade_simple_reply_command() read the e, the code is read here. Answers true for an error reply.
+// A ToupTek SH20 rejects a command with 0# (ATLAS SH20 Developer Protocol V1.3). Firmware before
+// it answered e, an error code and #, for example e2#, which its ASCOM server read without
+// publishing what the codes mean, so the client gets the code. meade_simple_reply_command() read
+// the e, the code is read here. Answers true for an error reply.
 static bool touptek_error_reply(indigo_device *device) {
 	if (*PRIVATE_DATA->response != 'e') {
 		return false;
@@ -1071,15 +1066,15 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 		return true;
 	}
 	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
-		// A ToupTek SH20 takes the site to the second, with the longitude signed and positive to the east,
-		// -180 .. +180, in the format of its ASCOM server: :StsDD*MM:SS.000# and :SgsDDD*MM:SS.000#.
+		// A ToupTek SH20 takes the site in whole seconds, with the longitude signed and positive to the
+		// east, -180 .. +180: :StsDD*MM:SS# and :SgsDDD*MM:SS#. Only target coordinates take decimals.
 		double east = fmod(longitude + 360, 360);
 		if (east > 180) {
 			east -= 360;
 		}
 		char longitude_text[128];
 		indigo_dtos_r(east, "%+04d*%02d:%02.0f", longitude_text, sizeof(longitude_text));
-		return meade_simple_reply_command(device, ":St%s.000#", indigo_dtos_r(latitude, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1' && meade_simple_reply_command(device, ":Sg%s.000#", longitude_text) && *PRIVATE_DATA->response == '1';
+		return meade_simple_reply_command(device, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d:%02.0f", sexagesimal, sizeof(sexagesimal))) && *PRIVATE_DATA->response == '1' && meade_simple_reply_command(device, ":Sg%s#", longitude_text) && *PRIVATE_DATA->response == '1';
 	}
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		meade_simple_reply_command(device, ":St%s#", indigo_dtos_r(latitude, "%+03d*%02d:%02d", sexagesimal, sizeof(sexagesimal)));
@@ -1286,12 +1281,11 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 	if (!meade_set_target(device, ra, dec)) {
 		return false;
 	}
-	// A ToupTek SH20 answers 0# to a goto it takes and e with the error code otherwise; its ASCOM
-	// server compares the reply with 0#. Its INDI driver reads 1 as success, which no reply of the
-	// mount is.
-	if (!meade_simple_reply_command(device, ":MS#") || *PRIVATE_DATA->response != '0') {
-		if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
-			touptek_error_reply(device);
+	// A ToupTek SH20 answers 1# to a goto it takes and 0# to one it rejects (ATLAS SH20 Developer
+	// Protocol V1.3); every other dialect here answers 0 for a goto it takes.
+	if (!meade_simple_reply_command(device, ":MS#") || *PRIVATE_DATA->response != (MOUNT_TYPE_TOUPTEK_ITEM->sw.value ? '1' : '0')) {
+		if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value && !touptek_error_reply(device) && *PRIVATE_DATA->response == '0') {
+			indigo_send_message(device, ALERT_PROPERTY, "Goto rejected by the mount");
 		}
 		if (MOUNT_TYPE_ZWO_ITEM->sw.value && *PRIVATE_DATA->response == 'e') {
 			int error_code = 0;
@@ -1369,7 +1363,8 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		}
 		return false;
 	}
-	// A ToupTek SH20 answers N/A# to a sync it takes and e with the error code otherwise.
+	// A ToupTek SH20 answers 1# to a sync (ATLAS SH20 Developer Protocol V1.3), earlier firmware
+	// N/A#, or e with the error code.
 	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value && *PRIVATE_DATA->response == 'e') {
 		indigo_send_message(device, ALERT_PROPERTY, "The mount refused the command (error e%d)", atoi(PRIVATE_DATA->response + 1));
 		return false;
@@ -1411,9 +1406,9 @@ static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 		double rate = ra / 100.0;
 		return (meade_no_reply_command(device, ":Rg%.1lf#", rate));
 	} else if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
-		// One guide rate for both axes, 0.1 to 0.9 times the sidereal rate in steps of 0.1, without a
-		// reply. :Ggr# reads it back with one decimal, so a finer rate would not survive a reconnect.
-		return meade_no_reply_command(device, ":Sgr%.2f#", ra / 100.0);
+		// One guide rate for both axes, :Sgr0.n#, 0.1 to 0.9 times the sidereal rate in steps of 0.1,
+		// without a reply.
+		return meade_no_reply_command(device, ":Sgr%.1f#", ra / 100.0);
 	} else if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
 		// One guiding speed for both axes, 0.2 to 0.8 times the sidereal rate. Native 150.
 		char speed[16];
@@ -1950,9 +1945,40 @@ static bool meade_unpark(indigo_device *device) {
 		return zwo_unpark(device);
 	}
 	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
-		// :MP0# releases the park without moving the mount and has no reply.
+		// :MP0# releases a completed park, :GPS# 2, without moving the mount and has no reply;
+		// :GPS# 0 confirms it. A park under way, :GPS# 1, has to be aborted first.
 		PRIVATE_DATA->touptek_park_pending = false;
-		return meade_no_reply_command(device, ":MP0#");
+		if (!meade_command(device, ":GPS#")) {
+			return false;
+		}
+		if (*PRIVATE_DATA->response == '0') {
+			return true;
+		}
+		if (*PRIVATE_DATA->response == '1') {
+			indigo_send_message(device, ALERT_PROPERTY, "The mount is parking, abort the park before unparking");
+			return false;
+		}
+		if (*PRIVATE_DATA->response != '2') {
+			indigo_send_message(device, ALERT_PROPERTY, "Unpark refused, unexpected park state %s", PRIVATE_DATA->response);
+			return false;
+		}
+		if (!meade_no_reply_command(device, ":MP0#")) {
+			return false;
+		}
+		// A park state that cannot be read is unknown, not confirmed, so the first failed read ends the wait.
+		for (int i = 0; i < TOUPTEK_UNPARK_CONFIRMATION_READS; i++) {
+			if (i > 0) {
+				indigo_usleep(100000);
+			}
+			if (!meade_command(device, ":GPS#")) {
+				break;
+			}
+			if (*PRIVATE_DATA->response == '0') {
+				return true;
+			}
+		}
+		indigo_send_message(device, ALERT_PROPERTY, "Unpark not confirmed by the mount");
+		return false;
 	}
 	return false;
 }
@@ -1989,12 +2015,12 @@ static bool meade_home(indigo_device *device) {
 		return meade_no_reply_command(device, ":hP#");
 	}
 	if (MOUNT_TYPE_TOUPTEK_ITEM->sw.value) {
-		// Both the slew to the home position and the search for it have no reply and end at H in :GU#
-		// once the mount was seen moving. See meade_update_touptek_state().
+		// The slew to the home position has no reply and ends when :GHS# reports 2. See
+		// meade_update_touptek_state().
 		PRIVATE_DATA->touptek_home_pending = true;
 		PRIVATE_DATA->touptek_home_moved = false;
 		PRIVATE_DATA->touptek_home_deadline = indigo_monotonic_time() + TOUPTEK_HOME_START_TIMEOUT;
-		if (!meade_no_reply_command(device, MOUNT_HOME_SEARCH_ITEM->sw.value ? ":MFH#" : ":MH#")) {
+		if (!meade_no_reply_command(device, ":MH#")) {
 			PRIVATE_DATA->touptek_home_pending = false;
 			return false;
 		}
@@ -3269,15 +3295,15 @@ static void meade_update_zwo_state(indigo_device *device) {
 	}
 }
 
-// ToupTek SH20. The protocol comes from the INDI driver ToupTek contributed and from the ASCOM
-// server (TMount) of the mount, see indigo_drivers/mount_lx200/PROTOCOL.md.
+// ToupTek SH20. The protocol is the ATLAS SH20 Developer Protocol V1.3 (firmware 0.5.2.20261029),
+// see indigo_drivers/mount_lx200/PROTOCOL.md.
 static void meade_init_touptek_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = false;
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = false;
-	// HOME slews to the home position with :MH#, SEARCH looks for it with :MFH#, AWAY is the status alone.
+	// HOME slews to the home position with :MH#, AWAY is the status alone.
 	MOUNT_HOME_PROPERTY->hidden = false;
-	MOUNT_HOME_PROPERTY->count = 3;
+	MOUNT_HOME_PROPERTY->count = 2;
 	MOUNT_HOME_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
 	MOUNT_PARK_SET_PROPERTY->hidden = false;
 	MOUNT_PARK_SET_PROPERTY->count = 1;
@@ -3312,14 +3338,14 @@ static void meade_init_touptek_mount(indigo_device *device) {
 	}
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = !equatorial;
 	if (equatorial) {
-		// :GTa# and :STa# carry the same flip, track and limit fields as on a ZWO AM.
-		bool flip, track;
-		int limit;
-		if (zwo_get_meridian(device, &flip, &track, &limit)) {
+		// :GTa# answers ab+00#, a the automatic flip and b the tracking resumed after it; the
+		// offset is always +00.
+		bool flip, resume;
+		int offset;
+		if (zwo_get_meridian(device, &flip, &resume, &offset)) {
 			TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
-			TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
-			TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value = TOUPTEK_MERIDIAN_LIMIT_ITEM->number.target = limit;
-			TOUPTEK_MERIDIAN_PROPERTY->hidden = TOUPTEK_MERIDIAN_LIMIT_PROPERTY->hidden = false;
+			TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
+			TOUPTEK_MERIDIAN_PROPERTY->hidden = false;
 		}
 	}
 	// The buzzer volume as an ASCII digit, 0 off, 1 low, 2 high.
@@ -3343,21 +3369,32 @@ static void meade_update_touptek_state(indigo_device *device) {
 		}
 	}
 	if (meade_command(device, ":GU#")) {
-		// A missing N is a slew, as the ASCOM server of the mount reads it; H is the home position.
+		// A missing N is a slew, as the ASCOM server of the mount reads it.
 		PRIVATE_DATA->slewing = strchr(PRIVATE_DATA->response, 'N') == NULL;
 		if (!tracking_known) {
 			PRIVATE_DATA->tracking = strchr(PRIVATE_DATA->response, 'n') == NULL;
 		}
-		if (PRIVATE_DATA->touptek_home_pending && PRIVATE_DATA->slewing) {
-			PRIVATE_DATA->touptek_home_moved = true;
-		}
-		// A home slew or search the driver started is over at H only after the mount moved.
-		if (strchr(PRIVATE_DATA->response, 'H') && !PRIVATE_DATA->slewing && (!PRIVATE_DATA->touptek_home_pending || PRIVATE_DATA->touptek_home_moved)) {
+	}
+	// The home state is the one :GHS# reports: 2 at home, 1, 3, 4 and 5 busy, 0 not at home, which
+	// ends a home slew the driver started as a failure once the slew was seen busy.
+	if (meade_command(device, ":GHS#")) {
+		char home_status = *PRIVATE_DATA->response;
+		if (home_status == '2') {
 			PRIVATE_DATA->homed = true;
 			PRIVATE_DATA->touptek_home_pending = false;
-		} else if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+		} else if (home_status == '1' || (home_status >= '3' && home_status <= '5')) {
 			PRIVATE_DATA->homing = true;
+			if (PRIVATE_DATA->touptek_home_pending) {
+				PRIVATE_DATA->touptek_home_moved = true;
+			}
+		} else if (home_status == '0' && PRIVATE_DATA->touptek_home_pending && PRIVATE_DATA->touptek_home_moved) {
+			PRIVATE_DATA->touptek_home_pending = false;
+			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_send_message(device, ALERT_PROPERTY, "Home failed, the mount stopped before it reached home");
 		}
+	}
+	if (PRIVATE_DATA->touptek_home_pending && MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+		PRIVATE_DATA->homing = true;
 	}
 	if (PRIVATE_DATA->touptek_home_pending && !PRIVATE_DATA->touptek_home_moved && indigo_monotonic_time() > PRIVATE_DATA->touptek_home_deadline) {
 		PRIVATE_DATA->touptek_home_pending = false;
@@ -3776,7 +3813,7 @@ static void meade_init_mount(indigo_device *device) {
 	PRIVATE_DATA->gemini_remaining_ns = PRIVATE_DATA->gemini_remaining_we = 0;
 	GEMINI_PARK_POSITION_PROPERTY->hidden = true;
 	ZWO_MERIDIAN_PROPERTY->hidden = ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = true;
-	TOUPTEK_BUZZER_PROPERTY->hidden = TOUPTEK_MERIDIAN_PROPERTY->hidden = TOUPTEK_MERIDIAN_LIMIT_PROPERTY->hidden = true;
+	TOUPTEK_BUZZER_PROPERTY->hidden = TOUPTEK_MERIDIAN_PROPERTY->hidden = true;
 	PRIVATE_DATA->touptek_park_pending = PRIVATE_DATA->touptek_home_pending = false;
 	// Only the ZWO AM clears its own calibration, otherwise the reset is about the host side points.
 	MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
@@ -4260,7 +4297,6 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_define_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
 			indigo_define_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
-			indigo_define_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
@@ -4312,7 +4348,6 @@ static void mount_connection_handler(indigo_device *device) {
 			ZWO_MAX_SLEW_SPEED_PROPERTY,
 			TOUPTEK_BUZZER_PROPERTY,
 			TOUPTEK_MERIDIAN_PROPERTY,
-			TOUPTEK_MERIDIAN_LIMIT_PROPERTY,
 			NYX_WIFI_AP_PROPERTY,
 			NYX_WIFI_CL_PROPERTY,
 			NYX_WIFI_RESET_PROPERTY,
@@ -4360,7 +4395,6 @@ static void mount_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_BUZZER_PROPERTY, NULL);
 		indigo_delete_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
-		indigo_delete_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
@@ -4478,32 +4512,18 @@ static void mount_touptek_buzzer_handler(indigo_device *device) {
 static void mount_touptek_meridian_handler(indigo_device *device) {
 	TOUPTEK_MERIDIAN_PROPERTY->state = INDIGO_OK_STATE;
 	//+ mount.TOUPTEK_MERIDIAN.on_change
-	if (!zwo_set_meridian(device, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value, TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM->sw.value, (int)TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value)) {
+	// :STaab+00#, a the automatic flip, b the tracking resumed after it; the offset is always +00.
+	if (!zwo_set_meridian(device, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value, TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value, 0)) {
 		TOUPTEK_MERIDIAN_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	bool flip, track;
-	int limit;
-	if (zwo_get_meridian(device, &flip, &track, &limit)) {
+	bool flip, resume;
+	int offset;
+	if (zwo_get_meridian(device, &flip, &resume, &offset)) {
 		TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value = flip;
-		TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
+		TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM->sw.value = resume;
 	}
 	//- mount.TOUPTEK_MERIDIAN.on_change
 	indigo_update_property(device, TOUPTEK_MERIDIAN_PROPERTY, NULL);
-}
-
-static void mount_touptek_meridian_limit_handler(indigo_device *device) {
-	TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_OK_STATE;
-	//+ mount.TOUPTEK_MERIDIAN_LIMIT.on_change
-	if (!zwo_set_meridian(device, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM->sw.value, TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM->sw.value, (int)TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value)) {
-		TOUPTEK_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	bool flip, track;
-	int limit;
-	if (zwo_get_meridian(device, &flip, &track, &limit)) {
-		TOUPTEK_MERIDIAN_LIMIT_ITEM->number.value = TOUPTEK_MERIDIAN_LIMIT_ITEM->number.target = limit;
-	}
-	//- mount.TOUPTEK_MERIDIAN_LIMIT.on_change
-	indigo_update_property(device, TOUPTEK_MERIDIAN_LIMIT_PROPERTY, NULL);
 }
 
 static void mount_nyx_wifi_ap_handler(indigo_device *device) {
@@ -4728,8 +4748,7 @@ static void mount_home_handler(indigo_device *device) {
 	//+ mount.MOUNT_HOME.on_change
 	// The status poll mirrors the home state the mount reports and may clear the item between the copy of the
 	// request and this handler, the target keeps the request.
-	bool search = MOUNT_HOME_PROPERTY->count == 3 && indigo_get_switch_target(MOUNT_HOME_PROPERTY, MOUNT_HOME_SEARCH_ITEM_NAME);
-	if (!((PRIVATE_DATA->home_allowed && indigo_get_switch_target(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM_NAME)) || (PRIVATE_DATA->home_search_allowed && search))) {
+	if (!(PRIVATE_DATA->home_allowed && indigo_get_switch_target(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM_NAME))) {
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		return;
 	}
@@ -4838,8 +4857,8 @@ static void mount_abort_motion_handler(indigo_device *device) {
 				INDIGO_UPDATE_PROPERTY_STATE(MOUNT_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 			if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-				// An interrupted home search leaves the mount away from home, not with the request selected.
-				if (MOUNT_HOME_PROPERTY->count == 3) {
+				// An interrupted home slew leaves the mount away from home, not with the request selected.
+				if (MOUNT_HOME_PROPERTY->count >= 2) {
 					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
 				} else {
 					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
@@ -5170,15 +5189,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		if (TOUPTEK_MERIDIAN_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_switch_item(TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME, "Flip automatically at the limit", false);
-		indigo_init_switch_item(TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM, TOUPTEK_MERIDIAN_TRACK_PASSED_ITEM_NAME, "Track past the meridian up to the limit", false);
+		indigo_init_switch_item(TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM, TOUPTEK_MERIDIAN_AUTO_FLIP_ITEM_NAME, "Flip automatically at the meridian", false);
+		indigo_init_switch_item(TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM, TOUPTEK_MERIDIAN_RESUME_TRACKING_ITEM_NAME, "Resume tracking after the flip", false);
 		TOUPTEK_MERIDIAN_PROPERTY->hidden = true;
-		TOUPTEK_MERIDIAN_LIMIT_PROPERTY = indigo_init_number_property(NULL, device->name, TOUPTEK_MERIDIAN_LIMIT_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian limit", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (TOUPTEK_MERIDIAN_LIMIT_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_number_item(TOUPTEK_MERIDIAN_LIMIT_ITEM, TOUPTEK_MERIDIAN_LIMIT_ITEM_NAME, "Limit past the meridian (°, negative before it)", -15, 15, 1, 0);
-		TOUPTEK_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		NYX_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_AP_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (NYX_WIFI_AP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -5272,7 +5285,6 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_MAX_SLEW_SPEED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_BUZZER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_MERIDIAN_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(TOUPTEK_MERIDIAN_LIMIT_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
@@ -5332,9 +5344,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(TOUPTEK_MERIDIAN_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(TOUPTEK_MERIDIAN_PROPERTY, mount_touptek_meridian_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(TOUPTEK_MERIDIAN_LIMIT_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(TOUPTEK_MERIDIAN_LIMIT_PROPERTY, mount_touptek_meridian_limit_handler);
-		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(NYX_WIFI_AP_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(NYX_WIFI_AP_PROPERTY, mount_nyx_wifi_ap_handler);
 		return INDIGO_OK;
@@ -5369,8 +5378,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
 		//+ mount.MOUNT_HOME.on_change_request
 		PRIVATE_DATA->home_allowed = !PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing && !PRIVATE_DATA->homed;
-		// A search for the home position, which only the ToupTek SH20 offers, is also allowed at home.
-		PRIVATE_DATA->home_search_allowed = !PRIVATE_DATA->parked && !PRIVATE_DATA->parking && !PRIVATE_DATA->homing;
 		//- mount.MOUNT_HOME.on_change_request
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_HOME_PROPERTY, mount_home_handler);
 		return INDIGO_OK;
@@ -5455,7 +5462,6 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ZWO_MAX_SLEW_SPEED_PROPERTY);
 	indigo_release_property(TOUPTEK_BUZZER_PROPERTY);
 	indigo_release_property(TOUPTEK_MERIDIAN_PROPERTY);
-	indigo_release_property(TOUPTEK_MERIDIAN_LIMIT_PROPERTY);
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
 	indigo_release_property(NYX_WIFI_CL_PROPERTY);
 	indigo_release_property(NYX_WIFI_RESET_PROPERTY);
