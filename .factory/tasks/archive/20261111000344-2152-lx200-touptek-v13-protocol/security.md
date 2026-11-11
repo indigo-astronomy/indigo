@@ -1,6 +1,7 @@
 # Security review
 
-Verdict: pass (no security-relevant change)
+Verdict: pass
+Verdict note: no security-relevant change
 Reviewer: coordinator (implementer)
 Date: 2026-11-11
 Revision and working-tree state: master `da414d9fd` plus the uncommitted task diff
