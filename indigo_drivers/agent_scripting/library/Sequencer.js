@@ -603,6 +603,13 @@ Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
 	indigo_sequencer.start(this.sequence, this.name, this.progress, this.exposure);
 };
 
+// MARK: Library reload
+
+// clients send the library before every script they run; a reload keeps a running sequence and an enabled flip,
+// the objects defined below replace them only when they are idle
+var indigo_sequencer_running = typeof indigo_sequencer !== "undefined" && indigo_sequencer != null && indigo_sequencer.sequence != null ? indigo_sequencer : null;
+var indigo_flipper_enabled = typeof indigo_flipper !== "undefined" && indigo_flipper != null && indigo_event_handlers.indigo_flipper === indigo_flipper ? indigo_flipper : null;
+
 // MARK: Flipper object
 
 var indigo_flipper = {
@@ -1933,18 +1940,28 @@ function indigo_sequencer_altitude_poll_handler() {
 
 // MARK: Main code
 
-if (indigo_event_handlers.indigo_sequencer == null) {
-	indigo_send_message("Sequencer installed");
+if (indigo_flipper_enabled != null) {
+	indigo_flipper = indigo_flipper_enabled;
 }
-indigo_delete_property("Scripting Agent", "LOOP_0");
-indigo_delete_property("Scripting Agent", "LOOP_1");
-indigo_delete_property("Scripting Agent", "LOOP_2");
-indigo_delete_property("Scripting Agent", "LOOP_3");
-indigo_delete_property("Scripting Agent", "LOOP_4");
-indigo_delete_property("Scripting Agent", "LOOP_5");
-indigo_delete_property("Scripting Agent", "LOOP_6");
-indigo_delete_property("Scripting Agent", "LOOP_7");
-indigo_delete_property("Scripting Agent", "LOOP_8");
-indigo_delete_property("Scripting Agent", "LOOP_9");
+if (indigo_sequencer_running != null) {
+	indigo_sequencer = indigo_sequencer_running;
+	indigo_send_message("Sequencer reloaded, the running sequence continues");
+} else {
+	if (indigo_event_handlers.indigo_sequencer == null) {
+		indigo_send_message("Sequencer installed");
+	}
+	indigo_delete_property("Scripting Agent", "LOOP_0");
+	indigo_delete_property("Scripting Agent", "LOOP_1");
+	indigo_delete_property("Scripting Agent", "LOOP_2");
+	indigo_delete_property("Scripting Agent", "LOOP_3");
+	indigo_delete_property("Scripting Agent", "LOOP_4");
+	indigo_delete_property("Scripting Agent", "LOOP_5");
+	indigo_delete_property("Scripting Agent", "LOOP_6");
+	indigo_delete_property("Scripting Agent", "LOOP_7");
+	indigo_delete_property("Scripting Agent", "LOOP_8");
+	indigo_delete_property("Scripting Agent", "LOOP_9");
+}
+indigo_sequencer_running = null;
+indigo_flipper_enabled = null;
 indigo_event_handlers.indigo_sequencer = indigo_sequencer;
 indigo_enumerate_properties();

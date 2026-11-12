@@ -11,7 +11,7 @@
 | agent_imager            | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 65 / 0 | |
 | agent_mcp               | 3️⃣ | ✅ Project | ⛔ N/A | ⛔ N/A | ✅ Sim | 34 / 0 | |
 | agent_mount             | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 79 / 0 | |
-| agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 63 / 0 | |
+| agent_scripting         | 3️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Yes | 64 / 0 | |
 | agent_platesolver       | 3️⃣ | ✅ Project | ⛔ N/A | ✅ Yes | ✅ Sim | 162 / 0 | |
 | agent_scheduler         | 3️⃣ | ✅ Project | ⛔ N/A | ✅ Yes | ✅ Sim | 22 / 0 | |
 | agent_astrometry        | 2️⃣ | ✅ Yes | ⛔ N/A | ✅ Yes | ✅ Sim | 87 / 0 | |

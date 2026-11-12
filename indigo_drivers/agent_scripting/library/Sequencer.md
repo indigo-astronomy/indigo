@@ -19,6 +19,8 @@ A sequence is built by creating a `Sequence` object and calling helper methods o
 
 Before the first sequence is created, the content of [Sequencer.js](Sequencer.js) must be executed as a script by setting it as the value of `AGENT_SCRIPTING_RUN_SCRIPT_ITEM` in the `AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY` of the Scripting Agent. This defines the `Sequence` class and registers the internal event handlers.
 
+The library may be executed again at any time; clients usually send it before every script they run. A reload keeps a running sequence and an enabled meridian flip, together with their loop and flipper state, and sends the message "Sequencer reloaded, the running sequence continues". Only an idle sequencer is replaced by the reloaded definitions.
+
 ## State: under development
 
 ## Quick start

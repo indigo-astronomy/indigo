@@ -627,6 +627,39 @@ static void pause_resume_abort_reset(void) {
 	ASSERT_EQ_INT(sequence_before, revision(SCRIPTING, "SEQUENCE_STATE"));
 }
 
+// clients send the library before every script they run, which must not replace a running sequence or an enabled flip
+static void library_reload_keeps_running_sequence(void) {
+	ASSERT_TRUE(run_js("reloadTrace=0; var s=new Sequence('reload'); s.repeat(2,function(){s.wait(0.5);}); s.evaluate('reloadTrace=1'); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_BUSY_STATE, 2));
+	// the loop property is defined asynchronously once the loop is entered
+	indigo_property *loop = NULL;
+	for (int i = 0; i < 200 && (loop = snapshot(SCRIPTING, "LOOP_0")) == NULL; i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(loop != NULL);
+	indigo_release_property(loop);
+	ASSERT_TRUE(load_sequencer());
+	ASSERT_TRUE(check_js("indigo_sequencer.sequence != null && indigo_sequencer.name === 'reload'"));
+	ASSERT_TRUE(check_js("indigo_event_handlers.indigo_sequencer === indigo_sequencer"));
+	loop = snapshot(SCRIPTING, "LOOP_0");
+	ASSERT_TRUE(loop != NULL);
+	indigo_release_property(loop);
+	ASSERT_TRUE(wait_message("Sequencer reloaded, the running sequence continues", 5));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(check_js("reloadTrace===1"));
+	// an idle sequencer is replaced by the reloaded library
+	ASSERT_TRUE(run_js("indigo_sequencer.reload_marker = true;"));
+	ASSERT_TRUE(load_sequencer());
+	ASSERT_TRUE(check_js("indigo_sequencer.reload_marker === undefined"));
+	// an enabled flip keeps its flipper
+	ASSERT_TRUE(run_js("indigo_flipper.reload_marker = true; indigo_event_handlers.indigo_flipper = indigo_flipper;"));
+	ASSERT_TRUE(load_sequencer());
+	ASSERT_TRUE(check_js("indigo_flipper.reload_marker === true && indigo_event_handlers.indigo_flipper === indigo_flipper"));
+	ASSERT_TRUE(run_js("delete indigo_event_handlers.indigo_flipper;"));
+	ASSERT_TRUE(load_sequencer());
+	ASSERT_TRUE(check_js("indigo_flipper.reload_marker === undefined"));
+}
+
 static void past_waits_and_breaks(void) {
 	ASSERT_TRUE(run_js("timeTrace=''; var s=new Sequence('past times'); s.wait_until('2024-01-01 12:34:55'); s.wait_until(1704112495); s.break_at(1704112495); s.evaluate(\"timeTrace+='A'\"); s.resume_point(); s.evaluate(\"timeTrace+='B'\"); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
@@ -1272,6 +1305,7 @@ static void paused_stored_flip_failure_recovers(void) {
 static const indigo_test_case tests[] = {
 	{ "library inventory and properties", library_inventory },
 	{ "published property schema", published_property_schema },
+	{ "library reload keeps running sequence", library_reload_keeps_running_sequence },
 	{ "all public constructors", all_public_constructors },
 	{ "focus batch snapshot", focus_batch_snapshot },
 	{ "loop and timing construction", loop_and_timing_construction },

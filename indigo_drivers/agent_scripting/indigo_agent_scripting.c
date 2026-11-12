@@ -25,7 +25,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x0300000F
+#define DRIVER_VERSION 0x03000010
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 

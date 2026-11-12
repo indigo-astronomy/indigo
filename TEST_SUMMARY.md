@@ -42,6 +42,7 @@
 | agent_scheduler | 2026-11-12 21:39 | 3.0.0.1 | linux arm64 | simulator | 22 / 22 | ✅ OK |
 | agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
 |  | 2026-11-05 13:28 | 3.0.0.15 | mac arm64 | simulator | 241 / 239 | ❌ Failed |
+|  | 2026-11-12 22:13 | 3.0.0.16 | linux arm64 | simulator | 237 / 234 | ❌ Failed |
 | ao_sx | 2026-09-20 23:43 | 3.0.0.13 | mac arm64 | SX AO-L | 16 / 16 | ✅ OK |
 |  | 2026-09-27 21:22 | 3.0.0.15 | mac arm64 | simulator | 11 / 11 | ✅ OK |
 |  | 2026-09-30 18:14 | 3.0.0.15 | linux arm64 | StarlightXpress AO | 16 / 16 | ✅ OK |
