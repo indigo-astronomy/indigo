@@ -6,8 +6,6 @@ Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 
-Co-authored by: **Claude** (Anthropic, Claude Opus 5.5)
-
 This document is the design of the INDIGO Scheduler Agent. The agent decides which imaging task runs next, when it runs and under which sky conditions, and it can interrupt the running task for an urgent one. It is a design document. Property names, limits and defaults are subject to change until the agent is implemented.
 
 ## Motivation
@@ -273,6 +271,9 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Scheduler control, see [Scheduler control](#scheduler-control) |
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `TOTAL` | Task counters. The property state is Idle when stopped, Busy while scheduling and Alert after `ABORT` or a failed `STARTUP` hook |
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `NEXT`, `NEXT_START`, `REASON` | The running task, the task expected next, the UTC time it becomes eligible (`YYYY-MM-DDTHH:MM:SS`), and why nothing is eligible when the scheduler waits |
+| `AGENT_SCHEDULER_PLAN` | light | one per planned run | The forecast of the rest of the night in expected run order, see [Night plan preview](#night-plan-preview) |
+| `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, newest first, see [Run history](#run-history) |
+| `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
 | `AGENT_SCHEDULER_SETTINGS` | number | see below | Scheduler settings |
 | `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE` | Names of stored tasks used as hooks |
 
@@ -340,13 +341,15 @@ The configuration file is `Scheduler_Agent.config` in the INDIGO configuration f
 - a task added, edited or deleted;
 - a `TASK_COMMAND`;
 - a change of `SETTINGS` or `HOOKS`;
-- every task state transition.
+- every task state transition and every new history entry;
+- a history clear.
 
 It does not save while it is replaying its configuration. The file contains, in this order:
 
 1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. Before saving, each `AGENT_SCHEDULER_TASK_<n>` property is temporarily renamed to `AGENT_SCHEDULER_ADD_TASK`, as `save_config()` does in the Scripting Agent;
 2. one `AGENT_SCHEDULER_RESTORE_STATUS` change per stored task. Its items are `NAME`, `STATE`, `RUNS`, `RETRIES_USED` and `DISABLED`. The property exists only for this replay, is never defined for clients, and is accepted only from the configuration reader;
-3. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`.
+3. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`;
+4. one `AGENT_SCHEDULER_RESTORE_HISTORY` change per history entry, oldest first. Its items are `TASK`, `RUN`, `START`, `END`, `RESULT` and `REASON`. Like `AGENT_SCHEDULER_RESTORE_STATUS`, it is accepted only from the configuration reader and never defined for clients.
 
 **Loading.** The configuration is loaded when the agent is attached, the same way as for other filter agents. Each saved change is replayed through the agent's own change handler with the configuration reader as the client:
 
@@ -418,6 +421,73 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
    - Failure: the task becomes RETRY while retries remain, otherwise FAILED.
 7. **Nothing eligible.** The agent publishes `NEXT_START` and `REASON`. After `IDLE_PARK_AFTER` minutes it runs the `IDLE` hook, for example to park the mount and close the dome.
 
+### Night plan preview
+
+`AGENT_SCHEDULER_TASK_STATE` lists the tasks in list order, which only breaks score ties. `AGENT_SCHEDULER_CURRENT` shows only the running and the next task. To show the user the expected order of the whole night, the agent publishes a forecast in `AGENT_SCHEDULER_PLAN`.
+
+**Computation.** The agent simulates scheduling from now until the end of the night:
+
+- The night ends at the next sunrise, or 24 hours from now if the sun does not set.
+- The simulation starts with the running task, assumed to end at its start time plus `@duration`.
+- At each simulated time, the agent applies the [selection](#selection) rules exactly as at run time: delays, expiry, eligibility over `@duration`, urgent tasks first, then score.
+- The selected task is assumed to run for its `@duration` and succeed. Its simulated run counter increases, and `@repeat` intervals are applied.
+- When nothing is eligible, the simulation advances to the time the next task becomes eligible.
+
+The simulation works on a copy of the runtime status and never changes the real task states. It uses only ephemeris arithmetic and runs on the agent's handler queue.
+
+**Items.** Each planned run is one item, in expected run order:
+
+- The label shows the expected UTC start and end, the task name and its priority, for example `20:15–23:15  M31 LRGB (normal 50)`. A task that repeats appears once per planned run, with the run number.
+- The light is Busy for the running task and Idle for future runs.
+- Tasks that cannot run before the end of the night follow the planned runs as Alert items, with the reason, for example `M42 — below 30° all night` or `NGC 7000 — disabled`. DONE, FAILED and EXPIRED tasks are not listed.
+
+**Updates.** The plan is recomputed:
+
+- whenever a task starts or ends;
+- after a task is uploaded, edited or deleted, a `TASK_COMMAND`, an urgent submission and a `SETTINGS` change;
+- on `START`, `STOP` and `ABORT`;
+- every `IDLE_CHECK_INTERVAL` while the scheduler waits.
+
+It is also published while the scheduler is stopped, as the plan that `START` would follow.
+
+**Limits.** The plan is a forecast, not a commitment:
+
+- Failures, retries, tasks that end earlier or later than `@duration`, urgent tasks and safety stops change the real order. The plan is recomputed when they happen.
+- The forecast assumes that the constraints and the site do not change.
+
+### Run history
+
+`AGENT_SCHEDULER_TASK_STATE` shows only the current state of each task. To show what actually happened, the agent keeps a record of finished runs in `AGENT_SCHEDULER_HISTORY`.
+
+**Entries.** An entry is added whenever a run ends, including hook runs and urgent tasks:
+
+| Result | Light | Meaning |
+|---|---|---|
+| `succeeded` | Ok | The sequence ended Ok |
+| `failed` | Alert | The sequence ended Alert, or the task failed to start |
+| `preempted` | Busy | An urgent task interrupted the run |
+| `aborted` | Busy | `ABORT`, a delete of the running task, or a `STOP_TIMEOUT` stop |
+
+The Busy light is used for interrupted runs, so that they stand out from both successes and failures.
+
+The item label shows:
+
+- the UTC start and end times;
+- the task name, with the run number and a hook or urgent mark where it applies;
+- the result;
+- for a failure, the reason: the last alert message of the sequence, `script error`, or `not started`.
+
+For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted by SN 2026abc`.
+
+Entries are newest first. Expiry is not a run, so an expired task gets no entry; its state remains visible in `AGENT_SCHEDULER_TASK_STATE`.
+
+**Limits.**
+
+- The history keeps the last 200 entries. Older entries are dropped.
+- It survives a restart: entries are saved in the configuration and replayed on load, see [Persistence](#persistence).
+- Deleting or resetting a task does not remove its entries.
+- `AGENT_SCHEDULER_CLEAR_HISTORY` removes all entries.
+
 ### State between tasks
 
 The scheduler does not reset the agents between tasks. Settings made by one task body persist into the next one. Examples are the meridian flip, which stays enabled after a sequence ends, HA limits, filter offsets and the solver filter.
@@ -485,7 +555,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
    - scheduler control.
 
    The agent is registered in the server, the build and the project files, and documented in `PROPERTIES.md`.
-3. Scoring weights, repeat and retry, startup, shutdown and idle hooks, Lorentzian moon avoidance.
+3. Scoring weights, repeat and retry, startup, shutdown and idle hooks, Lorentzian moon avoidance, night plan preview, run history.
 4. Safety: a related AUX safety or weather device. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 5. Optional extensions:
    - task upload, download and editing in the web UI;
@@ -509,5 +579,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - a second urgent task waiting for the first;
   - an urgent task submitted while the scheduler is stopped;
   - expiry and best effort;
+  - the night plan preview: expected order and times of several tasks with different windows and priorities, repeats, unschedulable tasks with reasons, and recomputation after an upload, an urgent submission and a task ending early;
+  - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
   - a body with a syntax error and a body without `start()` counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task.
