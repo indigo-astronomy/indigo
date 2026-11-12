@@ -2598,11 +2598,13 @@ $(INTEGRATION_BUILD)/test_agent_scripting_sequencer: integration/test_agent_scri
 	$(CC) $(TEST_CFLAGS) $(SEQUENCER_TEST_FLAGS) $< $(SEQUENCER_TEST_OBJECTS) $(SEQUENCER_SIMULATORS) -o $@ $(LDFLAGS) $(SEQUENCER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
 
 # Scheduler Agent with the real Scripting Agent and Sequencer.js; task bodies only wait, so no device simulators are needed.
-$(INTEGRATION_BUILD)/test_agent_scheduler: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $< -o $@ $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat
+SCHEDULER_TEST_FLAGS = -DSEQUENCER_JS_PATH='"$(abspath ../indigo_drivers/agent_scripting/library/Sequencer.js)"'
+
+$(INTEGRATION_BUILD)/test_agent_scheduler: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h ../indigo_drivers/agent_scripting/library/Sequencer.js $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) $< -o $@ $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat
 
 $(INTEGRATION_BUILD)/test_agent_scheduler_asan: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/Sequencer.js.dat $(BUILD_DRIVERS)/indigo_agent_scripting.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 .PHONY: test-agent-scheduler
 test-agent-scheduler: check-lib $(INTEGRATION_BUILD)/test_agent_scheduler

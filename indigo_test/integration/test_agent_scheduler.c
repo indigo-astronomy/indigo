@@ -843,6 +843,28 @@ static void stop_request_blocks_preemption(void) {
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Late'"));
 }
 
+// a client sending Sequencer.js before its own script must not disturb a scheduled task
+static void library_reload_keeps_scheduled_task(void) {
+	REQUIRE(upload("// @task Steadfast\n" BODY_WAIT(3)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Steadfast", "RUNNING", 15));
+	FILE *file = fopen(SEQUENCER_JS_PATH, "rb");
+	REQUIRE(file != NULL);
+	fseek(file, 0, SEEK_END);
+	long length = ftell(file);
+	rewind(file);
+	char *source = indigo_safe_malloc((size_t)length + 1);
+	size_t read = fread(source, 1, (size_t)length, file);
+	fclose(file);
+	source[read] = 0;
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { source };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+	free(source);
+	ASSERT_TRUE(wait_task_state("Steadfast", "DONE", 15));
+	ASSERT_EQ_INT(0, count_messages("Task 'Steadfast' failed"));
+}
+
 static void pending_rename_reserves_the_name(void) {
 	REQUIRE(upload("// @task Original\n" BODY_WAIT(3)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
@@ -879,6 +901,7 @@ static const indigo_test_case cases[] = {
 	{ "hand_started_sequence_blocks_all_but_urgent", hand_started_sequence_blocks_all_but_urgent },
 	{ "stop_request_blocks_preemption", stop_request_blocks_preemption },
 	{ "pending_rename_reserves_the_name", pending_rename_reserves_the_name },
+	{ "library_reload_keeps_scheduled_task", library_reload_keeps_scheduled_task },
 };
 
 static const char *case_filter = NULL;

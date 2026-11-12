@@ -629,7 +629,7 @@ Preemption, `ABORT` and deleting a running task all stop the sequence the same w
 
 The scheduler starts no task until the Scripting Agent is present. When the Scripting Agent does not yet define `SEQUENCE_STATE`, the scheduler loads the library into it through `AGENT_SCRIPTING_RUN_SCRIPT`. A library that a client loaded already, possibly of another version, is used as it is.
 
-**Library reloads.** Clients such as the web UI send the whole library again before every script they run. Today, loading `Sequencer.js` replaces the `indigo_sequencer` object unconditionally, so a client that runs anything while a scheduled sequence executes would orphan that sequence. `Sequencer.js` is therefore changed to keep the existing `indigo_sequencer` object while it has a sequence running, and to replace it only when it is idle. This also fixes the same problem for sequences started by hand.
+**Library reloads.** Clients such as the web UI send the whole library again before every script they run. A reload keeps the `indigo_sequencer` object while it has a sequence running, and the flipper while a flip is enabled; only an idle sequencer is replaced. A client that runs a script during a scheduled task therefore does not disturb it.
 
 **Wrapper script.** To estimate or run a task, the agent sends one wrapper script through `AGENT_SCRIPTING_RUN_SCRIPT`. The wrapper:
 
