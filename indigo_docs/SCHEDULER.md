@@ -55,7 +55,7 @@ It deliberately leaves out continuous greedy preemption, anti-thrashing settings
 - **A preempted task is failed or re-queued.** The task's header chooses which. A re-queued task reruns its sequence from the beginning.
 - **A task is one human-readable text.** It consists of a header with the scheduling fields followed by an ordinary `Sequencer.js` body.
 - **The agent stores tasks like the Scripting Agent stores scripts.** Tasks live in agent properties and in the agent's INDIGO configuration. The agent never reads or writes task files; clients load, save and edit files and transfer them through properties.
-- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic and requires no change to `Sequencer.js`. The only device actions the scheduler performs itself are aborts.
+- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic. The only change it requires in `Sequencer.js` is the `estimate()` method described in [Task duration](#task-duration). The only device actions the scheduler performs itself are aborts.
 
 ## Architecture
 
@@ -98,7 +98,6 @@ A task is a JavaScript text. It starts with a header of `// @key value` comment 
 // @moon       > 40 width 7
 // @twilight   astronomical
 // @window     2026-11-12 20:00 .. 2026-11-13 04:00
-// @duration   180
 // @repeat     1
 // @retry      2 after 15
 // @preempted  retry
@@ -140,6 +139,7 @@ var scheduler_task = { name: "M31 LRGB", ra: 0.712306, dec: 41.269167, run: 1 };
 
 - `ra` is in hours and `dec` in degrees, both J2000. They are defined only when `@target` is present.
 - `run` is the number of the run, starting at 1.
+- `estimate` is defined only while the agent estimates the task duration, see [Task duration](#task-duration).
 
 The body uses these values, so the name and the coordinates are written only once, in the header. Naming the sequence after the task also lets the scheduler recognise its sequence in `SEQUENCE_NAME`. A task run by hand outside the scheduler must define `scheduler_task` itself or use literal values.
 
@@ -167,7 +167,7 @@ The body uses these values, so the name and the coordinates are written only onc
 | `@illumination` | `< percent` | Maximum moon illumination, 0–100; ignored while the moon is below the horizon | off |
 | `@twilight` | `none` \| `civil` \| `nautical` \| `astronomical` | Sun must be below 0°, −6°, −12° or −18° | `none` |
 | `@window` | `[start] .. [end]` | UTC time window, see below | open |
-| `@duration` | `minutes` | Expected run time, 1–1440; all constraints must hold for this whole interval before the task starts | `60` |
+| `@duration` | `minutes` | Expected run time, 1–1440; all constraints must hold for this whole interval before the task starts | estimated, see [Task duration](#task-duration) |
 | `@repeat` | `count` [`every minutes`] | Number of successful runs, 1–10000, with an optional pause between them | `1` |
 | `@retry` | `count` [`after minutes`] | Number of reruns after a failure, 0–100, with an optional delay | `0` |
 | `@preempted` | `retry` \| `fail` | What happens to the task when an urgent task preempts it | `retry` |
@@ -223,6 +223,58 @@ The agent validates the header on every upload and edit:
 An invalid task is rejected. The property goes to the Alert state and the message names the line and the problem, for example `line 4: @altitude: expected '> degrees'`. The stored task list is not changed.
 
 Script errors in the body are reported by the Scripting Agent when the task runs and count as a task failure.
+
+### Task duration
+
+The scheduler needs the duration of a run to check the constraints before a start and to build the night plan. The effective duration is the first of these that is available:
+
+1. `@duration` from the header, when the user sets it;
+2. the **measured** duration of the last successful run of the same task text;
+3. the **estimated** duration computed from the sequence;
+4. 60 minutes, while no estimate is available.
+
+Elsewhere in this document, `@duration` means this effective duration. The label of the task in `AGENT_SCHEDULER_TASK_STATE` shows the duration and its source: `set`, `measured`, `estimated` or `default`.
+
+**Estimate in `Sequencer.js`.** The sequencer gets one addition, `Sequence.prototype.estimate()`. While a sequence is built, the builder methods add to counters on the `Sequence` object, as `capture_batch()` and `capture_stream()` already add to the total exposure. `estimate()` returns these counters:
+
+| Field | Meaning |
+|---|---|
+| `exposure` | Total exposure time in seconds of all `capture_batch()` and `capture_stream()` steps |
+| `frames` | Number of frames these steps capture |
+| `operations` | Number of steps that move or calibrate equipment: `slew()`, `precise_goto()`, `sync_center()`, `focus()`, `calibrate_guiding()`, `start_guiding()`, `park()`, `unpark()`, `home()`, `dome_slew()`, `dome_park()`, `dome_unpark()`, `dome_open()` and `dome_close()` |
+| `waits` | Sum of fixed `wait()` delays in seconds |
+| `unknown` | `true` when the sequence contains a step whose duration cannot be known in advance: `wait_until()`, `wait_until_solar_altitude_below()` or `wait_until_target_altitude_above()` |
+
+Steps inside `repeat()` are counted once per iteration, because `repeat()` runs its block for every iteration. The method only reports counts. Converting them to a duration with the agent's overhead settings remains the scheduler's job. Every builder method that is added later must update the counters it affects, and the sequencer documentation and tests cover `estimate()` like any other part of the `Sequence` API.
+
+**Estimation.** The agent estimates a task when it is uploaded, edited or loaded from the configuration, and again when the Scripting Agent appears.
+
+1. The agent sends the body to the Scripting Agent in estimation mode. A short wrapper script compiled into the agent:
+   - defines `scheduler_task` with an `estimate` token;
+   - temporarily replaces `Sequence.prototype.start()` with a function that calls `this.estimate()` and publishes the result instead of starting the sequence;
+   - runs the body;
+   - restores `start()`.
+2. The result is published in the `SCHEDULER_ESTIMATE` property of the Scripting Agent. Its items are `TOKEN`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS` and `UNKNOWN`.
+3. The agent matches the token and computes the duration:
+
+   ```
+   duration = exposure + frames * FRAME_OVERHEAD + operations * OPERATION_OVERHEAD + waits
+   ```
+
+   `FRAME_OVERHEAD` covers download, saving, dithering and settling of one frame. `OPERATION_OVERHEAD` is a typical time for one equipment step.
+
+An estimation can run while another sequence is executing, because nothing is started.
+
+**When no estimate is possible.** A task is marked unknown when:
+
+- `estimate()` reports `unknown`;
+- the loaded `Sequencer.js` is an older version without `estimate()`, for example one loaded by a client.
+
+Its upload succeeds with a warning that recommends an explicit `@duration`. The agent uses the measured duration once a run has succeeded, and the 60-minute default until then.
+
+**Measurement.** After every successful run, the agent records the actual time from start to end as the measured duration. Meridian flips, autofocus retries and slow downloads are not in the model, but they are part of the measured duration, so the scheduler learns the real duration after the first run. An edit of the task text discards the measured duration. Failed and preempted runs do not change it.
+
+**Body requirement.** For estimation, the body runs up to its `start()` call. It must only build the sequence before `start()`: it must not change properties, set timers or send messages directly. Everything that acts on devices belongs in sequence steps.
 
 ## Task states
 
@@ -302,6 +354,8 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `START_TIMEOUT` | s | 10 | Time allowed for a started task's sequence to become Busy |
 | `SETTING_WEIGHT` | — | 1 | Weight of the setting-soonest score term, 0–4 |
 | `ALTITUDE_WEIGHT` | — | 1 | Weight of the altitude score term, 0–4 |
+| `FRAME_OVERHEAD` | s | 10 | Time added per captured frame in the duration estimate |
+| `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
 
 The agent also publishes the standard filter-agent properties, including `FILTER_RELATED_AGENT_LIST`.
 
@@ -362,7 +416,7 @@ The configuration file is `Scheduler_Agent.config` in the INDIGO configuration f
 It does not save while it is replaying its configuration. The file contains, in this order:
 
 1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. Before saving, each `AGENT_SCHEDULER_TASK_<n>` property is temporarily renamed to `AGENT_SCHEDULER_ADD_TASK`, as `save_config()` does in the Scripting Agent;
-2. one `AGENT_SCHEDULER_RESTORE_STATUS` change per stored task. Its items are `NAME`, `STATE`, `RUNS`, `RETRIES_USED` and `DISABLED`. The property exists only for this replay, is never defined for clients, and is accepted only from the configuration reader;
+2. one `AGENT_SCHEDULER_RESTORE_STATUS` change per stored task. Its items are `NAME`, `STATE`, `RUNS`, `RETRIES_USED`, `DISABLED` and `MEASURED_DURATION`. The property exists only for this replay, is never defined for clients, and is accepted only from the configuration reader;
 3. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`;
 4. one `AGENT_SCHEDULER_RESTORE_HISTORY` change per history entry, oldest first. Its items are `TASK`, `RUN`, `START`, `END`, `RESULT` and `REASON`. Like `AGENT_SCHEDULER_RESTORE_STATUS`, it is accepted only from the configuration reader and never defined for clients.
 
@@ -544,7 +598,7 @@ Preemption, `ABORT` and deleting a running task all stop the sequence the same w
 
 The scheduler starts no task until the Scripting Agent is present. When the Scripting Agent does not yet define `SEQUENCE_STATE`, the scheduler loads the library into it through `AGENT_SCRIPTING_RUN_SCRIPT`. A library that a client loaded already, possibly of another version, is used as it is.
 
-To run a task, the agent sends the `scheduler_task` line followed by the task's full text through `AGENT_SCRIPTING_RUN_SCRIPT`. The header is ignored as comments, and the body builds the sequence and calls `start()`. The task does not need to be stored in the Scripting Agent.
+To run a task, the agent sends the `scheduler_task` line followed by the task's full text through `AGENT_SCRIPTING_RUN_SCRIPT`. The header is ignored as comments, and the body builds the sequence and calls `start()`. The task does not need to be stored in the Scripting Agent. A run never uses estimation mode, so `start()` behaves normally.
 
 The agent watches the result:
 
@@ -570,7 +624,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
    - scheduler control.
 
    The agent is registered in the server, the build and the project files, and documented in `PROPERTIES.md`.
-3. Scoring weights, repeat and retry, startup, shutdown and idle hooks, Lorentzian moon avoidance, night plan preview, run history.
+3. Scoring weights, repeat and retry, startup, shutdown and idle hooks, Lorentzian moon avoidance, night plan preview, run history, duration estimate and measurement, including `Sequence.prototype.estimate()` in `Sequencer.js` with its documentation in `Sequencer.md` and its tests.
 4. Safety: a related AUX safety or weather device. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 5. Optional extensions:
    - task upload, download and editing in the web UI;
@@ -595,6 +649,8 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - an urgent task submitted while the scheduler is stopped;
   - expiry, including a repeating task with some runs completed;
   - the night plan preview: expected order and times of several tasks with different windows and priorities, repeats, unschedulable tasks with reasons, and recomputation after an upload, an urgent submission and a task ending early;
+  - `Sequence.prototype.estimate()` in the sequencer tests: every counted builder, `repeat()` and the `unknown` flag;
+  - the duration: estimates for bodies with `repeat()`, captures, operations and fixed waits; `UNKNOWN` for time and sky waits and for a loaded `Sequencer.js` without `estimate()`; a set `@duration` taking precedence; the measured duration replacing the estimate after a successful run and being discarded after an edit; no sequence started during estimation, also while another sequence runs;
   - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
   - a body with a syntax error and a body without `start()` counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task.
