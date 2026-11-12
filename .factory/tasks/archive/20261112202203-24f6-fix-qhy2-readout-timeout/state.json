@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261112202203-24f6-fix-qhy2-readout-timeout",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner decision on fast-forward to master, push and the indigo#783 reply.",
+  "blocker": null
+}
