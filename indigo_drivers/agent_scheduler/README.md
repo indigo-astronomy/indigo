@@ -28,4 +28,4 @@ indigo_server indigo_agent_scripting indigo_agent_scheduler ...
 
 ## Testing
 
-- 2026-11-12 22:12 3.0.0.2 linux arm64 simulator 23/23 OK
+- 2026-11-13 00:10 3.0.0.3 linux arm64 simulator 36/36 OK

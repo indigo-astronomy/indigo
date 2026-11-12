@@ -80,7 +80,7 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
 The Scheduler Agent is a device with its own client, like the Scripting Agent. It does not select hardware devices, so it is not a filter agent. It works with the agents that `Sequence.start()` uses by default:
 
 - the "Scripting Agent", which is required;
-- the "Mount Agent", which provides the site coordinates through `GEOGRAPHIC_COORDINATES`;
+- the "Mount Agent", which provides the site coordinates through `GEOGRAPHIC_COORDINATES`. An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the scheduler cannot tell from a real site, so the site must be configured in the Mount Agent;
 - the "Imager Agent", "Guider Agent" and the plate solver agent, which the scheduler waits for when it stops a sequence. The scheduler aborts the "Guider Agent" itself.
 
 Task bodies are expected to use these agents. A safety or weather device is added in a later phase.
@@ -223,7 +223,7 @@ The agent validates the header on every upload and edit:
 
 An invalid task is rejected. The property goes to the Alert state and the message names the line and the problem, for example `line 4: @altitude: expected '> degrees'`. The stored task list is not changed.
 
-When the Scripting Agent is present, the upload also runs the body once to estimate its duration, see [Task duration](#task-duration). A body that throws an error, including a syntax error, is then rejected like an invalid header, with the error message. When the Scripting Agent is not present, the estimate runs later; an error is then reported by a message and the task keeps the default duration. A script error during a run counts as a task failure.
+After an upload or an edit, the agent runs the body once to estimate its duration, see [Task duration](#task-duration). The estimate runs after the property change is answered, because it needs the Scripting Agent. A body that throws an error during the estimate, including a syntax error, is marked `SCRIPT ERROR`: the message names the error, the task list shows it with an Alert light, and the task is not scheduled until it is edited or reset. A script error during a run counts as a task failure. A body can tell the two apart through `scheduler_task.estimate`.
 
 Uploading therefore executes the body up to its `start()` call. This is consistent with the trust level above: anyone who can upload a task can also run a script.
 
@@ -250,7 +250,7 @@ Elsewhere in this document, `@duration` means this effective duration. The label
 
 Steps inside `repeat()` are counted once per iteration, because `repeat()` runs its block for every iteration. The method only reports counts. Converting them to a duration with the agent's overhead settings remains the scheduler's job. Every builder method that is added later must update the counters it affects, and the sequencer documentation and tests cover `estimate()` like any other part of the `Sequence` API.
 
-**Estimation.** The agent estimates a task when it is uploaded, edited or loaded from the configuration, and again when the Scripting Agent appears.
+**Estimation.** The agent estimates a task when it is uploaded, edited, reset after a script error or loaded from the configuration. Estimates run one at a time, also while another task runs, because they never start a sequence. The agent loads `Sequencer.js` for them even when the scheduler is stopped. A task is not selected while its estimate is pending, so that script errors are found before the first run and the constraints are checked against the right duration.
 
 1. The agent sends the body to the Scripting Agent in estimation mode, inside the wrapper script described in [Running a task](#running-a-task). In this mode, the wrapper temporarily replaces `Sequence.prototype.start()` with a function that calls `this.estimate()` and publishes the result instead of starting the sequence, and restores `start()` afterwards.
 2. The result is published in the `SCHEDULER_ESTIMATE` property of the Scripting Agent. Its items are `TOKEN`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS` and `UNKNOWN`. An error in the body is reported in `SCHEDULER_RESULT` instead.
@@ -357,7 +357,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `FRAME_OVERHEAD` | s | 10 | Time added per captured frame in the duration estimate |
 | `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
 
-The settings `IDLE_PARK_AFTER`, `FRAME_OVERHEAD` and `OPERATION_OVERHEAD` and the properties `AGENT_SCHEDULER_PLAN`, `AGENT_SCHEDULER_HISTORY`, `AGENT_SCHEDULER_CLEAR_HISTORY`, `AGENT_SCHEDULER_RESTORE_HISTORY` and `AGENT_SCHEDULER_HOOKS` belong to phase 3 and are not implemented yet.
+The property `AGENT_SCHEDULER_PLAN` belongs to phase 3b and is not implemented yet.
 
 **Requests.** Every change of a writable property is queued. The agent's handler acknowledges it with the property in the Busy state and completes it with Ok or Alert. Only the handler changes the properties; client enumerations receive copies. INDIGO does not publish an update that changes neither values nor state, so without the Busy state a client, and the configuration restore, would not see the result.
 
@@ -432,7 +432,7 @@ Changes that come in quick succession are written once, two seconds after the la
    - `TASK`, the task text;
    - `STATUS`, the runtime status in a compact form, for example `state=DONE runs=2 retries=0 disabled=0 measured=3540`.
 2. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`;
-3. one `AGENT_SCHEDULER_RESTORE_HISTORY` change. The agent saves a temporary copy whose `ENTRIES` item holds all history entries, one line per entry, oldest first. Each line holds the task name, run number, start, end, result and reason, separated by tabs.
+3. one `AGENT_SCHEDULER_RESTORE_HISTORY` change. The agent saves a temporary copy whose `ENTRIES` item holds all history entries, one line per entry, oldest first. Each line holds the task name, run number, start, end, result, a mark (`H` for a hook, `U` for an urgent task, `-` for neither) and the reason, separated by tabs. The configuration reader trims trailing whitespace, so no field is saved as a space, and entries whose trailing empty fields were trimmed are still restored.
 
 With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 MiB.
 
@@ -476,16 +476,21 @@ The grid is rebuilt when the site coordinates change and every hour.
 - `START` runs the `STARTUP` hook, then begins scheduling. If the hook fails, the scheduler stops and its state becomes Alert.
 - `STOP` lets the running task finish, then runs the `SHUTDOWN` hook and stops.
 - `ABORT` aborts the running task as described in [Aborting a sequence](#aborting-a-sequence) and marks it RETRY without consuming a retry. It then runs the `SHUTDOWN` hook and stops.
-- When there is at least one task and every task is DONE, FAILED, EXPIRED or DISABLED, the scheduler runs the `SHUTDOWN` hook and stops. With no tasks at all it keeps running, ready for urgent tasks.
+- When there is at least one task and every task is DONE, FAILED, EXPIRED, DISABLED or has a script error, the scheduler runs the `SHUTDOWN` hook and stops. With no tasks at all it keeps running, ready for urgent tasks. A task added or reset before the shutdown hook of this automatic stop starts cancels the stop.
 
 ### Hooks
 
 The `STARTUP`, `SHUTDOWN` and `IDLE` hooks name stored tasks.
 
-- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night.
-- A task named as a hook is never selected as an ordinary task.
-- A hook that fails is reported by a message. Only a failed `STARTUP` hook stops the scheduler.
-- The `IDLE` hook runs once per idle period.
+- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK` or `IDLE HOOK`.
+- A task named as a hook is never selected as an ordinary task and does not count when deciding that all tasks have finished.
+- Hook runs appear in the run history, marked as hooks.
+- A hook that fails is reported by a message. A failed `STARTUP` hook stops the scheduler with Alert; a failed `SHUTDOWN` hook still stops it, with Alert.
+- The `SHUTDOWN` hook runs once for every stop: `STOP` after the running task, `ABORT` after the running task or startup hook was aborted, and the automatic stop when all tasks finished. It does not run after a `STOP_TIMEOUT`, because the old sequence still occupies the Scripting Agent. When it cannot run because a sequence started by hand occupies the Scripting Agent or `Sequencer.js` is missing, the agent says so in a message and stops without it.
+- `START` while the `SHUTDOWN` hook runs cancels the stop: after the hook, the `STARTUP` hook runs again and scheduling continues.
+- A hook runs whatever the state of its task; an edit of a hook while it runs takes effect after it ends.
+- The `IDLE` hook runs once per idle period, `IDLE_PARK_AFTER` minutes after the scheduler last found nothing eligible. A task that starts begins a new idle period.
+- A hook that names no task is reported by a message and skipped.
 
 ### When a decision is made
 
@@ -663,7 +668,9 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
    5. selection and scheduler control.
 
    The agent is registered in the server, the build and the project files, and documented in `PROPERTIES.md`.
-3. Scoring weights, repeat and retry, startup, shutdown and idle hooks, Lorentzian moon avoidance, night plan preview, run history, duration estimate and measurement, including `Sequence.prototype.estimate()` in `Sequencer.js` with its documentation in `Sequencer.md` and its tests.
+3. Phase 3, in two parts:
+   - 3a: startup, shutdown and idle hooks, run history, duration estimate and measurement, including `Sequence.prototype.estimate()` in `Sequencer.js` with its documentation in `Sequencer.md` and its tests. Scoring weights, repeat and retry and the Lorentzian moon limit came with phase 2.
+   - 3b: night plan preview, after the next-start search is made cheaper.
 4. Safety: a related AUX safety or weather device. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 5. Optional extensions:
    - task upload, download and editing in the web UI;
@@ -682,7 +689,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
 - A performance test computes the night plan for 128 tasks and checks that it completes within one second on a Raspberry Pi 4.
 - Integration tests run the Scheduler Agent with the Scripting Agent and the CCD, mount and guider simulators. They cover:
   - upload, download, edit, rename and persistence across restarts, including restored counters, measured durations and history, and a saved task that no longer validates;
-  - an upload with a body that throws or has a syntax error being rejected with the error message;
+  - a body that throws or has a syntax error being marked `SCRIPT ERROR` by its estimate and never run;
   - a task name containing quotes and backslashes reaching the body unchanged;
   - a client loading `Sequencer.js` and running a script while a scheduled sequence runs, without disturbing it;
   - task ordering, and a task uploaded during a run not interrupting it;
@@ -697,5 +704,5 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - the duration: estimates for bodies with `repeat()`, captures, operations and fixed waits; `UNKNOWN` for time and sky waits and for a loaded `Sequencer.js` without `estimate()`; a set `@duration` taking precedence; the measured duration replacing the estimate after a successful run and being discarded after an edit; no sequence started during estimation, also while another sequence runs;
   - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
   - labels cut to 127 bytes, and list properties redefined only when their content changes;
-  - a body with a syntax error and a body without `start()` counting as failures;
+  - a body that fails only when it runs, and a body without `start()`, counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task.

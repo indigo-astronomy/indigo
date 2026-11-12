@@ -354,6 +354,39 @@ static bool wait_sequence_state(indigo_property_state state, double timeout) {
 	return false;
 }
 
+static bool set_hooks(const char *startup, const char *shutdown, const char *idle) {
+	unsigned before = revision(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
+	const char *items[] = { AGENT_SCHEDULER_HOOKS_STARTUP_ITEM_NAME, AGENT_SCHEDULER_HOOKS_SHUTDOWN_ITEM_NAME, AGENT_SCHEDULER_HOOKS_IDLE_ITEM_NAME };
+	const char *values[] = { startup, shutdown, idle };
+	indigo_change_text_property(&observer, AGENT, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, 3, items, values);
+	return wait_property_state(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
+// label of the newest history entry of a task, empty if none
+static bool history_label(const char *task, int index, char *label) {
+	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	bool found = false;
+	int seen = 0;
+	if (property) {
+		for (int i = 0; i < property->count; i++) {
+			if (strstr(property->items[i].label, task) && seen++ == index) {
+				strcpy(label, property->items[i].label);
+				found = true;
+				break;
+			}
+		}
+		indigo_release_property(property);
+	}
+	return found;
+}
+
+static int history_count(void) {
+	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	int count = property ? property->count : -1;
+	indigo_release_property(property);
+	return count;
+}
+
 static void utc(time_t t, char *buffer) {
 	struct tm tm_time;
 	gmtime_r(&t, &tm_time);
@@ -598,8 +631,11 @@ static void target_below_horizon_waits(void) {
 
 static void repeat_retry_and_failures(void) {
 	REQUIRE(upload("// @task Twice\n// @repeat 2\n" BODY_WAIT(1)));
-	REQUIRE(upload("// @task Broken\n// @priority low\n// @retry 1\nthrow new Error(\"broken body\");\n"));
+	// fails only when it runs, its estimate passes
+	REQUIRE(upload("// @task Broken\n// @priority low\n// @retry 1\nif (!scheduler_task.estimate) { throw new Error(\"broken body\"); }\n" BODY_WAIT(1)));
+	// a body that cannot run at all is found by its estimate and never runs
 	REQUIRE(upload("// @task Syntax\n// @priority low 10\nvar = ;\n"));
+	REQUIRE(upload("// @task Thrown\n// @priority low 20\nthrow new Error(\"always\");\n"));
 	REQUIRE(upload("// @task NoStart\n// @priority low 0\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(1);\n"));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Task 'Twice' completed run 1 of 2", 1, 15));
@@ -608,8 +644,12 @@ static void repeat_retry_and_failures(void) {
 	ASSERT_TRUE(wait_message("Task 'Broken' failed: Error: broken body, it will be retried", 1, 15));
 	ASSERT_TRUE(wait_task_state("Broken", "FAILED", 15));
 	ASSERT_EQ_INT(2, count_messages("Starting task 'Broken'"));
-	ASSERT_TRUE(wait_task_state("Syntax", "FAILED", 15));
-	ASSERT_TRUE(wait_message("Task 'Syntax' failed: SyntaxError", 1, 5));
+	ASSERT_TRUE(wait_task_state("Syntax", "SCRIPT ERROR", 15));
+	ASSERT_TRUE(wait_message("Task 'Syntax' has a script error: SyntaxError", 1, 5));
+	ASSERT_TRUE(wait_task_state("Thrown", "SCRIPT ERROR", 15));
+	ASSERT_TRUE(wait_message("Task 'Thrown' has a script error: Error: always", 1, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Syntax'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Thrown'"));
 	ASSERT_TRUE(wait_task_state("NoStart", "FAILED", 15));
 	ASSERT_TRUE(wait_message("Task 'NoStart' failed: the sequence was not started", 1, 5));
 	ASSERT_TRUE(wait_message("All tasks finished", 1, 10));
@@ -805,7 +845,7 @@ static void running_task_restored_without_using_a_retry(void) {
 }
 
 static void failure_after_start_aborts_the_sequence(void) {
-	REQUIRE(upload("// @task Thrower\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(30);\nsequence.start();\nthrow new Error(\"after start\");\n"));
+	REQUIRE(upload("// @task Thrower\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(30);\nsequence.start();\nif (!scheduler_task.estimate) { throw new Error(\"after start\"); }\n"));
 	REQUIRE(upload("// @task Follower\n// @priority low\n" BODY_WAIT(1)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Task 'Thrower' failed: Error: after start", 1, 15));
@@ -876,6 +916,156 @@ static void pending_rename_reserves_the_name(void) {
 	ASSERT_TRUE(wait_task_state("Renamed", "DONE", 15));
 }
 
+static void hooks_run_at_start_idle_and_stop(void) {
+	char future[32];
+	time_t now = time(NULL);
+	utc(now - now % 60 + 7200, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	char text[256];
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("Prepare", "Close", "Park"));
+	ASSERT_TRUE(wait_task_state("Prepare", "STARTUP HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Close", "SHUTDOWN HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Park", "IDLE HOOK", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 15));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	// nothing is eligible until the window of Later opens, so the idle hook runs once
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Park'"));
+	ASSERT_TRUE(message_position("Starting hook 'Prepare'") < message_position("Starting task 'Work'"));
+	ASSERT_TRUE(message_position("Task 'Work' completed") < message_position("Starting hook 'Park'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Prepare'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Close'"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
+}
+
+static void failed_startup_hook_stops_the_scheduler(void) {
+	REQUIRE(upload("// @task Bad start\nif (!scheduler_task.estimate) { throw new Error(\"no power\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Bad start", "", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
+	ASSERT_TRUE(wait_message("Hook 'Bad start' failed: Error: no power", 1, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Work'"));
+}
+
+static void abort_runs_the_shutdown_hook(void) {
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Long\n" BODY_WAIT(30)));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(message_position("Task 'Long' aborted") < message_position("Starting hook 'Close'"));
+}
+
+static void start_during_shutdown_hook_continues(void) {
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(3)));
+	REQUIRE(upload("// @task First\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "Close", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'First' completed", 1, 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Close'", 1, 15));
+	// an edit of the running hook waits until it ends
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(change_text("AGENT_SCHEDULER_TASK_1", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, "// @task Close\n" BODY_WAIT(1), INDIGO_BUSY_STATE, message));
+	ASSERT_TRUE(strstr(message, "after the task ends") != NULL);
+	REQUIRE(upload("// @task Second\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 2, 15));
+	ASSERT_TRUE(wait_message("Task 'Second' completed", 1, 15));
+	// the automatic stop after the last task runs the shutdown hook again
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 2, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+}
+
+static void history_records_runs(void) {
+	REQUIRE(upload("// @task Good\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Bad\n// @priority low\nif (!scheduler_task.estimate) { throw new Error(\"broken\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Victim\n// @priority low 10\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Victim", "RUNNING", 30));
+	REQUIRE(urgent("// @task Rush\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Rush' completed", 1, 15));
+	ASSERT_TRUE(wait_task_state("Victim", "RUNNING", 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(history_label("Good #1", 0, label) && strstr(label, "succeeded"));
+	ASSERT_TRUE(history_label("Bad #1", 0, label) && strstr(label, "failed: Error: broken"));
+	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "preempted: by Rush"));
+	ASSERT_TRUE(history_label("Rush (urgent) #1", 0, label) && strstr(label, "succeeded"));
+	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "aborted"));
+	ASSERT_EQ_INT(5, history_count());
+	// newest first
+	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	REQUIRE(history != NULL);
+	ASSERT_TRUE(strstr(history->items[0].label, "Victim") && strstr(history->items[0].label, "aborted"));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, history->items[history->count - 2].light.value);
+	indigo_release_property(history);
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	ASSERT_EQ_INT(5, history_count());
+	ASSERT_TRUE(history_label("Rush (urgent) #1", 0, label) && strstr(label, "succeeded"));
+	unsigned before = revision(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME);
+	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_CLEAR_HISTORY_CLEAR_ITEM_NAME, true);
+	ASSERT_TRUE(wait_property_state(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL));
+	ASSERT_EQ_INT(0, history_count());
+	// clients cannot write the history
+	char message[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(change_text(AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Fake\t1\t0\t0\tsucceeded\t \t\n", INDIGO_ALERT_STATE, message));
+	ASSERT_EQ_INT(0, history_count());
+}
+
+static void duration_estimated_measured_and_set(void) {
+	// 2 frames of 30 s with 10 s overhead each, one slew with 120 s, a 15 s wait: 215 s, 4 minutes
+	REQUIRE(upload("// @task Estimated\nvar sequence = new Sequence(scheduler_task.name);\nif (scheduler_task.estimate) { sequence.slew(1, 2); sequence.capture_batch(2, 30); sequence.wait(15); } else { sequence.wait(1); }\nsequence.start();\n"));
+	ASSERT_TRUE(wait_task_state("Estimated", "0h04 estimated", 15));
+	REQUIRE(upload("// @task Unknown\n// @priority low\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait_until_solar_altitude_below(91);\nsequence.start();\n"));
+	ASSERT_TRUE(wait_task_state("Unknown", "1h00 default", 15));
+	ASSERT_TRUE(wait_message("The duration of task 'Unknown' cannot be estimated", 1, 5));
+	REQUIRE(upload("// @task Set\n// @priority low 10\n// @duration 7\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_task_state("Set", "0h07 set", 15));
+	REQUIRE(command("Unknown", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	REQUIRE(command("Set", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// the measured 1 s run counts as the 1 minute minimum
+	ASSERT_TRUE(wait_task_state("Estimated", "0h01 measured", 15));
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	ASSERT_TRUE(wait_task_state("Estimated", "0h01 measured", 5));
+	// an edit discards the measurement and estimates again
+	ASSERT_TRUE(change_text("AGENT_SCHEDULER_TASK_0", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, "// @task Estimated\nvar sequence = new Sequence(scheduler_task.name);\nsequence.capture_batch(10, 60);\nsequence.start();\n", INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(wait_task_state("Estimated", "0h12 estimated", 15));
+}
+
+static void library_without_estimate_uses_the_default(void) {
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_sequence_state(INDIGO_OK_STATE, 15) || wait_sequence_state(INDIGO_IDLE_STATE, 1));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	const char *items[] = { AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME };
+	const char *values[] = { "delete Sequence.prototype.estimate;" };
+	indigo_change_text_property(&observer, SCRIPTING_AGENT_NAME, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, 1, items, values);
+	indigo_usleep(500000);
+	REQUIRE(upload("// @task Old library\nvar sequence = new Sequence(scheduler_task.name);\nsequence.capture_batch(10, 60);\nsequence.start();\n"));
+	ASSERT_TRUE(wait_task_state("Old library", "1h00 default", 15));
+}
+
 // -------------------------------------------------------------------------------- Runner
 
 static const indigo_test_case cases[] = {
@@ -902,6 +1092,13 @@ static const indigo_test_case cases[] = {
 	{ "stop_request_blocks_preemption", stop_request_blocks_preemption },
 	{ "pending_rename_reserves_the_name", pending_rename_reserves_the_name },
 	{ "library_reload_keeps_scheduled_task", library_reload_keeps_scheduled_task },
+	{ "hooks_run_at_start_idle_and_stop", hooks_run_at_start_idle_and_stop },
+	{ "failed_startup_hook_stops_the_scheduler", failed_startup_hook_stops_the_scheduler },
+	{ "abort_runs_the_shutdown_hook", abort_runs_the_shutdown_hook },
+	{ "start_during_shutdown_hook_continues", start_during_shutdown_hook_continues },
+	{ "history_records_runs", history_records_runs },
+	{ "duration_estimated_measured_and_set", duration_estimated_measured_and_set },
+	{ "library_without_estimate_uses_the_default", library_without_estimate_uses_the_default },
 };
 
 static const char *case_filter = NULL;

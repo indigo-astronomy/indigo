@@ -2606,6 +2606,18 @@ $(INTEGRATION_BUILD)/test_agent_scheduler: integration/test_agent_scheduler.c in
 $(INTEGRATION_BUILD)/test_agent_scheduler_asan: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/Sequencer.js.dat $(BUILD_DRIVERS)/indigo_agent_scripting.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
+# Opt-in native server acceptance: the Scheduler Agent runs capture, slew, guiding and urgent tasks
+# against the CCD and mount simulators in a private indigo_server.
+.PHONY: test-scheduler-simulators
+test-scheduler-simulators:
+	python3 integration/run_scheduler_simulators.py $(SCHEDULER_ARGS)
+
+OPT_IN_DRIVER_TESTS += $(INTEGRATION_BUILD)/test_agent_scheduler_simulators
+
+$(INTEGRATION_BUILD)/test_agent_scheduler_simulators: integration/run_scheduler_simulators.py | $(INTEGRATION_BUILD)
+	printf '%s\n' '#!/bin/sh' 'exec python3 "$$(dirname "$$0")/../../integration/run_scheduler_simulators.py" "$$@"' > $@
+	chmod +x $@
+
 .PHONY: test-agent-scheduler
 test-agent-scheduler: check-lib $(INTEGRATION_BUILD)/test_agent_scheduler
 	$(INTEGRATION_BUILD)/test_agent_scheduler

@@ -5674,6 +5674,7 @@
 		8C15A69404991352D3CBD6D1 /* test_agent_scheduler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler.c; sourceTree = "<group>"; };
 		C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting_sequencer.c; sourceTree = "<group>"; };
 		C0DE20261105B00100000001 /* run_sequencer_simulators.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_sequencer_simulators.py; sourceTree = "<group>"; };
+		275307178DD598D6193D6713 /* run_scheduler_simulators.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_scheduler_simulators.py; sourceTree = "<group>"; };
 		C0DE20261105B00100000002 /* sequencer_simulators.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = sequencer_simulators.js; sourceTree = "<group>"; };
 		C0DE20261105B00100000003 /* sequencer_simulators.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = sequencer_simulators.md; sourceTree = "<group>"; };
 		C0DE20260914C00100000002 /* test_aux_joystick_hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_joystick_hid.c; sourceTree = "<group>"; };
@@ -14402,6 +14403,7 @@
 				8C15A69404991352D3CBD6D1 /* test_agent_scheduler.c */,
 				C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */,
 				C0DE20261105B00100000001 /* run_sequencer_simulators.py */,
+				275307178DD598D6193D6713 /* run_scheduler_simulators.py */,
 				C0DE20261105B00100000002 /* sequencer_simulators.js */,
 				C0DE20261105B00100000003 /* sequencer_simulators.md */,
 				5907ACE5301E93D30009AA99 /* test_ao_sx_simulator.c */,
