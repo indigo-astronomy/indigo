@@ -15,6 +15,11 @@ function Sequence(name) {
 	this.recovery_point_index = 0;
 	this.progress = 0;
 	this.exposure = 0;
+	// counted by the builders for estimate()
+	this.frames = 0;
+	this.operations = 0;
+	this.waits = 0;
+	this.unknown_duration = false;
 	this.sequence = [];
 	this.reset_loop_content_state = true;
 	this.warn_break_at_12 = true;
@@ -109,10 +114,12 @@ Sequence.prototype.recovery_point = function() {
 };
 
 Sequence.prototype.wait = function(delay) {
+	this.waits += delay;
 	this.sequence.push({ execute: 'wait(' + delay + ',' + false + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.wait_until = function(time) {
+	this.unknown_duration = true;
 	var estimated_delay = (typeof time === 'string') ? indigo_utc_to_delay(time) : indigo_time_to_delay(time);
 	if (this.warn_wait_until_12 && estimated_delay > 12 * 60 * 60) {
 		indigo_send_message("Possible error - 'wait_until' will block for more than 12 hours!");
@@ -152,10 +159,12 @@ Sequence.prototype.break_at_ha = function(limit) {
 };
 
 Sequence.prototype.wait_until_solar_altitude_below = function(limit) {
+	this.unknown_duration = true;
 	this.sequence.push({ execute: 'wait_until_solar_altitude_below(' + limit + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.wait_until_target_altitude_above = function(limit, ra, dec) {
+	this.unknown_duration = true;
 	this.sequence.push({ execute: 'wait_until_target_altitude_above(' + ra + ',' + dec + ',' + limit + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
@@ -382,6 +391,7 @@ Sequence.prototype.capture_batch = function(p1, p2, p3) {
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_batch()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	this.exposure += exposure * count;
+	this.frames += count;
 };
 
 Sequence.prototype.capture_stream = function(p1, p2, p3) {
@@ -405,6 +415,7 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_imager_process("STREAMING")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	this.exposure += exposure * count;
+	this.frames += count;
 };
 
 Sequence.prototype.set_manual_focuser_mode = function() {
@@ -416,6 +427,7 @@ Sequence.prototype.set_automatic_focuser_mode = function() {
 }
 
 Sequence.prototype.focus = function(exposure) {
+	this.operations++;
 	this.sequence.push({ execute: 'save_batch()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_batch(1, ' + exposure + ', 0)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'focus(false)', step: this.step, progress: this.progress++, exposure: this.exposure });
@@ -423,6 +435,7 @@ Sequence.prototype.focus = function(exposure) {
 };
 
 Sequence.prototype.focus_ignore_failure = function(exposure) {
+	this.operations++;
 	this.sequence.push({ execute: 'save_batch()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_batch(1, ' + exposure + ', 0)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'focus(true)', step: this.step, progress: this.progress++, exposure: this.exposure });
@@ -439,19 +452,23 @@ Sequence.prototype.set_focuser_position = function(position) {
 };
 
 Sequence.prototype.slew = function(ra, dec) {
+	this.operations++;
 	this.sequence.push({ execute: 'set_coordinates(' + ra + ',' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_mount_process("SLEW")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.park = function() {
+	this.operations++;
 	this.sequence.push({ execute: 'start_mount_process("PARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.unpark = function() {
+	this.operations++;
 	this.sequence.push({ execute: 'start_mount_process("UNPARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.home = function() {
+	this.operations++;
 	this.sequence.push({ execute: 'start_mount_process("HOME")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
@@ -464,23 +481,28 @@ Sequence.prototype.disable_tracking = function() {
 };
 
 Sequence.prototype.dome_slew = function(az) {
+	this.operations++;
 	this.sequence.push({ execute: 'set_dome_goto()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'dome_slew(' + az + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.dome_park = function() {
+	this.operations++;
 	this.sequence.push({ execute: 'start_mount_process("DOME_PARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.dome_unpark = function() {
+	this.operations++;
 	this.sequence.push({ execute: 'start_mount_process("DOME_UNPARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.dome_open = function() {
+	this.operations++;
 	this.sequence.push({ execute: 'start_mount_process("DOME_OPEN")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.dome_close = function() {
+	this.operations++;
 	this.sequence.push({ execute: 'start_mount_process("DOME_CLOSE")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
@@ -545,6 +567,7 @@ Sequence.prototype.wait_for_gps = function() {
 };
 
 Sequence.prototype.calibrate_guiding = function(exposure, step) {
+	this.operations++;
 	if (exposure != undefined) {
 		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
@@ -555,6 +578,7 @@ Sequence.prototype.calibrate_guiding = function(exposure, step) {
 };
 
 Sequence.prototype.start_guiding = function(exposure) {
+	this.operations++;
 	if (exposure != undefined) {
 		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
@@ -563,6 +587,7 @@ Sequence.prototype.start_guiding = function(exposure) {
 
 // TO BE REMOVED IN FUTURE RELEASE - USE start_guiding() INSTEAD
 Sequence.prototype.start_guiding_exposure = function(exposure) {
+	this.operations++;
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -576,6 +601,7 @@ Sequence.prototype.clear_guider_selection = function() {
 };
 
 Sequence.prototype.sync_center = function(exposure) {
+	this.operations++;
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_astrometry_process("CENTER")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -585,6 +611,7 @@ Sequence.prototype.set_solver_filter = function(filter) {
 };
 
 Sequence.prototype.precise_goto = function(exposure, ra, dec) {
+	this.operations++;
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_solver_target(' + ra + ', ' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_astrometry_process("PRECISE_GOTO")', step: this.step++, progress: this.progress++, exposure: this.exposure });
@@ -593,6 +620,11 @@ Sequence.prototype.precise_goto = function(exposure, ra, dec) {
 Sequence.prototype.set_rotator_angle = function(value) {
 	this.sequence.push({ execute: 'set_rotator_goto()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_rotator_angle(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+// counts for a duration estimate of the built sequence, the caller adds its own overheads
+Sequence.prototype.estimate = function() {
+	return { exposure: this.exposure, frames: this.frames, operations: this.operations, waits: this.waits, unknown: this.unknown_duration };
 };
 
 Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
