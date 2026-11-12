@@ -103,7 +103,7 @@ A task is a JavaScript text. It starts with a header of `// @key value` comment 
 // @retry      2 after 15
 // @preempted  retry
 
-var sequence = new Sequence("M31 LRGB");
+var sequence = new Sequence(scheduler_task.name);
 sequence.enable_meridian_flip(true, 0);
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.start_guiding();
@@ -122,7 +122,7 @@ An urgent task has the same form:
 // @altitude   > 20
 // @duration   30
 
-var sequence = new Sequence("SN 2026abc");
+var sequence = new Sequence(scheduler_task.name);
 sequence.disable_meridian_flip();
 sequence.precise_goto(5, scheduler_task.ra, scheduler_task.dec);
 sequence.select_filter("L");
@@ -141,7 +141,7 @@ var scheduler_task = { name: "M31 LRGB", ra: 0.712306, dec: 41.269167, run: 1 };
 - `ra` is in hours and `dec` in degrees, both J2000. They are defined only when `@target` is present.
 - `run` is the number of the run, starting at 1.
 
-The body uses these values, so the coordinates are written only once, in the header. A task run by hand outside the scheduler must define `scheduler_task` itself or use literal coordinates.
+The body uses these values, so the name and the coordinates are written only once, in the header. Naming the sequence after the task also lets the scheduler recognise its sequence in `SEQUENCE_NAME`. A task run by hand outside the scheduler must define `scheduler_task` itself or use literal values.
 
 ### Lexical rules
 
@@ -315,14 +315,54 @@ A stored task with `@priority urgent` behaves the same way while it is pending, 
 
 An urgent task submitted while the scheduler is stopped is accepted and queued. It runs when the scheduler is started. The agent sends a message that the scheduler is not running.
 
+### Task store
+
+In memory, the agent keeps a table of up to 128 task slots. A slot holds:
+
+- the task text exactly as uploaded;
+- the parsed and validated header;
+- the runtime status: state, completed runs, retries used, the command-disabled flag, the time of the next possible start, and the submission order of urgent tasks.
+
+Each stored task occupies slot `<n>` and is published as the property `AGENT_SCHEDULER_TASK_<n>`, whose `TASK` item holds the text. The slot number is only a handle: it is reused after a delete and is not stable across restarts. Clients identify tasks by name.
+
+The list order used for tie-breaking and for `MOVE_UP` and `MOVE_DOWN` is a separate ordered list of slots. It is also the order of the items in `AGENT_SCHEDULER_TASK_STATE`.
+
+Urgent tasks submitted through `AGENT_SCHEDULER_URGENT_TASK` use the same slots, but they get no `AGENT_SCHEDULER_TASK_<n>` property and are never saved.
+
 ### Persistence
 
-The agent saves its configuration the way the Scripting Agent saves scripts:
+The agent persists its tasks in its own INDIGO configuration file, exactly as the Scripting Agent persists its scripts. It uses the standard `indigo_save_property()` mechanism and does not open any other file.
 
-- Each task's text is written as an `AGENT_SCHEDULER_ADD_TASK` change and replayed on load.
-- Each task's runtime status is written after it as an `AGENT_SCHEDULER_RESTORE_STATUS` change and replayed on load. Its items are `NAME`, `STATE`, `RUNS`, `RETRIES_USED` and `DISABLED`. The property exists only for configuration replay and is not shown to clients.
+The configuration file is `Scheduler_Agent.config` in the INDIGO configuration folder: `~/.indigo` on Linux and macOS, and the INDIGO folder under `%APPDATA%` on Windows. The usual profile and port suffixes apply.
 
-A server restart therefore does not repeat finished work. A task that was RUNNING when the server stopped is restored as RETRY without consuming a retry. The scheduler itself always starts stopped.
+**Saving.** The agent rewrites the whole file after every change that affects persisted data:
+
+- a task added, edited or deleted;
+- a `TASK_COMMAND`;
+- a change of `SETTINGS` or `HOOKS`;
+- every task state transition.
+
+It does not save while it is replaying its configuration. The file contains, in this order:
+
+1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. Before saving, each `AGENT_SCHEDULER_TASK_<n>` property is temporarily renamed to `AGENT_SCHEDULER_ADD_TASK`, as `save_config()` does in the Scripting Agent;
+2. one `AGENT_SCHEDULER_RESTORE_STATUS` change per stored task. Its items are `NAME`, `STATE`, `RUNS`, `RETRIES_USED` and `DISABLED`. The property exists only for this replay, is never defined for clients, and is accepted only from the configuration reader;
+3. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`.
+
+**Loading.** The configuration is loaded when the agent is attached, the same way as for other filter agents. Each saved change is replayed through the agent's own change handler with the configuration reader as the client:
+
+- An `AGENT_SCHEDULER_ADD_TASK` change validates the header and creates the task, as an upload does.
+- A replayed task that fails validation, for example after a grammar change in a newer version, is skipped. The agent sends a message naming the task, and the rest of the configuration still loads.
+- An `AGENT_SCHEDULER_RESTORE_STATUS` change sets the status of the task with that name. A status without a matching task is ignored.
+
+**After a restart:**
+
+- Finished work is not repeated: DONE, FAILED and EXPIRED tasks keep their state, and the counters are kept.
+- A task that was RUNNING when the server stopped is restored as RETRY without consuming a retry.
+- WAITING tasks are restored as QUEUED and re-evaluated.
+- Pending urgent tasks submitted through `AGENT_SCHEDULER_URGENT_TASK` are lost. A stored task with `@priority urgent` is kept.
+- The scheduler itself always starts stopped. Scheduling resumes only after `START`.
+
+**Moving tasks between systems.** Clients export a task by reading `AGENT_SCHEDULER_TASK_<n>.TASK` and saving the text to a file, and import one by sending a file's text to `AGENT_SCHEDULER_ADD_TASK`. The configuration file is internal to the agent and is not an exchange format.
 
 ## Scheduling
 
@@ -424,7 +464,7 @@ To run a task, the agent sends the `scheduler_task` line followed by the task's 
 The agent watches the result:
 
 - `AGENT_SCRIPTING_RUN_SCRIPT` going to Alert means the script failed to run, for example because of a syntax error. The start fails immediately.
-- A transition of `SEQUENCE_STATE` from not Busy to Busy, observed after the `RUN_SCRIPT` change together with `SEQUENCE_NAME` matching the sequence, marks the start. If it is not observed within `START_TIMEOUT` seconds, the start fails, for example because the body never calls `start()`.
+- A transition of `SEQUENCE_STATE` from not Busy to Busy, observed after the `RUN_SCRIPT` change together with `SEQUENCE_NAME` equal to the task name, marks the start. A body that names its sequence differently is still accepted on the state transition alone. If it is not observed within `START_TIMEOUT` seconds, the start fails, for example because the body never calls `start()`.
 - After the start, Busy → Ok means success.
 - Busy → Alert means failure, unless the agent itself aborted the sequence.
 
