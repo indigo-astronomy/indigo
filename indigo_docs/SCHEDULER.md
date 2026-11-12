@@ -28,7 +28,7 @@ The last column shows the proposed INDIGO scheduler for comparison.
 | Selection | greedy, re-planned every second | list order | weighted score, re-planned per step | priority order | weighted efficiency score | score, selected only between tasks |
 | Priority | row order | none | one weighted rule | Very Low … First | per-user, normalized | urgent, high, normal, low class + level 0–100 |
 | Constraints | altitude, horizon, moon separation, twilight, weather | start/end time or altitude | altitude, horizon, meridian window, moon (Lorentzian), twilight per filter, minimum time span | altitude, HA window, moon phase and distance, Lorentzian | air mass, horizon, moon, dark time, checked at start and end | altitude, airmass, HA, moon separation (Lorentzian), moon illumination, twilight, time window, checked over the whole duration |
-| Completion | repeat N, until a time, loop | events done or end time | accepted frames reached | shots done | plan done, "best efforts" | sequence ends Ok; repeat N with interval, "best effort" |
+| Completion | repeat N, until a time, loop | events done or end time | accepted frames reached | shots done | plan done, "best efforts" | sequence ends Ok; repeat N with interval |
 | Preempts a running job | yes (greedy) | no | no (at boundaries only) | no | by priority no; Target of Opportunity (ToO) API yes | urgent tasks only; the preempted task is retried or failed |
 | Weather and safety | warning suspends, alert parks | safety monitor and recovery | N.I.N.A. triggers | yes | weather script, failed plan re-queued | planned: warning blocks new tasks, alert aborts and runs the shutdown hook |
 | Extras | startup and shutdown queues, mosaic, retry policy | recovery mode | image grading | maximum time slot | retry bonus, VOEvent receiver | startup, shutdown and idle hooks, retry policy, night plan preview, run history |
@@ -163,7 +163,7 @@ The body uses these values, so the name and the coordinates are written only onc
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
 | `@airmass` | `< value` | Maximum target airmass, ≥ 1 | off |
 | `@ha` | `from .. to` | Allowed hour-angle range in hours, −12 to +12. `from` greater than `to` wraps across 12h | off |
-| `@moon` | `> degrees` [`width days`] | Minimum moon separation, see [Lorentzian moon avoidance](#lorentzian-moon-avoidance) | off |
+| `@moon` | `> degrees` [`width days`] | Minimum moon separation, see [Lorentzian moon avoidance](#lorentzian-moon-avoidance); ignored while the moon is below the horizon | off |
 | `@illumination` | `< percent` | Maximum moon illumination, 0–100; ignored while the moon is below the horizon | off |
 | `@twilight` | `none` \| `civil` \| `nautical` \| `astronomical` | Sun must be below 0°, −6°, −12° or −18° | `none` |
 | `@window` | `[start] .. [end]` | UTC time window, see below | open |
@@ -171,7 +171,6 @@ The body uses these values, so the name and the coordinates are written only onc
 | `@repeat` | `count` [`every minutes`] | Number of successful runs, 1–10000, with an optional pause between them | `1` |
 | `@retry` | `count` [`after minutes`] | Number of reruns after a failure, 0–100, with an optional delay | `0` |
 | `@preempted` | `retry` \| `fail` | What happens to the task when an urgent task preempts it | `retry` |
-| `@best_effort` | `yes` \| `no` | An expired task that completed at least one run becomes DONE instead of EXPIRED | `no` |
 | `@enabled` | `yes` \| `no` | A disabled task is kept but never selected | `yes` |
 
 The constraints `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` require `@target`. A header that uses them without `@target` is invalid.
@@ -193,7 +192,21 @@ With `width W`, the required separation depends on the moon age A in days, from 
 limit = D / (1 + ((A − 14.77) / W)²)
 ```
 
-The full limit D applies at full moon and falls off towards new moon. W is the half-width in days.
+The full limit D applies at full moon and falls off towards new moon. W is the half-width in days: W days before or after full moon, the limit is D / 2.
+
+A fixed separation is too strict near new moon, when a thin crescent hardly brightens the sky, and too lax near full moon. The Lorentzian limit follows the brightness of the moon. A small W suits narrowband filters, which tolerate moonlight; a large W keeps the limit high for most of the month, which suits broadband imaging.
+
+Example for `@moon > 40 width 7`:
+
+| Moon | Days from full moon | Required separation |
+|---|---|---|
+| Full | 0 | 40° |
+| Gibbous | 3 | 34° |
+| First or last quarter | 7 | 20° |
+| Crescent | 11 | 12° |
+| New | 14.8 | 7° |
+
+With or without `width`, the separation limit is ignored while the moon is below the horizon, because it does not brighten the sky then.
 
 ### Validation
 
@@ -246,7 +259,7 @@ Script errors in the body are reported by the Scripting Agent when the task runs
    |                                                           |  |
    +---------------- delay elapsed ----------------------------+--+
 
-   QUEUED, WAITING, RETRY, REPEAT -- window end passed --> EXPIRED (or DONE with @best_effort)
+   QUEUED, WAITING, RETRY, REPEAT -- window end passed --> EXPIRED
    any state but RUNNING -- DISABLE --> DISABLED -- ENABLE --> previous state
    any state but RUNNING -- RESET --> QUEUED, counters cleared
 ```
@@ -403,7 +416,7 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 ### Selection
 
 1. **Delays.** RETRY and REPEAT tasks whose delay has elapsed return to QUEUED.
-2. **Expiry.** Tasks whose absolute `@window` end has passed become EXPIRED, or DONE with `@best_effort` after at least one completed run.
+2. **Expiry.** Tasks whose absolute `@window` end has passed become EXPIRED, also when some of their `@repeat` runs completed. The task list and the run history show how many runs succeeded.
 3. **Eligibility.** A QUEUED or WAITING task is eligible when all its constraints hold over the whole interval from now to now + `@duration`. The interval is sampled every five minutes and at its end. A task that is not eligible becomes WAITING, and the agent computes when it would become eligible for `NEXT_START`.
 4. **Urgent tasks first.** Eligible urgent tasks run in the order they were submitted.
 5. **Score.** Other eligible tasks are ranked by:
@@ -580,7 +593,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - an urgent task that is not yet eligible not preempting the running task;
   - a second urgent task waiting for the first;
   - an urgent task submitted while the scheduler is stopped;
-  - expiry and best effort;
+  - expiry, including a repeating task with some runs completed;
   - the night plan preview: expected order and times of several tasks with different windows and priorities, repeats, unschedulable tasks with reasons, and recomputation after an upload, an urgent submission and a task ending early;
   - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
   - a body with a syntax error and a body without `start()` counting as failures;
