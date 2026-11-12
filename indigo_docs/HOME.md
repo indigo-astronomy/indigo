@@ -39,6 +39,7 @@
 - [Astrometry Agent](../indigo_drivers/agent_astrometry/README.md)
 - [ASTAP Agent](../obsoleted_drivers/agent_astap/README.md)
 - [Config Agent](../indigo_drivers/agent_config/README.md)
+- [Scheduler Agent](../indigo_drivers/agent_scheduler/README.md)
 - [Script Agent](../indigo_drivers/agent_scripting/README.md)
 - [Alpaca Agent](../indigo_drivers/agent_alpaca/README.md)
 - [Snoop Agent](../obsoleted_drivers/agent_snoop/README.md)

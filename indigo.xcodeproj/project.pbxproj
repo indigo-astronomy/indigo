@@ -7,6 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BF058A224C11C4D5F8AD7A40 /* indigo_agent_scheduler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8B1E70A0BD621258F7D04855 /* indigo_agent_scheduler.h */; };
+		83B788A92A2A23B0B80C4ABD /* indigo_agent_scheduler.c in Sources */ = {isa = PBXBuildFile; fileRef = 82AEDD1F9A605C5B5B7DEDA4 /* indigo_agent_scheduler.c */; };
+		DE116480571EA62D4D1EF667 /* indigo_agent_scheduler_header.h in Headers */ = {isa = PBXBuildFile; fileRef = 55805B5D11C42D5DC04CAD05 /* indigo_agent_scheduler_header.h */; };
+		3DC43A224479674514C43D20 /* indigo_agent_scheduler_header.c in Sources */ = {isa = PBXBuildFile; fileRef = E79CCB7794B588547DA7534B /* indigo_agent_scheduler_header.c */; };
+		DDD83EE377D2FA665B7F9F01 /* indigo_agent_scheduler_sky.h in Headers */ = {isa = PBXBuildFile; fileRef = 6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */; };
+		4072F96DC48AD1B6E2411F57 /* indigo_agent_scheduler_sky.c in Sources */ = {isa = PBXBuildFile; fileRef = 1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */; };
+		07798D1946BF8F3D84FBB23B /* indigo_agent_scheduler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8B1E70A0BD621258F7D04855 /* indigo_agent_scheduler.h */; };
+		74E3E65A7293D526F0D37355 /* indigo_agent_scheduler.c in Sources */ = {isa = PBXBuildFile; fileRef = 82AEDD1F9A605C5B5B7DEDA4 /* indigo_agent_scheduler.c */; };
+		74FD496FC0146C938DE87E18 /* indigo_agent_scheduler_header.h in Headers */ = {isa = PBXBuildFile; fileRef = 55805B5D11C42D5DC04CAD05 /* indigo_agent_scheduler_header.h */; };
+		09CD693B5F7F086AFFA34B19 /* indigo_agent_scheduler_header.c in Sources */ = {isa = PBXBuildFile; fileRef = E79CCB7794B588547DA7534B /* indigo_agent_scheduler_header.c */; };
+		451C4E3F035F8FEB6C5C213E /* indigo_agent_scheduler_sky.h in Headers */ = {isa = PBXBuildFile; fileRef = 6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */; };
+		A0EB9273453203F1AE27780B /* indigo_agent_scheduler_sky.c in Sources */ = {isa = PBXBuildFile; fileRef = 1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */; };
 		3783DF1116E51D9370C4DA76 /* indigo_polaralign_mlastro.c in Sources */ = {isa = PBXBuildFile; fileRef = 83BD4B658762EAB07B1124F7 /* indigo_polaralign_mlastro.c */; };
 		431D1891671E151D45B16526 /* indigo_aux_alto.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A5F706316E5DA3C1E26FB0F /* indigo_aux_alto.c */; };
 		4DBA0DA9D2F91B7B7AE3ABC9 /* indigo_aux_giotto.c in Sources */ = {isa = PBXBuildFile; fileRef = F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */; };
@@ -5506,6 +5518,15 @@
 		9DC4967D22BA7B810052AB3E /* indigo_agent_auxiliary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_auxiliary.h; sourceTree = "<group>"; };
 		9DC4967E22BA7B810052AB3E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DC4967F22BA7B810052AB3E /* indigo_agent_auxiliary.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_auxiliary.c; sourceTree = "<group>"; };
+		8B1E70A0BD621258F7D04855 /* indigo_agent_scheduler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler.h; sourceTree = "<group>"; };
+		82AEDD1F9A605C5B5B7DEDA4 /* indigo_agent_scheduler.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler.c; sourceTree = "<group>"; };
+		55805B5D11C42D5DC04CAD05 /* indigo_agent_scheduler_header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler_header.h; sourceTree = "<group>"; };
+		E79CCB7794B588547DA7534B /* indigo_agent_scheduler_header.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler_header.c; sourceTree = "<group>"; };
+		6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler_sky.h; sourceTree = "<group>"; };
+		1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler_sky.c; sourceTree = "<group>"; };
+		F6593B003DD24EE7D6A2D97D /* Sequencer.js.dat */ = {isa = PBXFileReference; lastKnownFileType = text; path = Sequencer.js.dat; sourceTree = "<group>"; };
+		EFD0FC12A39D3CD4CF0CD2B3 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile.inc; sourceTree = "<group>"; };
+		87E7C05CBF1C8E3AA03F1311 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DC4969722C39A170052AB3E /* indigo_aux_sqm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_sqm.h; sourceTree = "<group>"; };
 		9DC4969822C39A170052AB3E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DC4969922C39A170052AB3E /* indigo_aux_sqm_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_sqm_main.c; sourceTree = "<group>"; };
@@ -5650,6 +5671,7 @@
 		C0DE20260914003100000001 /* indigo_wheel_mi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_mi.driver; sourceTree = "<group>"; };
 		C0DE20260914003100000003 /* test_wheel_mi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_mi_sdk.c; sourceTree = "<group>"; };
 		C0DE20260914B00100000001 /* test_agent_scripting.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting.c; sourceTree = "<group>"; };
+		8C15A69404991352D3CBD6D1 /* test_agent_scheduler.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler.c; sourceTree = "<group>"; };
 		C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scripting_sequencer.c; sourceTree = "<group>"; };
 		C0DE20261105B00100000001 /* run_sequencer_simulators.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_sequencer_simulators.py; sourceTree = "<group>"; };
 		C0DE20261105B00100000002 /* sequencer_simulators.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = sequencer_simulators.js; sourceTree = "<group>"; };
@@ -5934,6 +5956,8 @@
 		FC39D08D5572E3EAFF35EEB6 /* aux_simulator_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = aux_simulator_common.h; sourceTree = "<group>"; };
 		C0DE20261101204146000001 /* test_agent_platesolver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_platesolver.c; sourceTree = "<group>"; };
 		C0DE20261101204146000002 /* test_agent_platesolver_core.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_platesolver_core.c; sourceTree = "<group>"; };
+		EC9358DFE66F20704DB4EAE9 /* test_agent_scheduler_sky.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler_sky.c; sourceTree = "<group>"; };
+		05FF606723FAC7E7EAE8FF5D /* test_agent_scheduler_header.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler_header.c; sourceTree = "<group>"; };
 		BBE08DAAFCCB4942A923BFD9 /* indigo_agent_mcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_mcp.c; sourceTree = "<group>"; };
 		B37A209D14B546C6AA3E2202 /* generate_help.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = generate_help.py; sourceTree = "<group>"; };
 		B37A209D14B546C6AA3E2203 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -6107,6 +6131,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3E442BDBD9B42E2E624DBE65 /* agent_scheduler */ = {
+			isa = PBXGroup;
+			children = (
+				8B1E70A0BD621258F7D04855 /* indigo_agent_scheduler.h */,
+				82AEDD1F9A605C5B5B7DEDA4 /* indigo_agent_scheduler.c */,
+				55805B5D11C42D5DC04CAD05 /* indigo_agent_scheduler_header.h */,
+				E79CCB7794B588547DA7534B /* indigo_agent_scheduler_header.c */,
+				6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */,
+				1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */,
+				F6593B003DD24EE7D6A2D97D /* Sequencer.js.dat */,
+				EFD0FC12A39D3CD4CF0CD2B3 /* Makefile.inc */,
+				87E7C05CBF1C8E3AA03F1311 /* README.md */,
+			);
+			name = agent_scheduler;
+			path = indigo_drivers/agent_scheduler;
+			sourceTree = "<group>";
+		};
 		0A7925AB3B3F5D199EABF708 /* decisions */ = {
 			isa = PBXGroup;
 			children = (
@@ -11440,6 +11481,7 @@
 				597BD149260137E500239274 /* agent_alpaca */,
 				597E79DB25A5DB6E009B0817 /* agent_astrometry */,
 				9DC4967C22BA7B810052AB3E /* agent_auxiliary */,
+				3E442BDBD9B42E2E624DBE65 /* agent_scheduler */,
 				9DA451C6219082BE00818B58 /* agent_imager */,
 				5911B6D522633DBE00D6B9EC /* agent_guider */,
 				9D62F6FD28FEA1E3006599FF /* agent_config */,
@@ -14276,6 +14318,8 @@
 				88D0F4F26BC61310EC0BADD6 /* test_mount_alignment_load.c */,
 				A057AA8EDAB3B5A82CF2F1B6 /* test_profile_selection.c */,
 				C0DE20261101204146000002 /* test_agent_platesolver_core.c */,
+				EC9358DFE66F20704DB4EAE9 /* test_agent_scheduler_sky.c */,
+				05FF606723FAC7E7EAE8FF5D /* test_agent_scheduler_header.c */,
 				58D21354F48205219CDA34FB /* test_core_text_bounds.c */,
 				C0DE20261101000000000314 /* test_harness_verdicts.py */,
 				C0DE20261102185405000001 /* driver_source_probe.py */,
@@ -14355,6 +14399,7 @@
 				C0DE20260924A00100000002 /* test_agent_imager_instances.c */,
 				59910AA33054836E00FB1C2F /* test_agent_mount.c */,
 				C0DE20260914B00100000001 /* test_agent_scripting.c */,
+				8C15A69404991352D3CBD6D1 /* test_agent_scheduler.c */,
 				C0DE20260914B00100000002 /* test_agent_scripting_sequencer.c */,
 				C0DE20261105B00100000001 /* run_sequencer_simulators.py */,
 				C0DE20261105B00100000002 /* sequencer_simulators.js */,
@@ -17049,6 +17094,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				451C4E3F035F8FEB6C5C213E /* indigo_agent_scheduler_sky.h in Headers */,
+				74FD496FC0146C938DE87E18 /* indigo_agent_scheduler_header.h in Headers */,
+				07798D1946BF8F3D84FBB23B /* indigo_agent_scheduler.h in Headers */,
 				5974B8BC7663CA735E130DC6 /* indigo_solver.h in Headers */,
 				5995A6DED1E8FF7D64281ACD /* indigo_solver_utils.h in Headers */,
 				59A2503E1A08096B62E87E5D /* indigo_solver_healpix.h in Headers */,
@@ -17249,6 +17297,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DDD83EE377D2FA665B7F9F01 /* indigo_agent_scheduler_sky.h in Headers */,
+				DE116480571EA62D4D1EF667 /* indigo_agent_scheduler_header.h in Headers */,
+				BF058A224C11C4D5F8AD7A40 /* indigo_agent_scheduler.h in Headers */,
 				5914B2617AD1D233EE8CE653 /* indigo_solver.h in Headers */,
 				5970738803B69C3DEDBCF753 /* indigo_solver_utils.h in Headers */,
 				5954C5B7243D1F4C25C7E7BB /* indigo_solver_healpix.h in Headers */,
@@ -17494,6 +17545,7 @@
 			buildConfigurationList = 598A1C9A259BA94A00C0B34C /* Build configuration list for PBXNativeTarget "indigo_m1" */;
 			buildPhases = (
 				598A1B52259BA94A00C0B34C /* ShellScript */,
+				F18BD98C4D8F82BE34AC9E6A /* ShellScript */,
 				598A1B53259BA94A00C0B34C /* Sources */,
 				598A1C01259BA94A00C0B34C /* Frameworks */,
 				598A1C1A259BA94A00C0B34C /* Headers */,
@@ -17532,6 +17584,7 @@
 			buildConfigurationList = 599C9A491DA022C0008BBCC1 /* Build configuration list for PBXNativeTarget "indigo" */;
 			buildPhases = (
 				5910D9EA2582010B0015D915 /* ShellScript */,
+				42F3CCA37367850CFE821910 /* ShellScript */,
 				599C9A441DA022C0008BBCC1 /* Sources */,
 				599C9A451DA022C0008BBCC1 /* Frameworks */,
 				599C9A461DA022C0008BBCC1 /* Headers */,
@@ -17677,6 +17730,42 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		42F3CCA37367850CFE821910 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				indigo_drivers/agent_scripting/library/Sequencer.js,
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "hexdump -v -e '1/1 \"0x%02x, \"' indigo_drivers/agent_scripting/library/Sequencer.js >indigo_drivers/agent_scheduler/Sequencer.js.dat\n";
+		};
+		F18BD98C4D8F82BE34AC9E6A /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				indigo_drivers/agent_scripting/library/Sequencer.js,
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "hexdump -v -e '1/1 \"0x%02x, \"' indigo_drivers/agent_scripting/library/Sequencer.js >indigo_drivers/agent_scheduler/Sequencer.js.dat\n";
+		};
 		5910D9EA2582010B0015D915 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -17778,6 +17867,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0EB9273453203F1AE27780B /* indigo_agent_scheduler_sky.c in Sources */,
+				09CD693B5F7F086AFFA34B19 /* indigo_agent_scheduler_header.c in Sources */,
+				74E3E65A7293D526F0D37355 /* indigo_agent_scheduler.c in Sources */,
 				59575E5B1895F54C454C552C /* indigo_solver.c in Sources */,
 				595ED23422F7F155D5DBA716 /* indigo_solver_utils.c in Sources */,
 				591507EC4604BB3BE0E02190 /* indigo_solver_healpix.c in Sources */,
@@ -18074,6 +18166,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4072F96DC48AD1B6E2411F57 /* indigo_agent_scheduler_sky.c in Sources */,
+				3DC43A224479674514C43D20 /* indigo_agent_scheduler_header.c in Sources */,
+				83B788A92A2A23B0B80C4ABD /* indigo_agent_scheduler.c in Sources */,
 				59E9303A53823AD656A93EFE /* indigo_solver.c in Sources */,
 				59B5081C4F9B9DED5FE360E5 /* indigo_solver_utils.c in Sources */,
 				592CA1809C5BEC6CC9F71E89 /* indigo_solver_healpix.c in Sources */,

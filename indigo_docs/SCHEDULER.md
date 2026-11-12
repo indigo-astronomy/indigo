@@ -77,13 +77,13 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
   No moon phase helper exists yet. The moon illumination and the number of days from full moon are derived from the Sun–Moon elongation. The elongation does not distinguish a waxing from a waning moon, which the constraints do not need, because the Lorentzian limit is symmetric about full moon.
 - Any client can submit an urgent task with a single property change. This includes AIN, the web UI, MCP clients and a future GCN/VOEvent bridge.
 
-The Scheduler Agent is a filter agent. Its related agents are:
+The Scheduler Agent is a device with its own client, like the Scripting Agent. It does not select hardware devices, so it is not a filter agent. It works with the agents that `Sequence.start()` uses by default:
 
-- the Scripting Agent, which is required;
-- the Mount Agent, which provides the site coordinates through `GEOGRAPHIC_COORDINATES`;
-- the Imager, Guider and plate solver agents, which the scheduler aborts on preemption and abort.
+- the "Scripting Agent", which is required;
+- the "Mount Agent", which provides the site coordinates through `GEOGRAPHIC_COORDINATES`;
+- the "Imager Agent", "Guider Agent" and the plate solver agent, which the scheduler waits for when it stops a sequence. The scheduler aborts the "Guider Agent" itself.
 
-The task bodies are expected to use the same agents, which is the default of `Sequence.start()`. A safety or weather device is added in a later phase.
+Task bodies are expected to use these agents. A safety or weather device is added in a later phase.
 
 ## Task format
 
@@ -158,7 +158,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 
 | Key | Syntax | Meaning | Default |
 |---|---|---|---|
-| `@task` | `name` | Display name, 1–40 characters, no control characters, unique among stored and urgent tasks, compared case-insensitively | required |
+| `@task` | `name` | Display name, 1–40 bytes, no control characters, unique among stored and urgent tasks, compared case-insensitively | required |
 | `@priority` | `urgent` \| `high` \| `normal` \| `low` [`level`] | Priority class and level 0–100 within the class. The level is ignored for `urgent` | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal) and Dec in degrees (`±dd:mm:ss` or decimal) | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
@@ -166,7 +166,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | `@ha` | `from .. to` | Allowed hour-angle range in hours, −12 to +12. `from` greater than `to` wraps across 12h | off |
 | `@moon` | `> degrees` [`width days`] | Minimum moon separation, see [Lorentzian moon avoidance](#lorentzian-moon-avoidance); ignored while the moon is below the horizon | off |
 | `@illumination` | `< percent` | Maximum moon illumination, 0–100; ignored while the moon is below the horizon | off |
-| `@twilight` | `none` \| `civil` \| `nautical` \| `astronomical` | Sun must be below 0°, −6°, −12° or −18° | `none` |
+| `@twilight` | `none` \| `civil` \| `nautical` \| `astronomical` | No limit, or the Sun must be below −6°, −12° or −18° | `none` |
 | `@window` | `[start] .. [end]` | UTC time window, see below | open |
 | `@duration` | `minutes` | Expected run time, 1–1440; all constraints must hold for this whole interval before the task starts | estimated, see [Task duration](#task-duration) |
 | `@repeat` | `count` [`every minutes`] | Number of successful runs, 1–10000, with an optional pause between them | `1` |
@@ -174,7 +174,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | `@preempted` | `retry` \| `fail` | What happens to the task when an urgent task preempts it | `retry` |
 | `@enabled` | `yes` \| `no` | A disabled task is kept but never selected | `yes` |
 
-The constraints `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` require `@target`. A header that uses them without `@target` is invalid.
+The constraints `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` require `@target`. A header that uses them without `@target` is invalid. A task with `@target` also requires the target above the horizon, with or without `@altitude`.
 
 `@window` takes two endpoints, and either may be empty:
 
@@ -357,11 +357,13 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `FRAME_OVERHEAD` | s | 10 | Time added per captured frame in the duration estimate |
 | `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
 
-The agent also publishes the standard filter-agent properties, including `FILTER_RELATED_AGENT_LIST`.
+The settings `IDLE_PARK_AFTER`, `FRAME_OVERHEAD` and `OPERATION_OVERHEAD` and the properties `AGENT_SCHEDULER_PLAN`, `AGENT_SCHEDULER_HISTORY`, `AGENT_SCHEDULER_CLEAR_HISTORY`, `AGENT_SCHEDULER_RESTORE_HISTORY` and `AGENT_SCHEDULER_HOOKS` belong to phase 3 and are not implemented yet.
+
+**Requests.** Every change of a writable property is queued. The agent's handler acknowledges it with the property in the Busy state and completes it with Ok or Alert. Only the handler changes the properties; client enumerations receive copies. INDIGO does not publish an update that changes neither values nor state, so without the Busy state a client, and the configuration restore, would not see the result.
 
 `AGENT_SCHEDULER_TASK_NAME` and `AGENT_SCHEDULER_TASK_COMMAND` form a two-step command, which is a common INDIGO idiom. Two clients that issue commands at the same moment can interfere. If both properties are changed in one client action, the command applies to the name sent with it.
 
-**Labels and list properties.** INDIGO item labels are limited to 127 bytes. This is why task names are limited to 40 characters. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit, and the full text, such as a long failure reason, is sent as the message of the update. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
+**Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit without splitting a UTF-8 character, and the full text, such as a long failure reason, is sent as the message of the update. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
 
 Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. The agent therefore redefines a list only when its content has changed, and updates it in place when only states or labels change.
 
@@ -453,7 +455,7 @@ With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 M
 
 ## Scheduling
 
-All scheduler work runs on the agent's handler queue. Bus callbacks only queue work and never block. Updates from other agents, such as `SEQUENCE_STATE`, arrive on client threads while decisions run on the handler queue, so the shared scheduler state is protected by a mutex.
+All scheduler work runs on the agent's handler queue, so it is serialised without a lock. Property changes are copied and queued, and the agent never sends a request to another agent while holding a lock. This matters because the Scripting Agent calls into other agents while holding its JavaScript lock. Updates from other agents, such as `SEQUENCE_STATE`, arrive on client threads and are recorded under a small mutex of their own.
 
 ### Ephemeris grid
 
@@ -461,11 +463,12 @@ Eligibility checks over whole task durations, the setting-soonest score and the 
 
 The constraint engine therefore works on a grid:
 
-- At every refresh, it computes the Sun and Moon positions, the moon illumination and the local sidereal time for the next 24 hours at 5-minute steps (288 points).
+- At every refresh, it computes the Sun and Moon altitudes, the moon illumination and the local sidereal time for the next 48 hours at 5-minute steps (577 points). The 48 hours cover a 24-hour task duration and the 12-hour look-ahead of the score.
+- The Sun and Moon positions themselves are computed once per hour and interpolated linearly between. The Moon moves about half a degree per hour, so the interpolation error is far below any limit, while the grid builds in less than 0.1 s.
 - For each task with `@target`, it computes the target's altitude, airmass and hour angle on the same grid. These values only change when the task is edited, apart from the precession to the date, which is negligible within a night.
 - Eligibility, `NEXT_START`, the setting-soonest term and the night plan are lookups in these tables.
 
-The grid is rebuilt when the site coordinates change and when it no longer covers the next 24 hours.
+The grid is rebuilt when the site coordinates change and every hour.
 
 
 ### Scheduler control
@@ -473,7 +476,7 @@ The grid is rebuilt when the site coordinates change and when it no longer cover
 - `START` runs the `STARTUP` hook, then begins scheduling. If the hook fails, the scheduler stops and its state becomes Alert.
 - `STOP` lets the running task finish, then runs the `SHUTDOWN` hook and stops.
 - `ABORT` aborts the running task as described in [Aborting a sequence](#aborting-a-sequence) and marks it RETRY without consuming a retry. It then runs the `SHUTDOWN` hook and stops.
-- When every stored task is DONE, FAILED, EXPIRED or DISABLED and no urgent task is pending, the scheduler runs the `SHUTDOWN` hook and stops.
+- When there is at least one task and every task is DONE, FAILED, EXPIRED or DISABLED, the scheduler runs the `SHUTDOWN` hook and stops. With no tasks at all it keeps running, ready for urgent tasks.
 
 ### Hooks
 
@@ -641,7 +644,7 @@ The agent relies on its token, not on the state of `AGENT_SCRIPTING_RUN_SCRIPT`.
 **Result of a run.** The agent watches:
 
 - `SCHEDULER_RESULT` with its token: `error` means the task failed to start, and `MESSAGE` becomes the failure reason in the run history.
-- A transition of `SEQUENCE_STATE` from not Busy to Busy after an `ok` result, together with `SEQUENCE_NAME` equal to the task name, marks the start. A body that names its sequence differently is still accepted on the state transition alone. If no start is observed within `START_TIMEOUT` seconds, the start fails, for example because the body never calls `start()` or because another sequence is running.
+- An `ok` result together with a transition of `SEQUENCE_STATE` from not Busy to Busy after the wrapper was sent marks the start. The agent counts the transitions, so a sequence that ends quickly is still recognised. If no start is observed within `START_TIMEOUT` seconds, the start fails, for example because the body never calls `start()` or because another sequence is running.
 - After the start, Busy → Ok means success.
 - Busy → Alert means failure, unless the agent itself aborted the sequence.
 

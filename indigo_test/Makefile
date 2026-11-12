@@ -42,6 +42,8 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_core_text_bounds \
 	$(UNIT_BUILD)/test_align_math \
 	$(UNIT_BUILD)/test_agent_platesolver_core \
+	$(UNIT_BUILD)/test_agent_scheduler_header \
+	$(UNIT_BUILD)/test_agent_scheduler_sky \
 	$(UNIT_BUILD)/test_aux_math \
 	$(UNIT_BUILD)/test_base64 \
 	$(UNIT_BUILD)/test_bus_helpers \
@@ -157,6 +159,7 @@ INTEGRATION_TESTS = $(INTEGRATION_BUILD)/test_additional_instances \
 	$(INTEGRATION_BUILD)/test_indigo_solver_tool \
 	$(INTEGRATION_BUILD)/test_agent_scripting \
 	$(INTEGRATION_BUILD)/test_agent_scripting_sequencer \
+	$(INTEGRATION_BUILD)/test_agent_scheduler \
 	$(INTEGRATION_BUILD)/test_agent_imager_guider_mount \
 	$(INTEGRATION_BUILD)/test_agent_imager_instances \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
@@ -522,6 +525,12 @@ $(UNIT_BUILD)/test_align_math: unit/test_align_math.c test_runner.h | $(UNIT_BUI
 
 $(UNIT_BUILD)/test_agent_platesolver_core: unit/test_agent_platesolver_core.c test_runner.h $(BUILD_DRIVERS)/indigo_agent_platesolver.a | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_platesolver.a $(TEST_LDFLAGS) -lindigocat
+
+$(UNIT_BUILD)/test_agent_scheduler_header: unit/test_agent_scheduler_header.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
+
+$(UNIT_BUILD)/test_agent_scheduler_sky: unit/test_agent_scheduler_sky.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
 
 $(UNIT_BUILD)/test_test_runner: unit/test_test_runner.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
@@ -2587,6 +2596,17 @@ SEQUENCER_SIMULATORS = $(INTEGRATION_BUILD)/sequencer_ccd_simulator.o $(INTEGRAT
 
 $(INTEGRATION_BUILD)/test_agent_scripting_sequencer: integration/test_agent_scripting_sequencer.c test_runner.h $(SEQUENCER_TEST_OBJECTS) $(SEQUENCER_SIMULATORS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SEQUENCER_TEST_FLAGS) $< $(SEQUENCER_TEST_OBJECTS) $(SEQUENCER_SIMULATORS) -o $@ $(LDFLAGS) $(SEQUENCER_TEST_FLAGS) $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libjpeg.a $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libraw.a -lusb-1.0 $(if $(filter Darwin,$(OS_DETECTED)),-lhidapi,-lhidapi-libusb -ludev -ldns_sd -lavahi-client -lavahi-common) -lz -lstdc++ -lm -lpthread -Wl,-rpath,$(BUILD_LIB)
+
+# Scheduler Agent with the real Scripting Agent and Sequencer.js; task bodies only wait, so no device simulators are needed.
+$(INTEGRATION_BUILD)/test_agent_scheduler: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat
+
+$(INTEGRATION_BUILD)/test_agent_scheduler_asan: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/Sequencer.js.dat $(BUILD_DRIVERS)/indigo_agent_scripting.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+
+.PHONY: test-agent-scheduler
+test-agent-scheduler: check-lib $(INTEGRATION_BUILD)/test_agent_scheduler
+	$(INTEGRATION_BUILD)/test_agent_scheduler
 
 .PHONY: test-agent-scripting-sequencer
 test-agent-scripting-sequencer: check-lib $(INTEGRATION_BUILD)/test_agent_scripting_sequencer

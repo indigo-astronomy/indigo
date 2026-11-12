@@ -188,6 +188,9 @@
     <ProjectReference Include="..\indigo_drivers\agent_mount\indigo_agent_mount.vcxproj">
       <Project>{d7058517-71df-4f6b-865d-6038b2d6085c}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\agent_scheduler\indigo_agent_scheduler.vcxproj">
+      <Project>{f258f247-5ed1-48fa-aa38-27a86414f19a}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\agent_scripting\indigo_agent_scripting.vcxproj">
       <Project>{a7c0bbe9-e5f8-43d3-adc1-7a0c04b4a9ad}</Project>
     </ProjectReference>

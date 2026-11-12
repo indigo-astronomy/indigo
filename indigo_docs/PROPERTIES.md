@@ -683,6 +683,26 @@ Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_plates
 
 Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 
+### Scheduler agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| AGENT_SCHEDULER_ADD_TASK | text | no | TASK, STATUS | Upload a task: a `// @key value` header followed by a `Sequencer.js` body, at most 16 KiB. `STATUS` is used only when the configuration is restored. |
+| AGENT_SCHEDULER_TASK_%d | text | no | TASK | Dynamic property created for each stored task, labelled with the task name; writing it edits the task. |
+| AGENT_SCHEDULER_DELETE_TASK | text | no | NAME | Delete a stored or urgent task, aborting it when it runs. |
+| AGENT_SCHEDULER_URGENT_TASK | text | no | TASK | Submit a task as urgent; it is not stored. |
+| AGENT_SCHEDULER_TASK_STATE | light | yes | TASK_%d | One item per task in list order; the label shows the name, state, runs and retries left. |
+| AGENT_SCHEDULER_TASK_NAME | text | no | NAME | Task addressed by `AGENT_SCHEDULER_TASK_COMMAND`. |
+| AGENT_SCHEDULER_TASK_COMMAND | switch | no | RESET, ENABLE, DISABLE, MOVE_UP, MOVE_DOWN | Command for the named task. |
+| AGENT_SCHEDULER_CONTROL | switch | no | START, STOP, ABORT | Start scheduling, stop after the running task, or abort it. |
+| AGENT_SCHEDULER_STATE | number | yes | DONE, FAILED, TOTAL | Task counters; the state is Idle before the first start, Busy while scheduling, Ok after the scheduler stopped and Alert after an abort or a stop timeout. |
+| AGENT_SCHEDULER_CURRENT | text | yes | CURRENT, NEXT, NEXT_START, REASON | Running task, next task, its UTC start time and why nothing runs. |
+| AGENT_SCHEDULER_SETTINGS | number | no | IDLE_CHECK_INTERVAL, STOP_TIMEOUT, START_TIMEOUT, SETTING_WEIGHT, ALTITUDE_WEIGHT | Check interval, stop and start timeouts in seconds, and the score weights. |
+
+The agent also makes the Scripting Agent define `SCHEDULER_RESULT` (text, read-only, items `TOKEN`, `RESULT`, `MESSAGE`), through which the script that runs a task reports whether its body ran or failed.
+
+Source: `indigo_drivers/agent_scheduler/indigo_agent_scheduler.c`. The design is described in [SCHEDULER.md](SCHEDULER.md).
+
 ### Scripting agent
 
 | Property name | Type | RO | Items | Comments |
