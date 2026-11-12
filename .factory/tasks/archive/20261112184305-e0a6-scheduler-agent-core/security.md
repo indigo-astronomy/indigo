@@ -17,6 +17,7 @@ Task text and commands come from INDIGO clients over the bus and are untrusted. 
 | Data, secrets, cryptography, and logs | No | No secrets handled. |
 | Filesystem and outbound network access | Yes | Only the agent's own INDIGO configuration file through `indigo_save_property()`; no network access. |
 | Dependencies and configuration | No | No new dependencies. |
+| Data model and migrations | Yes | The process policy flags `MIGRATION_STATUS.md` by name. The change adds one documentation row for `agent_scheduler` (status columns only, Comment column empty); no data schema, stored format or migration is involved. The agent's own configuration format is new and documented in SCHEDULER.md "Persistence". |
 | Abuse and failure behavior | Yes | Memory safety checked with ASan/UBSan; use-after-free between client and handler threads fixed; bounded timeouts for start and stop; 128-task limit. |
 
 ## Automated checks
