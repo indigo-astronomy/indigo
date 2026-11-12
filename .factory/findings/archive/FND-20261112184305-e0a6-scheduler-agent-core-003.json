@@ -2,7 +2,7 @@
   "title": "Scheduler next-start search is expensive with many long tasks",
   "category": "quality",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261112184305-e0a6-scheduler-agent-core",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261112231644-ae3b-scheduler-phase-3b",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "When nothing is eligible, select_task() calls indigo_scheduler_next_eligible() for every task, which checks the whole duration at every 5-minute candidate: about 577 x duration points x tasks, up to ~21M point checks for 128 tasks of 24 h, on the handler queue every IDLE_CHECK_INTERVAL. Next: precompute per-task point validity and use a sliding window, and add the planned 128-task performance test (phase 3).",
   "evidence": "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c select_task(); indigo_agent_scheduler_sky.c indigo_scheduler_next_eligible(); independent review.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261112231644-ae3b-scheduler-phase-3b: per-task tables of the first failing grid point make the interval check one lookup and let the next-start search skip failing stretches (indigo_scheduler_points_*); equivalence test points_match_reference, timing tests next_start_search_cost (128 tasks of 24 h, 10 rounds in about 1 ms) and performance (plan of 128 tasks in about 16 ms), see verification.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261112184305-e0a6-scheduler-agent-core-003"
 }

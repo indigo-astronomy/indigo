@@ -1,0 +1,167 @@
+{
+  "version": 2,
+  "task": "20261112231644-ae3b-scheduler-phase-3b",
+  "scope": [
+    "indigo_drivers/agent_scheduler/*",
+    "indigo_test/Makefile",
+    "indigo_test/unit/test_agent_scheduler_sky.c",
+    "indigo_test/unit/test_agent_scheduler_plan.c",
+    "indigo_test/integration/test_agent_scheduler.c",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_libs/indigo/indigo_names.h",
+    "indigo_docs/SCHEDULER.md",
+    "indigo_docs/PROPERTIES.md",
+    "TEST_SUMMARY.md",
+    "MIGRATION_STATUS.md",
+    ".factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-003.json",
+    ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-003.json",
+    ".factory/completions/20261112231644-ae3b-scheduler-phase-3b.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/unit/test_agent_scheduler_plan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/unit/test_agent_scheduler_sky"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/integration/test_agent_scheduler_asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261112231644-ae3b-scheduler-phase-3b.json": [
+      "100644",
+      "blob",
+      "bc1fef2f091459b9b57f9688fc96d3a3a189ac76"
+    ],
+    ".factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-003.json": null,
+    ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-003.json": [
+      "100644",
+      "blob",
+      "336df86561dd6e9ddf71a4dfa7fbb246fb8b6577"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "d3d2597996f61604825aec1f128bd3ffc12a522b"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "c13b20a38c5f1fc7f815973a3377270b80fefe35"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "9788f2cdcc911dac54da0ee9407528ddc9ab3e7e"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "3b6c59d075cf08d5e4c64e0dbb4684db545a9736"
+    ],
+    "indigo_docs/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "819c2dba86aace50d0585076d408ada6aa98bb9e"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "c1ce2e91b2779368d8f3fe176d496a90387602c7"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "0946ce8fd34d9eb9588f83e972217aeda3d66f7b"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.vcxproj": [
+      "100644",
+      "blob",
+      "5e44e0a36db3a3e21109be57d7046ab3267a4a5b"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.vcxproj.filters": [
+      "100644",
+      "blob",
+      "6fdf61e5363f897af410450076830fb67798f903"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c": [
+      "100644",
+      "blob",
+      "0c156833c1ead9f4ed380fe7b9e71a445968b731"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h": [
+      "100644",
+      "blob",
+      "757684c54900f370e48d3e2487ea6b1701a833f3"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c": [
+      "100644",
+      "blob",
+      "cf5b3bd8e7c3d1072b3d06c3ef61dc87b3b869ea"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h": [
+      "100644",
+      "blob",
+      "617e9fb44f7311b065bf9546e8d963678de00dd3"
+    ],
+    "indigo_libs/indigo/indigo_names.h": [
+      "100644",
+      "blob",
+      "519312abc699b277842ab72facc4bcc34e41abf1"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "9dfcc233990b0020462a1c9ba2de5f19bd700051"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "c7bb1dd05a2c97a1ebbe3f78c8bdf624b70454c1"
+    ],
+    "indigo_test/unit/test_agent_scheduler_plan.c": [
+      "100644",
+      "blob",
+      "be4aecdc22a5ae114566a08641bbaf13ee9aa6f6"
+    ],
+    "indigo_test/unit/test_agent_scheduler_sky.c": [
+      "100644",
+      "blob",
+      "2a207f0a5af591224923e0fa542589a7610535e5"
+    ]
+  }
+}
