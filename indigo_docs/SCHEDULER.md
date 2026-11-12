@@ -20,16 +20,18 @@ The following are missing:
 
 ## Survey of existing schedulers
 
-| Feature | Ekos | SGP | N.I.N.A. Target Scheduler | Voyager RoboTarget | ACP Scheduler |
-|---|---|---|---|---|---|
-| Job unit | target + `.esq` sequence, job list `.esl` | target with events, sequence file | project → target → exposure plan (database) | set → target → shots | project → plan → observation (plan text files) |
-| Selection | greedy, re-planned every second | list order | weighted score, re-planned per step | priority order | weighted efficiency score |
-| Priority | row order | none | one weighted rule | Very Low … First | per-user, normalized |
-| Constraints | altitude, horizon, moon separation, twilight, weather | start/end time or altitude | altitude, horizon, meridian window, moon (Lorentzian), twilight per filter, minimum time span | altitude, HA window, moon phase and distance, Lorentzian | air mass, horizon, moon, dark time, checked at start and end |
-| Completion | repeat N, until a time, loop | events done or end time | accepted frames reached | shots done | plan done, "best efforts" |
-| Preempts a running job | yes (greedy) | no | no (at boundaries only) | no | by priority no; Target of Opportunity (ToO) API yes |
-| Weather and safety | warning suspends, alert parks | safety monitor and recovery | N.I.N.A. triggers | yes | weather script, failed plan re-queued |
-| Extras | startup and shutdown queues, mosaic, retry policy | recovery mode | image grading | maximum time slot | retry bonus, VOEvent receiver |
+The last column shows the proposed INDIGO scheduler for comparison.
+
+| Feature | Ekos | SGP | N.I.N.A. Target Scheduler | Voyager RoboTarget | ACP Scheduler | INDIGO (proposed) |
+|---|---|---|---|---|---|---|
+| Job unit | target + `.esq` sequence, job list `.esl` | target with events, sequence file | project → target → exposure plan (database) | set → target → shots | project → plan → observation (plan text files) | task text: `// @key` header + `Sequencer.js` body, stored in agent properties |
+| Selection | greedy, re-planned every second | list order | weighted score, re-planned per step | priority order | weighted efficiency score | score, selected only between tasks |
+| Priority | row order | none | one weighted rule | Very Low … First | per-user, normalized | urgent, high, normal, low class + level 0–100 |
+| Constraints | altitude, horizon, moon separation, twilight, weather | start/end time or altitude | altitude, horizon, meridian window, moon (Lorentzian), twilight per filter, minimum time span | altitude, HA window, moon phase and distance, Lorentzian | air mass, horizon, moon, dark time, checked at start and end | altitude, airmass, HA, moon separation (Lorentzian), moon illumination, twilight, time window, checked over the whole duration |
+| Completion | repeat N, until a time, loop | events done or end time | accepted frames reached | shots done | plan done, "best efforts" | sequence ends Ok; repeat N with interval, "best effort" |
+| Preempts a running job | yes (greedy) | no | no (at boundaries only) | no | by priority no; Target of Opportunity (ToO) API yes | urgent tasks only; the preempted task is retried or failed |
+| Weather and safety | warning suspends, alert parks | safety monitor and recovery | N.I.N.A. triggers | yes | weather script, failed plan re-queued | planned: warning blocks new tasks, alert aborts and runs the shutdown hook |
+| Extras | startup and shutdown queues, mosaic, retry policy | recovery mode | image grading | maximum time slot | retry bonus, VOEvent receiver | startup, shutdown and idle hooks, retry policy, night plan preview, run history |
 
 Professional systems handle urgent observations as an interrupt that is separate from normal priorities. Las Cumbres Observatory rapid-response requests abort the observation in progress. ACP's ToO interface halts acquisition, fails the running plan and re-queues it.
 
