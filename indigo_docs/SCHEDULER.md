@@ -55,7 +55,7 @@ It deliberately leaves out continuous greedy preemption, anti-thrashing settings
 - **A preempted task is failed or re-queued.** The task's header chooses which. A re-queued task reruns its sequence from the beginning.
 - **A task is one human-readable text.** It consists of a header with the scheduling fields followed by an ordinary `Sequencer.js` body.
 - **The agent stores tasks like the Scripting Agent stores scripts.** Tasks live in agent properties and in the agent's INDIGO configuration. The agent never reads or writes task files; clients load, save and edit files and transfer them through properties.
-- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic. The only change it requires in `Sequencer.js` is the `estimate()` method described in [Task duration](#task-duration). The only device actions the scheduler performs itself are aborts.
+- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic. It requires two small additions to `Sequencer.js`: a load that does not replace a running sequence, see [Running a task](#running-a-task), and the `estimate()` method, see [Task duration](#task-duration). The only device actions the scheduler performs itself are aborts.
 
 ## Architecture
 
@@ -74,7 +74,7 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
   - `indigo_raise_set()` gives the rise, transit and set times;
   - `indigocat_sun_equatorial_coords()` and `indigocat_moon_equatorial_coords()` (`indigocat/indigocat_solar_system.h`) give the Sun and Moon positions.
 
-  No moon phase helper exists yet. The moon age and illumination are derived from the Sun–Moon elongation.
+  No moon phase helper exists yet. The moon illumination and the number of days from full moon are derived from the Sun–Moon elongation. The elongation does not distinguish a waxing from a waning moon, which the constraints do not need, because the Lorentzian limit is symmetric about full moon.
 - Any client can submit an urgent task with a single property change. This includes AIN, the web UI, MCP clients and a future GCN/VOEvent bridge.
 
 The Scheduler Agent is a filter agent. Its related agents are:
@@ -131,17 +131,18 @@ sequence.start();
 
 ### The `scheduler_task` object
 
-Before the task text, the scheduler sends one line that defines a `scheduler_task` object from the validated header:
+The wrapper script that runs a task (see [Running a task](#running-a-task)) defines a `scheduler_task` object from the validated header before it evaluates the task text:
 
 ```js
-var scheduler_task = { name: "M31 LRGB", ra: 0.712306, dec: 41.269167, run: 1 };
+var scheduler_task = { name: "M31 LRGB", ra: 0.712306, dec: 41.269167, run: 1, token: 17 };
 ```
 
 - `ra` is in hours and `dec` in degrees, both J2000. They are defined only when `@target` is present.
 - `run` is the number of the run, starting at 1.
+- `token` identifies this run or estimate in the results the wrapper reports.
 - `estimate` is defined only while the agent estimates the task duration, see [Task duration](#task-duration).
 
-The body uses these values, so the name and the coordinates are written only once, in the header. Naming the sequence after the task also lets the scheduler recognise its sequence in `SEQUENCE_NAME`. A task run by hand outside the scheduler must define `scheduler_task` itself or use literal values.
+String values are JSON-encoded, so that quotes or backslashes in a task name cannot break or alter the script. The body uses these values, so the name and the coordinates are written only once, in the header. Naming the sequence after the task also lets the scheduler recognise its sequence in `SEQUENCE_NAME`. A task run by hand outside the scheduler must define `scheduler_task` itself or use literal values.
 
 ### Lexical rules
 
@@ -157,7 +158,7 @@ The body uses these values, so the name and the coordinates are written only onc
 
 | Key | Syntax | Meaning | Default |
 |---|---|---|---|
-| `@task` | `name` | Display name, 1–127 characters, no control characters, unique among stored and urgent tasks, compared case-insensitively | required |
+| `@task` | `name` | Display name, 1–40 characters, no control characters, unique among stored and urgent tasks, compared case-insensitively | required |
 | `@priority` | `urgent` \| `high` \| `normal` \| `low` [`level`] | Priority class and level 0–100 within the class. The level is ignored for `urgent` | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal) and Dec in degrees (`±dd:mm:ss` or decimal) | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
@@ -217,12 +218,14 @@ The agent validates the header on every upload and edit:
 - `@task` is required and must be unique.
 - Unknown keys, repeated keys, malformed values and out-of-range values are errors.
 - The body must not be empty.
-- The task text is limited to 64 KiB.
+- The task text is limited to 16 KiB.
 - At most 128 tasks are stored, the same limit as the Scripting Agent's scripts.
 
 An invalid task is rejected. The property goes to the Alert state and the message names the line and the problem, for example `line 4: @altitude: expected '> degrees'`. The stored task list is not changed.
 
-Script errors in the body are reported by the Scripting Agent when the task runs and count as a task failure.
+When the Scripting Agent is present, the upload also runs the body once to estimate its duration, see [Task duration](#task-duration). A body that throws an error, including a syntax error, is then rejected like an invalid header, with the error message. When the Scripting Agent is not present, the estimate runs later; an error is then reported by a message and the task keeps the default duration. A script error during a run counts as a task failure.
+
+Uploading therefore executes the body up to its `start()` call. This is consistent with the trust level above: anyone who can upload a task can also run a script.
 
 ### Task duration
 
@@ -249,12 +252,8 @@ Steps inside `repeat()` are counted once per iteration, because `repeat()` runs 
 
 **Estimation.** The agent estimates a task when it is uploaded, edited or loaded from the configuration, and again when the Scripting Agent appears.
 
-1. The agent sends the body to the Scripting Agent in estimation mode. A short wrapper script compiled into the agent:
-   - defines `scheduler_task` with an `estimate` token;
-   - temporarily replaces `Sequence.prototype.start()` with a function that calls `this.estimate()` and publishes the result instead of starting the sequence;
-   - runs the body;
-   - restores `start()`.
-2. The result is published in the `SCHEDULER_ESTIMATE` property of the Scripting Agent. Its items are `TOKEN`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS` and `UNKNOWN`.
+1. The agent sends the body to the Scripting Agent in estimation mode, inside the wrapper script described in [Running a task](#running-a-task). In this mode, the wrapper temporarily replaces `Sequence.prototype.start()` with a function that calls `this.estimate()` and publishes the result instead of starting the sequence, and restores `start()` afterwards.
+2. The result is published in the `SCHEDULER_ESTIMATE` property of the Scripting Agent. Its items are `TOKEN`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS` and `UNKNOWN`. An error in the body is reported in `SCHEDULER_RESULT` instead.
 3. The agent matches the token and computes the duration:
 
    ```
@@ -274,7 +273,7 @@ Its upload succeeds with a warning that recommends an explicit `@duration`. The 
 
 **Measurement.** After every successful run, the agent records the actual time from start to end as the measured duration. Meridian flips, autofocus retries and slow downloads are not in the model, but they are part of the measured duration, so the scheduler learns the real duration after the first run. An edit of the task text discards the measured duration. Failed and preempted runs do not change it.
 
-**Body requirement.** For estimation, the body runs up to its `start()` call. It must only build the sequence before `start()`: it must not change properties, set timers or send messages directly. Everything that acts on devices belongs in sequence steps.
+**Body requirement.** For estimation, the body runs up to its `start()` call, on every upload and edit. It must only build the sequence before `start()`: it must not change properties, set timers or send messages directly. Everything that acts on devices belongs in sequence steps. The agent cannot enforce this rule.
 
 ## Task states
 
@@ -328,7 +327,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 
 | Property | Type | Items | Purpose |
 |---|---|---|---|
-| `AGENT_SCHEDULER_ADD_TASK` | text | `TASK` | Upload a task. The name is taken from `@task`. Creates `AGENT_SCHEDULER_TASK_<n>` |
+| `AGENT_SCHEDULER_ADD_TASK` | text | `TASK`, `STATUS` | Upload a task. The name is taken from `@task`. Creates `AGENT_SCHEDULER_TASK_<n>`. Clients leave `STATUS` empty; it is used only when the configuration is restored, see [Persistence](#persistence) |
 | `AGENT_SCHEDULER_TASK_<n>` | text | `TASK` | One stored task, group "Tasks", label equal to the task name. Clients download a task by reading it and edit it by writing it |
 | `AGENT_SCHEDULER_DELETE_TASK` | text | `NAME` | Delete a stored or urgent task. A running task is aborted first, as with `ABORT` |
 | `AGENT_SCHEDULER_URGENT_TASK` | text | `TASK` | Submit a task as urgent, regardless of its `@priority` |
@@ -341,6 +340,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The forecast of the rest of the night in expected run order, see [Night plan preview](#night-plan-preview) |
 | `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, newest first, see [Run history](#run-history) |
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
+| `AGENT_SCHEDULER_RESTORE_HISTORY` | text | `ENTRIES` | Used only to restore the run history from the configuration; published with an empty value, and changes from clients are rejected |
 | `AGENT_SCHEDULER_SETTINGS` | number | see below | Scheduler settings |
 | `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE` | Names of stored tasks used as hooks |
 
@@ -360,6 +360,10 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 The agent also publishes the standard filter-agent properties, including `FILTER_RELATED_AGENT_LIST`.
 
 `AGENT_SCHEDULER_TASK_NAME` and `AGENT_SCHEDULER_TASK_COMMAND` form a two-step command, which is a common INDIGO idiom. Two clients that issue commands at the same moment can interfere. If both properties are changed in one client action, the command applies to the name sent with it.
+
+**Labels and list properties.** INDIGO item labels are limited to 127 bytes. This is why task names are limited to 40 characters. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit, and the full text, such as a long failure reason, is sent as the message of the update. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
+
+Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. The agent therefore redefines a list only when its content has changed, and updates it in place when only states or labels change.
 
 ### Editing tasks
 
@@ -401,30 +405,41 @@ Urgent tasks submitted through `AGENT_SCHEDULER_URGENT_TASK` use the same slots,
 
 ### Persistence
 
-The agent persists its tasks in its own INDIGO configuration file, exactly as the Scripting Agent persists its scripts. It uses the standard `indigo_save_property()` mechanism and does not open any other file.
+The agent persists its tasks in its own INDIGO configuration file, the same way as the Scripting Agent persists its scripts. It uses the standard `indigo_save_property()` mechanism and does not open any other file.
 
 The configuration file is `Scheduler_Agent.config` in the INDIGO configuration folder: `~/.indigo` on Linux and macOS, and the INDIGO folder under `%APPDATA%` on Windows. The usual profile and port suffixes apply.
 
-**Saving.** The agent rewrites the whole file after every change that affects persisted data:
+Two rules of the INDIGO configuration restore shape the format:
+
+- `indigo_save_property()` does not save hidden or read-only properties, and light properties are never restored.
+- The restore replays only properties the device defines. It looks each saved property up first and skips it if the device does not define it, and it waits for the device to answer each replayed change with an update.
+
+Everything the agent restores therefore goes through a defined, writable text property, and every replayed change is answered with an update.
+
+**Saving.** The agent rewrites the whole file after a change that affects persisted data:
 
 - a task added, edited or deleted;
 - a `TASK_COMMAND`;
 - a change of `SETTINGS` or `HOOKS`;
-- every task state transition and every new history entry;
+- a task state transition or a new history entry;
 - a history clear.
 
-It does not save while it is replaying its configuration. The file contains, in this order:
+Changes that come in quick succession are written once, two seconds after the last of them. Nothing is saved while the configuration is being restored. The file contains, in this order:
 
-1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. Before saving, each `AGENT_SCHEDULER_TASK_<n>` property is temporarily renamed to `AGENT_SCHEDULER_ADD_TASK`, as `save_config()` does in the Scripting Agent;
-2. one `AGENT_SCHEDULER_RESTORE_STATUS` change per stored task. Its items are `NAME`, `STATE`, `RUNS`, `RETRIES_USED`, `DISABLED` and `MEASURED_DURATION`. The property exists only for this replay, is never defined for clients, and is accepted only from the configuration reader;
-3. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`;
-4. one `AGENT_SCHEDULER_RESTORE_HISTORY` change per history entry, oldest first. Its items are `TASK`, `RUN`, `START`, `END`, `RESULT` and `REASON`. Like `AGENT_SCHEDULER_RESTORE_STATUS`, it is accepted only from the configuration reader and never defined for clients.
+1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. The agent saves a temporary copy of the property with two items:
+   - `TASK`, the task text;
+   - `STATUS`, the runtime status in a compact form, for example `state=DONE runs=2 retries=0 disabled=0 measured=3540`.
+2. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`;
+3. one `AGENT_SCHEDULER_RESTORE_HISTORY` change. The agent saves a temporary copy whose `ENTRIES` item holds all history entries, one line per entry, oldest first. Each line holds the task name, run number, start, end, result and reason, separated by tabs.
 
-**Loading.** The configuration is loaded when the agent is attached, the same way as for other filter agents. Each saved change is replayed through the agent's own change handler with the configuration reader as the client:
+With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 MiB.
 
-- An `AGENT_SCHEDULER_ADD_TASK` change validates the header and creates the task, as an upload does.
+**Loading.** The agent loads its configuration in its attach callback, after its task store is initialised, the same way as the Imager Agent does. Each saved change is replayed through the agent's change handler, with the configuration reader as the client:
+
+- An `AGENT_SCHEDULER_ADD_TASK` change validates the header and creates the task, as an upload does. A non-empty `STATUS` restores the task's state and counters. `STATUS` from any other client is ignored.
 - A replayed task that fails validation, for example after a grammar change in a newer version, is skipped. The agent sends a message naming the task, and the rest of the configuration still loads.
-- An `AGENT_SCHEDULER_RESTORE_STATUS` change sets the status of the task with that name. A status without a matching task is ignored.
+- An `AGENT_SCHEDULER_RESTORE_HISTORY` change rebuilds the history.
+- The duration estimates of the restored tasks are requested when the Scripting Agent appears.
 
 **After a restart:**
 
@@ -438,7 +453,20 @@ It does not save while it is replaying its configuration. The file contains, in 
 
 ## Scheduling
 
-All scheduler work runs on the agent's handler queue. Bus callbacks only queue work and never block.
+All scheduler work runs on the agent's handler queue. Bus callbacks only queue work and never block. Updates from other agents, such as `SEQUENCE_STATE`, arrive on client threads while decisions run on the handler queue, so the shared scheduler state is protected by a mutex.
+
+### Ephemeris grid
+
+Eligibility checks over whole task durations, the setting-soonest score and the night plan all evaluate the sky at many times. Computing the Moon's position at every one of them would be too slow on small computers such as a Raspberry Pi.
+
+The constraint engine therefore works on a grid:
+
+- At every refresh, it computes the Sun and Moon positions, the moon illumination and the local sidereal time for the next 24 hours at 5-minute steps (288 points).
+- For each task with `@target`, it computes the target's altitude, airmass and hour angle on the same grid. These values only change when the task is edited, apart from the precession to the date, which is negligible within a night.
+- Eligibility, `NEXT_START`, the setting-soonest term and the night plan are lookups in these tables.
+
+The grid is rebuilt when the site coordinates change and when it no longer covers the next 24 hours.
+
 
 ### Scheduler control
 
@@ -544,7 +572,7 @@ The item label shows:
 - the UTC start and end times;
 - the task name, with the run number and a hook or urgent mark where it applies;
 - the result;
-- for a failure, the reason: the last alert message of the sequence, `script error`, or `not started`.
+- for a failure, the reason: the last alert message of the sequence, the script error message, or `not started`.
 
 For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted by SN 2026abc`.
 
@@ -598,12 +626,22 @@ Preemption, `ABORT` and deleting a running task all stop the sequence the same w
 
 The scheduler starts no task until the Scripting Agent is present. When the Scripting Agent does not yet define `SEQUENCE_STATE`, the scheduler loads the library into it through `AGENT_SCRIPTING_RUN_SCRIPT`. A library that a client loaded already, possibly of another version, is used as it is.
 
-To run a task, the agent sends the `scheduler_task` line followed by the task's full text through `AGENT_SCRIPTING_RUN_SCRIPT`. The header is ignored as comments, and the body builds the sequence and calls `start()`. The task does not need to be stored in the Scripting Agent. A run never uses estimation mode, so `start()` behaves normally.
+**Library reloads.** Clients such as the web UI send the whole library again before every script they run. Today, loading `Sequencer.js` replaces the `indigo_sequencer` object unconditionally, so a client that runs anything while a scheduled sequence executes would orphan that sequence. `Sequencer.js` is therefore changed to keep the existing `indigo_sequencer` object while it has a sequence running, and to replace it only when it is idle. This also fixes the same problem for sequences started by hand.
 
-The agent watches the result:
+**Wrapper script.** To estimate or run a task, the agent sends one wrapper script through `AGENT_SCRIPTING_RUN_SCRIPT`. The wrapper:
 
-- `AGENT_SCRIPTING_RUN_SCRIPT` going to Alert means the script failed to run, for example because of a syntax error. The start fails immediately.
-- A transition of `SEQUENCE_STATE` from not Busy to Busy, observed after the `RUN_SCRIPT` change together with `SEQUENCE_NAME` equal to the task name, marks the start. A body that names its sequence differently is still accepted on the state transition alone. If it is not observed within `START_TIMEOUT` seconds, the start fails, for example because the body never calls `start()`.
+- defines `scheduler_task` with a unique token, see [The `scheduler_task` object](#the-scheduler_task-object);
+- carries the task text as a JSON-encoded string, and evaluates it with `eval()` inside a function, so that the body's variables do not collide with other scripts in the shared interpreter;
+- catches every error, including syntax errors;
+- in estimation mode, replaces `Sequence.prototype.start()` as described in [Task duration](#task-duration);
+- reports the outcome in the `SCHEDULER_RESULT` property of the Scripting Agent, with the items `TOKEN`, `RESULT` (`ok` or `error`) and `MESSAGE`.
+
+The agent relies on its token, not on the state of `AGENT_SCRIPTING_RUN_SCRIPT`. That property is shared by all clients, so its state cannot tell whose script failed.
+
+**Result of a run.** The agent watches:
+
+- `SCHEDULER_RESULT` with its token: `error` means the task failed to start, and `MESSAGE` becomes the failure reason in the run history.
+- A transition of `SEQUENCE_STATE` from not Busy to Busy after an `ok` result, together with `SEQUENCE_NAME` equal to the task name, marks the start. A body that names its sequence differently is still accepted on the state transition alone. If no start is observed within `START_TIMEOUT` seconds, the start fails, for example because the body never calls `start()` or because another sequence is running.
 - After the start, Busy → Ok means success.
 - Busy → Alert means failure, unless the agent itself aborted the sequence.
 
@@ -614,20 +652,19 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
 ## Implementation phases
 
 1. This design document.
-2. Scheduler Agent core in `indigo_drivers/agent_scheduler/`:
-   - header parser and validation;
-   - task store and persistence;
-   - properties;
-   - constraint engine;
-   - selection;
-   - urgent preemption;
-   - scheduler control.
+2. Scheduler Agent core in `indigo_drivers/agent_scheduler/`, built in this order:
+   1. header parser and validation;
+   2. task store, properties and persistence;
+   3. wrapper script, run, abort and urgent preemption, including the `Sequencer.js` change that keeps a running sequence on a library reload. This is the riskiest part and gets the most extensive tests;
+   4. ephemeris grid and constraint engine;
+   5. selection and scheduler control.
 
    The agent is registered in the server, the build and the project files, and documented in `PROPERTIES.md`.
 3. Scoring weights, repeat and retry, startup, shutdown and idle hooks, Lorentzian moon avoidance, night plan preview, run history, duration estimate and measurement, including `Sequence.prototype.estimate()` in `Sequencer.js` with its documentation in `Sequencer.md` and its tests.
 4. Safety: a related AUX safety or weather device. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 5. Optional extensions:
    - task upload, download and editing in the web UI;
+   - `@window` times in a local time zone;
    - image grading;
    - mosaics;
    - a GCN/VOEvent bridge that writes `AGENT_SCHEDULER_URGENT_TASK`.
@@ -638,9 +675,13 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - every key and its defaults;
   - case-insensitivity, whitespace, CRLF and byte-order mark handling;
   - every invalid input.
-- Unit tests for the constraint engine use fixed dates and sites with known sun, moon and target positions, including the Lorentzian limit.
+- Unit tests for the constraint engine use fixed dates and sites with known sun, moon and target positions, including the Lorentzian limit, a polar site and nightly windows across midnight.
+- A performance test computes the night plan for 128 tasks and checks that it completes within one second on a Raspberry Pi 4.
 - Integration tests run the Scheduler Agent with the Scripting Agent and the CCD, mount and guider simulators. They cover:
-  - upload, download, edit, rename and persistence across restarts, including restored counters;
+  - upload, download, edit, rename and persistence across restarts, including restored counters, measured durations and history, and a saved task that no longer validates;
+  - an upload with a body that throws or has a syntax error being rejected with the error message;
+  - a task name containing quotes and backslashes reaching the body unchanged;
+  - a client loading `Sequencer.js` and running a script while a scheduled sequence runs, without disturbing it;
   - task ordering, and a task uploaded during a run not interrupting it;
   - a task waiting for its window, and a task not started when its duration does not fit;
   - urgent preemption: the exposure is aborted, guiding stops, the agents become idle, the urgent task runs, and the preempted task becomes RETRY and later reruns, or becomes FAILED;
@@ -652,5 +693,6 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - `Sequence.prototype.estimate()` in the sequencer tests: every counted builder, `repeat()` and the `unknown` flag;
   - the duration: estimates for bodies with `repeat()`, captures, operations and fixed waits; `UNKNOWN` for time and sky waits and for a loaded `Sequencer.js` without `estimate()`; a set `@duration` taking precedence; the measured duration replacing the estimate after a successful run and being discarded after an edit; no sequence started during estimation, also while another sequence runs;
   - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
+  - labels cut to 127 bytes, and list properties redefined only when their content changes;
   - a body with a syntax error and a body without `start()` counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task.
