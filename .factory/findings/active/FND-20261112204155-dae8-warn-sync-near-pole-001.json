@@ -1,0 +1,19 @@
+{
+  "title": "Unit test 'device ACL requires device or nonzero master token' fails on master",
+  "category": "quality",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261112204155-dae8-warn-sync-near-pole",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_test/unit/test_protocol_security.c device_acl_requires_device_or_nonzero_master_token fails deterministically on master ddd7ad5b6 without any task change, so make -C indigo_test test-unit stops there and does not run the suites after it. Either the device/master token ACL in the XML/JSON request parsers or the test expectation regressed; not investigated in the origin task, which does not touch the protocol code. Next: find which of the four assertions fails, bisect since d02bc87dc, fix and rerun the unit suite.",
+  "evidence": "Origin task verification.md: build/unit/test_protocol_security reports FAIL for this case three times in a row and again after stashing the task changes and rebuilding libindigo from master; the other 34 unit suites pass.",
+  "resolution": null,
+  "id": "FND-20261112204155-dae8-warn-sync-near-pole-001"
+}
