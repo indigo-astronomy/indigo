@@ -2,7 +2,7 @@
   "title": "Reloading Sequencer.js replaces a running sequence",
   "category": "functional",
   "severity": "medium",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261112184305-e0a6-scheduler-agent-core",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261112200150-dd27-sequencer-reload-keeps-sequence",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "Sequencer.js defines 'var indigo_sequencer = {...}' unconditionally (Sequencer.js:758) and clients such as the web UI send the library before every script (indigo_server/resource/indigo.js:198). A client running any script while a sequence, including one started by the Scheduler Agent, executes replaces the singleton and orphans the sequence. Owner deferred Sequencer.js changes on 2026-11-12. Next: keep the existing object while a sequence runs (design: indigo_docs/SCHEDULER.md 'Library reloads').",
   "evidence": "indigo_drivers/agent_scripting/library/Sequencer.js:758; indigo_server/resource/indigo.js:198; source audit.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261112200150-dd27-sequencer-reload-keeps-sequence: Sequencer.js keeps a running sequencer and an enabled flipper on reload; regression tests 'library reload keeps running sequence' (test_agent_scripting_sequencer) and library_reload_keeps_scheduled_task (test_agent_scheduler), see verification.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261112184305-e0a6-scheduler-agent-core-002"
 }

@@ -1,0 +1,130 @@
+{
+  "version": 2,
+  "task": "20261112200150-dd27-sequencer-reload-keeps-sequence",
+  "scope": [
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_drivers/agent_scripting/library/Sequencer.md",
+    "indigo_drivers/agent_scripting/indigo_agent_scripting.c",
+    "indigo_drivers/agent_scripting/README.md",
+    "indigo_drivers/agent_scheduler/Sequencer.js.dat",
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c",
+    "indigo_drivers/agent_scheduler/README.md",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_agent_scheduler.c",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    "indigo_docs/SCHEDULER.md",
+    "TEST_SUMMARY.md",
+    "MIGRATION_STATUS.md",
+    ".factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-002.json",
+    ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-002.json",
+    ".factory/completions/20261112200150-dd27-sequencer-reload-keeps-sequence.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/integration/test_agent_scripting_sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261112200150-dd27-sequencer-reload-keeps-sequence.json": [
+      "100644",
+      "blob",
+      "e20feacc7c104487268ffa290dbb901e4f6a2218"
+    ],
+    ".factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-002.json": null,
+    ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-002.json": [
+      "100644",
+      "blob",
+      "68ee2e0f403b2d59c50155d91f3b704e7ec9863c"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "698b6143656c2b945195d7469fefcb0a911d1604"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "6ece2c5bfe20169ca1d5eb8d960c75e17ea09b7d"
+    ],
+    "indigo_docs/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "e062e703fe017a501d4fbfad12ba317cf31b270b"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "7973b1546e6d23023983ec31518fa1fbdc45ca7c"
+    ],
+    "indigo_drivers/agent_scheduler/Sequencer.js.dat": [
+      "100644",
+      "blob",
+      "b7ac7b6b3d849c4f404014ddd1e0b75c552c5621"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "adbfa515d06cd38f0a50f37f23b125b68108e8e9"
+    ],
+    "indigo_drivers/agent_scripting/README.md": [
+      "100644",
+      "blob",
+      "31f7d43c8f0f766ea87768b59b070215ebca1ce8"
+    ],
+    "indigo_drivers/agent_scripting/indigo_agent_scripting.c": [
+      "100644",
+      "blob",
+      "aa4d1b775f62f42c3dcc344751989d5eaa969735"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "f0d8e391506703d2a95a3fa738b9da5bb73db717"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "100644",
+      "blob",
+      "9eda555db2eeec04cc58b7bc0285a4a201bed0ce"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "bce6b0f118e0aafdb8a70c46f3f1302d39301470"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "782a77448a458fd9f1b3ddb7ca8b18dcac0a335f"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "176ca78302c4b1145cf7876a7421fac4bb39348b"
+    ]
+  }
+}
