@@ -1,0 +1,19 @@
+{
+  "title": "Static server build includes an obsoleted driver header",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261112184305-e0a6-scheduler-agent-core",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_server.c includes ccd_gphoto2/indigo_ccd_gphoto2.h under STATIC_DRIVERS and INDIGO_LINUX, but the driver lives in obsoleted_drivers/, so a STATIC_DRIVERS build cannot compile. Pre-existing, found while checking the scheduler registration. Next: drop or guard the include and entry.",
+  "evidence": "indigo_server/indigo_server.c:224; gcc -fsyntax-only -DSTATIC_DRIVERS failed without -I../obsoleted_drivers, see verification.md.",
+  "resolution": null,
+  "id": "FND-20261112184305-e0a6-scheduler-agent-core-005"
+}

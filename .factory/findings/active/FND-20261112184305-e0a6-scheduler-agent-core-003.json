@@ -1,0 +1,19 @@
+{
+  "title": "Scheduler next-start search is expensive with many long tasks",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261112184305-e0a6-scheduler-agent-core",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "When nothing is eligible, select_task() calls indigo_scheduler_next_eligible() for every task, which checks the whole duration at every 5-minute candidate: about 577 x duration points x tasks, up to ~21M point checks for 128 tasks of 24 h, on the handler queue every IDLE_CHECK_INTERVAL. Next: precompute per-task point validity and use a sliding window, and add the planned 128-task performance test (phase 3).",
+  "evidence": "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c select_task(); indigo_agent_scheduler_sky.c indigo_scheduler_next_eligible(); independent review.",
+  "resolution": null,
+  "id": "FND-20261112184305-e0a6-scheduler-agent-core-003"
+}

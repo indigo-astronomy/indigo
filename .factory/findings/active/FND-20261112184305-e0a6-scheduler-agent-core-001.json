@@ -1,0 +1,19 @@
+{
+  "title": "Protocol security unit test fails: device ACL accepts requests without a master token",
+  "category": "functional",
+  "severity": "medium",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261112184305-e0a6-scheduler-agent-core",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "test_protocol_security case 'device ACL requires device or nonzero master token' fails deterministically (unit/test_protocol_security.c:537) with the current build/lib/libindigo.a, also when built against the committed indigo_names.h; unrelated to the scheduler task. Next: determine whether libindigo is stale or the bus ACL check regressed, then fix and rerun make -C indigo_test test-unit.",
+  "evidence": "indigo_test/unit/test_protocol_security.c:537; run in verification.md Baseline.",
+  "resolution": null,
+  "id": "FND-20261112184305-e0a6-scheduler-agent-core-001"
+}
