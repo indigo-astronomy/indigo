@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000003
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -41,6 +41,7 @@
 #include "indigo_agent_scheduler.h"
 #include "indigo_agent_scheduler_header.h"
 #include "indigo_agent_scheduler_sky.h"
+#include "indigo_agent_scheduler_plan.h"
 
 #define MAX_TASKS									128
 #define SCHEDULER_GROUP						"Scheduler"
@@ -54,6 +55,8 @@
 #define MAX_HISTORY								200
 #define ESTIMATE_TIMEOUT					10
 #define MAX_DURATION							86400
+#define MAX_PLAN_RUNS							256
+#define MAX_PLAN_ITEMS						(MAX_PLAN_RUNS + MAX_TASKS)
 #define LIBRARY_RETRY_INTERVAL		30
 #define SAVE_DELAY								2
 #define SKY_REFRESH_INTERVAL			3600
@@ -112,6 +115,7 @@
 #define CLEAR_HISTORY_PROPERTY		(PRIVATE_DATA->clear_history_property)
 #define CLEAR_HISTORY_ITEM				(CLEAR_HISTORY_PROPERTY->items + 0)
 #define RESTORE_HISTORY_PROPERTY	(PRIVATE_DATA->restore_history_property)
+#define PLAN_PROPERTY							(PRIVATE_DATA->plan_property)
 #define RESTORE_HISTORY_ITEM			(RESTORE_HISTORY_PROPERTY->items + 0)
 
 typedef enum {
@@ -185,6 +189,7 @@ typedef struct {
 	int estimate;
 	bool script_error;
 	scheduler_target_grid target;
+	scheduler_task_points points;
 	indigo_property *property;
 } scheduler_task;
 
@@ -230,6 +235,12 @@ typedef struct {
 	indigo_property *history_property;
 	indigo_property *clear_history_property;
 	indigo_property *restore_history_property;
+	indigo_property *plan_property;
+	char plan_labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
+	indigo_property_state plan_states[MAX_PLAN_ITEMS];
+	int plan_count;
+	bool plan_dirty;
+	double plan_due;
 	scheduler_observed observed;
 	history_entry history[MAX_HISTORY];
 	int history_count;
@@ -853,12 +864,15 @@ static void refresh(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- Task store
 
+// the target grid and the table of failing points of a task
 static void build_target(indigo_device *device, scheduler_task *task) {
 	if (task->header.has_target && PRIVATE_DATA->sky.valid) {
 		indigo_scheduler_target_build(&PRIVATE_DATA->sky, &task->header, &task->target);
 	} else {
 		task->target.valid = false;
 	}
+	indigo_scheduler_points_build(&PRIVATE_DATA->sky, &task->target, &task->header, &task->points);
+	PRIVATE_DATA->plan_dirty = true;
 }
 
 static int create_task(indigo_device *device, const char *text, scheduler_header *header, bool stored) {
@@ -962,7 +976,7 @@ static void request_stop(indigo_device *device, indigo_property_state state, con
 	PRIVATE_DATA->automatic_stop = false;
 	PRIVATE_DATA->stop_state = state;
 	INDIGO_COPY_VALUE(PRIVATE_DATA->stop_text, text);
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void stop_scheduler(indigo_device *device, indigo_property_state state, const char *message) {
@@ -982,7 +996,7 @@ static void finish_hook(indigo_device *device, run_result result, const char *me
 	PRIVATE_DATA->phase = RUN_IDLE;
 	PRIVATE_DATA->current = -1;
 	PRIVATE_DATA->kind = RUN_TASK;
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	if (result != RESULT_SUCCEEDED) {
 		indigo_send_message(device, NULL, "Hook '%s' %s%s%s", task->header.name, run_result_names[result], message && *message ? ": " : "", message ? message : "");
 	} else {
@@ -1046,7 +1060,7 @@ static void finish_task(indigo_device *device, bool success, const char *message
 	}
 	PRIVATE_DATA->phase = RUN_IDLE;
 	PRIVATE_DATA->current = -1;
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	if (!task->stored) {
 		remove_task(device, slot);
 	} else {
@@ -1059,7 +1073,7 @@ static void finish_stop(indigo_device *device) {
 	int slot = PRIVATE_DATA->current;
 	if (slot < 0) {
 		PRIVATE_DATA->phase = RUN_IDLE;
-		PRIVATE_DATA->dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 		return;
 	}
 	scheduler_task *task = PRIVATE_DATA->tasks + slot;
@@ -1078,7 +1092,7 @@ static void finish_stop(indigo_device *device) {
 	}
 	PRIVATE_DATA->phase = RUN_IDLE;
 	PRIVATE_DATA->current = -1;
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	switch (PRIVATE_DATA->stop) {
 		case STOP_DELETE:
 			add_history(device, task, RESULT_ABORTED, "deleted");
@@ -1154,6 +1168,7 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 	PRIVATE_DATA->run_number = kind == RUN_TASK ? task->runs + 1 : 1;
 	PRIVATE_DATA->phase = RUN_STARTING;
 	PRIVATE_DATA->deadline = indigo_monotonic_time() + SETTINGS_START_TIMEOUT_ITEM->number.value;
+	PRIVATE_DATA->plan_dirty = true;
 	set_reason(device, "");
 	if (kind == RUN_TASK) {
 		task->state = TASK_RUNNING;
@@ -1192,7 +1207,9 @@ static void refresh_sky(indigo_device *device, time_t now) {
 			sky->valid = false;
 			for (int i = 0; i < MAX_TASKS; i++) {
 				PRIVATE_DATA->tasks[i].target.valid = false;
+				PRIVATE_DATA->tasks[i].points.valid = false;
 			}
+			PRIVATE_DATA->plan_dirty = true;
 		}
 		return;
 	}
@@ -1209,20 +1226,11 @@ static void refresh_sky(indigo_device *device, time_t now) {
 
 static bool eligible_now(indigo_device *device, scheduler_task *task, time_t now, const char **reason) {
 	int duration = task_duration(task, NULL);
-	return indigo_scheduler_interval_ok(&PRIVATE_DATA->sky, &task->target, &task->header, now, now + duration, reason);
+	return indigo_scheduler_points_ok(&PRIVATE_DATA->sky, &task->points, &task->header, now, now + duration, reason);
 }
 
 static double score(indigo_device *device, scheduler_task *task, time_t now) {
-	static const double class_base[] = { 0, 1000, 2000, 3000 };
-	double result = class_base[task->header.priority_class] + task->header.level;
-	int to_set = indigo_scheduler_time_to_set(&PRIVATE_DATA->sky, &task->target, &task->header, now);
-	result += SETTINGS_SETTING_WEIGHT_ITEM->number.value * 100 * (1 - (double)to_set / SCHEDULER_SETTING_HORIZON);
-	if (task->header.has_target && task->target.valid && indigo_scheduler_sky_covers(&PRIVATE_DATA->sky, now, now)) {
-		int index = (int)((now - PRIVATE_DATA->sky.start) / SCHEDULER_GRID_STEP);
-		double altitude = task->target.altitude[index];
-		result += SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value * 100 * (altitude > 0 ? altitude : 0) / 90;
-	}
-	return result;
+	return indigo_scheduler_score(&PRIVATE_DATA->sky, &task->target, &task->points, &task->header, now, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value);
 }
 
 // a task waits for its estimate, which also finds script errors before the first run
@@ -1241,9 +1249,11 @@ static void update_task_states(indigo_device *device, time_t now) {
 		if ((task->state == TASK_RETRY || task->state == TASK_REPEAT) && now >= task->delay_until) {
 			task->state = TASK_QUEUED;
 			task->urgent_order = ++PRIVATE_DATA->urgent_counter;
+			PRIVATE_DATA->plan_dirty = true;
 		}
 		if (task->state != TASK_RUNNING && !is_terminal_state(task->state) && indigo_scheduler_window_expired(&task->header, now)) {
 			task->state = TASK_EXPIRED;
+			PRIVATE_DATA->plan_dirty = true;
 			indigo_send_message(device, NULL, "Task '%s' expired", task->header.name);
 			schedule_save(device);
 			if (!task->stored) {
@@ -1326,7 +1336,7 @@ static int select_task(indigo_device *device, time_t now) {
 			from = task->delay_until;
 		}
 		const char *reason;
-		time_t start = indigo_scheduler_next_eligible(&PRIVATE_DATA->sky, &task->target, &task->header, from, task_duration(task, NULL), &reason);
+		time_t start = indigo_scheduler_points_next(&PRIVATE_DATA->sky, &task->points, &task->header, from, task_duration(task, NULL), 0, &reason);
 		if (start > 0 && (next_start == 0 || start < next_start)) {
 			next_start = start;
 			next_task = slot;
@@ -1605,7 +1615,7 @@ static void process_estimation(indigo_device *device) {
 				indigo_send_message(device, NULL, "The duration of task '%s' cannot be estimated, %d minutes are assumed until it has run; set @duration", task->header.name, SCHEDULER_DEFAULT_DURATION);
 			}
 		}
-		PRIVATE_DATA->dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 		return;
 	}
 	if (!ready) {
@@ -1652,8 +1662,138 @@ static void process_library(indigo_device *device) {
 	}
 }
 
+// -------------------------------------------------------------------------------- Night plan
+
+static scheduler_plan_task plan_tasks[MAX_TASKS];
+static int plan_slots[MAX_TASKS];
+static scheduler_plan_run plan_runs[MAX_PLAN_RUNS];
+
+static void plan_run_label(indigo_device *device, scheduler_plan_run *run, char *label, size_t size) {
+	scheduler_task *task = PRIVATE_DATA->tasks + plan_slots[run->task];
+	struct tm start, end;
+	indigo_gmtime(&run->start, &start);
+	indigo_gmtime(&run->end, &end);
+	char priority[32];
+	if (is_urgent(task)) {
+		strcpy(priority, "urgent");
+	} else {
+		snprintf(priority, sizeof(priority), "%s %d", indigo_scheduler_priority_name(task->header.priority_class), task->header.level);
+	}
+	char text[INDIGO_VALUE_SIZE * 2];
+	if (task->header.repeat > 1) {
+		snprintf(text, sizeof(text), "%02d:%02d\xe2\x80\x93%02d:%02d  %s #%d (%s)", start.tm_hour, start.tm_min, end.tm_hour, end.tm_min, task->header.name, run->run, priority);
+	} else {
+		snprintf(text, sizeof(text), "%02d:%02d\xe2\x80\x93%02d:%02d  %s (%s)", start.tm_hour, start.tm_min, end.tm_hour, end.tm_min, task->header.name, priority);
+	}
+	cut_label(text, label, size);
+}
+
+static void publish_plan(indigo_device *device, char (*labels)[INDIGO_VALUE_SIZE], indigo_property_state *states, int count) {
+	bool redefine = count != PRIVATE_DATA->plan_count;
+	bool changed = false;
+	for (int i = 0; i < count && !redefine; i++) {
+		if (strcmp(labels[i], PRIVATE_DATA->plan_labels[i])) {
+			redefine = true;
+		} else if (states[i] != PRIVATE_DATA->plan_states[i]) {
+			changed = true;
+		}
+	}
+	if (redefine) {
+		indigo_delete_property(device, PLAN_PROPERTY, NULL);
+	}
+	if (redefine || changed) {
+		pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
+		for (int i = 0; i < count; i++) {
+			if (redefine) {
+				char name[INDIGO_NAME_SIZE];
+				snprintf(name, sizeof(name), AGENT_SCHEDULER_PLAN_ITEM_NAME, i);
+				indigo_init_light_item(PLAN_PROPERTY->items + i, name, labels[i], states[i]);
+			} else {
+				// the bus sends an update only for a value that differs from the previous one, which init would overwrite
+				PLAN_PROPERTY->items[i].light.value = states[i];
+			}
+			strcpy(PRIVATE_DATA->plan_labels[i], labels[i]);
+			PRIVATE_DATA->plan_states[i] = states[i];
+		}
+		PLAN_PROPERTY->count = count;
+		PRIVATE_DATA->plan_count = count;
+		pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
+	}
+	if (redefine) {
+		indigo_define_property(device, PLAN_PROPERTY, NULL);
+	} else if (changed) {
+		indigo_update_property(device, PLAN_PROPERTY, NULL);
+	}
+}
+
+// the forecast of the rest of the night: the runs the scheduler would make if every run took its duration and succeeded
+static void update_plan(indigo_device *device, time_t now) {
+	static char labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
+	static indigo_property_state states[MAX_PLAN_ITEMS];
+	int count = 0;
+	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
+		int slot = PRIVATE_DATA->order[i];
+		scheduler_task *task = PRIVATE_DATA->tasks + slot;
+		if (is_hook(device, task) || is_terminal_state(task->state)) {
+			continue;
+		}
+		bool running = PRIVATE_DATA->phase != RUN_IDLE && PRIVATE_DATA->current == slot && PRIVATE_DATA->kind == RUN_TASK;
+		scheduler_plan_task *plan_task = plan_tasks + count;
+		plan_slots[count] = slot;
+		plan_task->header = &task->header;
+		plan_task->target = &task->target;
+		plan_task->points = &task->points;
+		plan_task->selectable = is_enabled(task) && !task->script_error;
+		plan_task->duration = task_duration(task, NULL);
+		plan_task->runs_left = task->header.repeat - task->runs;
+		plan_task->available_from = (task->state == TASK_RETRY || task->state == TASK_REPEAT) ? task->delay_until : 0;
+		plan_task->urgent_order = task->urgent_order;
+		plan_task->running = running;
+		plan_task->running_start = PRIVATE_DATA->run_start;
+		plan_task->running_end = PRIVATE_DATA->run_start + plan_task->duration;
+		if (running && plan_task->running_end < now + 60) {
+			plan_task->running_end = now + 60;
+		}
+		count++;
+	}
+	time_t end = indigo_scheduler_night_end(&PRIVATE_DATA->sky, now);
+	int runs = indigo_scheduler_plan(&PRIVATE_DATA->sky, plan_tasks, count, now, end, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, plan_runs, MAX_PLAN_RUNS);
+	bool planned[MAX_TASKS] = { false };
+	int items = 0;
+	for (int i = 0; i < runs && items < MAX_PLAN_ITEMS; i++) {
+		plan_run_label(device, plan_runs + i, labels[items], INDIGO_VALUE_SIZE);
+		states[items++] = plan_runs[i].running ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+		planned[plan_runs[i].task] = true;
+	}
+	// tasks without a run before the end of the night follow with the reason
+	for (int i = 0; i < count && items < MAX_PLAN_ITEMS; i++) {
+		if (planned[i]) {
+			continue;
+		}
+		scheduler_task *task = PRIVATE_DATA->tasks + plan_slots[i];
+		const char *reason = NULL;
+		if (task->script_error) {
+			reason = "script error";
+		} else if (!is_enabled(task)) {
+			reason = "disabled";
+		} else {
+			time_t from = plan_tasks[i].available_from > now ? plan_tasks[i].available_from : now;
+			time_t start = indigo_scheduler_points_next(&PRIVATE_DATA->sky, &task->points, &task->header, from, plan_tasks[i].duration, end, &reason);
+			if (start > 0 || reason == NULL) {
+				reason = "no time left tonight";
+			}
+		}
+		char text[INDIGO_VALUE_SIZE * 2];
+		snprintf(text, sizeof(text), "%s \xe2\x80\x94 %s", task->header.name, reason);
+		cut_label(text, labels[items], INDIGO_VALUE_SIZE);
+		states[items++] = INDIGO_ALERT_STATE;
+	}
+	publish_plan(device, labels, states, items);
+}
+
 static void process(indigo_device *device) {
 	time_t now = time(NULL);
+	bool plan = PRIVATE_DATA->plan_dirty || indigo_monotonic_time() >= PRIVATE_DATA->plan_due;
 	refresh_sky(device, now);
 	process_library(device);
 	process_estimation(device);
@@ -1680,6 +1820,11 @@ static void process(indigo_device *device) {
 		process_idle(device, now);
 	}
 	refresh(device);
+	if (plan || PRIVATE_DATA->plan_dirty) {
+		update_plan(device, now);
+		PRIVATE_DATA->plan_dirty = false;
+		PRIVATE_DATA->plan_due = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
+	}
 	if (PRIVATE_DATA->save_due > 0 && indigo_monotonic_time() >= PRIVATE_DATA->save_due) {
 		save_config(device);
 	}
@@ -1736,7 +1881,7 @@ static void add_task(indigo_device *device, indigo_property *request, bool confi
 	}
 	ADD_TASK_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, ADD_TASK_PROPERTY, NULL);
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void edit_task(indigo_device *device, int slot, indigo_property *request) {
@@ -1763,7 +1908,7 @@ static void edit_task(indigo_device *device, int slot, indigo_property *request)
 	}
 	replace_text(device, slot, text, &header);
 	schedule_save(device);
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void delete_task(indigo_device *device, indigo_property *request) {
@@ -1787,7 +1932,7 @@ static void delete_task(indigo_device *device, indigo_property *request) {
 	}
 	DELETE_TASK_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DELETE_TASK_PROPERTY, NULL);
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void urgent_task(indigo_device *device, indigo_property *request) {
@@ -1812,7 +1957,7 @@ static void urgent_task(indigo_device *device, indigo_property *request) {
 	}
 	URGENT_TASK_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, URGENT_TASK_PROPERTY, PRIVATE_DATA->started ? NULL : "Urgent task queued, but the scheduler is not running");
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void task_command(indigo_device *device, indigo_property *request) {
@@ -1857,7 +2002,7 @@ static void task_command(indigo_device *device, indigo_property *request) {
 	TASK_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, TASK_COMMAND_PROPERTY, NULL);
 	schedule_save(device);
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void control(indigo_device *device, indigo_property *request) {
@@ -1899,7 +2044,7 @@ static void control(indigo_device *device, indigo_property *request) {
 			stop_scheduler(device, INDIGO_ALERT_STATE, "Scheduler aborted");
 		}
 	}
-	PRIVATE_DATA->dirty = true;
+	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
 static void command_handler(indigo_device *device, void *data) {
@@ -1931,7 +2076,7 @@ static void command_handler(indigo_device *device, void *data) {
 		if (!command->config_reader) {
 			schedule_save(device);
 		}
-		PRIVATE_DATA->dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	} else if (indigo_property_match_changeable(CLEAR_HISTORY_PROPERTY, request)) {
 		PRIVATE_DATA->history_count = 0;
 		update_history_property(device);
@@ -1955,7 +2100,7 @@ static void command_handler(indigo_device *device, void *data) {
 		if (!command->config_reader) {
 			schedule_save(device);
 		}
-		PRIVATE_DATA->dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	} else {
 		for (int i = 0; i < MAX_TASKS; i++) {
 			scheduler_task *task = PRIVATE_DATA->tasks + i;
@@ -2082,6 +2227,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_text_item_raw(RESTORE_HISTORY_ITEM, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Entries", "");
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_PLAN
+		PLAN_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_SCHEDULER_PLAN_PROPERTY_NAME, SCHEDULER_GROUP, "Night plan", INDIGO_OK_STATE, MAX_PLAN_ITEMS);
+		if (PLAN_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		PLAN_PROPERTY->count = 0;
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_TASK_<n>
 		for (int i = 0; i < MAX_TASKS; i++) {
 			char name[INDIGO_NAME_SIZE];
@@ -2105,7 +2256,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PRIVATE_DATA->current = -1;
 		PRIVATE_DATA->estimate_slot = -1;
 		PRIVATE_DATA->next_task = -1;
-		PRIVATE_DATA->dirty = true;
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 		// the live properties are defined here, before any handler can change them
 		indigo_define_property(device, ADD_TASK_PROPERTY, NULL);
 		indigo_define_property(device, DELETE_TASK_PROPERTY, NULL);
@@ -2121,6 +2272,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_define_property(device, HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, CLEAR_HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, RESTORE_HISTORY_PROPERTY, NULL);
+		indigo_define_property(device, PLAN_PROPERTY, NULL);
 		indigo_execute_handler_in(device, TICK_INTERVAL, tick_handler);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_device_enumerate_properties(device, NULL, NULL);
@@ -2159,6 +2311,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	define_copy(device, client, HISTORY_PROPERTY, property);
 	define_copy(device, client, CLEAR_HISTORY_PROPERTY, property);
 	define_copy(device, client, RESTORE_HISTORY_PROPERTY, property);
+	define_copy(device, client, PLAN_PROPERTY, property);
 	for (int i = 0; i < MAX_TASKS; i++) {
 		scheduler_task *task = PRIVATE_DATA->tasks + i;
 		if (task->used && task->stored) {
@@ -2225,6 +2378,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(HISTORY_PROPERTY);
 	indigo_release_property(CLEAR_HISTORY_PROPERTY);
 	indigo_release_property(RESTORE_HISTORY_PROPERTY);
+	indigo_release_property(PLAN_PROPERTY);
 	for (int i = 0; i < MAX_TASKS; i++) {
 		scheduler_task *task = PRIVATE_DATA->tasks + i;
 		if (task->used && task->stored) {

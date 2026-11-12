@@ -24,8 +24,8 @@ indigo_server indigo_agent_scripting indigo_agent_scheduler ...
 
 - The agent needs the Scripting Agent. It loads `Sequencer.js` into it when the library is not loaded yet.
 - Task bodies run with the default agents of `Sequence.start()`: "Imager Agent", "Mount Agent" and "Guider Agent". The site coordinates for the sky constraints come from the Mount Agent.
-- Hooks, the night plan preview, the run history, duration estimates and safety handling are not implemented yet.
+- Safety handling (a weather or safety device) is not implemented yet.
 
 ## Testing
 
-- 2026-11-13 00:10 3.0.0.3 linux arm64 simulator 36/36 OK
+- 2026-11-13 01:41 3.0.0.4 linux arm64 simulator 39/39 OK

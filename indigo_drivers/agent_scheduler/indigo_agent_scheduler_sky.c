@@ -95,7 +95,7 @@ void indigo_scheduler_sky_build(scheduler_sky_grid *sky, time_t start, double la
 	sky->longitude = longitude;
 	sky->elevation = elevation;
 	sky->start = start - start % SCHEDULER_GRID_STEP;
-	double sun_ra[2], sun_dec[2], moon_ra[2], moon_dec[2];
+	double sun_ra[2] = { 0, 0 }, sun_dec[2] = { 0, 0 }, moon_ra[2] = { 0, 0 }, moon_dec[2] = { 0, 0 };
 	solar_system(sky->start, sun_ra + 1, sun_dec + 1, moon_ra + 1, moon_dec + 1);
 	for (int i = 0; i < SCHEDULER_GRID_POINTS; i++) {
 		time_t t = sky->start + (time_t)i * SCHEDULER_GRID_STEP;
@@ -327,4 +327,124 @@ int indigo_scheduler_time_to_set(const scheduler_sky_grid *sky, const scheduler_
 		t = next;
 	}
 	return SCHEDULER_SETTING_HORIZON;
+}
+
+void indigo_scheduler_points_build(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, scheduler_task_points *points) {
+	points->valid = false;
+	if (!sky->valid || (header->has_target && (target == NULL || !target->valid || target->start != sky->start))) {
+		return;
+	}
+	points->next_bad[SCHEDULER_GRID_POINTS] = SCHEDULER_GRID_POINTS;
+	for (int i = SCHEDULER_GRID_POINTS - 1; i >= 0; i--) {
+		const char *reason = NULL;
+		if (needs_sky(header) && !indigo_scheduler_sky_point_ok(sky, target, header, i, &reason)) {
+			points->next_bad[i] = i;
+			points->reason[i] = reason;
+		} else {
+			points->next_bad[i] = points->next_bad[i + 1];
+			points->reason[i] = NULL;
+		}
+	}
+	points->start = sky->start;
+	points->valid = true;
+}
+
+bool indigo_scheduler_points_ok(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, time_t to, const char **reason) {
+	if (!indigo_scheduler_window_ok(header, from, to, reason)) {
+		return false;
+	}
+	if (!needs_sky(header)) {
+		return true;
+	}
+	if (!sky->valid || !points->valid || points->start != sky->start) {
+		*reason = "site coordinates unknown";
+		return false;
+	}
+	if (!indigo_scheduler_sky_covers(sky, from, to)) {
+		*reason = "beyond the forecast";
+		return false;
+	}
+	int first = (int)((from - sky->start) / SCHEDULER_GRID_STEP);
+	int last = (int)((to - sky->start + SCHEDULER_GRID_STEP - 1) / SCHEDULER_GRID_STEP);
+	if (last >= SCHEDULER_GRID_POINTS) {
+		last = SCHEDULER_GRID_POINTS - 1;
+	}
+	int bad = points->next_bad[first];
+	if (bad <= last) {
+		*reason = points->reason[bad];
+		return false;
+	}
+	return true;
+}
+
+time_t indigo_scheduler_points_next(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, int duration, time_t limit, const char **reason) {
+	const char *first_reason = NULL;
+	time_t grid_end = sky->valid ? sky->start + (time_t)(SCHEDULER_GRID_POINTS - 1) * SCHEDULER_GRID_STEP : from + 2 * DAY;
+	if (limit == 0 || limit > grid_end) {
+		limit = grid_end;
+	}
+	time_t t = from;
+	while (t + duration <= limit) {
+		const char *candidate_reason = NULL;
+		if (indigo_scheduler_points_ok(sky, points, header, t, t + duration, &candidate_reason)) {
+			if (reason) {
+				*reason = first_reason;
+			}
+			return t;
+		}
+		if (first_reason == NULL) {
+			first_reason = candidate_reason;
+		}
+		time_t next = t - t % SCHEDULER_GRID_STEP + SCHEDULER_GRID_STEP;
+		// a failing sky point is skipped at once, the interval cannot contain it
+		if (needs_sky(header) && sky->valid && points->valid && points->start == sky->start && t >= sky->start) {
+			int first = (int)((t - sky->start) / SCHEDULER_GRID_STEP);
+			int last = (int)((t + duration - sky->start + SCHEDULER_GRID_STEP - 1) / SCHEDULER_GRID_STEP);
+			int bad = first < SCHEDULER_GRID_POINTS ? points->next_bad[first] : SCHEDULER_GRID_POINTS;
+			if (bad <= last && bad < SCHEDULER_GRID_POINTS) {
+				time_t after = sky->start + (time_t)(bad + 1) * SCHEDULER_GRID_STEP;
+				if (after > next) {
+					next = after;
+				}
+			}
+		}
+		if (header->window_kind == SCHEDULER_WINDOW_ABSOLUTE && header->has_window_start && header->window_start > t && header->window_start < next) {
+			next = header->window_start;
+		}
+		t = next;
+	}
+	if (reason) {
+		*reason = first_reason;
+	}
+	return 0;
+}
+
+int indigo_scheduler_points_time_to_set(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from) {
+	const char *reason;
+	time_t t = from;
+	while (t - from < SCHEDULER_SETTING_HORIZON) {
+		time_t next = t - t % SCHEDULER_GRID_STEP + SCHEDULER_GRID_STEP;
+		if (!indigo_scheduler_points_ok(sky, points, header, t, next, &reason)) {
+			return (int)(t - from);
+		}
+		t = next;
+	}
+	return SCHEDULER_SETTING_HORIZON;
+}
+
+time_t indigo_scheduler_night_end(const scheduler_sky_grid *sky, time_t now) {
+	if (sky->valid && indigo_scheduler_sky_covers(sky, now, now)) {
+		int i = (int)((now - sky->start) / SCHEDULER_GRID_STEP);
+		// during the day, the night ends at the sunrise after the next sunset
+		while (i < SCHEDULER_GRID_POINTS && sky->sun_altitude[i] >= 0) {
+			i++;
+		}
+		while (i < SCHEDULER_GRID_POINTS && sky->sun_altitude[i] < 0) {
+			i++;
+		}
+		if (i < SCHEDULER_GRID_POINTS) {
+			return sky->start + (time_t)i * SCHEDULER_GRID_STEP;
+		}
+	}
+	return now + DAY;
 }

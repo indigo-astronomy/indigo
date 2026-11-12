@@ -44,6 +44,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_agent_platesolver_core \
 	$(UNIT_BUILD)/test_agent_scheduler_header \
 	$(UNIT_BUILD)/test_agent_scheduler_sky \
+	$(UNIT_BUILD)/test_agent_scheduler_plan \
 	$(UNIT_BUILD)/test_aux_math \
 	$(UNIT_BUILD)/test_base64 \
 	$(UNIT_BUILD)/test_bus_helpers \
@@ -530,6 +531,9 @@ $(UNIT_BUILD)/test_agent_scheduler_header: unit/test_agent_scheduler_header.c te
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
 
 $(UNIT_BUILD)/test_agent_scheduler_sky: unit/test_agent_scheduler_sky.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
+
+$(UNIT_BUILD)/test_agent_scheduler_plan: unit/test_agent_scheduler_plan.c test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h $(BUILD_DRIVERS)/indigo_agent_scheduler.a | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(TEST_LDFLAGS) -lindigocat
 
 $(UNIT_BUILD)/test_test_runner: unit/test_test_runner.c test_runner.h | $(UNIT_BUILD)
@@ -2603,8 +2607,8 @@ SCHEDULER_TEST_FLAGS = -DSEQUENCER_JS_PATH='"$(abspath ../indigo_drivers/agent_s
 $(INTEGRATION_BUILD)/test_agent_scheduler: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h ../indigo_drivers/agent_scripting/library/Sequencer.js $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigocat.a | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) $< -o $@ $(BUILD_DRIVERS)/indigo_agent_scheduler.a $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat
 
-$(INTEGRATION_BUILD)/test_agent_scheduler_asan: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/Sequencer.js.dat $(BUILD_DRIVERS)/indigo_agent_scripting.a | $(INTEGRATION_BUILD)
-	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
+$(INTEGRATION_BUILD)/test_agent_scheduler_asan: integration/test_agent_scheduler.c integration/parallel_case_runner.h test_runner.h ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c ../indigo_drivers/agent_scheduler/Sequencer.js.dat $(BUILD_DRIVERS)/indigo_agent_scripting.a | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(SCHEDULER_TEST_FLAGS) -I../indigo_drivers/agent_scheduler -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -o $@ $< ../indigo_drivers/agent_scheduler/indigo_agent_scheduler.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.c ../indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c $(BUILD_DRIVERS)/indigo_agent_scripting.a $(TEST_LDFLAGS) -lindigocat -fsanitize=address,undefined
 
 # Opt-in native server acceptance: the Scheduler Agent runs capture, slew, guiding and urgent tasks
 # against the CCD and mount simulators in a private indigo_server.

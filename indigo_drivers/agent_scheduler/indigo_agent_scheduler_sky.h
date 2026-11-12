@@ -64,6 +64,15 @@ typedef struct {
 	double moon_separation[SCHEDULER_GRID_POINTS];
 } scheduler_target_grid;
 
+/** Where the sky constraints of a task fail on the points of a sky grid: next_bad[i] is the first failing point at or after i, SCHEDULER_GRID_POINTS when none.
+ */
+typedef struct {
+	bool valid;
+	time_t start;
+	int next_bad[SCHEDULER_GRID_POINTS + 1];
+	const char *reason[SCHEDULER_GRID_POINTS];
+} scheduler_task_points;
+
 /** Build the sky grid starting at the grid step at or before start.
  */
 extern void indigo_scheduler_sky_build(scheduler_sky_grid *sky, time_t start, double latitude, double longitude, double elevation);
@@ -103,6 +112,26 @@ extern time_t indigo_scheduler_next_eligible(const scheduler_sky_grid *sky, cons
 /** Return the number of seconds after from for which the constraints of the task keep holding, at most SCHEDULER_SETTING_HORIZON.
  */
 extern int indigo_scheduler_time_to_set(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, time_t from);
+
+/** Evaluate the sky constraints of a task once on every grid point.
+ */
+extern void indigo_scheduler_points_build(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_header *header, scheduler_task_points *points);
+
+/** Same result as indigo_scheduler_interval_ok(), in constant time.
+ */
+extern bool indigo_scheduler_points_ok(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, time_t to, const char **reason);
+
+/** Same result as indigo_scheduler_next_eligible(), searching up to limit (0 for the end of the grid).
+ */
+extern time_t indigo_scheduler_points_next(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from, int duration, time_t limit, const char **reason);
+
+/** Same result as indigo_scheduler_time_to_set().
+ */
+extern int indigo_scheduler_points_time_to_set(const scheduler_sky_grid *sky, const scheduler_task_points *points, const scheduler_header *header, time_t from);
+
+/** Return the end of the night after now: the next sunrise, or now + 24 hours when the sun does not set within the grid.
+ */
+extern time_t indigo_scheduler_night_end(const scheduler_sky_grid *sky, time_t now);
 
 #ifdef __cplusplus
 }

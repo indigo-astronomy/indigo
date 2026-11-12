@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -427,6 +428,90 @@ static indigo_result guider_change(indigo_device *device, indigo_client *client,
 
 static indigo_device mount_standin = INDIGO_DEVICE_INITIALIZER("Mount Agent", NULL, mount_enumerate, NULL, NULL, NULL);
 static indigo_device guider_standin = INDIGO_DEVICE_INITIALIZER("Guider Agent", NULL, guider_enumerate, guider_change, NULL, NULL);
+
+// the plan labels and states, the count or -1 when the property is missing; a redefine at a minute boundary deletes it for a moment
+static int plan_items(char labels[][INDIGO_VALUE_SIZE], indigo_property_state *states, int max) {
+	indigo_property *property = snapshot(AGENT_SCHEDULER_PLAN_PROPERTY_NAME);
+	for (int i = 0; i < 100 && property == NULL; i++) {
+		indigo_usleep(10000);
+		property = snapshot(AGENT_SCHEDULER_PLAN_PROPERTY_NAME);
+	}
+	if (property == NULL) {
+		return -1;
+	}
+	int count = property->count;
+	for (int i = 0; i < count && i < max; i++) {
+		strcpy(labels[i], property->items[i].label);
+		states[i] = property->items[i].light.value;
+	}
+	indigo_release_property(property);
+	return count;
+}
+
+// waits until the plan has count items and the item at index contains text
+static bool wait_plan_item(int count, int index, const char *text, double timeout) {
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	int found = -1;
+	for (double t = 0; t < timeout; t += 0.01) {
+		found = plan_items(labels, states, 16);
+		if (found == count && (count == 0 || strstr(labels[index], text))) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for a plan of %d items with '%s' at %d, found %d:\n", count, text, index, found);
+	for (int i = 0; i < found && i < 16; i++) {
+		fprintf(stderr, "  %s [%d]\n", labels[i], states[i]);
+	}
+	return false;
+}
+
+static bool wait_plan(int count, const char *text, double timeout) {
+	return wait_plan_item(count, 0, text, timeout);
+}
+
+// waits until the first planned run contains text and has the state, Busy for the running task
+static bool wait_plan_first(const char *text, indigo_property_state state, double timeout) {
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	int found = -1;
+	for (double t = 0; t < timeout; t += 0.01) {
+		found = plan_items(labels, states, 16);
+		if (found > 0 && states[0] == state && strstr(labels[0], text)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for '%s' in state %d first in the plan, found %d:\n", text, state, found);
+	for (int i = 0; i < found && i < 16; i++) {
+		fprintf(stderr, "  %s [%d]\n", labels[i], states[i]);
+	}
+	return false;
+}
+
+// start and end of a planned run in minutes of the day, the label begins with "HH:MM\u2013HH:MM"
+static bool plan_times(const char *label, int *start, int *end) {
+	int start_hour, start_minute, end_hour, end_minute;
+	if (sscanf(label, "%d:%d", &start_hour, &start_minute) != 2 || strncmp(label + 5, "\xe2\x80\x93", 3) || sscanf(label + 8, "%d:%d", &end_hour, &end_minute) != 2) {
+		return false;
+	}
+	*start = start_hour * 60 + start_minute;
+	*end = end_hour * 60 + end_minute;
+	return true;
+}
+
+static int minutes_between(int from, int to) {
+	return (to - from + 1440) % 1440;
+}
+
+// moves the site to the longitude where the mean solar time is 18:00, the next sunrise is then hours away whenever the case runs
+static void site_at_evening(void) {
+	time_t now = time(NULL);
+	double hours = (now % 86400) / 3600.0;
+	site_property->items[1].number.value = site_property->items[1].number.target = fmod((18 - hours) * 15 + 720, 360);
+	indigo_update_property(&mount_standin, site_property, NULL);
+}
 
 static void set_guiding(bool guiding) {
 	guider_process_property->items[0].sw.value = guiding;
@@ -1068,6 +1153,102 @@ static void library_without_estimate_uses_the_default(void) {
 
 // -------------------------------------------------------------------------------- Runner
 
+static void plan_lists_the_night(void) {
+	site_at_evening();
+	REQUIRE(upload("// @task Low\n// @priority low 90\n// @duration 10\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Normal\n// @priority normal 10\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task High\n// @priority high 0\n// @duration 20\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Twice\n// @priority low 0\n// @repeat 2\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Off\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	REQUIRE(upload("// @task South\n// @target 06:00:00 -89:00:00\n// @duration 1\n" BODY_WAIT(1)));
+	// the plan is a preview, it is shown before the scheduler starts
+	ASSERT_TRUE(wait_plan(7, "High", 10));
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	REQUIRE(plan_items(labels, states, 16) == 7);
+	const char *expected[] = { "  High (high 0)", "  Normal (normal 10)", "  Low (low 90)", "  Twice #1 (low 0)", "  Twice #2 (low 0)", "Off \xe2\x80\x94 disabled", "South \xe2\x80\x94 target below the horizon" };
+	const int durations[] = { 20, 5, 10, 1, 1 };
+	for (int i = 0; i < 7; i++) {
+		ASSERT_TRUE(strstr(labels[i], expected[i]) != NULL);
+		ASSERT_EQ_INT(i < 5 ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE, states[i]);
+	}
+	// the runs follow each other from now on
+	struct tm now;
+	time_t t = time(NULL);
+	gmtime_r(&t, &now);
+	int previous_end = -1;
+	for (int i = 0; i < 5; i++) {
+		int start, end;
+		REQUIRE(plan_times(labels[i], &start, &end));
+		ASSERT_EQ_INT(durations[i], minutes_between(start, end));
+		if (i == 0) {
+			ASSERT_TRUE(minutes_between(start, now.tm_hour * 60 + now.tm_min) <= 1);
+		} else {
+			ASSERT_EQ_INT(previous_end, start);
+		}
+		previous_end = end;
+	}
+	// an upload and an urgent submission change the plan at once
+	REQUIRE(upload("// @task Top\n// @priority high 50\n// @duration 1\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_plan(8, "  Top (high 50)", 5));
+	REQUIRE(urgent("// @task Rush\n// @priority low\n// @duration 1\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_plan(9, "  Rush (urgent)", 5));
+	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_plan_item(9, 8, "South \xe2\x80\x94", 5));
+	REQUIRE(plan_items(labels, states, 16) == 9);
+	ASSERT_TRUE(strstr(labels[0], "  Rush (urgent)") != NULL);
+	ASSERT_TRUE(strstr(labels[3], "  Off (normal 50)") != NULL);
+	for (int i = 0; i < 8; i++) {
+		ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[i]);
+	}
+}
+
+static void plan_follows_the_run(void) {
+	site_at_evening();
+	REQUIRE(upload("// @task First\n// @priority high\n// @duration 5\n" BODY_WAIT(5)));
+	REQUIRE(upload("// @task Second\n// @duration 3\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("First", "RUNNING", 15));
+	ASSERT_TRUE(wait_plan_first("  First (high 50)", INDIGO_BUSY_STATE, 5));
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	REQUIRE(plan_items(labels, states, 16) == 2);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, states[0]);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[1]);
+	int first_start, first_end, second_start, second_end;
+	REQUIRE(plan_times(labels[0], &first_start, &first_end));
+	REQUIRE(plan_times(labels[1], &second_start, &second_end));
+	ASSERT_EQ_INT(5, minutes_between(first_start, first_end));
+	ASSERT_EQ_INT(first_end, second_start);
+	// the first task ends early, the done task leaves the plan and the next one runs
+	ASSERT_TRUE(wait_task_state("Second", "RUNNING", 15));
+	ASSERT_TRUE(wait_plan_first("  Second (normal 50)", INDIGO_BUSY_STATE, 5));
+	REQUIRE(plan_items(labels, states, 16) == 1);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, states[0]);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
+	// the aborted task is marked RETRY and stays in the plan, no longer running
+	ASSERT_TRUE(wait_plan_first("  Second (normal 50)", INDIGO_IDLE_STATE, 5));
+}
+
+static void plan_gives_the_reasons(void) {
+	site_at_evening();
+	REQUIRE(upload("// @task Thrown\n// @duration 1\nthrow new Error(\"always\");\n"));
+	// a run may start before the end of the night and last beyond it, a second one then finds no time
+	REQUIRE(upload("// @task Endless\n// @priority high\n// @duration 1380\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Later\n// @duration 1380\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_plan_item(3, 1, "Thrown \xe2\x80\x94 script error", 15));
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	REQUIRE(plan_items(labels, states, 16) == 3);
+	ASSERT_TRUE(strstr(labels[0], "  Endless (high 50)") != NULL);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[0]);
+	ASSERT_TRUE(strstr(labels[2], "Later \xe2\x80\x94 no time left tonight") != NULL);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[1]);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[2]);
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -1099,6 +1280,9 @@ static const indigo_test_case cases[] = {
 	{ "history_records_runs", history_records_runs },
 	{ "duration_estimated_measured_and_set", duration_estimated_measured_and_set },
 	{ "library_without_estimate_uses_the_default", library_without_estimate_uses_the_default },
+	{ "plan_lists_the_night", plan_lists_the_night },
+	{ "plan_follows_the_run", plan_follows_the_run },
+	{ "plan_gives_the_reasons", plan_gives_the_reasons },
 };
 
 static const char *case_filter = NULL;

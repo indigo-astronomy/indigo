@@ -25,6 +25,7 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <stdint.h>
 
 #include <indigo/indigo_bus.h>
 
@@ -286,6 +287,129 @@ static void test_unknown_site(void) {
 	ASSERT_TRUE(indigo_scheduler_interval_ok(&unknown, NULL, &plain, T_NOVEMBER_NIGHT, T_NOVEMBER_NIGHT + 600, &reason));
 }
 
+// deterministic pseudo random numbers, the tests never depend on the platform rand()
+static uint32_t random_state = 20261113;
+
+static double random_unit(void) {
+	random_state = random_state * 1664525u + 1013904223u;
+	return (random_state >> 8) / (double)(1u << 24);
+}
+
+static scheduler_header random_header(void) {
+	scheduler_header header = make_header();
+	if (random_unit() < 0.8) {
+		header.has_target = true;
+		header.ra = random_unit() * 24;
+		header.dec = random_unit() * 150 - 60;
+		header.has_min_altitude = random_unit() < 0.5;
+		header.min_altitude = random_unit() * 60;
+		header.has_max_airmass = random_unit() < 0.3;
+		header.max_airmass = 1 + random_unit() * 2;
+		header.has_ha = random_unit() < 0.3;
+		header.ha_from = random_unit() * 24 - 12;
+		header.ha_to = random_unit() * 24 - 12;
+		header.has_moon = random_unit() < 0.4;
+		header.moon_separation = random_unit() * 90;
+		header.moon_width = random_unit() < 0.5 ? 0 : 1 + random_unit() * 10;
+		header.has_illumination = random_unit() < 0.3;
+		header.max_illumination = random_unit() * 100;
+	}
+	header.twilight = (scheduler_twilight)(int)(random_unit() * 4);
+	double window = random_unit();
+	if (window < 0.3) {
+		header.window_kind = SCHEDULER_WINDOW_ABSOLUTE;
+		header.has_window_start = random_unit() < 0.7;
+		header.has_window_end = !header.has_window_start || random_unit() < 0.7;
+		header.window_start = sky.start + (time_t)(random_unit() * 20 * 3600);
+		header.window_end = header.window_start + 600 + (time_t)(random_unit() * 20 * 3600);
+	} else if (window < 0.5) {
+		header.window_kind = SCHEDULER_WINDOW_NIGHTLY;
+		header.has_window_start = header.has_window_end = true;
+		header.window_start_minute = (int)(random_unit() * 1440);
+		header.window_end_minute = (int)(random_unit() * 1440);
+	}
+	return header;
+}
+
+// the precomputed tables must answer exactly as the reference functions, reasons included
+static void test_points_match_reference(void) {
+	indigo_scheduler_sky_build(&sky, T_FULL_MOON + 7 * 3600, LATITUDE, LONGITUDE, 140);
+	scheduler_task_points points;
+	int checks = 0;
+	for (int n = 0; n < 60; n++) {
+		scheduler_header header = random_header();
+		if (header.has_target) {
+			indigo_scheduler_target_build(&sky, &header, &target);
+		}
+		indigo_scheduler_points_build(&sky, &target, &header, &points);
+		ASSERT_TRUE(points.valid);
+		for (int k = 0; k < 12; k++) {
+			time_t from = sky.start + (time_t)(random_unit() * 24 * 3600);
+			int duration = 60 + (int)(random_unit() * 6 * 3600);
+			const char *slow_reason = NULL, *fast_reason = NULL;
+			bool slow = indigo_scheduler_interval_ok(&sky, &target, &header, from, from + duration, &slow_reason);
+			bool fast = indigo_scheduler_points_ok(&sky, &points, &header, from, from + duration, &fast_reason);
+			ASSERT_EQ_INT(slow, fast);
+			if (!slow) {
+				ASSERT_STREQ(slow_reason, fast_reason);
+			}
+			slow_reason = fast_reason = NULL;
+			time_t slow_next = indigo_scheduler_next_eligible(&sky, &target, &header, from, duration, &slow_reason);
+			time_t fast_next = indigo_scheduler_points_next(&sky, &points, &header, from, duration, 0, &fast_reason);
+			ASSERT_EQ_INT((int)slow_next, (int)fast_next);
+			ASSERT_TRUE((slow_reason == NULL && fast_reason == NULL) || (slow_reason && fast_reason && !strcmp(slow_reason, fast_reason)));
+			ASSERT_EQ_INT(indigo_scheduler_time_to_set(&sky, &target, &header, from), indigo_scheduler_points_time_to_set(&sky, &points, &header, from));
+			checks++;
+		}
+	}
+	ASSERT_EQ_INT(720, checks);
+	// grid boundaries: starts and ends on grid points, before the grid and at its end
+	scheduler_header header = make_header();
+	set_target(&header, 2.530303, 60);
+	header.has_min_altitude = true;
+	header.min_altitude = 30;
+	header.twilight = SCHEDULER_TWILIGHT_NAUTICAL;
+	indigo_scheduler_points_build(&sky, &target, &header, &points);
+	time_t last = sky.start + (SCHEDULER_GRID_POINTS - 1) * SCHEDULER_GRID_STEP;
+	time_t froms[] = { sky.start - 600, sky.start, sky.start + SCHEDULER_GRID_STEP, sky.start + 12 * 3600, last - 3600, last - SCHEDULER_GRID_STEP, last };
+	int durations[] = { 60, SCHEDULER_GRID_STEP, 3600, 3 * 3600 };
+	for (unsigned i = 0; i < sizeof(froms) / sizeof(froms[0]); i++) {
+		for (unsigned j = 0; j < sizeof(durations) / sizeof(durations[0]); j++) {
+			const char *slow_reason = NULL, *fast_reason = NULL;
+			ASSERT_EQ_INT(indigo_scheduler_interval_ok(&sky, &target, &header, froms[i], froms[i] + durations[j], &slow_reason), indigo_scheduler_points_ok(&sky, &points, &header, froms[i], froms[i] + durations[j], &fast_reason));
+			ASSERT_TRUE((slow_reason == NULL && fast_reason == NULL) || (slow_reason && fast_reason && !strcmp(slow_reason, fast_reason)));
+			slow_reason = fast_reason = NULL;
+			ASSERT_EQ_INT((int)indigo_scheduler_next_eligible(&sky, &target, &header, froms[i], durations[j], &slow_reason), (int)indigo_scheduler_points_next(&sky, &points, &header, froms[i], durations[j], 0, &fast_reason));
+			ASSERT_TRUE((slow_reason == NULL && fast_reason == NULL) || (slow_reason && fast_reason && !strcmp(slow_reason, fast_reason)));
+		}
+	}
+	// a table of an older grid and an invalid grid are never used
+	time_t from = sky.start + 12 * 3600;
+	const char *reason = NULL;
+	points.start = sky.start - SCHEDULER_GRID_STEP;
+	ASSERT_FALSE(indigo_scheduler_points_ok(&sky, &points, &header, from, from + 60, &reason));
+	ASSERT_STREQ("site coordinates unknown", reason);
+	indigo_scheduler_points_build(&sky, &target, &header, &points);
+	sky.valid = false;
+	reason = NULL;
+	ASSERT_FALSE(indigo_scheduler_points_ok(&sky, &points, &header, from, from + 60, &reason));
+	ASSERT_STREQ("site coordinates unknown", reason);
+	sky.valid = true;
+}
+
+static void test_night_end(void) {
+	// by day the night ends at the sunrise after the next sunset, by night at the next sunrise
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t end = indigo_scheduler_night_end(&sky, T_NOVEMBER_NOON);
+	ASSERT_TRUE(end > T_NOVEMBER_NOON + 16 * 3600 && end < T_NOVEMBER_NOON + 20 * 3600);
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NIGHT, LATITUDE, LONGITUDE, 140);
+	end = indigo_scheduler_night_end(&sky, T_NOVEMBER_NIGHT);
+	ASSERT_TRUE(end > T_NOVEMBER_NIGHT + 5 * 3600 && end < T_NOVEMBER_NIGHT + 9 * 3600);
+	// in the polar night the sun does not rise within the grid
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NIGHT, 85, LONGITUDE, 0);
+	ASSERT_EQ_INT((int)(T_NOVEMBER_NIGHT + 86400), (int)indigo_scheduler_night_end(&sky, T_NOVEMBER_NIGHT));
+}
+
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "sun_at_equinox", test_sun_at_equinox },
@@ -301,6 +425,8 @@ int main(void) {
 		{ "nightly_window", test_nightly_window },
 		{ "interval_next_eligible_and_time_to_set", test_interval_next_eligible_and_time_to_set },
 		{ "unknown_site", test_unknown_site },
+		{ "points_match_reference", test_points_match_reference },
+		{ "night_end", test_night_end },
 	};
 	return indigo_run_tests("test_agent_scheduler_sky", cases, sizeof(cases) / sizeof(cases[0]));
 }

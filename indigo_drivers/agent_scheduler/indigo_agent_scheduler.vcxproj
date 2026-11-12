@@ -162,6 +162,7 @@
     <ClCompile Include="indigo_agent_scheduler.c" />
     <ClCompile Include="indigo_agent_scheduler_header.c" />
     <ClCompile Include="indigo_agent_scheduler_sky.c" />
+    <ClCompile Include="indigo_agent_scheduler_plan.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj">
@@ -172,6 +173,7 @@
     <ClInclude Include="indigo_agent_scheduler.h" />
     <ClInclude Include="indigo_agent_scheduler_header.h" />
     <ClInclude Include="indigo_agent_scheduler_sky.h" />
+    <ClInclude Include="indigo_agent_scheduler_plan.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -699,6 +699,7 @@ Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 | AGENT_SCHEDULER_CURRENT | text | yes | CURRENT, NEXT, NEXT_START, REASON | Running task, next task, its UTC start time and why nothing runs. |
 | AGENT_SCHEDULER_SETTINGS | number | no | IDLE_CHECK_INTERVAL, STOP_TIMEOUT, START_TIMEOUT, SETTING_WEIGHT, ALTITUDE_WEIGHT, IDLE_PARK_AFTER, FRAME_OVERHEAD, OPERATION_OVERHEAD | Check interval, stop and start timeouts in seconds, the score weights, minutes without an eligible task before the idle hook, and the per-frame and per-operation overheads in seconds of the duration estimate. |
 | AGENT_SCHEDULER_HOOKS | text | no | STARTUP, SHUTDOWN, IDLE | Names of stored tasks run when the scheduler starts, when it stops, and once per idle period. |
+| AGENT_SCHEDULER_PLAN | light | yes | PLAN_%d | Forecast of the runs until the end of the night, assuming every run takes its duration and succeeds; each label shows the UTC start and end, the task, the run number of a repeated task and its priority. Busy = running, Idle = planned; Alert items follow for tasks without a run tonight, labelled with the reason. |
 | AGENT_SCHEDULER_HISTORY | light | yes | RUN_%u | Finished runs, newest first, at most 200; Ok = succeeded, Alert = failed, Busy = preempted or aborted. |
 | AGENT_SCHEDULER_CLEAR_HISTORY | switch | no | CLEAR | Remove all history entries. |
 | AGENT_SCHEDULER_RESTORE_HISTORY | text | no | ENTRIES | Used only to restore the history from the configuration; published empty, client changes are rejected. |

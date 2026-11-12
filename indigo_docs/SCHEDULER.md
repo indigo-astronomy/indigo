@@ -357,8 +357,6 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `FRAME_OVERHEAD` | s | 10 | Time added per captured frame in the duration estimate |
 | `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
 
-The property `AGENT_SCHEDULER_PLAN` belongs to phase 3b and is not implemented yet.
-
 **Requests.** Every change of a writable property is queued. The agent's handler acknowledges it with the property in the Busy state and completes it with Ok or Alert. Only the handler changes the properties; client enumerations receive copies. INDIGO does not publish an update that changes neither values nor state, so without the Busy state a client, and the configuration restore, would not see the result.
 
 `AGENT_SCHEDULER_TASK_NAME` and `AGENT_SCHEDULER_TASK_COMMAND` form a two-step command, which is a common INDIGO idiom. Two clients that issue commands at the same moment can interfere. If both properties are changed in one client action, the command applies to the name sent with it.
@@ -466,9 +464,10 @@ The constraint engine therefore works on a grid:
 - At every refresh, it computes the Sun and Moon altitudes, the moon illumination and the local sidereal time for the next 48 hours at 5-minute steps (577 points). The 48 hours cover a 24-hour task duration and the 12-hour look-ahead of the score.
 - The Sun and Moon positions themselves are computed once per hour and interpolated linearly between. The Moon moves about half a degree per hour, so the interpolation error is far below any limit, while the grid builds in less than 0.1 s.
 - For each task with `@target`, it computes the target's altitude, airmass and hour angle on the same grid. These values only change when the task is edited, apart from the precession to the date, which is negligible within a night.
+- For each task, it also records for every grid point the first point at or after it where a sky constraint fails, with the reason. An interval check is then a single lookup, and the search for the next start skips over a failing stretch in one step instead of testing every start time. The time windows are checked separately, because a nightly window does not depend on the grid.
 - Eligibility, `NEXT_START`, the setting-soonest term and the night plan are lookups in these tables.
 
-The grid is rebuilt when the site coordinates change and every hour.
+The grid and the task tables are rebuilt when the site coordinates change and every hour. A task's tables are also rebuilt when it is edited.
 
 
 ### Scheduler control
@@ -532,11 +531,12 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 
 **Computation.** The agent simulates scheduling from now until the end of the night:
 
-- The night ends at the next sunrise, or 24 hours from now if the sun does not set.
-- The simulation starts with the running task, assumed to end at its start time plus `@duration`.
-- At each simulated time, the agent applies the [selection](#selection) rules exactly as at run time: delays, expiry, eligibility over `@duration`, urgent tasks first, then score.
-- The selected task is assumed to run for its `@duration` and succeed. Its simulated run counter increases, and `@repeat` intervals are applied.
+- At night, the night ends at the next sunrise. During the day, it ends at the sunrise that follows the next sunset, so that the plan shows the coming night. It ends 24 hours from now if the sun does not rise or set within the grid.
+- The simulation starts with the running task, assumed to end at its start time plus its [duration](#task-duration), but not earlier than one minute from now.
+- At each simulated time, the agent applies the [selection](#selection) rules exactly as at run time: delays, expiry, eligibility over the task duration, urgent tasks first, then score. A task queued again after a repeat or retry delay waits behind the urgent tasks queued before it.
+- The selected task is assumed to run for its duration and succeed. Its simulated run counter increases, and `@repeat` intervals are applied.
 - When nothing is eligible, the simulation advances to the time the next task becomes eligible.
+- A run that starts before the end of the night is planned even when it lasts beyond it.
 
 The simulation works on a copy of the runtime status and never changes the real task states. It uses only ephemeris arithmetic and runs on the agent's handler queue.
 
@@ -544,21 +544,25 @@ The simulation works on a copy of the runtime status and never changes the real 
 
 - The label shows the expected UTC start and end, the task name and its priority, for example `20:15–23:15  M31 LRGB (normal 50)`. A task that repeats appears once per planned run, with the run number.
 - The light is Busy for the running task and Idle for future runs.
-- Tasks that cannot run before the end of the night follow the planned runs as Alert items, with the reason, for example `M42 — below 30° all night` or `NGC 7000 — disabled`. DONE, FAILED and EXPIRED tasks are not listed.
+- Tasks that cannot run before the end of the night follow the planned runs as Alert items, with the reason, for example `M42 — target below the altitude limit`, `NGC 7000 — disabled` or `M33 — no time left tonight`, the last for a task that could run but finds no room after the planned runs. DONE, FAILED and EXPIRED tasks are not listed.
 
 **Updates.** The plan is recomputed:
 
 - whenever a task starts or ends;
 - after a task is uploaded, edited or deleted, a `TASK_COMMAND`, an urgent submission and a `SETTINGS` change;
 - on `START`, `STOP` and `ABORT`;
-- every `IDLE_CHECK_INTERVAL` while the scheduler waits.
+- when the site coordinates change;
+- every `IDLE_CHECK_INTERVAL`, so that the times follow the clock.
 
 It is also published while the scheduler is stopped, as the plan that `START` would follow.
 
 **Limits.** The plan is a forecast, not a commitment:
 
-- Failures, retries, tasks that end earlier or later than `@duration`, urgent tasks and safety stops change the real order. The plan is recomputed when they happen.
+- Failures, retries, tasks that end earlier or later than their duration, urgent tasks and safety stops change the real order. The plan is recomputed when they happen.
 - The forecast assumes that the constraints and the site do not change.
+- Urgent preemption is not simulated: an urgent task that becomes eligible during a planned run is listed after that run, although it will preempt it.
+- A task whose duration is still being estimated is planned with the duration known so far, although the scheduler does not start it before the estimate is known.
+- While nothing runs, the first run starts now, so the labels change every minute and the property is redefined with them. INDIGO cannot change an item label with an update.
 
 ### Run history
 
@@ -670,7 +674,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
    The agent is registered in the server, the build and the project files, and documented in `PROPERTIES.md`.
 3. Phase 3, in two parts:
    - 3a: startup, shutdown and idle hooks, run history, duration estimate and measurement, including `Sequence.prototype.estimate()` in `Sequencer.js` with its documentation in `Sequencer.md` and its tests. Scoring weights, repeat and retry and the Lorentzian moon limit came with phase 2.
-   - 3b: night plan preview, after the next-start search is made cheaper.
+   - 3b: night plan preview, with the per-task constraint tables that make the next-start search cheap.
 4. Safety: a related AUX safety or weather device. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 5. Optional extensions:
    - task upload, download and editing in the web UI;
@@ -686,6 +690,8 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - case-insensitivity, whitespace, CRLF and byte-order mark handling;
   - every invalid input.
 - Unit tests for the constraint engine use fixed dates and sites with known sun, moon and target positions, including the Lorentzian limit, a polar site and nightly windows across midnight.
+- Unit tests compare the per-task constraint tables with a direct evaluation of the constraints for random tasks and times, including the failure reasons.
+- Unit tests for the night plan simulation cover the score, the order and times, ties, urgent tasks first, the running task first, repeats with intervals, unschedulable tasks, windows, the end of the night and the run limit.
 - A performance test computes the night plan for 128 tasks and checks that it completes within one second on a Raspberry Pi 4.
 - Integration tests run the Scheduler Agent with the Scripting Agent and the CCD, mount and guider simulators. They cover:
   - upload, download, edit, rename and persistence across restarts, including restored counters, measured durations and history, and a saved task that no longer validates;
