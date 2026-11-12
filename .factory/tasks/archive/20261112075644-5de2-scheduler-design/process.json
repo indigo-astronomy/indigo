@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "task": "20261112075644-5de2-scheduler-design",
+  "scope": [
+    "indigo_docs/SCHEDULER.md",
+    "indigo.xcodeproj/project.pbxproj",
+    ".factory/completions/20261112075644-5de2-scheduler-design.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261112075644-5de2-scheduler-design.json": [
+      "100644",
+      "blob",
+      "d4c8d8109600f859e4c1d40a335a3bdc89f9da76"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "8cbd2296aeb5b26daf7e5f46ca8489a8bafa745d"
+    ],
+    "indigo_docs/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "ddbc7bff620f2de98399cc8b990a308494b07e42"
+    ]
+  }
+}

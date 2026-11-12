@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261112075644-5de2-scheduler-design",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of the commit plan, then commit; no push.",
+  "blocker": null
+}
