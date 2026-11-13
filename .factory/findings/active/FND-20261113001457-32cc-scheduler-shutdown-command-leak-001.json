@@ -1,5 +1,5 @@
 {
-  "title": "Forked integration case runners never run the leak check, and a framework escape buffer leaks per thread",
+  "title": "Forked integration case runners never run the leak check",
   "category": "quality",
   "severity": "low",
   "status": "open",
@@ -12,8 +12,8 @@
       "revision": null
     }
   ],
-  "summary": "parallel_case_runner.h runs every case in a forked child that ends with _exit(), so LeakSanitizer never runs and ASAN_OPTIONS=detect_leaks=1 sanitizer runs of the scheduler and other suites report no leaks whatever happens. With an explicit __lsan_do_recoverable_leak_check() after each scheduler case, the only remaining report is in indigo_libs: indigo_xml_escape_b() keeps a thread-local long_escape_buffer that is never freed when a handler queue thread ends (seen through indigo_save_property() in repeat_retry_and_failures, 1183 bytes). Next: free the buffer at thread end or use a caller-owned buffer (framework change, needs owner approval), then run the leak check in the case runner child before _exit().",
-  "evidence": "indigo_test/integration/parallel_case_runner.h _exit(runner->child(...)); indigo_libs/indigo_xml.c indigo_xml_escape_b(); per-case leak check experiment recorded in the task verification.md.",
+  "summary": "parallel_case_runner.h runs every case in a forked child that ends with _exit(), so LeakSanitizer never runs and ASAN_OPTIONS=detect_leaks=1 sanitizer runs of the scheduler and other suites report no leaks whatever happens. With an explicit __lsan_do_recoverable_leak_check() after each scheduler case, the only remaining report is the framework escape buffer, FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001. Next: after that is fixed, run the leak check in the case runner child before _exit() where LeakSanitizer is available.",
+  "evidence": "indigo_test/integration/parallel_case_runner.h _exit(runner->child(...)); per-case leak check experiment recorded in the task verification.md.",
   "resolution": null,
   "id": "FND-20261113001457-32cc-scheduler-shutdown-command-leak-001"
 }

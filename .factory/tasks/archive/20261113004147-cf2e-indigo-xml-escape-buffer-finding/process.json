@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "task": "20261113004147-cf2e-indigo-xml-escape-buffer-finding",
+  "scope": [
+    ".factory/findings/active/FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001.json",
+    ".factory/findings/active/FND-20261113001457-32cc-scheduler-shutdown-command-leak-001.json",
+    ".factory/completions/20261113004147-cf2e-indigo-xml-escape-buffer-finding.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113004147-cf2e-indigo-xml-escape-buffer-finding.json": [
+      "100644",
+      "blob",
+      "4595345cd3953c60836f14bf3b04992fff69a4f9"
+    ],
+    ".factory/findings/active/FND-20261113001457-32cc-scheduler-shutdown-command-leak-001.json": [
+      "100644",
+      "blob",
+      "4ef680dcfe0ad7472c1d6dee69cb2d3daa0b3fcc"
+    ],
+    ".factory/findings/active/FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001.json": [
+      "100644",
+      "blob",
+      "9d3c6dc69617659bce8f10383d93eecfb954896e"
+    ]
+  }
+}
