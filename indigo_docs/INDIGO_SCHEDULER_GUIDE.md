@@ -18,7 +18,7 @@ The INDIGO Scheduler Agent decides which imaging task runs next, when it runs an
 
 A task is a short text: a few `// @key value` header lines that tell the scheduler when and how to run the task, followed by an ordinary [Sequencer.js](../indigo_drivers/agent_scripting/library/Sequencer.md) sequence that does the work (slew, focus, guide, capture). The scheduler runs that sequence in the Scripting Agent, the same way as a sequence you start by hand.
 
-The scheduler is controlled entirely through INDIGO properties of the device **Scheduler Agent**. This guide shows how to write tasks, submit them, follow and control the scheduler, and fix common problems, using those properties. The design and the exact rules are documented in [SCHEDULER.md](SCHEDULER.md), and every property is listed in [PROPERTIES.md](PROPERTIES.md).
+The scheduler is controlled entirely through INDIGO properties of the device **Scheduler Agent**. This guide shows how to write tasks, submit them, follow and control the scheduler, and fix common problems, using those properties. The design and the exact rules are documented in [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md), and every property is listed in [PROPERTIES.md](PROPERTIES.md).
 
 ## Before you start
 
@@ -268,7 +268,7 @@ sequence.resume_point();
 sequence.start();
 ```
 
-Checkpoints act only where the sequence reaches them: an exposure, a slew or a focusing run in progress finishes first. A run that ends early through a checkpoint ends Ok and counts as a successful run, see [Repeats and retries](#repeats-and-retries). A time limit enforced by the scheduler itself, `@timeout`, is planned; see [SCHEDULER.md](SCHEDULER.md#implementation-phases).
+Checkpoints act only where the sequence reaches them: an exposure, a slew or a focusing run in progress finishes first. A run that ends early through a checkpoint ends Ok and counts as a successful run, see [Repeats and retries](#repeats-and-retries). A time limit enforced by the scheduler itself, `@timeout`, is planned; see [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md#implementation-phases).
 
 ### Repeats and retries
 
@@ -745,7 +745,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_DELETE_TASK.NAME=M31 LRGB"
 
 ## Property reference
 
-All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIES.md) lists them with their items and [SCHEDULER.md](SCHEDULER.md) describes their exact behaviour.
+All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIES.md) lists them with their items and [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md) describes their exact behaviour.
 
 | Property | Type | Items | Use |
 |---|---|---|---|

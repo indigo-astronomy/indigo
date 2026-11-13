@@ -1,6 +1,6 @@
 # Scheduler agent
 
-Selects and runs imaging tasks by sky constraints and priority, and lets urgent tasks interrupt the running one. Each task is a text with a `// @key value` header followed by a `Sequencer.js` body, which the agent runs in the Scripting Agent. The design is described in [SCHEDULER.md](../../indigo_docs/SCHEDULER.md) and the properties in [PROPERTIES.md](../../indigo_docs/PROPERTIES.md).
+Selects and runs imaging tasks by sky constraints and priority, and lets urgent tasks interrupt the running one. Each task is a text with a `// @key value` header followed by a `Sequencer.js` body, which the agent runs in the Scripting Agent. The design is described in [SCHEDULER.md](doc/SCHEDULER.md) and the properties in [PROPERTIES.md](../../indigo_docs/PROPERTIES.md).
 
 ## Supported devices
 

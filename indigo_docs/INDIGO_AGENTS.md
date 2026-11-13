@@ -25,7 +25,7 @@ Agent code contains the most of the application logic for the typical operations
 
 - **Auxiliary Agent** controls auxiliary devices like power boxes, flat boxes, weather stations, sky quality meters, etc. The agent name is "*indigo_agent_auxiliary*".
 
-- **Scheduler Agent** selects and runs imaging tasks by sky constraints and priority, and lets urgent tasks interrupt the running one. The agent name is "*indigo_agent_scheduler*". The design is described in [SCHEDULER.md](SCHEDULER.md).
+- **Scheduler Agent** selects and runs imaging tasks by sky constraints and priority, and lets urgent tasks interrupt the running one. The agent name is "*indigo_agent_scheduler*". The design is described in [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md).
 
 - **Scripting Agent** manages and executes INDIGO scripts. The agent name is "*indigo_agent_scripting*". More on INDIGO scripting can be found in the agent's [README.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/README.md) and in [Basics of INDIGO Scripting](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/SCRIPTING_BASICS.md)
 

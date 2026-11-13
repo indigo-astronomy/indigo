@@ -706,7 +706,7 @@ Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 
 The agent also makes the Scripting Agent define `SCHEDULER_RESULT` (text, read-only, items `TOKEN`, `RESULT`, `MESSAGE`), through which the script that runs a task reports whether its body ran or failed, and `SCHEDULER_ESTIMATE` (number, read-only, items `TOKEN`, `SUPPORTED`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS`, `UNKNOWN`), through which it reports the counts of `Sequence.prototype.estimate()`.
 
-Source: `indigo_drivers/agent_scheduler/indigo_agent_scheduler.c`. The design is described in [SCHEDULER.md](SCHEDULER.md).
+Source: `indigo_drivers/agent_scheduler/indigo_agent_scheduler.c`. The design is described in [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md).
 
 ### Scripting agent
 

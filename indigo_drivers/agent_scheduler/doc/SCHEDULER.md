@@ -6,7 +6,7 @@ Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 
-This document is the design of the INDIGO Scheduler Agent. The agent decides which imaging task runs next, when it runs and under which sky conditions, and it can interrupt the running task for an urgent one. It is a design document. Property names, limits and defaults are subject to change until the agent is implemented. How to use the scheduler is described in the [Scheduler User Guide](INDIGO_SCHEDULER_GUIDE.md).
+This document is the design of the INDIGO Scheduler Agent. The agent decides which imaging task runs next, when it runs and under which sky conditions, and it can interrupt the running task for an urgent one. It is a design document. Property names, limits and defaults are subject to change until the agent is implemented. How to use the scheduler is described in the [Scheduler User Guide](../../../indigo_docs/INDIGO_SCHEDULER_GUIDE.md).
 
 ## Motivation
 
