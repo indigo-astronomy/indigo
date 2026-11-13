@@ -43,7 +43,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002E
+#define DRIVER_VERSION       0x0300002F
 #define DRIVER_NAME          "indigo_ccd_qhy2"
 #define DRIVER_LABEL         "QHY CMOS (modern) Camera"
 #define CCD_DEVICE_NAME      "%s"
@@ -560,7 +560,11 @@ static bool qhy2_setup(indigo_device *device, bool streaming) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDMemLength = %u, buffer %lu", length, (unsigned long)PRIVATE_DATA->buffer_size);
 		return false;
 	}
-	if (!streaming && !qhy2_result(SetQHYCCDSingleFrameTimeOut(PRIVATE_DATA->handle, 1000), "Set readout timeout")) {
+	// The SDK timeout bounds the whole frame, the exposure and its readout, from the start
+	// call on. A fixed second made a QHY168C, whose 33 MB readout takes longer, return
+	// frames of zeros for every exposure (indigo#783), so it allows the exposure and the
+	// same 10 s for the readout as the acquisition deadline.
+	if (!streaming && !qhy2_result(SetQHYCCDSingleFrameTimeOut(PRIVATE_DATA->handle, (uint32_t)fmin(ceil(PRIVATE_DATA->duration * 1000) + 10000, UINT32_MAX)), "Set readout timeout")) {
 		return false;
 	}
 	if (PRIVATE_DATA->has_shutter && !qhy2_result(ControlQHYCCDShutter(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value ? MACHANICALSHUTTER_CLOSE : MACHANICALSHUTTER_FREE), "Set shutter")) {

@@ -41,6 +41,9 @@
 
 # define DEG2RAD (M_PI/180.0)
 
+// A sync whose target or raw declination is farther from the equator than this is warned about
+#define MOUNT_SYNC_POLE_WARNING_DEC	85.0
+
 static double indigo_range24(double ha) {
 	return fmod(ha + (24000), 24);
 }
@@ -846,6 +849,10 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 				indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_coordinates(device, NULL);
+				// Near the pole any right ascension points almost the same way, but the point's RA offset applies to the targets it is used for
+				if (fabs(point->dec) > MOUNT_SYNC_POLE_WARNING_DEC || fabs(point->raw_dec) > MOUNT_SYNC_POLE_WARNING_DEC) {
+					indigo_send_message(device, BUSY_PROPERTY, "Sync close to the celestial pole: right ascension is ill-defined there and this alignment point shifts the right ascension of the targets it is used for, sync below 85 degrees of declination");
+				}
 			}
 		}
 		return INDIGO_OK;

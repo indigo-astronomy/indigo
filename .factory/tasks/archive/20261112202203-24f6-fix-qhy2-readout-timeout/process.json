@@ -1,0 +1,69 @@
+{
+  "version": 2,
+  "task": "20261112202203-24f6-fix-qhy2-readout-timeout",
+  "scope": [
+    "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver",
+    "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.cpp",
+    "indigo_test/integration/test_ccd_qhy_sdk.cpp",
+    ".factory/completions/20261112202203-24f6-fix-qhy2-readout-timeout.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_drivers/ccd_qhy2",
+        "-f",
+        "../../Makefile.drv"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/integration/test_ccd_qhy2_sdk"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/integration/test_ccd_qhy_sdk"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261112202203-24f6-fix-qhy2-readout-timeout.json": [
+      "100644",
+      "blob",
+      "d5c82d7b10da2c2870db7737ba146098f6592867"
+    ],
+    "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.cpp": [
+      "100644",
+      "blob",
+      "7f16cb85737a8dba5fd45c6058a50b66d35d55a1"
+    ],
+    "indigo_drivers/ccd_qhy2/indigo_ccd_qhy2.driver": [
+      "100644",
+      "blob",
+      "42540ddaececcb55660d0f8b03dffb8177a55133"
+    ],
+    "indigo_test/integration/test_ccd_qhy_sdk.cpp": [
+      "100644",
+      "blob",
+      "9eee48d61f0ae241ff7ba091a739cbd0ea61bcd1"
+    ]
+  }
+}
