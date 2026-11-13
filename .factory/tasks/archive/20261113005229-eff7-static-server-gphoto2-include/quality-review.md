@@ -2,7 +2,7 @@
 
 Verdict: pass
 Reviewer and independence: coordinator, separate review pass, not independent (six-line removal).
-Reviewed revision and working-tree state: task branch from master at 0aba316b8 with this task's change.
+Reviewed revision and working-tree state: task branch from master at 962981d47 with this task's change.
 
 ## Scope and method
 Final diff of `indigo_server/indigo_server.c`, surrounding preprocessor structure, other references to the driver.

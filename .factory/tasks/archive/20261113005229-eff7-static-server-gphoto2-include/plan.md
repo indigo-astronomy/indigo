@@ -6,7 +6,7 @@ Status: complete
 Remove the gphoto2 include and static entry from `indigo_server/indigo_server.c`.
 
 ## Baseline
-- master at 0aba316b8; `gcc -fsyntax-only -DSTATIC_DRIVERS` fails: `ccd_gphoto2/indigo_ccd_gphoto2.h: No such file or directory`.
+- master at 962981d47; `gcc -fsyntax-only -DSTATIC_DRIVERS` fails: `ccd_gphoto2/indigo_ccd_gphoto2.h: No such file or directory`.
 
 ## Ordered steps
 | Step | Change and allowed paths | Acceptance IDs | Dependencies | Completion check | Status |

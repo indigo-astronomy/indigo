@@ -3,7 +3,7 @@
 Verdict: pass
 Reviewer: coordinator (Claude Code, claude-opus-5-5)
 Date: 2026-11-13
-Revision and working-tree state: task branch from master at 0aba316b8 with this task's change
+Revision and working-tree state: task branch from master at 962981d47 with this task's change
 Review independence: not independent.
 
 ## Scope, assets, and trust boundaries

@@ -15,7 +15,7 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - Capabilities: file read/edit, shell, compiler, Git
 - Current writer and assigned paths: this session, in a worktree of the task branch
 - Incoming host/writer and release of outgoing writer: none
-- Snapshot revision and uncommitted work to preserve: master at 0aba316b8
+- Snapshot revision and uncommitted work to preserve: master at 962981d47
 - Loaded shared/scoped instructions and capability limitations: root AGENTS.md; partial worktree (sources and headers only)
 - Context pack/source excerpts provided and omitted scope: not applicable
 
@@ -26,7 +26,7 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 
 ## Git delivery tracking
 - Task branch / main target / remote: task/20261113005229-eff7-static-server-gphoto2-include / master; not pushed
-- Base revision and latest merged target revision: 0aba316b8
+- Base revision and latest merged target revision: 962981d47
 - Tested candidate revision: after the commits
 - Check evidence on synchronized candidate: verification.md
 - Integration / publication / cleanup: pending owner approval
@@ -43,6 +43,7 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 
 ## Handoff history
 - 2026-11-13: fix implemented and verified.
+- 2026-11-13: base revision corrected to 962981d47 (the owner's pull of origin/master, which does not touch indigo_server/); the records first named 0aba316b8.
 
 ## Final delivery
 Task execution can be archived after acceptance/reviews, before the final commit; this does not claim delivery. Record integration/publication/cleanup state, remaining owner actions and references to the acceptance, quality and security conclusions. Do not copy their report bodies.
