@@ -362,6 +362,45 @@ static void test_next_start_search_cost(void) {
 	ASSERT_TRUE(elapsed < 1.0);
 }
 
+static void test_hooks_reserve_time(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t dark = dark_from(T_NOVEMBER_NOON);
+	time_t end = indigo_scheduler_night_end(&sky, T_NOVEMBER_NOON);
+	add_task(0, "first", SCHEDULER_PRIORITY_NORMAL, 50, 60);
+	add_task(1, "second", SCHEDULER_PRIORITY_NORMAL, 40, 60);
+	for (int i = 0; i < 2; i++) {
+		build_task(i);
+	}
+	// a hook before the first run delays it; a hook due during a run waits for its end; a hook at the end is planned
+	scheduler_plan_hook hooks[] = { { dark - 1800, 600 }, { dark + 30 * 60, 300 }, { end, 900 } };
+	int count = indigo_scheduler_plan_with_hooks(&sky, tasks, 2, hooks, 3, T_NOVEMBER_NOON, end, 0, 0, runs, 512);
+	ASSERT_EQ_INT(5, count);
+	ASSERT_EQ_INT(-1, runs[0].task);
+	ASSERT_EQ_INT(0, runs[0].hook);
+	ASSERT_EQ_INT((int)(dark - 1800), (int)runs[0].start);
+	ASSERT_EQ_INT((int)(dark - 1200), (int)runs[0].end);
+	ASSERT_EQ_INT(0, runs[1].task);
+	ASSERT_EQ_INT(-1, runs[1].hook);
+	ASSERT_EQ_INT((int)dark, (int)runs[1].start);
+	ASSERT_EQ_INT(1, runs[2].hook);
+	ASSERT_EQ_INT((int)(dark + 3600), (int)runs[2].start);
+	ASSERT_EQ_INT((int)(dark + 3900), (int)runs[2].end);
+	ASSERT_EQ_INT(1, runs[3].task);
+	ASSERT_EQ_INT((int)(dark + 3900), (int)runs[3].start);
+	ASSERT_EQ_INT(2, runs[4].hook);
+	ASSERT_EQ_INT((int)end, (int)runs[4].start);
+	ASSERT_EQ_INT((int)(end + 900), (int)runs[4].end);
+	// a hook after the end is not planned; without hooks the result is the plain plan
+	scheduler_plan_hook late[] = { { end + 1, 600 } };
+	ASSERT_EQ_INT(2, indigo_scheduler_plan_with_hooks(&sky, tasks, 2, late, 1, T_NOVEMBER_NOON, end, 0, 0, runs, 512));
+	ASSERT_EQ_INT(2, indigo_scheduler_plan(&sky, tasks, 2, T_NOVEMBER_NOON, end, 0, 0, runs, 512));
+	ASSERT_EQ_INT(-1, runs[0].hook);
+	ASSERT_EQ_INT(-1, runs[1].hook);
+	// a hook alone, without tasks
+	ASSERT_EQ_INT(1, indigo_scheduler_plan_with_hooks(&sky, tasks, 0, hooks + 1, 1, T_NOVEMBER_NOON, end, 0, 0, runs, 512));
+	ASSERT_EQ_INT((int)(dark + 30 * 60), (int)runs[0].start);
+}
+
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "score", test_score },
@@ -378,6 +417,7 @@ int main(void) {
 		{ "max_runs", test_max_runs },
 		{ "performance", test_performance },
 		{ "next_start_search_cost", test_next_start_search_cost },
+		{ "hooks_reserve_time", test_hooks_reserve_time },
 	};
 	return indigo_run_tests("test_agent_scheduler_plan", cases, sizeof(cases) / sizeof(cases[0]));
 }

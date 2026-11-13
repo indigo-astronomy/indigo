@@ -14,7 +14,9 @@
 		DDD83EE377D2FA665B7F9F01 /* indigo_agent_scheduler_sky.h in Headers */ = {isa = PBXBuildFile; fileRef = 6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */; };
 		4072F96DC48AD1B6E2411F57 /* indigo_agent_scheduler_sky.c in Sources */ = {isa = PBXBuildFile; fileRef = 1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */; };
 		639E85432142411B2D583AE1 /* indigo_agent_scheduler_plan.h in Headers */ = {isa = PBXBuildFile; fileRef = 8262155D43F56019CE90FD28 /* indigo_agent_scheduler_plan.h */; };
+		9A79D8FE24C8EA4783C3D992 /* indigo_agent_scheduler_night.h in Headers */ = {isa = PBXBuildFile; fileRef = 1B9B664E32497431FA53DE72 /* indigo_agent_scheduler_night.h */; };
 		4D602731CCEDC2C4071311E0 /* indigo_agent_scheduler_plan.c in Sources */ = {isa = PBXBuildFile; fileRef = 30EE323345FEF7569A471E74 /* indigo_agent_scheduler_plan.c */; };
+		59F1226DD9FB61C4F87DBA58 /* indigo_agent_scheduler_night.c in Sources */ = {isa = PBXBuildFile; fileRef = 233A4C493BDE55AA5A81AF49 /* indigo_agent_scheduler_night.c */; };
 		07798D1946BF8F3D84FBB23B /* indigo_agent_scheduler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8B1E70A0BD621258F7D04855 /* indigo_agent_scheduler.h */; };
 		74E3E65A7293D526F0D37355 /* indigo_agent_scheduler.c in Sources */ = {isa = PBXBuildFile; fileRef = 82AEDD1F9A605C5B5B7DEDA4 /* indigo_agent_scheduler.c */; };
 		74FD496FC0146C938DE87E18 /* indigo_agent_scheduler_header.h in Headers */ = {isa = PBXBuildFile; fileRef = 55805B5D11C42D5DC04CAD05 /* indigo_agent_scheduler_header.h */; };
@@ -22,7 +24,9 @@
 		451C4E3F035F8FEB6C5C213E /* indigo_agent_scheduler_sky.h in Headers */ = {isa = PBXBuildFile; fileRef = 6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */; };
 		A0EB9273453203F1AE27780B /* indigo_agent_scheduler_sky.c in Sources */ = {isa = PBXBuildFile; fileRef = 1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */; };
 		C160D41109AE7588D094DBFE /* indigo_agent_scheduler_plan.h in Headers */ = {isa = PBXBuildFile; fileRef = 8262155D43F56019CE90FD28 /* indigo_agent_scheduler_plan.h */; };
+		8AACC033B61DEB5576941F15 /* indigo_agent_scheduler_night.h in Headers */ = {isa = PBXBuildFile; fileRef = 1B9B664E32497431FA53DE72 /* indigo_agent_scheduler_night.h */; };
 		99399D3EA4061DC57808F192 /* indigo_agent_scheduler_plan.c in Sources */ = {isa = PBXBuildFile; fileRef = 30EE323345FEF7569A471E74 /* indigo_agent_scheduler_plan.c */; };
+		42223181F992FBC8A2480893 /* indigo_agent_scheduler_night.c in Sources */ = {isa = PBXBuildFile; fileRef = 233A4C493BDE55AA5A81AF49 /* indigo_agent_scheduler_night.c */; };
 		3783DF1116E51D9370C4DA76 /* indigo_polaralign_mlastro.c in Sources */ = {isa = PBXBuildFile; fileRef = 83BD4B658762EAB07B1124F7 /* indigo_polaralign_mlastro.c */; };
 		431D1891671E151D45B16526 /* indigo_aux_alto.c in Sources */ = {isa = PBXBuildFile; fileRef = 2A5F706316E5DA3C1E26FB0F /* indigo_aux_alto.c */; };
 		4DBA0DA9D2F91B7B7AE3ABC9 /* indigo_aux_giotto.c in Sources */ = {isa = PBXBuildFile; fileRef = F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */; };
@@ -5530,7 +5534,9 @@
 		6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler_sky.h; sourceTree = "<group>"; };
 		1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler_sky.c; sourceTree = "<group>"; };
 		8262155D43F56019CE90FD28 /* indigo_agent_scheduler_plan.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler_plan.h; sourceTree = "<group>"; };
+		1B9B664E32497431FA53DE72 /* indigo_agent_scheduler_night.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_scheduler_night.h; sourceTree = "<group>"; };
 		30EE323345FEF7569A471E74 /* indigo_agent_scheduler_plan.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler_plan.c; sourceTree = "<group>"; };
+		233A4C493BDE55AA5A81AF49 /* indigo_agent_scheduler_night.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_scheduler_night.c; sourceTree = "<group>"; };
 		F6593B003DD24EE7D6A2D97D /* Sequencer.js.dat */ = {isa = PBXFileReference; lastKnownFileType = text; path = Sequencer.js.dat; sourceTree = "<group>"; };
 		EFD0FC12A39D3CD4CF0CD2B3 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile.inc; sourceTree = "<group>"; };
 		87E7C05CBF1C8E3AA03F1311 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -5967,6 +5973,7 @@
 		EC9358DFE66F20704DB4EAE9 /* test_agent_scheduler_sky.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler_sky.c; sourceTree = "<group>"; };
 		05FF606723FAC7E7EAE8FF5D /* test_agent_scheduler_header.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler_header.c; sourceTree = "<group>"; };
 		EABDE0A072AC7B4E525813AB /* test_agent_scheduler_plan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler_plan.c; sourceTree = "<group>"; };
+		95E699C360BEDC3088EF4E40 /* test_agent_scheduler_night.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_scheduler_night.c; sourceTree = "<group>"; };
 		BBE08DAAFCCB4942A923BFD9 /* indigo_agent_mcp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_mcp.c; sourceTree = "<group>"; };
 		B37A209D14B546C6AA3E2202 /* generate_help.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = generate_help.py; sourceTree = "<group>"; };
 		B37A209D14B546C6AA3E2203 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -6150,7 +6157,9 @@
 				6599EE58ABE06B4C24390788 /* indigo_agent_scheduler_sky.h */,
 				1AC0778F5846C4EFBAEBF004 /* indigo_agent_scheduler_sky.c */,
 				8262155D43F56019CE90FD28 /* indigo_agent_scheduler_plan.h */,
+				1B9B664E32497431FA53DE72 /* indigo_agent_scheduler_night.h */,
 				30EE323345FEF7569A471E74 /* indigo_agent_scheduler_plan.c */,
+				233A4C493BDE55AA5A81AF49 /* indigo_agent_scheduler_night.c */,
 				F6593B003DD24EE7D6A2D97D /* Sequencer.js.dat */,
 				EFD0FC12A39D3CD4CF0CD2B3 /* Makefile.inc */,
 				87E7C05CBF1C8E3AA03F1311 /* README.md */,
@@ -14341,6 +14350,7 @@
 				EC9358DFE66F20704DB4EAE9 /* test_agent_scheduler_sky.c */,
 				05FF606723FAC7E7EAE8FF5D /* test_agent_scheduler_header.c */,
 				EABDE0A072AC7B4E525813AB /* test_agent_scheduler_plan.c */,
+				95E699C360BEDC3088EF4E40 /* test_agent_scheduler_night.c */,
 				58D21354F48205219CDA34FB /* test_core_text_bounds.c */,
 				C0DE20261101000000000314 /* test_harness_verdicts.py */,
 				C0DE20261102185405000001 /* driver_source_probe.py */,
@@ -17118,6 +17128,7 @@
 			files = (
 				451C4E3F035F8FEB6C5C213E /* indigo_agent_scheduler_sky.h in Headers */,
 				C160D41109AE7588D094DBFE /* indigo_agent_scheduler_plan.h in Headers */,
+				8AACC033B61DEB5576941F15 /* indigo_agent_scheduler_night.h in Headers */,
 				74FD496FC0146C938DE87E18 /* indigo_agent_scheduler_header.h in Headers */,
 				07798D1946BF8F3D84FBB23B /* indigo_agent_scheduler.h in Headers */,
 				5974B8BC7663CA735E130DC6 /* indigo_solver.h in Headers */,
@@ -17322,6 +17333,7 @@
 			files = (
 				DDD83EE377D2FA665B7F9F01 /* indigo_agent_scheduler_sky.h in Headers */,
 				639E85432142411B2D583AE1 /* indigo_agent_scheduler_plan.h in Headers */,
+				9A79D8FE24C8EA4783C3D992 /* indigo_agent_scheduler_night.h in Headers */,
 				DE116480571EA62D4D1EF667 /* indigo_agent_scheduler_header.h in Headers */,
 				BF058A224C11C4D5F8AD7A40 /* indigo_agent_scheduler.h in Headers */,
 				5914B2617AD1D233EE8CE653 /* indigo_solver.h in Headers */,
@@ -17893,6 +17905,7 @@
 			files = (
 				A0EB9273453203F1AE27780B /* indigo_agent_scheduler_sky.c in Sources */,
 				99399D3EA4061DC57808F192 /* indigo_agent_scheduler_plan.c in Sources */,
+				42223181F992FBC8A2480893 /* indigo_agent_scheduler_night.c in Sources */,
 				09CD693B5F7F086AFFA34B19 /* indigo_agent_scheduler_header.c in Sources */,
 				74E3E65A7293D526F0D37355 /* indigo_agent_scheduler.c in Sources */,
 				59575E5B1895F54C454C552C /* indigo_solver.c in Sources */,
@@ -18193,6 +18206,7 @@
 			files = (
 				4072F96DC48AD1B6E2411F57 /* indigo_agent_scheduler_sky.c in Sources */,
 				4D602731CCEDC2C4071311E0 /* indigo_agent_scheduler_plan.c in Sources */,
+				59F1226DD9FB61C4F87DBA58 /* indigo_agent_scheduler_night.c in Sources */,
 				3DC43A224479674514C43D20 /* indigo_agent_scheduler_header.c in Sources */,
 				83B788A92A2A23B0B80C4ABD /* indigo_agent_scheduler.c in Sources */,
 				59E9303A53823AD656A93EFE /* indigo_solver.c in Sources */,

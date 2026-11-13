@@ -51,10 +51,18 @@ typedef struct {
 	time_t running_start, running_end;
 } scheduler_plan_task;
 
-/** One planned run.
+/** A hook run expected at a time, for example at the start of the night.
+ */
+typedef struct {
+	time_t time;
+	int duration;
+} scheduler_plan_hook;
+
+/** One planned run: of a task, or of a hook when hook is not -1 (task is -1 then).
  */
 typedef struct {
 	int task;
+	int hook;
 	int run;
 	time_t start, end;
 	bool running;
@@ -67,6 +75,10 @@ extern double indigo_scheduler_score(const scheduler_sky_grid *sky, const schedu
 /** Simulate the scheduling of tasks from now until end, assuming every run takes its duration and succeeds. A task that becomes available again after a repeat or retry delay queues behind the urgent tasks already waiting, as in the scheduler. Returns the number of runs stored, at most max_runs.
  */
 extern int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs);
+
+/** Same as indigo_scheduler_plan(), with hook runs sorted by time. A hook runs at its time or, when a run is in progress then, after it; it takes its duration. Hooks due at end are still planned.
+ */
+extern int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs);
 
 #ifdef __cplusplus
 }

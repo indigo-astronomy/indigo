@@ -37,6 +37,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo_drivers/agent_scripting/indigo_agent_scripting.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler.h>
+#include <indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h>
 
 #if defined(__SANITIZE_ADDRESS__)
 #include <sanitizer/lsan_interface.h>
@@ -379,6 +380,20 @@ static bool set_hooks(const char *startup, const char *shutdown, const char *idl
 	return wait_property_state(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
 }
 
+static bool set_night_hooks(const char *night_start, const char *night_end, const char *resume) {
+	unsigned before = revision(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
+	const char *items[] = { AGENT_SCHEDULER_HOOKS_NIGHT_START_ITEM_NAME, AGENT_SCHEDULER_HOOKS_NIGHT_END_ITEM_NAME, AGENT_SCHEDULER_HOOKS_RESUME_ITEM_NAME };
+	const char *values[] = { night_start, night_end, resume };
+	indigo_change_text_property(&observer, AGENT, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, 3, items, values);
+	return wait_property_state(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
+static bool set_night_limit(const char *item) {
+	unsigned before = revision(AGENT_SCHEDULER_NIGHT_PROPERTY_NAME);
+	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_NIGHT_PROPERTY_NAME, item, true);
+	return wait_property_state(AGENT_SCHEDULER_NIGHT_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
 // label of the newest history entry of a task, empty if none
 static bool history_label(const char *task, int index, char *label) {
 	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
@@ -483,6 +498,29 @@ static bool wait_plan_item(int count, int index, const char *text, double timeou
 	return false;
 }
 
+// waits until some plan item contains text, or with present false until none does
+static bool wait_plan_contains(const char *text, bool present, double timeout) {
+	char labels[32][INDIGO_VALUE_SIZE];
+	indigo_property_state states[32];
+	int found = -1;
+	for (double t = 0; t < timeout; t += 0.01) {
+		found = plan_items(labels, states, 32);
+		bool contains = false;
+		for (int i = 0; i < found && i < 32; i++) {
+			contains = contains || strstr(labels[i], text) != NULL;
+		}
+		if (found >= 0 && contains == present) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for a plan %s '%s', found %d:\n", present ? "with" : "without", text, found);
+	for (int i = 0; i < found && i < 32; i++) {
+		fprintf(stderr, "  %s [%d]\n", labels[i], states[i]);
+	}
+	return false;
+}
+
 static bool wait_plan(int count, const char *text, double timeout) {
 	return wait_plan_item(count, 0, text, timeout);
 }
@@ -527,6 +565,55 @@ static void site_at_evening(void) {
 	double hours = (now % 86400) / 3600.0;
 	site_property->items[1].number.value = site_property->items[1].number.target = fmod((18 - hours) * 15 + 720, 360);
 	indigo_update_property(&mount_standin, site_property, NULL);
+}
+
+// the night cases use the equator, where every night lasts about 11 hours at the nautical limit
+#define NIGHT_LATITUDE		0
+#define NIGHT_ELEVATION		140
+
+static void set_site(double latitude, double longitude) {
+	site_property->items[0].number.value = site_property->items[0].number.target = latitude;
+	site_property->items[1].number.value = site_property->items[1].number.target = longitude;
+	indigo_update_property(&mount_standin, site_property, NULL);
+}
+
+// the longitude where a nautical night starts (or ends) at target; the events move by 240 s per degree
+static double night_longitude(time_t target, bool end) {
+	static scheduler_nights nights;
+	double longitude = 17.11;
+	for (int i = 0; i < 6; i++) {
+		indigo_scheduler_nights_build(&nights, target, NIGHT_LATITUDE, longitude, NIGHT_ELEVATION, -12, 0, 0);
+		const scheduler_night *best = NULL;
+		long best_error = 0;
+		for (int j = 0; j < nights.count; j++) {
+			const scheduler_night *night = nights.nights + j;
+			if (end ? !night->end_known : !night->start_known) {
+				continue;
+			}
+			long error = (long)((end ? night->end : night->start) - target);
+			if (best == NULL || labs(error) < labs(best_error)) {
+				best = night;
+				best_error = error;
+			}
+		}
+		if (best == NULL) {
+			break;
+		}
+		longitude = fmod(longitude + best_error / 240.0 + 720, 360);
+	}
+	return longitude;
+}
+
+// a whole minute at least seconds ahead, so that a window can open with the night
+static time_t minute_ahead(int seconds) {
+	time_t t = time(NULL) + seconds;
+	return t - t % 60 + 60;
+}
+
+static void wait_until(time_t t) {
+	while (time(NULL) < t) {
+		indigo_usleep(100000);
+	}
 }
 
 static void set_guiding(bool guiding) {
@@ -900,6 +987,10 @@ static void persistence_across_restart(void) {
 	ASSERT_TRUE(wait_task_state("Third", "DONE", 20));
 	ASSERT_TRUE(wait_task_state("Kept", "DONE", 20));
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, 2.5));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, -30));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, 45));
+	REQUIRE(set_night_hooks("Evening", "Morning", "Resume"));
+	REQUIRE(set_night_limit(AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME));
 	// the save is delayed, the shutdown right after the last change still writes it
 	stop_scheduler();
 	memset(messages, 0, sizeof(messages));
@@ -917,7 +1008,20 @@ static void persistence_across_restart(void) {
 	indigo_property *settings = snapshot(AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME);
 	REQUIRE(settings != NULL);
 	ASSERT_NEAR(2.5, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME)->number.value, 1e-9);
+	ASSERT_NEAR(-30, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME)->number.value, 1e-9);
+	ASSERT_NEAR(45, indigo_get_item(settings, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME)->number.value, 1e-9);
 	indigo_release_property(settings);
+	indigo_property *hooks = snapshot(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
+	REQUIRE(hooks != NULL);
+	ASSERT_STREQ("Evening", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_NIGHT_START_ITEM_NAME)));
+	ASSERT_STREQ("Morning", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_NIGHT_END_ITEM_NAME)));
+	ASSERT_STREQ("Resume", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_RESUME_ITEM_NAME)));
+	indigo_release_property(hooks);
+	indigo_property *night = snapshot(AGENT_SCHEDULER_NIGHT_PROPERTY_NAME);
+	REQUIRE(night != NULL);
+	ASSERT_TRUE(indigo_get_item(night, AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME)->sw.value);
+	ASSERT_FALSE(indigo_get_item(night, AGENT_SCHEDULER_NIGHT_NAUTICAL_ITEM_NAME)->sw.value);
+	indigo_release_property(night);
 	// the scheduler starts stopped and runs nothing that already finished
 	indigo_usleep(1500000);
 	ASSERT_EQ_INT(0, count_messages("Starting task"));
@@ -1093,6 +1197,395 @@ static void start_during_shutdown_hook_continues(void) {
 	// the automatic stop after the last task runs the shutdown hook again
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 2, 15));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+}
+
+static void night_hooks_run_at_dusk_and_dawn(void) {
+	time_t dusk = minute_ahead(30);
+	char start[32], future[32], text[256];
+	utc(dusk, start);
+	utc(dusk + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Work\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	// a task of a later night keeps the scheduler running
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(set_night_hooks("Evening", "Morning", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	ASSERT_TRUE(wait_task_state("Evening", "NIGHT START HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Morning", "NIGHT END HOOK", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// the plan shows both night hooks of the coming night
+	ASSERT_TRUE(wait_plan_contains("Evening (night start hook)", true, 15));
+	ASSERT_TRUE(wait_plan_contains("Morning (night end hook)", true, 5));
+	// before the night the idle hook puts the equipment away
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	wait_until(dusk - 2);
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
+	ASSERT_TRUE(wait_message("Hook 'Evening' completed", 1, 30));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_TRUE(message_position("Hook 'Evening' completed") < message_position("Starting task 'Work'"));
+	// the night start hook ended the standby, so the idle hook runs again after the task
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 2, 15));
+	ASSERT_TRUE(wait_plan_contains("Evening (night start hook)", false, 10));
+	ASSERT_TRUE(wait_plan_contains("Morning (night end hook)", true, 5));
+	// the night ends in a few seconds at a new longitude
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 5, true));
+	ASSERT_TRUE(wait_message("Hook 'Morning' completed", 1, 30));
+	// after the night end the equipment stays put away during the day
+	indigo_usleep(4000000);
+	ASSERT_EQ_INT(2, count_messages("Starting hook 'Park'"));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Evening'"));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Morning'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(history_label("Morning", 0, label));
+	ASSERT_TRUE(strstr(label, "Morning (hook) #1  succeeded") != NULL);
+}
+
+static void night_without_work_skips_the_hooks(void) {
+	char future[32], text[256];
+	time_t dusk = time(NULL) + 15;
+	utc(dusk + 2 * 86400, future);
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_night_hooks("Evening", "Morning", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("No task can run tonight, the night start hook is skipped", 1, 40));
+	ASSERT_TRUE(wait_plan_contains("(night start hook)", false, 5));
+	ASSERT_TRUE(wait_plan_contains("(night end hook)", false, 5));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
+	ASSERT_EQ_INT(1, count_messages("No task can run tonight"));
+	// work that appears later in the night is prepared for first
+	REQUIRE(upload("// @task Late\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Late' completed", 1, 20));
+	ASSERT_TRUE(message_position("Hook 'Evening' completed") >= 0);
+	ASSERT_TRUE(message_position("Hook 'Evening' completed") < message_position("Starting task 'Late'"));
+	// that night then ends with its end hook
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 5, true));
+	ASSERT_TRUE(wait_message("Hook 'Morning' completed", 1, 30));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Evening'"));
+}
+
+static void night_without_work_and_without_hooks_ends_quietly(void) {
+	char future[32], text[256];
+	time_t dusk = time(NULL) + 10;
+	utc(dusk + 2 * 86400, future);
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	wait_until(dusk + 5);
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 3, true));
+	indigo_usleep(6000000);
+	// without night hooks there is nothing to tell
+	ASSERT_EQ_INT(0, count_messages("No task can run tonight"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook"));
+}
+
+static void hooks_named_during_a_night_without_work(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(0, count_messages("No task can run tonight"));
+	// the night was decided before the hook was named, the message still comes; the hook task may be uploaded later
+	REQUIRE(set_night_hooks("Evening", "", ""));
+	ASSERT_TRUE(wait_message("No task can run tonight, the night start hook is skipped", 1, 10));
+	indigo_usleep(2000000);
+	ASSERT_EQ_INT(1, count_messages("No task can run tonight"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
+}
+
+static void resume_hook_after_idle(void) {
+	time_t later = minute_ahead(20);
+	char start[32], future[32], text[256];
+	utc(later, start);
+	utc(later + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	snprintf(text, sizeof(text), "// @task Far\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(set_night_hooks("", "", "Prepare"));
+	ASSERT_TRUE(wait_task_state("Prepare", "RESUME HOOK", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	// no standby before the first task, so it started without the resume hook
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Prepare'"));
+	// the idle hook does not run again in standby
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Park'"));
+	ASSERT_TRUE(wait_message("Task 'Later' completed", 1, 90));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Prepare'"));
+	ASSERT_TRUE(message_position("Starting hook 'Park'") < message_position("Starting hook 'Prepare'"));
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Later'"));
+	// the task began a new idle period
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 2, 15));
+}
+
+static void idle_without_resume_behaves_as_before(void) {
+	time_t later = minute_ahead(20);
+	char start[32], future[32], text[256];
+	utc(later, start);
+	utc(later + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	snprintf(text, sizeof(text), "// @task Far\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	// once per idle period, as without the new hooks
+	ASSERT_TRUE(wait_message("Task 'Later' completed", 1, 90));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 2, 15));
+	ASSERT_TRUE(message_position_last("Task 'Later' completed") < message_position_last("Starting hook 'Park'"));
+}
+
+static void failed_night_start_runs_the_shutdown_hook(void) {
+	REQUIRE(upload("// @task Bad evening\nif (!scheduler_task.estimate) { throw new Error(\"no cooler\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(set_night_hooks("Bad evening", "", ""));
+	// the scheduler starts in the night
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Bad evening' failed: Error: no cooler", 1, 15));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(wait_message("The night start hook failed, the scheduler stopped", 1, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Work'"));
+}
+
+static void failed_resume_runs_the_shutdown_hook(void) {
+	time_t later = minute_ahead(20);
+	char start[32], text[256];
+	utc(later, start);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Bad resume\nif (!scheduler_task.estimate) { throw new Error(\"stuck\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "Close", "Park"));
+	REQUIRE(set_night_hooks("", "", "Bad resume"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	ASSERT_TRUE(wait_message("Hook 'Bad resume' failed: Error: stuck", 1, 90));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	ASSERT_TRUE(wait_message("The resume hook failed, the scheduler stopped", 1, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
+}
+
+static void shared_hook_task_runs_once(void) {
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_night_hooks("Prepare", "", ""));
+	// listed by its first hook
+	ASSERT_TRUE(wait_task_state("Prepare", "STARTUP HOOK", 5));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Prepare'"));
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Work'"));
+	// positive control: without the startup hook, the same START in the night runs Prepare as the night start hook
+	REQUIRE(set_hooks("", "", ""));
+	// with every task finished the scheduler stopped by itself
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 15));
+	REQUIRE(upload("// @task More\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'More' completed", 1, 15));
+	ASSERT_EQ_INT(2, count_messages("Starting hook 'Prepare'"));
+	ASSERT_TRUE(message_position_last("Hook 'Prepare' completed") < message_position("Starting task 'More'"));
+}
+
+// the scheduler runs in the night with Work done and Later kept for another night
+static bool start_in_night(const char *night_end, const char *shutdown) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	CHECK(upload("// @task Work\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	CHECK(upload(text));
+	CHECK(set_hooks("", shutdown, ""));
+	CHECK(set_night_hooks("", night_end, ""));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	CHECK(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	CHECK(wait_message("Task 'Work' completed", 1, 15));
+	return true;
+}
+
+static void night_end_and_shutdown_share_a_task(void) {
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(3)));
+	REQUIRE(start_in_night("Morning", "Morning"));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 3, true));
+	ASSERT_TRUE(wait_message("Starting hook 'Morning'", 1, 30));
+	// STOP while the night end hook runs: the shutdown hook names the same task, which runs once
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 15));
+	indigo_usleep(1000000);
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Morning'"));
+	// a later stop is not back to back and runs the shutdown hook again
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	indigo_usleep(2000000);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Morning'", 2, 15));
+}
+
+static void stop_at_night_runs_only_the_shutdown_hook(void) {
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(start_in_night("Morning", "Close"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Morning'"));
+}
+
+static void failed_night_end_is_reported(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Bad morning\nif (!scheduler_task.estimate) { throw new Error(\"roof stuck\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(start_in_night("Bad morning", ""));
+	REQUIRE(set_hooks("", "", "Park"));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 3, true));
+	ASSERT_TRUE(wait_message("Hook 'Bad morning' failed: Error: roof stuck", 1, 30));
+	// only reported: the scheduler keeps running and the equipment counts as put away
+	indigo_usleep(3000000);
+	indigo_property *state = snapshot(AGENT_SCHEDULER_STATE_PROPERTY_NAME);
+	REQUIRE(state != NULL);
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state->state);
+	indigo_release_property(state);
+	ASSERT_EQ_INT(0, count_messages("the scheduler stopped"));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Park'"));
+}
+
+static void resume_before_an_urgent_task(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Far\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(set_night_hooks("", "", "Prepare"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	REQUIRE(urgent("// @task Flash\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 20));
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") >= 0);
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Flash'"));
+}
+
+static void plan_lasts_until_a_late_night_end(void) {
+	char future[32], text[256];
+	utc(time(NULL) + 2 * 86400, future);
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_night_hooks("", "Morning", ""));
+	double longitude = night_longitude(time(NULL) - 3600, false);
+	set_site(NIGHT_LATITUDE, longitude);
+	// the night end the agent computes for this site, in minutes of the UTC day
+	static scheduler_nights nights;
+	indigo_scheduler_nights_build(&nights, time(NULL), NIGHT_LATITUDE, longitude, NIGHT_ELEVATION, -12, 0, 0);
+	const scheduler_night *night = indigo_scheduler_night_at(&nights, time(NULL));
+	REQUIRE(night != NULL);
+	struct tm end_tm;
+	gmtime_r(&night->end, &end_tm);
+	int dawn = end_tm.tm_hour * 60 + end_tm.tm_min;
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	int start = -1, end = -1;
+	for (int pass = 0; pass < 2; pass++) {
+		// two hours after the nautical dawn is after sunrise: the hook is planned only because the plan lasts until it
+		if (pass == 1) {
+			REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, 120));
+		}
+		int expected = (dawn + pass * 120) % 1440;
+		start = -1;
+		for (int i = 0; i < 500 && start < 0; i++) {
+			int count = plan_items(labels, states, 16);
+			for (int j = 0; j < count && j < 16; j++) {
+				int s, e;
+				if (strstr(labels[j], "Morning (night end hook)") && plan_times(labels[j], &s, &e) && (minutes_between(expected, s) <= 1 || minutes_between(s, expected) <= 1)) {
+					start = s;
+					end = e;
+				}
+			}
+			indigo_usleep(20000);
+		}
+		if (start < 0) {
+			int count = plan_items(labels, states, 16);
+			fprintf(stderr, "expected the night end hook at %02d:%02d, plan:\n", expected / 60, expected % 60);
+			for (int j = 0; j < count && j < 16; j++) {
+				fprintf(stderr, "  %s\n", labels[j]);
+			}
+		}
+		REQUIRE(start >= 0);
+	}
+	REQUIRE(start >= 0);
+	ASSERT_TRUE(end >= start || end < 60);
+	// at the equator the sunrise is about 24 minutes after the nautical dawn, the hook is about 96 minutes after it
+	time_t now = time(NULL);
+	struct tm now_tm;
+	gmtime_r(&now, &now_tm);
+	time_t hook = now - (now_tm.tm_hour * 60 + now_tm.tm_min) * 60 - now_tm.tm_sec + start * 60;
+	if (hook < now) {
+		hook += 86400;
+	}
+	ASSERT_TRUE(indigo_scheduler_sun_altitude(hook, NIGHT_LATITUDE, site_property->items[1].number.value, NIGHT_ELEVATION) > 10);
+}
+
+static void missing_night_hook_task_is_reported(void) {
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_night_hooks("Nope", "", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("The night start hook 'Nope' names no task", 1, 15));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+}
+
+static void no_night_is_reported(void) {
+	// near the pole on the summer side the Sun stays above the astronomical limit
+	struct tm now_tm;
+	time_t now = time(NULL);
+	gmtime_r(&now, &now_tm);
+	bool northern_summer = now_tm.tm_mon >= 3 && now_tm.tm_mon <= 8;
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n// @priority low\n" BODY_WAIT(1)));
+	REQUIRE(set_night_limit(AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME));
+	REQUIRE(set_night_hooks("Evening", "", ""));
+	set_site(northern_summer ? 85 : -85, 17.11);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("The Sun does not go below the night limit within a day, the night hooks do not run", 1, 15));
+	ASSERT_TRUE(wait_plan_contains("No night at the night limit", true, 10));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
 }
 
 static void history_records_runs(void) {
@@ -1420,6 +1913,22 @@ static const indigo_test_case cases[] = {
 	{ "urgent_insertion_retries_the_preempted_task", urgent_insertion_retries_the_preempted_task },
 	{ "urgent_insertion_fails_the_preempted_task", urgent_insertion_fails_the_preempted_task },
 	{ "commands_queued_at_shutdown_are_released", commands_queued_at_shutdown_are_released },
+	{ "night_hooks_run_at_dusk_and_dawn", night_hooks_run_at_dusk_and_dawn },
+	{ "night_without_work_skips_the_hooks", night_without_work_skips_the_hooks },
+	{ "night_without_work_and_without_hooks_ends_quietly", night_without_work_and_without_hooks_ends_quietly },
+	{ "hooks_named_during_a_night_without_work", hooks_named_during_a_night_without_work },
+	{ "resume_hook_after_idle", resume_hook_after_idle },
+	{ "idle_without_resume_behaves_as_before", idle_without_resume_behaves_as_before },
+	{ "failed_night_start_runs_the_shutdown_hook", failed_night_start_runs_the_shutdown_hook },
+	{ "failed_resume_runs_the_shutdown_hook", failed_resume_runs_the_shutdown_hook },
+	{ "shared_hook_task_runs_once", shared_hook_task_runs_once },
+	{ "missing_night_hook_task_is_reported", missing_night_hook_task_is_reported },
+	{ "no_night_is_reported", no_night_is_reported },
+	{ "night_end_and_shutdown_share_a_task", night_end_and_shutdown_share_a_task },
+	{ "stop_at_night_runs_only_the_shutdown_hook", stop_at_night_runs_only_the_shutdown_hook },
+	{ "failed_night_end_is_reported", failed_night_end_is_reported },
+	{ "resume_before_an_urgent_task", resume_before_an_urgent_task },
+	{ "plan_lasts_until_a_late_night_end", plan_lasts_until_a_late_night_end },
 };
 
 static const char *case_filter = NULL;

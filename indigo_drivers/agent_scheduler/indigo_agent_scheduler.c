@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000005
+#define DRIVER_VERSION 0x03000006
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -42,6 +42,7 @@
 #include "indigo_agent_scheduler_header.h"
 #include "indigo_agent_scheduler_sky.h"
 #include "indigo_agent_scheduler_plan.h"
+#include "indigo_agent_scheduler_night.h"
 
 #define MAX_TASKS									128
 #define SCHEDULER_GROUP						"Scheduler"
@@ -61,6 +62,7 @@
 #define SAVE_DELAY								2
 #define SKY_REFRESH_INTERVAL			3600
 #define TICK_INTERVAL							0.5
+#define NIGHT_NOTICE_HORIZON			86400
 
 #define AGENT_IMAGER_BUSY					0x01
 #define AGENT_MOUNT_BUSY					0x02
@@ -107,10 +109,19 @@
 #define SETTINGS_IDLE_PARK_AFTER_ITEM	(SETTINGS_PROPERTY->items + 5)
 #define SETTINGS_FRAME_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 6)
 #define SETTINGS_OPERATION_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 7)
+#define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 8)
+#define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
 #define HOOKS_PROPERTY						(PRIVATE_DATA->hooks_property)
 #define HOOKS_STARTUP_ITEM				(HOOKS_PROPERTY->items + 0)
 #define HOOKS_SHUTDOWN_ITEM				(HOOKS_PROPERTY->items + 1)
 #define HOOKS_IDLE_ITEM						(HOOKS_PROPERTY->items + 2)
+#define HOOKS_NIGHT_START_ITEM		(HOOKS_PROPERTY->items + 3)
+#define HOOKS_NIGHT_END_ITEM			(HOOKS_PROPERTY->items + 4)
+#define HOOKS_RESUME_ITEM					(HOOKS_PROPERTY->items + 5)
+#define NIGHT_PROPERTY						(PRIVATE_DATA->night_property)
+#define NIGHT_CIVIL_ITEM					(NIGHT_PROPERTY->items + 0)
+#define NIGHT_NAUTICAL_ITEM				(NIGHT_PROPERTY->items + 1)
+#define NIGHT_ASTRONOMICAL_ITEM		(NIGHT_PROPERTY->items + 2)
 #define HISTORY_PROPERTY					(PRIVATE_DATA->history_property)
 #define CLEAR_HISTORY_PROPERTY		(PRIVATE_DATA->clear_history_property)
 #define CLEAR_HISTORY_ITEM				(CLEAR_HISTORY_PROPERTY->items + 0)
@@ -142,8 +153,18 @@ typedef enum {
 	RUN_TASK = 0,
 	RUN_STARTUP_HOOK,
 	RUN_SHUTDOWN_HOOK,
-	RUN_IDLE_HOOK
+	RUN_IDLE_HOOK,
+	RUN_NIGHT_START_HOOK,
+	RUN_NIGHT_END_HOOK,
+	RUN_RESUME_HOOK
 } run_kind;
+
+typedef enum {
+	NIGHT_NOTICE_NONE = 0,
+	NIGHT_NOTICE_OK,
+	NIGHT_NOTICE_NO_NIGHT,
+	NIGHT_NOTICE_ENDLESS
+} night_notice;
 
 typedef enum {
 	RESULT_SUCCEEDED = 0,
@@ -236,6 +257,7 @@ typedef struct {
 	indigo_property *clear_history_property;
 	indigo_property *restore_history_property;
 	indigo_property *plan_property;
+	indigo_property *night_property;
 	char plan_labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
 	indigo_property_state plan_states[MAX_PLAN_ITEMS];
 	int plan_count;
@@ -268,6 +290,16 @@ typedef struct {
 	bool shutdown_ran;
 	bool idle_hook_done;
 	time_t idle_since;
+	// the night hooks: the computed nights, the state of the current night, and whether a hook has put the equipment away
+	scheduler_nights nights;
+	scheduler_night_state night_state;
+	bool standby;
+	night_notice notice;
+	// hooks that run back to back: a task serving two of them runs once
+	int chain_slot;
+	bool chain_ok;
+	// start of the first task run of the last plan, 0 if none
+	time_t plan_first_run;
 	run_phase phase;
 	run_kind kind;
 	time_t run_start;
@@ -309,6 +341,7 @@ static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
 
 static void process(indigo_device *device);
+static void update_plan(indigo_device *device, time_t now);
 
 // -------------------------------------------------------------------------------- Helpers
 
@@ -338,6 +371,15 @@ static run_kind hook_kind(indigo_device *device, scheduler_task *task) {
 	}
 	if (*indigo_get_text_item_value(HOOKS_IDLE_ITEM) && !strcasecmp(indigo_get_text_item_value(HOOKS_IDLE_ITEM), task->header.name)) {
 		return RUN_IDLE_HOOK;
+	}
+	if (*indigo_get_text_item_value(HOOKS_NIGHT_START_ITEM) && !strcasecmp(indigo_get_text_item_value(HOOKS_NIGHT_START_ITEM), task->header.name)) {
+		return RUN_NIGHT_START_HOOK;
+	}
+	if (*indigo_get_text_item_value(HOOKS_NIGHT_END_ITEM) && !strcasecmp(indigo_get_text_item_value(HOOKS_NIGHT_END_ITEM), task->header.name)) {
+		return RUN_NIGHT_END_HOOK;
+	}
+	if (*indigo_get_text_item_value(HOOKS_RESUME_ITEM) && !strcasecmp(indigo_get_text_item_value(HOOKS_RESUME_ITEM), task->header.name)) {
+		return RUN_RESUME_HOOK;
 	}
 	return RUN_TASK;
 }
@@ -702,6 +744,7 @@ static void save_config(indigo_device *device) {
 	}
 	indigo_save_property(device, NULL, SETTINGS_PROPERTY);
 	indigo_save_property(device, NULL, HOOKS_PROPERTY);
+	indigo_save_property(device, NULL, NIGHT_PROPERTY);
 	char *entries = history_text(device);
 	indigo_property *history = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Restore history", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item_raw(history->items, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Entries", entries);
@@ -733,7 +776,7 @@ static void define_task_property(indigo_device *device, int slot) {
 }
 
 static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
-	static const char *hook_names[] = { "", "STARTUP HOOK", "SHUTDOWN HOOK", "IDLE HOOK" };
+	static const char *hook_names[] = { "", "STARTUP HOOK", "SHUTDOWN HOOK", "IDLE HOOK", "NIGHT START HOOK", "NIGHT END HOOK", "RESUME HOOK" };
 	run_kind kind = hook_kind(device, task);
 	const char *state = kind != RUN_TASK ? hook_names[kind] : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
 	char runs[64];
@@ -1025,9 +1068,21 @@ static void finish_hook(indigo_device *device, run_result result, const char *me
 		case RUN_IDLE_HOOK:
 			PRIVATE_DATA->idle_hook_done = true;
 			break;
+		case RUN_NIGHT_START_HOOK:
+		case RUN_RESUME_HOOK:
+			if (result == RESULT_SUCCEEDED) {
+				PRIVATE_DATA->standby = false;
+			} else if (!PRIVATE_DATA->stop_requested) {
+				// the equipment is half prepared, the shutdown hook puts it away
+				request_stop(device, INDIGO_ALERT_STATE, kind == RUN_NIGHT_START_HOOK ? "The night start hook failed, the scheduler stopped" : "The resume hook failed, the scheduler stopped");
+			}
+			break;
+		case RUN_NIGHT_END_HOOK:
 		case RUN_TASK:
 			break;
 	}
+	PRIVATE_DATA->chain_slot = slot;
+	PRIVATE_DATA->chain_ok = result == RESULT_SUCCEEDED;
 	apply_pending_edit(device, task, slot);
 	schedule_save(device);
 }
@@ -1178,8 +1233,19 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 		task->state = TASK_RUNNING;
 		PRIVATE_DATA->idle_since = 0;
 		PRIVATE_DATA->idle_hook_done = false;
+		// a task start ends the standby, after the resume hook when there is one
+		PRIVATE_DATA->standby = false;
+		PRIVATE_DATA->chain_slot = -1;
 		indigo_send_message(device, NULL, "Starting task '%s'", task->header.name);
 	} else {
+		if (kind == RUN_IDLE_HOOK || kind == RUN_NIGHT_END_HOOK) {
+			PRIVATE_DATA->standby = true;
+		}
+		if (kind == RUN_NIGHT_START_HOOK || kind == RUN_NIGHT_END_HOOK) {
+			// the night hooks begin a new idle period
+			PRIVATE_DATA->idle_since = 0;
+			PRIVATE_DATA->idle_hook_done = false;
+		}
 		indigo_send_message(device, NULL, "Starting hook '%s'", task->header.name);
 	}
 	refresh(device);
@@ -1482,6 +1548,139 @@ static int hook_slot(indigo_device *device, indigo_item *item) {
 	return *name ? find_task(device, name) : -1;
 }
 
+// -------------------------------------------------------------------------------- Night hooks
+
+static double night_limit(indigo_device *device) {
+	if (NIGHT_CIVIL_ITEM->sw.value) {
+		return -6;
+	}
+	if (NIGHT_ASTRONOMICAL_ITEM->sw.value) {
+		return -18;
+	}
+	return -12;
+}
+
+static bool night_hooks_named(indigo_device *device) {
+	return *indigo_get_text_item_value(HOOKS_NIGHT_START_ITEM) || *indigo_get_text_item_value(HOOKS_NIGHT_END_ITEM);
+}
+
+// the nights follow the site, the night limit and the offsets, and are computed again every hour
+static void refresh_nights(indigo_device *device, time_t now) {
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	bool known = observed->site_known;
+	double latitude = observed->latitude, longitude = observed->longitude, elevation = observed->elevation;
+	pthread_mutex_unlock(&observed->mutex);
+	scheduler_nights *nights = &PRIVATE_DATA->nights;
+	if (!known) {
+		if (nights->valid) {
+			nights->valid = false;
+			PRIVATE_DATA->plan_dirty = true;
+		}
+		return;
+	}
+	double limit = night_limit(device);
+	int start_offset = (int)SETTINGS_NIGHT_START_OFFSET_ITEM->number.value, end_offset = (int)SETTINGS_NIGHT_END_OFFSET_ITEM->number.value;
+	if (nights->valid && nights->latitude == latitude && nights->longitude == longitude && nights->elevation == elevation && nights->limit == limit && nights->start_offset == start_offset && nights->end_offset == end_offset && now - nights->built < SKY_REFRESH_INTERVAL) {
+		return;
+	}
+	indigo_scheduler_nights_build(nights, now, latitude, longitude, elevation, limit, start_offset, end_offset);
+	PRIVATE_DATA->plan_dirty = true;
+}
+
+// tells once when the coming day has no night or the night does not end, on START and when it changes
+static void night_notice_check(indigo_device *device, time_t now) {
+	if (!night_hooks_named(device)) {
+		// the notice is given when a night hook is named later
+		PRIVATE_DATA->notice = NIGHT_NOTICE_NONE;
+		return;
+	}
+	const scheduler_night *night = indigo_scheduler_night_next(&PRIVATE_DATA->nights, now);
+	night_notice notice = NIGHT_NOTICE_OK;
+	if (night == NULL || night->start >= now + NIGHT_NOTICE_HORIZON) {
+		notice = NIGHT_NOTICE_NO_NIGHT;
+	} else if (!night->end_known) {
+		notice = NIGHT_NOTICE_ENDLESS;
+	}
+	if (notice != PRIVATE_DATA->notice) {
+		if (notice == NIGHT_NOTICE_NO_NIGHT) {
+			indigo_send_message(device, NULL, "The Sun does not go below the night limit within a day, the night hooks do not run");
+		} else if (notice == NIGHT_NOTICE_ENDLESS) {
+			indigo_send_message(device, NULL, "The Sun does not rise above the night limit, the night does not end");
+		}
+	}
+	PRIVATE_DATA->notice = notice;
+}
+
+// runs the hook of a night boundary; false when the item is empty or names no task, or when its task has just run
+static bool start_night_hook(indigo_device *device, indigo_item *item, run_kind kind) {
+	const char *name = indigo_get_text_item_value(item);
+	if (*name == 0) {
+		return false;
+	}
+	int slot = find_task(device, name);
+	if (slot < 0) {
+		indigo_send_message(device, NULL, "The %s hook '%s' names no task", kind == RUN_NIGHT_START_HOOK ? "night start" : kind == RUN_NIGHT_END_HOOK ? "night end" : "resume", name);
+		return false;
+	}
+	if (slot == PRIVATE_DATA->chain_slot) {
+		// the task has just run as the previous hook, it runs once
+		if (PRIVATE_DATA->chain_ok && (kind == RUN_NIGHT_START_HOOK || kind == RUN_RESUME_HOOK)) {
+			PRIVATE_DATA->standby = false;
+		} else if (kind == RUN_NIGHT_END_HOOK) {
+			PRIVATE_DATA->standby = true;
+		}
+		return false;
+	}
+	start_task(device, slot, kind);
+	return true;
+}
+
+// handles the night boundaries at a decision; true when a hook was started
+static bool process_night(indigo_device *device, time_t now, int slot) {
+	if (!PRIVATE_DATA->nights.valid) {
+		return false;
+	}
+	// whether the night has work comes from the plan, which must include the latest changes
+	if (PRIVATE_DATA->plan_dirty) {
+		update_plan(device, now);
+		PRIVATE_DATA->plan_dirty = false;
+		PRIVATE_DATA->plan_due = indigo_monotonic_time() + SETTINGS_IDLE_CHECK_ITEM->number.value;
+	}
+	night_notice_check(device, now);
+	// at most an end and a start can be due at one decision
+	for (int i = 0; i < 3; i++) {
+		const scheduler_night *night = indigo_scheduler_night_at(&PRIVATE_DATA->nights, now);
+		bool has_work = slot >= 0 || (night != NULL && PRIVATE_DATA->plan_first_run > 0 && PRIVATE_DATA->plan_first_run < night->end);
+		scheduler_night_action action = indigo_scheduler_night_decide(&PRIVATE_DATA->night_state, &PRIVATE_DATA->nights, now, has_work);
+		switch (action) {
+			case SCHEDULER_NIGHT_NONE:
+				return false;
+			case SCHEDULER_NIGHT_SKIP:
+				if (night_hooks_named(device)) {
+					indigo_send_message(device, NULL, "No task can run tonight, the night start hook is skipped");
+				} else {
+					// told when a night hook is named later in the night
+					PRIVATE_DATA->night_state.skip_reported = false;
+				}
+				return false;
+			case SCHEDULER_NIGHT_END:
+				PRIVATE_DATA->plan_dirty = true;
+				if (start_night_hook(device, HOOKS_NIGHT_END_ITEM, RUN_NIGHT_END_HOOK)) {
+					return true;
+				}
+				break;
+			case SCHEDULER_NIGHT_START:
+				PRIVATE_DATA->plan_dirty = true;
+				if (start_night_hook(device, HOOKS_NIGHT_START_ITEM, RUN_NIGHT_START_HOOK)) {
+					return true;
+				}
+				break;
+		}
+	}
+	return false;
+}
+
 static void process_idle(indigo_device *device, time_t now) {
 	if (!PRIVATE_DATA->started) {
 		return;
@@ -1501,6 +1700,10 @@ static void process_idle(indigo_device *device, time_t now) {
 	if (PRIVATE_DATA->stop_requested) {
 		// every stop runs the shutdown hook once, when it can run
 		int slot = hook_slot(device, HOOKS_SHUTDOWN_ITEM);
+		if (slot >= 0 && slot == PRIVATE_DATA->chain_slot && PRIVATE_DATA->chain_ok) {
+			// the task has just run as the night end or idle hook, it runs once
+			PRIVATE_DATA->shutdown_ran = true;
+		}
 		if (slot >= 0 && !PRIVATE_DATA->shutdown_ran && ready) {
 			PRIVATE_DATA->shutdown_ran = true;
 			start_task(device, slot, RUN_SHUTDOWN_HOOK);
@@ -1562,10 +1765,19 @@ static void process_idle(indigo_device *device, time_t now) {
 		}
 		return;
 	}
+	if (process_night(device, now, slot)) {
+		return;
+	}
 	if (slot >= 0) {
+		// the resume hook prepares what the idle or night end hook put away; the task is selected again after it
+		if (PRIVATE_DATA->standby && start_night_hook(device, HOOKS_RESUME_ITEM, RUN_RESUME_HOOK)) {
+			return;
+		}
 		start_task(device, slot, RUN_TASK);
 		return;
 	}
+	// a decision without a hook or a task ends a chain of hooks
+	PRIVATE_DATA->chain_slot = -1;
 	// the idle hook runs once per idle period, for example to park and close; waiting for estimates is not idle
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		if (estimate_pending(device, PRIVATE_DATA->order[i])) {
@@ -1577,7 +1789,8 @@ static void process_idle(indigo_device *device, time_t now) {
 		PRIVATE_DATA->idle_since = now;
 	}
 	int idle = hook_slot(device, HOOKS_IDLE_ITEM);
-	if (idle >= 0 && !PRIVATE_DATA->idle_hook_done && now - PRIVATE_DATA->idle_since >= SETTINGS_IDLE_PARK_AFTER_ITEM->number.value * 60) {
+	// in standby the equipment is already put away
+	if (idle >= 0 && !PRIVATE_DATA->idle_hook_done && !PRIVATE_DATA->standby && now - PRIVATE_DATA->idle_since >= SETTINGS_IDLE_PARK_AFTER_ITEM->number.value * 60) {
 		start_task(device, idle, RUN_IDLE_HOOK);
 	}
 }
@@ -1671,8 +1884,38 @@ static void process_library(indigo_device *device) {
 static scheduler_plan_task plan_tasks[MAX_TASKS];
 static int plan_slots[MAX_TASKS];
 static scheduler_plan_run plan_runs[MAX_PLAN_RUNS];
+static scheduler_plan_hook plan_hooks[2];
+static int plan_hook_slots[2];
+static const char *plan_hook_names[2];
+
+static void plan_hook_label(indigo_device *device, scheduler_plan_run *run, char *label, size_t size) {
+	scheduler_task *task = PRIVATE_DATA->tasks + plan_hook_slots[run->hook];
+	struct tm start, end;
+	indigo_gmtime(&run->start, &start);
+	indigo_gmtime(&run->end, &end);
+	char text[INDIGO_VALUE_SIZE * 2];
+	snprintf(text, sizeof(text), "%02d:%02d\xe2\x80\x93%02d:%02d  %s (%s hook)", start.tm_hour, start.tm_min, end.tm_hour, end.tm_min, task->header.name, plan_hook_names[run->hook]);
+	cut_label(text, label, size);
+}
+
+// adds the expected run of a night hook when its item names a task
+static int add_plan_hook(indigo_device *device, int count, indigo_item *item, const char *name, time_t time) {
+	int slot = hook_slot(device, item);
+	if (slot < 0) {
+		return count;
+	}
+	plan_hooks[count].time = time;
+	plan_hooks[count].duration = task_duration(PRIVATE_DATA->tasks + slot, NULL);
+	plan_hook_slots[count] = slot;
+	plan_hook_names[count] = name;
+	return count + 1;
+}
 
 static void plan_run_label(indigo_device *device, scheduler_plan_run *run, char *label, size_t size) {
+	if (run->task < 0) {
+		plan_hook_label(device, run, label, size);
+		return;
+	}
 	scheduler_task *task = PRIVATE_DATA->tasks + plan_slots[run->task];
 	struct tm start, end;
 	indigo_gmtime(&run->start, &start);
@@ -1761,13 +2004,57 @@ static void update_plan(indigo_device *device, time_t now) {
 		count++;
 	}
 	time_t end = indigo_scheduler_night_end(&PRIVATE_DATA->sky, now);
-	int runs = indigo_scheduler_plan(&PRIVATE_DATA->sky, plan_tasks, count, now, end, SETTINGS_SETTING_WEIGHT_ITEM->number.value, SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value, plan_runs, MAX_PLAN_RUNS);
+	// the scheduler's night now, or the coming one; the plan lasts until its end when that is later than sunrise
+	const scheduler_night *night = indigo_scheduler_night_next(&PRIVATE_DATA->nights, now);
+	if (night != NULL && night->start >= now + NIGHT_NOTICE_HORIZON) {
+		night = NULL;
+	}
+	if (night != NULL && night->end_known && night->end > end) {
+		end = night->end;
+	}
+	double setting_weight = SETTINGS_SETTING_WEIGHT_ITEM->number.value, altitude_weight = SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value;
+	int runs = indigo_scheduler_plan(&PRIVATE_DATA->sky, plan_tasks, count, now, end, setting_weight, altitude_weight, plan_runs, MAX_PLAN_RUNS);
+	PRIVATE_DATA->plan_first_run = 0;
+	for (int i = 0; i < runs; i++) {
+		if (!plan_runs[i].running) {
+			PRIVATE_DATA->plan_first_run = plan_runs[i].start;
+			break;
+		}
+	}
+	// the night hooks: the end of a night whose start hook ran, or both for a night that has work
+	int hook_count = 0;
+	if (night != NULL) {
+		scheduler_night_state *state = &PRIVATE_DATA->night_state;
+		bool night_started = PRIVATE_DATA->started && state->handled && state->started && night->start < state->night.end && state->night.start < night->end;
+		if (night_started) {
+			if (night->end_known) {
+				hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_END_ITEM, "night end", night->end);
+			}
+		} else {
+			time_t from = night->start > now ? night->start : now;
+			bool work = false;
+			for (int i = 0; i < runs && !work; i++) {
+				work = !plan_runs[i].running && plan_runs[i].start >= from && plan_runs[i].start < night->end;
+			}
+			if (work) {
+				hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_START_ITEM, "night start", from);
+				if (night->end_known) {
+					hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_END_ITEM, "night end", night->end);
+				}
+			}
+		}
+	}
+	if (hook_count > 0) {
+		runs = indigo_scheduler_plan_with_hooks(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, setting_weight, altitude_weight, plan_runs, MAX_PLAN_RUNS);
+	}
 	bool planned[MAX_TASKS] = { false };
 	int items = 0;
 	for (int i = 0; i < runs && items < MAX_PLAN_ITEMS; i++) {
 		plan_run_label(device, plan_runs + i, labels[items], INDIGO_VALUE_SIZE);
 		states[items++] = plan_runs[i].running ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-		planned[plan_runs[i].task] = true;
+		if (plan_runs[i].task >= 0) {
+			planned[plan_runs[i].task] = true;
+		}
 	}
 	// tasks without a run before the end of the night follow with the reason
 	for (int i = 0; i < count && items < MAX_PLAN_ITEMS; i++) {
@@ -1792,6 +2079,10 @@ static void update_plan(indigo_device *device, time_t now) {
 		cut_label(text, labels[items], INDIGO_VALUE_SIZE);
 		states[items++] = INDIGO_ALERT_STATE;
 	}
+	if (PRIVATE_DATA->nights.valid && night == NULL && night_hooks_named(device) && items < MAX_PLAN_ITEMS) {
+		cut_label("No night at the night limit within a day \xe2\x80\x94 the night hooks do not run", labels[items], INDIGO_VALUE_SIZE);
+		states[items++] = INDIGO_ALERT_STATE;
+	}
 	publish_plan(device, labels, states, items);
 }
 
@@ -1799,6 +2090,7 @@ static void process(indigo_device *device) {
 	time_t now = time(NULL);
 	bool plan = PRIVATE_DATA->plan_dirty || indigo_monotonic_time() >= PRIVATE_DATA->plan_due;
 	refresh_sky(device, now);
+	refresh_nights(device, now);
 	process_library(device);
 	process_estimation(device);
 	if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->dirty || indigo_monotonic_time() >= PRIVATE_DATA->next_check) {
@@ -2022,6 +2314,11 @@ static void control(indigo_device *device, indigo_property *request) {
 			PRIVATE_DATA->shutdown_ran = false;
 			PRIVATE_DATA->idle_since = 0;
 			PRIVATE_DATA->idle_hook_done = false;
+			// START finds the night anew and begins without standby
+			indigo_scheduler_night_reset(&PRIVATE_DATA->night_state);
+			PRIVATE_DATA->standby = false;
+			PRIVATE_DATA->chain_slot = -1;
+			PRIVATE_DATA->notice = NIGHT_NOTICE_NONE;
 		}
 		PRIVATE_DATA->started = true;
 		PRIVATE_DATA->stop_requested = false;
@@ -2124,6 +2421,14 @@ static void command_handler(indigo_device *device, void *data) {
 		} else {
 			reject(device, RESTORE_HISTORY_PROPERTY, "The history is restored only from the configuration");
 		}
+	} else if (indigo_property_match_changeable(NIGHT_PROPERTY, request)) {
+		indigo_property_copy_values(NIGHT_PROPERTY, request, false);
+		NIGHT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, NIGHT_PROPERTY, NULL);
+		if (!command->config_reader) {
+			schedule_save(device);
+		}
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	} else if (indigo_property_match_changeable(SETTINGS_PROPERTY, request)) {
 		indigo_property_copy_values(SETTINGS_PROPERTY, request, false);
 		SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
@@ -2221,7 +2526,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_text_item(CURRENT_NEXT_START_ITEM, AGENT_SCHEDULER_CURRENT_NEXT_START_ITEM_NAME, "Next start (UTC)", "");
 		indigo_init_text_item(CURRENT_REASON_ITEM, AGENT_SCHEDULER_CURRENT_REASON_ITEM_NAME, "Waiting because", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_SETTINGS
-		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
+		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
 		if (SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2233,14 +2538,27 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(SETTINGS_IDLE_PARK_AFTER_ITEM, AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, "Idle hook after (min)", 0, 1440, 1, 30);
 		indigo_init_number_item(SETTINGS_FRAME_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_FRAME_OVERHEAD_ITEM_NAME, "Estimate overhead per frame (s)", 0, 600, 1, 10);
 		indigo_init_number_item(SETTINGS_OPERATION_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_OPERATION_OVERHEAD_ITEM_NAME, "Estimate overhead per operation (s)", 0, 3600, 1, 120);
+		indigo_init_number_item(SETTINGS_NIGHT_START_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, "Night start offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
+		indigo_init_number_item(SETTINGS_NIGHT_END_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, "Night end offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_HOOKS
-		HOOKS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, SCHEDULER_GROUP, "Hooks", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		HOOKS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, SCHEDULER_GROUP, "Hooks", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
 		if (HOOKS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_text_item(HOOKS_STARTUP_ITEM, AGENT_SCHEDULER_HOOKS_STARTUP_ITEM_NAME, "Startup task", "");
 		indigo_init_text_item(HOOKS_SHUTDOWN_ITEM, AGENT_SCHEDULER_HOOKS_SHUTDOWN_ITEM_NAME, "Shutdown task", "");
 		indigo_init_text_item(HOOKS_IDLE_ITEM, AGENT_SCHEDULER_HOOKS_IDLE_ITEM_NAME, "Idle task", "");
+		indigo_init_text_item(HOOKS_NIGHT_START_ITEM, AGENT_SCHEDULER_HOOKS_NIGHT_START_ITEM_NAME, "Night start task", "");
+		indigo_init_text_item(HOOKS_NIGHT_END_ITEM, AGENT_SCHEDULER_HOOKS_NIGHT_END_ITEM_NAME, "Night end task", "");
+		indigo_init_text_item(HOOKS_RESUME_ITEM, AGENT_SCHEDULER_HOOKS_RESUME_ITEM_NAME, "Resume task", "");
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_NIGHT
+		NIGHT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_NIGHT_PROPERTY_NAME, SCHEDULER_GROUP, "Night limit", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (NIGHT_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(NIGHT_CIVIL_ITEM, AGENT_SCHEDULER_NIGHT_CIVIL_ITEM_NAME, "Civil (Sun below -6°)", false);
+		indigo_init_switch_item(NIGHT_NAUTICAL_ITEM, AGENT_SCHEDULER_NIGHT_NAUTICAL_ITEM_NAME, "Nautical (Sun below -12°)", true);
+		indigo_init_switch_item(NIGHT_ASTRONOMICAL_ITEM, AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME, "Astronomical (Sun below -18°)", false);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_HISTORY
 		HISTORY_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_SCHEDULER_HISTORY_PROPERTY_NAME, SCHEDULER_GROUP, "Run history", INDIGO_OK_STATE, MAX_HISTORY);
 		if (HISTORY_PROPERTY == NULL) {
@@ -2288,6 +2606,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PRIVATE_DATA->current = -1;
 		PRIVATE_DATA->estimate_slot = -1;
 		PRIVATE_DATA->next_task = -1;
+		PRIVATE_DATA->chain_slot = -1;
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 		// the live properties are defined here, before any handler can change them
 		indigo_define_property(device, ADD_TASK_PROPERTY, NULL);
@@ -2301,6 +2620,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_define_property(device, CURRENT_PROPERTY, NULL);
 		indigo_define_property(device, SETTINGS_PROPERTY, NULL);
 		indigo_define_property(device, HOOKS_PROPERTY, NULL);
+		indigo_define_property(device, NIGHT_PROPERTY, NULL);
 		indigo_define_property(device, HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, CLEAR_HISTORY_PROPERTY, NULL);
 		indigo_define_property(device, RESTORE_HISTORY_PROPERTY, NULL);
@@ -2340,6 +2660,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	define_copy(device, client, CURRENT_PROPERTY, property);
 	define_copy(device, client, SETTINGS_PROPERTY, property);
 	define_copy(device, client, HOOKS_PROPERTY, property);
+	define_copy(device, client, NIGHT_PROPERTY, property);
 	define_copy(device, client, HISTORY_PROPERTY, property);
 	define_copy(device, client, CLEAR_HISTORY_PROPERTY, property);
 	define_copy(device, client, RESTORE_HISTORY_PROPERTY, property);
@@ -2355,7 +2676,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 
 // returns the property of the agent the request changes, NULL for other properties
 static indigo_property *own_property(indigo_device *device, indigo_property *property) {
-	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, HOOKS_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY };
+	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY };
 	for (int i = 0; i < (int)(sizeof(properties) / sizeof(properties[0])); i++) {
 		if (indigo_property_match_changeable(properties[i], property)) {
 			return properties[i];
@@ -2416,6 +2737,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(CURRENT_PROPERTY);
 	indigo_release_property(SETTINGS_PROPERTY);
 	indigo_release_property(HOOKS_PROPERTY);
+	indigo_release_property(NIGHT_PROPERTY);
 	indigo_release_property(HISTORY_PROPERTY);
 	indigo_release_property(CLEAR_HISTORY_PROPERTY);
 	indigo_release_property(RESTORE_HISTORY_PROPERTY);

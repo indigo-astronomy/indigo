@@ -36,6 +36,9 @@
     <ClCompile Include="indigo_agent_scheduler_plan.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
+    <ClCompile Include="indigo_agent_scheduler_night.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="indigo_agent_scheduler.h">
@@ -48,6 +51,9 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="indigo_agent_scheduler_plan.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="indigo_agent_scheduler_night.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>

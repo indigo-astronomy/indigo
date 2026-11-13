@@ -31,7 +31,7 @@ The last column shows the proposed INDIGO scheduler for comparison.
 | Completion | repeat N, until a time, loop | events done or end time | accepted frames reached | shots done | plan done, "best efforts" | sequence ends Ok; repeat N with interval |
 | Preempts a running job | yes (greedy) | no | no (at boundaries only) | no | by priority no; Target of Opportunity (ToO) API yes | urgent tasks only; the preempted task is retried or failed |
 | Weather and safety | warning suspends, alert parks | safety monitor and recovery | N.I.N.A. triggers | yes | weather script, failed plan re-queued | planned: warning blocks new tasks, alert aborts and runs the shutdown hook |
-| Night start and end | startup and shutdown procedures; a per-job twilight limit aborts jobs at dawn; preemptive shutdown when the next job is hours away, startup again before it | end-of-sequence options (warm up, park); no nightly cycle | start and end areas of a sequence run each night, waits until dusk or dawn; Before Wait / After Wait instructions around idle waits | DragScript waits for dusk or astronomical night and loops until the night ends | `StartupObs` every evening, `ShutdownObs` every morning, at a Sun-down altitude (−12° by default); runs 24/7 | startup, shutdown and idle hooks; planned: night start, night end and resume hooks at a scheduler-wide twilight limit, see [Night hooks](#night-hooks-planned) |
+| Night start and end | startup and shutdown procedures; a per-job twilight limit aborts jobs at dawn; preemptive shutdown when the next job is hours away, startup again before it | end-of-sequence options (warm up, park); no nightly cycle | start and end areas of a sequence run each night, waits until dusk or dawn; Before Wait / After Wait instructions around idle waits | DragScript waits for dusk or astronomical night and loops until the night ends | `StartupObs` every evening, `ShutdownObs` every morning, at a Sun-down altitude (−12° by default); runs 24/7 | startup, shutdown and idle hooks; night start, night end and resume hooks at a scheduler-wide twilight limit, see [Night hooks](#night-hooks) |
 | Extras | startup and shutdown queues, mosaic, retry policy | recovery mode | image grading | maximum time slot | retry bonus, VOEvent receiver | startup, shutdown and idle hooks, retry policy, night plan preview, run history |
 
 Professional systems handle urgent observations as an interrupt that is separate from normal priorities. Las Cumbres Observatory rapid-response requests abort the observation in progress. ACP's ToO interface halts acquisition, fails the running plan and re-queues it.
@@ -46,7 +46,7 @@ The INDIGO scheduler adopts:
 - altitude, airmass, hour angle, moon separation (optionally Lorentzian), moon illumination, twilight and time-window constraints;
 - repeat and retry;
 - startup, shutdown and idle hooks;
-- night start, night end and resume hooks for unattended runs over several nights, run every evening and morning at a twilight limit (ACP model, planned);
+- night start, night end and resume hooks for unattended runs over several nights, run every evening and morning at a twilight limit (ACP model);
 - safety handling.
 
 It deliberately leaves out continuous greedy preemption, anti-thrashing settings and frame-level resume. Image grading and mosaics are possible later extensions.
@@ -357,7 +357,8 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
 | `AGENT_SCHEDULER_RESTORE_HISTORY` | text | `ENTRIES` | Used only to restore the run history from the configuration; published with an empty value, and changes from clients are rejected |
 | `AGENT_SCHEDULER_SETTINGS` | number | see below | Scheduler settings |
-| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE` | Names of stored tasks used as hooks |
+| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME` | Names of stored tasks used as hooks, see [Hooks](#hooks) and [Night hooks](#night-hooks) |
+| `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The Sun altitude that bounds the scheduler's night for the night hooks |
 
 `AGENT_SCHEDULER_SETTINGS` items:
 
@@ -371,6 +372,8 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `ALTITUDE_WEIGHT` | — | 1 | Weight of the altitude score term, 0–4 |
 | `FRAME_OVERHEAD` | s | 10 | Time added per captured frame in the duration estimate |
 | `OPERATION_OVERHEAD` | s | 120 | Time added per slew, centering, focus, guiding start or similar step in the duration estimate |
+| `NIGHT_START_OFFSET` | min | 0 | Shift of the night start, −240 to 240, negative is earlier |
+| `NIGHT_END_OFFSET` | min | 0 | Shift of the night end, −240 to 240, negative is earlier |
 
 **Requests.** Every change of a writable property is queued. The agent's handler acknowledges it with the property in the Busy state and completes it with Ok or Alert. Only the handler changes the properties; client enumerations receive copies. INDIGO does not publish an update that changes neither values nor state, so without the Busy state a client, and the configuration restore, would not see the result.
 
@@ -435,7 +438,7 @@ Everything the agent restores therefore goes through a defined, writable text pr
 
 - a task added, edited or deleted;
 - a `TASK_COMMAND`;
-- a change of `SETTINGS` or `HOOKS`;
+- a change of `SETTINGS`, `HOOKS` or `NIGHT`;
 - a task state transition or a new history entry;
 - a history clear.
 
@@ -444,7 +447,7 @@ Changes that come in quick succession are written once, two seconds after the la
 1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. The agent saves a temporary copy of the property with two items:
    - `TASK`, the task text;
    - `STATUS`, the runtime status in a compact form, for example `state=DONE runs=2 retries=0 disabled=0 measured=3540`.
-2. `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`;
+2. `AGENT_SCHEDULER_SETTINGS`, `AGENT_SCHEDULER_HOOKS` and `AGENT_SCHEDULER_NIGHT`;
 3. one `AGENT_SCHEDULER_RESTORE_HISTORY` change. The agent saves a temporary copy whose `ENTRIES` item holds all history entries, one line per entry, oldest first. Each line holds the task name, run number, start, end, result, a mark (`H` for a hook, `U` for an urgent task, `-` for neither) and the reason, separated by tabs. The configuration reader trims trailing whitespace, so no field is saved as a space, and entries whose trailing empty fields were trimmed are still restored.
 
 With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 MiB.
@@ -506,13 +509,11 @@ The `STARTUP`, `SHUTDOWN` and `IDLE` hooks name stored tasks.
 - The `IDLE` hook runs once per idle period, `IDLE_PARK_AFTER` minutes after the scheduler last found nothing eligible. A task that starts begins a new idle period.
 - A hook that names no task is reported by a message and skipped.
 
-These hooks follow `START`, the stop and idle periods, not the night. A scheduler left running for several nights runs `STARTUP` once and nothing at dusk or dawn. Hooks for the start and end of each night are planned, see [Night hooks](#night-hooks-planned).
+The `STARTUP`, `SHUTDOWN` and `IDLE` hooks follow `START`, the stop and idle periods, not the night. The [night hooks](#night-hooks) run at the start and the end of every night.
 
-### Night hooks (planned)
+### Night hooks
 
-Planned for phase 5, see [Implementation phases](#implementation-phases). Nothing in this section is implemented yet; the [hooks](#hooks) above are the current behaviour.
-
-**Motivation.** With the current hooks, a scheduler that runs over several nights has no point at which the equipment is prepared for the night or put away in the morning. At dawn the `IDLE` hook usually parks the equipment. The Mount Agent unparks the mount before the next slew, and the dome when dome slaving is enabled, but nothing restores what else a hook switched off, such as the camera cooler, a flat cover or the dome shutter. ACP Scheduler solves this with a startup script every evening and a shutdown script every morning, and N.I.N.A.'s Target Scheduler with instructions run before and after each wait. Phase 5 combines both.
+**Motivation.** With the startup, shutdown and idle hooks alone, a scheduler that runs over several nights has no point at which the equipment is prepared for the night or put away in the morning. At dawn the `IDLE` hook usually parks the equipment. The Mount Agent unparks the mount before the next slew, and the dome when dome slaving is enabled, but nothing restores what else a hook switched off, such as the camera cooler, a flat cover or the dome shutter. ACP Scheduler solves this with a startup script every evening and a shutdown script every morning, and N.I.N.A.'s Target Scheduler with instructions run before and after each wait. The night hooks combine both.
 
 **Night limit.** The scheduler gets one night for all tasks. A new switch property `AGENT_SCHEDULER_NIGHT` selects the Sun altitude that bounds it:
 
@@ -529,9 +530,9 @@ Two new `AGENT_SCHEDULER_SETTINGS` items move its ends:
 | `NIGHT_START_OFFSET` | min | 0 | −240–240 | Shift of the night start; negative is earlier, for example −30 to start cooling the camera half an hour before the night |
 | `NIGHT_END_OFFSET` | min | 0 | −240–240 | Shift of the night end; negative is earlier |
 
-- A night lasts from the time the Sun goes below the limit, plus `NIGHT_START_OFFSET`, until the time it rises above it, plus `NIGHT_END_OFFSET`. The times come from the [ephemeris grid](#ephemeris-grid).
+- A night lasts from the time the Sun goes below the limit, plus `NIGHT_START_OFFSET`, until the time it rises above it, plus `NIGHT_END_OFFSET`. The agent samples the Sun's altitude every five minutes from 36 hours before to 36 hours after now, from Sun positions computed once per hour, and interpolates the crossings. It computes the nights again every hour and after a change of the site, the limit or the offsets. A night recomputed with slightly different ends, or for a new site, counts as the same night when the two overlap.
 - When the offsets make one night end at or after the start of the next, the two are one night.
-- When the Sun does not go below the limit, for example in summer at high latitude with `ASTRONOMICAL`, or the offsets leave no time, there is no night. When the Sun does not rise above the limit, as in polar winter, the night does not end. The agent says so in a message on `START` and whenever the coming 24 hours change from having a night to having none, and the night plan shows it.
+- When the Sun does not go below the limit, for example in summer at high latitude with `ASTRONOMICAL`, or the offsets leave no time, there is no night. When the Sun does not rise above the limit, as in polar winter, the night does not end. When a night hook is named, the agent says so in a message after `START`, after a hook is named and whenever this changes, and the night plan ends with an Alert item when no night starts within a day.
 - The night limit times only the night hooks. It does not constrain tasks: every task keeps its own `@twilight`, and a task without one may also run outside the scheduler's night.
 
 **New hooks.** `AGENT_SCHEDULER_HOOKS` gets three more items. Like the current hooks, they name stored tasks:
@@ -545,21 +546,21 @@ Two new `AGENT_SCHEDULER_SETTINGS` items move its ends:
 **Night state and standby.** The agent keeps two flags, which are not visible as properties:
 
 - *Night* says whether `NIGHT_START` has run in the current night. A night start runs `NIGHT_START` and sets the flag, unless the night has no work, see below. A night end runs `NIGHT_END` only when the flag is set, and clears it. On `START` during the night, the night start is handled right after the `STARTUP` hook. A `STOP` and `START` within one night therefore runs `NIGHT_START` again, and `NIGHT_END` always follows a `NIGHT_START` of the same night.
-- *Standby* says that a hook has put the equipment away and nothing has prepared it since. A named `IDLE` or `NIGHT_END` hook sets it when it runs, whatever its result. A named `RESUME` or `NIGHT_START` hook clears it when it succeeds. `START` clears it.
+- *Standby* says that a hook has put the equipment away and nothing has prepared it since. A named `IDLE` or `NIGHT_END` hook sets it when it runs, whatever its result. A named `RESUME` or `NIGHT_START` hook clears it when it succeeds. Any task start also clears it; the resume hook, when it is named, runs before that start. `START` clears it.
 
 **Rules.**
 
 - **Night hooks never interrupt a task.** They run only when no task runs, at the next decision after the boundary: when the running task ends, or at the next `IDLE_CHECK_INTERVAL` check while the scheduler waits. A task that must stop at dawn does so through its own `@twilight` or a checkpoint in its body, such as `break_if_solar_altitude_above()`.
-- **Nights without work.** At the night start, the agent looks at the [night plan](#night-plan-preview). When it has no task run that starts before the end of the night, `NIGHT_START` does not run, the night flag stays clear, and the agent says so in a message, for example `No task can run tonight, night start hook skipped`. The equipment is not prepared, and `NIGHT_END` does not run at the end of that night. When the plan gains a run later in the night, `NIGHT_START` runs at the next decision, and at the latest before that run starts. This covers an uploaded or reset task, an urgent task, or a constraint that clears earlier than forecast. The equipment then gets less lead time than the offset gives, for example for cooling.
+- **Nights without work.** At the night start, the agent looks at the [night plan](#night-plan-preview). When it has no task run that starts before the end of the night, `NIGHT_START` does not run, the night flag stays clear, and the agent says so in a message when a night hook is named, also when it is named later in that night: `No task can run tonight, the night start hook is skipped`. The equipment is not prepared, and `NIGHT_END` does not run at the end of that night. When the plan gains a run later in the night, `NIGHT_START` runs at the next decision, and at the latest before that run starts. This covers an uploaded or reset task, an urgent task, or a constraint that clears earlier than forecast. The equipment then gets less lead time than the offset gives, for example for cooling.
 - **Order.** At one decision, the agent first runs `NIGHT_END`, then `NIGHT_START`, when they are due. It then selects a task. If it starts one in standby, `RESUME` runs first. If nothing is eligible, the `IDLE` rules apply. A task that runs from before the end of one night until after the start of the next is followed by both night hooks.
-- **Idle periods.** `NIGHT_START` and `NIGHT_END` begin a new idle period, as a task start does now. `IDLE` does not run in standby. So after `NIGHT_START`, `IDLE` can put the equipment away again while the scheduler waits for the first target. After `NIGHT_END` it does not run during the day.
-- **One task, several hooks.** One task may serve several hooks, for example a Park task as `SHUTDOWN`, `IDLE` and `NIGHT_END`. When two hooks that name the same task are due at the same decision, the task runs once. This includes `STARTUP` and `NIGHT_START` on `START` during the night. The task list shows the first hook in the order `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME`.
-- **Unnamed hooks.** A night hook item that is empty, or that names no stored task, is skipped; a missing task is reported by a message, as for the current hooks. The night flag changes as if the hook had run, but the standby does not. An empty `NIGHT_START` therefore leaves a standby set by `IDLE` to `RESUME`. Without `RESUME`, a task in standby starts as it does now. A configuration without the new items behaves exactly as now.
+- **Idle periods.** `NIGHT_START` and `NIGHT_END` begin a new idle period when they run, as a task start does. `IDLE` does not run in standby. So after `NIGHT_START`, `IDLE` can put the equipment away again while the scheduler waits for the first target. After `NIGHT_END` it does not run during the day.
+- **One task, several hooks.** One task may serve several hooks, for example a Park task as `SHUTDOWN`, `IDLE` and `NIGHT_END`. When two hooks that name the same task are due one right after the other, the task runs once. This includes `STARTUP` and `NIGHT_START` on `START` during the night, and `NIGHT_END` and `SHUTDOWN` when `STOP` arrives while the night end hook runs. The task list shows the first hook in the order `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME`.
+- **Unnamed hooks.** A night hook item that is empty, or that names no stored task, is skipped; a missing task is reported by a message, as for the current hooks. The night flag changes as if the hook had run, but the standby does not. An empty `NIGHT_START` therefore leaves a standby set by `IDLE` to `RESUME`. Without `RESUME`, a task in standby starts directly. A configuration without the night hooks behaves exactly as before them.
 - **Failures.** A failed `NIGHT_START` or `RESUME` leaves the equipment half prepared, for example with the roof open, and the next task would run on equipment that is not ready. The agent therefore runs the `SHUTDOWN` hook and stops with Alert. This differs from a failed `STARTUP`, which stops without `SHUTDOWN` because the scheduler has not started. A failed `NIGHT_END` or `IDLE` is reported by a message and scheduling continues.
 - **Stopping.** `STOP`, `ABORT` and the automatic stop run only the `SHUTDOWN` hook, also during the night; `NIGHT_END` does not run then.
 - **Night plan.** The [night plan](#night-plan-preview) ends at the later of the next sunrise and the end of the scheduler's night. `NIGHT_START` and `NIGHT_END` appear in it at their expected times, marked as hooks; on a night without work, neither appears. The simulation reserves their [duration](#task-duration) like a run. `RESUME` depends on idle periods that the plan does not forecast and is not shown. The plan is also recomputed after a change of `AGENT_SCHEDULER_NIGHT` or `AGENT_SCHEDULER_HOOKS`.
 - **History.** Night hook runs are recorded in the [run history](#run-history) and marked as hooks, like the current hooks.
-- **Persistence.** A change of `AGENT_SCHEDULER_NIGHT` triggers a save like a change of `SETTINGS`. The property is saved after `AGENT_SCHEDULER_SETTINGS` and `AGENT_SCHEDULER_HOOKS`, see [Persistence](#persistence). The new settings and hook items are saved with their properties. The night and standby flags are not saved: the scheduler starts stopped after a restart, and `START` sets them again.
+- **Persistence.** `AGENT_SCHEDULER_NIGHT`, the offsets and the hook items are saved, see [Persistence](#persistence). The night and standby flags are not saved: the scheduler starts stopped after a restart, and `START` sets them again.
 
 **Example.** An observatory that cools the camera and opens the roof half an hour before nautical dusk, parks when clouds come and closes at dawn:
 
@@ -603,7 +604,7 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 6. **Run.** The agent starts the best task and waits until it ends.
    - Success: the run counter increases. The task becomes DONE or REPEAT.
    - Failure: the task becomes RETRY while retries remain, otherwise FAILED.
-7. **Nothing eligible.** The agent publishes `NEXT_START` and `REASON`. After `IDLE_PARK_AFTER` minutes it runs the `IDLE` hook, for example to park the mount and close the dome.
+7. **Nothing eligible.** The agent publishes `NEXT_START` and `REASON`. After `IDLE_PARK_AFTER` minutes it runs the `IDLE` hook, for example to park the mount and close the dome, unless the equipment is already in [standby](#night-hooks).
 
 ### Night plan preview
 
@@ -611,7 +612,7 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 
 **Computation.** The agent simulates scheduling from now until the end of the night:
 
-- At night, the night ends at the next sunrise. During the day, it ends at the sunrise that follows the next sunset, so that the plan shows the coming night. It ends 24 hours from now if the sun does not rise or set within the grid.
+- At night, the night ends at the next sunrise. During the day, it ends at the sunrise that follows the next sunset, so that the plan shows the coming night. It ends 24 hours from now if the sun does not rise or set within the grid. When the scheduler's night for the [night hooks](#night-hooks) ends later, the plan lasts until its end.
 - The simulation starts with the running task, assumed to end at its start time plus its [duration](#task-duration), but not earlier than one minute from now.
 - At each simulated time, the agent applies the [selection](#selection) rules exactly as at run time: delays, expiry, eligibility over the task duration, urgent tasks first, then score. A task queued again after a repeat or retry delay waits behind the urgent tasks queued before it.
 - The selected task is assumed to run for its duration and succeed. Its simulated run counter increases, and `@repeat` intervals are applied.
@@ -629,7 +630,8 @@ The simulation works on a copy of the runtime status and never changes the real 
 **Updates.** The plan is recomputed:
 
 - whenever a task starts or ends;
-- after a task is uploaded, edited or deleted, a `TASK_COMMAND`, an urgent submission and a `SETTINGS` change;
+- after a task is uploaded, edited or deleted, a `TASK_COMMAND`, an urgent submission and a change of `SETTINGS`, `HOOKS` or `NIGHT`;
+- when a night hook starts or ends a night;
 - on `START`, `STOP` and `ABORT`;
 - when the site coordinates change;
 - every `IDLE_CHECK_INTERVAL`, so that the times follow the clock.
@@ -756,7 +758,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
    - 3a: startup, shutdown and idle hooks, run history, duration estimate and measurement, including `Sequence.prototype.estimate()` in `Sequencer.js` with its documentation in `Sequencer.md` and its tests. Scoring weights, repeat and retry and the Lorentzian moon limit came with phase 2.
    - 3b: night plan preview, with the per-task constraint tables that make the next-start search cheap.
 4. Related Scripting Agent: the Scheduler Agent becomes a filter agent with `FILTER_RELATED_AGENT_LIST`, in which the user selects the Scripting Agent that runs the tasks, also one on another server. It is the only agent selected there. The default is the local "Scripting Agent", so existing setups do not change. Running tasks, estimating durations, loading `Sequencer.js`, aborting sequences and the `SEQUENCE_STATE` and result tracking use the selected agent. Changing the selection while a task runs is rejected.
-5. Night hooks: the night limit, the `NIGHT_START`, `NIGHT_END` and `RESUME` hooks and the standby state, as described in [Night hooks](#night-hooks-planned). The agent's `PROPERTIES.md` section and the user guide are updated when they are implemented.
+5. Night hooks: the night limit, the `NIGHT_START`, `NIGHT_END` and `RESUME` hooks and the standby state in the module `indigo_agent_scheduler_night.c`, as described in [Night hooks](#night-hooks).
 6. Safety: a related AUX safety or weather device, selected through the filter agent's AUX device list. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 7. Optional extensions:
    - `@timeout minutes`: a hard limit on the length of one run, independent of `@duration`, which stays a planning value. When a run exceeds it, the agent aborts the run the same way as `ABORT` (the sequence, then the Guider Agent, waiting at most `STOP_TIMEOUT`) and counts it as a failure: the history records `timed out`, and `@retry` decides whether the task runs again. Hook tasks and urgent tasks obey it too. Without the key, runs are not limited, as now;
@@ -775,28 +777,12 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
 - Unit tests for the constraint engine use fixed dates and sites with known sun, moon and target positions, including the Lorentzian limit, a polar site and nightly windows across midnight.
 - Unit tests compare the per-task constraint tables with a direct evaluation of the constraints for random tasks and times, including the failure reasons.
 - Unit tests for the night plan simulation cover the score, the order and times, ties, urgent tasks first, the running task first, repeats with intervals, unschedulable tasks, windows, the end of the night and the run limit.
-- Phase 5, the [night hooks](#night-hooks-planned), is tested in three layers. The night state must not depend on the wall clock, so the agent takes its time from a clock that the tests can set and advance.
-  - Unit tests of the night computation on fixed dates and sites:
-    - night start and end for `CIVIL`, `NAUTICAL` and `ASTRONOMICAL` at a mid-latitude site, compared with known Sun altitudes;
-    - both offsets, negative and positive, at their limits of ±240 minutes;
-    - offsets that merge two nights into one, and offsets that leave no night;
-    - a high-latitude summer without astronomical night, polar day and polar night.
-  - Unit tests of the hook decisions, with the night plan and the hook results as inputs:
-    - `NIGHT_START` and `NIGHT_END` exactly once per night over three consecutive nights;
-    - `START` during the day, during the night, and within the start offset; `STOP` and `START` within one night;
-    - a night boundary that passes while a task runs: no interruption, and the hook runs when the task ends; a task that spans the end of one night and the start of the next;
-    - the order when several hooks are due at one decision;
-    - standby: set by `IDLE` and `NIGHT_END` whatever their result, cleared by a successful `RESUME` or `NIGHT_START` and by `START`; `RESUME` only in standby; `IDLE` not repeated in standby and running again after `NIGHT_START`;
-    - a night without work: neither night hook runs, the message is sent, and the standby left by the previous `NIGHT_END` stays set;
-    - work that appears in such a night through an upload, a `RESET`, an urgent task and a constraint that clears: `NIGHT_START` runs at the next decision and before the run, and `NIGHT_END` then runs at the end of that night;
-    - a night that loses its work after `NIGHT_START` ran: `NIGHT_END` still runs;
-    - one task named by several hooks running once when they are due together, including `STARTUP` and `NIGHT_START`;
-    - empty hook items and hook items naming a missing task: the night flag changes, the standby does not, and an empty `NIGHT_START` leaves a pending `RESUME`;
-    - a failed `NIGHT_START` and a failed `RESUME`: `SHUTDOWN` runs and the scheduler stops with Alert; a failed `NIGHT_END` and a failed `IDLE`: a message, and scheduling continues;
-    - a configuration without the new items behaving exactly as before phase 5.
-  - Unit tests of the night plan: the horizon at the later of sunrise and the night end, the night hooks at their expected times with their durations reserved, no night hooks on a night without work, and recomputation after a change of `AGENT_SCHEDULER_NIGHT` or `AGENT_SCHEDULER_HOOKS`.
-  - Integration tests run the agent with the Scripting Agent and stand-in agents over two simulated nights, with hook tasks that record their runs. They check the sequence of hook and task runs and their history entries for: a normal night; a night with an idle gap that runs `IDLE` and `RESUME`; a night without work; a night whose work appears late; and a restart between the nights, after which the configuration with the new property, settings and hook items is restored and `START` sets the night and standby again.
-  - The server acceptance test with the simulators adds one night: `NIGHT_START` cools the CCD simulator and unparks the mount simulator, `NIGHT_END` warms the CCD and parks the mount, and both are checked on the devices.
+- The [night hooks](#night-hooks) are tested in three layers:
+  - Unit tests of the night computation (`test_agent_scheduler_night`) on fixed dates and sites: night ends that lie on the civil, nautical and astronomical limits; the three limits nested; both offsets, negative and positive and clamped at ±240 minutes; offsets that leave no night and offsets that merge nights; a summer without astronomical night, polar day and polar night; and the lookups.
+  - Unit tests of the hook decisions over synthetic nights: `NIGHT_START` and `NIGHT_END` once per night over three nights; `START` during the day and the night, and `STOP` and `START` within one night; night boundaries passing while a task runs, a task spanning the end of one night and the start of the next, and a task covering a whole night; a night without work; work that appears late; a night that loses its work; nights recomputed with moved ends or for a new site; the polar night; and three real nights with hourly recomputation, where every hook falls within a degree of the limit.
+  - A unit test of the plan simulation with hook runs: a hook before a run delays it, a hook due during a run follows it, a hook at the end is planned and a hook after it is not.
+  - Integration tests move the stand-in site's longitude so that dusk or dawn falls a few seconds ahead, using the agent's own night computation. They cover: the night hooks at dusk and dawn with their order around the task, the night hooks in the plan, `IDLE` before the night, again after the task and not after `NIGHT_END`; a night without work skipping both hooks with the message, and a task uploaded later in that night running `NIGHT_START` first and `NIGHT_END` at dawn; a night without work and without night hooks staying silent; `RESUME` after `IDLE` and only in standby; `IDLE` without `RESUME` running once per idle period as before; a failed `NIGHT_START` and a failed `RESUME` running `SHUTDOWN` and stopping with Alert; `STARTUP` and `NIGHT_START` naming one task that runs once; a night hook naming a missing task; a day without astronomical night near the pole with the message and the plan item; and the night limit, offsets and hook items across a restart.
+  - The server acceptance test adds one night with the simulators: a night without work does not run `NIGHT_START`; a task uploaded in the night makes `NIGHT_START` turn the CCD cooler on at 20 °C and unpark the mount; moving the site to noon ends the night, and `NIGHT_END` turns the cooler off and parks the mount.
 - A performance test computes the night plan for 128 tasks and checks that it completes within one second on a Raspberry Pi 4.
 - Integration tests run the Scheduler Agent with the Scripting Agent and stand-in Mount and Guider Agents; a server acceptance test runs it in `indigo_server` with the Imager, Mount and Guider Agents and the CCD and mount simulators. Together they cover:
   - upload, download, edit, rename and persistence across restarts, including restored counters, measured durations and history, and a saved task that no longer validates;

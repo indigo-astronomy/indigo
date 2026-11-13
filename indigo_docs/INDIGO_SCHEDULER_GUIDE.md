@@ -479,7 +479,7 @@ The scheduler also stops by itself, after its `SHUTDOWN` hook, when every task i
 
 The scheduler always starts stopped after a server restart. Press `START` again.
 
-### Hooks: startup, shutdown and idle
+### Hooks
 
 Hooks are stored tasks that the scheduler runs at special moments, for example to unpark the mount and cool the camera at the start of the night, and to park and warm up at the end. You create the hook tasks like any other task and give their names in `AGENT_SCHEDULER_HOOKS`:
 
@@ -487,7 +487,10 @@ Hooks are stored tasks that the scheduler runs at special moments, for example t
 |---|---|
 | `STARTUP` | On `START`, before the first task. If it fails, the scheduler stops with Alert |
 | `SHUTDOWN` | When the scheduler stops: on `STOP`, on `ABORT` and on the automatic stop. It does not run after a failed `STARTUP` hook or after a stop timeout, and it is skipped with a message when another sequence occupies the Scripting Agent |
-| `IDLE` | Once, after the scheduler has found nothing to run for `IDLE_PARK_AFTER` minutes, for example to park the mount while waiting for clouds or for a target to rise |
+| `IDLE` | Once, after the scheduler has found nothing to run for `IDLE_PARK_AFTER` minutes, for example to park the mount while waiting for clouds or for a target to rise. It does not run again while the equipment is in standby, see [Several nights](#several-nights) |
+| `NIGHT_START` | When a night with work starts, see [Several nights](#several-nights). If it fails, the `SHUTDOWN` hook runs and the scheduler stops with Alert |
+| `NIGHT_END` | When that night ends |
+| `RESUME` | Before a task that starts after the `IDLE` or `NIGHT_END` hook put the equipment away. If it fails, the `SHUTDOWN` hook runs and the scheduler stops with Alert |
 
 For example, save a park task as `park.task`:
 
@@ -518,21 +521,46 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP=Unpark;SHUTD
 ```
 
 - Hooks name their tasks: renaming a hook task with an edit detaches it from the hook.
-- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK` or `IDLE HOOK`.
+- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK`, `IDLE HOOK`, `NIGHT START HOOK`, `NIGHT END HOOK` or `RESUME HOOK`.
+- One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
 - Hook runs appear in the history, marked `(hook)`.
 - To remove a hook, set its item to an empty value. `indigo_prop_tool` cannot send an empty value, so clear the field in a client such as the web control panel.
 
 ### Several nights
 
-The scheduler can run unattended over several nights: leave it started, and the tasks that are not finished continue the next night. The hooks, however, follow `START`, the stop and idle periods, not the night:
+The scheduler can run unattended over several nights: leave it started, and the tasks that are not finished continue the next night. `STARTUP` runs only on `START` and `SHUTDOWN` only when the scheduler stops, so for the start and the end of every night there are the night hooks.
 
-- `STARTUP` runs once, on `START`, not every evening;
-- `SHUTDOWN` runs only when the scheduler stops, not every morning;
-- at dawn, when the tasks' `@twilight` lets nothing run any more, the `IDLE` hook runs once, `IDLE_PARK_AFTER` minutes later, and the scheduler waits through the day.
+**The night.** `AGENT_SCHEDULER_NIGHT` sets how dark it must be for the scheduler's night: `CIVIL` (Sun below −6°), `NAUTICAL` (below −12°, the default) or `ASTRONOMICAL` (below −18°). `NIGHT_START_OFFSET` and `NIGHT_END_OFFSET` in `AGENT_SCHEDULER_SETTINGS` move its start and end by up to 240 minutes; negative is earlier. Use a negative start offset to cool the camera before the night begins:
 
-Before the first slew of the next night, the Mount Agent unparks the mount, and the dome when dome slaving is enabled. Nothing switches on again what else the `IDLE` hook switched off, such as the camera cooler, a flat cover or the dome shutter. Over several nights, either let the `IDLE` hook only park, or let each task body prepare what it needs, for example with `enable_cooler(temperature)` and `dome_open()`.
+```
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_NIGHT.NAUTICAL=ON"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.NIGHT_START_OFFSET=-30"
+```
 
-Hooks that run at the start and the end of every night at a chosen twilight, and a hook that prepares the equipment again after the `IDLE` hook, are planned; see [Night hooks](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md#night-hooks-planned).
+The night only times the night hooks. Each task keeps its own `@twilight`; a task without it may also run in daylight.
+
+**What happens each night:**
+
+- When the night starts and a task can run in it, the `NIGHT_START` hook runs, for example to cool the camera, open the roof and unpark.
+- When no task can run that night, `NIGHT_START` is skipped and the message `No task can run tonight, the night start hook is skipped` tells you why. If work appears later that night, because you upload or reset a task, submit an urgent task or a constraint clears, `NIGHT_START` runs then, before that task.
+- When the night ends, `NIGHT_END` runs, for example to park, close the roof and warm the camera up. It runs only after a `NIGHT_START` of the same night.
+- Night hooks never interrupt a task. A boundary that passes while a task runs is handled when the task ends. To stop a task at dawn, give it `@twilight` or a checkpoint such as `break_if_solar_altitude_above()`.
+- `START` during the night runs `STARTUP`, then `NIGHT_START` right away. `STOP`, `ABORT` and the automatic stop run only `SHUTDOWN`, also at night.
+
+**Standby and resume.** The `IDLE` and `NIGHT_END` hooks put the equipment in standby. While it is in standby, the `IDLE` hook does not run again, so nothing is parked twice and nothing runs during the day after `NIGHT_END`. Before the next task, the `RESUME` hook prepares the equipment again, for example to unpark and cool the camera after the `IDLE` hook parked and warmed it. A successful `NIGHT_START` also ends the standby, so the first task of a night does not run `RESUME` too. Without a `RESUME` hook a task starts directly; the Mount Agent unparks the mount before a slew, and the dome when dome slaving is enabled.
+
+**Failures.** A failed `NIGHT_START` or `RESUME` leaves the equipment half prepared, so the scheduler runs `SHUTDOWN` and stops with Alert. A failed `NIGHT_END` or `IDLE` is only reported.
+
+**No night.** Near the poles the Sun may stay above the limit, or below it, for days. With a night hook set, the scheduler tells you `The Sun does not go below the night limit within a day, the night hooks do not run` or `The Sun does not rise above the night limit, the night does not end`, and the night plan shows `No night at the night limit within a day`.
+
+**Example.** An observatory that prepares half an hour before nautical dusk, parks while waiting and closes at dawn:
+
+```
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.NIGHT_START_OFFSET=-30"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.NIGHT_START=Evening;RESUME=Evening;IDLE=Park;NIGHT_END=Morning;SHUTDOWN=Morning"
+```
+
+where `Evening` cools the camera with `enable_cooler(temperature)`, opens the roof and unparks; `Park` parks the mount; and `Morning` parks, closes the roof and warms the camera with `disable_cooler()`.
 
 ### Settings
 
@@ -548,12 +576,14 @@ Hooks that run at the start and the end of every night at a chosen twilight, and
 | `ALTITUDE_WEIGHT` | — | 1 | 0–4 | How strongly high targets are preferred within a priority class |
 | `FRAME_OVERHEAD` | s | 10 | 0–600 | Time added per frame in the duration estimate (download, saving, dithering) |
 | `OPERATION_OVERHEAD` | s | 120 | 0–3600 | Time added per slew, centering, focus or guiding start in the duration estimate |
+| `NIGHT_START_OFFSET` | min | 0 | −240–240 | Shift of the night start for the night hooks; negative is earlier, see [Several nights](#several-nights) |
+| `NIGHT_END_OFFSET` | min | 0 | −240–240 | Shift of the night end for the night hooks; negative is earlier |
 
 ```
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_PARK_AFTER=20"
 ```
 
-The tasks, their states and counters, the settings, the hooks and the history are saved in the scheduler's configuration and restored when the server starts.
+The tasks, their states and counters, the settings, the hooks, the night limit and the history are saved in the scheduler's configuration and restored when the server starts.
 
 ## Watching the scheduler
 
@@ -617,14 +647,15 @@ Park - SHUTDOWN HOOK
 20:44–22:36  M31 LRGB #1 (normal 60)
 23:36–01:28  M31 LRGB #2 (normal 60)
 01:28–03:28  NGC 7000 Ha (normal 40)
+05:10–05:12  Morning (night end hook)
 M42 — target below the altitude limit
 NGC 891 — disabled
 ```
 
-- Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority.
+- Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority. The night hooks appear at their expected times, marked as hooks.
 - The running task has a Busy light, planned runs an Idle light.
 - After the runs come the tasks that will not run tonight, with an Alert light and the reason. Typical reasons are a constraint that never holds tonight (see [Reasons](#reasons)), `disabled`, `script error`, or `no time left tonight` for a task that could run but finds no room after the others.
-- During the day the plan shows the coming night. It is shown also while the scheduler is stopped, as the plan that `START` would follow.
+- During the day the plan shows the coming night. When the night of the night hooks ends after sunrise, the plan lasts until it ends. It is shown also while the scheduler is stopped, as the plan that `START` would follow.
 
 The plan is a forecast. It assumes that every run succeeds and takes its expected duration, and it does not show where an urgent task will interrupt a run. The scheduler recomputes it whenever something changes and at least every `IDLE_CHECK_INTERVAL`.
 
@@ -670,6 +701,9 @@ The scheduler reports events as INDIGO messages of the device "Scheduler Agent",
 | `The scheduler stops after the running task` | `STOP` while a task runs |
 | `All tasks finished, the scheduler stopped`, `Scheduler stopped`, `Scheduler aborted` | The scheduler stopped |
 | `The startup hook failed, the scheduler stopped` | The `STARTUP` hook failed |
+| `The night start hook failed, the scheduler stopped`, `The resume hook failed, the scheduler stopped` | The `NIGHT_START` or `RESUME` hook failed; `SHUTDOWN` ran |
+| `No task can run tonight, the night start hook is skipped` | A night without work, see [Several nights](#several-nights) |
+| `The night start hook 'Evening' names no task` | A hook item names a task that does not exist |
 | `The sequence or an agent did not stop in time, the scheduler stopped` | An aborted sequence did not stop within `STOP_TIMEOUT` |
 
 A rejected request puts the property you changed into the Alert state, and a message gives the reason, for example `Task 'M42' not found`. The messages of property updates, such as the stop messages of `AGENT_SCHEDULER_STATE`, arrive the same way as the other messages.
@@ -759,7 +793,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_DELETE_TASK.NAME=M31 LRGB"
 
 ## What happens when the server restarts
 
-- Stored tasks, with their states and counters, the settings, the hooks and the history are restored.
+- Stored tasks, with their states and counters, the settings, the hooks, the night limit and the history are restored.
 - Finished work is not repeated: DONE, FAILED and EXPIRED tasks keep their state.
 - A task that was running when the server stopped is restored as RETRY, without using a retry.
 - Repeat and retry delays are not kept: a task waiting in REPEAT or RETRY can run as soon as the scheduler starts.
@@ -802,6 +836,7 @@ All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIE
 | `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The run history |
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Clear the history |
 | `AGENT_SCHEDULER_SETTINGS` | number | see [Settings](#settings) | Settings |
-| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE` | Hook task names |
+| `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME` | Hook task names |
+| `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The night limit of the night hooks |
 
 `AGENT_SCHEDULER_ADD_TASK.STATUS` and `AGENT_SCHEDULER_RESTORE_HISTORY` are used only to restore the configuration; leave them alone.

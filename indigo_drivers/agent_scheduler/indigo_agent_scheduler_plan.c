@@ -44,6 +44,10 @@ double indigo_scheduler_score(const scheduler_sky_grid *sky, const scheduler_tar
 }
 
 int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs) {
+	return indigo_scheduler_plan_with_hooks(sky, tasks, count, NULL, 0, now, end, setting_weight, altitude_weight, runs, max_runs);
+}
+
+int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs) {
 	if (count > MAX_PLAN_TASKS) {
 		count = MAX_PLAN_TASKS;
 	}
@@ -70,6 +74,7 @@ int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_ta
 		if (tasks[i].running) {
 			const scheduler_header *header = tasks[i].header;
 			runs[stored].task = i;
+			runs[stored].hook = -1;
 			runs[stored].run = header->repeat - tasks[i].runs_left + 1;
 			runs[stored].start = tasks[i].running_start;
 			runs[stored].end = tasks[i].running_end;
@@ -85,7 +90,21 @@ int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_ta
 			}
 		}
 	}
+	int next_hook = 0;
 	while (t < end && stored < max_runs) {
+		// a hook never interrupts a run, it runs when the run ends
+		if (next_hook < hook_count && hooks[next_hook].time <= t) {
+			runs[stored].task = -1;
+			runs[stored].hook = next_hook;
+			runs[stored].run = 1;
+			runs[stored].start = t;
+			runs[stored].end = t + hooks[next_hook].duration;
+			runs[stored].running = false;
+			stored++;
+			t += hooks[next_hook].duration;
+			next_hook++;
+			continue;
+		}
 		int best = -1;
 		double best_score = 0;
 		for (int i = 0; i < count; i++) {
@@ -114,6 +133,7 @@ int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_ta
 		if (best >= 0) {
 			const scheduler_header *header = tasks[best].header;
 			runs[stored].task = best;
+			runs[stored].hook = -1;
 			runs[stored].run = header->repeat - runs_left[best] + 1;
 			runs[stored].start = t;
 			runs[stored].end = t + tasks[best].duration;
@@ -137,10 +157,26 @@ int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_ta
 				next = start;
 			}
 		}
+		if (next_hook < hook_count && hooks[next_hook].time < end && (next == 0 || hooks[next_hook].time < next)) {
+			next = hooks[next_hook].time;
+		}
 		if (next == 0 || next >= end) {
 			break;
 		}
 		t = next > t ? next : t + SCHEDULER_GRID_STEP;
+	}
+	// hooks due at the end, such as the night end hook, are planned when no run is in progress then
+	while (next_hook < hook_count && stored < max_runs && hooks[next_hook].time <= end) {
+		time_t start = hooks[next_hook].time > t ? hooks[next_hook].time : t;
+		runs[stored].task = -1;
+		runs[stored].hook = next_hook;
+		runs[stored].run = 1;
+		runs[stored].start = start;
+		runs[stored].end = start + hooks[next_hook].duration;
+		runs[stored].running = false;
+		stored++;
+		t = runs[stored - 1].end;
+		next_hook++;
 	}
 	return stored;
 }

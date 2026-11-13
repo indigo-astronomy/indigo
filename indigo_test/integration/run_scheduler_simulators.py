@@ -277,7 +277,7 @@ def main():
 	run = None
 	error = None
 	records = os.environ.get("INDIGO_TEST_RESULTS")
-	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "urgent task fails a preempted capture", "target below the horizon waits", "shutdown hook parks the mount"]
+	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "urgent task fails a preempted capture", "target below the horizon waits", "shutdown hook parks the mount", "night hooks prepare and put away the devices"]
 	only = os.environ.get("SCHEDULER_SIMULATORS_ONLY")
 	if records:
 		with open(records, "a") as out:
@@ -411,9 +411,49 @@ def main():
 				client.wait(lambda: client.state(AGENT, "AGENT_SCHEDULER_STATE") == "Ok", 30, "scheduler stopped")
 				assert client.value("Mount Simulator", "MOUNT_PARK", "PARKED") is True, "mount not parked"
 
+			def site_at(hour):
+				# the equator at the longitude where the mean solar time is hour: deep night at 0, day at 12
+				hours = (time.time() % 86400) / 3600
+				site_longitude = round(((hour - hours) * 15 + 720) % 360, 4)
+				client.change_number("Mount Agent", "GEOGRAPHIC_COORDINATES", {"LATITUDE": 0, "LONGITUDE": site_longitude, "ELEVATION": 140})
+				client.wait(lambda: client.value("Mount Agent", "GEOGRAPHIC_COORDINATES", "LONGITUDE") == site_longitude, 20, "site")
+
+			def night_hooks():
+				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "South"})
+				site_at(0)
+				# the hooks are named before the first upload starts the scheduler in the night
+				client.change_text(AGENT, "AGENT_SCHEDULER_HOOKS", {"NIGHT_START": "Evening", "NIGHT_END": "Morning"})
+				# a task of a later night keeps the scheduler running; with every task finished it stops by design
+				later = time.strftime("%Y-%m-%d %H:%M", time.gmtime(time.time() + 2 * 86400))
+				run.upload("// @task Later\n// @window " + later + " ..\n\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(1);\nsequence.start();\n")
+				run.upload("// @task Evening\n\n" + devices_prologue() + "sequence.enable_cooler(20);\nsequence.unpark();\nsequence.start();\n")
+				run.upload("// @task Morning\n\n" + devices_prologue() + "sequence.disable_cooler();\nsequence.park();\nsequence.start();\n")
+				client.wait(lambda: "NIGHT START HOOK" in client.task_label("Evening") and "NIGHT END HOOK" in client.task_label("Morning"), 10, "night hooks configured")
+				# a night without work does not prepare the devices
+				client.wait(lambda: client.message_count("No task can run tonight, the night start hook is skipped") == 1, 30, "night without work")
+				assert client.message_count("Starting hook 'Evening'") == 0, "the night start hook ran without work"
+				assert client.value("Mount Simulator", "MOUNT_PARK", "PARKED") is True, "mount not parked before the night"
+				# work that appears in the night is prepared for first; set_temperature waits for the target, the simulator cools 1 degree per 5 s from 25
+				run.upload("// @task Night work\n// @duration 1\n\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(1);\nsequence.start();\n")
+				client.wait(lambda: client.message_count("Hook 'Evening' completed") == 1, 120, "night start hook")
+				assert client.value("CCD Imager Simulator", "CCD_COOLER", "ON") is True, "cooler not on"
+				temperature = client.property("CCD Imager Simulator", "CCD_TEMPERATURE")
+				target = next(i.get("target", i.get("value")) for i in temperature["items"] if i["name"] == "TEMPERATURE")
+				assert abs(target - 20) < 0.01, "temperature target %s" % target
+				assert client.value("Mount Simulator", "MOUNT_PARK", "UNPARKED") is True, "mount not unparked"
+				client.wait(lambda: client.message_count("Task 'Night work' completed") == 1, 60, "task of the night")
+				assert client.message_index("Hook 'Evening' completed") < client.message_index("Starting task 'Night work'"), "the task ran before the night start hook"
+				# the night ends when the site is moved to noon
+				site_at(12)
+				client.wait(lambda: client.message_count("Hook 'Morning' completed") == 1, 120, "night end hook")
+				assert client.value("CCD Imager Simulator", "CCD_COOLER", "OFF") is True, "cooler not off"
+				assert client.value("Mount Simulator", "MOUNT_PARK", "PARKED") is True, "mount not parked"
+				assert client.message_count("Starting hook 'Evening'") == 1 and client.message_count("Starting hook 'Morning'") == 1
+
 			run.case(cases[4], preemption_fails)
 			run.case(cases[5], below_horizon)
 			run.case(cases[6], shutdown_hook)
+			run.case(cases[7], night_hooks)
 	except (OSError, RuntimeError, TimeoutError, ValueError, StopIteration) as exception:
 		error = str(exception)
 		print(error, file=sys.stderr)
