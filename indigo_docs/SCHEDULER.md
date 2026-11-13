@@ -693,14 +693,15 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
 - Unit tests compare the per-task constraint tables with a direct evaluation of the constraints for random tasks and times, including the failure reasons.
 - Unit tests for the night plan simulation cover the score, the order and times, ties, urgent tasks first, the running task first, repeats with intervals, unschedulable tasks, windows, the end of the night and the run limit.
 - A performance test computes the night plan for 128 tasks and checks that it completes within one second on a Raspberry Pi 4.
-- Integration tests run the Scheduler Agent with the Scripting Agent and the CCD, mount and guider simulators. They cover:
+- Integration tests run the Scheduler Agent with the Scripting Agent and stand-in Mount and Guider Agents; a server acceptance test runs it in `indigo_server` with the Imager, Mount and Guider Agents and the CCD and mount simulators. Together they cover:
   - upload, download, edit, rename and persistence across restarts, including restored counters, measured durations and history, and a saved task that no longer validates;
   - a body that throws or has a syntax error being marked `SCRIPT ERROR` by its estimate and never run;
   - a task name containing quotes and backslashes reaching the body unchanged;
   - a client loading `Sequencer.js` and running a script while a scheduled sequence runs, without disturbing it;
   - task ordering, and a task uploaded during a run not interrupting it;
   - a task waiting for its window, and a task not started when its duration does not fit;
-  - urgent preemption: the exposure is aborted, guiding stops, the agents become idle, the urgent task runs, and the preempted task becomes RETRY and later reruns, or becomes FAILED;
+  - urgent preemption, with the simulators for both `@preempted retry` and `@preempted fail`: the exposure is aborted, guiding stops, the agents become idle, the urgent task runs, and the preempted task becomes RETRY and later reruns, or becomes FAILED and never runs again;
+  - an urgent task inserted while one task runs and another of higher priority, uploaded during the run, waits: the urgent task runs first and is shown running in the night plan; then the normal rules apply, so the waiting task runs before the retried one, and a failed task leaves the plan and never runs again; the preemption uses no retry;
   - an urgent task that is not yet eligible not preempting the running task;
   - a second urgent task waiting for the first;
   - an urgent task submitted while the scheduler is stopped;

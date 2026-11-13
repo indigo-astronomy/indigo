@@ -168,6 +168,18 @@ static long message_position(const char *text) {
 	return result;
 }
 
+// position of the last occurrence of text in the message log, -1 if missing
+static long message_position_last(const char *text) {
+	pthread_mutex_lock(&cache_mutex);
+	const char *last = NULL;
+	for (const char *s = messages; (s = strstr(s, text)) != NULL; s += strlen(text)) {
+		last = s;
+	}
+	long result = last ? (long)(last - messages) : -1;
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
 static bool wait_message(const char *text, int count, double timeout) {
 	for (double t = 0; t < timeout; t += 0.01) {
 		if (count_messages(text) >= count) {
@@ -1249,6 +1261,103 @@ static void plan_gives_the_reasons(void) {
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[2]);
 }
 
+// waits until the plan is exactly the given items, read from one snapshot so that a run ending in between cannot mix two plans
+static bool wait_plan_exactly(int count, const char **texts, const indigo_property_state *expected, double timeout) {
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	int found = -1;
+	for (double t = 0; t < timeout; t += 0.01) {
+		found = plan_items(labels, states, 16);
+		bool match = found == count;
+		for (int i = 0; match && i < count; i++) {
+			match = strstr(labels[i], texts[i]) != NULL && states[i] == expected[i];
+		}
+		if (match) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for a plan of %d items, found %d:\n", count, found);
+	for (int i = 0; i < found && i < 16; i++) {
+		fprintf(stderr, "  %s [%d]\n", labels[i], states[i]);
+	}
+	return false;
+}
+
+// waits until the task list is defined and no longer lists the task, a redefine deletes it for a moment
+static bool wait_task_removed(const char *name, double timeout) {
+	char label[INDIGO_VALUE_SIZE];
+	for (double t = 0; t < timeout; t += 0.01) {
+		indigo_property *property = snapshot(AGENT_SCHEDULER_TASK_STATE_PROPERTY_NAME);
+		bool defined = property != NULL;
+		indigo_release_property(property);
+		if (defined && !task_label(name, label, NULL)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for task '%s' to be removed\n", name);
+	return false;
+}
+
+// an urgent task inserted while a task runs and another one waits: it preempts the running task and runs first,
+// then the scheduler selects by the normal rules, so a retried task gets no advantage over a waiting task of higher priority
+static void urgent_insertion(bool fail) {
+	site_at_evening();
+	REQUIRE(upload(fail ? "// @task Long\n// @preempted fail\n// @retry 1\n// @duration 5\n" BODY_WAIT(30) : "// @task Long\n// @retry 1\n// @duration 5\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
+	ASSERT_TRUE(wait_sequence_state(INDIGO_BUSY_STATE, 15));
+	// a task uploaded during the run waits for it even with a higher priority
+	REQUIRE(upload("// @task Queued\n// @priority normal 60\n// @duration 1\n" BODY_WAIT(2)));
+	const char *before[] = { "  Long (normal 50)", "  Queued (normal 60)" };
+	const indigo_property_state before_states[] = { INDIGO_BUSY_STATE, INDIGO_IDLE_STATE };
+	ASSERT_TRUE(wait_plan_exactly(2, before, before_states, 5));
+	REQUIRE(urgent("// @task Flash\n// @priority low\n// @duration 1\n" BODY_WAIT(10)));
+	ASSERT_TRUE(wait_message(fail ? "Task 'Long' preempted by an urgent task and failed" : "Task 'Long' preempted by an urgent task, it will be retried", 1, 10));
+	ASSERT_TRUE(wait_task_state("Flash", "RUNNING", 10));
+	ASSERT_TRUE(message_position("Starting task 'Flash'") > message_position("Task 'Long' preempted"));
+	// the urgent task runs first; a retried task is planned again after the waiting one of higher priority, a failed one leaves the plan
+	const char *during[] = { "  Flash (urgent)", "  Queued (normal 60)", "  Long (normal 50)" };
+	const indigo_property_state during_states[] = { INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE };
+	ASSERT_TRUE(wait_plan_exactly(fail ? 2 : 3, during, during_states, 5));
+	// without a retry delay the retried task is queued again at once
+	ASSERT_TRUE(wait_task_state("Long", fail ? "FAILED" : "QUEUED", 5));
+	// the preemption does not use a retry in either case
+	ASSERT_TRUE(wait_task_state("Long", "retries left 1", 5));
+	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 20));
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(history_label("Long #1", 0, label) && strstr(label, "preempted: by Flash"));
+	ASSERT_TRUE(history_label("Flash (urgent) #1", 0, label) && strstr(label, "succeeded"));
+	ASSERT_TRUE(wait_message("Task 'Queued' completed", 1, 20));
+	ASSERT_TRUE(message_position("Starting task 'Queued'") > message_position("Task 'Flash' completed"));
+	if (fail) {
+		// the failed task is never started again, the scheduler stops when nothing is left
+		ASSERT_TRUE(wait_message("All tasks finished", 1, 10));
+		ASSERT_EQ_INT(1, count_messages("Starting task 'Long'"));
+		ASSERT_TRUE(wait_task_state("Long", "FAILED", 5));
+	} else {
+		// the retried task starts again after the waiting one, its retry still unused
+		ASSERT_TRUE(wait_message("Starting task 'Long'", 2, 15));
+		ASSERT_TRUE(message_position_last("Starting task 'Long'") > message_position("Task 'Queued' completed"));
+		ASSERT_TRUE(wait_task_state("Long", "retries left 1", 5));
+		ASSERT_TRUE(wait_plan_first("  Long (normal 50)", INDIGO_BUSY_STATE, 5));
+	}
+	ASSERT_TRUE(wait_task_removed("Flash", 5));
+	if (!fail) {
+		REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+		ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
+	}
+}
+
+static void urgent_insertion_retries_the_preempted_task(void) {
+	urgent_insertion(false);
+}
+
+static void urgent_insertion_fails_the_preempted_task(void) {
+	urgent_insertion(true);
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -1283,6 +1392,8 @@ static const indigo_test_case cases[] = {
 	{ "plan_lists_the_night", plan_lists_the_night },
 	{ "plan_follows_the_run", plan_follows_the_run },
 	{ "plan_gives_the_reasons", plan_gives_the_reasons },
+	{ "urgent_insertion_retries_the_preempted_task", urgent_insertion_retries_the_preempted_task },
+	{ "urgent_insertion_fails_the_preempted_task", urgent_insertion_fails_the_preempted_task },
 };
 
 static const char *case_filter = NULL;

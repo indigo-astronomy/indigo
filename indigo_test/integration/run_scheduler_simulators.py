@@ -277,7 +277,7 @@ def main():
 	run = None
 	error = None
 	records = os.environ.get("INDIGO_TEST_RESULTS")
-	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "target below the horizon waits", "shutdown hook parks the mount"]
+	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "urgent task fails a preempted capture", "target below the horizon waits", "shutdown hook parks the mount"]
 	only = os.environ.get("SCHEDULER_SIMULATORS_ONLY")
 	if records:
 		with open(records, "a") as out:
@@ -364,8 +364,32 @@ def main():
 				run.wait_task("Long", "RETRY", 60)
 				client.wait(lambda: client.state("Imager Agent", "AGENT_START_PROCESS") != "Busy", 60, "imager idle after abort")
 
-			def below_horizon():
+			def preemption_fails():
+				# the same interruption of a guided capture, the task asks to fail instead of being retried
 				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "Long"})
+				run.upload("// @task Fragile\n// @target " + zenith(0) + "\n// @retry 1\n// @preempted fail\n// @duration 30\n\n" + capture_body(images, "fragile", 40, 1, True))
+				run.control("START")
+				run.wait_task("Fragile", "RUNNING", 60)
+				client.wait(lambda: client.state("Imager Agent", "AGENT_START_PROCESS") == "Busy" and client.state("Guider Agent", "AGENT_START_PROCESS") == "Busy", 120, "guided capture in progress")
+				client.wait(lambda: len(run.frames("fragile")) >= 1, 60, "first fragile frame")
+				client.change_text(AGENT, "AGENT_SCHEDULER_URGENT_TASK", {"TASK": "// @task Rush\n// @target " + zenith(0.5) + "\n// @duration 10\n\n" + capture_body(images, "rush", 2, 0.2, False)})
+				client.wait(lambda: client.message_count("Task 'Fragile' preempted by an urgent task and failed") == 1, 90, "preemption")
+				assert client.state("Imager Agent", "AGENT_START_PROCESS") != "Busy", "exposure not aborted"
+				assert client.state("Guider Agent", "AGENT_START_PROCESS") != "Busy", "guiding not aborted"
+				fragile_frames = len(run.frames("fragile"))
+				client.wait(lambda: client.message_count("Task 'Rush' completed") == 1, 120, "urgent task")
+				assert len(run.frames("rush")) == 2, "expected 2 urgent frames, found %d" % len(run.frames("rush"))
+				assert fragile_frames < 40, "the preempted capture was not interrupted"
+				run.wait_task("Fragile", "FAILED", 10)
+				# the scheduler stops by itself only when every task is finished; Calibration and Zenith are done by the earlier cases
+				for name in ("Calibration", "Zenith"):
+					assert "DONE" in client.task_label(name), "an earlier case left a task to run: " + client.task_label(name)
+				client.wait(lambda: client.state(AGENT, "AGENT_SCHEDULER_STATE") == "Ok", 60, "scheduler stopped")
+				assert client.message_count("Starting task 'Fragile'") == 1, "the failed task was started again"
+				assert len(run.frames("fragile")) == fragile_frames, "the failed capture continued"
+
+			def below_horizon():
+				client.change_text(AGENT, "AGENT_SCHEDULER_DELETE_TASK", {"NAME": "Fragile"})
 				run.upload("// @task South\n// @target 06:00:00 " + ("-89:00:00" if latitude >= 0 else "+89:00:00") + "\n// @duration 10\n\n" + capture_body(images, "south", 1, 0.2, False))
 				run.control("START")
 				run.wait_task("South", "WAITING", 30)
@@ -387,8 +411,9 @@ def main():
 				client.wait(lambda: client.state(AGENT, "AGENT_SCHEDULER_STATE") == "Ok", 30, "scheduler stopped")
 				assert client.value("Mount Simulator", "MOUNT_PARK", "PARKED") is True, "mount not parked"
 
-			run.case(cases[4], below_horizon)
-			run.case(cases[5], shutdown_hook)
+			run.case(cases[4], preemption_fails)
+			run.case(cases[5], below_horizon)
+			run.case(cases[6], shutdown_hook)
 	except (OSError, RuntimeError, TimeoutError, ValueError, StopIteration) as exception:
 		error = str(exception)
 		print(error, file=sys.stderr)
