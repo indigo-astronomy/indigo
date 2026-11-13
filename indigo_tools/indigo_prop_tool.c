@@ -91,7 +91,7 @@ void stop_waiting_if_requested(indigo_property_state property_state) {
 
 int read_file(const char *file_name, char **file_data) {
 	*file_data = NULL;
-	indigo_uni_handle *handle = indigo_uni_open_file(file_name, INDIGO_LOG_ERROR);
+	indigo_uni_handle *handle = indigo_uni_open_file(file_name, INDIGO_LOG_TRACE);
 	if (handle == NULL) {
 		return -1;
 	}
@@ -692,7 +692,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 					bool name_provided = false;
 					bool file_provided = false;
 					for (i = 0; i < change_request.item_count; i++) {
-						if (!strcmp(AGENT_SCRIPTING_SCRIPT_ITEM_NAME, change_request.item_name[i])) {
+						if (!strcmp(AGENT_SCRIPTING_SCRIPT_ITEM_NAME, change_request.item_name[i]) || !strcmp(AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, change_request.item_name[i])) {
 							int res = read_file(change_request.value_string[i], &txt_values[i]);
 							if (res < 0) {
 								fprintf(stderr, "Can't read '%s' file\n", change_request.value_string[i]);
@@ -835,6 +835,13 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 }
 
 
+static indigo_result client_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (set_requested && message != NULL && property != NULL && !strcmp(property->device, change_request.device_name)) {
+		printf("%s: %s\n", property->device, message);
+	}
+	return INDIGO_OK;
+}
+
 static indigo_result client_detach(indigo_client *client) {
 	exit(0);
 	return INDIGO_OK;
@@ -847,7 +854,7 @@ static indigo_client client = {
 	client_define_property,
 	client_update_property,
 	NULL,
-	NULL,
+	client_send_message,
 	client_detach
 };
 
@@ -881,6 +888,7 @@ static void print_help(const char *name) {
 	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set_script [options] agent.property.SCRIPT=filename[;NAME=filename]\n", name);
+	printf("       %s set_script [options] agent.property.TASK=filename\n", name);
 	printf("       %s get [options] device.property.item[;item;..]\n", name);
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);

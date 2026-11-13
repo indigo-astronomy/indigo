@@ -55,6 +55,7 @@ Imaging, guiding and alignment guides for using INDIGO.
 - [Imager Multi-camera Synchronization](INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md)
 - [Polar Alignment](POLAR_ALIGNMENT.md)
 - [Plate Solving](PLATE_SOLVING.md)
+- [Scheduler User Guide](INDIGO_SCHEDULER_GUIDE.md)
 - [Guider Detection Modes](INDIGO_GUIDER_DETECTION_MODES.md)
 - [Guider Correction Modes](INDIGO_GUIDER_CORRECTION_MODES.md)
 - [Guider Dithering](INDIGO_GUIDER_DITHERING.md)

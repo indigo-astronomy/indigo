@@ -6,7 +6,7 @@ Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 
-This document is the design of the INDIGO Scheduler Agent. The agent decides which imaging task runs next, when it runs and under which sky conditions, and it can interrupt the running task for an urgent one. It is a design document. Property names, limits and defaults are subject to change until the agent is implemented.
+This document is the design of the INDIGO Scheduler Agent. The agent decides which imaging task runs next, when it runs and under which sky conditions, and it can interrupt the running task for an urgent one. It is a design document. Property names, limits and defaults are subject to change until the agent is implemented. How to use the scheduler is described in the [Scheduler User Guide](INDIGO_SCHEDULER_GUIDE.md).
 
 ## Motivation
 
@@ -237,6 +237,8 @@ The scheduler needs the duration of a run to check the constraints before a star
 4. 60 minutes, while no estimate is available.
 
 Elsewhere in this document, `@duration` means this effective duration. The label of the task in `AGENT_SCHEDULER_TASK_STATE` shows the duration and its source: `set`, `measured`, `estimated` or `default`.
+
+The duration is a planning value, not a limit. The scheduler never stops a run because it exceeds its duration; limits inside a run are the body's job (`break_at()`, `break_at_ha()`, `break_if_target_altitude_below()`). A limit enforced by the agent is the planned `@timeout` key, see [Implementation phases](#implementation-phases).
 
 **Estimate in `Sequencer.js`.** The sequencer gets one addition, `Sequence.prototype.estimate()`. While a sequence is built, the builder methods add to counters on the `Sequence` object, as `capture_batch()` and `capture_stream()` already add to the total exposure. `estimate()` returns these counters:
 
@@ -586,7 +588,7 @@ The item label shows:
 - the result;
 - for a failure, the reason: the last alert message of the sequence, the script error message, or `not started`.
 
-For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted by SN 2026abc`.
+For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted: by SN 2026abc`.
 
 Entries are newest first. Expiry is not a run, so an expired task gets no entry; its state remains visible in `AGENT_SCHEDULER_TASK_STATE`.
 
@@ -677,6 +679,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
    - 3b: night plan preview, with the per-task constraint tables that make the next-start search cheap.
 4. Safety: a related AUX safety or weather device. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
 5. Optional extensions:
+   - `@timeout minutes`: a hard limit on the length of one run, independent of `@duration`, which stays a planning value. When a run exceeds it, the agent aborts the run the same way as `ABORT` (the sequence, then the Guider Agent, waiting at most `STOP_TIMEOUT`) and counts it as a failure: the history records `timed out`, and `@retry` decides whether the task runs again. Hook tasks and urgent tasks obey it too. Without the key, runs are not limited, as now;
    - task upload, download and editing in the web UI;
    - `@window` times in a local time zone;
    - image grading;
