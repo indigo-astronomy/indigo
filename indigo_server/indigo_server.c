@@ -220,9 +220,6 @@
 #include "focuser_wemacro_bt/indigo_focuser_wemacro_bt.h"
 #include "focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.h"
 #endif
-#ifdef INDIGO_LINUX
-#include "ccd_gphoto2/indigo_ccd_gphoto2.h"
-#endif
 #include "agent_scripting/indigo_agent_scripting.h"
 #endif
 
@@ -275,9 +272,6 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_bresser,
 	indigo_ccd_dsi,
 	indigo_ccd_fli,
-#ifdef INDIGO_LINUX
-	indigo_ccd_gphoto2,
-#endif
 	indigo_ccd_iidc,
 	indigo_ccd_mi,
 	indigo_ccd_ogma,
