@@ -1,0 +1,19 @@
+{
+  "title": "indigo_xml_escape_b() leaks its thread-local long escape buffer when a thread ends",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261113004147-cf2e-indigo-xml-escape-buffer-finding",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_xml_escape_b() with an index of ESCAPE_BUFFER_COUNT or more escapes into a static INDIGO_THREAD_LOCAL long_escape_buffer grown with indigo_safe_realloc() and never freed. Each thread that escapes a long value with special characters (for example a handler queue thread saving a text property through indigo_save_property()) leaves one buffer behind when it ends, up to 6 x the longest escaped value. LeakSanitizer reported 1183 bytes after the Scheduler Agent case repeat_retry_and_failures. The loss is bounded per thread but repeats for every short-lived thread, such as the handler queue of a driver that is loaded and unloaded. Next (framework change, needs owner approval): free the buffer at thread exit (pthread key destructor or an explicit release helper called when a queue thread ends), or let callers pass their own buffer.",
+  "evidence": "indigo_libs/indigo_xml.c indigo_xml_escape_b() static INDIGO_THREAD_LOCAL long_escape_buffer; indigo_libs/indigo_driver.c indigo_save_property() indigo_xml_escape_b(5, ...); LeakSanitizer stack in the task verification.md.",
+  "resolution": null,
+  "id": "FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001"
+}
