@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261113005229-eff7-static-server-gphoto2-include",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of the commit plan; then fast-forward master; no push.",
+  "blocker": null
+}
