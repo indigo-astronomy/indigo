@@ -77,15 +77,24 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
   No moon phase helper exists yet. The moon illumination and the number of days from full moon are derived from the Sun–Moon elongation. The elongation does not distinguish a waxing from a waning moon, which the constraints do not need, because the Lorentzian limit is symmetric about full moon.
 - Any client can submit an urgent task with a single property change. This includes AIN, the web UI, MCP clients and a future GCN/VOEvent bridge.
 
-The Scheduler Agent is a device with its own client, like the Scripting Agent. It does not select hardware devices, so it is not a filter agent. It works with the agents that `Sequence.start()` uses by default:
+The Scheduler Agent is a device with its own client, like the Scripting Agent. It does not select hardware devices, so it is not a filter agent.
 
-- the "Scripting Agent", which is required;
-- the "Mount Agent", which provides the site coordinates through `GEOGRAPHIC_COORDINATES`. An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the scheduler cannot tell from a real site, so the site must be configured in the Mount Agent;
-- the "Imager Agent", "Guider Agent" and the plate solver agent, which the scheduler waits for when it stops a sequence. The scheduler aborts the "Guider Agent" itself.
+### Agent dependencies
 
-Task bodies are expected to use these agents. A safety or weather device is added in a later phase.
+The Scheduler Agent depends directly on these agents, found by their exact device names:
 
-The agent names are currently fixed, so the Scheduler Agent must run on the same server as its Scripting Agent: an agent on another server appears with a host suffix, such as `Scripting Agent @ obs2`, and is not used. A later phase lets the user select the Scripting Agent, see [Implementation phases](#implementation-phases).
+| Agent | Needed | Properties the scheduler uses | Without it |
+|---|---|---|---|
+| "Scripting Agent" | always | changes `AGENT_SCRIPTING_RUN_SCRIPT` to load `Sequencer.js`, estimate durations and run tasks; observes `SEQUENCE_STATE` and `SEQUENCE_NAME`, and the `SCHEDULER_RESULT` and `SCHEDULER_ESTIMATE` properties that the wrapper script defines there; changes `AGENT_ABORT_PROCESS` to abort a sequence | no task starts and no duration is estimated; `REASON` is `waiting for the Scripting Agent` |
+| "Mount Agent" | for tasks with `@target` or `@twilight` | observes `GEOGRAPHIC_COORDINATES` for the site; observes `AGENT_START_PROCESS` to wait until the agent is idle after an abort | these tasks wait with `site coordinates unknown`; tasks with only time windows still run |
+| "Guider Agent" | optional | changes `AGENT_ABORT_PROCESS` on `ABORT` and preemption, because the sequencer's abort leaves guiding running; observes `AGENT_START_PROCESS` | nothing to stop |
+| "Imager Agent", "Astrometry Agent", "Platesolver Agent", "ASTAP Agent" | optional | observe `AGENT_START_PROCESS`, to wait until they are idle after an abort before the next task starts | nothing to wait for |
+
+An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the scheduler cannot tell from a real site, so the site must be configured in the Mount Agent.
+
+The task bodies depend on more: the agents and devices their `Sequencer.js` steps use, by default the "Imager Agent", "Mount Agent" and "Guider Agent" and a plate solver agent selected for the Imager Agent. The scheduler does not check these; a missing one makes the run fail. A safety or weather device is added in a later phase.
+
+The agent names are currently fixed, so the Scheduler Agent must run on the same server as these agents: an agent on another server appears with a host suffix, such as `Scripting Agent @ obs2`, and is not used. A later phase lets the user select the Scripting Agent, see [Implementation phases](#implementation-phases).
 
 ## Task format
 

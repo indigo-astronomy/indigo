@@ -22,23 +22,40 @@ The scheduler is controlled entirely through INDIGO properties of the device **S
 
 ## Before you start
 
-The scheduler needs these drivers loaded in the INDIGO server:
+### Agents the scheduler depends on
 
-| Driver | Why |
-|---|---|
-| `indigo_agent_scheduler` | The Scheduler Agent itself |
-| `indigo_agent_scripting` | Runs the task sequences. The scheduler loads `Sequencer.js` into it when needed |
-| `indigo_agent_imager`, `indigo_agent_mount`, `indigo_agent_guider` and a plate solver agent | Used by the task sequences, as for any `Sequencer.js` sequence |
+The Scheduler Agent itself (`indigo_agent_scheduler`) works directly with these agents:
 
-Load the Scheduler Agent on the same server as the Scripting Agent and the Mount Agent. The scheduler uses the agents named exactly "Scripting Agent", "Mount Agent" and "Guider Agent"; an agent on another server, shown as `Scripting Agent @ obs2`, is not used. Selecting the Scripting Agent is planned.
+| Agent | Driver | Needed | What the scheduler uses it for |
+|---|---|---|---|
+| Scripting Agent | `indigo_agent_scripting` | always | Runs every task, estimates task durations, and is told to abort a sequence. The scheduler loads `Sequencer.js` into it when needed. Without it, no task starts and `REASON` is `waiting for the Scripting Agent` |
+| Mount Agent | `indigo_agent_mount` | for tasks with `@target` or `@twilight` | The site coordinates, from its `GEOGRAPHIC_COORDINATES` property. Without it, or without a site, these tasks wait with `site coordinates unknown` |
+| Guider Agent | `indigo_agent_guider` | optional | Stopped when a task is aborted or preempted, because the sequencer's own abort leaves guiding running |
+| Imager Agent and the plate solver agents | `indigo_agent_imager`, `indigo_agent_astrometry`, `indigo_agent_platesolver` | optional | After an abort, the scheduler waits until they are idle before it starts the next task |
 
-The Imager, Mount and Guider Agents must be set up as usual, with the camera, mount, guider and other devices selected. The scheduler reads the site coordinates from the Mount Agent (`GEOGRAPHIC_COORDINATES`). Without them it cannot compute the position of the Sun, the Moon or any target, and every task with sky constraints waits with the reason `site coordinates unknown`.
+**Load them on the same server as the Scheduler Agent.** The scheduler finds the agents by their exact names, such as "Scripting Agent" and "Mount Agent". An agent on another server appears as `Scripting Agent @ obs2` and is not used. Selecting the Scripting Agent is planned.
+
+**Set the site in the Mount Agent.** Once a mount or a GPS is selected there, the Mount Agent takes the site from it; otherwise set it directly:
+
+```
+indigo_prop_tool set "Mount Agent.GEOGRAPHIC_COORDINATES.LATITUDE=42.7;LONGITUDE=23.3;ELEVATION=550"
+```
+
+An unconfigured Mount Agent reports latitude 0° and longitude 0°. The scheduler accepts that as a site, so `site coordinates unknown` disappears, but it then computes the sky for the wrong place.
+
+### Agents the tasks depend on
+
+The task bodies are ordinary `Sequencer.js` sequences. They use the Imager, Mount and Guider Agents and a plate solver agent, as any sequence does, and these must be set up as usual, with the camera, mount, guider and other devices selected. The scheduler does not check them: a task that needs a missing agent or device fails when it runs.
+
+### Loading the agents
 
 To load the agents with the command line tool:
 
 ```
-indigo_prop_tool set "Server.DRIVERS.indigo_agent_scripting=ON;indigo_agent_scheduler=ON"
+indigo_prop_tool set "Server.DRIVERS.indigo_agent_scripting=ON;indigo_agent_mount=ON;indigo_agent_scheduler=ON"
 ```
+
+Add `indigo_agent_imager`, `indigo_agent_guider` and a plate solver agent for tasks that capture, guide or solve.
 
 **Times are UTC.** Every time the scheduler accepts or shows (`@window`, the night plan, the run history, `NEXT_START`) is in UTC.
 
@@ -650,7 +667,7 @@ A rejected request puts the property you changed into the Alert state, and a mes
 | `too bright (twilight)` | `@twilight` |
 | `window not open yet`, `outside of the nightly window` | `@window` |
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
-| `site coordinates unknown` | The Mount Agent has no site coordinates |
+| `site coordinates unknown` | No Mount Agent is loaded on this server, or it has no site coordinates |
 | `beyond the forecast` | The constraints would have to hold beyond the next 48 hours |
 | `estimating the task duration` | The estimate has not finished yet |
 | `no task is ready`, `no tasks`, `all tasks finished` | Nothing to run |
@@ -732,7 +749,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_DELETE_TASK.NAME=M31 LRGB"
 | Problem | What to check |
 |---|---|
 | A task never starts | `REASON` and the night plan say why. A task waits until all its constraints hold for its whole duration; a shorter `@duration` or wider limits help |
-| Every task waits with `site coordinates unknown` | Set the site in the Mount Agent (`GEOGRAPHIC_COORDINATES`) |
+| Every task waits with `site coordinates unknown` | Load the Mount Agent (`indigo_agent_mount`) on the same server as the Scheduler Agent and set its site (`GEOGRAPHIC_COORDINATES`), see [Agents the scheduler depends on](#agents-the-scheduler-depends-on) |
 | The upload is rejected | The message of the Scheduler Agent names the line and the problem |
 | A task shows `SCRIPT ERROR` | The message names the JavaScript error. Fix the body with an edit, or `RESET` the task after fixing an agent the body needed |
 | A task shows `1h00 default` | The duration cannot be estimated from the sequence; set `@duration` |
