@@ -59,6 +59,13 @@ static std::atomic<bool> has_live(true);
 // A camera that does not time the exposure itself: the start call returns QHYCCD_READ_DIRECTLY at
 // once and the read blocks for the exposure instead.
 static std::atomic<bool> read_directly;
+// SetQHYCCDSingleFrameTimeOut() bounds the whole single frame, the exposure and its readout, from
+// ExpQHYCCDSingleFrame() on; 60000 ms is the SDK default and 0 is no limit. A QHY168C, whose 33 MB
+// readout takes longer than a second, returned success with all pixels 0 while the driver set one
+// second (indigo#783), so a frame that runs out of it is modelled as a successful read of zeros.
+// readout_time is how long the camera takes to transfer the frame.
+static std::atomic<uint32_t> frame_timeout(60000);
+static std::atomic<double> readout_time, frame_started;
 static std::atomic<double> exposure(0.01), deadline, clock_shift;
 static std::atomic<double> params[128];
 static std::atomic<bool> color, verify_raw, fail_cooling;
@@ -236,7 +243,7 @@ uint32_t SetQHYCCDBitsMode(qhyccd_handle *h, uint32_t b) { valid(h); if (formats
 
 uint32_t GetQHYCCDMemLength(qhyccd_handle *h) { valid(h); return memory_length ? memory_length.load() : 640 * 480 * 2; }
 
-uint32_t ExpQHYCCDSingleFrame(qhyccd_handle *h) { valid(h); exposing = !fail_start; deadline = indigo_monotonic_time() + (read_directly ? 0 : exposure.load()); return fail_start ? QHYCCD_ERROR : read_directly ? QHYCCD_READ_DIRECTLY : QHYCCD_SUCCESS; }
+uint32_t ExpQHYCCDSingleFrame(qhyccd_handle *h) { valid(h); exposing = !fail_start; frame_started = indigo_monotonic_time(); deadline = indigo_monotonic_time() + (read_directly ? 0 : exposure.load()); return fail_start ? QHYCCD_ERROR : read_directly ? QHYCCD_READ_DIRECTLY : QHYCCD_SUCCESS; }
 
 uint32_t BeginQHYCCDLive(qhyccd_handle *h) { live = true; return ExpQHYCCDSingleFrame(h); }
 
@@ -251,7 +258,17 @@ static uint32_t frame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, u
 	return QHYCCD_SUCCESS;
 }
 
-uint32_t GetQHYCCDSingleFrame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, uint32_t *channels, uint8_t *data) { if (read_directly) { indigo_usleep((unsigned long)(exposure * 1000000)); } exposing = false; return frame(h, w, v, b, channels, data); }
+uint32_t GetQHYCCDSingleFrame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, uint32_t *channels, uint8_t *data) {
+	if (read_directly) { indigo_usleep((unsigned long)(exposure * 1000000)); }
+	if (readout_time > 0) { indigo_usleep((unsigned long)(readout_time * 1000000)); }
+	exposing = false;
+	if (frame_timeout && !fail_read && (indigo_monotonic_time() - frame_started) * 1000 > frame_timeout) {
+		valid(h); *w = width; *v = height; *b = bits; *channels = 1;
+		memset(data, 0, width * height * (bits / 8));
+		return QHYCCD_SUCCESS;
+	}
+	return frame(h, w, v, b, channels, data);
+}
 
 uint32_t GetQHYCCDLiveFrame(qhyccd_handle *h, uint32_t *w, uint32_t *v, uint32_t *b, uint32_t *channels, uint8_t *data) { return frame(h, w, v, b, channels, data); }
 
@@ -271,7 +288,7 @@ uint32_t GetQHYCCDCFWStatus(qhyccd_handle *h, char *status) { valid(h); status[0
 #ifdef QHY2
 void SetQHYCCDAutoDetectCamera(bool enabled) { }
 
-uint32_t SetQHYCCDSingleFrameTimeOut(qhyccd_handle *h, uint32_t ms) { valid(h); return QHYCCD_SUCCESS; }
+uint32_t SetQHYCCDSingleFrameTimeOut(qhyccd_handle *h, uint32_t ms) { valid(h); frame_timeout = ms; return QHYCCD_SUCCESS; }
 
 uint32_t GetQHYCCDNumberOfReadModes(qhyccd_handle *h, uint32_t *n) { valid(h); *n = mode_count; return QHYCCD_SUCCESS; }
 
@@ -437,7 +454,7 @@ static bool begin(int expected = 3) {
 
 static void end(void) {
 	fail_open = fail_init = fail_chip = fail_start = fail_read = fail_stop = fail_control = malformed = 0;
-	clock_shift = 0;
+	clock_shift = 0; readout_time = 0; frame_timeout = 60000;
 	fail_mode = fail_bits = false;
 	release_gate();
 	fail_registration = fail_resource = fail_attachment = fail_descriptor = scan_error = fail_id = fail_range = invalid_value = remaining_error = memory_length = 0;
@@ -1208,6 +1225,23 @@ static void read_directly_exposure_is_not_doubled(void) {
 	read_directly = false;
 }
 
+// A QHY168C returned frames of zeros for every exposure (indigo#783): the driver bounded the whole
+// frame to one second, which the exposure and the readout of its 33 MB sensor together exceed.
+#ifdef QHY2
+static void slow_readout_fits_in_the_frame_timeout(void) {
+	readout_time = 1; bad_raw = 0;
+	ASSERT_TRUE(begin()); ASSERT_TRUE(connect(0, true));
+	sw(0, "CCD_IMAGE_FORMAT", "RAW"); ASSERT_TRUE(wait_state(0, "CCD_IMAGE_FORMAT", INDIGO_OK_STATE));
+	verify_raw = true;
+	for (double duration : { 0.1, 1.0 }) {
+		number(0, "CCD_EXPOSURE", "EXPOSURE", duration); ASSERT_TRUE(wait_state(0, "CCD_EXPOSURE", INDIGO_OK_STATE));
+		printf("    exposure %.1f s, readout 1 s, frame timeout %u ms\n", duration, frame_timeout.load());
+	}
+	ASSERT_EQ_INT(2, blobs.load()); ASSERT_EQ_INT(0, bad_raw.load());
+	verify_raw = false; ASSERT_TRUE(connect(0, false)); end();
+}
+#endif
+
 static void discovery_capacity_and_identity(void) {
 	cfw = false; camera_mask = 7;
 	ASSERT_TRUE(begin(4));
@@ -1256,6 +1290,7 @@ int main(int argc, char **argv) {
 		{ "unprogrammed cameras", several_unprogrammed_cameras_are_programmed_without_a_double_free },
 		#endif
 		{ "drifting control", a_control_that_drifts_out_of_its_range_does_not_end_the_acquisition },
+		{ "slow readout timeout", slow_readout_fits_in_the_frame_timeout },
 	#endif
 		{ "read directly exposure", read_directly_exposure_is_not_doubled } };
 	int result = 0, matched = 0;

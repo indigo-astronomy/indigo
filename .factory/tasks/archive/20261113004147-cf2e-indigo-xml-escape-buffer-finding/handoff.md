@@ -25,7 +25,7 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - Owner-defined budget/currency and existing spending authorization: none
 
 ## Git delivery tracking
-- Task branch / main target / remote: owner-directed `scheduler`; not pushed
+- Task branch / main target / remote: committed on `scheduler` (2294987e6) and on `master` through task/20261113004147-cf2e-indigo-xml-escape-buffer-finding; not pushed
 - Base revision and latest merged target revision: 02527d9d9
 - Tested candidate revision: after the commit
 - Check evidence on synchronized candidate: verification.md
@@ -43,6 +43,7 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 
 ## Handoff history
 - 2026-11-13: finding recorded.
+- 2026-11-13: committed to master on the owner's request, because the finding concerns the framework; the reference to task 20261113001457-32cc-scheduler-shutdown-command-leak, whose records exist only on branch `scheduler`, is left out on master (its verification.md remains the evidence named in the finding).
 
 ## Final delivery
 Task execution can be archived after acceptance/reviews, before the final commit; this does not claim delivery. Record integration/publication/cleanup state, remaining owner actions and references to the acceptance, quality and security conclusions. Do not copy their report bodies.

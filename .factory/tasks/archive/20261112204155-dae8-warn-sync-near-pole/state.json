@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261112204155-dae8-warn-sync-near-pole",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner decision on fast-forward to master and push.",
+  "blocker": null
+}

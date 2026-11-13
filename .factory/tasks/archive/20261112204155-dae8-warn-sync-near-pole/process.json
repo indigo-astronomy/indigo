@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "task": "20261112204155-dae8-warn-sync-near-pole",
+  "scope": [
+    "indigo_libs/indigo_mount_driver.c",
+    "indigo_test/unit/test_mount_alignment_load.c",
+    ".factory/findings/active/FND-20261112204155-dae8-warn-sync-near-pole-001.json",
+    ".factory/completions/20261112204155-dae8-warn-sync-near-pole.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_libs",
+        "-j8"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./build/unit/test_mount_alignment_load"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261112204155-dae8-warn-sync-near-pole.json": [
+      "100644",
+      "blob",
+      "bcb24c0439b54c141565b02bbe6098579e59015c"
+    ],
+    ".factory/findings/active/FND-20261112204155-dae8-warn-sync-near-pole-001.json": [
+      "100644",
+      "blob",
+      "37473d761d861e4b4bd1469c943d112843862143"
+    ],
+    "indigo_libs/indigo_mount_driver.c": [
+      "100644",
+      "blob",
+      "0667466b658be2369f499afbf23f0273e3fc009e"
+    ],
+    "indigo_test/unit/test_mount_alignment_load.c": [
+      "100644",
+      "blob",
+      "52bc67169d6f67f8e9e7572e7591ac9e304cb197"
+    ]
+  }
+}

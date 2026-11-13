@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "task": "20261113005229-eff7-static-server-gphoto2-include",
+  "scope": [
+    "indigo_server/indigo_server.c",
+    ".factory/completions/20261113005229-eff7-static-server-gphoto2-include.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "gcc",
+        "-fsyntax-only",
+        "-DSTATIC_DRIVERS",
+        "indigo_server/indigo_server.c"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113005229-eff7-static-server-gphoto2-include.json": [
+      "100644",
+      "blob",
+      "d0700c31ec668948106edacdf945123d200edb5b"
+    ],
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "4dd06bb6f881e075cf7c3728aaf8e8c622a13571"
+    ]
+  }
+}
