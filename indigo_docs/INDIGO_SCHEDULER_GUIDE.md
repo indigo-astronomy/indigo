@@ -518,9 +518,21 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP=Unpark;SHUTD
 ```
 
 - Hooks name their tasks: renaming a hook task with an edit detaches it from the hook.
-- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so it runs every night. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK` or `IDLE HOOK`.
+- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK` or `IDLE HOOK`.
 - Hook runs appear in the history, marked `(hook)`.
 - To remove a hook, set its item to an empty value. `indigo_prop_tool` cannot send an empty value, so clear the field in a client such as the web control panel.
+
+### Several nights
+
+The scheduler can run unattended over several nights: leave it started, and the tasks that are not finished continue the next night. The hooks, however, follow `START`, the stop and idle periods, not the night:
+
+- `STARTUP` runs once, on `START`, not every evening;
+- `SHUTDOWN` runs only when the scheduler stops, not every morning;
+- at dawn, when the tasks' `@twilight` lets nothing run any more, the `IDLE` hook runs once, `IDLE_PARK_AFTER` minutes later, and the scheduler waits through the day.
+
+Before the first slew of the next night, the Mount Agent unparks the mount, and the dome when dome slaving is enabled. Nothing switches on again what else the `IDLE` hook switched off, such as the camera cooler, a flat cover or the dome shutter. Over several nights, either let the `IDLE` hook only park, or let each task body prepare what it needs, for example with `enable_cooler(temperature)` and `dome_open()`.
+
+Hooks that run at the start and the end of every night at a chosen twilight, and a hook that prepares the equipment again after the `IDLE` hook, are planned; see [Night hooks](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md#night-hooks-planned).
 
 ### Settings
 
