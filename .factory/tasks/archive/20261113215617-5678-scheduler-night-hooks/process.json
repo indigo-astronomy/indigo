@@ -1,0 +1,171 @@
+{
+  "version": 2,
+  "task": "20261113215617-5678-scheduler-night-hooks",
+  "scope": [
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c",
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.c",
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h",
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c",
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h",
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.vcxproj",
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.vcxproj.filters",
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md",
+    "indigo_drivers/agent_scheduler/README.md",
+    "indigo_libs/indigo/indigo_names.h",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    "indigo_test/Makefile",
+    "indigo_test/unit/test_agent_scheduler_night.c",
+    "indigo_test/unit/test_agent_scheduler_plan.c",
+    "indigo_test/integration/test_agent_scheduler.c",
+    "indigo_test/integration/run_scheduler_simulators.py",
+    "indigo.xcodeproj/project.pbxproj",
+    "MIGRATION_STATUS.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261113215617-5678-scheduler-night-hooks.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_scheduler_asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/unit/test_agent_scheduler_night"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113215617-5678-scheduler-night-hooks.json": [
+      "100644",
+      "blob",
+      "297c183ac301cd3048654d6f0bbd8bce284a1fc4"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "84f51b79f135126fdbb7db5b8161ac2050ef9984"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "030922c0ad921d5b30372a960223388103fa3516"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "e1d71202a713851a7f88b67671a58d5df61e54a5"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "b4b84320b716e8843ee4390b466ecb30bf35d630"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "6d2277b928d05ac9862e0c11e33024abb82d50e6"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "acffb7c304d7bda2016fefa0aff4d353d5324c1d"
+    ],
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "f7299779d73f548e11332a79e69b3ecbb89e3bbc"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "b67d117415931e6e308671e99678a0333752e981"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.vcxproj": [
+      "100644",
+      "blob",
+      "e3f90277f69a59f5362be00b9e537a64f62b2a79"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.vcxproj.filters": [
+      "100644",
+      "blob",
+      "5509737830baed949974226ddc3eaf0900dcdae8"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.c": [
+      "100644",
+      "blob",
+      "e05bfd6c0f639472ff5f33e000d1732e194b8164"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h": [
+      "100644",
+      "blob",
+      "a041a48b7c629137fb3f626f17d783ef42798b7d"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.c": [
+      "100644",
+      "blob",
+      "00efc6d32fd2e75efa2e4658dd59af7ef3146390"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler_plan.h": [
+      "100644",
+      "blob",
+      "13ebc95b175ffc17348d74ecc65d44982ff76da9"
+    ],
+    "indigo_libs/indigo/indigo_names.h": [
+      "100644",
+      "blob",
+      "bfb458293124171b3e01d6be6073c727b7c8e31a"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "e084b5df0cf5516fb98738cba5b454230f2d81c0"
+    ],
+    "indigo_test/integration/run_scheduler_simulators.py": [
+      "100644",
+      "blob",
+      "f574cc8d7e54a2666d960fe058a38384ef0eebc8"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "cbe4e9bd18397534a97be1a8169cba59f42d741b"
+    ],
+    "indigo_test/unit/test_agent_scheduler_night.c": [
+      "100644",
+      "blob",
+      "30465405adbdf1ef1ab5209f258ab4b7cdb280b7"
+    ],
+    "indigo_test/unit/test_agent_scheduler_plan.c": [
+      "100644",
+      "blob",
+      "9972b20dc91bfa6dd2764c42c15fce6382d4e5a7"
+    ]
+  }
+}

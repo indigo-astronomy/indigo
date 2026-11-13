@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "active_task": "20261113215617-5678-scheduler-night-hooks",
+  "phase": "complete",
+  "status": "complete",
+  "assigned_role": "coordinator",
+  "next_action": "Owner approval of the commit plan; no push.",
+  "blocker": null
+}
