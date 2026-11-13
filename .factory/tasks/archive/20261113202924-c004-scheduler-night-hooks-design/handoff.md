@@ -48,14 +48,14 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - 2026-11-13: owner approved defaults and the failure rule; design review complete.
 
 ## Final delivery
-Task execution can be archived after acceptance/reviews, before the final commit; this does not claim delivery. Record integration/publication/cleanup state, remaining owner actions and references to the acceptance, quality and security conclusions. Do not copy their report bodies.
+Committed on `scheduler` with owner approval: b0c64a17a (documentation) and 856c57881 (factory records); not pushed. Acceptance, quality and security conclusions: verification.md, quality-review.md, security.md.
 
 ## Portable process evidence
 Complete process.json from actual results, with scope globs, version 2 reviewed Git content identities, passing check references and any triggered risk reviews. Run the committed-range process check under [the shared routine](../../../routines/process-checks.md); structural success is not approval or proof of execution.
 
 
 ## Central findings handoff
-- Relevant canonical FND IDs and registry reference: TODO
-- Reconciliation decisions or blockers, if any: TODO; current ownership/status stays in the registry
-- Durable report pins and findings check/prune-gate evidence: TODO
+- Relevant canonical FND IDs and registry reference: none
+- Reconciliation decisions or blockers, if any: none
+- Durable report pins and findings check/prune-gate evidence: findings check passes (verification.md)
 Read the active register only; retain unresolved findings and the ID counter across task cleanup. Do not attach the archive wholesale.
