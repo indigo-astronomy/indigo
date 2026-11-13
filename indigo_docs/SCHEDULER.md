@@ -85,6 +85,8 @@ The Scheduler Agent is a device with its own client, like the Scripting Agent. I
 
 Task bodies are expected to use these agents. A safety or weather device is added in a later phase.
 
+The agent names are currently fixed, so the Scheduler Agent must run on the same server as its Scripting Agent: an agent on another server appears with a host suffix, such as `Scripting Agent @ obs2`, and is not used. A later phase lets the user select the Scripting Agent, see [Implementation phases](#implementation-phases).
+
 ## Task format
 
 A task is a JavaScript text. It starts with a header of `// @key value` comment lines, followed by the body. Because the header consists only of comments, the whole task is valid JavaScript, and existing sequence editors can open it.
@@ -677,8 +679,9 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
 3. Phase 3, in two parts:
    - 3a: startup, shutdown and idle hooks, run history, duration estimate and measurement, including `Sequence.prototype.estimate()` in `Sequencer.js` with its documentation in `Sequencer.md` and its tests. Scoring weights, repeat and retry and the Lorentzian moon limit came with phase 2.
    - 3b: night plan preview, with the per-task constraint tables that make the next-start search cheap.
-4. Safety: a related AUX safety or weather device. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
-5. Optional extensions:
+4. Related Scripting Agent: the Scheduler Agent becomes a filter agent with `FILTER_RELATED_AGENT_LIST`, in which the user selects the Scripting Agent that runs the tasks, also one on another server. It is the only agent selected there. The default is the local "Scripting Agent", so existing setups do not change. Running tasks, estimating durations, loading `Sequencer.js`, aborting sequences and the `SEQUENCE_STATE` and result tracking use the selected agent. Changing the selection while a task runs is rejected.
+5. Safety: a related AUX safety or weather device, selected through the filter agent's AUX device list. A warning prevents new tasks from starting. An alert aborts and runs the `SHUTDOWN` hook. Both have a debounce delay and a grace period.
+6. Optional extensions:
    - `@timeout minutes`: a hard limit on the length of one run, independent of `@duration`, which stays a planning value. When a run exceeds it, the agent aborts the run the same way as `ABORT` (the sequence, then the Guider Agent, waiting at most `STOP_TIMEOUT`) and counts it as a failure: the history records `timed out`, and `@retry` decides whether the task runs again. Hook tasks and urgent tasks obey it too. Without the key, runs are not limited, as now;
    - task upload, download and editing in the web UI;
    - `@window` times in a local time zone;

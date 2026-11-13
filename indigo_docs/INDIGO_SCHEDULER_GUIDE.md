@@ -30,6 +30,8 @@ The scheduler needs these drivers loaded in the INDIGO server:
 | `indigo_agent_scripting` | Runs the task sequences. The scheduler loads `Sequencer.js` into it when needed |
 | `indigo_agent_imager`, `indigo_agent_mount`, `indigo_agent_guider` and a plate solver agent | Used by the task sequences, as for any `Sequencer.js` sequence |
 
+Load the Scheduler Agent on the same server as the Scripting Agent and the Mount Agent. The scheduler uses the agents named exactly "Scripting Agent", "Mount Agent" and "Guider Agent"; an agent on another server, shown as `Scripting Agent @ obs2`, is not used. Selecting the Scripting Agent is planned.
+
 The Imager, Mount and Guider Agents must be set up as usual, with the camera, mount, guider and other devices selected. The scheduler reads the site coordinates from the Mount Agent (`GEOGRAPHIC_COORDINATES`). Without them it cannot compute the position of the Sun, the Moon or any target, and every task with sky constraints waits with the reason `site coordinates unknown`.
 
 To load the agents with the command line tool:
