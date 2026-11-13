@@ -8,80 +8,51 @@ Keep detailed reports in their task files; this handoff owns the current assignm
 - Responsible role: coordinator
 - Allowed write paths: indigo_docs/SCHEDULER.md, indigo_docs/INDIGO_SCHEDULER_GUIDE.md, this task
 - Expected output: commits after owner approval
-- Blockers: owner commit approval
+- Blockers: none
 
 ## Host/model handoff
 - Current host/tool and model ID: Claude Code (VS Code extension), claude-opus-5-5
 - Capabilities: file read/edit, shell, Git, subagents
+- Current writer and assigned paths: this session; the allowed write paths above
+- Incoming host/writer and release of outgoing writer: none
 - Snapshot revision and uncommitted work to preserve: 5bcc8a9af on `scheduler`
-- Loaded shared/scoped instructions: root AGENTS.md, indigo_docs/AGENTS.md
+- Loaded shared/scoped instructions and capability limitations: root AGENTS.md, indigo_docs/AGENTS.md; Linux arm64 only
+- Context pack/source excerpts provided and omitted scope: not applicable
 
 ## Model choice and budget
-- Risk, tier, model: low (documentation), Opus 5.5; no budget defined
+- Assignment risk, selected tier, actual model/settings, and rationale: low (documentation of a planned change), Opus 5.5
+- Same-problem unsuccessful attempts and escalation/de-escalation checkpoint: none
+- Owner-defined budget/currency and existing spending authorization: none
 
 ## Git delivery tracking
-- Branch: owner-directed `scheduler`; not pushed; base 5bcc8a9af
+- Task branch / main target / remote: owner-directed `scheduler`; not pushed
+- Base revision and latest merged target revision: 5bcc8a9af
+- Tested candidate revision: 2621ea697 (product) and the following factory commit
+- Check evidence on synchronized candidate: verification.md
+- Integration / publication / cleanup: committed on `scheduler` with owner approval; not pushed
+- Existing authorization and protected-branch requirements: owner approves commits
 
 ## Latest handoff
-- Completed work: related Scripting Agent phase and AUX safety selection added to the plan; same-server note in the guide
+- From role / to role: coordinator (writer and reviewer) / coordinator
+- Completed work: related Scripting Agent phase and AUX safety selection added to the plan; same-server note in SCHEDULER.md and the user guide
+- Changed files: see process.json scope
+- Decisions and deviations: only the Scripting Agent is selectable (owner); a selection change during a run is rejected (coordinator design detail, reported to the owner)
 - Evidence references: verification.md, quality-review.md, security.md
-- Open findings: none
-- Next concrete step: owner commit approval
+- Open findings and limitations: none
+- Next concrete step: none for this task
 
 ## Handoff history
-- 2026-11-13: plan updated on owner request.
-
-## Template guidance (kept)
-- Task: 20261113090002-9520-scheduler-related-agent-plan
-- Phase: specification
-- Responsible role: analyst
-- Allowed write paths: this task's specification.md and handoff.md
-- Expected output: testable specification
-- Blockers: not yet assessed
-
-## Host/model handoff
-- Current host/tool and model ID (if exposed; otherwise unknown): TODO
-- Capabilities: file read/edit, shell/tests, Git, network, delegation; record actual availability/authorization
-- Current writer and assigned paths: TODO
-- Incoming host/writer and release of outgoing writer: TODO
-- Snapshot revision and uncommitted work to preserve: TODO
-- Loaded shared/scoped instructions and capability limitations: TODO
-- Context pack/source excerpts provided and omitted scope: TODO
-
-## Model choice and budget
-- Assignment risk, selected tier, actual model/settings, and rationale: TODO
-- Same-problem unsuccessful attempts and escalation/de-escalation checkpoint: TODO
-- Owner-defined budget/currency and existing spending authorization: TODO
-
-## Git delivery tracking
-- Task branch / main target / remote: TODO
-- Base revision and latest merged target revision: TODO
-- Tested candidate revision: record after the single final commit in the external delivery/CI log
-- Check evidence on synchronized candidate: link verification.md; not run
-- Integration / publication / cleanup: pending
-- Existing authorization and protected-branch requirements: TODO
-
-## Latest handoff
-- From role / to role: TODO
-- Completed work: none yet
-- Changed files: none yet
-- Decisions and deviations: none recorded
-- Evidence references: none yet; exact commands/results belong in verification.md
-- Open findings and limitations: not yet assessed
-- Next concrete step: complete brief.md and analyze requirements
-
-## Handoff history
-Append a concise entry for each transition with date, roles, decisions, evidence references, blockers and next assignment. Keep exact checks/results in verification.md and quality findings in quality-review.md. Preserve useful earlier references rather than repeating reports.
+- 2026-11-13: plan updated on owner request; commits approved by the owner.
 
 ## Final delivery
-Task execution can be archived after acceptance/reviews, before the final commit; this does not claim delivery. Record integration/publication/cleanup state, remaining owner actions and references to the acceptance, quality and security conclusions. Do not copy their report bodies.
+Committed on `scheduler`; not pushed. Acceptance, quality and security conclusions: verification.md, quality-review.md, security.md.
 
 ## Portable process evidence
 Complete process.json from actual results, with scope globs, version 2 reviewed Git content identities, passing check references and any triggered risk reviews. Run the committed-range process check under [the shared routine](../../../routines/process-checks.md); structural success is not approval or proof of execution.
 
 
 ## Central findings handoff
-- Relevant canonical FND IDs and registry reference: TODO
-- Reconciliation decisions or blockers, if any: TODO; current ownership/status stays in the registry
-- Durable report pins and findings check/prune-gate evidence: TODO
+- Relevant canonical FND IDs and registry reference: none
+- Reconciliation decisions or blockers, if any: none
+- Durable report pins and findings check/prune-gate evidence: findings check passes (verification.md)
 Read the active register only; retain unresolved findings and the ID counter across task cleanup. Do not attach the archive wholesale.
