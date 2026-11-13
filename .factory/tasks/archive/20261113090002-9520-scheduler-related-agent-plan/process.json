@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "task": "20261113090002-9520-scheduler-related-agent-plan",
+  "scope": [
+    "indigo_docs/SCHEDULER.md",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    ".factory/completions/20261113090002-9520-scheduler-related-agent-plan.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113090002-9520-scheduler-related-agent-plan.json": [
+      "100644",
+      "blob",
+      "4a8d7feb8664626a66cc3c3655f307ee5fc5d02c"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "e41d886e7186edec4d877474c87beb12ba00efa0"
+    ],
+    "indigo_docs/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "0346d5a83d8adaa3d277495131e935c947a58251"
+    ]
+  }
+}
