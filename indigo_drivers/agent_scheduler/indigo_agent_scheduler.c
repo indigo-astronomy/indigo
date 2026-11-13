@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000004
+#define DRIVER_VERSION 0x03000005
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -256,6 +256,9 @@ typedef struct {
 	int task_state_count;
 	unsigned long urgent_counter;
 	bool shutting_down;
+	// requests queued for the handler and not yet taken by it, released at shutdown
+	pthread_mutex_t command_mutex;
+	struct scheduler_command *commands;
 	bool started;
 	bool stop_requested;
 	bool automatic_stop;
@@ -290,10 +293,11 @@ typedef struct {
 	int next_task;
 } scheduler_private_data;
 
-typedef struct {
+typedef struct scheduler_command {
 	indigo_property *property;
 	indigo_property *target;
 	bool config_reader;
+	struct scheduler_command *previous, *next;
 } scheduler_command;
 
 static char sequencer_js[] = {
@@ -2047,8 +2051,35 @@ static void control(indigo_device *device, indigo_property *request) {
 	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
+// stops the handler queue; requests that never ran are released and new ones are ignored
+static void stop_commands(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->command_mutex);
+	PRIVATE_DATA->shutting_down = true;
+	pthread_mutex_unlock(&PRIVATE_DATA->command_mutex);
+	// returns after a running handler has finished
+	indigo_cancel_pending_handlers(device);
+	pthread_mutex_lock(&PRIVATE_DATA->command_mutex);
+	while (PRIVATE_DATA->commands != NULL) {
+		scheduler_command *command = PRIVATE_DATA->commands;
+		PRIVATE_DATA->commands = command->next;
+		indigo_release_property(command->property);
+		free(command);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->command_mutex);
+}
+
 static void command_handler(indigo_device *device, void *data) {
 	scheduler_command *command = data;
+	pthread_mutex_lock(&PRIVATE_DATA->command_mutex);
+	if (command->previous != NULL) {
+		command->previous->next = command->next;
+	} else {
+		PRIVATE_DATA->commands = command->next;
+	}
+	if (command->next != NULL) {
+		command->next->previous = command->previous;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->command_mutex);
 	indigo_property *request = command->property;
 	// INDIGO publishes only updates that change something, so the request is acknowledged as Busy first
 	if (command->target->defined) {
@@ -2250,6 +2281,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PROFILE_PROPERTY->hidden = true;
 		pthread_mutex_init(&PRIVATE_DATA->observed.mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->property_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->command_mutex, NULL);
 		PRIVATE_DATA->observed.sequence_state = INDIGO_IDLE_STATE;
 		// a result left on the Scripting Agent by an earlier instance never matches a new token
 		PRIVATE_DATA->token = (int)(time(NULL) % 100000) * 1000;
@@ -2346,11 +2378,21 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (target != NULL) {
 		// the request is queued and acknowledged by the handler, which alone changes the properties,
 		// so a caller holding another agent's lock never waits for the scheduler
-		scheduler_command *command = indigo_safe_malloc(sizeof(scheduler_command));
-		command->property = indigo_copy_property(NULL, property);
-		command->target = target;
-		command->config_reader = client != NULL && !strcmp(client->name, CONFIG_READER);
-		indigo_execute_handler_with_data(device, command_handler, command);
+		pthread_mutex_lock(&PRIVATE_DATA->command_mutex);
+		if (!PRIVATE_DATA->shutting_down) {
+			scheduler_command *command = indigo_safe_malloc(sizeof(scheduler_command));
+			command->property = indigo_copy_property(NULL, property);
+			command->target = target;
+			command->config_reader = client != NULL && !strcmp(client->name, CONFIG_READER);
+			command->previous = NULL;
+			command->next = PRIVATE_DATA->commands;
+			if (command->next != NULL) {
+				command->next->previous = command;
+			}
+			PRIVATE_DATA->commands = command;
+			indigo_execute_handler_with_data(device, command_handler, command);
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->command_mutex);
 		return INDIGO_OK;
 	}
 	return indigo_device_change_property(device, client, property);
@@ -2358,8 +2400,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
-	PRIVATE_DATA->shutting_down = true;
-	indigo_cancel_pending_handlers(device);
+	stop_commands(device);
 	// a change made less than SAVE_DELAY before the shutdown is still written
 	if (PRIVATE_DATA->save_due > 0) {
 		save_config(device);
@@ -2390,6 +2431,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	}
 	pthread_mutex_destroy(&PRIVATE_DATA->observed.mutex);
 	pthread_mutex_destroy(&PRIVATE_DATA->property_mutex);
+	pthread_mutex_destroy(&PRIVATE_DATA->command_mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_device_detach(device);
 }
@@ -2559,8 +2601,7 @@ indigo_result indigo_agent_scheduler(indigo_driver_action action, indigo_driver_
 			last_action = action;
 			// the handlers use the client, so they stop before it is detached
 			if (agent_device != NULL) {
-				private_data->shutting_down = true;
-				indigo_cancel_pending_handlers(agent_device);
+				stop_commands(agent_device);
 			}
 			if (agent_client != NULL) {
 				indigo_detach_client(agent_client);

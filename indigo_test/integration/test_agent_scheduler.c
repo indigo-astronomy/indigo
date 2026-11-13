@@ -38,6 +38,10 @@
 #include <indigo_drivers/agent_scripting/indigo_agent_scripting.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler.h>
 
+#if defined(__SANITIZE_ADDRESS__)
+#include <sanitizer/lsan_interface.h>
+#endif
+
 #include "../test_runner.h"
 #include "parallel_case_runner.h"
 
@@ -1358,6 +1362,27 @@ static void urgent_insertion_fails_the_preempted_task(void) {
 	urgent_insertion(true);
 }
 
+// requests still queued when the agent shuts down are released; the sanitizer build reports them as leaks otherwise
+static void commands_queued_at_shutdown_are_released(void) {
+	REQUIRE(upload("// @task Kept\n" BODY_WAIT(1)));
+	const char *items[] = { AGENT_SCHEDULER_TASK_NAME_NAME_ITEM_NAME };
+	const char *values[] = { "Kept" };
+	// every handler also runs a scheduling pass, so many requests are still queued when the shutdown starts
+	for (int i = 0; i < 2000; i++) {
+		indigo_change_text_property(&observer, AGENT, AGENT_SCHEDULER_TASK_NAME_PROPERTY_NAME, 1, items, values);
+	}
+	stop_scheduler();
+	// a request sent after the agent is gone does not reach it
+	indigo_change_text_property(&observer, AGENT, AGENT_SCHEDULER_TASK_NAME_PROPERTY_NAME, 1, items, values);
+#if defined(__SANITIZE_ADDRESS__)
+	// the case runs in a child that ends with _exit(), so the leak check is made here
+	ASSERT_EQ_INT(0, __lsan_do_recoverable_leak_check());
+#endif
+	REQUIRE(start_scheduler());
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(task_label("Kept", label, NULL));
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -1394,6 +1419,7 @@ static const indigo_test_case cases[] = {
 	{ "plan_gives_the_reasons", plan_gives_the_reasons },
 	{ "urgent_insertion_retries_the_preempted_task", urgent_insertion_retries_the_preempted_task },
 	{ "urgent_insertion_fails_the_preempted_task", urgent_insertion_fails_the_preempted_task },
+	{ "commands_queued_at_shutdown_are_released", commands_queued_at_shutdown_are_released },
 };
 
 static const char *case_filter = NULL;
