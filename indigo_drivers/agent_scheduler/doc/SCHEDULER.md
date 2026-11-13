@@ -90,7 +90,7 @@ The Scheduler Agent depends directly on these agents, found by their exact devic
 | "Guider Agent" | optional | changes `AGENT_ABORT_PROCESS` on `ABORT` and preemption, because the sequencer's abort leaves guiding running; observes `AGENT_START_PROCESS` | nothing to stop |
 | "Imager Agent", "Astrometry Agent", "Platesolver Agent", "ASTAP Agent" | optional | observe `AGENT_START_PROCESS`, to wait until they are idle after an abort before the next task starts | nothing to wait for |
 
-An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the scheduler cannot tell from a real site, so the site must be configured in the Mount Agent.
+An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the scheduler cannot tell from a real site, so the site must be configured in the Mount Agent: set directly with the default `AGENT_SITE_DATA_SOURCE` `HOST`, or taken from the mount, dome or GPS selected there. The sky tables are rebuilt with a new site at the next selection check.
 
 The task bodies depend on more: the agents and devices their `Sequencer.js` steps use, by default the "Imager Agent", "Mount Agent" and "Guider Agent" and a plate solver agent selected for the Imager Agent. The scheduler does not check these; a missing one makes the run fail. A safety or weather device is added in a later phase.
 

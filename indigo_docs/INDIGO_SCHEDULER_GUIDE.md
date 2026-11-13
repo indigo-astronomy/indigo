@@ -35,11 +35,13 @@ The Scheduler Agent itself (`indigo_agent_scheduler`) works directly with these 
 
 **Load them on the same server as the Scheduler Agent.** The scheduler finds the agents by their exact names, such as "Scripting Agent" and "Mount Agent". An agent on another server appears as `Scripting Agent @ obs2` and is not used. Selecting the Scripting Agent is planned.
 
-**Set the site in the Mount Agent.** Once a mount or a GPS is selected there, the Mount Agent takes the site from it; otherwise set it directly:
+**Set the site in the Mount Agent.** Its `AGENT_SITE_DATA_SOURCE` property decides where the site comes from. With the default, `HOST` ("Use agent coordinates"), you set the site in the Mount Agent itself, and the agent also writes it to the selected mount and dome:
 
 ```
 indigo_prop_tool set "Mount Agent.GEOGRAPHIC_COORDINATES.LATITUDE=42.7;LONGITUDE=23.3;ELEVATION=550"
 ```
+
+With `MOUNT`, `DOME` or `GPS`, the Mount Agent takes the site from that selected device instead, and a site set directly is replaced. The scheduler picks up a new site at its next check, within `IDLE_CHECK_INTERVAL` seconds.
 
 An unconfigured Mount Agent reports latitude 0° and longitude 0°. The scheduler accepts that as a site, so `site coordinates unknown` disappears, but it then computes the sky for the wrong place.
 
@@ -49,10 +51,18 @@ The task bodies are ordinary `Sequencer.js` sequences. They use the Imager, Moun
 
 ### Loading the agents
 
-To load the agents with the command line tool:
+Name the agents when you start the server:
 
 ```
-indigo_prop_tool set "Server.DRIVERS.indigo_agent_scripting=ON;indigo_agent_mount=ON;indigo_agent_scheduler=ON"
+indigo_server indigo_agent_scripting indigo_agent_mount indigo_agent_scheduler
+```
+
+or load them into a running server with the command line tool, one driver per command:
+
+```
+indigo_prop_tool set "Server.LOAD.DRIVER=indigo_agent_scripting"
+indigo_prop_tool set "Server.LOAD.DRIVER=indigo_agent_mount"
+indigo_prop_tool set "Server.LOAD.DRIVER=indigo_agent_scheduler"
 ```
 
 Add `indigo_agent_imager`, `indigo_agent_guider` and a plate solver agent for tasks that capture, guide or solve.
