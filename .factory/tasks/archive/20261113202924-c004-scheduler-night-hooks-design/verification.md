@@ -1,6 +1,7 @@
 # Verification report
 
-Verdict: pass (design reviewed and approved by the owner 2026-11-13)
+Verdict: pass
+Owner review: design reviewed and approved by the owner 2026-11-13
 Reviewer: coordinator (Claude Code, claude-opus-5-5) and an independent read-only reviewer subagent (fresh context, same model)
 Date: 2026-11-13
 Revision and working-tree state: branch `scheduler` at 8983cf9b7 with this task's uncommitted changes
