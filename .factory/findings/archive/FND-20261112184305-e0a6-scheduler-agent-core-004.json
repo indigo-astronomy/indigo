@@ -2,7 +2,7 @@
   "title": "Scheduler commands queued at shutdown are leaked",
   "category": "quality",
   "severity": "low",
-  "status": "open",
+  "status": "closed",
   "owner": "coordinator",
   "blocking": false,
   "tasks": [
@@ -10,10 +10,20 @@
       "id": "20261112184305-e0a6-scheduler-agent-core",
       "report": "verification.md",
       "revision": null
+    },
+    {
+      "id": "20261113001457-32cc-scheduler-shutdown-command-leak",
+      "report": "verification.md",
+      "revision": null
     }
   ],
   "summary": "agent_change_property() queues a scheduler_command with a property copy; indigo_cancel_pending_handlers() in detach drops queued handlers without freeing their data. Only commands arriving in the last moment before unload leak. Next: track queued commands or drain them in detach.",
   "evidence": "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c agent_change_property(), agent_device_detach(); independent review.",
-  "resolution": null,
+  "resolution": {
+    "kind": "fixed",
+    "evidence": "Task 20261113001457-32cc-scheduler-shutdown-command-leak: queued commands are kept in a list under a mutex and released by stop_commands() at shutdown, new requests are ignored while shutting down; regression case commands_queued_at_shutdown_are_released with an explicit leak check fails against the old agent (76-426 leaked commands per run) and passes after the fix, see verification.md.",
+    "approved_by": null,
+    "duplicate_of": null
+  },
   "id": "FND-20261112184305-e0a6-scheduler-agent-core-004"
 }
