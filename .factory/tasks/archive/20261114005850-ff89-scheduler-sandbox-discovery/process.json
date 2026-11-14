@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "task": "20261114005850-ff89-scheduler-sandbox-discovery",
+  "scope": [
+    "tools/scheduler_sandbox.py",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    ".factory/completions/20261114005850-ff89-scheduler-sandbox-discovery.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-scheduler-sandbox"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261114005850-ff89-scheduler-sandbox-discovery.json": [
+      "100644",
+      "blob",
+      "93a526a4548239a6722c08b4a3e42a19793a237a"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "55624630966c3c97ccec1cdc7cb8bc811038f7db"
+    ],
+    "tools/scheduler_sandbox.py": [
+      "100755",
+      "blob",
+      "e43871e59820640ae1fe266c38e91b72af15ad2c"
+    ]
+  }
+}
