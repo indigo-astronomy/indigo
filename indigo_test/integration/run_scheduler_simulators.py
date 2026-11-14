@@ -39,6 +39,7 @@ import time
 
 AGENT = "Scheduler Agent"
 SUITE = "Scheduler simulators"
+WHEEL = "CCD Imager Simulator (wheel)"
 
 
 class Client:
@@ -150,6 +151,9 @@ class Client:
 	def message_count(self, text):
 		return sum(text in m for d, m in self.messages if d == AGENT)
 
+	def any_message_count(self, text):
+		return sum(text in m for d, m in self.messages)
+
 	def message_index(self, text):
 		for i, (d, m) in enumerate(self.messages):
 			if d == AGENT and text in m:
@@ -189,7 +193,7 @@ class Run:
 		self.record(status + "\t" + SUITE + "\t" + name)
 		print(("  PASS " if status == "pass" else "  FAIL ") + name + (" - " + detail if detail else ""), flush=True)
 
-	def upload(self, text):
+	def upload(self, text, start=True):
 		key = (AGENT, "AGENT_SCHEDULER_ADD_TASK")
 		before = self.client.updates.get(key, 0)
 		self.client.change_text(AGENT, "AGENT_SCHEDULER_ADD_TASK", {"TASK": text})
@@ -197,7 +201,7 @@ class Run:
 		self.client.wait(lambda: self.client.updates.get(key, 0) > before and self.client.state(*key) != "Busy", 10, "upload result")
 		assert self.client.state(AGENT, "AGENT_SCHEDULER_ADD_TASK") == "Ok", "upload rejected: " + str(self.client.messages[-1:])
 		# the scheduler stops by design when every task has finished, so a new task needs START
-		if self.client.state(AGENT, "AGENT_SCHEDULER_STATE") != "Busy":
+		if start and self.client.state(AGENT, "AGENT_SCHEDULER_STATE") != "Busy":
 			self.control("START")
 
 	def control(self, item):
@@ -236,6 +240,44 @@ def capture_body(images, prefix, count, exposure, guided):
 		body += "sequence.stop_guiding();\n"
 	body += "sequence.start();\n"
 	return body
+
+
+def fits_header(path):
+	"""The keywords of the primary header of a FITS file, string values without quotes."""
+	cards = {}
+	with open(path, "rb") as f:
+		while True:
+			block = f.read(2880)
+			if len(block) < 2880:
+				return cards
+			for i in range(0, 2880, 80):
+				card = block[i:i + 80].decode("ascii", "replace")
+				key = card[:8].strip()
+				if key == "END":
+					return cards
+				if card[8:10] == "= ":
+					value = card[10:].strip()
+					if value.startswith("'"):
+						value = value[1:value.index("'", 1)].strip()
+					else:
+						value = value.split("/")[0].strip()
+					cards[key] = value
+
+
+def parse_sexagesimal(text):
+	negative = text.strip().startswith("-")
+	parts = [abs(float(p)) for p in text.split()]
+	value = parts[0] + (parts[1] if len(parts) > 1 else 0) / 60 + (parts[2] if len(parts) > 2 else 0) / 3600
+	return -value if negative else value
+
+
+def assert_pointing(path, ra, dec):
+	"""The mount position the Mount Agent wrote into the frame matches the JNow target."""
+	header = fits_header(path)
+	assert "OBJCTRA" in header and "OBJCTDEC" in header, "no mount position in " + path.name
+	ra_error = abs((parse_sexagesimal(header["OBJCTRA"]) - ra + 12) % 24 - 12)
+	dec_error = abs(parse_sexagesimal(header["OBJCTDEC"]) - dec)
+	assert ra_error < 0.05 and dec_error < 0.2, "%s points at %s %s, expected %.4f h %.3f deg" % (path.name, header["OBJCTRA"], header["OBJCTDEC"], ra, dec)
 
 
 def sexagesimal(value, sign):
@@ -277,7 +319,7 @@ def main():
 	run = None
 	error = None
 	records = os.environ.get("INDIGO_TEST_RESULTS")
-	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "urgent task fails a preempted capture", "target below the horizon waits", "shutdown hook parks the mount", "night hooks prepare and put away the devices"]
+	cases = ["library loaded by the scheduler", "guider calibration task", "slew, guiding and capture task", "urgent task preempts a guided capture", "urgent task fails a preempted capture", "target below the horizon waits", "shutdown hook parks the mount", "night hooks prepare and put away the devices", "LRGB filters, frame types and pointing in the frames", "targets run in priority order and point the mount", "failing device steps are retried and the next task runs"]
 	only = os.environ.get("SCHEDULER_SIMULATORS_ONLY")
 	if records:
 		with open(records, "a") as out:
@@ -312,11 +354,16 @@ def main():
 			longitude = client.value("Mount Agent", "GEOGRAPHIC_COORDINATES", "LONGITUDE")
 
 			def zenith(offset_hours):
+				return zenith_jnow(offset_hours)[0]
+
+			def zenith_jnow(offset_hours):
+				# the J2000 text of the point offset_hours east of the meridian at the zenith declination, and its JNow position
 				now = ctypes.c_long(int(time.time()))
-				ra = ctypes.c_double((native.indigo_lst(ctypes.byref(now), longitude) + offset_hours) % 24)
+				jnow_ra = (native.indigo_lst(ctypes.byref(now), longitude) + offset_hours) % 24
+				ra = ctypes.c_double(jnow_ra)
 				dec = ctypes.c_double(latitude)
 				native.indigo_jnow_to_j2k(ctypes.byref(ra), ctypes.byref(dec))
-				return sexagesimal(ra.value, False) + " " + sexagesimal(dec.value, True)
+				return sexagesimal(ra.value, False) + " " + sexagesimal(dec.value, True), jnow_ra, latitude
 
 			def library_loaded():
 				run.control("START")
@@ -450,10 +497,119 @@ def main():
 				assert client.value("Mount Simulator", "MOUNT_PARK", "PARKED") is True, "mount not parked"
 				assert client.message_count("Starting hook 'Evening'") == 1 and client.message_count("Starting hook 'Morning'") == 1
 
+			def fresh_start():
+				# no hooks, no tasks, the original site, and the mount position in the frames of the Imager Agent
+				client.change_text(AGENT, "AGENT_SCHEDULER_HOOKS", {"STARTUP": "", "SHUTDOWN": "", "IDLE": "", "NIGHT_START": "", "NIGHT_END": "", "RESUME": ""})
+				client.wait(lambda: all(not i.get("value") for i in client.property(AGENT, "AGENT_SCHEDULER_HOOKS")["items"]), 10, "hooks cleared")
+				run.control("STOP")
+				client.wait(lambda: client.state(AGENT, "AGENT_SCHEDULER_STATE") in ("Ok", "Idle", "Alert") and not (client.value(AGENT, "AGENT_SCHEDULER_CURRENT", "TASK") or ""), 120, "scheduler stopped")
+				time.sleep(1)
+				client.change_switch(AGENT, "AGENT_SCHEDULER_TASK_COMMAND", {"DELETE_ALL": True})
+				client.wait(lambda: not (client.property(AGENT, "AGENT_SCHEDULER_TASK_STATE") or {}).get("items"), 10, "tasks deleted")
+				client.change_number("Mount Agent", "GEOGRAPHIC_COORDINATES", {"LATITUDE": latitude, "LONGITUDE": longitude, "ELEVATION": 140})
+				client.wait(lambda: client.value("Mount Agent", "GEOGRAPHIC_COORDINATES", "LONGITUDE") == longitude, 20, "site")
+				client.change_switch("Mount Agent", "FILTER_RELATED_AGENT_LIST", {"Imager Agent": True})
+				client.wait(lambda: client.value("Mount Agent", "FILTER_RELATED_AGENT_LIST", "Imager Agent") is True, 10, "related Imager Agent")
+
+			def capture_prologue(images):
+				body = devices_prologue()
+				body += "sequence.disable_meridian_flip();\n"
+				body += "sequence.unpark();\n"
+				body += "sequence.enable_tracking();\n"
+				body += "sequence.slew(scheduler_task.ra, scheduler_task.dec);\n"
+				body += "sequence.set_directory(" + json.dumps(str(images) + "/") + ");\n"
+				body += "sequence.select_image_format(\"FITS\");\n"
+				body += "sequence.select_frame_type(\"Light\");\n"
+				return body
+
+			def lrgb_and_frame_types():
+				fresh_start()
+				# the wheel of the simulated camera with named filters
+				client.change_switch("Imager Agent", "FILTER_WHEEL_LIST", {WHEEL: True})
+				client.wait(lambda: client.property(WHEEL, "WHEEL_SLOT_NAME") is not None, 30, "wheel connected")
+				client.change_text(WHEEL, "WHEEL_SLOT_NAME", {"SLOT_NAME_1": "L", "SLOT_NAME_2": "R", "SLOT_NAME_3": "G", "SLOT_NAME_4": "B"})
+				# the Imager Agent defines its filter list again when the wheel changes
+				client.wait(lambda: [i.get("label") for i in (client.property("Imager Agent", "AGENT_WHEEL_FILTER") or {}).get("items", [])][:4] == ["L", "R", "G", "B"], 20, "filter names in the Imager Agent")
+				target, ra, dec = zenith_jnow(0.2)
+				body = capture_prologue(images)
+				body += "sequence.select_filter_wheel(" + json.dumps(WHEEL) + ");\n"
+				for name in "LRGB":
+					body += "sequence.select_filter(\"" + name + "\");\n"
+					body += "sequence.capture_batch(\"lrgb_" + name + "_XXX\", 2, 0.2);\n"
+				body += "sequence.select_frame_type(\"Dark\");\n"
+				body += "sequence.capture_batch(\"dark_XXX\", 1, 0.3);\n"
+				body += "sequence.select_frame_type(\"Bias\");\n"
+				body += "sequence.capture_batch(\"bias_XXX\", 1, 0);\n"
+				body += "sequence.select_frame_type(\"Light\");\n"
+				body += "sequence.start();\n"
+				run.upload("// @task LRGB\n// @target " + target + "\n// @altitude > 30\n\n" + body)
+				client.wait(lambda: " estimated" in client.task_label("LRGB"), 30, "estimated duration (label '" + client.task_label("LRGB") + "')")
+				run.wait_task("LRGB", "DONE", 300)
+				for name in "LRGB":
+					frames = run.frames("lrgb_" + name + "_")
+					assert len(frames) == 2, "expected 2 %s frames, found %d" % (name, len(frames))
+					for frame in frames:
+						header = fits_header(frame)
+						assert header.get("FILTER") == name, "%s has FILTER %r" % (frame.name, header.get("FILTER"))
+						assert header.get("IMAGETYP") == "Light", "%s has IMAGETYP %r" % (frame.name, header.get("IMAGETYP"))
+						assert abs(float(header.get("EXPTIME", "nan")) - 0.2) < 0.001, "%s has EXPTIME %r" % (frame.name, header.get("EXPTIME"))
+						assert_pointing(frame, ra, dec)
+				# the CCD simulator takes a requested zero exposure as 0.1 s
+				for prefix, kind, low, high in (("dark_", "Dark", 0.3, 0.3), ("bias_", "Bias", 0, 0.1)):
+					frames = run.frames(prefix)
+					assert len(frames) == 1, "expected 1 %s frame, found %d" % (kind, len(frames))
+					header = fits_header(frames[0])
+					assert header.get("IMAGETYP") == kind, "%s has IMAGETYP %r" % (frames[0].name, header.get("IMAGETYP"))
+					exposure = float(header.get("EXPTIME", "nan"))
+					assert low - 0.001 < exposure < high + 0.001, "%s has EXPTIME %r" % (frames[0].name, header.get("EXPTIME"))
+				assert client.value(WHEEL, "WHEEL_SLOT", "SLOT") == 4, "the wheel is not at B"
+
+			def targets_in_priority_order():
+				fresh_start()
+				west, west_ra, west_dec = zenith_jnow(-1)
+				east, east_ra, east_dec = zenith_jnow(1)
+				# uploaded while stopped, in the reverse of the order they run
+				run.upload("// @task East field\n// @target " + east + "\n// @repeat 2\n\n" + capture_prologue(images) + "sequence.capture_batch(\"east_XXX\", 1, 0.2);\nsequence.start();\n", False)
+				run.upload("// @task West field\n// @priority high\n// @target " + west + "\n\n" + capture_prologue(images) + "sequence.capture_batch(\"west_XXX\", 1, 0.2);\nsequence.start();\n", False)
+				run.control("START")
+				run.wait_task("West field", "DONE", 180)
+				run.wait_task("East field", "DONE, run 2/2", 240)
+				assert client.message_index("Starting task 'West field'") < client.message_index("Starting task 'East field'"), "the normal task ran before the high one"
+				west_frames = run.frames("west_")
+				east_frames = run.frames("east_")
+				assert len(west_frames) == 1, "expected 1 west frame, found %d" % len(west_frames)
+				assert len(east_frames) == 2, "expected 2 east frames (one per run), found %d" % len(east_frames)
+				assert_pointing(west_frames[0], west_ra, west_dec)
+				for frame in east_frames:
+					assert_pointing(frame, east_ra, east_dec)
+
+			def failing_steps_and_recovery():
+				fresh_start()
+				bad_filter = capture_prologue(images) + "sequence.select_filter_wheel(" + json.dumps(WHEEL) + ");\nsequence.select_filter(\"Nonexistent\");\nsequence.capture_batch(\"badfilter_XXX\", 1, 0.2);\nsequence.start();\n"
+				bad_camera = "var sequence = new Sequence(scheduler_task.name);\nsequence.select_imager_camera(\"No Such Camera\");\nsequence.set_directory(" + json.dumps(str(images) + "/") + ");\nsequence.capture_batch(\"badcamera_XXX\", 1, 0.2);\nsequence.start();\n"
+				zenith_target = zenith(0)
+				run.upload("// @task Bad filter\n// @priority high 60\n// @retry 1\n// @target " + zenith_target + "\n\n" + bad_filter, False)
+				run.upload("// @task Bad camera\n// @priority high 40\n\n" + bad_camera, False)
+				run.upload("// @task Afterwards\n// @priority low\n// @target " + zenith_target + "\n\n" + capture_prologue(images) + "sequence.capture_batch(\"after_XXX\", 1, 0.2);\nsequence.start();\n", False)
+				run.control("START")
+				run.wait_task("Afterwards", "DONE", 240)
+				run.wait_task("Bad filter", "FAILED", 10)
+				run.wait_task("Bad camera", "FAILED", 10)
+				assert client.message_count("Starting task 'Bad filter'") == 2, "the failed task was not retried once"
+				assert client.message_count("Starting task 'Bad camera'") == 1, "a task without retries was started again"
+				assert client.any_message_count("non-existent option 'Nonexistent'") >= 1, "no message names the missing filter"
+				assert client.any_message_count("non-existent option 'No Such Camera'") >= 1, "no message names the missing camera"
+				assert not run.frames("badfilter_") and not run.frames("badcamera_"), "a failed task captured frames"
+				assert len(run.frames("after_")) == 1, "the task after the failures did not capture"
+				assert client.message_index("Starting task 'Bad camera'") < client.message_index("Starting task 'Afterwards'")
+
 			run.case(cases[4], preemption_fails)
 			run.case(cases[5], below_horizon)
 			run.case(cases[6], shutdown_hook)
 			run.case(cases[7], night_hooks)
+			run.case(cases[8], lrgb_and_frame_types)
+			run.case(cases[9], targets_in_priority_order)
+			run.case(cases[10], failing_steps_and_recovery)
 	except (OSError, RuntimeError, TimeoutError, ValueError, StopIteration) as exception:
 		error = str(exception)
 		print(error, file=sys.stderr)

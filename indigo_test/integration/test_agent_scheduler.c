@@ -35,9 +35,11 @@
 #include <sys/stat.h>
 
 #include <indigo/indigo_driver.h>
+#include <indigo/indigo_align.h>
 #include <indigo_drivers/agent_scripting/indigo_agent_scripting.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h>
+#include <indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h>
 
 #if defined(__SANITIZE_ADDRESS__)
 #include <sanitizer/lsan_interface.h>
@@ -1864,6 +1866,374 @@ static void delete_all_waits_for_the_shutdown_hook(void) {
 	indigo_release_property(task);
 }
 
+// -------------------------------------------------------------------------------- Eligibility
+
+// the longitude where the local mean solar time is hour, at the equator: 0 is deep night, 12 is noon
+static double longitude_at_hour(double hour) {
+	time_t now = time(NULL);
+	double hours = (now % 86400) / 3600.0;
+	return fmod((hour - hours) * 15 + 720, 360);
+}
+
+// J2000 coordinates of the point that stands at the hour angle (hours) and declination (degrees) of date at the current site
+static void target_at(double hour_angle, double declination, char *text, size_t size) {
+	time_t now = time(NULL);
+	double ra = fmod(indigo_lst(&now, site_property->items[1].number.value) - hour_angle + 48, 24), dec = declination;
+	indigo_jnow_to_j2k(&ra, &dec);
+	snprintf(text, size, "%.6f %.6f", ra, dec);
+}
+
+// a task with a target placed by target_at() and extra header lines
+static bool upload_placed(const char *name, double hour_angle, double declination, const char *header) {
+	char target[64], text[1024];
+	target_at(hour_angle, declination, target, sizeof(target));
+	snprintf(text, sizeof(text), "// @task %s\n// @target %s\n%s" BODY_WAIT(1), name, target, header);
+	return upload(text);
+}
+
+static void hhmm(time_t t, char *text) {
+	struct tm tm;
+	gmtime_r(&t, &tm);
+	sprintf(text, "%02d:%02d", tm.tm_hour, tm.tm_min);
+}
+
+// a waiting task never started, with the scheduler's reason
+static bool waits_with_reason(const char *name, const char *reason) {
+	CHECK(wait_task_state(name, "WAITING", 10));
+	CHECK(wait_reason(reason, 10));
+	char text[128];
+	snprintf(text, sizeof(text), "Starting task '%s'", name);
+	CHECK(count_messages(text) == 0);
+	return true;
+}
+
+static void altitude_limit_decides_and_follows_the_sky(void) {
+	set_site(0, 17.11);
+	// at the equator a target on the celestial equator stands 15 degrees lower per hour of hour angle: 45 degrees, rising
+	REQUIRE(upload_placed("Steep", -3, 0, "// @priority high\n// @altitude > 70\n// @duration 5\n"));
+	REQUIRE(upload_placed("Moderate", -3, 0, "// @altitude > 30\n// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Moderate", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Steep", "target below the altitude limit"));
+	// three hours of sidereal time later, the target culminates and the waiting task runs by itself
+	set_site(0, 17.11 + 45);
+	ASSERT_TRUE(wait_task_state("Steep", "DONE", 15));
+}
+
+static void airmass_limit_decides_and_follows_the_sky(void) {
+	set_site(0, 17.11);
+	// 30 degrees high, airmass 2
+	REQUIRE(upload_placed("Thin air", -4, 0, "// @priority high\n// @airmass < 1.5\n// @duration 5\n"));
+	REQUIRE(upload_placed("Thick air", -4, 0, "// @airmass < 2.5\n// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Thick air", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Thin air", "airmass too high"));
+	set_site(0, 17.11 + 60);
+	ASSERT_TRUE(wait_task_state("Thin air", "DONE", 15));
+}
+
+static void hour_angle_ranges_including_wrapped(void) {
+	set_site(0, 17.11);
+	// one hour west of the meridian, 75 degrees high
+	REQUIRE(upload_placed("East", 1, 0, "// @priority high\n// @ha -2 .. 0\n// @duration 5\n"));
+	// a range from 3h through 12h to -3h, which excludes the meridian
+	REQUIRE(upload_placed("Low sides", 1, 0, "// @priority high\n// @ha 3 .. -3\n// @duration 5\n"));
+	REQUIRE(upload_placed("West", 1, 0, "// @ha 0 .. 2\n// @duration 5\n"));
+	// a range from 0.5h through 12h to -0.5h, which includes 1h
+	REQUIRE(upload_placed("Off meridian", 1, 0, "// @ha 0.5 .. -0.5\n// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("West", "DONE", 15));
+	ASSERT_TRUE(wait_task_state("Off meridian", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("East", "hour angle out of range"));
+	ASSERT_TRUE(wait_task_state("Low sides", "WAITING", 5));
+	// two hours earlier in sidereal time the target is at -1h: East runs, the meridian is still outside 3 .. -3
+	set_site(0, 17.11 - 30);
+	ASSERT_TRUE(wait_task_state("East", "DONE", 15));
+	indigo_usleep(2000000);
+	ASSERT_TRUE(wait_task_state("Low sides", "WAITING", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Low sides'"));
+}
+
+static void twilight_limit_follows_the_sun(void) {
+	set_site(0, longitude_at_hour(12));
+	REQUIRE(upload("// @task Night only\n// @priority high\n// @twilight nautical\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Any time\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Any time", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Night only", "too bright (twilight)"));
+	// at midnight even the astronomical limit holds
+	set_site(0, longitude_at_hour(0));
+	ASSERT_TRUE(wait_task_state("Night only", "DONE", 15));
+	REQUIRE(upload("// @task Dark\n// @twilight astronomical\n// @duration 5\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_task_state("Dark", "DONE", 15));
+}
+
+static void moon_separation_and_brightness(void) {
+	// the site under the moon, so that the moon stands at the zenith
+	scheduler_sky_grid *sky = indigo_safe_malloc(sizeof(scheduler_sky_grid));
+	time_t now = time(NULL);
+	indigo_scheduler_sky_build(sky, now, 0, 0, 140);
+	double moon_ra = sky->moon_ra[0], moon_dec = sky->moon_dec[0];
+	double longitude = fmod((moon_ra - indigo_lst(&now, 0)) * 15 + 720, 360);
+	indigo_scheduler_sky_build(sky, now, moon_dec, longitude, 140);
+	double days_from_full = sky->moon_days_from_full[0];
+	bool moon_high = sky->moon_altitude[0] > 60;
+	free(sky);
+	REQUIRE(moon_high);
+	set_site(moon_dec, longitude);
+	// the separations are measured from the moon along the meridian
+	REQUIRE(upload_placed("Beside", 0, moon_dec + 3, "// @priority high\n// @moon > 30\n// @duration 5\n"));
+	REQUIRE(upload_placed("Away", 0, moon_dec - 40, "// @moon > 30\n// @duration 5\n"));
+	// the Lorentzian limit of this moon age, a fixed limit just above the same separation
+	double limit = indigo_scheduler_moon_limit(40, 3, days_from_full);
+	double separation = fmin(limit + 8, 70);
+	char header[128];
+	snprintf(header, sizeof(header), "// @priority high\n// @moon > %.0f\n// @duration 5\n", ceil(separation + 8));
+	REQUIRE(upload_placed("Fixed", 0, moon_dec - separation, header));
+	REQUIRE(upload_placed("Lorentzian", 0, moon_dec - separation, "// @moon > 40 width 3\n// @duration 5\n"));
+	// a limit the moon above the horizon can never meet, and one it always meets
+	REQUIRE(upload("// @task Never\n// @priority high\n// @target 0 0\n// @illumination < 0\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload_placed("Any phase", 0, moon_dec - 40, "// @illumination < 100\n// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Away", "DONE", 15));
+	ASSERT_TRUE(wait_task_state("Lorentzian", "DONE", 15));
+	ASSERT_TRUE(wait_task_state("Any phase", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Beside", "too close to the moon"));
+	ASSERT_TRUE(wait_task_state("Fixed", "WAITING", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Fixed'"));
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Beside", INDIGO_OK_STATE, NULL));
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Fixed", INDIGO_OK_STATE, NULL));
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Never", INDIGO_OK_STATE, NULL));
+	REQUIRE(upload_placed("Never", 0, moon_dec - 40, "// @priority high\n// @illumination < 0\n// @duration 5\n"));
+	ASSERT_TRUE(waits_with_reason("Never", "moon too bright"));
+	// twelve hours of sidereal time later the moon is below the horizon and its limits are ignored
+	set_site(moon_dec, fmod(longitude + 180, 360));
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Never", INDIGO_OK_STATE, NULL));
+	REQUIRE(upload_placed("Moonless", 0, moon_dec, "// @moon > 90\n// @illumination < 0\n// @duration 5\n"));
+	ASSERT_TRUE(wait_task_state("Moonless", "DONE", 15));
+}
+
+static void nightly_windows(void) {
+	time_t now = time(NULL);
+	char a[8], b[8], text[512];
+	// the windows are given around the current time; one that crosses midnight works the same way
+	hhmm(now + 7200, a);
+	hhmm(now + 10800, b);
+	snprintf(text, sizeof(text), "// @task Outside\n// @priority high\n// @window %s .. %s\n// @duration 5\n" BODY_WAIT(1), a, b);
+	REQUIRE(upload(text));
+	hhmm(now - 1800, a);
+	hhmm(now + 240, b);
+	snprintf(text, sizeof(text), "// @task Too short\n// @priority high\n// @window %s .. %s\n// @duration 30\n" BODY_WAIT(1), a, b);
+	REQUIRE(upload(text));
+	hhmm(now - 1800, a);
+	hhmm(now + 3600, b);
+	snprintf(text, sizeof(text), "// @task Inside\n// @window %s .. %s\n// @duration 5\n" BODY_WAIT(1), a, b);
+	REQUIRE(upload(text));
+	// from an hour ago through midnight to two hours ago: everything but one hour in the past
+	hhmm(now - 3600, a);
+	hhmm(now - 7200, b);
+	snprintf(text, sizeof(text), "// @task Around\n// @window %s .. %s\n// @duration 5\n" BODY_WAIT(1), a, b);
+	REQUIRE(upload(text));
+	// from an hour ahead through midnight to an hour ago: everything but now
+	hhmm(now + 3600, a);
+	hhmm(now - 3600, b);
+	snprintf(text, sizeof(text), "// @task Gap\n// @priority high\n// @window %s .. %s\n// @duration 5\n" BODY_WAIT(1), a, b);
+	REQUIRE(upload(text));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Inside", "DONE", 15));
+	ASSERT_TRUE(wait_task_state("Around", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Outside", "outside of the nightly window"));
+	ASSERT_TRUE(wait_task_state("Gap", "WAITING", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Gap'"));
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Outside", INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(waits_with_reason("Too short", "nightly window ends before the task can finish"));
+	// a nightly window never expires
+	ASSERT_EQ_INT(0, count_messages("expired"));
+}
+
+static void duration_must_fit_before_the_target_sets(void) {
+	set_site(0, 17.11);
+	// 7.5 degrees high and setting, below the horizon in about 30 minutes
+	REQUIRE(upload_placed("Long look", 5.5, 0, "// @priority high\n// @duration 60\n"));
+	REQUIRE(upload_placed("Short look", 5.5, 0, "// @duration 10\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Short look", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Long look", "target below the horizon"));
+}
+
+static void unknown_site_blocks_only_sky_constraints(void) {
+	indigo_delete_property(&mount_standin, site_property, NULL);
+	REQUIRE(upload("// @task Placed\n// @priority high\n// @target 0 0\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Dark only\n// @priority high\n// @twilight civil\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Anywhere\n// @duration 5\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Anywhere", "DONE", 15));
+	ASSERT_TRUE(waits_with_reason("Placed", "site coordinates unknown"));
+	ASSERT_TRUE(wait_task_state("Dark only", "WAITING", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Dark only'"));
+	// the site appears at midnight with the target at the zenith
+	set_site(0, longitude_at_hour(0));
+	indigo_define_property(&mount_standin, site_property, NULL);
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Placed", INDIGO_OK_STATE, NULL));
+	REQUIRE(upload_placed("Placed", 0, 0, "// @priority high\n// @duration 5\n"));
+	ASSERT_TRUE(wait_task_state("Placed", "DONE", 15));
+	ASSERT_TRUE(wait_task_state("Dark only", "DONE", 15));
+}
+
+static void disabled_in_the_header_stays_disabled(void) {
+	REQUIRE(upload("// @task Parked\n// @enabled no\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Active\n// @priority low\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Active", "DONE", 15));
+	ASSERT_TRUE(wait_task_state("Parked", "DISABLED", 5));
+	// ENABLE clears only the command flag
+	REQUIRE(command("Parked", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
+	indigo_usleep(2000000);
+	ASSERT_TRUE(wait_task_state("Parked", "DISABLED", 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Parked'"));
+	// the disabled task does not keep the scheduler running
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 10));
+	// an edit of the header enables it
+	REQUIRE(change_text("AGENT_SCHEDULER_TASK_0", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, "// @task Parked\n// @enabled yes\n" BODY_WAIT(1), INDIGO_OK_STATE, NULL));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Parked", "DONE", 15));
+}
+
+// order of the first starts of two tasks in the messages: true when first started before second
+static bool started_before(const char *first, const char *second) {
+	char a[128], b[128];
+	snprintf(a, sizeof(a), "Starting task '%s'", first);
+	snprintf(b, sizeof(b), "Starting task '%s'", second);
+	long pa = message_position(a), pb = message_position(b);
+	return pa >= 0 && pb >= 0 && pa < pb;
+}
+
+static void sky_bonuses_order_equal_priorities(void) {
+	set_site(0, 17.11);
+	// both 30 degrees high; Rising sets in 10 hours, Setting in 2 hours and has the larger setting bonus
+	REQUIRE(upload_placed("Rising", -4, 0, "// @priority normal 70\n// @duration 5\n"));
+	REQUIRE(upload_placed("Setting", 4, 0, "// @priority normal 50\n// @duration 5\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	// the setting bonus outweighs a level difference of 20
+	ASSERT_TRUE(started_before("Setting", "Rising"));
+	// without it, the level decides
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_SETTING_WEIGHT_ITEM_NAME, 0));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, NULL));
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(started_before("Rising", "Setting"));
+	// equal levels without sky bonuses: the list order decides
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME, 0));
+	char target[64], text[512];
+	target_at(-4, 0, target, sizeof(target));
+	snprintf(text, sizeof(text), "// @task Rising\n// @target %s\n// @priority normal 50\n// @duration 5\n" BODY_WAIT(1), target);
+	REQUIRE(change_text("AGENT_SCHEDULER_TASK_0", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, text, INDIGO_OK_STATE, NULL));
+	REQUIRE(command("Setting", AGENT_SCHEDULER_TASK_COMMAND_MOVE_UP_ITEM_NAME));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, NULL));
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(started_before("Setting", "Rising"));
+	// the altitude bonus prefers the higher target: Rising is moved to 75 degrees
+	target_at(-1, 0, target, sizeof(target));
+	snprintf(text, sizeof(text), "// @task Rising\n// @target %s\n// @priority normal 50\n// @duration 5\n" BODY_WAIT(1), target);
+	REQUIRE(change_text("AGENT_SCHEDULER_TASK_0", AGENT_SCHEDULER_TASK_TASK_ITEM_NAME, text, INDIGO_OK_STATE, NULL));
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_ALTITUDE_WEIGHT_ITEM_NAME, 2));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, NULL));
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(started_before("Rising", "Setting"));
+}
+
+static void largest_task_text_is_stored_and_restored(void) {
+	static char text[SCHEDULER_TASK_TEXT_LIMIT + 2];
+	const char *head = "// @task Big\n" BODY_WAIT(1) "//";
+	strcpy(text, head);
+	size_t length = strlen(text);
+	memset(text + length, 'x', SCHEDULER_TASK_TEXT_LIMIT - length - 1);
+	text[SCHEDULER_TASK_TEXT_LIMIT - 1] = 'y';
+	text[SCHEDULER_TASK_TEXT_LIMIT] = 0;
+	ASSERT_EQ_INT(SCHEDULER_TASK_TEXT_LIMIT, (int)strlen(text));
+	REQUIRE(upload(text));
+	// one byte more is rejected
+	char message[INDIGO_VALUE_SIZE];
+	text[SCHEDULER_TASK_TEXT_LIMIT - 1] = 'x';
+	text[SCHEDULER_TASK_TEXT_LIMIT] = '\n';
+	text[SCHEDULER_TASK_TEXT_LIMIT + 1] = 0;
+	memcpy(text, "// @task Bigger", 15);
+	REQUIRE(change_text(AGENT_SCHEDULER_ADD_TASK_PROPERTY_NAME, AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, text, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "longer than 16384 bytes") != NULL);
+	// the full text is published, saved, restored and run
+	stop_scheduler();
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(start_scheduler());
+	indigo_property *task = snapshot("AGENT_SCHEDULER_TASK_0");
+	REQUIRE(task != NULL);
+	ASSERT_STREQ("Big", task->label);
+	ASSERT_EQ_INT(SCHEDULER_TASK_TEXT_LIMIT, (int)strlen(indigo_get_text_item_value(task->items)));
+	indigo_release_property(task);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Big", "DONE", 15));
+}
+
+static void task_count_limit(void) {
+	char text[128], message[INDIGO_VALUE_SIZE];
+	for (int i = 1; i <= 128; i++) {
+		snprintf(text, sizeof(text), "// @task T%03d\n" BODY_WAIT(1), i);
+		REQUIRE(upload(text));
+	}
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 128, 5));
+	REQUIRE(change_text(AGENT_SCHEDULER_ADD_TASK_PROPERTY_NAME, AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, "// @task T129\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "at most 128 tasks") != NULL);
+	REQUIRE(change_text(AGENT_SCHEDULER_URGENT_TASK_PROPERTY_NAME, AGENT_SCHEDULER_URGENT_TASK_TASK_ITEM_NAME, "// @task Rush\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "too many tasks") != NULL);
+	ASSERT_EQ_INT(128, state_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME));
+	// a deleted task frees a place
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "T064", INDIGO_OK_STATE, NULL));
+	REQUIRE(urgent("// @task Rush\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 128, 5));
+}
+
+static void repeat_interval_and_retry_delay(void) {
+	REQUIRE(upload("// @task Paced\n// @repeat 2 every 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Patient\n// @priority low\n// @retry 1 after 1\nif (!scheduler_task.estimate) { throw new Error(\"not yet\"); }\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Paced' completed run 1 of 2", 1, 15));
+	time_t paced_end = time(NULL);
+	ASSERT_TRUE(wait_task_state("Paced", "REPEAT", 5));
+	ASSERT_TRUE(wait_message("Task 'Patient' failed: Error: not yet, it will be retried", 1, 15));
+	time_t patient_end = time(NULL);
+	ASSERT_TRUE(wait_task_state("Patient", "RETRY", 5));
+	// the second starts follow the pauses, each seen when it happens
+	time_t paced_start = 0, patient_start = 0;
+	for (int i = 0; i < 1000 && (paced_start == 0 || patient_start == 0); i++) {
+		if (paced_start == 0 && count_messages("Starting task 'Paced'") >= 2) {
+			paced_start = time(NULL);
+		}
+		if (patient_start == 0 && count_messages("Starting task 'Patient'") >= 2) {
+			patient_start = time(NULL);
+		}
+		indigo_usleep(100000);
+	}
+	REQUIRE(paced_start > 0 && patient_start > 0);
+	ASSERT_TRUE(paced_start - paced_end >= 55 && paced_start - paced_end <= 80);
+	ASSERT_TRUE(patient_start - patient_end >= 55 && patient_start - patient_end <= 80);
+	ASSERT_TRUE(wait_task_state("Paced", "DONE, run 2/2", 15));
+	ASSERT_TRUE(wait_task_state("Patient", "FAILED", 15));
+}
+
+static void start_waits_for_pending_estimates(void) {
+	// the estimate of the low task takes two seconds; the high task, uploaded right after it, waits for its own estimate
+	REQUIRE(upload("// @task Low first\n// @priority low\nif (scheduler_task.estimate) { var t0 = Date.now(); while (Date.now() - t0 < 2000) { } }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task High second\n// @priority high\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(started_before("High second", "Low first"));
+}
+
 static void history_records_runs(void) {
 	REQUIRE(upload("// @task Good\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Bad\n// @priority low\nif (!scheduler_task.estimate) { throw new Error(\"broken\"); }\n" BODY_WAIT(1)));
@@ -2205,6 +2575,20 @@ static const indigo_test_case cases[] = {
 	{ "delete_all_keeps_hooks_and_needs_a_stopped_scheduler", delete_all_keeps_hooks_and_needs_a_stopped_scheduler },
 	{ "reset_all_runs_finished_work_again", reset_all_runs_finished_work_again },
 	{ "delete_all_waits_for_the_shutdown_hook", delete_all_waits_for_the_shutdown_hook },
+	{ "altitude_limit_decides_and_follows_the_sky", altitude_limit_decides_and_follows_the_sky },
+	{ "airmass_limit_decides_and_follows_the_sky", airmass_limit_decides_and_follows_the_sky },
+	{ "hour_angle_ranges_including_wrapped", hour_angle_ranges_including_wrapped },
+	{ "twilight_limit_follows_the_sun", twilight_limit_follows_the_sun },
+	{ "moon_separation_and_brightness", moon_separation_and_brightness },
+	{ "nightly_windows", nightly_windows },
+	{ "duration_must_fit_before_the_target_sets", duration_must_fit_before_the_target_sets },
+	{ "unknown_site_blocks_only_sky_constraints", unknown_site_blocks_only_sky_constraints },
+	{ "disabled_in_the_header_stays_disabled", disabled_in_the_header_stays_disabled },
+	{ "sky_bonuses_order_equal_priorities", sky_bonuses_order_equal_priorities },
+	{ "largest_task_text_is_stored_and_restored", largest_task_text_is_stored_and_restored },
+	{ "task_count_limit", task_count_limit },
+	{ "repeat_interval_and_retry_delay", repeat_interval_and_retry_delay },
+	{ "start_waits_for_pending_estimates", start_waits_for_pending_estimates },
 	{ "night_end_and_shutdown_share_a_task", night_end_and_shutdown_share_a_task },
 	{ "stop_at_night_runs_only_the_shutdown_hook", stop_at_night_runs_only_the_shutdown_hook },
 	{ "failed_night_end_is_reported", failed_night_end_is_reported },

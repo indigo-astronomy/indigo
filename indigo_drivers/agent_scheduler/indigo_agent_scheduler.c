@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000008
+#define DRIVER_VERSION 0x03000009
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -1387,6 +1387,7 @@ static int select_task(indigo_device *device, time_t now) {
 	int best = select_urgent(device, now);
 	double best_score = 0;
 	const char *first_reason = NULL;
+	bool estimating = false;
 	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
 		int slot = PRIVATE_DATA->order[i];
 		scheduler_task *task = PRIVATE_DATA->tasks + slot;
@@ -1398,6 +1399,7 @@ static int select_task(indigo_device *device, time_t now) {
 			if (first_reason == NULL) {
 				first_reason = "estimating the task duration";
 			}
+			estimating = true;
 			PRIVATE_DATA->dirty = true;
 			continue;
 		}
@@ -1417,6 +1419,11 @@ static int select_task(indigo_device *device, time_t now) {
 			best = slot;
 			best_score = value;
 		}
+	}
+	// a task still waiting for its estimate may outrank the best one, only an urgent task starts before the estimates are known
+	if (estimating && best >= 0 && !is_urgent(PRIVATE_DATA->tasks + best)) {
+		best = -1;
+		first_reason = "estimating the task duration";
 	}
 	PRIVATE_DATA->next_task = best;
 	PRIVATE_DATA->next_start = best >= 0 ? now : 0;

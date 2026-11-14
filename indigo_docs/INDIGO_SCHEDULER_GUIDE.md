@@ -789,7 +789,7 @@ A rejected request puts the property you changed into the Alert state, and a mes
 | `window ends before the task can finish`, `nightly window ends before the task can finish` | The run does not fit in `@window` |
 | `site coordinates unknown` | No Mount Agent is loaded on this server, or it has no site coordinates |
 | `beyond the forecast` | The constraints would have to hold beyond the next 48 hours |
-| `estimating the task duration` | The estimate has not finished yet |
+| `estimating the task duration` | The estimate of a task has not finished yet; no other task starts before it, except an urgent one |
 | `no task is ready`, `no tasks`, `all tasks finished` | Nothing to run |
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent |
 | `loading Sequencer.js`, `waiting for the Scripting Agent` | The scheduler is preparing the Scripting Agent |
