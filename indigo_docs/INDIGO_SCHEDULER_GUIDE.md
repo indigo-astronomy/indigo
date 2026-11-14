@@ -1,6 +1,6 @@
 # INDIGO Scheduler Agent - User Guide
 
-Revision: 13.11.2026 (draft)
+Revision: 14.11.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -8,12 +8,13 @@ e-mail: *rumenastro@gmail.com*
 
 ## Introduction
 
-The INDIGO Scheduler Agent decides which imaging task runs next, when it runs and under which sky conditions. You give it a list of tasks. Each task says what to observe, when it may be observed and how important it is. The scheduler then runs the tasks unattended through the night:
+The INDIGO Scheduler Agent decides which imaging task runs next, when it runs and under which sky conditions. You give it a list of tasks. Each task says what to observe, when it may be observed and how important it is. The scheduler then runs the tasks unattended, through the night and over as many nights as they need:
 
 - it starts a task only when its constraints (altitude, airmass, hour angle, moon, twilight, time window) hold for the task's whole duration;
 - it picks the most important task among the ones that can run now;
 - it repeats and retries tasks as you ask;
 - it interrupts the running task for an **urgent** task, such as a new supernova or a gamma-ray burst follow-up;
+- it runs your own tasks, called hooks, to prepare the equipment when it starts, at the start of every night and after a pause, and to put it away when it stops, during a pause and at the end of every night;
 - it shows what it is doing, what it expects to do for the rest of the night, and what it has done.
 
 A task is a short text: a few `// @key value` header lines that tell the scheduler when and how to run the task, followed by an ordinary [Sequencer.js](../indigo_drivers/agent_scripting/library/Sequencer.md) sequence that does the work (slew, focus, guide, capture). The scheduler runs that sequence in the Scripting Agent, the same way as a sequence you start by hand.
@@ -29,7 +30,7 @@ The Scheduler Agent itself (`indigo_agent_scheduler`) works directly with these 
 | Agent | Driver | Needed | What the scheduler uses it for |
 |---|---|---|---|
 | Scripting Agent | `indigo_agent_scripting` | always | Runs every task, estimates task durations, and is told to abort a sequence. The scheduler loads `Sequencer.js` into it when needed. Without it, no task starts and `REASON` is `waiting for the Scripting Agent` |
-| Mount Agent | `indigo_agent_mount` | for tasks with `@target` or `@twilight` | The site coordinates, from its `GEOGRAPHIC_COORDINATES` property. Without it, or without a site, these tasks wait with `site coordinates unknown` |
+| Mount Agent | `indigo_agent_mount` | for tasks with `@target` or `@twilight`, and for the night hooks | The site coordinates, from its `GEOGRAPHIC_COORDINATES` property. Without it, or without a site, these tasks wait with `site coordinates unknown`, and the night hooks do not run |
 | Guider Agent | `indigo_agent_guider` | optional | Stopped when a task is aborted or preempted, because the sequencer's own abort leaves guiding running |
 | Imager Agent and the plate solver agents | `indigo_agent_imager`, `indigo_agent_astrometry`, `indigo_agent_platesolver` | optional | After an abort, the scheduler waits until they are idle before it starts the next task |
 
@@ -465,7 +466,7 @@ An urgent task submitted while the scheduler is stopped is accepted and waits; t
 
 | Switch | What it does |
 |---|---|
-| `START` | Runs the `STARTUP` hook, if set, then starts scheduling |
+| `START` | Runs the `STARTUP` hook, if set, then starts scheduling. During a night with work, the `NIGHT_START` hook runs right after `STARTUP`, see [Several nights](#several-nights) |
 | `STOP` | Lets the running task finish, then runs the `SHUTDOWN` hook and stops |
 | `ABORT` | Aborts the running task at once, runs the `SHUTDOWN` hook and stops. A stored task is marked RETRY without using a retry; a one-off urgent task is discarded |
 
@@ -481,7 +482,7 @@ The scheduler always starts stopped after a server restart. Press `START` again.
 
 ### Hooks
 
-Hooks are stored tasks that the scheduler runs at special moments, for example to unpark the mount and cool the camera at the start of the night, and to park and warm up at the end. You create the hook tasks like any other task and give their names in `AGENT_SCHEDULER_HOOKS`:
+Hooks are stored tasks that the scheduler runs at special moments, for example to unpark the mount when it starts, to park it while it waits, and to cool the camera at the start of every night. You create the hook tasks like any other task and give their names in `AGENT_SCHEDULER_HOOKS`:
 
 | Item | When the task runs |
 |---|---|
@@ -517,8 +518,10 @@ Upload both and name them as hooks:
 ```
 indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=park.task"
 indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=unpark.task"
-indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP=Unpark;SHUTDOWN=Park;IDLE=Park"
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP=Unpark;SHUTDOWN=Park;IDLE=Park;RESUME=Unpark"
 ```
+
+The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFTER` minutes, unparked again before the next task, and parked when the scheduler stops.
 
 - Hooks name their tasks: renaming a hook task with an edit detaches it from the hook.
 - A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK`, `IDLE HOOK`, `NIGHT START HOOK`, `NIGHT END HOOK` or `RESUME HOOK`.
@@ -553,14 +556,63 @@ The night only times the night hooks. Each task keeps its own `@twilight`; a tas
 
 **No night.** Near the poles the Sun may stay above the limit, or below it, for days. With a night hook set, the scheduler tells you `The Sun does not go below the night limit within a day, the night hooks do not run` or `The Sun does not rise above the night limit, the night does not end`, and the night plan shows `No night at the night limit within a day`.
 
-**Example.** An observatory that prepares half an hour before nautical dusk, parks while waiting and closes at dawn:
+**Example.** An observatory that cools the camera and opens the dome half an hour before nautical dusk, parks while no task can run, and closes at dawn. Save the evening preparation as `evening.task`:
+
+```js
+// @task Evening
+
+var sequence = new Sequence(scheduler_task.name);
+sequence.enable_cooler(-10);
+sequence.dome_open();
+sequence.unpark();
+sequence.start();
+```
+
+the pause as `park.task`:
+
+```js
+// @task Park
+
+var sequence = new Sequence(scheduler_task.name);
+sequence.park();
+sequence.start();
+```
+
+and the end of the night as `morning.task`:
+
+```js
+// @task Morning
+
+var sequence = new Sequence(scheduler_task.name);
+sequence.park();
+sequence.dome_close();
+sequence.disable_cooler();
+sequence.start();
+```
+
+Upload the three tasks and set the hooks and the offset:
 
 ```
+indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=evening.task"
+indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=park.task"
+indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=morning.task"
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.NIGHT_START_OFFSET=-30"
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.NIGHT_START=Evening;RESUME=Evening;IDLE=Park;NIGHT_END=Morning;SHUTDOWN=Morning"
 ```
 
-where `Evening` cools the camera with `enable_cooler(temperature)`, opens the roof and unparks; `Park` parks the mount; and `Morning` parks, closes the roof and warms the camera with `disable_cooler()`.
+A night then runs like this:
+
+| Time | What happens |
+|---|---|
+| 30 minutes before nautical dusk | `Evening` cools the camera, opens the dome and unparks |
+| Nautical dusk and later | The tasks run as their constraints allow |
+| No task can run for `IDLE_PARK_AFTER` minutes | `Park` parks the mount; the camera stays cool and the dome open |
+| A task can run again | `Evening` prepares again (it only unparks, the rest is already done), then the task runs |
+| Nautical dawn | `Morning` parks, closes the dome and turns the cooler off, after the running task has finished |
+| During the day | Nothing; the next evening starts again with `Evening`, if a task can run that night |
+| `STOP` at any time | `Morning` runs as the `SHUTDOWN` hook |
+
+`enable_cooler()` waits until the camera reaches the temperature, so `Evening` can take several minutes; the start offset gives it that time. `dome_open()` and `dome_close()` need a dome selected in the Mount Agent; leave them out without a dome. Keep hook tasks short and safe to repeat: `RESUME` may run several times a night.
 
 ### Settings
 
@@ -596,7 +648,7 @@ The tasks, their states and counters, the settings, the hooks, the night limit a
 | Idle | Not started since the server started |
 | Busy | Running |
 | Ok | Stopped, after `STOP` or after all tasks finished |
-| Alert | Stopped after `ABORT` (also pressed while stopped), a failed `STARTUP` or `SHUTDOWN` hook, or a stop timeout |
+| Alert | Stopped after `ABORT` (also pressed while stopped), a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a stop timeout |
 
 Its items count the tasks: `DONE` the finished ones, `FAILED` the failed and expired ones, and `TOTAL` all entries of the task list, including hook tasks and pending urgent tasks.
 
@@ -667,7 +719,7 @@ The plan is a forecast. It assumes that every run succeeds and takes its expecte
 2026-11-21 01:28–03:31  NGC 7000 Ha #1  succeeded
 2026-11-20 21:10–21:40  SN 2026abc (urgent) #1  succeeded
 2026-11-20 20:44–21:10  M31 LRGB #1  preempted: by SN 2026abc
-2026-11-20 20:02–20:04  Unpark (hook) #1  succeeded
+2026-11-20 20:02–20:04  Evening (hook) #1  succeeded
 ```
 
 | Result | Light | Meaning |
@@ -703,7 +755,9 @@ The scheduler reports events as INDIGO messages of the device "Scheduler Agent",
 | `The startup hook failed, the scheduler stopped` | The `STARTUP` hook failed |
 | `The night start hook failed, the scheduler stopped`, `The resume hook failed, the scheduler stopped` | The `NIGHT_START` or `RESUME` hook failed; `SHUTDOWN` ran |
 | `No task can run tonight, the night start hook is skipped` | A night without work, see [Several nights](#several-nights) |
-| `The night start hook 'Evening' names no task` | A hook item names a task that does not exist |
+| `The night start hook 'Evening' names no task`, also for the other hooks | A hook item names a task that does not exist |
+| `The Sun does not go below the night limit within a day, the night hooks do not run` | No night at the night limit, for example near the poles in summer |
+| `The Sun does not rise above the night limit, the night does not end` | A polar night; `NIGHT_END` does not run until it ends |
 | `The sequence or an agent did not stop in time, the scheduler stopped` | An aborted sequence did not stop within `STOP_TIMEOUT` |
 
 A rejected request puts the property you changed into the Alert state, and a message gives the reason, for example `Task 'M42' not found`. The messages of property updates, such as the stop messages of `AGENT_SCHEDULER_STATE`, arrive the same way as the other messages.
@@ -798,7 +852,8 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_DELETE_TASK.NAME=M31 LRGB"
 - A task that was running when the server stopped is restored as RETRY, without using a retry.
 - Repeat and retry delays are not kept: a task waiting in REPEAT or RETRY can run as soon as the scheduler starts.
 - Urgent tasks submitted through `AGENT_SCHEDULER_URGENT_TASK` are lost. Stored tasks with `@priority urgent` are kept.
-- The scheduler starts stopped. Press `START`.
+- The scheduler starts stopped. Press `START`. If you press it during a night with work, `STARTUP` runs and then `NIGHT_START`, so the equipment is prepared again.
+- Standby is not kept: after `START` the first task runs without `RESUME`.
 
 ## Troubleshooting
 
@@ -810,7 +865,12 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_DELETE_TASK.NAME=M31 LRGB"
 | A task shows `SCRIPT ERROR` | The message names the JavaScript error. Fix the body with an edit, or `RESET` the task after fixing an agent the body needed |
 | A task shows `1h00 default` | The duration cannot be estimated from the sequence; set `@duration` |
 | `another sequence is running` | A sequence started by hand occupies the Scripting Agent. Stop it, or submit an urgent task, which interrupts it |
-| The scheduler stopped with Alert | Check the messages: `ABORT`, a failed `STARTUP` or `SHUTDOWN` hook, or a sequence that did not stop within `STOP_TIMEOUT` |
+| The scheduler stopped with Alert | Check the messages: `ABORT`, a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a sequence that did not stop within `STOP_TIMEOUT` |
+| The night start hook does not run | No task can run that night (see the message and the night plan), the hook names no task, there is no night at the night limit, or the site is unknown. It runs later if a task becomes able to run |
+| The night start hook runs too late for the camera to cool | Set a negative `NIGHT_START_OFFSET`, for example −30 |
+| The night end hook runs long after dawn | A task was still running; night hooks never interrupt a task. Give the tasks `@twilight`, or end them with `break_if_solar_altitude_above()` |
+| The equipment stays parked after a pause | Set a `RESUME` hook, or make every task prepare what it needs |
+| The idle hook does not run again | After `IDLE` or `NIGHT_END` the equipment is in standby; `IDLE` runs again after a task or the night start hook has run |
 | An urgent task does not interrupt the running task | Its own constraints do not hold yet, its duration estimate is still running, the running task is a hook, or a `STOP` is pending; see `REASON` |
 | A failed run shows no reason in the history | The scheduler does not yet receive the failure message of a sequence; the Scripting Agent's messages show why it failed |
 | A finished task should run again | `RESET` it |
