@@ -812,6 +812,14 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_TASK_COMMAND.DISABLE=ON"
 | `DISABLE` | Keeps the task but never selects it. A running task finishes its run first |
 | `ENABLE` | Undoes `DISABLE`. A task with `@enabled no` in its header stays disabled until you edit the header |
 | `MOVE_UP`, `MOVE_DOWN` | Moves the task in the list. The list order decides only between otherwise equal tasks |
+| `RESET_ALL` | Resets every task as `RESET` does. A running task is left alone, and the message says so. Pending urgent tasks keep their order |
+| `DELETE_ALL` | Deletes every stored and urgent task except the tasks named as hooks, so the preparation and the parking at the end of the night stay. It is accepted only while the scheduler is stopped. To delete a hook task, use `AGENT_SCHEDULER_DELETE_TASK` |
+
+`RESET_ALL` and `DELETE_ALL` do not use the task name. They carry a `warn_on_set` hint, so clients that follow INDIGO hints ask for a confirmation first. Command-line tools and scripts do not ask:
+
+```
+indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_TASK_COMMAND.DELETE_ALL=ON"
+```
 
 ### Changing the order
 
@@ -886,6 +894,7 @@ It puts the site on the equator and moves its longitude to choose the time of da
 | `hooks idle=Park resume=` | Set or clear hook items |
 | `limit nautical`, `set NIGHT_START_OFFSET=-30` | The night limit and the settings |
 | `start`, `stop`, `abort`, `reset NAME`, `delete NAME` | Control the scheduler and the tasks |
+| `reset_all`, `delete_all` | Reset every task, or delete every task not named as a hook; the sandbox prompt does not ask for a confirmation |
 | `status`, `plan`, `history` | The task list, the night plan and the history |
 | `wait 10`, `until TEXT 60` | Wait while new scheduler messages are printed, or until one contains `TEXT` |
 
@@ -917,7 +926,7 @@ With `--script`, or with commands on standard input, an `until` that times out e
 | The idle hook does not run again | After `IDLE` or `NIGHT_END` the equipment is in standby; `IDLE` runs again after a task or the night start hook has run |
 | An urgent task does not interrupt the running task | Its own constraints do not hold yet, its duration estimate is still running, the running task is a hook, or a `STOP` is pending; see `REASON` |
 | A failed run shows no reason in the history | The scheduler does not yet receive the failure message of a sequence; the Scripting Agent's messages show why it failed |
-| A finished task should run again | `RESET` it |
+| A finished task should run again | `RESET` it, or `RESET_ALL` for all tasks |
 | The tasks run in an unexpected order | The order is decided by the priority class, the level and the sky bonuses, not by the list; see [Priorities](#priorities) |
 
 ## Property reference
@@ -931,7 +940,7 @@ All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIE
 | `AGENT_SCHEDULER_URGENT_TASK` | text | `TASK` | Submit a one-off urgent task |
 | `AGENT_SCHEDULER_DELETE_TASK` | text | `NAME` | Delete a task |
 | `AGENT_SCHEDULER_TASK_NAME` | text | `NAME` | The task that `AGENT_SCHEDULER_TASK_COMMAND` applies to |
-| `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN` | Task commands |
+| `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | Task commands; the last two apply to all tasks and ask for a confirmation |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Run the scheduler |
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Scheduler state and task counters |
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `NEXT`, `NEXT_START`, `REASON` | What runs now and next |

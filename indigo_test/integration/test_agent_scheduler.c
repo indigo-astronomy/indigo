@@ -1666,6 +1666,122 @@ static void urgent_tasks_are_counted(void) {
 	ASSERT_EQ_INT(0, state_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME));
 }
 
+// a command for all tasks, the task name is not used
+static bool all_command(const char *item, indigo_property_state expected, char *message) {
+	unsigned before = revision(AGENT_SCHEDULER_TASK_COMMAND_PROPERTY_NAME);
+	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_TASK_COMMAND_PROPERTY_NAME, item, true);
+	return wait_property_state(AGENT_SCHEDULER_TASK_COMMAND_PROPERTY_NAME, before, expected, message);
+}
+
+static int task_count(void) {
+	indigo_property *list = snapshot(AGENT_SCHEDULER_TASK_STATE_PROPERTY_NAME);
+	int count = list ? list->count : -1;
+	indigo_release_property(list);
+	return count;
+}
+
+static void reset_all_keeps_running_task_and_urgent_order(void) {
+	// both commands ask the client for a confirmation, the other items keep their places
+	indigo_property *commands = snapshot(AGENT_SCHEDULER_TASK_COMMAND_PROPERTY_NAME);
+	REQUIRE(commands != NULL && commands->count == 7);
+	ASSERT_STREQ(AGENT_SCHEDULER_TASK_COMMAND_MOVE_DOWN_ITEM_NAME, commands->items[4].name);
+	ASSERT_STREQ(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, commands->items[5].name);
+	ASSERT_STREQ(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, commands->items[6].name);
+	ASSERT_TRUE(!strncmp(commands->items[5].hints, "warn_on_set:\"", 13));
+	ASSERT_TRUE(!strncmp(commands->items[6].hints, "warn_on_set:\"", 13));
+	ASSERT_TRUE(commands->items[0].hints[0] == 0);
+	indigo_release_property(commands);
+	// the urgent task submitted first takes the higher slot, the reset keeps it first
+	REQUIRE(upload("// @task Filler\n" BODY_WAIT(1)));
+	REQUIRE(urgent("// @task First urgent\n" BODY_WAIT(1)));
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Filler", INDIGO_OK_STATE, NULL));
+	REQUIRE(urgent("// @task Second urgent\n" BODY_WAIT(1)));
+	char message[INDIGO_VALUE_SIZE];
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks reset: 2", message);
+	REQUIRE(upload("// @task Done once\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Broken\n// @priority low\nif (!scheduler_task.estimate) { throw new Error(\"broken\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Long\n// @priority low 10\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Second urgent' completed", 1, 15));
+	ASSERT_TRUE(message_position("Starting task 'First urgent'") < message_position("Starting task 'Second urgent'"));
+	ASSERT_TRUE(wait_task_state("Done once", "DONE", 15));
+	ASSERT_TRUE(wait_task_state("Broken", "FAILED", 15));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_DONE_ITEM_NAME, 1, 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_FAILED_ITEM_NAME, 1, 5));
+	// the running task is left alone, the others run again
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks reset: 2, 'Long' is running and was not reset", message);
+	ASSERT_TRUE(wait_task_state("Done once", "QUEUED", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "QUEUED", 5));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_DONE_ITEM_NAME, 0, 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_FAILED_ITEM_NAME, 0, 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RETRY", 10));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	// the reset is saved
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	ASSERT_TRUE(wait_task_state("Done once", "QUEUED", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "QUEUED", 5));
+}
+
+static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
+	REQUIRE(upload("// @task Long\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
+	char message[INDIGO_VALUE_SIZE];
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "only while the scheduler is stopped") != NULL);
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 5));
+	ASSERT_EQ_INT(1, task_count());
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RETRY", 10));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	// the tasks named as hooks are kept, stored and urgent tasks are deleted
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Other\n" BODY_WAIT(1)));
+	REQUIRE(urgent("// @task Pending\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "Park", ""));
+	REQUIRE(set_night_hooks("", "Morning", ""));
+	ASSERT_EQ_INT(6, state_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks deleted: 3, tasks named as hooks kept: 3", message);
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_FALSE(task_label("Long", label, NULL));
+	ASSERT_FALSE(task_label("Other", label, NULL));
+	ASSERT_FALSE(task_label("Pending", label, NULL));
+	ASSERT_TRUE(task_label("Prepare", label, NULL));
+	ASSERT_TRUE(task_label("Park", label, NULL));
+	ASSERT_TRUE(task_label("Morning", label, NULL));
+	ASSERT_EQ_INT(3, task_count());
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 3, 5));
+	// a list of hooks only, nothing more to delete
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks deleted: 0, tasks named as hooks kept: 3", message);
+	// the deletion is saved and the hooks still name their tasks
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	ASSERT_EQ_INT(3, task_count());
+	ASSERT_FALSE(task_label("Other", label, NULL));
+	indigo_property *hooks = snapshot(AGENT_SCHEDULER_HOOKS_PROPERTY_NAME);
+	REQUIRE(hooks != NULL);
+	ASSERT_STREQ("Prepare", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_STARTUP_ITEM_NAME)));
+	ASSERT_STREQ("Park", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_SHUTDOWN_ITEM_NAME)));
+	ASSERT_STREQ("Morning", indigo_get_text_item_value(indigo_get_item(hooks, AGENT_SCHEDULER_HOOKS_NIGHT_END_ITEM_NAME)));
+	indigo_release_property(hooks);
+	// without hooks everything goes
+	REQUIRE(set_hooks("", "", ""));
+	REQUIRE(set_night_hooks("", "", ""));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks deleted: 3", message);
+	ASSERT_EQ_INT(0, task_count());
+}
+
 static void history_records_runs(void) {
 	REQUIRE(upload("// @task Good\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Bad\n// @priority low\nif (!scheduler_task.estimate) { throw new Error(\"broken\"); }\n" BODY_WAIT(1)));
@@ -2003,6 +2119,8 @@ static const indigo_test_case cases[] = {
 	{ "missing_night_hook_task_is_reported", missing_night_hook_task_is_reported },
 	{ "no_night_is_reported", no_night_is_reported },
 	{ "urgent_tasks_are_counted", urgent_tasks_are_counted },
+	{ "reset_all_keeps_running_task_and_urgent_order", reset_all_keeps_running_task_and_urgent_order },
+	{ "delete_all_keeps_hooks_and_needs_a_stopped_scheduler", delete_all_keeps_hooks_and_needs_a_stopped_scheduler },
 	{ "night_end_and_shutdown_share_a_task", night_end_and_shutdown_share_a_task },
 	{ "stop_at_night_runs_only_the_shutdown_hook", stop_at_night_runs_only_the_shutdown_hook },
 	{ "failed_night_end_is_reported", failed_night_end_is_reported },

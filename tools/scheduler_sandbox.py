@@ -70,6 +70,9 @@ Tasks (the body only waits, so no equipment is needed):
   upload FILE | urgent_file FILE  upload a task file as stored or urgent task
   delete NAME
   reset | enable | disable | up | down NAME
+  reset_all                       reset every task but a running one
+  delete_all                      delete every task not named as a hook; the scheduler must be
+                                  stopped, and this prompt does not ask for a confirmation
 Scheduler:
   start | stop | abort
   hooks ITEM=NAME ...             set hook items, ITEM= clears one; items: startup shutdown idle
@@ -409,6 +412,9 @@ class Sandbox:
 				time.sleep(0.3)
 			elif verb in ("reset", "enable", "disable", "up", "down"):
 				self.command(arguments[0], {"up": "MOVE_UP", "down": "MOVE_DOWN"}.get(verb, verb.upper()))
+			elif verb in ("reset_all", "delete_all"):
+				self.client.change("Switch", AGENT, "AGENT_SCHEDULER_TASK_COMMAND", {verb.upper(): True})
+				time.sleep(0.3)
 			elif verb in ("start", "stop", "abort"):
 				self.client.change("Switch", AGENT, "AGENT_SCHEDULER_CONTROL", {verb.upper(): True})
 				time.sleep(0.3)

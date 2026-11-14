@@ -693,7 +693,7 @@ Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 | AGENT_SCHEDULER_URGENT_TASK | text | no | TASK | Submit a task as urgent; it is not stored. |
 | AGENT_SCHEDULER_TASK_STATE | light | yes | TASK_%d | One item per task in list order; the label shows the name, state, runs and retries left. |
 | AGENT_SCHEDULER_TASK_NAME | text | no | NAME | Task addressed by `AGENT_SCHEDULER_TASK_COMMAND`. |
-| AGENT_SCHEDULER_TASK_COMMAND | switch | no | RESET, ENABLE, DISABLE, MOVE_UP, MOVE_DOWN | Command for the named task. |
+| AGENT_SCHEDULER_TASK_COMMAND | switch | no | RESET, ENABLE, DISABLE, MOVE_UP, MOVE_DOWN, RESET_ALL, DELETE_ALL | Command for the named task; RESET_ALL and DELETE_ALL (scheduler stopped, hook tasks kept) apply to all tasks and carry `warn_on_set` hints. |
 | AGENT_SCHEDULER_CONTROL | switch | no | START, STOP, ABORT | Start scheduling, stop after the running task, or abort it. |
 | AGENT_SCHEDULER_STATE | number | yes | DONE, FAILED, URGENT_DONE, URGENT_FAILED, TOTAL | Task counters: DONE and FAILED count the tasks of the list, URGENT_DONE and URGENT_FAILED the one-off urgent tasks that finished and left it (kept with the history and reset by AGENT_SCHEDULER_CLEAR_HISTORY), TOTAL the tasks of the list; the state is Idle before the first start, Busy while scheduling, Ok after the scheduler stopped and Alert after an abort or a stop timeout. |
 | AGENT_SCHEDULER_CURRENT | text | yes | CURRENT, NEXT, NEXT_START, REASON | Running task, next task, its UTC start time and why nothing runs. |

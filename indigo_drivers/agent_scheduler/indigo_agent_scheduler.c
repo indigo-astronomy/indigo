@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000007
+#define DRIVER_VERSION 0x03000008
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -88,6 +88,8 @@
 #define TASK_COMMAND_DISABLE_ITEM	(TASK_COMMAND_PROPERTY->items + 2)
 #define TASK_COMMAND_UP_ITEM			(TASK_COMMAND_PROPERTY->items + 3)
 #define TASK_COMMAND_DOWN_ITEM		(TASK_COMMAND_PROPERTY->items + 4)
+#define TASK_COMMAND_RESET_ALL_ITEM	(TASK_COMMAND_PROPERTY->items + 5)
+#define TASK_COMMAND_DELETE_ALL_ITEM	(TASK_COMMAND_PROPERTY->items + 6)
 #define CONTROL_PROPERTY					(PRIVATE_DATA->control_property)
 #define CONTROL_START_ITEM				(CONTROL_PROPERTY->items + 0)
 #define CONTROL_STOP_ITEM					(CONTROL_PROPERTY->items + 1)
@@ -2286,14 +2288,90 @@ static void urgent_task(indigo_device *device, indigo_property *request) {
 	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
+static bool task_is_running(indigo_device *device, int slot) {
+	return PRIVATE_DATA->tasks[slot].state == TASK_RUNNING || (PRIVATE_DATA->phase != RUN_IDLE && PRIVATE_DATA->current == slot);
+}
+
+static void reset_task(scheduler_task *task) {
+	task->state = TASK_QUEUED;
+	task->runs = 0;
+	task->retries_used = 0;
+	task->delay_until = 0;
+	if (task->script_error) {
+		task->script_error = false;
+		task->estimate_needed = true;
+	}
+}
+
+// every task but a running one, the order of the urgent tasks is kept
+static void reset_all_tasks(indigo_device *device) {
+	int count = 0;
+	const char *running = NULL;
+	for (int i = 0; i < MAX_TASKS; i++) {
+		scheduler_task *task = PRIVATE_DATA->tasks + i;
+		if (!task->used) {
+			continue;
+		}
+		if (task_is_running(device, i)) {
+			running = task->header.name;
+			continue;
+		}
+		reset_task(task);
+		count++;
+	}
+	TASK_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
+	if (running) {
+		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks reset: %d, '%s' is running and was not reset", count, running);
+	} else {
+		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks reset: %d", count);
+	}
+}
+
+// every stored and urgent task but the tasks named as hooks, only while the scheduler is stopped
+static void delete_all_tasks(indigo_device *device) {
+	if (PRIVATE_DATA->started || PRIVATE_DATA->phase != RUN_IDLE) {
+		reject(device, TASK_COMMAND_PROPERTY, "Tasks can be deleted all at once only while the scheduler is stopped");
+		return;
+	}
+	int count = 0, kept = 0;
+	for (int i = 0; i < MAX_TASKS; i++) {
+		scheduler_task *task = PRIVATE_DATA->tasks + i;
+		if (!task->used) {
+			continue;
+		}
+		if (is_hook(device, task)) {
+			kept++;
+			continue;
+		}
+		remove_task(device, i);
+		count++;
+	}
+	TASK_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
+	if (kept) {
+		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d, tasks named as hooks kept: %d", count, kept);
+	} else {
+		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d", count);
+	}
+}
+
 static void task_command(indigo_device *device, indigo_property *request) {
 	indigo_property_copy_values(TASK_COMMAND_PROPERTY, request, false);
 	const char *name = indigo_get_text_item_value(TASK_NAME_NAME_ITEM);
-	int slot = find_task(device, name);
-	bool reset = TASK_COMMAND_RESET_ITEM->sw.value, enable = TASK_COMMAND_ENABLE_ITEM->sw.value, disable = TASK_COMMAND_DISABLE_ITEM->sw.value, up = TASK_COMMAND_UP_ITEM->sw.value, down = TASK_COMMAND_DOWN_ITEM->sw.value;
+	bool reset = TASK_COMMAND_RESET_ITEM->sw.value, enable = TASK_COMMAND_ENABLE_ITEM->sw.value, disable = TASK_COMMAND_DISABLE_ITEM->sw.value, up = TASK_COMMAND_UP_ITEM->sw.value, down = TASK_COMMAND_DOWN_ITEM->sw.value, reset_all = TASK_COMMAND_RESET_ALL_ITEM->sw.value, delete_all = TASK_COMMAND_DELETE_ALL_ITEM->sw.value;
 	for (int i = 0; i < TASK_COMMAND_PROPERTY->count; i++) {
 		TASK_COMMAND_PROPERTY->items[i].sw.value = false;
 	}
+	if (reset_all || delete_all) {
+		if (reset_all) {
+			reset_all_tasks(device);
+		} else {
+			delete_all_tasks(device);
+		}
+		schedule_save(device);
+		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+		return;
+	}
+	int slot = find_task(device, name);
 	if (slot < 0) {
 		reject(device, TASK_COMMAND_PROPERTY, "Task '%s' not found", name);
 		return;
@@ -2301,19 +2379,12 @@ static void task_command(indigo_device *device, indigo_property *request) {
 	scheduler_task *task = PRIVATE_DATA->tasks + slot;
 	int index = order_index(device, slot);
 	if (reset) {
-		if (task->state == TASK_RUNNING || (PRIVATE_DATA->phase != RUN_IDLE && PRIVATE_DATA->current == slot)) {
+		if (task_is_running(device, slot)) {
 			reject(device, TASK_COMMAND_PROPERTY, "Task '%s' is running and cannot be reset", name);
 			return;
 		}
-		task->state = TASK_QUEUED;
-		task->runs = 0;
-		task->retries_used = 0;
-		task->delay_until = 0;
+		reset_task(task);
 		task->urgent_order = ++PRIVATE_DATA->urgent_counter;
-		if (task->script_error) {
-			task->script_error = false;
-			task->estimate_needed = true;
-		}
 	} else if (enable) {
 		task->disabled = false;
 	} else if (disable) {
@@ -2522,7 +2593,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		indigo_init_text_item(TASK_NAME_NAME_ITEM, AGENT_SCHEDULER_TASK_NAME_NAME_ITEM_NAME, "Name", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_TASK_COMMAND
-		TASK_COMMAND_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_TASK_COMMAND_PROPERTY_NAME, SCHEDULER_GROUP, "Task command", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 5);
+		TASK_COMMAND_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_TASK_COMMAND_PROPERTY_NAME, SCHEDULER_GROUP, "Task command", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 7);
 		if (TASK_COMMAND_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2531,6 +2602,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(TASK_COMMAND_DISABLE_ITEM, AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME, "Disable", false);
 		indigo_init_switch_item(TASK_COMMAND_UP_ITEM, AGENT_SCHEDULER_TASK_COMMAND_MOVE_UP_ITEM_NAME, "Move up", false);
 		indigo_init_switch_item(TASK_COMMAND_DOWN_ITEM, AGENT_SCHEDULER_TASK_COMMAND_MOVE_DOWN_ITEM_NAME, "Move down", false);
+		indigo_init_switch_item(TASK_COMMAND_RESET_ALL_ITEM, AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, "Reset all", false);
+		indigo_init_switch_item(TASK_COMMAND_DELETE_ALL_ITEM, AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, "Delete all", false);
+		INDIGO_COPY_VALUE(TASK_COMMAND_RESET_ALL_ITEM->hints, "warn_on_set:\"Reset the progress of all tasks?\";");
+		INDIGO_COPY_VALUE(TASK_COMMAND_DELETE_ALL_ITEM->hints, "warn_on_set:\"Delete all tasks except the hooks?\";");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_CONTROL
 		CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_CONTROL_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (CONTROL_PROPERTY == NULL) {

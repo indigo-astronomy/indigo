@@ -348,7 +348,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_URGENT_TASK` | text | `TASK` | Submit a task as urgent, regardless of its `@priority` |
 | `AGENT_SCHEDULER_TASK_STATE` | light | one per task | Idle = QUEUED, WAITING, RETRY, REPEAT or DISABLED; Busy = RUNNING; Ok = DONE; Alert = FAILED or EXPIRED. The label shows the name, state, completed runs and retries left; urgent tasks are marked as urgent |
 | `AGENT_SCHEDULER_TASK_NAME` | text | `NAME` | Target of `AGENT_SCHEDULER_TASK_COMMAND` |
-| `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN` | Applied to the task named in `AGENT_SCHEDULER_TASK_NAME`. List order breaks score ties |
+| `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | The first five apply to the task named in `AGENT_SCHEDULER_TASK_NAME`; `RESET_ALL` and `DELETE_ALL` apply to all tasks, see [Commands for all tasks](#commands-for-all-tasks). List order breaks score ties |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Scheduler control, see [Scheduler control](#scheduler-control) |
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Task counters: `DONE` and `FAILED` (failed or expired) count the tasks of the list; `URGENT_DONE` and `URGENT_FAILED` count the one-off urgent tasks, which leave the list when they end; a deleted or aborted one-off task is not counted. The urgent counters are saved with the history and reset with it. `TOTAL` counts the tasks of the list. The property state is Idle when stopped, Busy while scheduling and Alert after `ABORT` or a failed `STARTUP` hook |
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `NEXT`, `NEXT_START`, `REASON` | The running task, the task expected next, the UTC time it becomes eligible (`YYYY-MM-DDTHH:MM:SS`), and why nothing is eligible when the scheduler waits |
@@ -390,6 +390,15 @@ Changing the number of items of a list property requires deleting and defining i
 - An edit keeps the task's state and counters. To run a completed, failed or expired task again, the client uses `RESET`.
 - An edit of a running task takes effect after the task ends.
 - A hook that names a deleted or renamed task is ignored, and the agent sends a warning message when the hook is due.
+
+### Commands for all tasks
+
+`RESET_ALL` and `DELETE_ALL` in `AGENT_SCHEDULER_TASK_COMMAND` ignore `AGENT_SCHEDULER_TASK_NAME`. Both items carry a `warn_on_set` hint, so clients that follow the hints ask for a confirmation before sending them. The hint is advisory; the agent does not wait for a confirmation.
+
+- `RESET_ALL` resets every task, stored or urgent, hooks included, as `RESET` does: state QUEUED, run and retry counters cleared, script errors cleared. A running task is left alone, and the update message gives the number of reset tasks and the name of the running one. Unlike `RESET`, it keeps the relative order of pending urgent tasks. The disabled flag is kept.
+- `DELETE_ALL` deletes every stored and urgent task except the tasks named in `AGENT_SCHEDULER_HOOKS`, so that the preparation and the shutdown of the equipment stay configured. It is rejected with Alert unless the scheduler is stopped and no task or hook runs. Deleted tasks get no history entry. The update message gives the number of deleted and kept tasks.
+
+The other schedulers keep start and end actions apart from targets (SGP sequence events, N.I.N.A. Target Scheduler instructions, ACP startup and shutdown scripts) and also offer resetting all targets at once.
 
 ### Enabling and disabling
 
@@ -803,4 +812,5 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
   - labels cut to 127 bytes, and list properties redefined only when their content changes;
   - a body that fails only when it runs, and a body without `start()`, counting as failures;
-  - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task.
+  - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task;
+  - `RESET_ALL` and `DELETE_ALL`: their hints, the item order, a running task left alone, the order of pending urgent tasks kept, `DELETE_ALL` rejected while the scheduler runs, the tasks named as hooks kept, and both results across a restart.
