@@ -123,12 +123,32 @@ static void malformed_requests(void) {
 	for (size_t i = 0; i < ARRAY_SIZE(invalid_get); i++) {
 		ASSERT_TRUE(parse_get_property_string(invalid_get[i], &get_result) < 0);
 	}
-	const char *invalid_set[] = { "D.P.I", "D.P.=V", "D.P.I=", "D.P.I=  ", "D.P.I=V;;J=W", "D.P.I=V\nW" };
+	const char *invalid_set[] = { "D.P.I", "D.P.=V", "D.P.=", "D.P. =", "D.P.I=V;;J=W", "D.P.I=V\nW" };
 	for (size_t i = 0; i < ARRAY_SIZE(invalid_set); i++) {
 		ASSERT_TRUE(parse_set_property_string(invalid_set[i], &set_result) < 0);
 	}
 	ASSERT_TRUE(parse_list_property_string(".P", &list_result) < 0);
 	ASSERT_TRUE(parse_list_property_string("D.", &list_result) < 0);
+}
+
+// an empty value clears a text item; the item name is still required
+static void empty_values(void) {
+	ASSERT_EQ_INT(1, parse_set_property_string("D.P.I=", &set_result));
+	ASSERT_STREQ("I", set_result.item_name[0]);
+	ASSERT_STREQ("", set_result.value_string[0]);
+	ASSERT_EQ_INT(1, parse_set_property_string("D.P.I=  ", &set_result));
+	ASSERT_STREQ("", set_result.value_string[0]);
+	ASSERT_EQ_INT(1, parse_set_property_string("D.P.I=\"\"", &set_result));
+	ASSERT_STREQ("", set_result.value_string[0]);
+	ASSERT_EQ_INT(3, parse_set_property_string("D.P.A=;B=x;C=", &set_result));
+	ASSERT_STREQ("A", set_result.item_name[0]);
+	ASSERT_STREQ("", set_result.value_string[0]);
+	ASSERT_STREQ("B", set_result.item_name[1]);
+	ASSERT_STREQ("x", set_result.value_string[1]);
+	ASSERT_STREQ("C", set_result.item_name[2]);
+	ASSERT_STREQ("", set_result.value_string[2]);
+	ASSERT_EQ_INT(2, parse_set_property_string("D.P.A=x;B=;", &set_result));
+	ASSERT_STREQ("", set_result.value_string[1]);
 }
 
 static void remote_endpoints(void) {
@@ -157,6 +177,7 @@ int main(void) {
 		{ "field_boundaries", field_boundaries },
 		{ "item_count_boundaries", item_count_boundaries },
 		{ "malformed_requests", malformed_requests },
+		{ "empty_values", empty_values },
 		{ "remote_endpoints", remote_endpoints }
 	};
 	return indigo_run_tests("Property tool input safety", tests, ARRAY_SIZE(tests));

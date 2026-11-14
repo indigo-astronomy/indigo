@@ -80,7 +80,7 @@ There is no dedicated scheduler window in the INDIGO clients yet. You control th
   indigo_prop_tool set_script "Scheduler Agent.AGENT_SCHEDULER_ADD_TASK.TASK=m31.task"
   ```
 
-  Use `set` only for short values on one line; it splits values at `;` and cannot send a task. `indigo_prop_tool` prints the messages of the Scheduler Agent that answer your change, such as the reason of a rejection. It shows light items only as `ON`/`OFF` without their labels, so read the task list, the night plan and the history in a client.
+  Use `set` only for short values on one line; it splits values at `;` and cannot send a task. `ITEM=` or `ITEM=""` sends an empty value, which clears a text item such as a hook. `indigo_prop_tool` prints the messages of the Scheduler Agent that answer your change, such as the reason of a rejection. It shows light items only as `ON`/`OFF` without their labels, so read the task list, the night plan and the history in a client.
 - **Any INDIGO client that shows all properties**, such as the server's web control panel (`http://<server>:7624/ctrl.html`). It shows the task list, the night plan and the run history with their labels and lights, shows the messages, and lets you press the control switches. It edits text items in a single line, so upload tasks with `indigo_prop_tool`.
 
 All examples assume the server runs on the local computer. For a remote one, add `-r host` after the command word, for example `indigo_prop_tool get -r host ...`; options placed before the command word are not recognised. Add `-s` to see the state of the property you change, for example `[OK]` for an accepted upload and `[ALERT]` for a rejected one.
@@ -527,7 +527,7 @@ The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFT
 - A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK`, `IDLE HOOK`, `NIGHT START HOOK`, `NIGHT END HOOK` or `RESUME HOOK`.
 - One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
 - Hook runs appear in the history, marked `(hook)`.
-- To remove a hook, set its item to an empty value. `indigo_prop_tool` cannot send an empty value, so clear the field in a client such as the web control panel.
+- To remove a hook, set its item to an empty value, for example `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task again and is scheduled like the others.
 
 ### Several nights
 

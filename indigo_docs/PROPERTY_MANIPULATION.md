@@ -185,6 +185,18 @@ CCD Imager Simulator.CCD_SET_FITS_HEADER.NAME = "MYKEY"
 CCD Imager Simulator.CCD_SET_FITS_HEADER.VALUE = "5"
 ```
 
+- Clearing a **TEXT_VECTOR** item with an empty value, written as `ITEM=` or `ITEM=""`; the other items keep their values. Number and switch items always need a value. In scripts, note that `"Device.PROPERTY.ITEM=$VALUE"` with an empty or unset variable now clears a text item instead of failing. The tool prints the property as it was and then as it is after the change:
+```
+indigo@indigosky:~ $ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="
+...
+Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP = ""
+Scheduler Agent.AGENT_SCHEDULER_HOOKS.SHUTDOWN = ""
+Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE = ""
+Scheduler Agent.AGENT_SCHEDULER_HOOKS.NIGHT_START = ""
+Scheduler Agent.AGENT_SCHEDULER_HOOKS.NIGHT_END = ""
+Scheduler Agent.AGENT_SCHEDULER_HOOKS.RESUME = ""
+```
+
 - Setting **NUMBER_VECTOR**:
 ```
 indigo@indigosky:~ $ indigo_prop_tool set "CCD Imager Simulator.CCD_FRAME.WIDTH=1000;HEIGHT=800"

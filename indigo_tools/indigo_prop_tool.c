@@ -238,12 +238,18 @@ int parse_set_property_string(const char *prop_string, property_change_request *
 		}
 		const char *equals = memchr(cursor, '=', end - cursor);
 		int index = scr->item_count;
-		if (equals == NULL || !copy_field(scr->item_name[index], sizeof(scr->item_name[index]), cursor, equals) || !copy_field(scr->value_string[index], sizeof(scr->value_string[index]), equals + 1, end)) {
+		if (equals == NULL || !copy_field(scr->item_name[index], sizeof(scr->item_name[index]), cursor, equals)) {
+			return -1;
+		}
+		// an empty value, "item=" or "item=\"\"", clears a text item
+		if (equals + 1 == end) {
+			scr->value_string[index][0] = '\0';
+		} else if (!copy_field(scr->value_string[index], sizeof(scr->value_string[index]), equals + 1, end)) {
 			return -1;
 		}
 		trim_spaces(scr->item_name[index]);
 		trim_spaces(scr->value_string[index]);
-		if (!scr->item_name[index][0] || !scr->value_string[index][0]) {
+		if (!scr->item_name[index][0]) {
 			return -1;
 		}
 		process_quotes(scr->value_string[index]);
@@ -693,6 +699,10 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 					bool file_provided = false;
 					for (i = 0; i < change_request.item_count; i++) {
 						if (!strcmp(AGENT_SCRIPTING_SCRIPT_ITEM_NAME, change_request.item_name[i]) || !strcmp(AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, change_request.item_name[i])) {
+							if (!change_request.value_string[i][0]) {
+								fprintf(stderr, "Item '%s' needs a file name\n", change_request.item_name[i]);
+								exit(1);
+							}
 							int res = read_file(change_request.value_string[i], &txt_values[i]);
 							if (res < 0) {
 								fprintf(stderr, "Can't read '%s' file\n", change_request.value_string[i]);
@@ -728,12 +738,20 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 				break;
 			case INDIGO_NUMBER_VECTOR:
 				for (i = 0; i< change_request.item_count; i++) {
+					if (!change_request.value_string[i][0]) {
+						fprintf(stderr, "Item '%s' of a number property needs a value\n", change_request.item_name[i]);
+						exit(1);
+					}
 					dbl_values[i] = strtod(change_request.value_string[i], NULL);
 				}
 				indigo_change_number_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const double *)dbl_values);
 				break;
 			case INDIGO_SWITCH_VECTOR:
 				for (i = 0; i< change_request.item_count; i++) {
+					if (!change_request.value_string[i][0]) {
+						fprintf(stderr, "Item '%s' of a switch property needs ON or OFF\n", change_request.item_name[i]);
+						exit(1);
+					}
 					if (!strcmp("ON", str_upper_case(change_request.value_string[i]))) {
 						bool_values[i] = true;
 					} else if (!strcmp("OFF", str_upper_case(change_request.value_string[i]))) {
@@ -910,6 +928,8 @@ static void print_help(const char *name) {
 	       "       -t  | --time-to-wait seconds        (default: 2)\n"
 	       "       -w  | --wait OK|BUSY|ALERT|IDLE|ANY wait for property state (ANY=any update)\n"
 	       "       -s  | --track-states                print property state as string\n"
+	       "notes:\n"
+	       "       an empty value, item= or item=\"\", clears a text item; number and switch items need a value\n"
 	);
 }
 
