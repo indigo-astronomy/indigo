@@ -855,6 +855,40 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_DELETE_TASK.NAME=M31 LRGB"
 - The scheduler starts stopped. Press `START`. If you press it during a night with work, `STARTUP` runs and then `NIGHT_START`, so the equipment is prepared again.
 - Standby is not kept: after `START` the first task runs without `RESUME`.
 
+## Trying the scheduler by hand
+
+The scheduler follows the real clock and the real sky, so waiting for dusk to see what happens takes hours. The sandbox tool `tools/scheduler_sandbox.py` makes this quick. It starts its own `indigo_server` with the Scripting, Mount and Scheduler agents in a temporary directory, so your configuration is never touched, and gives you a prompt:
+
+```
+python3 tools/scheduler_sandbox.py              agents only, tasks only wait
+python3 tools/scheduler_sandbox.py --simulators also the Imager and Guider agents with the CCD and mount simulators
+```
+
+It puts the site on the equator and moves its longitude to choose the time of day. The scheduler sees the change within a second:
+
+| Command | What it does |
+|---|---|
+| `night`, `day`, `time 21.5` | Local midnight, noon, or any local mean solar time |
+| `dusk 30`, `dawn 30` | The scheduler's night starts or ends in 30 seconds, with the night limit and the offsets set in the agent |
+| `task NAME SECONDS [key=value ...] [fail]` | A task that only waits; `key=value` adds header keys, for example `twilight=nautical priority="high 80"`, and `fail` makes its run fail |
+| `urgent NAME SECONDS ...` | The same as a one-off urgent task |
+| `hold` | A task for the day after tomorrow, which keeps the scheduler from stopping when the other tasks are finished |
+| `hooks idle=Park resume=` | Set or clear hook items |
+| `limit nautical`, `set NIGHT_START_OFFSET=-30` | The night limit and the settings |
+| `start`, `stop`, `abort`, `reset NAME`, `delete NAME` | Control the scheduler and the tasks |
+| `status`, `plan`, `history` | The task list, the night plan and the history |
+| `wait 10`, `until TEXT 60` | Wait while new scheduler messages are printed, or until one contains `TEXT` |
+
+New messages of the scheduler are printed after every command. The tool also prints the address of the server's web control panel, where you can watch the same scheduler. It starts with `IDLE_CHECK_INTERVAL` at 1 second and `IDLE_PARK_AFTER` at 0. Constraints are checked on a five-minute grid, so a task with `@twilight` starts up to five minutes after the twilight limit; tasks without constraints start at once.
+
+A night with all the hooks takes about a minute, see `tools/scheduler_sandbox_night.txt`:
+
+```
+python3 tools/scheduler_sandbox.py --script tools/scheduler_sandbox_night.txt
+```
+
+With `--script`, or with commands on standard input, an `until` that times out ends the run with exit code 1, so a scenario can serve as a test. `--dir DIR` keeps the server log and configuration in `DIR`.
+
 ## Troubleshooting
 
 | Problem | What to check |

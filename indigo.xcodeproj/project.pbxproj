@@ -2869,6 +2869,8 @@
 		5995B7F82F312D8900A229E1 /* INDIGO_TEST_FRAMEWORK.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_TEST_FRAMEWORK.md; sourceTree = "<group>"; };
 		5995B7F92F312D8900A229E1 /* rotator_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rotator_compliance.sh; sourceTree = "<group>"; };
 		5995FFEA306832330095A792 /* run_driver_test.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_driver_test.py; sourceTree = "<group>"; };
+		812D59FB5C98400505086E26 /* scheduler_sandbox.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = scheduler_sandbox.py; sourceTree = "<group>"; };
+		E4D9A3AFA6BD607D8ABF9354 /* scheduler_sandbox_night.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = scheduler_sandbox_night.txt; sourceTree = "<group>"; };
 		C0DE20261029A10000000001 /* compare_solvers.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = compare_solvers.py; sourceTree = "<group>"; };
 		5996614522CE69F500330652 /* Handbook.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Handbook.pdf; sourceTree = "<group>"; };
 		5996614F22CE6A5F00330652 /* ao_sx_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ao_sx_simulator.ino; sourceTree = "<group>"; };
@@ -9605,6 +9607,8 @@
 			children = (
 				1DD24DE680C3E763067271B0 /* build_ftdi_macos.sh */,
 				5995FFEA306832330095A792 /* run_driver_test.py */,
+				812D59FB5C98400505086E26 /* scheduler_sandbox.py */,
+				E4D9A3AFA6BD607D8ABF9354 /* scheduler_sandbox_night.txt */,
 				C0DE20261029A10000000001 /* compare_solvers.py */,
 				59E4ADBC30607CA4002B1629 /* build_windows_installer.sh */,
 				59E4ADBD30607CA4002B1629 /* make_test_summary.py */,

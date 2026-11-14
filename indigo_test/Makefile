@@ -2626,6 +2626,11 @@ $(INTEGRATION_BUILD)/test_agent_scheduler_simulators: integration/run_scheduler_
 	printf '%s\n' '#!/bin/sh' 'exec python3 "$$(dirname "$$0")/../../integration/run_scheduler_simulators.py" "$$@"' > $@
 	chmod +x $@
 
+.PHONY: test-scheduler-sandbox
+# opt-in: one night of the scheduler in a private server through the hand-testing tool
+test-scheduler-sandbox: check-lib
+	python3 ../tools/scheduler_sandbox.py --script ../tools/scheduler_sandbox_night.txt
+
 .PHONY: test-agent-scheduler
 test-agent-scheduler: check-lib $(INTEGRATION_BUILD)/test_agent_scheduler
 	$(INTEGRATION_BUILD)/test_agent_scheduler
