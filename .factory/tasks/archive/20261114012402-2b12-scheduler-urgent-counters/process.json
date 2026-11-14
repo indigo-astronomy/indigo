@@ -1,0 +1,104 @@
+{
+  "version": 2,
+  "task": "20261114012402-2b12-scheduler-urgent-counters",
+  "scope": [
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c",
+    "indigo_libs/indigo/indigo_names.h",
+    "indigo_docs/PROPERTIES.md",
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    "indigo_test/integration/test_agent_scheduler.c",
+    "tools/scheduler_sandbox.py",
+    "MIGRATION_STATUS.md",
+    "indigo_drivers/agent_scheduler/README.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261114012402-2b12-scheduler-urgent-counters.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_scheduler_asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261114012402-2b12-scheduler-urgent-counters.json": [
+      "100644",
+      "blob",
+      "21848e4db6b9d1e8bec443518d90058cbd7fab9d"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "75efcaf420bfb4920f958ebeb056e5a5459d6c7e"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "553e852973ef2c0f3711bb20d78c677e7622628a"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "be9074c1f23b8db38746b70199e97a695e963d54"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "6da4151dba18c885c0e4370e1381481d2d1dabaf"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "079838593aa9f73d98c79bf35789afc49394c192"
+    ],
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "709cbf8e431ea4fa47990492a85896ecc80c83f8"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "ff0ad9507aa79bf8d52f90d73cdf48927a2abd8f"
+    ],
+    "indigo_libs/indigo/indigo_names.h": [
+      "100644",
+      "blob",
+      "c3a6afcbe738054d0888ea8664b5ee33e20c79b0"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "efecdfc731df1b40b876bb19af97c05e857cb52a"
+    ],
+    "tools/scheduler_sandbox.py": [
+      "100755",
+      "blob",
+      "833665e76375e1441a59d3266115b2be53603916"
+    ]
+  }
+}
