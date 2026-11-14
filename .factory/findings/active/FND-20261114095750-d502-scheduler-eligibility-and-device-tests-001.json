@@ -1,0 +1,19 @@
+{
+  "title": "Trailing whitespace of a stored scheduler task text is lost across a restart",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261114095750-d502-scheduler-eligibility-and-device-tests",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "The Scheduler Agent saves each stored task as an AGENT_SCHEDULER_ADD_TASK change in its configuration, and the configuration reader trims trailing whitespace of text values. A task whose text ends with a newline (the usual case) is therefore restored without it, so the text a client downloads from AGENT_SCHEDULER_TASK_<n> after a restart differs from the uploaded one by its trailing whitespace. Scheduling is not affected; the header and the body are unchanged. Owner chose on 2026-11-14 to record this only. Options for later: trim trailing whitespace on upload and edit so the text is the same before and after a restart, or document it.",
+  "evidence": "Integration case largest_task_text_is_stored_and_restored on 2026-11-14: a 16384-byte task ending with a newline came back with 16383 bytes after a restart; ending with a non-whitespace character, all 16384 bytes were restored (verification.md of the task).",
+  "resolution": null,
+  "id": "FND-20261114095750-d502-scheduler-eligibility-and-device-tests-001"
+}
