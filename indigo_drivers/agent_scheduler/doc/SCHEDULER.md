@@ -813,4 +813,6 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - labels cut to 127 bytes, and list properties redefined only when their content changes;
   - a body that fails only when it runs, and a body without `start()`, counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task;
-  - `RESET_ALL` and `DELETE_ALL`: their hints, the item order, a running task left alone, the order of pending urgent tasks kept, `DELETE_ALL` rejected while the scheduler runs, the tasks named as hooks kept, and both results across a restart.
+  - `RESET_ALL` and `DELETE_ALL`: their hints, the item order, a running task left alone, the order of pending urgent tasks kept, `DELETE_ALL` rejected while the scheduler runs, the tasks named as hooks kept, and both results across a restart;
+  - `RESET_ALL` on finished work: repeat and retry counters cleared, a script error checked again, a disabled task kept disabled, the task name ignored, an empty list, and the work run again after `START`;
+  - `DELETE_ALL` rejected while a stop waits for the running task and while the shutdown hook runs, a hook name in a different case protecting its task, the deleted task's property removed, the history unchanged, and the name and slot free again.

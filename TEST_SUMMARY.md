@@ -40,7 +40,7 @@
 | agent_platesolver | 2026-10-30 13:43 | 3.0.0.25 | linux x64 | simulator | 154 / 154 | ✅ OK |
 |  | 2026-11-01 21:08 | 3.0.0.27 | mac arm64 | simulator | 159 / 159 | ✅ OK |
 | agent_scheduler | 2026-11-13 02:27 | 3.0.0.5 | linux arm64 | simulator | 43 / 43 | ✅ OK |
-|  | 2026-11-14 10:25 | 3.0.0.8 | linux x64 | simulator | 63 / 63 | ✅ OK |
+|  | 2026-11-14 11:12 | 3.0.0.8 | linux x64 | simulator | 65 / 65 | ✅ OK |
 | agent_scripting | 2026-09-24 12:56 | 3.0.0.13 | linux x64 | simulator | 60 / 60 | ✅ OK |
 |  | 2026-11-05 13:28 | 3.0.0.15 | mac arm64 | simulator | 241 / 239 | ❌ Failed |
 |  | 2026-11-13 00:36 | 3.0.0.17 | linux arm64 | simulator | 238 / 236 | ❌ Failed |

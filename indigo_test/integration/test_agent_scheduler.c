@@ -1782,6 +1782,88 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	ASSERT_EQ_INT(0, task_count());
 }
 
+static void reset_all_runs_finished_work_again(void) {
+	char message[INDIGO_VALUE_SIZE];
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks reset: 0", message);
+	REQUIRE(upload("// @task Twice\n// @repeat 2\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Broken\n// @priority low\n// @retry 1\nif (!scheduler_task.estimate) { throw new Error(\"broken body\"); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Syntax\n// @priority low 10\nvar = ;\n"));
+	REQUIRE(upload("// @task Off\n// @priority low 20\n" BODY_WAIT(1)));
+	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_task_state("Twice", "DONE, run 2/2", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "FAILED, retries left 0", 5));
+	ASSERT_TRUE(wait_task_state("Syntax", "SCRIPT ERROR", 5));
+	ASSERT_EQ_INT(1, count_messages("Task 'Syntax' has a script error"));
+	// the task name is not used, an unknown one does not matter
+	REQUIRE(change_text(AGENT_SCHEDULER_TASK_NAME_PROPERTY_NAME, AGENT_SCHEDULER_TASK_NAME_NAME_ITEM_NAME, "Nobody", INDIGO_OK_STATE, NULL));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks reset: 4", message);
+	// the run and retry counters are cleared, the script is checked again, a disabled task stays disabled
+	ASSERT_TRUE(wait_task_state("Twice", "QUEUED, run 0/2", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "QUEUED, retries left 1", 5));
+	ASSERT_TRUE(wait_message("Task 'Syntax' has a script error", 2, 15));
+	ASSERT_TRUE(wait_task_state("Syntax", "SCRIPT ERROR", 5));
+	ASSERT_TRUE(wait_task_state("Off", "DISABLED", 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_DONE_ITEM_NAME, 0, 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_FAILED_ITEM_NAME, 0, 5));
+	// a new start runs the finished work again
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 2, 30));
+	ASSERT_TRUE(wait_task_state("Twice", "DONE, run 2/2", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "FAILED, retries left 0", 5));
+	ASSERT_EQ_INT(4, count_messages("Starting task 'Twice'"));
+	ASSERT_EQ_INT(4, count_messages("Starting task 'Broken'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Syntax'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Off'"));
+}
+
+static void delete_all_waits_for_the_shutdown_hook(void) {
+	char message[INDIGO_VALUE_SIZE];
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks deleted: 0", message);
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(2)));
+	REQUIRE(upload("// @task Long\n" BODY_WAIT(3)));
+	// a hook names its task regardless of case
+	REQUIRE(set_hooks("", "park", ""));
+	ASSERT_TRUE(wait_task_state("Park", "SHUTDOWN HOOK", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
+	// a stop waits for the task, then runs the shutdown hook; the scheduler is not stopped before both end
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "only while the scheduler is stopped") != NULL);
+	ASSERT_TRUE(wait_message("Starting hook 'Park'", 1, 15));
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "only while the scheduler is stopped") != NULL);
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	int entries = history_count();
+	indigo_property *task = snapshot("AGENT_SCHEDULER_TASK_1");
+	REQUIRE(task != NULL);
+	ASSERT_STREQ("Long", task->label);
+	indigo_release_property(task);
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks deleted: 1, tasks named as hooks kept: 1", message);
+	// the property of the deleted task goes, the history stays as it was
+	ASSERT_TRUE(snapshot("AGENT_SCHEDULER_TASK_1") == NULL);
+	task = snapshot("AGENT_SCHEDULER_TASK_0");
+	REQUIRE(task != NULL);
+	ASSERT_STREQ("Park", task->label);
+	indigo_release_property(task);
+	ASSERT_EQ_INT(entries, history_count());
+	ASSERT_TRUE(wait_plan_contains("Long", false, 5));
+	// the name and the slot can be used again
+	REQUIRE(upload("// @task Long\n" BODY_WAIT(1)));
+	task = snapshot("AGENT_SCHEDULER_TASK_1");
+	REQUIRE(task != NULL);
+	ASSERT_STREQ("Long", task->label);
+	indigo_release_property(task);
+}
+
 static void history_records_runs(void) {
 	REQUIRE(upload("// @task Good\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Bad\n// @priority low\nif (!scheduler_task.estimate) { throw new Error(\"broken\"); }\n" BODY_WAIT(1)));
@@ -2121,6 +2203,8 @@ static const indigo_test_case cases[] = {
 	{ "urgent_tasks_are_counted", urgent_tasks_are_counted },
 	{ "reset_all_keeps_running_task_and_urgent_order", reset_all_keeps_running_task_and_urgent_order },
 	{ "delete_all_keeps_hooks_and_needs_a_stopped_scheduler", delete_all_keeps_hooks_and_needs_a_stopped_scheduler },
+	{ "reset_all_runs_finished_work_again", reset_all_runs_finished_work_again },
+	{ "delete_all_waits_for_the_shutdown_hook", delete_all_waits_for_the_shutdown_hook },
 	{ "night_end_and_shutdown_share_a_task", night_end_and_shutdown_share_a_task },
 	{ "stop_at_night_runs_only_the_shutdown_hook", stop_at_night_runs_only_the_shutdown_hook },
 	{ "failed_night_end_is_reported", failed_night_end_is_reported },
