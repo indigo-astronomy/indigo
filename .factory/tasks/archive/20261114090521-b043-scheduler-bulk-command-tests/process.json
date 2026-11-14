@@ -1,0 +1,80 @@
+{
+  "version": 2,
+  "task": "20261114090521-b043-scheduler-bulk-command-tests",
+  "scope": [
+    "indigo_test/integration/test_agent_scheduler.c",
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md",
+    "MIGRATION_STATUS.md",
+    "indigo_drivers/agent_scheduler/README.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261114090521-b043-scheduler-bulk-command-tests.json",
+    ".factory/findings/active/FND-20261114090521-b043-scheduler-bulk-command-tests-001.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_scheduler_asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261114090521-b043-scheduler-bulk-command-tests.json": [
+      "100644",
+      "blob",
+      "991f239f369804e617ff320b2b204fe2bebb95e7"
+    ],
+    ".factory/findings/active/FND-20261114090521-b043-scheduler-bulk-command-tests-001.json": [
+      "100644",
+      "blob",
+      "16f194fe5dee43a48e6d2262ffb2d7ae12f7ac58"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "644ee520cfe28921e96f43a65a466bedb347995c"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "53280fa0f67cecd686e0336bc14ff854caa071e8"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "8a49731bf8fe58fcdea60ee27efc712e5bd1e382"
+    ],
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "669ad43775ce16af81ec297584c2e4539e7d1d9a"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "d437dfa6dd069763d14bb202a0919aeb3ef78e4d"
+    ]
+  }
+}
