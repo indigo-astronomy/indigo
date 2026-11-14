@@ -650,7 +650,17 @@ The tasks, their states and counters, the settings, the hooks, the night limit a
 | Ok | Stopped, after `STOP` or after all tasks finished |
 | Alert | Stopped after `ABORT` (also pressed while stopped), a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a stop timeout |
 
-Its items count the tasks: `DONE` the finished ones, `FAILED` the failed and expired ones, and `TOTAL` all entries of the task list, including hook tasks and pending urgent tasks.
+Its items count the tasks:
+
+| Item | Counts |
+|---|---|
+| `DONE` | Tasks of the list that finished, including stored `@priority urgent` tasks |
+| `FAILED` | Tasks of the list that failed or expired |
+| `URGENT_DONE` | One-off urgent tasks, submitted through `AGENT_SCHEDULER_URGENT_TASK`, that succeeded |
+| `URGENT_FAILED` | One-off urgent tasks that failed or expired |
+| `TOTAL` | All entries of the task list, including hook tasks and pending urgent tasks |
+
+A one-off urgent task leaves the task list when it ends, so it is counted in `URGENT_DONE` or `URGENT_FAILED` instead. A deleted or aborted one is not counted. The urgent counters survive restarts and are reset together with the history.
 
 `AGENT_SCHEDULER_CURRENT` says what the scheduler does now:
 
@@ -663,7 +673,7 @@ Its items count the tasks: `DONE` the finished ones, `FAILED` the failed and exp
 
 ```
 indigo_prop_tool get_state "Scheduler Agent.AGENT_SCHEDULER_STATE"
-indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_STATE.DONE;FAILED;TOTAL"
+indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_STATE.DONE;FAILED;URGENT_DONE;URGENT_FAILED;TOTAL"
 indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_CURRENT.CURRENT;NEXT;NEXT_START;REASON"
 ```
 
@@ -729,7 +739,7 @@ The plan is a forecast. It assumes that every run succeeds and takes its expecte
 | `preempted` | Busy | An urgent task interrupted the run |
 | `aborted` | Busy | `ABORT` or a delete of the running task. When the sequence then does not stop within `STOP_TIMEOUT`, the reason says `did not stop in time` |
 
-The history survives restarts. To clear it:
+The history survives restarts. To clear it, together with the urgent counters of `AGENT_SCHEDULER_STATE`:
 
 ```
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_CLEAR_HISTORY.CLEAR=ON"
@@ -923,7 +933,7 @@ All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIE
 | `AGENT_SCHEDULER_TASK_NAME` | text | `NAME` | The task that `AGENT_SCHEDULER_TASK_COMMAND` applies to |
 | `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN` | Task commands |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Run the scheduler |
-| `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `TOTAL` | Scheduler state and task counters |
+| `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Scheduler state and task counters |
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `NEXT`, `NEXT_START`, `REASON` | What runs now and next |
 | `AGENT_SCHEDULER_TASK_STATE` | light | one per task | The task list |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The night plan |

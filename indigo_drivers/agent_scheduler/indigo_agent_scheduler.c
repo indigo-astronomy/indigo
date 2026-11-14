@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000006
+#define DRIVER_VERSION 0x03000007
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -54,6 +54,7 @@
 #define SCHEDULER_RESULT_PROPERTY	"SCHEDULER_RESULT"
 #define SCHEDULER_ESTIMATE_PROPERTY	"SCHEDULER_ESTIMATE"
 #define MAX_HISTORY								200
+#define MAX_URGENT_COUNT					1000000
 #define ESTIMATE_TIMEOUT					10
 #define MAX_DURATION							86400
 #define MAX_PLAN_RUNS							256
@@ -94,7 +95,9 @@
 #define STATE_PROPERTY						(PRIVATE_DATA->state_property)
 #define STATE_DONE_ITEM						(STATE_PROPERTY->items + 0)
 #define STATE_FAILED_ITEM					(STATE_PROPERTY->items + 1)
-#define STATE_TOTAL_ITEM					(STATE_PROPERTY->items + 2)
+#define STATE_URGENT_DONE_ITEM		(STATE_PROPERTY->items + 2)
+#define STATE_URGENT_FAILED_ITEM	(STATE_PROPERTY->items + 3)
+#define STATE_TOTAL_ITEM					(STATE_PROPERTY->items + 4)
 #define CURRENT_PROPERTY					(PRIVATE_DATA->current_property)
 #define CURRENT_CURRENT_ITEM			(CURRENT_PROPERTY->items + 0)
 #define CURRENT_NEXT_ITEM					(CURRENT_PROPERTY->items + 1)
@@ -266,6 +269,9 @@ typedef struct {
 	scheduler_observed observed;
 	history_entry history[MAX_HISTORY];
 	int history_count;
+	// finished one-off urgent tasks, which leave the task list; saved and cleared with the history
+	int urgent_done;
+	int urgent_failed;
 	unsigned history_serial;
 	scheduler_task tasks[MAX_TASKS];
 	int order[MAX_TASKS];
@@ -665,10 +671,14 @@ static void add_history(indigo_device *device, scheduler_task *task, run_result 
 }
 
 static char *history_text(indigo_device *device) {
-	size_t size = PRIVATE_DATA->history_count * (INDIGO_VALUE_SIZE + 128) + 1;
+	size_t size = PRIVATE_DATA->history_count * (INDIGO_VALUE_SIZE + 128) + 64;
 	char *text = indigo_safe_malloc(size);
 	char *out = text;
 	*out = 0;
+	// the urgent counters go first; a version without them skips the line, which has too few fields for an entry
+	if (PRIVATE_DATA->urgent_done || PRIVATE_DATA->urgent_failed) {
+		out += snprintf(out, size, "#urgent\t%d\t%d\n", PRIVATE_DATA->urgent_done, PRIVATE_DATA->urgent_failed);
+	}
 	for (int i = PRIVATE_DATA->history_count - 1; i >= 0; i--) {
 		history_entry *entry = PRIVATE_DATA->history + i;
 		// the configuration reader trims trailing whitespace, so no field is saved as a space
@@ -679,6 +689,7 @@ static char *history_text(indigo_device *device) {
 
 static void restore_history(indigo_device *device, const char *text) {
 	PRIVATE_DATA->history_count = 0;
+	PRIVATE_DATA->urgent_done = PRIVATE_DATA->urgent_failed = 0;
 	const char *line = text;
 	while (line && *line) {
 		const char *end = strchr(line, '\n');
@@ -700,7 +711,11 @@ static void restore_history(indigo_device *device, const char *text) {
 				field = tab + 1;
 			}
 			// trailing empty fields may have been trimmed
-			if (count >= 5) {
+			if (count >= 3 && !strcmp(fields[0], "#urgent")) {
+				int done = atoi(fields[1]), failed = atoi(fields[2]);
+				PRIVATE_DATA->urgent_done = done < 0 ? 0 : done > MAX_URGENT_COUNT ? MAX_URGENT_COUNT : done;
+				PRIVATE_DATA->urgent_failed = failed < 0 ? 0 : failed > MAX_URGENT_COUNT ? MAX_URGENT_COUNT : failed;
+			} else if (count >= 5) {
 				run_result result = RESULT_FAILED;
 				for (int i = 0; i < 4; i++) {
 					if (!strcmp(fields[4], run_result_names[i])) {
@@ -874,9 +889,11 @@ static void update_counters(indigo_device *device) {
 			failed++;
 		}
 	}
-	if (STATE_DONE_ITEM->number.value != done || STATE_FAILED_ITEM->number.value != failed || STATE_TOTAL_ITEM->number.value != PRIVATE_DATA->order_count) {
+	if (STATE_DONE_ITEM->number.value != done || STATE_FAILED_ITEM->number.value != failed || STATE_URGENT_DONE_ITEM->number.value != PRIVATE_DATA->urgent_done || STATE_URGENT_FAILED_ITEM->number.value != PRIVATE_DATA->urgent_failed || STATE_TOTAL_ITEM->number.value != PRIVATE_DATA->order_count) {
 		STATE_DONE_ITEM->number.value = done;
 		STATE_FAILED_ITEM->number.value = failed;
+		STATE_URGENT_DONE_ITEM->number.value = PRIVATE_DATA->urgent_done;
+		STATE_URGENT_FAILED_ITEM->number.value = PRIVATE_DATA->urgent_failed;
 		STATE_TOTAL_ITEM->number.value = PRIVATE_DATA->order_count;
 		indigo_update_property(device, STATE_PROPERTY, NULL);
 	}
@@ -1087,6 +1104,17 @@ static void finish_hook(indigo_device *device, run_result result, const char *me
 	schedule_save(device);
 }
 
+// a one-off urgent task that ends leaves the task list, its outcome is counted apart
+static void count_urgent(indigo_device *device, bool success) {
+	if (success) {
+		if (PRIVATE_DATA->urgent_done < MAX_URGENT_COUNT) {
+			PRIVATE_DATA->urgent_done++;
+		}
+	} else if (PRIVATE_DATA->urgent_failed < MAX_URGENT_COUNT) {
+		PRIVATE_DATA->urgent_failed++;
+	}
+}
+
 static void finish_task(indigo_device *device, bool success, const char *message) {
 	if (PRIVATE_DATA->kind != RUN_TASK) {
 		finish_hook(device, success ? RESULT_SUCCEEDED : RESULT_FAILED, message);
@@ -1121,6 +1149,7 @@ static void finish_task(indigo_device *device, bool success, const char *message
 	PRIVATE_DATA->current = -1;
 	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	if (!task->stored) {
+		count_urgent(device, success);
 		remove_task(device, slot);
 	} else {
 		apply_pending_edit(device, task, slot);
@@ -1327,6 +1356,7 @@ static void update_task_states(indigo_device *device, time_t now) {
 			indigo_send_message(device, NULL, "Task '%s' expired", task->header.name);
 			schedule_save(device);
 			if (!task->stored) {
+				count_urgent(device, false);
 				remove_task(device, slot);
 				i--;
 			}
@@ -2407,6 +2437,7 @@ static void command_handler(indigo_device *device, void *data) {
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 	} else if (indigo_property_match_changeable(CLEAR_HISTORY_PROPERTY, request)) {
 		PRIVATE_DATA->history_count = 0;
+		PRIVATE_DATA->urgent_done = PRIVATE_DATA->urgent_failed = 0;
 		update_history_property(device);
 		CLEAR_HISTORY_ITEM->sw.value = false;
 		CLEAR_HISTORY_PROPERTY->state = INDIGO_OK_STATE;
@@ -2509,12 +2540,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(CONTROL_STOP_ITEM, AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME, "Stop after the running task", false);
 		indigo_init_switch_item(CONTROL_ABORT_ITEM, AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME, "Abort", false);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_STATE
-		STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_STATE_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
+		STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_STATE_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 5);
 		if (STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(STATE_DONE_ITEM, AGENT_SCHEDULER_STATE_DONE_ITEM_NAME, "Done", 0, MAX_TASKS, 1, 0);
 		indigo_init_number_item(STATE_FAILED_ITEM, AGENT_SCHEDULER_STATE_FAILED_ITEM_NAME, "Failed or expired", 0, MAX_TASKS, 1, 0);
+		indigo_init_number_item(STATE_URGENT_DONE_ITEM, AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME, "Urgent done", 0, MAX_URGENT_COUNT, 1, 0);
+		indigo_init_number_item(STATE_URGENT_FAILED_ITEM, AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, "Urgent failed or expired", 0, MAX_URGENT_COUNT, 1, 0);
 		indigo_init_number_item(STATE_TOTAL_ITEM, AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, "Total", 0, MAX_TASKS, 1, 0);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_CURRENT
 		CURRENT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_CURRENT_PROPERTY_NAME, SCHEDULER_GROUP, "Current task", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);

@@ -769,8 +769,8 @@ static void run_order_by_priority(void) {
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 2));
 	indigo_property *state = snapshot(AGENT_SCHEDULER_STATE_PROPERTY_NAME);
 	REQUIRE(state != NULL);
-	ASSERT_EQ_INT(4, (int)state->items[0].number.value);
-	ASSERT_EQ_INT(4, (int)state->items[2].number.value);
+	ASSERT_EQ_INT(4, (int)indigo_get_item(state, AGENT_SCHEDULER_STATE_DONE_ITEM_NAME)->number.value);
+	ASSERT_EQ_INT(4, (int)indigo_get_item(state, AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME)->number.value);
 	indigo_release_property(state);
 }
 
@@ -1588,6 +1588,84 @@ static void no_night_is_reported(void) {
 	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
 }
 
+// a counter of AGENT_SCHEDULER_STATE, -1 when it is missing
+static int state_counter(const char *item) {
+	indigo_property *property = snapshot(AGENT_SCHEDULER_STATE_PROPERTY_NAME);
+	indigo_item *found = property ? indigo_get_item(property, item) : NULL;
+	int value = found ? (int)found->number.value : -1;
+	indigo_release_property(property);
+	return value;
+}
+
+static bool wait_counter(const char *item, int value, double timeout) {
+	for (double t = 0; t < timeout; t += 0.01) {
+		if (state_counter(item) == value) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timeout waiting for %s = %d, it is %d\n", item, value, state_counter(item));
+	return false;
+}
+
+static void urgent_tasks_are_counted(void) {
+	char past[32], future[32], text[256];
+	time_t now = time(NULL);
+	utc(now - now % 60 - 120, past);
+	utc(now + 2 * 86400, future);
+	// the items come in this order, TOTAL last
+	indigo_property *state = snapshot(AGENT_SCHEDULER_STATE_PROPERTY_NAME);
+	REQUIRE(state != NULL && state->count == 5);
+	ASSERT_STREQ(AGENT_SCHEDULER_STATE_DONE_ITEM_NAME, state->items[0].name);
+	ASSERT_STREQ(AGENT_SCHEDULER_STATE_FAILED_ITEM_NAME, state->items[1].name);
+	ASSERT_STREQ(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME, state->items[2].name);
+	ASSERT_STREQ(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, state->items[3].name);
+	ASSERT_STREQ(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, state->items[4].name);
+	indigo_release_property(state);
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(upload("// @task Stored urgent\n// @priority urgent\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Stored urgent", "DONE", 15));
+	REQUIRE(urgent("// @task Flash\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 15));
+	REQUIRE(urgent("// @task Broken\nif (!scheduler_task.estimate) { throw new Error(\"no target\"); }\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Broken' failed", 1, 15));
+	snprintf(text, sizeof(text), "// @task Too late\n// @window .. %s\n" BODY_WAIT(1), past);
+	REQUIRE(urgent(text));
+	ASSERT_TRUE(wait_message("Task 'Too late' expired", 1, 15));
+	// a deleted urgent task is not counted
+	REQUIRE(urgent("// @task Cancelled\n" BODY_WAIT(30)));
+	ASSERT_TRUE(wait_message("Starting task 'Cancelled'", 1, 15));
+	REQUIRE(change_text(AGENT_SCHEDULER_DELETE_TASK_PROPERTY_NAME, AGENT_SCHEDULER_DELETE_TASK_NAME_ITEM_NAME, "Cancelled", INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(wait_message("Task 'Cancelled' aborted and deleted", 1, 15));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME, 1, 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, 2, 5));
+	// the stored urgent task is counted with the task list
+	ASSERT_EQ_INT(1, state_counter(AGENT_SCHEDULER_STATE_DONE_ITEM_NAME));
+	ASSERT_EQ_INT(0, state_counter(AGENT_SCHEDULER_STATE_FAILED_ITEM_NAME));
+	ASSERT_EQ_INT(2, state_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME));
+	// kept across a restart, with the history
+	stop_scheduler();
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(start_scheduler());
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME, 1, 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, 2, 5));
+	// and cleared with it
+	unsigned before = revision(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME);
+	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_CLEAR_HISTORY_CLEAR_ITEM_NAME, true);
+	REQUIRE(wait_property_state(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME, 0, 5));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, 0, 5));
+	ASSERT_EQ_INT(1, state_counter(AGENT_SCHEDULER_STATE_DONE_ITEM_NAME));
+	// a clear is saved too
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(0, state_counter(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME));
+	ASSERT_EQ_INT(0, state_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME));
+}
+
 static void history_records_runs(void) {
 	REQUIRE(upload("// @task Good\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Bad\n// @priority low\nif (!scheduler_task.estimate) { throw new Error(\"broken\"); }\n" BODY_WAIT(1)));
@@ -1924,6 +2002,7 @@ static const indigo_test_case cases[] = {
 	{ "shared_hook_task_runs_once", shared_hook_task_runs_once },
 	{ "missing_night_hook_task_is_reported", missing_night_hook_task_is_reported },
 	{ "no_night_is_reported", no_night_is_reported },
+	{ "urgent_tasks_are_counted", urgent_tasks_are_counted },
 	{ "night_end_and_shutdown_share_a_task", night_end_and_shutdown_share_a_task },
 	{ "stop_at_night_runs_only_the_shutdown_hook", stop_at_night_runs_only_the_shutdown_hook },
 	{ "failed_night_end_is_reported", failed_night_end_is_reported },

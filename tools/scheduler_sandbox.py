@@ -351,7 +351,7 @@ class Sandbox:
 	def status(self):
 		state = (self.client.property(AGENT, "AGENT_SCHEDULER_STATE") or {})
 		counters = {i["name"]: i.get("value") for i in state.get("items", [])}
-		self.say("scheduler: %s, done %s, failed %s, total %s" % (state.get("state"), counters.get("DONE"), counters.get("FAILED"), counters.get("TOTAL")))
+		self.say("scheduler: %s, done %s, failed %s, urgent done %s, urgent failed %s, total %s" % (state.get("state"), counters.get("DONE"), counters.get("FAILED"), counters.get("URGENT_DONE"), counters.get("URGENT_FAILED"), counters.get("TOTAL")))
 		for item in ("CURRENT", "NEXT", "NEXT_START", "REASON"):
 			self.say("  %-10s %s" % (item, self.client.value(AGENT, "AGENT_SCHEDULER_CURRENT", item) or ""))
 		hooks = {i["name"]: i.get("value") for i in (self.client.property(AGENT, "AGENT_SCHEDULER_HOOKS") or {}).get("items", []) if i.get("value")}
