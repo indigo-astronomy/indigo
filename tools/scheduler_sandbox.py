@@ -146,6 +146,17 @@ def crossing_longitude(t, altitude, rising):
 	return round((hour_angle + ra - gmst) % 360, 5)
 
 
+def lan_address():
+	"""The address other computers reach this one at, the host name when it cannot be found."""
+	try:
+		with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+			# no packet is sent, connect() only selects the outgoing interface
+			probe.connect(("192.0.2.1", 9))
+			return probe.getsockname()[0]
+	except OSError:
+		return socket.gethostname()
+
+
 def time_longitude(hour):
 	hours = (time.time() % 86400) / 3600
 	return round(((hour - hours) * 15) % 360, 5)
@@ -476,6 +487,8 @@ def main():
 	parser.add_argument("--simulators", action="store_true", help="also load the Imager and Guider agents with the CCD and mount simulators")
 	parser.add_argument("--dir", type=Path, help="scratch directory to use and keep (default: a temporary one, removed at the end)")
 	parser.add_argument("--script", type=Path, help="read the commands from this file")
+	parser.add_argument("--name", default="Scheduler Sandbox", help="name announced by Bonjour, so that clients list the server (default: Scheduler Sandbox)")
+	parser.add_argument("--no-bonjour", action="store_true", help="do not announce the server on the network")
 	parser.add_argument("--fast", action=argparse.BooleanOptionalAction, default=True, help="IDLE_CHECK_INTERVAL 1 s and IDLE_PARK_AFTER 0 min at the start (default: on)")
 	args = parser.parse_args()
 	server = REPOSITORY / "build/bin/indigo_server"
@@ -502,7 +515,8 @@ def main():
 	client = None
 	failed = False
 	try:
-		process = subprocess.Popen([str(server), "--", "-p", str(port), "-b-"] + drivers, cwd=str(directory), env=environment, stdout=log, stderr=subprocess.STDOUT)
+		bonjour = ["-b-"] if args.no_bonjour else ["-b", args.name]
+		process = subprocess.Popen([str(server), "--", "-p", str(port)] + bonjour + drivers, cwd=str(directory), env=environment, stdout=log, stderr=subprocess.STDOUT)
 		deadline = time.monotonic() + 20
 		while True:
 			if process.poll() is not None:
@@ -531,7 +545,8 @@ def main():
 			client.change("Number", AGENT, "AGENT_SCHEDULER_SETTINGS", {"IDLE_CHECK_INTERVAL": 1, "IDLE_PARK_AFTER": 0})
 		sandbox.site(time_longitude(12))
 		client.new_messages()
-		print("Scheduler sandbox on port %d, web control panel http://localhost:%d/ctrl.html" % (port, port))
+		print("Scheduler sandbox on port %d%s" % (port, "" if args.no_bonjour else ", announced as '%s'" % args.name))
+		print("Web control panel: http://localhost:%d/ctrl.html, from another computer http://%s:%d/ctrl.html" % (port, lan_address(), port))
 		print("Scratch directory %s; the site is at local noon. Type help for the commands." % directory, flush=True)
 		source = args.script.open() if args.script else sys.stdin
 		if interactive:

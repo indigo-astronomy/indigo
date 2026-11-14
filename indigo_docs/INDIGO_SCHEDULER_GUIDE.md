@@ -879,7 +879,7 @@ It puts the site on the equator and moves its longitude to choose the time of da
 | `status`, `plan`, `history` | The task list, the night plan and the history |
 | `wait 10`, `until TEXT 60` | Wait while new scheduler messages are printed, or until one contains `TEXT` |
 
-New messages of the scheduler are printed after every command. The tool also prints the address of the server's web control panel, where you can watch the same scheduler. It starts with `IDLE_CHECK_INTERVAL` at 1 second and `IDLE_PARK_AFTER` at 0. Constraints are checked on a five-minute grid, so a task with `@twilight` starts up to five minutes after the twilight limit; tasks without constraints start at once.
+New messages of the scheduler are printed after every command. The server runs on a free port, not on 7624, and is announced on the network as "Scheduler Sandbox" (`--name` changes it, `--no-bonjour` turns it off), so clients that list INDIGO servers show it. At the start the tool prints the port and the address of the web control panel, both for this computer and for other computers on the network, where you can watch the same scheduler. Use `--port` to choose the port; a port already in use is refused. It starts with `IDLE_CHECK_INTERVAL` at 1 second and `IDLE_PARK_AFTER` at 0. Constraints are checked on a five-minute grid, so a task with `@twilight` starts up to five minutes after the twilight limit; tasks without constraints start at once.
 
 A night with all the hooks takes about a minute, see `tools/scheduler_sandbox_night.txt`:
 
