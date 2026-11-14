@@ -1,0 +1,102 @@
+{
+  "version": 2,
+  "task": "20261114001953-a717-scheduler-sandbox-and-prop-tool-empty",
+  "scope": [
+    "indigo_tools/indigo_prop_tool.c",
+    "indigo_test/unit/test_prop_tool_parser.c",
+    "indigo_test/unit/test_tool_input_safety.py",
+    "indigo_test/Makefile",
+    "tools/scheduler_sandbox.py",
+    "tools/scheduler_sandbox_night.txt",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    "indigo_docs/PROPERTY_MANIPULATION.md",
+    ".factory/completions/20261114001953-a717-scheduler-sandbox-and-prop-tool-empty.json",
+    ".factory/findings/active/FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-001.json",
+    ".factory/findings/active/FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-002.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_test",
+        "test-scheduler-sandbox"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261114001953-a717-scheduler-sandbox-and-prop-tool-empty.json": [
+      "100644",
+      "blob",
+      "ccfe9dd17d360be0277b51a79bc01c96438de56d"
+    ],
+    ".factory/findings/active/FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-001.json": [
+      "100644",
+      "blob",
+      "55fb7435b763ee17e7a479a1ca95099787d4a6e2"
+    ],
+    ".factory/findings/active/FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-002.json": [
+      "100644",
+      "blob",
+      "fb329e3b0016dd039b67270a312a2ae6563deba4"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "df35917c8ee4a68880c616cbbc6b00e29b4fbe4e"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "c1312d1cb77efa531e3487ce9f6d5267c4984f5c"
+    ],
+    "indigo_docs/PROPERTY_MANIPULATION.md": [
+      "100644",
+      "blob",
+      "61484d96311b5de6d1f1f8770b5f5941eb9a6405"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "11b25425792fefedf8b38e6ce917236fd7cd8063"
+    ],
+    "indigo_test/unit/test_prop_tool_parser.c": [
+      "100644",
+      "blob",
+      "7cfbaf051e33fc101085c45878c87abde0c83888"
+    ],
+    "indigo_test/unit/test_tool_input_safety.py": [
+      "100644",
+      "blob",
+      "3ce54cdebef84ae8073e1c7dae6ca4c7fc91470c"
+    ],
+    "indigo_tools/indigo_prop_tool.c": [
+      "100644",
+      "blob",
+      "32a9af6ef93895dbbbc095f722bdc1918723f084"
+    ],
+    "tools/scheduler_sandbox.py": [
+      "100755",
+      "blob",
+      "245ac56c3ff8755618f3edee2ec6be22dae9bbc7"
+    ],
+    "tools/scheduler_sandbox_night.txt": [
+      "100644",
+      "blob",
+      "06add1763c5260ebfb3741ab0287d8228066a851"
+    ]
+  }
+}

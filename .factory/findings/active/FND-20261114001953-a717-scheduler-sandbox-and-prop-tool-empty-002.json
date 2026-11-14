@@ -1,0 +1,19 @@
+{
+  "title": "Three tool input safety tests fail on Linux x86_64 once the suite builds",
+  "category": "quality",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261114001953-a717-scheduler-sandbox-and-prop-tool-empty",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_test/unit/test_tool_input_safety.py could not build on Linux: it compiled without -D_GNU_SOURCE (test_runner.h uses nftw) and linked libindigo_client.a without the Avahi libraries. With both fixed in this task, 11 of 14 tests pass; RawCropSafety.test_allocation_read_write_and_close_errors (faults fread1 and fread2: expected a failure exit, got 0 with no output) and GaiaCatalogSafety.test_join_overflow_fails_before_opening_truncated_path (the over-long joined path is opened instead of rejected) fail. They concern indigo_raw_crop and the Gaia catalogue reader, not indigo_prop_tool, and were hidden by the build failure. Next: reproduce each on Linux and macOS and fix the tools or the fault wrapper.",
+  "evidence": "python3 -B indigo_test/unit/test_tool_input_safety.py -v, Linux x86_64, 2026-11-14 (verification.md of the task).",
+  "resolution": null,
+  "id": "FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-002"
+}

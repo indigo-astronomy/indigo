@@ -1,0 +1,19 @@
+{
+  "title": "Sun and Moon positions referred to J2000 are used as coordinates of date in the scheduler sky",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261114001953-a717-scheduler-sandbox-and-prop-tool-empty",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigocat_sun_equatorial_coords() returns a right ascension about 0.37 degrees (26.9 years of precession) below a coordinates-of-date reference for 2026-11-12, while indigo_radec_to_altaz() applies no precession and treats its input as coordinates of date. The Scheduler Agent (indigo_agent_scheduler_sky.c solar_system(), indigo_agent_scheduler_night.c sun_coordinates()) passes the indigocat result straight on, so Sun altitudes are off by up to about 0.37 degrees and twilight limits and night hook times by about 1.5 minutes at the equator, a little more at mid-latitudes. The Moon goes through the same path. The scheduler sandbox deliberately reproduces the agent's values. Next: confirm the equinox of the indigocat solar system functions against an independent ephemeris, then precess to the date where they are used (or fix indigocat), and adjust the sky and night unit tests.",
+  "evidence": "Probe on 2026-11-14: indigocat RA 227.7560 deg vs Astronomical Almanac low-precision formula 228.1326 deg at 2026-11-12 23:00 UTC; GMST agrees to 0.0002 deg; altitude differences of up to 0.375 deg with the sign following the hour angle (verification.md of the task).",
+  "resolution": null,
+  "id": "FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-001"
+}
