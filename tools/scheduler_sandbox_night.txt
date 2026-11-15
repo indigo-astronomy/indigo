@@ -1,0 +1,29 @@
+# One night of the Scheduler Agent in about a minute, for tools/scheduler_sandbox.py:
+#   python3 tools/scheduler_sandbox.py --script tools/scheduler_sandbox_night.txt
+# Every "until" must see its message, otherwise the run ends with exit code 1.
+hold
+task Evening 1
+task Morning 1
+task Park 1
+task Prepare 1
+hooks night_start=Evening night_end=Morning idle=Park resume=Prepare
+start
+# the day: nothing can run, so the idle hook parks once
+until "Hook 'Park' completed" 30
+# a night without work skips the night start hook
+dusk 10
+until "No task can run tonight, the night start hook is skipped" 40
+# work that appears in the night is prepared for first
+task Late 2
+until "Hook 'Evening' completed" 30
+until "Task 'Late' completed" 30
+until "Hook 'Park' completed" 30
+# a task after the idle hook runs the resume hook first, also an urgent one
+urgent Flash 2
+until "Hook 'Prepare' completed" 30
+until "Task 'Flash' completed" 30
+# the night ends with the night end hook
+dawn 10
+until "Hook 'Morning' completed" 40
+history 10
+status

@@ -683,6 +683,32 @@ Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_plates
 
 Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 
+### Scheduler agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| AGENT_SCHEDULER_ADD_TASK | text | no | TASK, STATUS | Upload a task: a `// @key value` header followed by a `Sequencer.js` body, at most 16 KiB. `STATUS` is used only when the configuration is restored. |
+| AGENT_SCHEDULER_TASK_%d | text | no | TASK | Dynamic property created for each stored task, labelled with the task name; writing it edits the task. |
+| AGENT_SCHEDULER_DELETE_TASK | text | no | NAME | Delete a stored or urgent task, aborting it when it runs. |
+| AGENT_SCHEDULER_URGENT_TASK | text | no | TASK | Submit a task as urgent; it is not stored. |
+| AGENT_SCHEDULER_TASK_STATE | light | yes | TASK_%d | One item per task in list order; the label shows the name, state, runs and retries left. |
+| AGENT_SCHEDULER_TASK_NAME | text | no | NAME | Task addressed by `AGENT_SCHEDULER_TASK_COMMAND`. |
+| AGENT_SCHEDULER_TASK_COMMAND | switch | no | RESET, ENABLE, DISABLE, MOVE_UP, MOVE_DOWN, RESET_ALL, DELETE_ALL | Command for the named task; RESET_ALL and DELETE_ALL (scheduler stopped, hook tasks kept) apply to all tasks and carry `warn_on_set` hints. |
+| AGENT_SCHEDULER_CONTROL | switch | no | START, STOP, ABORT | Start scheduling, stop after the running task, or abort it. |
+| AGENT_SCHEDULER_STATE | number | yes | DONE, FAILED, URGENT_DONE, URGENT_FAILED, TOTAL | Task counters: DONE and FAILED count the tasks of the list, URGENT_DONE and URGENT_FAILED the one-off urgent tasks that finished and left it (kept with the history and reset by AGENT_SCHEDULER_CLEAR_HISTORY), TOTAL the tasks of the list; the state is Idle before the first start, Busy while scheduling, Ok after the scheduler stopped and Alert after an abort or a stop timeout. |
+| AGENT_SCHEDULER_CURRENT | text | yes | CURRENT, NEXT, NEXT_START, REASON | Running task, next task, its UTC start time and why nothing runs. |
+| AGENT_SCHEDULER_SETTINGS | number | no | IDLE_CHECK_INTERVAL, STOP_TIMEOUT, START_TIMEOUT, SETTING_WEIGHT, ALTITUDE_WEIGHT, IDLE_PARK_AFTER, FRAME_OVERHEAD, OPERATION_OVERHEAD, NIGHT_START_OFFSET, NIGHT_END_OFFSET | Check interval, stop and start timeouts in seconds, the score weights, minutes without an eligible task before the idle hook, the per-frame and per-operation overheads in seconds of the duration estimate, and the shifts of the night start and end in minutes (−240 to 240, negative is earlier). |
+| AGENT_SCHEDULER_HOOKS | text | no | STARTUP, SHUTDOWN, IDLE, NIGHT_START, NIGHT_END, RESUME | Names of stored tasks run when the scheduler starts, when it stops, once per idle period, when a night with work starts, when that night ends, and before a task that starts after the idle or night end hook. |
+| AGENT_SCHEDULER_NIGHT | switch | no | CIVIL, NAUTICAL, ASTRONOMICAL | Sun altitude that bounds the scheduler's night for the night hooks: below −6°, −12° (default) or −18°. Tasks keep their own `@twilight`. |
+| AGENT_SCHEDULER_PLAN | light | yes | PLAN_%d | Forecast of the runs until the end of the night, assuming every run takes its duration and succeeds; each label shows the UTC start and end, the task, the run number of a repeated task and its priority, or the night hook. Busy = running, Idle = planned; Alert items follow for tasks without a run tonight, labelled with the reason, and for a day without night when night hooks are set. |
+| AGENT_SCHEDULER_HISTORY | light | yes | RUN_%u | Finished runs, newest first, at most 200; Ok = succeeded, Alert = failed, Busy = preempted or aborted. |
+| AGENT_SCHEDULER_CLEAR_HISTORY | switch | no | CLEAR | Remove all history entries. |
+| AGENT_SCHEDULER_RESTORE_HISTORY | text | no | ENTRIES | Used only to restore the history from the configuration; published empty, client changes are rejected. |
+
+The agent also makes the Scripting Agent define `SCHEDULER_RESULT` (text, read-only, items `TOKEN`, `RESULT`, `MESSAGE`), through which the script that runs a task reports whether its body ran or failed, and `SCHEDULER_ESTIMATE` (number, read-only, items `TOKEN`, `SUPPORTED`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS`, `UNKNOWN`), through which it reports the counts of `Sequence.prototype.estimate()`.
+
+Source: `indigo_drivers/agent_scheduler/indigo_agent_scheduler.c`. The design is described in [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md).
+
 ### Scripting agent
 
 | Property name | Type | RO | Items | Comments |

@@ -1,0 +1,19 @@
+{
+  "title": "Scheduler loses the failure reason of a sequence that ends Alert",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261113011414-d873-scheduler-users-guide",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "agent_update_property() takes the failure reason from the message of the SEQUENCE_STATE update (finish_message), but since commit 9ecac90d2 the bus delivers an update's message separately through send_message, and the Scheduler Agent's client has no send_message callback (NULL slot in agent_client_template). A sequence that ends Alert is therefore recorded in the history as plain 'failed' and the message reads 'Task ... failed' without the reason; start failures and JavaScript errors, which come through SCHEDULER_RESULT, still carry their text. Next: add a send_message callback that records the Scripting Agent's last message for SEQUENCE_STATE, and a regression case with a failing sequence step.",
+  "evidence": "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c agent_update_property() SEQUENCE_STATE branch and agent_client_template; indigo_libs/indigo_bus.c update/send_message split; independent fact check of the user guide.",
+  "resolution": null,
+  "id": "FND-20261113011414-d873-scheduler-users-guide-001"
+}

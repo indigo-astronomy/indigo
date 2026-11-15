@@ -19,6 +19,8 @@ A sequence is built by creating a `Sequence` object and calling helper methods o
 
 Before the first sequence is created, the content of [Sequencer.js](Sequencer.js) must be executed as a script by setting it as the value of `AGENT_SCRIPTING_RUN_SCRIPT_ITEM` in the `AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY` of the Scripting Agent. This defines the `Sequence` class and registers the internal event handlers.
 
+The library may be executed again at any time; clients usually send it before every script they run. A reload keeps a running sequence and an enabled meridian flip, together with their loop and flipper state, and sends the message "Sequencer reloaded, the running sequence continues". Only an idle sequencer is replaced by the reloaded definitions.
+
 ## State: under development
 
 ## Quick start
@@ -125,6 +127,8 @@ sequence.start("Imager Agent @ observatory", "Mount Agent @ observatory", "Guide
 ```
 
 `start()` also selects the solver agent automatically. Solver agents are mutually exclusive on one server, so the `"Platesolver Agent"`, `"Astrometry Agent"` or `"ASTAP Agent"` loaded on the host of the imager agent given to `start()` is used, otherwise the local one, otherwise one loaded on another host. An imager agent which is not loaded does not count, its host is not used. With no solver agent `"Astrometry Agent"` is assumed, on the host of the loaded imager agent, otherwise local. A `select_imager_agent()` step does not change the solver agent. Use the `select_solver_agent()` step to choose another solver agent or one loaded later by the sequence. Every `start()` selects the solver agent again. The selected solver agent is used while it is loaded, also when the imager agent or a solver agent on its host appears later; when it is replaced during the sequence, the solver steps, the abort and the meridian flip select a loaded one again in the same way, and the sequence keeps using the new one.
+
+`estimate()` returns counts of the built sequence for a duration estimate, without starting anything: `{ exposure, frames, operations, waits, unknown }`. `exposure` is the total exposure time and `frames` the number of frames of the capture steps, `operations` the number of slew, centering, focus, guiding start, park, unpark, home and dome steps, `waits` the sum of fixed `wait()` delays in seconds, and `unknown` is true when a `wait_until()` or a sky wait makes the duration unknowable. Steps inside `repeat()` count once per iteration. The Scheduler Agent adds its own overheads per frame and per operation.
 
 ## Step reference
 

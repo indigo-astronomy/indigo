@@ -1,0 +1,73 @@
+{
+  "version": 2,
+  "task": "20261112235613-c024-scheduler-urgent-preemption-tests",
+  "scope": [
+    "indigo_test/integration/test_agent_scheduler.c",
+    "indigo_test/integration/run_scheduler_simulators.py",
+    "indigo_drivers/agent_scheduler/README.md",
+    "indigo_docs/SCHEDULER.md",
+    "TEST_SUMMARY.md",
+    "MIGRATION_STATUS.md",
+    ".factory/completions/20261112235613-c024-scheduler-urgent-preemption-tests.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261112235613-c024-scheduler-urgent-preemption-tests.json": [
+      "100644",
+      "blob",
+      "57d58141fc60991d83dd162607b2623d786127c5"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "8a62e5b635575f58739b51da1a4f59a214fd07d5"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "bc0202d34911511e9c0d1140786df8c1471532ea"
+    ],
+    "indigo_docs/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "5d5c52da23d53dcdb5755caaf67c1b376a2d011a"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "d0b41aa4b03d7f6428e19affd11a09589960b03a"
+    ],
+    "indigo_test/integration/run_scheduler_simulators.py": [
+      "100644",
+      "blob",
+      "4b56330f0060e5804281c18844e3409df772383c"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "09aabc58f1bf31f566d23bce37d6aae57eeec72b"
+    ]
+  }
+}

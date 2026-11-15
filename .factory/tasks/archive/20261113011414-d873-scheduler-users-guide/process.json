@@ -1,0 +1,82 @@
+{
+  "version": 2,
+  "task": "20261113011414-d873-scheduler-users-guide",
+  "scope": [
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    "indigo_docs/HOME.md",
+    "indigo_docs/SCHEDULER.md",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_tools/indigo_prop_tool.c",
+    ".factory/findings/active/FND-20261113011414-d873-scheduler-users-guide-001.json",
+    ".factory/completions/20261113011414-d873-scheduler-users-guide.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "make",
+        "-C",
+        "indigo_tools"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_server",
+        "-v",
+        "--",
+        "-p",
+        "7700"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113011414-d873-scheduler-users-guide.json": [
+      "100644",
+      "blob",
+      "dce2e47ab3cdb882e4e3f74103fb308a2861d2ab"
+    ],
+    ".factory/findings/active/FND-20261113011414-d873-scheduler-users-guide-001.json": [
+      "100644",
+      "blob",
+      "ab283adcd5072c91c95cde6d96f1e1ef1000aa0b"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "13df12052dac4acb62a9f3cd5219fbb20e670ef8"
+    ],
+    "indigo_docs/HOME.md": [
+      "100644",
+      "blob",
+      "967b4348f298d5486381217168e4c93454ba2d9f"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "3339d0347bbe65775870ea5b5127172ec0fbc45d"
+    ],
+    "indigo_docs/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "51a54382d01a6a251d43cca821a164a29e55e77c"
+    ],
+    "indigo_tools/indigo_prop_tool.c": [
+      "100644",
+      "blob",
+      "25752976fe6374937c4eddceddc1c414ed66f80a"
+    ]
+  }
+}

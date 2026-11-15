@@ -1,0 +1,43 @@
+{
+  "version": 2,
+  "task": "20261113232540-4fa8-scheduler-guide-night-hooks",
+  "scope": [
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    ".factory/completions/20261113232540-4fa8-scheduler-guide-night-hooks.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "indigo_server",
+        "-p",
+        "7711",
+        "indigo_agent_scripting",
+        "indigo_agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113232540-4fa8-scheduler-guide-night-hooks.json": [
+      "100644",
+      "blob",
+      "5d80526e970afabd3e4a1df8e9c3d688061623b7"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "8c0601d4ce031db1181f987a12f6036513b58c48"
+    ]
+  }
+}

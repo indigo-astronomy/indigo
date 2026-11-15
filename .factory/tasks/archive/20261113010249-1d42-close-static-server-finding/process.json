@@ -1,0 +1,59 @@
+{
+  "version": 2,
+  "task": "20261113010249-1d42-close-static-server-finding",
+  "scope": [
+    "indigo_server/indigo_server.c",
+    ".factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-005.json",
+    ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-005.json",
+    ".factory/completions/20261113010249-1d42-close-static-server-finding.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler",
+        "--no-record"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "gcc",
+        "-fsyntax-only",
+        "-DSTATIC_DRIVERS",
+        "indigo_server/indigo_server.c"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113010249-1d42-close-static-server-finding.json": [
+      "100644",
+      "blob",
+      "9fcb5cf7cf5ad15aaba1b85b1e33d258d8e3f147"
+    ],
+    ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-005.json": [
+      "100644",
+      "blob",
+      "8fbbf7ba043f0e75b4e9aa93575441fc95f209a5"
+    ],
+    "indigo_server/indigo_server.c": [
+      "100644",
+      "blob",
+      "c1b92d4585c3019d810d8d175a5dabd4a82f9879"
+    ]
+  }
+}

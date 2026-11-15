@@ -1,0 +1,98 @@
+{
+  "version": 2,
+  "task": "20261114095750-d502-scheduler-eligibility-and-device-tests",
+  "scope": [
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c",
+    "indigo_test/integration/test_agent_scheduler.c",
+    "indigo_test/integration/run_scheduler_simulators.py",
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    "MIGRATION_STATUS.md",
+    "indigo_drivers/agent_scheduler/README.md",
+    "TEST_SUMMARY.md",
+    ".factory/completions/20261114095750-d502-scheduler-eligibility-and-device-tests.json",
+    ".factory/findings/active/FND-20261114095750-d502-scheduler-eligibility-and-device-tests-001.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "indigo_test/build/integration/test_agent_scheduler_asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261114095750-d502-scheduler-eligibility-and-device-tests.json": [
+      "100644",
+      "blob",
+      "f5fcb08a064d74054f3394b6b3e48117c7de39e9"
+    ],
+    ".factory/findings/active/FND-20261114095750-d502-scheduler-eligibility-and-device-tests-001.json": [
+      "100644",
+      "blob",
+      "8c60d66e465b546ce1c606b11526fff964fca05d"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "d69c7384ab138ad3aa3cfef77a21e66854802349"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "1cead789c2a7d6512c367e2252668a9f134c025e"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "c2fd63509b749d6e6a644bab372b7dc7b5fd21fc"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "c1a89478dedf7da9489d8d0c9774026f87947651"
+    ],
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "89f213e2fd6fb02bd5adc6a7cf55c3f7864cffac"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "5b4e1fa3db50466cc25d279939ac664d38aa52fa"
+    ],
+    "indigo_test/integration/run_scheduler_simulators.py": [
+      "100644",
+      "blob",
+      "ce165fe84b92bd78ec39f41b7e92617e1cf54848"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "e55dcc6742910afb24db68465ae144bce83b7433"
+    ]
+  }
+}

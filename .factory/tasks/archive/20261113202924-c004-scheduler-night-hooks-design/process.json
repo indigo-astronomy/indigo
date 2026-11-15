@@ -1,0 +1,57 @@
+{
+  "version": 2,
+  "task": "20261113202924-c004-scheduler-night-hooks-design",
+  "scope": [
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    ".factory/completions/20261113202924-c004-scheduler-night-hooks-design.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-I",
+        "-",
+        "(anchor and link check)"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113202924-c004-scheduler-night-hooks-design.json": [
+      "100644",
+      "blob",
+      "10dfab899cbfd54a45aa4a5dad88a33fb501ee59"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "a1a191528007dec3c2c0e4f6edc4927a8abdf07e"
+    ],
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "7a08d762faffadc7d10ec43ac0f5c3d900e45f75"
+    ]
+  }
+}

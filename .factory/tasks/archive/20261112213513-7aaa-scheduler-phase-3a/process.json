@@ -1,0 +1,157 @@
+{
+  "version": 2,
+  "task": "20261112213513-7aaa-scheduler-phase-3a",
+  "scope": [
+    "indigo_drivers/agent_scheduler/*",
+    "indigo_drivers/agent_scripting/library/Sequencer.js",
+    "indigo_drivers/agent_scripting/library/Sequencer.md",
+    "indigo_drivers/agent_scripting/indigo_agent_scripting.c",
+    "indigo_drivers/agent_scripting/README.md",
+    "indigo_drivers/agent_mcp/indigo_agent_mcp_help.h",
+    "indigo_test/Makefile",
+    "indigo_test/integration/test_agent_scheduler.c",
+    "indigo_test/integration/test_agent_scripting_sequencer.c",
+    "indigo_test/integration/run_scheduler_simulators.py",
+    "indigo.xcodeproj/project.pbxproj",
+    "indigo_libs/indigo/indigo_names.h",
+    "indigo_docs/SCHEDULER.md",
+    "indigo_docs/PROPERTIES.md",
+    "TEST_SUMMARY.md",
+    "MIGRATION_STATUS.md",
+    ".factory/completions/20261112213513-7aaa-scheduler-phase-3a.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "tools/run_driver_test.py",
+        "agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/integration/test_agent_scripting_sequencer"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./indigo_test/build/integration/test_agent_scheduler_asan"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {
+    "data-model": "security.md"
+  },
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261112213513-7aaa-scheduler-phase-3a.json": [
+      "100644",
+      "blob",
+      "9fe0cb3b481ed704b9fee7a26d746f85b54eeb66"
+    ],
+    "MIGRATION_STATUS.md": [
+      "100644",
+      "blob",
+      "d3a47bd947b2c2c19af1a83433ce008d1795e594"
+    ],
+    "TEST_SUMMARY.md": [
+      "100644",
+      "blob",
+      "270b7a76804e19890be746502395283848b2857a"
+    ],
+    "indigo.xcodeproj/project.pbxproj": [
+      "100755",
+      "blob",
+      "912d57d6f888d7aa35cccb8b729c67dcaeaa71a7"
+    ],
+    "indigo_docs/PROPERTIES.md": [
+      "100644",
+      "blob",
+      "88d44421f02c8c0e6374c2f26eb8c3b09927b6c5"
+    ],
+    "indigo_docs/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "312cc9291b25354adb981b14a59367ab11cf990a"
+    ],
+    "indigo_drivers/agent_mcp/indigo_agent_mcp_help.h": [
+      "100644",
+      "blob",
+      "23b07d1224b0a3a60fa5b33e9d65136c42edf0e5"
+    ],
+    "indigo_drivers/agent_scheduler/README.md": [
+      "100644",
+      "blob",
+      "647c66d321b7227c12f7ab7b7d444190fcb55a00"
+    ],
+    "indigo_drivers/agent_scheduler/Sequencer.js.dat": [
+      "100644",
+      "blob",
+      "262bdf6d5cc97ed0c36ded699bd83990f79d6500"
+    ],
+    "indigo_drivers/agent_scheduler/indigo_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "283648eba5bca2183f853cce6747882060b5ccfa"
+    ],
+    "indigo_drivers/agent_scripting/README.md": [
+      "100644",
+      "blob",
+      "7b972ebb9b9eb5478e3f7afaa4a1316f67890d9d"
+    ],
+    "indigo_drivers/agent_scripting/indigo_agent_scripting.c": [
+      "100644",
+      "blob",
+      "8ba5bb08367fab7d9ff61aeb13b8ba77c77b3156"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.js": [
+      "100644",
+      "blob",
+      "e5f0688e7d03ef7a1fb83af70920f253813b49ad"
+    ],
+    "indigo_drivers/agent_scripting/library/Sequencer.md": [
+      "100644",
+      "blob",
+      "a954ed2c5024004ea17cbd6d1a45a83d321eeb6e"
+    ],
+    "indigo_libs/indigo/indigo_names.h": [
+      "100644",
+      "blob",
+      "2a127183f7effccf67950f4cd3d6634726e789f0"
+    ],
+    "indigo_test/Makefile": [
+      "100644",
+      "blob",
+      "7bb599ef2b33a7d551f8e0dbcb2ffdf3ac0e6360"
+    ],
+    "indigo_test/integration/run_scheduler_simulators.py": [
+      "100644",
+      "blob",
+      "2fc1b481eaa7ae2bde54f20adbe4e6575e125372"
+    ],
+    "indigo_test/integration/test_agent_scheduler.c": [
+      "100644",
+      "blob",
+      "36476e9a1e01ec79339e297dfdc37de0f8a6cd73"
+    ],
+    "indigo_test/integration/test_agent_scripting_sequencer.c": [
+      "100644",
+      "blob",
+      "eedaafcbfe1412bc3ed81790764f437549703c9a"
+    ]
+  }
+}

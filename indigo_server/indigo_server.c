@@ -221,6 +221,7 @@
 #include "focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.h"
 #endif
 #include "agent_scripting/indigo_agent_scripting.h"
+#include "agent_scheduler/indigo_agent_scheduler.h"
 #endif
 
 #define SERVER_NAME         "INDIGO Server"
@@ -235,6 +236,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_config,
 	indigo_agent_mcp,
 	indigo_agent_platesolver,
+	indigo_agent_scheduler,
 	indigo_agent_scripting,
 	indigo_agent_mount,
 	indigo_agent_test,

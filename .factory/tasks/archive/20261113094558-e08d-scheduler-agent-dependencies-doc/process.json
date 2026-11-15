@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "task": "20261113094558-e08d-scheduler-agent-dependencies-doc",
+  "scope": [
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md",
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md",
+    ".factory/completions/20261113094558-e08d-scheduler-agent-dependencies-doc.json"
+  ],
+  "checks": [
+    {
+      "command": [
+        "indigo_server",
+        "-p",
+        "7700",
+        "indigo_agent_scheduler"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    },
+    {
+      "command": [
+        "./.factory/scripts/findings",
+        "check"
+      ],
+      "result": "pass",
+      "evidence": "verification.md"
+    }
+  ],
+  "risk_reviews": {},
+  "reviews": [],
+  "reviewed_content": {
+    ".factory/completions/20261113094558-e08d-scheduler-agent-dependencies-doc.json": [
+      "100644",
+      "blob",
+      "f5144728bbb056334df9b76129b25b7d6f614541"
+    ],
+    "indigo_docs/INDIGO_SCHEDULER_GUIDE.md": [
+      "100644",
+      "blob",
+      "2cde71a1c881c1fbdfe4fd607b222db6ef71a7b9"
+    ],
+    "indigo_drivers/agent_scheduler/doc/SCHEDULER.md": [
+      "100644",
+      "blob",
+      "5152e4437acff08e284264e69cef409e5efba37f"
+    ]
+  }
+}

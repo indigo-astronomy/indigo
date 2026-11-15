@@ -1,0 +1,19 @@
+{
+  "title": "JSON protocol drops item hints in both directions",
+  "category": "functional",
+  "severity": "low",
+  "status": "open",
+  "owner": "coordinator",
+  "blocking": false,
+  "tasks": [
+    {
+      "id": "20261114090521-b043-scheduler-bulk-command-tests",
+      "report": "verification.md",
+      "revision": null
+    }
+  ],
+  "summary": "indigo_libs/indigo_json.c writes the property-level \"hints\" of every def*Vector but no item-level hints, and its parser reads no hints at all, while indigo_xml.c writes and parses hints on both properties and items (indigo_xml.c hints_attribute(), defSwitch line 2136) and indigo_docs/PROTOCOLS.md line 80 says every item may carry hints. JSON clients such as the web control panel therefore never receive item hints: warn_on_set on AGENT_SCHEDULER_TASK_COMMAND RESET_ALL and DELETE_ALL, SERVER RESTART ('Restart INDIGO Server?'), SERVER INSTALL items, MOUNT_ALIGNMENT_RESET and the Astroasis factory resets. Next: add item \"hints\" to the JSON writer for all vector types and to the JSON parser, a JSON round-trip unit test, and a server acceptance check that the scheduler hints arrive over the network. Owner chose on 2026-11-14 to record this only.",
+  "evidence": "Source read on 2026-11-14 at 2ed5675dd: indigo_json.c lines 823-836 (defSwitchVector items without hints) and no hints handling in the parser; indigo_xml.c lines 2116 and 2136 emit item hints (verification.md of the task).",
+  "resolution": null,
+  "id": "FND-20261114090521-b043-scheduler-bulk-command-tests-001"
+}

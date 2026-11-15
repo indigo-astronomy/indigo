@@ -142,10 +142,13 @@ int main(int argc, char **argv) {
 
 def build_programs(directory):
 	compiler = shlex.split(os.environ.get("CC", "cc"))
-	flags = ["-std=gnu11", "-g", "-O1", "-I" + str(ROOT / "indigo_libs")]
+	# the same feature macros as TEST_CFLAGS in the Makefile; test_runner.h uses nftw()
+	flags = ["-std=gnu11", "-D_GNU_SOURCE", "-g", "-O1", "-I" + str(ROOT / "indigo_libs")]
 	if os.environ.get("SANITIZERS"):
 		flags += ["-fsanitize=" + os.environ["SANITIZERS"], "-fno-omit-frame-pointer"]
 	library = Path(os.environ.get("INDIGO_TEST_LIBRARY_DIR", ROOT / "build/lib"))
+	# the client library uses service discovery, linked as in the Makefile
+	discovery = [] if os.uname().sysname == "Darwin" else ["-ldns_sd", "-lavahi-client", "-lavahi-common"]
 	parser = directory / "parser"
 	crop = directory / "crop"
 	wrapper = directory / "crop_faults.c"
@@ -153,14 +156,14 @@ def build_programs(directory):
 	property_object, crop_object = directory / "property.o", directory / "crop.o"
 	subprocess.run(compiler + flags + ["-Dmain=indigo_prop_tool_main", "-c", str(ROOT / "indigo_tools/indigo_prop_tool.c"), "-o", str(property_object)], check=True)
 	subprocess.run(compiler + flags + ["-Dmalloc=test_malloc", "-Dfread=test_fread", "-Dfwrite=test_fwrite", "-Dfclose=test_fclose", "-c", str(ROOT / "indigo_tools/indigo_raw_crop.c"), "-o", str(crop_object)], check=True)
-	subprocess.run(compiler + flags + [str(ROOT / "indigo_test/unit/test_prop_tool_parser.c"), str(property_object), "-o", str(parser), str(library / "libindigo_client.a"), "-lz", "-ldl", "-lm", "-pthread"], check=True)
+	subprocess.run(compiler + flags + [str(ROOT / "indigo_test/unit/test_prop_tool_parser.c"), str(property_object), "-o", str(parser), str(library / "libindigo_client.a"), *discovery, "-lz", "-ldl", "-lm", "-pthread"], check=True)
 	subprocess.run(compiler + flags + [str(wrapper), str(crop_object), "-o", str(crop)], check=True)
 	gaia_source, gaia = directory / "gaia.c", directory / "gaia"
 	gaia_source.write_text(GAIA_WRAPPER)
 	dead_strip = ["-Wl,-dead_strip"] if os.uname().sysname == "Darwin" else ["-Wl,--gc-sections"]
-	subprocess.run(compiler + flags + ["-ffunction-sections", "-fdata-sections", "-I" + str(ROOT), "-I" + str(ROOT / "indigo_drivers"), str(gaia_source), "-o", str(gaia), *dead_strip, str(library / "libindigo_client.a"), "-lz", "-ldl", "-lm", "-pthread"], check=True)
+	subprocess.run(compiler + flags + ["-ffunction-sections", "-fdata-sections", "-I" + str(ROOT), "-I" + str(ROOT / "indigo_drivers"), str(gaia_source), "-o", str(gaia), *dead_strip, str(library / "libindigo_client.a"), *discovery, "-lz", "-ldl", "-lm", "-pthread"], check=True)
 	short_gaia = directory / "gaia_short_path"
-	subprocess.run(compiler + flags + ["-DGAIA_TEST_PATH_MAX=256", "-ffunction-sections", "-fdata-sections", "-I" + str(ROOT), "-I" + str(ROOT / "indigo_drivers"), str(gaia_source), "-o", str(short_gaia), *dead_strip, str(library / "libindigo_client.a"), "-lz", "-ldl", "-lm", "-pthread"], check=True)
+	subprocess.run(compiler + flags + ["-DGAIA_TEST_PATH_MAX=256", "-ffunction-sections", "-fdata-sections", "-I" + str(ROOT), "-I" + str(ROOT / "indigo_drivers"), str(gaia_source), "-o", str(short_gaia), *dead_strip, str(library / "libindigo_client.a"), *discovery, "-lz", "-ldl", "-lm", "-pthread"], check=True)
 	return parser, crop, gaia, short_gaia
 
 
