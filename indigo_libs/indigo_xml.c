@@ -1827,11 +1827,25 @@ exit_loop:
 #define ESCAPE_BUFFER_COUNT	5
 #define ESCAPE_BUFFER_SIZE	(6 * INDIGO_VALUE_SIZE + 1)
 
+static INDIGO_THREAD_LOCAL char *long_escape_buffer = NULL;
+static INDIGO_THREAD_LOCAL size_t long_escape_buffer_size = 0;
+static pthread_key_t long_escape_key;
+static pthread_once_t long_escape_once = PTHREAD_ONCE_INIT;
+static bool long_escape_key_ready = false;
+
+static void long_escape_buffer_destructor(void *buffer) {
+	indigo_safe_free(buffer);
+	long_escape_buffer = NULL;
+	long_escape_buffer_size = 0;
+}
+
+static void long_escape_key_init(void) {
+	long_escape_key_ready = pthread_key_create(&long_escape_key, long_escape_buffer_destructor) == 0;
+}
+
 const char *indigo_xml_escape_b(int index, const char *string) {
 	if (strpbrk(string, "&<>\"'")) {
 		static INDIGO_THREAD_LOCAL char escape_buffer[ESCAPE_BUFFER_COUNT][ESCAPE_BUFFER_SIZE];
-		static INDIGO_THREAD_LOCAL char *long_escape_buffer = NULL;
-		static INDIGO_THREAD_LOCAL size_t long_escape_buffer_size = 0;
 		char *buffer, *buffer_end;
 		if (index < ESCAPE_BUFFER_COUNT) {
 			buffer = escape_buffer[index];
@@ -1841,6 +1855,11 @@ const char *indigo_xml_escape_b(int index, const char *string) {
 			if (required_size > long_escape_buffer_size) {
 				long_escape_buffer = indigo_safe_realloc(long_escape_buffer, required_size);
 				long_escape_buffer_size = required_size;
+				// Register the buffer, so the key destructor frees it when this thread ends. If the key or the registration is not available, the buffer stays usable and is only not freed at thread exit.
+				pthread_once(&long_escape_once, long_escape_key_init);
+				if (long_escape_key_ready) {
+					pthread_setspecific(long_escape_key, long_escape_buffer);
+				}
 			}
 			buffer = long_escape_buffer;
 			buffer_end = buffer + long_escape_buffer_size - 6;
