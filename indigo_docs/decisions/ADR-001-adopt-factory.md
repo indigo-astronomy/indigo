@@ -17,4 +17,4 @@ Use task/<id> branches so the reviewed Factory write guards apply. Keep project-
 Factory integration adds local standard-library helper regression tests and Xcode groups, without a new package manager or provider invocation. Registration permits discovery of pending template updates, not automatic application. Initial audit completion and native host/test limitations need their own evidence; a copied workflow or migrated finding is not a passing audit or a verified fix.
 
 ## Evidence
-See [adoption report](../../.factory/tasks/archive/20261021193138-70b4-adopt-ai-factory/migration.md) and [legacy reconciliation](../../.factory/tasks/archive/20261021193138-70b4-adopt-ai-factory/legacy-findings.md).
+The adoption report (`migration.md`) and the legacy reconciliation (`legacy-findings.md`) are retained in Git history only, at commit `3dedba4cb` under `.factory/tasks/archive/20261021193138-70b4-adopt-ai-factory/`.

@@ -49,10 +49,5 @@ indigo_libs/externals/hidapi/windows/x64/
 indigo_test/build/
 **/*.dSYM
 
-# Private AI Factory host configuration and adopter inventory
-/.factory/adopters.local.json
-/.factory/review.local.json
-/.factory/telemetry/*.local.json
-/.factory/telemetry/*.local.jsonl
 # quad solver index files are built by indigo_solver_indexer or downloaded by the solver agent, never checked in
 *.isix

@@ -118,7 +118,7 @@ Compliance scenarios:
 
 ### Camera Driver Test Standard: Fake SDK/USB and Hardware
 
-Apply this standard when implementing, migrating or extending CCD driver tests. It is the union of the scenarios in `indigo_test/integration/test_ccd_touptek_sdk.c`, `indigo_test/integration/test_ccd_playerone_sdk.c`, their corresponding `indigo_test/hardware/test_ccd_*_hw.c` programs, and the SX-specific validation requirements in `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/ccd_sx.md`. There is currently no dedicated CCD SX automated test in the repository; `test_ao_sx_simulator.c` tests a different driver. SX requirements below are required coverage, not evidence of completed tests.
+Apply this standard when implementing, migrating or extending CCD driver tests. It is the union of the scenarios in `indigo_test/integration/test_ccd_touptek_sdk.c`, `indigo_test/integration/test_ccd_playerone_sdk.c`, their corresponding `indigo_test/hardware/test_ccd_*_hw.c` programs, and the SX-specific validation requirements in `3dedba4cb:.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/ccd_sx.md`. There is currently no dedicated CCD SX automated test in the repository; `test_ao_sx_simulator.c` tests a different driver. SX requirements below are required coverage, not evidence of completed tests.
 
 #### Scope and evidence
 
@@ -174,7 +174,7 @@ Run with the real driver and SDK/USB transport, using capability discovery to se
 - Use deterministic gates for races, bounded waits and a process deadline for potential deadlocks. Release gates and stop/join fake callback threads on failure as well as success. Do not replace production queue ordering with synchronous stubs to make races disappear.
 - Isolate configuration and output in temporary directories without changing HOME or user settings. Disconnect/detach, close handles, release USB references, and delete test artifacts on every exit path. Follow the test-clean requirement in `indigo_test/AGENTS.md`.
 - Run the narrow integration suite, relevant platform-specific readout variants, and supported ASan/UBSan builds when changing lifetime, buffers or callbacks. State which objects were instrumented; an uninstrumented vendor/static library is not sanitizer-covered. Record builds separately from runtime evidence.
-- Record automated coverage, gaps and physical results in the task's `verification.md` with date, source revision/working-tree state, OS/architecture, SDK/API, device model/firmware/capabilities, procedure and outcome. Mark each scenario passed, failed, unavailable or not applicable with evidence/reason. Register defects in `.factory/findings/active/`; never mark the whole matrix passed from a smoke test or a single device.
+- Record automated coverage, gaps and physical results in the Factory ticket with date, source revision/working-tree state, OS/architecture, SDK/API, device model/firmware/capabilities, procedure and outcome. Mark each scenario passed, failed, unavailable or not applicable with evidence/reason. Register defects as Factory tickets; never mark the whole matrix passed from a smoke test or a single device.
 
 ## Wheel Drivers
 

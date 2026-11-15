@@ -67,7 +67,7 @@ as `:SgDDD*MM#` (0 to 359, positive to the west) unless the cell says otherwise.
   `a7489d850e17a44e077d8229dd460a122c018334cc5a17700ea143c3ee687642`), read statically for
   interoperability, and the ATLAS SH20 user manual (`ATLAS_SH20_en.pdf`). Where they disagree with
   V1.3, the table follows V1.3.
-* `indigo_mount_lx200.driver` (driver source) and the archived refactoring notes `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md`: what the driver
+* `indigo_mount_lx200.driver` (driver source) and the archived refactoring notes `3dedba4cb:.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/mount_lx200.md`: what the driver
   sends, and the replies recorded from the controllers the driver was run against. StarGO2 and
   ESP32Go have no protocol document here and are described from these alone.
 

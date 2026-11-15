@@ -5117,14 +5117,11 @@
 		5BBF05A47A2D1AC25E310D5D /* test_ccd_file_names.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_file_names.c; sourceTree = "<group>"; };
 		5C8EDDDAE51845B88F1AF9CA /* test_aux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_simulator.c; sourceTree = "<group>"; };
 		5F47C4F1FD80E5D3DF77E647 /* test_ccd_libcamera_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_libcamera_sdk.c; sourceTree = "<group>"; };
-		60C95514429DC01683039DD0 /* test_concurrent_tasks.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_concurrent_tasks.py; sourceTree = "<group>"; };
 		61D0437E0DBADA8CCC6CCAAF /* test_agent_imager_numerics.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_agent_imager_numerics.py; sourceTree = "<group>"; };
 		621CE65EC488C0883396BE54 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		6690353AF13CB11838BACF0D /* test_guider_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_guider_asi_sdk.c; sourceTree = "<group>"; };
-		6A8C1222806CCB8FE622265F /* test_review.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_review.py; sourceTree = "<group>"; };
 		6DBD06A878A01A39330B4378 /* test_service_discovery.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_service_discovery.c; sourceTree = "<group>"; };
 		6E0A971981317B3441EE9802 /* test_aux_giotto_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_giotto_simulator.c; sourceTree = "<group>"; };
-		72D6F5A588B4495EC42302AA /* test_process_check.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_process_check.py; sourceTree = "<group>"; };
 		7330D4CDFA32AB370C17EF61 /* test_serial_outputs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_serial_outputs.c; sourceTree = "<group>"; };
 		7FB7FAF11D3D66869F9FC513 /* test_aux_alto_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_alto_hw.c; sourceTree = "<group>"; };
 		83BD4B658762EAB07B1124F7 /* indigo_polaralign_mlastro.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_polaralign_mlastro.c; sourceTree = "<group>"; };
@@ -5632,14 +5629,11 @@
 		AAB91F3090379976D9CB11B3 /* test_gps_compliance_script.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_gps_compliance_script.py; sourceTree = "<group>"; };
 		AB1026102418335100000001 /* test_agent_alpaca_mapping.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_mapping.c; sourceTree = "<group>"; };
 		ADC414885E082C4228189144 /* test_aux_giotto_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_giotto_hw.c; sourceTree = "<group>"; };
-		AF29BC74BE5DA52D95AA4258 /* test_independent_records.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_independent_records.py; sourceTree = "<group>"; };
 		AF82C981A2394703A6F65B83 /* test_ccd_pentax_usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_pentax_usb.c; sourceTree = "<group>"; };
 		B2A0D3723ACA5570D1FA54A7 /* test_focuser_askar_wifi_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_askar_wifi_simulator.c; sourceTree = "<group>"; };
 		B7E2D41C9A0F4C3E85D61A27 /* test_server_static_driver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_server_static_driver.c; sourceTree = "<group>"; };
-		BB2B749B8CC67432A1FC913B /* test_template_update.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_template_update.py; sourceTree = "<group>"; };
 		BB585B0FF8074EBCA4FB2400 /* test_aux_asiair_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_asiair_hw.c; sourceTree = "<group>"; };
 		BCDEADDC1DF78BAA8791C854 /* test_ccd_libcamera_hw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_libcamera_hw.c; sourceTree = "<group>"; };
-		BD32759CA3EA1E85E291A1B3 /* test_new_task.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_new_task.py; sourceTree = "<group>"; };
 		C0D0A00132FF000100000001 /* indigo_focuser_optec.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_optec.driver; sourceTree = "<group>"; };
 		C0D2A00133AA000000000002 /* indigo_focuser_steeldrive2.driver */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_focuser_steeldrive2.driver; sourceTree = "<group>"; };
 		C0D3A00133AB000000000002 /* indigo_focuser_wemacro.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_wemacro.driver; sourceTree = "<group>"; };
@@ -5918,10 +5912,8 @@
 		C0DE26060912F20000000002 /* QHY992_deep_cooling.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY992_deep_cooling.img; sourceTree = "<group>"; };
 		C108AD5DC5B5D081BBFFFD78 /* indigo_aux_giotto_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_giotto_main.c; sourceTree = "<group>"; };
 		C1709E72227841389E72BABD /* test_transport_cache_security.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_transport_cache_security.c; sourceTree = "<group>"; };
-		C23AF2ECD26B8FB09527BE5D /* test_context_export.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_context_export.py; sourceTree = "<group>"; };
 		C636BDEB6CAE80880EF24D93 /* test_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_raw_to_fits.c; sourceTree = "<group>"; };
 		C69535F5A30EBCFF42E1200F /* test_gps_nmea_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_transport.c; sourceTree = "<group>"; };
-		C831D80DF95C2D16731810D4 /* test_task_archive.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_task_archive.py; sourceTree = "<group>"; };
 		C8683D8A00D36FB4420DE7FD /* test_aux_dragonfly_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_dragonfly_simulator.c; sourceTree = "<group>"; };
 		CA2B0F73C6A84C3DB07A918E /* test_driver_test_recording.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_driver_test_recording.py; sourceTree = "<group>"; };
 		CA7EADBBFE2649A59C08E97A /* test_agent_alpaca_cache.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_agent_alpaca_cache.c; sourceTree = "<group>"; };
@@ -5932,7 +5924,6 @@
 		D21A672ED1F723F9846A3C92 /* test_driver_loader.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_driver_loader.c; sourceTree = "<group>"; };
 		D2D6E33C60E4FE67E85DA347 /* test_driver_loader_fixture.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_driver_loader_fixture.c; sourceTree = "<group>"; };
 		D33D86EF997A95CA522DC5A0 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.inc; sourceTree = "<group>"; };
-		D35C489943CE4AA80F095E70 /* test_decision_index.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_decision_index.py; sourceTree = "<group>"; };
 		D56DA963063B2BAA9C4134BE /* ADR-002-factory-record-upgrade.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-002-factory-record-upgrade.md"; sourceTree = "<group>"; };
 		D56DA963063B2BAA9C4134BF /* ADR-003-exclude-factory-from-xcode.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-003-exclude-factory-from-xcode.md"; sourceTree = "<group>"; };
 		853F00000000000000000001 /* test_build_revision.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_build_revision.py; sourceTree = "<group>"; };
@@ -5961,10 +5952,7 @@
 		F476CF58402EC00523B2E4A0 /* indigo_ccd_libcamera_bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_libcamera_bridge.cpp; sourceTree = "<group>"; };
 		F4B0667386AC4C429100A248 /* sysfs_gpio_fake.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sysfs_gpio_fake.h; sourceTree = "<group>"; };
 		F55BB1FB9B1864DBBEC83B4A /* indigo_aux_giotto.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_giotto.c; sourceTree = "<group>"; };
-		F5BAEED44662DE1A3480689A /* test_findings.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_findings.py; sourceTree = "<group>"; };
-		6A5572BCFF2F1EB34D52E530 /* test_git_compat.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_git_compat.py; sourceTree = "<group>"; };
 		F6C2C1F56E8B969C96033DAA /* test_aux_sqm_transport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_transport.c; sourceTree = "<group>"; };
-		F6E14E01192CC6BDFBEE1051 /* test_findings_project.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = test_findings_project.py; sourceTree = "<group>"; };
 		F79366E0F4385E79E0FD4036 /* ADR-001-adopt-factory.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "ADR-001-adopt-factory.md"; sourceTree = "<group>"; };
 		F98733965AD0F816098C9857 /* indigo_aux_alto.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_alto.h; sourceTree = "<group>"; };
 		FBBB92755A5466F3D70A6EB0 /* test_recording_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_recording_io.c; sourceTree = "<group>"; };
@@ -7261,7 +7249,6 @@
 				584F9CD031F245BAB977B4BE /* security */,
 				771EC86AD83D04ECD270676B /* leak */,
 				514C82BA37D5A234281ECD52 /* buildsystem */,
-				F559B76B4D9A14829C38BB63 /* factory */,
 				59FA7BE4301D2E9700A35CFB /* AGENTS.md */,
 				59FA7C0B301DCEA000A35CFB /* DRIVER_TESTING_RULES.md */,
 				59FA7BEA301D360C00A35CFB /* Makefile */,
@@ -17080,25 +17067,6 @@
 				DF10000000000000000003 /* dome_dragonfly_simulator.c */,
 			);
 			path = dome_dragonfly_simulator;
-			sourceTree = "<group>";
-		};
-		F559B76B4D9A14829C38BB63 /* factory */ = {
-			isa = PBXGroup;
-			children = (
-				C23AF2ECD26B8FB09527BE5D /* test_context_export.py */,
-				D35C489943CE4AA80F095E70 /* test_decision_index.py */,
-				F5BAEED44662DE1A3480689A /* test_findings.py */,
-				6A5572BCFF2F1EB34D52E530 /* test_git_compat.py */,
-				BD32759CA3EA1E85E291A1B3 /* test_new_task.py */,
-				72D6F5A588B4495EC42302AA /* test_process_check.py */,
-				6A8C1222806CCB8FE622265F /* test_review.py */,
-				C831D80DF95C2D16731810D4 /* test_task_archive.py */,
-				BB2B749B8CC67432A1FC913B /* test_template_update.py */,
-				60C95514429DC01683039DD0 /* test_concurrent_tasks.py */,
-				AF29BC74BE5DA52D95AA4258 /* test_independent_records.py */,
-				F6E14E01192CC6BDFBEE1051 /* test_findings_project.py */,
-			);
-			path = factory;
 			sourceTree = "<group>";
 		};
 		DB02D240DD3440DC8882BCCC /* agent_mcp */ = {
