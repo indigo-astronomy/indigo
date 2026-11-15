@@ -1,0 +1,995 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b",
+  "revision": 53,
+  "title": "GP solve allocation failure leaves caller outputs uninitialized",
+  "description": "ldlt_solve returns void on temporaryY allocation failure; callers consume output without a failure signal. Source-confirmed by independent core review; no OOM injection performed. Next: make failure explicit and add a focused allocator-failure regression.\n\nImported from .factory/findings/active/FND-20261023065605-60d4-repository-audit-010.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.692605Z",
+  "status": "closed",
+  "branch": "ticket/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "75bff75b-696c-406d-be6c-9b054b352f60",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:40:50.336601Z",
+          "last_activity_at": "2026-11-15T11:47:01.743876Z",
+          "ended_at": "2026-11-15T11:47:01.743876Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 371407.275,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:40:50.336601Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b"
+        },
+        {
+          "at": "2026-11-15T11:47:01.743876Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 371407.275,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "045c246d-c3a5-462d-bb6c-21e92e9a1815",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:47:01.744262Z",
+          "last_activity_at": "2026-11-15T11:49:31.619233Z",
+          "ended_at": "2026-11-15T11:49:31.619233Z",
+          "outcome": {
+            "summary": "No defects found. Verified: ldlt_solve now returns bool and leaves X untouched on Y allocation failure; all five callers handle false. gp_infer_sd starts with gp_clear, so no state from an earlier inference survives; the three new failure branches (lines 835, 870, 886) free alpha/feature/fvt/S/loc/out/var and gp_chol (plus gp_chol_feat at 886) the same way as the existing allocation-failure branches next to them. gp_has_data stays false, the pointers stay NULL, ldlt_free sets L/D to NULL so no double free, and a gp_beta left half-written is unreachable without gp_has_data. gp_predict_projected on solve failure leaves mean = mixed*alpha, like the existing mixed_t/gamma failure branch, so the result is finite and defined. interp_peak_frequency skips interpolation when the solve fails. Test: built and ran it in the worktree (clang -O3, universal), 4/4 pass, no -Wall -Wextra warnings from the test or the GP source. Compiled the test against master's indigo_gp_guider.c with the bool-only case removed (that case cannot compile against the void API): all 3 behavioural cases fail at -O3 and -O0, so the test catches the defect. Stack poisoning only matters for detecting the old code; on the fixed code the result does not depend on uninitialized memory. The malloc macro comes after test_malloc and stdlib.h, so headers pulled in later only redirect indigo_safe_malloc, which is harmless. The Makefile rule matches test_star_detection. License header, English text and formatting match the neighbouring unit tests. The Xcode file reference is unique and sits in the unit test group with no .factory2 references. Non-blocking note: the gp_has_data-kept branch of inference_never_keeps_unsolved_results never runs on the fixed code; ASSERT_FALSE(g->gp_has_data) would be a stricter statement of the contract. Not verified: a Linux/GCC build of the test (the macro technique looks portable to glibc headers but was not compiled there), and leak-freedom (no ASan/leaks run). Other allocation si",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 149874.971,
+          "tokens": null
+        },
+        {
+          "attempt_id": "48ec257a-7da6-4cd5-b06f-26f119d2e5fd",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:57:04.127837Z",
+          "last_activity_at": "2026-11-15T11:59:38.953693Z",
+          "ended_at": "2026-11-15T11:59:38.953693Z",
+          "outcome": {
+            "summary": "No defects found. Part A: ldlt_solve returns false without touching X; all five callers handle it. The three gp_infer_sd failure paths free exactly what the neighbouring pre-existing branches free (alpha, feature, fvt, S, loc, out, var; gp_chol and, on the third path, gp_chol_feat through ldlt_free, which NULLs the pointers). gp_has_data stays false after gp_clear, so there is no leak, double free or dangling cache pointer. gp_predict_projected leaves mean = mixed*alpha (finite), the same as the existing mixed_t/gamma failure branch. interp_peak_frequency skips interpolation. Part B: ASSERT_FALSE(g->gp_has_data) after every injected failure; 11 of 11 failure points dropped, all three solve sites covered. Part C: all 12 sp/fr/timestamps/gear_error/variances/rt/rg/rv/detrend/windowed x2 sites converted; none of the excluded sites converted (grep). The removed NULL branches held only cleanup/return code made unreachable; no state reset was lost. The detrend hunk is a pure re-indentation under git diff -w; free(detrend) is still reached once. Sizes are unchanged and always >= 1 (count>=1, grid_size>=1, T>=2, n>=2, len>=1). Zero-fill is not observable. Every buffer is freed once on every path, including *spectrum/*frequencies hand-off. Use matches other indigo_libs callers. Test: built and ran 3x on macOS, all 4 cases pass, output identical across runs. No new warnings with -Wall -Wextra. No test path reaches an indigo_safe_malloc site, so no failure is injected into one. License header, Makefile rule, Xcode entry (unit test group, unique ID, no .factory2 refs) and git diff --check are clean. Limits: the old-code failure was not re-run by me (it relies on the owner note). Linux/Windows builds of the test were not verified. calloc sites (ldlt_factor) are not fault-injected by the test. Observation (not a defect): because indigo_bus.h is first included under #define malloc test_malloc, its inline indigo_safe_malloc also routes through test_malloc in this TU. If a future ca",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 154825.856,
+          "tokens": null
+        },
+        {
+          "attempt_id": "fa6ab04f-4555-421b-a12a-a254ecc210fb",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:04:49.805558Z",
+          "last_activity_at": "2026-11-15T12:05:09.693404Z",
+          "ended_at": "2026-11-15T12:05:09.693404Z",
+          "outcome": {
+            "summary": "Re-review of the final tree at 190d3de2c found no defects. The delta from 6c50530d4 is exactly 3 added lines in indigo_test/unit/test_gp_guider_alloc.c: a comment and #include <indigo/indigo_bus.h>, placed before #define malloc test_malloc. indigo_bus.h is include-guarded (indigo_bus_h), so the second include from indigo_gp_guider.c is skipped. Running clang -E on this file shows indigo_safe_malloc, indigo_safe_malloc_copy and indigo_safe_realloc now call the real malloc/realloc. An injected failure can therefore no longer abort, or exit(0), inside them. I built and ran the test twice on macOS: all 4 cases pass and the output is identical. Allocation counts are unchanged (11 for inference, 6 for prediction), and all 11 inference failures drop gp_has_data. git diff --check is clean, and formatting matches the file. Earlier findings carry over unchanged for indigo_gp_guider.c (ldlt_solve bool return, five callers, safe_malloc conversions, detrend pure re-indentation), Makefile and Xcode entry. Limits as before: I did not re-run the test against the old code myself (that rests on the owner note). Linux/Windows builds were not verified. calloc sites are not fault-injected.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 19887.846,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:47:01.744262Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T11:49:31.619233Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "No defects found. Verified: ldlt_solve now returns bool and leaves X untouched on Y allocation failure; all five callers handle false. gp_infer_sd starts with gp_clear, so no state from an earlier inference survives; the three new failure branches (lines 835, 870, 886) free alpha/feature/fvt/S/loc/out/var and gp_chol (plus gp_chol_feat at 886) the same way as the existing allocation-failure branches next to them. gp_has_data stays false, the pointers stay NULL, ldlt_free sets L/D to NULL so no double free, and a gp_beta left half-written is unreachable without gp_has_data. gp_predict_projected on solve failure leaves mean = mixed*alpha, like the existing mixed_t/gamma failure branch, so the result is finite and defined. interp_peak_frequency skips interpolation when the solve fails. Test: built and ran it in the worktree (clang -O3, universal), 4/4 pass, no -Wall -Wextra warnings from the test or the GP source. Compiled the test against master's indigo_gp_guider.c with the bool-only case removed (that case cannot compile against the void API): all 3 behavioural cases fail at -O3 and -O0, so the test catches the defect. Stack poisoning only matters for detecting the old code; on the fixed code the result does not depend on uninitialized memory. The malloc macro comes after test_malloc and stdlib.h, so headers pulled in later only redirect indigo_safe_malloc, which is harmless. The Makefile rule matches test_star_detection. License header, English text and formatting match the neighbouring unit tests. The Xcode file reference is unique and sits in the unit test group with no .factory2 references. Non-blocking note: the gp_has_data-kept branch of inference_never_keeps_unsolved_results never runs on the fixed code; ASSERT_FALSE(g->gp_has_data) would be a stricter statement of the contract. Not verified: a Linux/GCC build of the test (the macro technique looks portable to glibc headers but was not compiled there), and leak-freedom (no ASan/leaks run). Other allocation si"
+        },
+        {
+          "at": "2026-11-15T11:57:04.127837Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T11:59:38.953693Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "No defects found. Part A: ldlt_solve returns false without touching X; all five callers handle it. The three gp_infer_sd failure paths free exactly what the neighbouring pre-existing branches free (alpha, feature, fvt, S, loc, out, var; gp_chol and, on the third path, gp_chol_feat through ldlt_free, which NULLs the pointers). gp_has_data stays false after gp_clear, so there is no leak, double free or dangling cache pointer. gp_predict_projected leaves mean = mixed*alpha (finite), the same as the existing mixed_t/gamma failure branch. interp_peak_frequency skips interpolation. Part B: ASSERT_FALSE(g->gp_has_data) after every injected failure; 11 of 11 failure points dropped, all three solve sites covered. Part C: all 12 sp/fr/timestamps/gear_error/variances/rt/rg/rv/detrend/windowed x2 sites converted; none of the excluded sites converted (grep). The removed NULL branches held only cleanup/return code made unreachable; no state reset was lost. The detrend hunk is a pure re-indentation under git diff -w; free(detrend) is still reached once. Sizes are unchanged and always >= 1 (count>=1, grid_size>=1, T>=2, n>=2, len>=1). Zero-fill is not observable. Every buffer is freed once on every path, including *spectrum/*frequencies hand-off. Use matches other indigo_libs callers. Test: built and ran 3x on macOS, all 4 cases pass, output identical across runs. No new warnings with -Wall -Wextra. No test path reaches an indigo_safe_malloc site, so no failure is injected into one. License header, Makefile rule, Xcode entry (unit test group, unique ID, no .factory2 refs) and git diff --check are clean. Limits: the old-code failure was not re-run by me (it relies on the owner note). Linux/Windows builds of the test were not verified. calloc sites (ldlt_factor) are not fault-injected by the test. Observation (not a defect): because indigo_bus.h is first included under #define malloc test_malloc, its inline indigo_safe_malloc also routes through test_malloc in this TU. If a future ca"
+        },
+        {
+          "at": "2026-11-15T12:04:49.805558Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:05:09.693404Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review of the final tree at 190d3de2c found no defects. The delta from 6c50530d4 is exactly 3 added lines in indigo_test/unit/test_gp_guider_alloc.c: a comment and #include <indigo/indigo_bus.h>, placed before #define malloc test_malloc. indigo_bus.h is include-guarded (indigo_bus_h), so the second include from indigo_gp_guider.c is skipped. Running clang -E on this file shows indigo_safe_malloc, indigo_safe_malloc_copy and indigo_safe_realloc now call the real malloc/realloc. An injected failure can therefore no longer abort, or exit(0), inside them. I built and ran the test twice on macOS: all 4 cases pass and the output is identical. Allocation counts are unchanged (11 for inference, 6 for prediction), and all 11 inference failures drop gp_has_data. git diff --check is clean, and formatting matches the file. Earlier findings carry over unchanged for indigo_gp_guider.c (ldlt_solve bool return, five callers, safe_malloc conversions, detrend pure re-indentation), Makefile and Xcode entry. Limits as before: I did not re-run the test against the old code myself (that rests on the owner note). Linux/Windows builds were not verified. calloc sites are not fault-injected."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of the final tree at 190d3de2c found no defects. The delta from 6c50530d4 is exactly 3 added lines in indigo_test/unit/test_gp_guider_alloc.c: a comment and #include <indigo/indigo_bus.h>, placed before #define malloc test_malloc. indigo_bus.h is include-guarded (indigo_bus_h), so the second include from indigo_gp_guider.c is skipped. Running clang -E on this file shows indigo_safe_malloc, indigo_safe_malloc_copy and indigo_safe_realloc now call the real malloc/realloc. An injected failure can therefore no longer abort, or exit(0), inside them. I built and ran the test twice on macOS: all 4 cases pass and the output is identical. Allocation counts are unchanged (11 for inference, 6 for prediction), and all 11 inference failures drop gp_has_data. git diff --check is clean, and formatting matches the file. Earlier findings carry over unchanged for indigo_gp_guider.c (ldlt_solve bool return, five callers, safe_malloc conversions, detrend pure re-indentation), Makefile and Xcode entry. Limits as before: I did not re-run the test against the old code myself (that rests on the owner note). Linux/Windows builds were not verified. calloc sites are not fault-injected.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 324588.673,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "56780585-a0f4-4765-a765-fe1e3e8f6a20",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.692622Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261023065605-60d4-repository-audit-010.json",
+      "source": "9b6c2a3a8debdd29d2a995d80686c2d11dd69d08e26fe64f6de4759f021b63bb",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "d11e1c97-1a40-4b8e-8fd6-8764c8408e79",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:25.671568Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "1bdac9a6-34bd-4690-92f3-0aedfca3efaa",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:25.948923Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "ffa08e1a-d936-4cb4-83f8-7001e74aa9cc",
+      "event": "task/progress",
+      "at": "2026-11-15T11:40:50.337121Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Implementation started on branch ticket/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b"
+    },
+    {
+      "event_id": "da44866b-6ab2-45a3-ab82-daf525785b0a",
+      "event": "ticket/started",
+      "at": "2026-11-15T11:40:50.339139Z",
+      "actor": "human/owner",
+      "branch": "ticket/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b",
+      "base": "master"
+    },
+    {
+      "event_id": "be2f7ae6-c8b6-408d-803b-e1a54c887c3f",
+      "event": "task/progress",
+      "at": "2026-11-15T11:41:19.967504Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Implementer launched",
+      "attempt_id": "75bff75b-696c-406d-be6c-9b054b352f60",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "52b3387d-1496-4bdf-9d17-258a96d49e07",
+      "event": "task/progress",
+      "at": "2026-11-15T11:42:07.591779Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Writing GP guider allocation-failure unit test"
+    },
+    {
+      "event_id": "8a342918-1f2c-4396-84bf-e5d3d75a7e2b",
+      "event": "task/progress",
+      "at": "2026-11-15T11:43:41.516936Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Fix applied; running flow check"
+    },
+    {
+      "event_id": "5a29c3ff-c0cd-48c3-9eae-b39e3f4d7e38",
+      "event": "task/progress",
+      "at": "2026-11-15T11:43:42.083491Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bca0d08a-15d2-4a81-9b71-5ded840c3ca2",
+      "event": "task/progress",
+      "at": "2026-11-15T11:43:42.106555Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "61c95656-b0e3-48b6-84e0-6618c7b79bbc",
+      "event": "task/progress",
+      "at": "2026-11-15T11:43:42.108317Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a0893e7e-3a04-4d07-9cb3-4759b1aa5a26",
+      "event": "task/progress",
+      "at": "2026-11-15T11:45:12.439892Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "66a28026-ad39-4395-b1a5-ce5d308488ea",
+      "event": "check/failed",
+      "at": "2026-11-15T11:45:12.442180Z",
+      "actor": "human/owner",
+      "commit": "7d45e09bcd8e48cdb5951d892e7a52691b185912",
+      "checks": "whitespace passed, unit FAILED"
+    },
+    {
+      "event_id": "6adfee8e-073c-45de-a5f1-fe04a25b4814",
+      "event": "task/progress",
+      "at": "2026-11-15T11:45:31.608396Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "dad77ee1-18e5-40b6-84a2-6cc102b8af89",
+      "event": "task/progress",
+      "at": "2026-11-15T11:45:31.649612Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ad83458c-cc92-45dc-a614-228e16d205c8",
+      "event": "task/progress",
+      "at": "2026-11-15T11:45:31.651578Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "b7e74e8b-c5ef-42d2-864c-fed5d09d0fdf",
+      "event": "task/progress",
+      "at": "2026-11-15T11:46:30.760954Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "a556de86-8dbf-41b6-a22b-d0136a86192f",
+      "event": "check/passed",
+      "at": "2026-11-15T11:46:30.763448Z",
+      "actor": "human/owner",
+      "commit": "e9801ea3fa0c58178ccc6f417010e6242e1c7107",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "619e2398-b03b-4968-8fa0-1dc7214fe773",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:46:36.133258Z",
+      "actor": "human/owner",
+      "text": "Reproduction (before fix): new indigo_test/unit/test_gp_guider_alloc.c, which compiles indigo_gp_guider.c with a malloc that fails the n-th call and 0xFF-fills other blocks, failed against the unfixed code: gp_infer_sd kept gp_has_data with a garbage alpha when the 6th of 11 allocations (the solve buffer) failed, gp_predict_projected returned NaN mean when its solve buffer failed, interp_peak_frequency returned NaN instead of the un-interpolated 2.0. After fix (ldlt_solve returns bool, all five callers handle false): all 4 cases pass and flow check (whitespace, unit) passes.",
+      "tokens": null
+    },
+    {
+      "event_id": "b4bb1bcf-001b-4d96-9df6-b6fd813846f4",
+      "event": "task/progress",
+      "at": "2026-11-15T11:47:01.744372Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "dec5ee11-910d-478f-a60c-71b26c9fdd20",
+      "event": "review/started",
+      "at": "2026-11-15T11:47:01.746054Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "ff11ac9d-6b0e-4063-81d9-e994b72d83c7",
+      "event": "task/progress",
+      "at": "2026-11-15T11:47:26.246183Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Reviewer launched",
+      "attempt_id": "045c246d-c3a5-462d-bb6c-21e92e9a1815",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ba2ef9b8-0a7e-4553-9c23-a1e4a3add469",
+      "event": "task/progress",
+      "at": "2026-11-15T11:48:28.618578Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Building test_gp_guider_alloc against fixed and master gp_guider sources"
+    },
+    {
+      "event_id": "663b1acb-a568-43bb-8a0a-72983cf176a9",
+      "event": "task/progress",
+      "at": "2026-11-15T11:49:31.619365Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "ee28c127-b3e4-47c1-8dec-1c433ab0c3ff",
+      "event": "review/passed",
+      "at": "2026-11-15T11:49:31.621063Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e9801ea3fa0c58178ccc6f417010e6242e1c7107"
+    },
+    {
+      "event_id": "07603249-ae62-4454-8dc7-fff688c1297f",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:53:09.326520Z",
+      "actor": "human/owner",
+      "text": "Owner extended the scope after the first review pass. (1) In indigo_test/unit/test_gp_guider_alloc.c, inference_never_keeps_unsolved_results must assert that gp_has_data is false after every injected allocation failure (ASSERT_FALSE), instead of accepting kept data. (2) Audit and fix the remaining allocation sites in indigo_libs/indigo_gp_guider.c that this ticket had left alone (the malloc calls in the spectrum, regularisation, detrend and windowing helpers, originally reported near lines 406, 1054, 1093, 1149, 1298 and 1402); there use the framework allocator instead of plain malloc, as the rest of the framework does. The owner called it indigo_malloc; no such function exists, the framework helper is indigo_safe_malloc() from indigo_bus.h, which zero-fills and never returns NULL.",
+      "tokens": null
+    },
+    {
+      "event_id": "7f354535-0950-4d28-b431-67a8efff2a43",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:35.377466Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Applying owner additions: strict test, indigo_safe_malloc audit",
+      "attempt_id": "75bff75b-696c-406d-be6c-9b054b352f60",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "85ca0ca0-046f-425f-91a1-008814746769",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:58.429112Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c88be186-36ba-41f7-ad8f-22a1be28bb99",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:58.516610Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "86215c70-a49c-4e27-b43f-e68281a7fa10",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:58.519658Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "3cc07d7b-3a87-4e47-b736-b4058aaac58e",
+      "event": "task/progress",
+      "at": "2026-11-15T11:55:05.162457Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "4d5dc341-7ab6-4a60-a7e7-80e7992bcfd5",
+      "event": "check/passed",
+      "at": "2026-11-15T11:55:05.164772Z",
+      "actor": "human/owner",
+      "commit": "ae2ede09cd6825d1d5509556160c01bc19758739",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "deb72ab2-ba96-49c1-a991-7ab4a127de94",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:55:09.179592Z",
+      "actor": "human/owner",
+      "text": "Audit of remaining allocations in indigo_gp_guider.c: update_gp (timestamps/gear_error/variances, rt/rg/rv, detrend) and the two windowed buffers in estimate_period_length/estimate_extra_period were checked malloc calls with failure returns; converted to indigo_safe_malloc with the unreachable NULL branches removed (detrend block de-indented). calloc sites (compute_spectrum re/im, indigo_gp_guider_create g/buffer) already check and clean up, left unchanged; no unchecked-failure defect. Test inference_never_keeps_unsolved_results now asserts gp_has_data false after every injected failure. flow check (whitespace, unit) passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "f3e3fd11-8f60-48cf-9f42-9d5c951cf2ec",
+      "event": "task/progress",
+      "at": "2026-11-15T11:55:43.211346Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2731e905-d89b-4aaa-a7c1-4dadd414ece0",
+      "event": "task/progress",
+      "at": "2026-11-15T11:55:43.256096Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2b4cc94d-e8f0-465a-999d-6abfdf395cbd",
+      "event": "task/progress",
+      "at": "2026-11-15T11:55:43.258533Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "deefde2c-0953-4233-b98f-52e170dd3e38",
+      "event": "task/progress",
+      "at": "2026-11-15T11:56:44.455673Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "067d2caa-d017-4146-9f65-fb3be29bcbcc",
+      "event": "check/passed",
+      "at": "2026-11-15T11:56:44.458326Z",
+      "actor": "human/owner",
+      "commit": "6c50530d4943ccf9504682d2c733fc6be1e78d78",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "a7dd627d-07dc-43d7-87c7-4469f881421c",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:56:48.247631Z",
+      "actor": "human/owner",
+      "text": "Correction to the audit: sp and fr in compute_spectrum were also plain malloc; converted to indigo_safe_malloc and the unreachable NULL branch removed (re/im calloc handling unchanged). Remaining plain malloc/calloc: ldlt_factor, ldlt_solve, gp_infer_sd, gp_predict_projected, FFT re/im calloc, indigo_gp_guider_create. flow check (whitespace, unit) passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "50207797-8f3f-4aaf-8c10-b34ceb6c44c9",
+      "event": "task/progress",
+      "at": "2026-11-15T11:57:04.128119Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "745928af-cf2f-46f5-abcb-2df23afb8be6",
+      "event": "review/started",
+      "at": "2026-11-15T11:57:04.129596Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "d7a98701-7681-49b8-acf2-14a36e78a0fd",
+      "event": "task/progress",
+      "at": "2026-11-15T11:57:32.652243Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Reviewer launched",
+      "attempt_id": "48ec257a-7da6-4cd5-b06f-26f119d2e5fd",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "50b17d09-0290-4ada-b3b8-052a89d29d60",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:37.385595Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Building and running test_gp_guider_alloc in the worktree"
+    },
+    {
+      "event_id": "c5671c3a-f17f-43e3-895e-9b2189c0b92c",
+      "event": "task/progress",
+      "at": "2026-11-15T11:59:38.953806Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "38318278-bc4b-4a16-98b8-4ee44d78691b",
+      "event": "review/passed",
+      "at": "2026-11-15T11:59:38.955254Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6c50530d4943ccf9504682d2c733fc6be1e78d78"
+    },
+    {
+      "event_id": "1f42dac0-8d32-485e-b830-174602f5eef5",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:02:37.053860Z",
+      "actor": "human/owner",
+      "text": "Owner approved the reviewer's optional suggestion: in indigo_test/unit/test_gp_guider_alloc.c include <indigo/indigo_bus.h> before '#define malloc test_malloc', so the inline indigo_safe_malloc() keeps using the real allocator and an injected failure can never abort or exit(0) inside it.",
+      "tokens": null
+    },
+    {
+      "event_id": "de659f55-f476-4837-926f-72a8e1e9c7a3",
+      "event": "task/progress",
+      "at": "2026-11-15T12:02:44.660941Z",
+      "actor": "human/owner",
+      "task_id": "137e68a4-a501-4577-8c68-aa37ce7c552f",
+      "text": "Including indigo_bus.h before the malloc override in the GP test"
+    },
+    {
+      "event_id": "1e27b2fb-28f7-4614-9e02-d28500ee57ba",
+      "event": "task/progress",
+      "at": "2026-11-15T12:03:16.649066Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "99944603-9b6d-44e7-b9ac-37ba80c6e410",
+      "event": "task/progress",
+      "at": "2026-11-15T12:03:16.691771Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "23f50fcd-a23b-4c4e-b33b-43da185012b6",
+      "event": "task/progress",
+      "at": "2026-11-15T12:03:16.694488Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "08a2dd58-aaaa-4681-89dc-5d85f7e31072",
+      "event": "task/progress",
+      "at": "2026-11-15T12:04:14.331263Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "c6c0e08a-d282-4e1a-bf70-254236f0fa49",
+      "event": "check/passed",
+      "at": "2026-11-15T12:04:14.333930Z",
+      "actor": "human/owner",
+      "commit": "190d3de2c44ba206295d7161ca8fae8fd7c61a51",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "826b5181-535f-45e5-be10-e7b2571bd856",
+      "event": "task/progress",
+      "at": "2026-11-15T12:04:49.805925Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "df98d90e-c8d6-4e67-a9f4-6c7cacbf92aa",
+      "event": "review/started",
+      "at": "2026-11-15T12:04:49.807564Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "83d7683a-ac26-43e4-8c35-76329128b34b",
+      "event": "task/progress",
+      "at": "2026-11-15T12:04:49.934068Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Reviewer relaunched for re-review of include delta",
+      "attempt_id": "fa6ab04f-4555-421b-a12a-a254ecc210fb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "86beacdf-19a7-4215-9d1e-6ae46292d30c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:05:00.032579Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Preprocessing and running test_gp_guider_alloc on final tree"
+    },
+    {
+      "event_id": "4c1cec28-c9f8-48ed-b718-a24de6d0cd3e",
+      "event": "task/progress",
+      "at": "2026-11-15T12:05:09.693541Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "fd9434d3-1a4f-46ef-b703-5a810b07e5a7",
+      "event": "review/passed",
+      "at": "2026-11-15T12:05:09.695178Z",
+      "actor": "human/owner",
+      "task_id": "836c9faf-3c25-43e0-8cce-13c768ee7e9b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "190d3de2c44ba206295d7161ca8fae8fd7c61a51"
+    },
+    {
+      "event_id": "2e7b8459-4c81-4170-8b3b-4625a44ff3af",
+      "event": "ticket/closed",
+      "at": "2026-11-15T12:05:27.984528Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T12:05:27.984487Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "8f9680e96e06384237afcaa52908338de084e04c"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 695995.948,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 67,
+    "sha256": "a19849aeb66bbbbd4c0b31f6d69e133efc6b1f5efee9aeb54a41cc20b21f6360"
+  },
+  "priority": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7d45e09bcd8e48cdb5951d892e7a52691b185912",
+        "tree": "6a3f1a08c9e1477e778dad4a680d99fb5fdc670a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:43:42.105811Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/6a3f1a08c9e1-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "7d45e09bcd8e48cdb5951d892e7a52691b185912",
+        "tree": "6a3f1a08c9e1477e778dad4a680d99fb5fdc670a",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-15T11:45:12.438602Z",
+        "duration_s": 90.3,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/6a3f1a08c9e1-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e9801ea3fa0c58178ccc6f417010e6242e1c7107",
+        "tree": "a5f16f711b341ed7d4effc31c6f85962d615c6e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:45:31.648795Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/a5f16f711b34-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e9801ea3fa0c58178ccc6f417010e6242e1c7107",
+        "tree": "a5f16f711b341ed7d4effc31c6f85962d615c6e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:46:30.759755Z",
+        "duration_s": 59.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/a5f16f711b34-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ae2ede09cd6825d1d5509556160c01bc19758739",
+        "tree": "83ed6e24341416aedeaf432c45a2713ec614d753",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:53:58.514967Z",
+        "duration_s": 0.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/83ed6e243414-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "ae2ede09cd6825d1d5509556160c01bc19758739",
+        "tree": "83ed6e24341416aedeaf432c45a2713ec614d753",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:55:05.161411Z",
+        "duration_s": 66.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/83ed6e243414-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6c50530d4943ccf9504682d2c733fc6be1e78d78",
+        "tree": "029fe0f3093108cf8d2eaabd416372f190f77ad2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:55:43.255097Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/029fe0f30931-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "6c50530d4943ccf9504682d2c733fc6be1e78d78",
+        "tree": "029fe0f3093108cf8d2eaabd416372f190f77ad2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:56:44.454364Z",
+        "duration_s": 61.2,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/029fe0f30931-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "190d3de2c44ba206295d7161ca8fae8fd7c61a51",
+        "tree": "7edc92ca05770495c704a7e7ba83546dba9a8c54",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:03:16.690539Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/7edc92ca0577-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "190d3de2c44ba206295d7161ca8fae8fd7c61a51",
+        "tree": "7edc92ca05770495c704a7e7ba83546dba9a8c54",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:04:14.329771Z",
+        "duration_s": 57.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/d8ca35b4-e6cd-5803-bf30-1f82a7b50d4b/7edc92ca0577-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No defects found. Verified: ldlt_solve now returns bool and leaves X untouched on Y allocation failure; all five callers handle false. gp_infer_sd starts with gp_clear, so no state from an earlier inference survives; the three new failure branches (lines 835, 870, 886) free alpha/feature/fvt/S/loc/out/var and gp_chol (plus gp_chol_feat at 886) the same way as the existing allocation-failure branches next to them. gp_has_data stays false, the pointers stay NULL, ldlt_free sets L/D to NULL so no double free, and a gp_beta left half-written is unreachable without gp_has_data. gp_predict_projected on solve failure leaves mean = mixed*alpha, like the existing mixed_t/gamma failure branch, so the result is finite and defined. interp_peak_frequency skips interpolation when the solve fails. Test: built and ran it in the worktree (clang -O3, universal), 4/4 pass, no -Wall -Wextra warnings from the test or the GP source. Compiled the test against master's indigo_gp_guider.c with the bool-only case removed (that case cannot compile against the void API): all 3 behavioural cases fail at -O3 and -O0, so the test catches the defect. Stack poisoning only matters for detecting the old code; on the fixed code the result does not depend on uninitialized memory. The malloc macro comes after test_malloc and stdlib.h, so headers pulled in later only redirect indigo_safe_malloc, which is harmless. The Makefile rule matches test_star_detection. License header, English text and formatting match the neighbouring unit tests. The Xcode file reference is unique and sits in the unit test group with no .factory2 references. Non-blocking note: the gp_has_data-kept branch of inference_never_keeps_unsolved_results never runs on the fixed code; ASSERT_FALSE(g->gp_has_data) would be a stricter statement of the contract. Not verified: a Linux/GCC build of the test (the macro technique looks portable to glibc headers but was not compiled there), and leak-freedom (no ASan/leaks run). Other allocation sites are out of scope.",
+        "reviewer": "human/owner",
+        "commit": "e9801ea3fa0c58178ccc6f417010e6242e1c7107",
+        "tree": "a5f16f711b341ed7d4effc31c6f85962d615c6e0",
+        "at": "2026-11-15T11:49:31.618918Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No defects found. Part A: ldlt_solve returns false without touching X; all five callers handle it. The three gp_infer_sd failure paths free exactly what the neighbouring pre-existing branches free (alpha, feature, fvt, S, loc, out, var; gp_chol and, on the third path, gp_chol_feat through ldlt_free, which NULLs the pointers). gp_has_data stays false after gp_clear, so there is no leak, double free or dangling cache pointer. gp_predict_projected leaves mean = mixed*alpha (finite), the same as the existing mixed_t/gamma failure branch. interp_peak_frequency skips interpolation. Part B: ASSERT_FALSE(g->gp_has_data) after every injected failure; 11 of 11 failure points dropped, all three solve sites covered. Part C: all 12 sp/fr/timestamps/gear_error/variances/rt/rg/rv/detrend/windowed x2 sites converted; none of the excluded sites converted (grep). The removed NULL branches held only cleanup/return code made unreachable; no state reset was lost. The detrend hunk is a pure re-indentation under git diff -w; free(detrend) is still reached once. Sizes are unchanged and always >= 1 (count>=1, grid_size>=1, T>=2, n>=2, len>=1). Zero-fill is not observable. Every buffer is freed once on every path, including *spectrum/*frequencies hand-off. Use matches other indigo_libs callers. Test: built and ran 3x on macOS, all 4 cases pass, output identical across runs. No new warnings with -Wall -Wextra. No test path reaches an indigo_safe_malloc site, so no failure is injected into one. License header, Makefile rule, Xcode entry (unit test group, unique ID, no .factory2 refs) and git diff --check are clean. Limits: the old-code failure was not re-run by me (it relies on the owner note). Linux/Windows builds of the test were not verified. calloc sites (ldlt_factor) are not fault-injected by the test. Observation (not a defect): because indigo_bus.h is first included under #define malloc test_malloc, its inline indigo_safe_malloc also routes through test_malloc in this TU. If a future case reaches an update_gp/spectrum path with a failure armed, it would assert, or exit(0) under NDEBUG and look like a pass. Including <indigo/indigo_bus.h> before the #define would remove that hazard.",
+        "reviewer": "human/owner",
+        "commit": "6c50530d4943ccf9504682d2c733fc6be1e78d78",
+        "tree": "029fe0f3093108cf8d2eaabd416372f190f77ad2",
+        "at": "2026-11-15T11:59:38.953451Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of the final tree at 190d3de2c found no defects. The delta from 6c50530d4 is exactly 3 added lines in indigo_test/unit/test_gp_guider_alloc.c: a comment and #include <indigo/indigo_bus.h>, placed before #define malloc test_malloc. indigo_bus.h is include-guarded (indigo_bus_h), so the second include from indigo_gp_guider.c is skipped. Running clang -E on this file shows indigo_safe_malloc, indigo_safe_malloc_copy and indigo_safe_realloc now call the real malloc/realloc. An injected failure can therefore no longer abort, or exit(0), inside them. I built and ran the test twice on macOS: all 4 cases pass and the output is identical. Allocation counts are unchanged (11 for inference, 6 for prediction), and all 11 inference failures drop gp_has_data. git diff --check is clean, and formatting matches the file. Earlier findings carry over unchanged for indigo_gp_guider.c (ldlt_solve bool return, five callers, safe_malloc conversions, detrend pure re-indentation), Makefile and Xcode entry. Limits as before: I did not re-run the test against the old code myself (that rests on the owner note). Linux/Windows builds were not verified. calloc sites are not fault-injected.",
+        "reviewer": "human/owner",
+        "commit": "190d3de2c44ba206295d7161ca8fae8fd7c61a51",
+        "tree": "7edc92ca05770495c704a7e7ba83546dba9a8c54",
+        "at": "2026-11-15T12:05:09.693142Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T11:46:36.131751Z",
+        "actor": "human/owner",
+        "text": "Reproduction (before fix): new indigo_test/unit/test_gp_guider_alloc.c, which compiles indigo_gp_guider.c with a malloc that fails the n-th call and 0xFF-fills other blocks, failed against the unfixed code: gp_infer_sd kept gp_has_data with a garbage alpha when the 6th of 11 allocations (the solve buffer) failed, gp_predict_projected returned NaN mean when its solve buffer failed, interp_peak_frequency returned NaN instead of the un-interpolated 2.0. After fix (ldlt_solve returns bool, all five callers handle false): all 4 cases pass and flow check (whitespace, unit) passes.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T11:53:09.324680Z",
+        "actor": "human/owner",
+        "text": "Owner extended the scope after the first review pass. (1) In indigo_test/unit/test_gp_guider_alloc.c, inference_never_keeps_unsolved_results must assert that gp_has_data is false after every injected allocation failure (ASSERT_FALSE), instead of accepting kept data. (2) Audit and fix the remaining allocation sites in indigo_libs/indigo_gp_guider.c that this ticket had left alone (the malloc calls in the spectrum, regularisation, detrend and windowing helpers, originally reported near lines 406, 1054, 1093, 1149, 1298 and 1402); there use the framework allocator instead of plain malloc, as the rest of the framework does. The owner called it indigo_malloc; no such function exists, the framework helper is indigo_safe_malloc() from indigo_bus.h, which zero-fills and never returns NULL.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T11:55:09.177729Z",
+        "actor": "human/owner",
+        "text": "Audit of remaining allocations in indigo_gp_guider.c: update_gp (timestamps/gear_error/variances, rt/rg/rv, detrend) and the two windowed buffers in estimate_period_length/estimate_extra_period were checked malloc calls with failure returns; converted to indigo_safe_malloc with the unreachable NULL branches removed (detrend block de-indented). calloc sites (compute_spectrum re/im, indigo_gp_guider_create g/buffer) already check and clean up, left unchanged; no unchecked-failure defect. Test inference_never_keeps_unsolved_results now asserts gp_has_data false after every injected failure. flow check (whitespace, unit) passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T11:56:48.246195Z",
+        "actor": "human/owner",
+        "text": "Correction to the audit: sp and fr in compute_spectrum were also plain malloc; converted to indigo_safe_malloc and the unreachable NULL branch removed (re/im calloc handling unchanged). Remaining plain malloc/calloc: ldlt_factor, ldlt_solve, gp_infer_sd, gp_predict_projected, FFT re/im calloc, indigo_gp_guider_create. flow check (whitespace, unit) passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:02:37.052514Z",
+        "actor": "human/owner",
+        "text": "Owner approved the reviewer's optional suggestion: in indigo_test/unit/test_gp_guider_alloc.c include <indigo/indigo_bus.h> before '#define malloc test_malloc', so the inline indigo_safe_malloc() keeps using the real allocator and an injected failure can never abort or exit(0) inside it.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "8f9680e96e06384237afcaa52908338de084e04c",
+      "tree": "7edc92ca05770495c704a7e7ba83546dba9a8c54",
+      "base": "master",
+      "at": "2026-11-15T12:05:27.855664Z"
+    }
+  }
+}
