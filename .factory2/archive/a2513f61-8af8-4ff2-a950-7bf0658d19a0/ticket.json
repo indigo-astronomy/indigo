@@ -1,0 +1,730 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a2513f61-8af8-4ff2-a950-7bf0658d19a0",
+  "revision": 34,
+  "title": "WeMacro Bluetooth X_RAIL_EXECUTE accepts a new batch while one is running",
+  "description": "In indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m the X_RAIL_EXECUTE change handler has no BUSY guard. While a batch is running (X_RAIL_EXECUTE_PROPERTY in INDIGO_BUSY_STATE), another X_RAIL_EXECUTE change request copies the new values, sends the step-length (0x80) and batch (0x10) commands again and resets the COUNT countdown, so the running batch is silently replaced and the published progress no longer describes it. Expected: a change request received while the property is BUSY is refused without sending commands to the rail or altering the running countdown, consistently with how the portable sibling indigo_drivers/focuser_wemacro handles the same property; abort through FOCUSER_ABORT_MOTION must keep working. Add hardware-free regression coverage in indigo_test/unit/test_focuser_wemacro_bt.py and increment DRIVER_VERSION. Found by the reviewer of ticket 250f7411-8c84-54dd-b9a3-5ee4b53817d7 as a pre-existing, out-of-scope issue; behavior of the physical rail on a repeated batch command was not measured.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T12:48:07.638931Z",
+  "status": "closed",
+  "branch": "ticket/a2513f61-8af8-4ff2-a950-7bf0658d19a0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "aa305429-4f83-4b87-a545-4ac24cae0d23",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:53:02.563014Z",
+          "last_activity_at": "2026-11-15T12:58:39.777782Z",
+          "ended_at": "2026-11-15T12:58:39.777782Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 337214.768,
+          "tokens": null
+        },
+        {
+          "attempt_id": "b6f6358b-5f08-42b7-8147-727b0ca95ec0",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T13:00:25.372480Z",
+          "last_activity_at": "2026-11-15T13:02:28.194263Z",
+          "ended_at": "2026-11-15T13:02:28.194263Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 122821.783,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:53:02.563014Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/a2513f61-8af8-4ff2-a950-7bf0658d19a0"
+        },
+        {
+          "at": "2026-11-15T12:58:39.777782Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T13:00:25.372480Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T13:02:28.194263Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 460036.551,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "fd8a2007-449b-4000-90cc-da4eea8fd2c1",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T12:58:39.778021Z",
+          "last_activity_at": "2026-11-15T13:00:25.372377Z",
+          "ended_at": "2026-11-15T13:00:25.372377Z",
+          "outcome": {
+            "summary": "Guard placement and macro use are correct: the only INDIGO_REJECT_CHANGE_IF is in the X_RAIL_EXECUTE change branch (indigo_focuser_wemacro_bt.m:437), nothing left in attach; indigo_reject_change (indigo_bus.c:1336-1339) leaves a BUSY property untouched and only sends a BUSY message, so the running countdown and values are preserved; FOCUSER_ABORT_MOTION (m:397-411) still sets X_RAIL_EXECUTE to ALERT unconditionally; DRIVER_VERSION bumped 0x02000005 -> 0x02000006; the probe test exercises the real handler body and fails on the old source (rejects stays 0, two commands sent). REQUIRED: the guard can now wedge X_RAIL_EXECUTE after a connection drop. didDisconnectPeripheral (m:191-202), reached both on link loss and on a user CONNECTION disconnect (m:378-382 -> [delegate disconnect]), deletes X_RAIL_EXECUTE without ending a BUSY batch, and didDiscoverCharacteristicsForService (m:220) redefines it with the stale BUSY state on reconnect. No rail notification can then complete it, so every new batch is refused with 'A batch is already running' until the user happens to press abort; before this change a new request recovered. The portable sibling the ticket names as the reference ends a BUSY batch with ALERT in on_disconnect (indigo_focuser_wemacro.driver:306-308). Fix: in didDisconnectPeripheral, before deleting the property, set X_RAIL_EXECUTE_PROPERTY->state = INDIGO_ALERT_STATE when it is BUSY (no update needed, the property is deleted next and redefined as ALERT), and cover it in test_focuser_wemacro_bt.py, e.g. extend the reconnect probe (whose fixture currently #defines X_RAIL_EXECUTE_PROPERTY NULL) so that a disconnect during a BUSY batch followed by reconnect leaves the property non-BUSY and a new batch request is accepted. Out of scope: FOCUSER_STEPS has the same stale-BUSY-across-reconnect behaviour (pre-existing, it already ignored requests while BUSY); batch notifications are ignored while FOCUSER_STEPS is BUSY (m:241-246) and FOCUSER_STEPS is accepted during a",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 105594.356,
+          "tokens": null
+        },
+        {
+          "attempt_id": "054f368d-4fb5-4c23-80ce-fad722aeb696",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T13:02:28.194502Z",
+          "last_activity_at": "2026-11-15T13:03:12.253333Z",
+          "ended_at": "2026-11-15T13:03:12.253333Z",
+          "outcome": {
+            "summary": "Previous finding resolved. didDisconnectPeripheral (indigo_focuser_wemacro_bt.m:196-198) now turns a BUSY X_RAIL_EXECUTE into ALERT before deleting it, so reconnect (m:223) redefines it as ALERT and the BUSY guard (m:440) no longer refuses new batches; this matches the sibling's on_disconnect (indigo_focuser_wemacro.driver:306-308). Both disconnect paths reach that callback: link loss directly, and a CONNECTION disconnect via focuser_change_property -> [delegate disconnect] (m:381-385) -> cancelPeripheralConnection (m:289-292), which CoreBluetooth answers with didDisconnectPeripheral. Tests: the reconnect probe extracts the real didDisconnectPeripheral body; the new assertion (BUSY -> loss -> ALERT) fails without the added block, and the OK case checks that a non-BUSY state is left alone. A separate 'accepted after reconnect' probe is not required: nothing in the reconnect path changes the state again, and the handler probe already covers rejection on BUSY only and acceptance otherwise. Guard placement, indigo_reject_change semantics (BUSY: message only, state and values untouched), abort (m:400-414 still sets ALERT), the DRIVER_VERSION bump 0x02000005 -> 0x02000006 and formatting are all fine. test_focuser_wemacro_bt.py passes (3/3). Out of scope, pre-existing: FOCUSER_STEPS stays BUSY across a reconnect; batch notifications are ignored while FOCUSER_STEPS is BUSY (m:244-249), so a manual move during a batch can stop the countdown, which with this guard needs abort to recover.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 44058.831,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:58:39.778021Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T13:00:25.372377Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Guard placement and macro use are correct: the only INDIGO_REJECT_CHANGE_IF is in the X_RAIL_EXECUTE change branch (indigo_focuser_wemacro_bt.m:437), nothing left in attach; indigo_reject_change (indigo_bus.c:1336-1339) leaves a BUSY property untouched and only sends a BUSY message, so the running countdown and values are preserved; FOCUSER_ABORT_MOTION (m:397-411) still sets X_RAIL_EXECUTE to ALERT unconditionally; DRIVER_VERSION bumped 0x02000005 -> 0x02000006; the probe test exercises the real handler body and fails on the old source (rejects stays 0, two commands sent). REQUIRED: the guard can now wedge X_RAIL_EXECUTE after a connection drop. didDisconnectPeripheral (m:191-202), reached both on link loss and on a user CONNECTION disconnect (m:378-382 -> [delegate disconnect]), deletes X_RAIL_EXECUTE without ending a BUSY batch, and didDiscoverCharacteristicsForService (m:220) redefines it with the stale BUSY state on reconnect. No rail notification can then complete it, so every new batch is refused with 'A batch is already running' until the user happens to press abort; before this change a new request recovered. The portable sibling the ticket names as the reference ends a BUSY batch with ALERT in on_disconnect (indigo_focuser_wemacro.driver:306-308). Fix: in didDisconnectPeripheral, before deleting the property, set X_RAIL_EXECUTE_PROPERTY->state = INDIGO_ALERT_STATE when it is BUSY (no update needed, the property is deleted next and redefined as ALERT), and cover it in test_focuser_wemacro_bt.py, e.g. extend the reconnect probe (whose fixture currently #defines X_RAIL_EXECUTE_PROPERTY NULL) so that a disconnect during a BUSY batch followed by reconnect leaves the property non-BUSY and a new batch request is accepted. Out of scope: FOCUSER_STEPS has the same stale-BUSY-across-reconnect behaviour (pre-existing, it already ignored requests while BUSY); batch notifications are ignored while FOCUSER_STEPS is BUSY (m:241-246) and FOCUSER_STEPS is accepted during a"
+        },
+        {
+          "at": "2026-11-15T13:02:28.194502Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T13:03:12.253333Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Previous finding resolved. didDisconnectPeripheral (indigo_focuser_wemacro_bt.m:196-198) now turns a BUSY X_RAIL_EXECUTE into ALERT before deleting it, so reconnect (m:223) redefines it as ALERT and the BUSY guard (m:440) no longer refuses new batches; this matches the sibling's on_disconnect (indigo_focuser_wemacro.driver:306-308). Both disconnect paths reach that callback: link loss directly, and a CONNECTION disconnect via focuser_change_property -> [delegate disconnect] (m:381-385) -> cancelPeripheralConnection (m:289-292), which CoreBluetooth answers with didDisconnectPeripheral. Tests: the reconnect probe extracts the real didDisconnectPeripheral body; the new assertion (BUSY -> loss -> ALERT) fails without the added block, and the OK case checks that a non-BUSY state is left alone. A separate 'accepted after reconnect' probe is not required: nothing in the reconnect path changes the state again, and the handler probe already covers rejection on BUSY only and acceptance otherwise. Guard placement, indigo_reject_change semantics (BUSY: message only, state and values untouched), abort (m:400-414 still sets ALERT), the DRIVER_VERSION bump 0x02000005 -> 0x02000006 and formatting are all fine. test_focuser_wemacro_bt.py passes (3/3). Out of scope, pre-existing: FOCUSER_STEPS stays BUSY across a reconnect; batch notifications are ignored while FOCUSER_STEPS is BUSY (m:244-249), so a manual move during a batch can stop the countdown, which with this guard needs abort to recover."
+        }
+      ],
+      "result": {
+        "summary": "Previous finding resolved. didDisconnectPeripheral (indigo_focuser_wemacro_bt.m:196-198) now turns a BUSY X_RAIL_EXECUTE into ALERT before deleting it, so reconnect (m:223) redefines it as ALERT and the BUSY guard (m:440) no longer refuses new batches; this matches the sibling's on_disconnect (indigo_focuser_wemacro.driver:306-308). Both disconnect paths reach that callback: link loss directly, and a CONNECTION disconnect via focuser_change_property -> [delegate disconnect] (m:381-385) -> cancelPeripheralConnection (m:289-292), which CoreBluetooth answers with didDisconnectPeripheral. Tests: the reconnect probe extracts the real didDisconnectPeripheral body; the new assertion (BUSY -> loss -> ALERT) fails without the added block, and the OK case checks that a non-BUSY state is left alone. A separate 'accepted after reconnect' probe is not required: nothing in the reconnect path changes the state again, and the handler probe already covers rejection on BUSY only and acceptance otherwise. Guard placement, indigo_reject_change semantics (BUSY: message only, state and values untouched), abort (m:400-414 still sets ALERT), the DRIVER_VERSION bump 0x02000005 -> 0x02000006 and formatting are all fine. test_focuser_wemacro_bt.py passes (3/3). Out of scope, pre-existing: FOCUSER_STEPS stays BUSY across a reconnect; batch notifications are ignored while FOCUSER_STEPS is BUSY (m:244-249), so a manual move during a batch can stop the countdown, which with this guard needs abort to recover.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 149653.187,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a2611385-dfff-403d-ba07-ee4616e03820",
+      "event": "ticket/created",
+      "at": "2026-11-15T12:48:07.639516Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "4664a7f6-0735-4449-8e11-c69c1d880bf0",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T12:52:56.842639Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e97e5ae9-b89f-438e-8a04-89410c8b9ad0",
+      "event": "task/progress",
+      "at": "2026-11-15T12:53:02.563376Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Implementation started on branch ticket/a2513f61-8af8-4ff2-a950-7bf0658d19a0"
+    },
+    {
+      "event_id": "11bf36e5-bb0f-4d18-a7f1-a1b169d5a5b2",
+      "event": "ticket/started",
+      "at": "2026-11-15T12:53:02.564931Z",
+      "actor": "human/owner",
+      "branch": "ticket/a2513f61-8af8-4ff2-a950-7bf0658d19a0",
+      "base": "master"
+    },
+    {
+      "event_id": "94133510-3c25-49d4-94df-0078b08d4885",
+      "event": "task/progress",
+      "at": "2026-11-15T12:53:35.510039Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Implementer started",
+      "attempt_id": "aa305429-4f83-4b87-a545-4ac24cae0d23",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "dc7fbf4f-3de0-48fb-b931-20879b06912c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:53:55.135328Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Reproducing: running new test on unmodified driver"
+    },
+    {
+      "event_id": "ab5fe6cf-be46-4fd4-9587-c4a01b689baa",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:54:12.363375Z",
+      "actor": "human/owner",
+      "text": "Repro: new BUSY regression assertions failed on unmodified driver (2nd command batch sent, assertion rejects==1&&sent==0 aborted). After fix (INDIGO_REJECT_CHANGE_IF before copy_values; BUSY -> message only) test passes. Device behavior not measured.",
+      "tokens": null
+    },
+    {
+      "event_id": "5bdbbf19-94fe-40a5-9dd5-e3ad2275b7cd",
+      "event": "task/progress",
+      "at": "2026-11-15T12:54:12.967926Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "40527b72-dfeb-4566-a239-087857a9d58a",
+      "event": "task/progress",
+      "at": "2026-11-15T12:54:12.991294Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a098eefe-8ae6-4600-a43e-f5643ab81a37",
+      "event": "task/progress",
+      "at": "2026-11-15T12:54:12.993927Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "d2e63496-e765-495c-84c5-b9e43a8a6d64",
+      "event": "task/progress",
+      "at": "2026-11-15T12:56:46.974690Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "33a4a009-092d-4507-b65c-d9dd6711ad7d",
+      "event": "check/passed",
+      "at": "2026-11-15T12:56:46.978430Z",
+      "actor": "human/owner",
+      "commit": "7099e60d77dcc09ee92a239e59baecb3c61d16c4",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "1bb148e2-4f34-473d-a508-71b80dfc60d0",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:57:21.283046Z",
+      "actor": "human/owner",
+      "text": "Correction: guard first landed in the wrong place (attach); moved into X_RAIL_EXECUTE change branch; unit test now passes.",
+      "tokens": null
+    },
+    {
+      "event_id": "fe8f775a-535d-4ff3-bb47-3a2ef245fd4f",
+      "event": "task/progress",
+      "at": "2026-11-15T12:57:21.575172Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0bc301e1-9a67-4791-acef-c23ae3bb567f",
+      "event": "task/progress",
+      "at": "2026-11-15T12:57:21.596508Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7eeddc0a-dbe5-4ba3-8320-b551444f73be",
+      "event": "task/progress",
+      "at": "2026-11-15T12:57:21.598399Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "2fa7a2e9-ecea-40c0-bb86-30d313404004",
+      "event": "task/progress",
+      "at": "2026-11-15T12:58:21.577641Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "98e141ba-e222-428d-8edc-e42b9d8e225d",
+      "event": "check/passed",
+      "at": "2026-11-15T12:58:21.579809Z",
+      "actor": "human/owner",
+      "commit": "9b7d79207b2ac33fee6612f159152d7c5550bb73",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "25c9c1f6-1fc6-42de-8a16-95d219455e5c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:58:39.778095Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ac2bf587-2ca7-4dc1-a62f-10f0c88f746c",
+      "event": "review/started",
+      "at": "2026-11-15T12:58:39.779478Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "99da23e9-f017-4e43-8c3b-ed5473f46f1f",
+      "event": "task/progress",
+      "at": "2026-11-15T12:59:04.952980Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Reviewing the X_RAIL_EXECUTE BUSY guard",
+      "attempt_id": "fd8a2007-449b-4000-90cc-da4eea8fd2c1",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6842466d-2c49-462d-b8f6-cb38de054cb8",
+      "event": "task/progress",
+      "at": "2026-11-15T13:00:05.984687Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Running test_focuser_wemacro_bt.py directly"
+    },
+    {
+      "event_id": "0a8bceff-7e22-4546-9ae5-7f6a1dbd77f8",
+      "event": "task/progress",
+      "at": "2026-11-15T13:00:25.372476Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "ce25f27f-9df8-407a-85ef-ed32a48028ba",
+      "event": "task/progress",
+      "at": "2026-11-15T13:00:25.372499Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "169e4644-549d-4097-8099-a03e5c543867",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T13:00:25.373914Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "9b7d79207b2ac33fee6612f159152d7c5550bb73"
+    },
+    {
+      "event_id": "ec311b49-ae86-4628-8cab-817215084fa9",
+      "event": "task/progress",
+      "at": "2026-11-15T13:00:54.579231Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Addressing review: ALERT on disconnect"
+    },
+    {
+      "event_id": "d74205bc-77af-4043-a2d2-5e5d36d30513",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:01:11.649399Z",
+      "actor": "human/owner",
+      "text": "Review fix: didDisconnectPeripheral sets X_RAIL_EXECUTE ALERT when BUSY. Reconnect probe: before fix assertion execute_property.state==ALERT failed; after fix passes (3 tests OK).",
+      "tokens": null
+    },
+    {
+      "event_id": "7d899540-0b20-48df-85fe-1167102160e3",
+      "event": "task/progress",
+      "at": "2026-11-15T13:01:11.978032Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9213cf70-7eed-4ec0-8619-16cd3e62fe05",
+      "event": "task/progress",
+      "at": "2026-11-15T13:01:12.022364Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e0cb0d82-4a03-426a-8d4e-944e030e2135",
+      "event": "task/progress",
+      "at": "2026-11-15T13:01:12.025626Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "b98cf8bd-c6b7-4a64-a220-878f727fb627",
+      "event": "task/progress",
+      "at": "2026-11-15T13:02:14.997685Z",
+      "actor": "human/owner",
+      "task_id": "a1510168-deaf-4e1d-9b70-96794241150b",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "590e0630-5227-4794-b020-ad8a38913e35",
+      "event": "check/passed",
+      "at": "2026-11-15T13:02:15.000331Z",
+      "actor": "human/owner",
+      "commit": "0dd214dd010a346a8d25c5737bddda6fa3852e9a",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "b2aea816-2500-43d1-abde-884aa4032707",
+      "event": "task/progress",
+      "at": "2026-11-15T13:02:28.194617Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "6b11b0d6-9496-42e4-92f3-77f220a31826",
+      "event": "review/started",
+      "at": "2026-11-15T13:02:28.196257Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "06973220-a6d6-4787-ba7e-0455a96dda44",
+      "event": "task/progress",
+      "at": "2026-11-15T13:02:45.305631Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Re-reviewing: ALERT on disconnect during a BUSY batch"
+    },
+    {
+      "event_id": "a396dd2f-0a73-43b3-934e-13cd6ef96224",
+      "event": "task/progress",
+      "at": "2026-11-15T13:03:00.812281Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Running test_focuser_wemacro_bt.py directly"
+    },
+    {
+      "event_id": "921dd38c-a20f-4a55-8930-e74a439a90bd",
+      "event": "task/progress",
+      "at": "2026-11-15T13:03:12.253467Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "12d69c81-5a7c-4e5a-9010-bb0e1a2fd7fb",
+      "event": "review/passed",
+      "at": "2026-11-15T13:03:12.254950Z",
+      "actor": "human/owner",
+      "task_id": "ff558633-8825-433b-ad66-190f89533c1a",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0dd214dd010a346a8d25c5737bddda6fa3852e9a"
+    },
+    {
+      "event_id": "eb84a270-c59e-4096-9c6b-f08c5c29242c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T13:03:54.525041Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T13:03:54.525007Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "8ee44c6674bf436709fb7bd689308eb1e685af3c"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7099e60d77dcc09ee92a239e59baecb3c61d16c4",
+        "tree": "e1536791e1e3ca6ec2ab0449e4771ebcac9a5408",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:54:12.990453Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a2513f61-8af8-4ff2-a950-7bf0658d19a0/e1536791e1e3-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "7099e60d77dcc09ee92a239e59baecb3c61d16c4",
+        "tree": "e1536791e1e3ca6ec2ab0449e4771ebcac9a5408",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:56:46.972100Z",
+        "duration_s": 154.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a2513f61-8af8-4ff2-a950-7bf0658d19a0/e1536791e1e3-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9b7d79207b2ac33fee6612f159152d7c5550bb73",
+        "tree": "53355658414e216dcc2eacb1445474e666d1ad89",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:57:21.595702Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a2513f61-8af8-4ff2-a950-7bf0658d19a0/53355658414e-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "9b7d79207b2ac33fee6612f159152d7c5550bb73",
+        "tree": "53355658414e216dcc2eacb1445474e666d1ad89",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:58:21.576538Z",
+        "duration_s": 60.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a2513f61-8af8-4ff2-a950-7bf0658d19a0/53355658414e-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0dd214dd010a346a8d25c5737bddda6fa3852e9a",
+        "tree": "49312735a194318d7e7599870b6b2dfda0e18aa3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:01:12.021271Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a2513f61-8af8-4ff2-a950-7bf0658d19a0/49312735a194-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "0dd214dd010a346a8d25c5737bddda6fa3852e9a",
+        "tree": "49312735a194318d7e7599870b6b2dfda0e18aa3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:02:14.996509Z",
+        "duration_s": 63.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/a2513f61-8af8-4ff2-a950-7bf0658d19a0/49312735a194-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Guard placement and macro use are correct: the only INDIGO_REJECT_CHANGE_IF is in the X_RAIL_EXECUTE change branch (indigo_focuser_wemacro_bt.m:437), nothing left in attach; indigo_reject_change (indigo_bus.c:1336-1339) leaves a BUSY property untouched and only sends a BUSY message, so the running countdown and values are preserved; FOCUSER_ABORT_MOTION (m:397-411) still sets X_RAIL_EXECUTE to ALERT unconditionally; DRIVER_VERSION bumped 0x02000005 -> 0x02000006; the probe test exercises the real handler body and fails on the old source (rejects stays 0, two commands sent). REQUIRED: the guard can now wedge X_RAIL_EXECUTE after a connection drop. didDisconnectPeripheral (m:191-202), reached both on link loss and on a user CONNECTION disconnect (m:378-382 -> [delegate disconnect]), deletes X_RAIL_EXECUTE without ending a BUSY batch, and didDiscoverCharacteristicsForService (m:220) redefines it with the stale BUSY state on reconnect. No rail notification can then complete it, so every new batch is refused with 'A batch is already running' until the user happens to press abort; before this change a new request recovered. The portable sibling the ticket names as the reference ends a BUSY batch with ALERT in on_disconnect (indigo_focuser_wemacro.driver:306-308). Fix: in didDisconnectPeripheral, before deleting the property, set X_RAIL_EXECUTE_PROPERTY->state = INDIGO_ALERT_STATE when it is BUSY (no update needed, the property is deleted next and redefined as ALERT), and cover it in test_focuser_wemacro_bt.py, e.g. extend the reconnect probe (whose fixture currently #defines X_RAIL_EXECUTE_PROPERTY NULL) so that a disconnect during a BUSY batch followed by reconnect leaves the property non-BUSY and a new batch request is accepted. Out of scope: FOCUSER_STEPS has the same stale-BUSY-across-reconnect behaviour (pre-existing, it already ignored requests while BUSY); batch notifications are ignored while FOCUSER_STEPS is BUSY (m:241-246) and FOCUSER_STEPS is accepted during a batch, so a manual move during a batch can stop the countdown, which now leaves the batch refusing requests until abort.",
+        "reviewer": "human/owner",
+        "commit": "9b7d79207b2ac33fee6612f159152d7c5550bb73",
+        "tree": "53355658414e216dcc2eacb1445474e666d1ad89",
+        "at": "2026-11-15T13:00:25.372167Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Previous finding resolved. didDisconnectPeripheral (indigo_focuser_wemacro_bt.m:196-198) now turns a BUSY X_RAIL_EXECUTE into ALERT before deleting it, so reconnect (m:223) redefines it as ALERT and the BUSY guard (m:440) no longer refuses new batches; this matches the sibling's on_disconnect (indigo_focuser_wemacro.driver:306-308). Both disconnect paths reach that callback: link loss directly, and a CONNECTION disconnect via focuser_change_property -> [delegate disconnect] (m:381-385) -> cancelPeripheralConnection (m:289-292), which CoreBluetooth answers with didDisconnectPeripheral. Tests: the reconnect probe extracts the real didDisconnectPeripheral body; the new assertion (BUSY -> loss -> ALERT) fails without the added block, and the OK case checks that a non-BUSY state is left alone. A separate 'accepted after reconnect' probe is not required: nothing in the reconnect path changes the state again, and the handler probe already covers rejection on BUSY only and acceptance otherwise. Guard placement, indigo_reject_change semantics (BUSY: message only, state and values untouched), abort (m:400-414 still sets ALERT), the DRIVER_VERSION bump 0x02000005 -> 0x02000006 and formatting are all fine. test_focuser_wemacro_bt.py passes (3/3). Out of scope, pre-existing: FOCUSER_STEPS stays BUSY across a reconnect; batch notifications are ignored while FOCUSER_STEPS is BUSY (m:244-249), so a manual move during a batch can stop the countdown, which with this guard needs abort to recover.",
+        "reviewer": "human/owner",
+        "commit": "0dd214dd010a346a8d25c5737bddda6fa3852e9a",
+        "tree": "49312735a194318d7e7599870b6b2dfda0e18aa3",
+        "at": "2026-11-15T13:03:12.253053Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T12:54:12.361744Z",
+        "actor": "human/owner",
+        "text": "Repro: new BUSY regression assertions failed on unmodified driver (2nd command batch sent, assertion rejects==1&&sent==0 aborted). After fix (INDIGO_REJECT_CHANGE_IF before copy_values; BUSY -> message only) test passes. Device behavior not measured.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:57:21.281527Z",
+        "actor": "human/owner",
+        "text": "Correction: guard first landed in the wrong place (attach); moved into X_RAIL_EXECUTE change branch; unit test now passes.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T13:01:11.647394Z",
+        "actor": "human/owner",
+        "text": "Review fix: didDisconnectPeripheral sets X_RAIL_EXECUTE ALERT when BUSY. Reconnect probe: before fix assertion execute_property.state==ALERT failed; after fix passes (3 tests OK).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "8ee44c6674bf436709fb7bd689308eb1e685af3c",
+      "tree": "49312735a194318d7e7599870b6b2dfda0e18aa3",
+      "base": "master",
+      "at": "2026-11-15T13:03:54.425986Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T12:48:07.638931Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T12:52:56.842357Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 609689.738,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 47,
+    "sha256": "a8d18909b0821c7cefe8e32d83a31a7c2b75ec4e04b3f77d12b0e899c509129a"
+  }
+}
