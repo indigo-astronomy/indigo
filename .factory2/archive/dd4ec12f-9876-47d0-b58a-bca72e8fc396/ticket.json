@@ -1,0 +1,631 @@
+{
+  "schema_version": 1,
+  "ticket_id": "dd4ec12f-9876-47d0-b58a-bca72e8fc396",
+  "revision": 29,
+  "title": "SCHEDULER.md is out of date with the implemented Scheduler agent",
+  "description": "Found by the review of agent_scheduler. The code, indigo_docs/INDIGO_SCHEDULER_GUIDE.md and indigo_docs/PROPERTIES.md agree with each other on the points below; indigo_drivers/agent_scheduler/doc/SCHEDULER.md does not. Documentation only, no code change.\n\nStale statements in SCHEDULER.md:\n- AGENT_SCHEDULER_STATE state: says Idle when stopped and Alert after ABORT or a failed STARTUP hook. The agent is Idle only before the first start, Ok after STOP and the automatic stop, and Alert also after a failed NIGHT_START, RESUME or SHUTDOWN hook, a stop timeout and ABORT while stopped.\n- Labels and list properties: says a list is updated in place when only states or labels change. A label change always redefines the property, as the Night plan limits already say.\n- Label limit: the properties section says 511 bytes, the Testing section says labels are cut to 127 bytes. The code cuts at 511.\n- SCHEDULER_ESTIMATE items: SUPPORTED is missing.\n- One-off urgent tasks are removed after their first end, so @repeat and @retry have no effect on them.\n- An urgent task never preempts a running hook.\n- Run history: a STOP_TIMEOUT stop is listed under 'aborted'; the entry keeps the result of what caused the stop (preempted, aborted or failed) with the reason 'did not stop in time'. The start-failure reason is given as 'not started'; the agent writes 'the sequence was not started' or 'no result from the Scripting Agent'.\n- State diagram: DISABLE is shown for any state but RUNNING; it is accepted on a running task, which finishes its run.\n- Persistence, Loading: says the agent loads its configuration in its attach callback like the Imager Agent. The agent makes no load call; verify the actual restore path (the bus issues CONFIG LOAD after attach, indigo_libs/indigo_bus.c) and describe it.\n- 'ASTAP Agent' in the dependency table names an agent that does not exist in the repository (the name is also tested in agent_busy_bit(); leave the code alone in this ticket and note it).\n- Preamble: still 'draft', 'subject to change until the agent is implemented' and 'INDIGO (proposed)'.\n\nMissing from SCHEDULER.md, present in the code:\n- header lines are limited to 255 characters;\n- value ranges: @airmass up to 100, @moon 0-180 with width 0.5-30, 'every' and 'after' 0-100000;\n- the 'script error' reason in the night plan;\n- repeat and retry delays are not kept across a restart;\n- changing FRAME_OVERHEAD or OPERATION_OVERHEAD does not recompute existing estimates (also missing from the guide).\n\nSmaller corrections in the other documents:\n- PROPERTIES.md, AGENT_SCHEDULER_STATE: Alert is listed only for an abort or a stop timeout, not for failed hooks.\n- INDIGO_SCHEDULER_GUIDE.md: @task is described as 1-40 characters; the limit is 40 bytes.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T11:25:08.104646Z",
+  "status": "closed",
+  "branch": "ticket/dd4ec12f-9876-47d0-b58a-bca72e8fc396",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "264b1183-ce07-4418-8c1c-06e2a3e4c47d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:13:56.870044Z",
+          "last_activity_at": "2026-11-15T12:21:28.546552Z",
+          "ended_at": "2026-11-15T12:21:28.546552Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 451676.508,
+          "tokens": null
+        },
+        {
+          "attempt_id": "e9f87f07-09d6-4a44-b51e-86bec9730682",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:26:38.898550Z",
+          "last_activity_at": "2026-11-15T12:28:26.905564Z",
+          "ended_at": "2026-11-15T12:28:26.905564Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 108007.014,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:13:56.870044Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/dd4ec12f-9876-47d0-b58a-bca72e8fc396"
+        },
+        {
+          "at": "2026-11-15T12:21:28.546552Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T12:26:38.898550Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T12:28:26.905564Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "unknown",
+      "metrics": {
+        "duration_ms": 559683.522,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "25b83909-e870-41d1-aca2-cdcb7006d57f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T12:21:28.546925Z",
+          "last_activity_at": "2026-11-15T12:26:38.898444Z",
+          "ended_at": "2026-11-15T12:26:38.898444Z",
+          "outcome": {
+            "summary": "Checked every changed statement against indigo_agent_scheduler*.c, indigo_bus.c indigo_attach_device() and indigo_driver.c start_config_restore(). Nearly everything matches the code exactly: the STATE property states, the TASK_STATE lights, the list redefinition rules, the 511-byte labels, SUPPORTED, removal of one-off urgent tasks, no preemption of hooks, DISABLE of a running task, the 255-byte header lines, the value ranges, script error in the plan, delays not kept, overheads not recomputed, the Loading paragraph, ASTAP removed, the preamble, the phases, the PROPERTIES.md Alert line and the guide's byte limits. Two defects remain. (1) Consistency on a changed point: SCHEDULER.md now says correctly that a deleted run that hits STOP_TIMEOUT keeps the reason 'deleted' (indigo_agent_scheduler.c:1189 always uses the literal \"deleted\"; process_stopping() at 1577-1580 only overwrites stop_message). INDIGO_SCHEDULER_GUIDE.md:740, in the 'aborted' history row, still says 'ABORT or a delete of the running task. When the sequence then does not stop within STOP_TIMEOUT, the reason says did not stop in time'. That is wrong for a delete, and it leaves out preempted runs, which get the same reason. Fix: make the guide row match the code and SCHEDULER.md, e.g. 'When the sequence of an aborted or preempted run does not stop within STOP_TIMEOUT, the reason says did not stop in time; a deleted task keeps deleted'. (2) SCHEDULER.md, Run history, the edited bullet 'for a failure, the reason: the last alert message of the sequence, the script error message, or for a failed start the sequence was not started or no result from the Scripting Agent' lists the reasons as complete. It misses 'the Scripting Agent or Sequencer.js disappeared' (indigo_agent_scheduler.c:1540, process_running()). Add it, or word the list as examples. No source, test, README or Xcode file changed. The whitespace check passed.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 310351.519,
+          "tokens": null
+        },
+        {
+          "attempt_id": "aeb49a6a-e69a-4b3d-8310-3fc09beba0da",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:28:26.905575Z",
+          "last_activity_at": "2026-11-15T12:28:26.905615Z",
+          "ended_at": "2026-11-15T12:28:26.905615Z",
+          "outcome": {
+            "summary": "Re-review of 7ce0985f1. git diff 4c4aed91f..HEAD shows only the two corrections; the rest of the diff is unchanged from the first review. Guide history rows: preempted. The reason is 'by <urgent task>' (indigo_agent_scheduler.c:1549) and becomes 'did not stop in time' on a stop timeout (process_stopping 1577-1580, finish_stop STOP_PREEMPT 1194). Aborted. A delete always records 'deleted' (1189, also for hooks at 1178, and a delete that arrives during a stop becomes STOP_DELETE at 2271-2272). ABORT clears the message (2456), and a timeout replaces it with 'did not stop in time' (1579, STOP_ABORT 1205). The guide, SCHEDULER.md and the code now agree on these points. SCHEDULER.md failure reasons: 'the Scripting Agent or Sequencer.js disappeared' is recorded when either disappears during the run (process_running 1539-1540). The wording 'the last alert message of the sequence' was not counted here, per the coordinator; ticket 776f039c covers it. git diff --check is clean. No source, test, README or Xcode file changed. The earlier findings that every other changed statement matches the code still hold. No defects remain.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.04,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:21:28.546925Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:26:38.898444Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Checked every changed statement against indigo_agent_scheduler*.c, indigo_bus.c indigo_attach_device() and indigo_driver.c start_config_restore(). Nearly everything matches the code exactly: the STATE property states, the TASK_STATE lights, the list redefinition rules, the 511-byte labels, SUPPORTED, removal of one-off urgent tasks, no preemption of hooks, DISABLE of a running task, the 255-byte header lines, the value ranges, script error in the plan, delays not kept, overheads not recomputed, the Loading paragraph, ASTAP removed, the preamble, the phases, the PROPERTIES.md Alert line and the guide's byte limits. Two defects remain. (1) Consistency on a changed point: SCHEDULER.md now says correctly that a deleted run that hits STOP_TIMEOUT keeps the reason 'deleted' (indigo_agent_scheduler.c:1189 always uses the literal \"deleted\"; process_stopping() at 1577-1580 only overwrites stop_message). INDIGO_SCHEDULER_GUIDE.md:740, in the 'aborted' history row, still says 'ABORT or a delete of the running task. When the sequence then does not stop within STOP_TIMEOUT, the reason says did not stop in time'. That is wrong for a delete, and it leaves out preempted runs, which get the same reason. Fix: make the guide row match the code and SCHEDULER.md, e.g. 'When the sequence of an aborted or preempted run does not stop within STOP_TIMEOUT, the reason says did not stop in time; a deleted task keeps deleted'. (2) SCHEDULER.md, Run history, the edited bullet 'for a failure, the reason: the last alert message of the sequence, the script error message, or for a failed start the sequence was not started or no result from the Scripting Agent' lists the reasons as complete. It misses 'the Scripting Agent or Sequencer.js disappeared' (indigo_agent_scheduler.c:1540, process_running()). Add it, or word the list as examples. No source, test, README or Xcode file changed. The whitespace check passed."
+        },
+        {
+          "at": "2026-11-15T12:28:26.905575Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:28:26.905615Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review of 7ce0985f1. git diff 4c4aed91f..HEAD shows only the two corrections; the rest of the diff is unchanged from the first review. Guide history rows: preempted. The reason is 'by <urgent task>' (indigo_agent_scheduler.c:1549) and becomes 'did not stop in time' on a stop timeout (process_stopping 1577-1580, finish_stop STOP_PREEMPT 1194). Aborted. A delete always records 'deleted' (1189, also for hooks at 1178, and a delete that arrives during a stop becomes STOP_DELETE at 2271-2272). ABORT clears the message (2456), and a timeout replaces it with 'did not stop in time' (1579, STOP_ABORT 1205). The guide, SCHEDULER.md and the code now agree on these points. SCHEDULER.md failure reasons: 'the Scripting Agent or Sequencer.js disappeared' is recorded when either disappears during the run (process_running 1539-1540). The wording 'the last alert message of the sequence' was not counted here, per the coordinator; ticket 776f039c covers it. git diff --check is clean. No source, test, README or Xcode file changed. The earlier findings that every other changed statement matches the code still hold. No defects remain."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of 7ce0985f1. git diff 4c4aed91f..HEAD shows only the two corrections; the rest of the diff is unchanged from the first review. Guide history rows: preempted. The reason is 'by <urgent task>' (indigo_agent_scheduler.c:1549) and becomes 'did not stop in time' on a stop timeout (process_stopping 1577-1580, finish_stop STOP_PREEMPT 1194). Aborted. A delete always records 'deleted' (1189, also for hooks at 1178, and a delete that arrives during a stop becomes STOP_DELETE at 2271-2272). ABORT clears the message (2456), and a timeout replaces it with 'did not stop in time' (1579, STOP_ABORT 1205). The guide, SCHEDULER.md and the code now agree on these points. SCHEDULER.md failure reasons: 'the Scripting Agent or Sequencer.js disappeared' is recorded when either disappears during the run (process_running 1539-1540). The wording 'the last alert message of the sequence' was not counted here, per the coordinator; ticket 776f039c covers it. git diff --check is clean. No source, test, README or Xcode file changed. The earlier findings that every other changed statement matches the code still hold. No defects remain.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "unknown",
+      "metrics": {
+        "duration_ms": 310351.559,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "13d8fdd3-af1b-474c-a066-52b4420b4832",
+      "event": "ticket/created",
+      "at": "2026-11-15T11:25:08.105274Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "aed2e605-05bd-48cd-bdd7-af9bf86fff18",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T11:25:49.696971Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "7a6989f0-d5df-4dc6-9626-901fddb889d6",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:46:18.566680Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15: update the documentation to follow the code. ASTAP is not supposed to be supported: remove every ASTAP mention from the documents; the code reference in agent_busy_bit() is removed by ticket ba0f10fc.",
+      "tokens": null
+    },
+    {
+      "event_id": "218811ed-e034-47b7-bec3-fd09df366c4f",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:13:50.945643Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15: the ASTAP removal is limited to the scheduler (asked: scheduler only, or the whole repository). In this ticket remove 'ASTAP Agent' from SCHEDULER.md; the code reference in agent_busy_bit() was removed by ba0f10fc (commit e74af1c7a). Do not touch ASTAP mentions in other agents, Sequencer.js, names, tests or other documents. ba0f10fc also already corrected in SCHEDULER.md the SEQUENCE_NAME claims, the skipped-saved-task message and the 'full text sent as the message of the update' sentence.",
+      "tokens": null
+    },
+    {
+      "event_id": "cdcef593-66d2-4f5c-92c9-e48236c8acd4",
+      "event": "task/progress",
+      "at": "2026-11-15T12:13:56.870407Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Implementation started on branch ticket/dd4ec12f-9876-47d0-b58a-bca72e8fc396"
+    },
+    {
+      "event_id": "923ed18c-704b-4c2f-8c50-c32fa85e3cb5",
+      "event": "ticket/started",
+      "at": "2026-11-15T12:13:56.872336Z",
+      "actor": "human/owner",
+      "branch": "ticket/dd4ec12f-9876-47d0-b58a-bca72e8fc396",
+      "base": "master"
+    },
+    {
+      "event_id": "f1d1fba2-ce5b-49db-952d-72ded5c0613c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:14:23.845834Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Implementer launched",
+      "attempt_id": "264b1183-ce07-4418-8c1c-06e2a3e4c47d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6547e619-4eae-4b23-afb8-5cef025c748e",
+      "event": "task/progress",
+      "at": "2026-11-15T12:14:42.178398Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Verifying ticket items against agent_scheduler sources"
+    },
+    {
+      "event_id": "6fe574ec-0bd6-4bfc-a00d-7a764ac0497d",
+      "event": "task/progress",
+      "at": "2026-11-15T12:17:35.403180Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Editing SCHEDULER.md to follow the code"
+    },
+    {
+      "event_id": "3758dc8b-a70c-4afa-9ed0-d4cc69ffec9c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:19:47.358720Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Editing INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md"
+    },
+    {
+      "event_id": "2660e271-1c17-4c65-9050-b904f41137a9",
+      "event": "task/progress",
+      "at": "2026-11-15T12:20:21.763240Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0defa395-646a-479f-8ded-95ee184fb3bd",
+      "event": "task/progress",
+      "at": "2026-11-15T12:20:21.786441Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7cd08e29-49a5-4c91-97fe-30cf191e51c3",
+      "event": "check/passed",
+      "at": "2026-11-15T12:20:21.788381Z",
+      "actor": "human/owner",
+      "commit": "d9bc54603ab6f1dce07c79d9bdff57fbd65856b7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "82926de9-3970-4bec-9be4-f72754c294f1",
+      "event": "task/progress",
+      "at": "2026-11-15T12:21:13.396646Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Fixed guide header-line limit and TASK_STATE hook/script-error lights; rerunning check"
+    },
+    {
+      "event_id": "69e98acc-349d-4b18-9e2f-756c6cb411c2",
+      "event": "task/progress",
+      "at": "2026-11-15T12:21:13.674311Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "46a62745-9d86-4358-a1c3-1fe8f74ca02d",
+      "event": "task/progress",
+      "at": "2026-11-15T12:21:13.697335Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6cf1fc93-7b06-467b-91b6-c7929e784d52",
+      "event": "check/passed",
+      "at": "2026-11-15T12:21:13.699095Z",
+      "actor": "human/owner",
+      "commit": "4c4aed91f96443678e7036fe9c11fdc4c37e1b29",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "cb7e6af0-f1aa-4dbc-b259-a3c2e6a5a43b",
+      "event": "task/progress",
+      "at": "2026-11-15T12:21:28.547033Z",
+      "actor": "human/owner",
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "text": "Review started"
+    },
+    {
+      "event_id": "6e292e71-56f0-4cb4-b010-adb29523dd77",
+      "event": "review/started",
+      "at": "2026-11-15T12:21:28.548914Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "dd3eef5f-7619-4fbb-99a7-6e5494c83022",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:21:28.691561Z",
+      "actor": "human/owner",
+      "text": "Coordinator: two further document statements found during implementation were added to this ticket's scope as the same kind of correction (guide: header line limit is 255 bytes; SCHEDULER.md TASK_STATE row: hook tasks are Idle also while running, script error is Alert). Left out and reported to the owner: the parser's own messages say 'characters' for byte limits (code), a hook run that hits a stop timeout is not described in the history section, and the Testing section claims a label-cut test that was not found in the tests.",
+      "tokens": null
+    },
+    {
+      "event_id": "b4e3627a-f573-4d56-b8f3-9216013a96fa",
+      "event": "task/progress",
+      "at": "2026-11-15T12:21:47.714396Z",
+      "actor": "human/owner",
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "text": "Reviewer launched",
+      "attempt_id": "25b83909-e870-41d1-aca2-cdcb7006d57f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0b2c0501-3ca4-41d9-8455-bf14f7202195",
+      "event": "task/progress",
+      "at": "2026-11-15T12:22:01.168578Z",
+      "actor": "human/owner",
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "text": "Checking SCHEDULER.md statements against agent_scheduler code"
+    },
+    {
+      "event_id": "ddbcdf46-6e0b-441a-a6f3-adf06ea7640b",
+      "event": "task/progress",
+      "at": "2026-11-15T12:26:38.898546Z",
+      "actor": "human/owner",
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "5139e7df-8339-4328-8501-3e5a945ebe62",
+      "event": "task/progress",
+      "at": "2026-11-15T12:26:38.898571Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "89876f63-4d95-4efe-a5bc-dc106239cd98",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T12:26:38.899876Z",
+      "actor": "human/owner",
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "4c4aed91f96443678e7036fe9c11fdc4c37e1b29"
+    },
+    {
+      "event_id": "2dc63ae9-75e1-498a-83a4-73d016229cf1",
+      "event": "task/progress",
+      "at": "2026-11-15T12:27:38.571125Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Fixed review findings: guide history rows and failure reasons; rerunning check"
+    },
+    {
+      "event_id": "3f407ea1-96ff-49ea-ab67-e0cd1e4fdf8d",
+      "event": "task/progress",
+      "at": "2026-11-15T12:27:38.834492Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e59e6ff8-6804-4499-a961-3451d598f63a",
+      "event": "task/progress",
+      "at": "2026-11-15T12:27:38.858707Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b0f838a6-1191-4479-9c20-fad296da39d7",
+      "event": "check/passed",
+      "at": "2026-11-15T12:27:38.860885Z",
+      "actor": "human/owner",
+      "commit": "7ce0985f1993325716559f921d239d76e51b0e63",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "cf76d365-9452-4fd8-930a-e59f634155f7",
+      "event": "task/progress",
+      "at": "2026-11-15T12:28:09.986749Z",
+      "actor": "human/owner",
+      "task_id": "184fd20d-58ee-406e-8de2-2bbd5a27bfdc",
+      "text": "Re-reviewing the new candidate after the changes verdict"
+    },
+    {
+      "event_id": "05f8df69-a07b-40bc-9a84-61bd5a59a1cb",
+      "event": "task/progress",
+      "at": "2026-11-15T12:28:26.905692Z",
+      "actor": "human/owner",
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "9a62e84c-e9fc-4ca2-b72e-85c85596fc5a",
+      "event": "review/passed",
+      "at": "2026-11-15T12:28:26.907170Z",
+      "actor": "human/owner",
+      "task_id": "30fbd092-6d96-4df4-8bbf-9f37625beb78",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "7ce0985f1993325716559f921d239d76e51b0e63"
+    },
+    {
+      "event_id": "867d447d-5129-418f-a29f-32728dcc395c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T12:28:51.206796Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T12:28:51.206763Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "b779df5d8807cd9f876c1b59f21a918184131442"
+  },
+  "priority": "low",
+  "severity": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T11:25:08.104646Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T11:25:49.696777Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 870035.081,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 40,
+    "sha256": "ad707af3e788280f36e611947b4ba3334eef50624b46015f96813f141cb84a3d"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d9bc54603ab6f1dce07c79d9bdff57fbd65856b7",
+        "tree": "191f425ac4a329d5a51b713dc7b6c115426fa9e4",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:20:21.785648Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/dd4ec12f-9876-47d0-b58a-bca72e8fc396/191f425ac4a3-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "4c4aed91f96443678e7036fe9c11fdc4c37e1b29",
+        "tree": "5c275aab7ce2c0bbca4b177bf8d14945d2a398b9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:21:13.696561Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/dd4ec12f-9876-47d0-b58a-bca72e8fc396/5c275aab7ce2-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7ce0985f1993325716559f921d239d76e51b0e63",
+        "tree": "814d9e235dec9fbc37cd1c5ea73d8519fe8ab853",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:27:38.857726Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/dd4ec12f-9876-47d0-b58a-bca72e8fc396/814d9e235dec-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Checked every changed statement against indigo_agent_scheduler*.c, indigo_bus.c indigo_attach_device() and indigo_driver.c start_config_restore(). Nearly everything matches the code exactly: the STATE property states, the TASK_STATE lights, the list redefinition rules, the 511-byte labels, SUPPORTED, removal of one-off urgent tasks, no preemption of hooks, DISABLE of a running task, the 255-byte header lines, the value ranges, script error in the plan, delays not kept, overheads not recomputed, the Loading paragraph, ASTAP removed, the preamble, the phases, the PROPERTIES.md Alert line and the guide's byte limits. Two defects remain. (1) Consistency on a changed point: SCHEDULER.md now says correctly that a deleted run that hits STOP_TIMEOUT keeps the reason 'deleted' (indigo_agent_scheduler.c:1189 always uses the literal \"deleted\"; process_stopping() at 1577-1580 only overwrites stop_message). INDIGO_SCHEDULER_GUIDE.md:740, in the 'aborted' history row, still says 'ABORT or a delete of the running task. When the sequence then does not stop within STOP_TIMEOUT, the reason says did not stop in time'. That is wrong for a delete, and it leaves out preempted runs, which get the same reason. Fix: make the guide row match the code and SCHEDULER.md, e.g. 'When the sequence of an aborted or preempted run does not stop within STOP_TIMEOUT, the reason says did not stop in time; a deleted task keeps deleted'. (2) SCHEDULER.md, Run history, the edited bullet 'for a failure, the reason: the last alert message of the sequence, the script error message, or for a failed start the sequence was not started or no result from the Scripting Agent' lists the reasons as complete. It misses 'the Scripting Agent or Sequencer.js disappeared' (indigo_agent_scheduler.c:1540, process_running()). Add it, or word the list as examples. No source, test, README or Xcode file changed. The whitespace check passed.",
+        "reviewer": "human/owner",
+        "commit": "4c4aed91f96443678e7036fe9c11fdc4c37e1b29",
+        "tree": "5c275aab7ce2c0bbca4b177bf8d14945d2a398b9",
+        "at": "2026-11-15T12:26:38.898251Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of 7ce0985f1. git diff 4c4aed91f..HEAD shows only the two corrections; the rest of the diff is unchanged from the first review. Guide history rows: preempted. The reason is 'by <urgent task>' (indigo_agent_scheduler.c:1549) and becomes 'did not stop in time' on a stop timeout (process_stopping 1577-1580, finish_stop STOP_PREEMPT 1194). Aborted. A delete always records 'deleted' (1189, also for hooks at 1178, and a delete that arrives during a stop becomes STOP_DELETE at 2271-2272). ABORT clears the message (2456), and a timeout replaces it with 'did not stop in time' (1579, STOP_ABORT 1205). The guide, SCHEDULER.md and the code now agree on these points. SCHEDULER.md failure reasons: 'the Scripting Agent or Sequencer.js disappeared' is recorded when either disappears during the run (process_running 1539-1540). The wording 'the last alert message of the sequence' was not counted here, per the coordinator; ticket 776f039c covers it. git diff --check is clean. No source, test, README or Xcode file changed. The earlier findings that every other changed statement matches the code still hold. No defects remain.",
+        "reviewer": "human/owner",
+        "commit": "7ce0985f1993325716559f921d239d76e51b0e63",
+        "tree": "814d9e235dec9fbc37cd1c5ea73d8519fe8ab853",
+        "at": "2026-11-15T12:28:26.905364Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T11:46:18.564926Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-15: update the documentation to follow the code. ASTAP is not supposed to be supported: remove every ASTAP mention from the documents; the code reference in agent_busy_bit() is removed by ticket ba0f10fc.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:13:50.943973Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-15: the ASTAP removal is limited to the scheduler (asked: scheduler only, or the whole repository). In this ticket remove 'ASTAP Agent' from SCHEDULER.md; the code reference in agent_busy_bit() was removed by ba0f10fc (commit e74af1c7a). Do not touch ASTAP mentions in other agents, Sequencer.js, names, tests or other documents. ba0f10fc also already corrected in SCHEDULER.md the SEQUENCE_NAME claims, the skipped-saved-task message and the 'full text sent as the message of the update' sentence.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:21:28.690061Z",
+        "actor": "human/owner",
+        "text": "Coordinator: two further document statements found during implementation were added to this ticket's scope as the same kind of correction (guide: header line limit is 255 bytes; SCHEDULER.md TASK_STATE row: hook tasks are Idle also while running, script error is Alert). Left out and reported to the owner: the parser's own messages say 'characters' for byte limits (code), a hook run that hits a stop timeout is not described in the history section, and the Testing section claims a label-cut test that was not found in the tests.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "b779df5d8807cd9f876c1b59f21a918184131442",
+      "tree": "814d9e235dec9fbc37cd1c5ea73d8519fe8ab853",
+      "base": "master",
+      "at": "2026-11-15T12:28:51.121823Z"
+    }
+  }
+}
