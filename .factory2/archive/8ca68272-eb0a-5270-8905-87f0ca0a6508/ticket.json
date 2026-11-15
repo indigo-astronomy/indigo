@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8ca68272-eb0a-5270-8905-87f0ca0a6508",
+  "revision": 17,
+  "title": "Scripting Agent change bindings omit local access tokens",
+  "description": "Native scripting text/number/switch change bindings build property access_token 0 and dispatch directly. Protected targets reject writes with nonzero master/device ACLs. Next: use registered device/master token consistently with native change helpers, add regression coverage and increment driver version if owner authorizes repair.\n\nImported from .factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-004.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.895716Z",
+  "status": "closed",
+  "branch": "ticket/8ca68272-eb0a-5270-8905-87f0ca0a6508",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "1ad64e19-4035-4ec0-b2b0-bf3e005f87ff",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "eee61808-333a-4d6f-a6a8-bfce9c44be43",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T14:02:43.321292Z",
+          "last_activity_at": "2026-11-15T14:25:00.436071Z",
+          "ended_at": "2026-11-15T14:25:00.436071Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1337114.779,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T14:02:43.321292Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/8ca68272-eb0a-5270-8905-87f0ca0a6508"
+        },
+        {
+          "at": "2026-11-15T14:25:00.436071Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1337114.779,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "37fadc8b-07d4-4dd0-9d7d-f40cb11b542c",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "35af1e97-9548-4ed8-a5ea-bdc85f06fb2c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T14:25:00.436331Z",
+          "last_activity_at": "2026-11-15T14:28:33.191403Z",
+          "ended_at": "2026-11-15T14:28:33.191403Z",
+          "outcome": {
+            "summary": "PASS. indigo_agent_scripting.c:392 sets property->access_token = indigo_get_device_or_master_token(property->device) in the shared change_property_handler used by all three bindings (:413/:435/:457), identical to the native helpers (indigo_bus.c:2328/2379/2442) and indigo_agent.c:83/101. Token lookup is mutex-protected (indigo_token.c:95-124), so calling it on the agent queue is safe; remote 'Device @ host' and empty names behave exactly as with the native helpers; with no registered token it yields 0, so behaviour on unprotected setups is unchanged and the bus check (indigo_bus.c:1013) can only accept more, never reject more. Test change_bindings_forward_local_access_tokens (test_agent_scripting.c:725-746) is not vacuous: peer.access_token makes the bus drop unsigned writes, the counter requires all three bindings to arrive, and the last request token distinguishes device (0x2002) from master (0x1001). Reran make test-agent-scripting in the worktree: 37/37. DRIVER_VERSION 0x03000011->0x03000012 matches the recorded 3.0.0.18; README/TEST_SUMMARY replace the same-configuration mac arm64 line as indigo_test/AGENTS.md requires. Remaining 'restore private configuration' failure is independent: reproduced in isolation via run_sequencer_simulators.py --case 'private configuration' in default relay mode (which replaces the three JS bindings, so the changed handler is bypassed) and identically with --native-bindings; the cause is six 'Device Configuration Agent is protected or locked' rejections during configuration load, not scripting writes. With --native-bindings 'save private configuration' (a native indigo_change_text_property to the protected Configuration Agent) now passes, confirming the fix end-to-end. Non-blocking, outside approved minimal scope: sequencer_simulators.md:27, sequencer_simulators.js:433-434 and run_sequencer_simulators.py:191 still describe the native binding token defect as current. Not verified: Linux/Windows, remote-device token forwarding over a",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 212755.072,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T14:25:00.436331Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T14:28:33.191403Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "PASS. indigo_agent_scripting.c:392 sets property->access_token = indigo_get_device_or_master_token(property->device) in the shared change_property_handler used by all three bindings (:413/:435/:457), identical to the native helpers (indigo_bus.c:2328/2379/2442) and indigo_agent.c:83/101. Token lookup is mutex-protected (indigo_token.c:95-124), so calling it on the agent queue is safe; remote 'Device @ host' and empty names behave exactly as with the native helpers; with no registered token it yields 0, so behaviour on unprotected setups is unchanged and the bus check (indigo_bus.c:1013) can only accept more, never reject more. Test change_bindings_forward_local_access_tokens (test_agent_scripting.c:725-746) is not vacuous: peer.access_token makes the bus drop unsigned writes, the counter requires all three bindings to arrive, and the last request token distinguishes device (0x2002) from master (0x1001). Reran make test-agent-scripting in the worktree: 37/37. DRIVER_VERSION 0x03000011->0x03000012 matches the recorded 3.0.0.18; README/TEST_SUMMARY replace the same-configuration mac arm64 line as indigo_test/AGENTS.md requires. Remaining 'restore private configuration' failure is independent: reproduced in isolation via run_sequencer_simulators.py --case 'private configuration' in default relay mode (which replaces the three JS bindings, so the changed handler is bypassed) and identically with --native-bindings; the cause is six 'Device Configuration Agent is protected or locked' rejections during configuration load, not scripting writes. With --native-bindings 'save private configuration' (a native indigo_change_text_property to the protected Configuration Agent) now passes, confirming the fix end-to-end. Non-blocking, outside approved minimal scope: sequencer_simulators.md:27, sequencer_simulators.js:433-434 and run_sequencer_simulators.py:191 still describe the native binding token defect as current. Not verified: Linux/Windows, remote-device token forwarding over a"
+        }
+      ],
+      "result": {
+        "summary": "PASS. indigo_agent_scripting.c:392 sets property->access_token = indigo_get_device_or_master_token(property->device) in the shared change_property_handler used by all three bindings (:413/:435/:457), identical to the native helpers (indigo_bus.c:2328/2379/2442) and indigo_agent.c:83/101. Token lookup is mutex-protected (indigo_token.c:95-124), so calling it on the agent queue is safe; remote 'Device @ host' and empty names behave exactly as with the native helpers; with no registered token it yields 0, so behaviour on unprotected setups is unchanged and the bus check (indigo_bus.c:1013) can only accept more, never reject more. Test change_bindings_forward_local_access_tokens (test_agent_scripting.c:725-746) is not vacuous: peer.access_token makes the bus drop unsigned writes, the counter requires all three bindings to arrive, and the last request token distinguishes device (0x2002) from master (0x1001). Reran make test-agent-scripting in the worktree: 37/37. DRIVER_VERSION 0x03000011->0x03000012 matches the recorded 3.0.0.18; README/TEST_SUMMARY replace the same-configuration mac arm64 line as indigo_test/AGENTS.md requires. Remaining 'restore private configuration' failure is independent: reproduced in isolation via run_sequencer_simulators.py --case 'private configuration' in default relay mode (which replaces the three JS bindings, so the changed handler is bypassed) and identically with --native-bindings; the cause is six 'Device Configuration Agent is protected or locked' rejections during configuration load, not scripting writes. With --native-bindings 'save private configuration' (a native indigo_change_text_property to the protected Configuration Agent) now passes, confirming the fix end-to-end. Non-blocking, outside approved minimal scope: sequencer_simulators.md:27, sequencer_simulators.js:433-434 and run_sequencer_simulators.py:191 still describe the native binding token defect as current. Not verified: Linux/Windows, remote-device token forwarding over a",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 212755.072,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "f2f26577-771a-4d6d-81ea-c503942536b4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.895733Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-004.json",
+      "source": "deb287698a896633f42f1bb9b6eac01373074d3b4a9efc8cc4df434f341f29f8",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "18a36060-313d-4608-8586-ef51314411ee",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:19.447304Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "0563e4b0-5356-482e-87ce-479c44bbe0f9",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:19.721126Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "053b325a-85a4-450e-90ed-705ed4149ffd",
+      "event": "task/progress",
+      "at": "2026-11-15T14:02:43.321704Z",
+      "actor": "human/owner",
+      "task_id": "1ad64e19-4035-4ec0-b2b0-bf3e005f87ff",
+      "text": "Implementation started on branch ticket/8ca68272-eb0a-5270-8905-87f0ca0a6508"
+    },
+    {
+      "event_id": "16a1b786-1bdc-4f43-9303-8cec72cdc3da",
+      "event": "ticket/started",
+      "at": "2026-11-15T14:02:43.323993Z",
+      "actor": "human/owner",
+      "branch": "ticket/8ca68272-eb0a-5270-8905-87f0ca0a6508",
+      "base": "master"
+    },
+    {
+      "event_id": "6096d82c-89c7-4e5a-999a-b25626dc6ec5",
+      "event": "task/progress",
+      "at": "2026-11-15T14:03:13.422166Z",
+      "actor": "human/owner",
+      "task_id": "1ad64e19-4035-4ec0-b2b0-bf3e005f87ff",
+      "text": "Implementer started: reading rules, reproducing",
+      "attempt_id": "eee61808-333a-4d6f-a6a8-bfce9c44be43",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "e39eadce-5ae5-44b1-9272-ff787279fab9",
+      "event": "task/progress",
+      "at": "2026-11-15T14:05:10.410531Z",
+      "actor": "human/owner",
+      "task_id": "1ad64e19-4035-4ec0-b2b0-bf3e005f87ff",
+      "text": "Reproducing before fix (no-record run)"
+    },
+    {
+      "event_id": "38fa3d5b-c6d7-445e-8e56-05e094993119",
+      "event": "task/progress",
+      "at": "2026-11-15T14:15:08.617854Z",
+      "actor": "human/owner",
+      "task_id": "1ad64e19-4035-4ec0-b2b0-bf3e005f87ff",
+      "text": "Reproduced token test failure; fix applied, running recorded run"
+    },
+    {
+      "event_id": "db7a4bfa-0b00-4fe1-a9cd-d6f92a23cdf5",
+      "event": "task/progress",
+      "at": "2026-11-15T14:24:39.780996Z",
+      "actor": "human/owner",
+      "task_id": "1ad64e19-4035-4ec0-b2b0-bf3e005f87ff",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e15c8ad8-7107-410d-9013-a0510f09e091",
+      "event": "task/progress",
+      "at": "2026-11-15T14:24:39.804595Z",
+      "actor": "human/owner",
+      "task_id": "1ad64e19-4035-4ec0-b2b0-bf3e005f87ff",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "114457f4-0c94-4853-b44f-3fc87283b562",
+      "event": "check/passed",
+      "at": "2026-11-15T14:24:39.806315Z",
+      "actor": "human/owner",
+      "commit": "75db6a2c35cc7804777bd34cfc66094237efd857",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "c6a1fe07-74f5-4f47-8a47-49bad060261c",
+      "event": "ticket/note",
+      "at": "2026-11-15T14:24:43.997422Z",
+      "actor": "human/owner",
+      "text": "Before fix: test_agent_scripting 36/37, 'change bindings forward local access tokens' failed (assertion device_forwarded && device_token); sequencer_simulators 129 passed 1 failed. After fix (run_driver_test.py): token test passes; recorded '2026-11-15 15:15 3.0.0.18 mac arm64 simulator 239/238 Failed'. Remaining out-of-scope failure: sequencer test 'restore private configuration' (Unexpected terminal sequence state). flow check whitespace passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "6d8288ab-65e4-4661-ba01-1884998433a3",
+      "event": "task/progress",
+      "at": "2026-11-15T14:25:00.436412Z",
+      "actor": "human/owner",
+      "task_id": "37fadc8b-07d4-4dd0-9d7d-f40cb11b542c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e0e620d7-2372-4593-955a-fef04f8a1d6f",
+      "event": "review/started",
+      "at": "2026-11-15T14:25:00.437713Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "ce5e618b-da94-4b44-88da-5aaada0562b4",
+      "event": "task/progress",
+      "at": "2026-11-15T14:25:26.254364Z",
+      "actor": "human/owner",
+      "task_id": "37fadc8b-07d4-4dd0-9d7d-f40cb11b542c",
+      "text": "Reviewer started: reading diff and rules",
+      "attempt_id": "35af1e97-9548-4ed8-a5ea-bdc85f06fb2c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "750bc72f-06f4-450c-9572-e918712b16c8",
+      "event": "task/progress",
+      "at": "2026-11-15T14:27:09.657890Z",
+      "actor": "human/owner",
+      "task_id": "37fadc8b-07d4-4dd0-9d7d-f40cb11b542c",
+      "text": "Reviewer running narrow test_agent_scripting binary in worktree (no recording)"
+    },
+    {
+      "event_id": "b52012e3-4884-4e5a-9417-070c758d9ded",
+      "event": "task/progress",
+      "at": "2026-11-15T14:28:33.191535Z",
+      "actor": "human/owner",
+      "task_id": "37fadc8b-07d4-4dd0-9d7d-f40cb11b542c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "9447ca91-70af-4a97-a6e6-297d58b659b0",
+      "event": "review/passed",
+      "at": "2026-11-15T14:28:33.193039Z",
+      "actor": "human/owner",
+      "task_id": "37fadc8b-07d4-4dd0-9d7d-f40cb11b542c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "75db6a2c35cc7804777bd34cfc66094237efd857"
+    },
+    {
+      "event_id": "e8d77863-c73d-4a38-b7bb-edcc7c62e74c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T15:01:44.923307Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T15:01:44.923279Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "57762ed637529853db6d452281d363f39ef4e4d6"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 1549869.851,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 23,
+    "sha256": "f85a75f78331d7e821c2c869c34e0747aa2ac9ce221c1d9ca4e58c7eaca649d2"
+  },
+  "priority": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "75db6a2c35cc7804777bd34cfc66094237efd857",
+        "tree": "b062c4ca424cc2b14f78051536bb47e2597656e0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T14:24:39.803872Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/8ca68272-eb0a-5270-8905-87f0ca0a6508/b062c4ca424c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "PASS. indigo_agent_scripting.c:392 sets property->access_token = indigo_get_device_or_master_token(property->device) in the shared change_property_handler used by all three bindings (:413/:435/:457), identical to the native helpers (indigo_bus.c:2328/2379/2442) and indigo_agent.c:83/101. Token lookup is mutex-protected (indigo_token.c:95-124), so calling it on the agent queue is safe; remote 'Device @ host' and empty names behave exactly as with the native helpers; with no registered token it yields 0, so behaviour on unprotected setups is unchanged and the bus check (indigo_bus.c:1013) can only accept more, never reject more. Test change_bindings_forward_local_access_tokens (test_agent_scripting.c:725-746) is not vacuous: peer.access_token makes the bus drop unsigned writes, the counter requires all three bindings to arrive, and the last request token distinguishes device (0x2002) from master (0x1001). Reran make test-agent-scripting in the worktree: 37/37. DRIVER_VERSION 0x03000011->0x03000012 matches the recorded 3.0.0.18; README/TEST_SUMMARY replace the same-configuration mac arm64 line as indigo_test/AGENTS.md requires. Remaining 'restore private configuration' failure is independent: reproduced in isolation via run_sequencer_simulators.py --case 'private configuration' in default relay mode (which replaces the three JS bindings, so the changed handler is bypassed) and identically with --native-bindings; the cause is six 'Device Configuration Agent is protected or locked' rejections during configuration load, not scripting writes. With --native-bindings 'save private configuration' (a native indigo_change_text_property to the protected Configuration Agent) now passes, confirming the fix end-to-end. Non-blocking, outside approved minimal scope: sequencer_simulators.md:27, sequencer_simulators.js:433-434 and run_sequencer_simulators.py:191 still describe the native binding token defect as current. Not verified: Linux/Windows, remote-device token forwarding over a real network.",
+        "reviewer": "human/owner",
+        "commit": "75db6a2c35cc7804777bd34cfc66094237efd857",
+        "tree": "b062c4ca424cc2b14f78051536bb47e2597656e0",
+        "at": "2026-11-15T14:28:33.191175Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T14:24:43.995657Z",
+        "actor": "human/owner",
+        "text": "Before fix: test_agent_scripting 36/37, 'change bindings forward local access tokens' failed (assertion device_forwarded && device_token); sequencer_simulators 129 passed 1 failed. After fix (run_driver_test.py): token test passes; recorded '2026-11-15 15:15 3.0.0.18 mac arm64 simulator 239/238 Failed'. Remaining out-of-scope failure: sequencer test 'restore private configuration' (Unexpected terminal sequence state). flow check whitespace passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "57762ed637529853db6d452281d363f39ef4e4d6",
+      "tree": "b062c4ca424cc2b14f78051536bb47e2597656e0",
+      "base": "master",
+      "at": "2026-11-15T15:01:44.834068Z"
+    }
+  }
+}
