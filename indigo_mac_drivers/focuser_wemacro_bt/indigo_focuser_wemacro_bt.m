@@ -23,7 +23,7 @@
  \file indigo_focuser_wemacro_bt.m
  */
 
-#define DRIVER_VERSION 0x02000005
+#define DRIVER_VERSION 0x02000006
 #define DRIVER_NAME "indigo_focuser_wemacro_bt"
 
 #include <stdlib.h>
@@ -193,6 +193,9 @@ static indigo_result focuser_detach(indigo_device *device);
 	ffe1 = nil;
 	indigo_delete_property(device, X_RAIL_CONFIG_PROPERTY, NULL);
 	indigo_delete_property(device, X_RAIL_SHUTTER_PROPERTY, NULL);
+	if (X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		X_RAIL_EXECUTE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_delete_property(device, X_RAIL_EXECUTE_PROPERTY, NULL);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -434,6 +437,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_RAIL_EXECUTE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
+		INDIGO_REJECT_CHANGE_IF(X_RAIL_EXECUTE_PROPERTY->state == INDIGO_BUSY_STATE, X_RAIL_EXECUTE_PROPERTY, "A batch is already running");
 		indigo_property_copy_values(X_RAIL_EXECUTE_PROPERTY, property, false);
 		[delegate cmd:0x80 a:FOCUSER_SPEED_ITEM->number.value == 2 ? 0xFF : 0 b:0 c:0 d:(uint32_t)X_RAIL_EXECUTE_LENGTH_ITEM->number.value];
 		indigo_usleep(100000);

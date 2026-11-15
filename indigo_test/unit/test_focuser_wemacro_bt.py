@@ -55,8 +55,10 @@ static void *device;
 #define CONNECTION_CONNECTED_ITEM (&connected_item)
 #define X_RAIL_CONFIG_PROPERTY NULL
 #define X_RAIL_SHUTTER_PROPERTY NULL
-#define X_RAIL_EXECUTE_PROPERTY NULL
+static struct { int state; } execute_property;
+#define X_RAIL_EXECUTE_PROPERTY (&execute_property)
 #define INDIGO_OK_STATE 0
+#define INDIGO_ALERT_STATE 3
 #define INDIGO_BUSY_STATE 2
 #define DRIVER_NAME "probe"
 #define indigo_delete_property(...) ((void)0)
@@ -75,6 +77,8 @@ int main(void) { @autoreleasepool {
 	request(true,delegate);assert(connect_calls==2 && private_data.device_count==1);
 	request(false,delegate);assert(disconnect_calls==1);loss();loss();assert(private_data.device_count==0);
 	request(true,delegate);assert(connect_calls==3 && private_data.device_count==1);
+	execute_property.state=INDIGO_BUSY_STATE;loss();assert(execute_property.state==INDIGO_ALERT_STATE);
+	execute_property.state=INDIGO_OK_STATE;loss();assert(execute_property.state==INDIGO_OK_STATE);
 	} return 0; }
 """.replace('BODY_LOSS',lost).replace('BODY_CONNECT',connected).replace('BODY_DISCONNECT',disconnected)
 		result=run_probe(source,'.m',('-framework','Foundation','-fobjc-arc'))
@@ -138,6 +142,8 @@ static item_t speed_item;static item_t beep_item,back_item;
 #define indigo_property_copy_values(...) ((void)0)
 #define indigo_update_property(...) ((void)0)
 #define indigo_usleep(...) ((void)0)
+static int rejects;
+#define INDIGO_REJECT_CHANGE_IF(c, p, f, ...) if (c) { rejects++; return INDIGO_OK; }
 static int run(ProbeDelegate *delegate, void *device) {
 	BODY
 	return -1;
@@ -153,6 +159,22 @@ int main(void) { @autoreleasepool {
 		assert(sent == 2);
 		assert(sent_d[1] == (uint32_t)counts[i] - 1);
 		assert(items[4].number.value == counts[i]);
+		assert(execute_property.state == INDIGO_BUSY_STATE);
+		execute_property.state = 0;
+	}
+	assert(rejects == 0);
+	for (int i = 0; i < 5; i++) {
+		items[i].number.value = 10 + i;
+		items[i].number.target = 20 + i;
+	}
+	items[4].number.value = 3;
+	execute_property.state = INDIGO_BUSY_STATE;
+	sent = 0;
+	assert(run(delegate, NULL) == 0);
+	assert(rejects == 1 && sent == 0 && execute_property.state == INDIGO_BUSY_STATE);
+	for (int i = 0; i < 5; i++) {
+		assert(items[i].number.value == (i == 4 ? 3 : 10 + i));
+		assert(items[i].number.target == 20 + i);
 	}
 	} return 0; }
 """.replace('BODY',handler)
