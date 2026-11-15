@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "ticket_id": "2b3903ea-99c6-5fce-9967-9a845a77db4b",
-  "revision": 4,
+  "revision": 5,
   "title": "Protocol security unit test fails: device ACL accepts requests without a master token",
   "description": "test_protocol_security case 'device ACL requires device or nonzero master token' fails deterministically (unit/test_protocol_security.c:537) with the current build/lib/libindigo.a, also when built against the committed indigo_names.h; unrelated to the scheduler task. Next: determine whether libindigo is stale or the bus ACL check regressed, then fix and rerun make -C indigo_test test-unit.\n\nImported from .factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-001.json (category: functional, blocking: no).",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.897538Z",
-  "status": "open",
+  "status": "closed",
   "branch": null,
   "related_ticket_id": null,
   "config_overrides": {},
@@ -50,9 +50,24 @@
       "actor": "human/owner",
       "previous_difficulty": null,
       "difficulty": "medium"
+    },
+    {
+      "event_id": "e8780e48-5f48-45a2-8fc0-6867248db1a9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T09:47:28.586666Z",
+      "actor": "human/owner",
+      "reason": "Duplicate of ticket 21bfa946 (same failure of test_protocol_security 'device ACL requires device or nonzero master token'), resolved there by master commit b3467d56f: the test expectation was corrected to the documented contract and the unit suite passes. The library was not stale. Closed on the owner's instruction of 2026-11-15.",
+      "resolution": "resolved"
     }
   ],
-  "closure": null,
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T09:47:28.586462Z",
+    "reason": "Duplicate of ticket 21bfa946 (same failure of test_protocol_security 'device ACL requires device or nonzero master token'), resolved there by master commit b3467d56f: the test expectation was corrected to the documented contract and the unit suite passes. The library was not stale. Closed on the owner's instruction of 2026-11-15.",
+    "resolution": "resolved",
+    "mode": "manual",
+    "verification": "not_claimed"
+  },
   "severity": "high",
   "metrics": {
     "duration_ms": 0.0,
@@ -72,8 +87,8 @@
     }
   },
   "journal": {
-    "entries": 4,
-    "sha256": "982579989b6174234676ea04c43b947c34fd26285ec825fdcaa5055c965a6153"
+    "entries": 5,
+    "sha256": "9d3ad416dd2bd6def5966f927c3596b82ca43d96c62d5b8528b5c092e9e4cab3"
   },
   "priority": "high",
   "difficulty": "medium"
