@@ -705,7 +705,7 @@ Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 | AGENT_SCHEDULER_CLEAR_HISTORY | switch | no | CLEAR | Remove all history entries. |
 | AGENT_SCHEDULER_RESTORE_HISTORY | text | no | ENTRIES | Used only to restore the history from the configuration; published empty, client changes are rejected. |
 
-The agent also makes the Scripting Agent define `SCHEDULER_RESULT` (text, read-only, items `TOKEN`, `RESULT`, `MESSAGE`), through which the script that runs a task reports whether its body ran or failed, and `SCHEDULER_ESTIMATE` (number, read-only, items `TOKEN`, `SUPPORTED`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS`, `UNKNOWN`), through which it reports the counts of `Sequence.prototype.estimate()`.
+The agent also makes the Scripting Agent define `SCHEDULER_RESULT` (text, read-only, items `TOKEN`, `RESULT`, `MESSAGE`), through which the script that runs a task reports whether its body ran or failed, and `SCHEDULER_ESTIMATE` (number, read-only, items `TOKEN`, `SUPPORTED`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS`, `UNKNOWN`), through which it reports the counts of `Sequence.prototype.estimate()`. It takes the reason of a run whose sequence ended Alert from `SEQUENCE_FAILURE`, which `Sequencer.js` defines on the Scripting Agent, see below; a sequence aborted by hand has none.
 
 Source: `indigo_drivers/agent_scheduler/indigo_agent_scheduler.c`. The design is described in [SCHEDULER.md](../indigo_drivers/agent_scheduler/doc/SCHEDULER.md).
 
@@ -722,7 +722,9 @@ Source: `indigo_drivers/agent_scheduler/indigo_agent_scheduler.c`. The design is
 | AGENT_SCRIPTING_SCRIPT_%d | text | no | NAME, SCRIPT | Dynamic property created for each saved script. |
 | dynamic cached script properties | text, number, switch, light | mixed | dynamic item names | Script-created or script-cached INDIGO properties. |
 
-Source: `indigo_drivers/agent_scripting/indigo_agent_scripting.c`.
+The `Sequencer.js` library defines its properties as script properties; they are listed in [Sequencer.md](../indigo_drivers/agent_scripting/library/Sequencer.md#properties-published-during-execution). Among them, `SEQUENCE_FAILURE` (text, read-only, item `MESSAGE`) holds the reason of the failure that ended a sequence Alert and is published before that `SEQUENCE_STATE` update; `start()` updates it, empty, before the `SEQUENCE_STATE` update that starts a sequence, and it is empty while a sequence runs, after it finished, after an abort by `AGENT_ABORT_PROCESS` and after `SEQUENCE_RESET`.
+
+Source: `indigo_drivers/agent_scripting/indigo_agent_scripting.c`, `indigo_drivers/agent_scripting/library/Sequencer.js`.
 
 ## Driver specific properties
 

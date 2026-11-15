@@ -165,6 +165,8 @@ By default a failing step aborts the sequence. These steps change that behavior 
 | `recovery_point()` | Mark a point where execution resumes after a failure while `recover_on_failure()` is active. Recovery only ever skips forward, so a recovery point must be placed *after* the steps it is meant to protect. |
 | `resume_point()` | Mark a point where execution continues after a `break_at()` / `break_at_ha()` break fires; the steps between the break and this point are skipped. If no resume point follows, the sequence simply finishes ("no resume point found"). |
 
+Every failure is reported by a message. When a failure ends the sequence in the **Alert** state, its reason is also published in `SEQUENCE_FAILURE.MESSAGE`, before the `SEQUENCE_STATE` update that ends the sequence: the reason of the failed step under `abort_on_failure()`, including a failed meridian flip, and the reason of the failure that started the skip under `recover_on_failure()` when no recovery point follows. A failure the sequence continues after, under `continue_on_failure()`, `focus_ignore_failure()` or at a recovery point, leaves `MESSAGE` empty. A sequence aborted by `AGENT_ABORT_PROCESS` also ends in the **Alert** state, with `MESSAGE` empty.
+
 ### Configuration & drivers
 
 | Method | Description |
@@ -327,6 +329,7 @@ Once `start()` is called, the sequencer defines the following properties on the 
 |---|---|---|---|
 | `SEQUENCE_NAME` | Text, RO | `NAME` | Name of the currently executed sequence (from the `Sequence` constructor), or empty if none/unset. |
 | `SEQUENCE_STATE` | Number, RO | `STEP`, `PROGRESS`, `PROGRESS_TOTAL`, `EXPOSURE`, `EXPOSURE_TOTAL` | Overall execution state (see below). |
+| `SEQUENCE_FAILURE` | Text, RO | `MESSAGE` | Reason of the failure that ended the sequence in the **Alert** state, published before that `SEQUENCE_STATE` update, see [Failure handling & recovery](#failure-handling--recovery). Updated, empty, by `start()` before the `SEQUENCE_STATE` update that starts a sequence. Empty while a sequence runs, after it finished, after an abort by `AGENT_ABORT_PROCESS` and after `SEQUENCE_RESET`. |
 | `SEQUENCE_STEP_STATE` | Light, RO | one item per step | Per-step state, letting the GUI flag each step as idle / busy / ok / alert individually. |
 | `LOOP_x` | Number, RO | `STEP`, `COUNT` | One property per currently executing loop, where `x` is the zero-based nesting level. `STEP` is the index of the loop command, `COUNT` the number of completed iterations. |
 | `AGENT_ABORT_PROCESS` | Switch, RW | `ABORT` | Setting `ABORT` aborts the running sequence. |
@@ -339,7 +342,7 @@ Once `start()` is called, the sequencer defines the following properties on the 
 - `STEP` - zero-based index of the currently executing step. On failure (property in **Alert** state) it holds the index of the failed step.
 - `PROGRESS` / `PROGRESS_TOTAL` - number of executed microsteps and total number of microsteps in the sequence (with loops unrolled). A single helper call can expand to several microsteps.
 - `EXPOSURE` / `EXPOSURE_TOTAL` - elapsed and total exposure time (seconds) across all `capture_batch()` / `capture_stream()` steps.
-- Property **state** reflects the sequence: **Ok** = finished, **Busy** = executing, **Alert** = failed.
+- Property **state** reflects the sequence: **Ok** = finished, **Busy** = executing, **Alert** = failed or aborted; `SEQUENCE_FAILURE.MESSAGE` holds the reason of a failure and is empty after an abort by `AGENT_ABORT_PROCESS`.
 
 A GUI can use `STEP` together with the property state to flag steps: those with index `< STEP` as done, those with index `> STEP` as idle, and the one equal to `STEP` as either executing (Busy) or failed (Alert). `SEQUENCE_STEP_STATE` provides the same information per step directly.
 

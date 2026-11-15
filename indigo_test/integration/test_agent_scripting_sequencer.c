@@ -62,6 +62,9 @@ static indigo_property *config_load_property, *drivers_property, *solver_exposur
 static char test_root[256], messages[131072];
 static atomic_int message_count;
 static atomic_int orchestration_changes;
+// SEQUENCE_FAILURE.MESSAGE delivered before the SEQUENCE_STATE update that started the last sequence and before the last one that ended a sequence Alert
+static char failure_at_start[INDIGO_VALUE_SIZE], failure_at_alert[INDIGO_VALUE_SIZE];
+static int alert_count;
 // the solver stand-in reports a failed solve on AGENT_START_PROCESS
 static atomic_bool solver_process_fails;
 static bool bus_started, observer_attached, peers_attached, ccd_started, mount_started, dome_started, gps_started, rotator_started, imager_started, mount_agent_started, guider_started, scripting_started;
@@ -169,9 +172,25 @@ static observation *find_observation(const char *device, const char *name) {
 	return free_entry;
 }
 
+// SEQUENCE_FAILURE.MESSAGE as delivered when SEQUENCE_STATE is updated, called with cache_mutex locked
+static void delivered_failure(char *text) {
+	observation *failure = find_observation(SCRIPTING, "SEQUENCE_FAILURE");
+	indigo_item *item = failure && failure->property ? indigo_get_item(failure->property, "MESSAGE") : NULL;
+	snprintf(text, INDIGO_VALUE_SIZE, "%s", item ? indigo_get_text_item_value(item) : "<undefined>");
+}
+
 static indigo_result observe(indigo_device *device, indigo_property *property) {
 	pthread_mutex_lock(&cache_mutex);
 	observation *entry = find_observation(property->device, property->name);
+	if (entry && !strcmp(property->device, SCRIPTING) && !strcmp(property->name, "SEQUENCE_STATE")) {
+		bool was_busy = entry->property && entry->property->state == INDIGO_BUSY_STATE;
+		if (property->state == INDIGO_BUSY_STATE && !was_busy) {
+			delivered_failure(failure_at_start);
+		} else if (property->state == INDIGO_ALERT_STATE && was_busy) {
+			delivered_failure(failure_at_alert);
+			alert_count++;
+		}
+	}
 	if (entry) {
 		indigo_release_property(entry->property);
 		entry->property = indigo_copy_property(NULL, property);
@@ -381,6 +400,49 @@ static bool wait_exists(const char *device, const char *name, double timeout) {
 	return false;
 }
 
+#define MISSING_AGENT_FAILURE "Failed to set 'CCD_FRAME_TYPE' on 'Missing Agent'"
+
+// the published SEQUENCE_FAILURE.MESSAGE
+static bool failure_is(const char *text) {
+	indigo_property *property = snapshot(SCRIPTING, "SEQUENCE_FAILURE");
+	indigo_item *item = property ? indigo_get_item(property, "MESSAGE") : NULL;
+	bool result = item && !strcmp(indigo_get_text_item_value(item), text);
+	if (!result) {
+		fprintf(stderr, "SEQUENCE_FAILURE.MESSAGE is '%s', expected '%s'\n", item ? indigo_get_text_item_value(item) : "<undefined>", text);
+	}
+	indigo_release_property(property);
+	return result;
+}
+
+static int alerts(void) {
+	pthread_mutex_lock(&cache_mutex);
+	int result = alert_count;
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
+// one more sequence ended Alert since alerts_before, and SEQUENCE_FAILURE.MESSAGE was the text when that SEQUENCE_STATE update arrived
+static bool failed_with(int alerts_before, const char *text) {
+	pthread_mutex_lock(&cache_mutex);
+	bool result = alert_count == alerts_before + 1 && !strcmp(failure_at_alert, text);
+	if (!result) {
+		fprintf(stderr, "%d sequences ended Alert (expected %d), SEQUENCE_FAILURE.MESSAGE before the end '%s', expected '%s'\n", alert_count, alerts_before + 1, failure_at_alert, text);
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
+// SEQUENCE_FAILURE.MESSAGE was the text when the SEQUENCE_STATE update that started the last sequence arrived
+static bool started_with(const char *text) {
+	pthread_mutex_lock(&cache_mutex);
+	bool result = !strcmp(failure_at_start, text);
+	if (!result) {
+		fprintf(stderr, "SEQUENCE_FAILURE.MESSAGE at the start '%s', expected '%s'\n", failure_at_start, text);
+	}
+	pthread_mutex_unlock(&cache_mutex);
+	return result;
+}
+
 static bool setup(void) {
 	indigo_set_log_level(getenv("INDIGO_TEST_DEBUG") ? INDIGO_LOG_DEBUG : INDIGO_LOG_ERROR);
 	REQUIRE(indigo_start() == INDIGO_OK);
@@ -473,7 +535,7 @@ static void library_inventory(void) {
 	ASSERT_TRUE(check_js("typeof Sequence==='function'"));
 	ASSERT_TRUE(check_js("(function(){var names=Object.getOwnPropertyNames(Sequence.prototype); if(names.length!==110) throw new Error('prototype count '+names.length); return true})()"));
 	ASSERT_TRUE(check_js("indigo_event_handlers.indigo_sequencer===indigo_sequencer"));
-	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE" };
+	const char *properties[] = { "SEQUENCE_NAME", "SEQUENCE_STATE", "SEQUENCE_FAILURE", "SEQUENCE_STEP_STATE", "AGENT_ABORT_PROCESS", "AGENT_PAUSE_PROCESS", "SEQUENCE_RESET", "FLIPPER_STATE" };
 	for (unsigned i = 0; i < ARRAY_SIZE(properties); i++) {
 		indigo_property *property = snapshot(SCRIPTING, properties[i]);
 		ASSERT_TRUE(property != NULL);
@@ -494,6 +556,14 @@ static void published_property_schema(void) {
 	ASSERT_EQ_INT(INDIGO_RO_PERM, property->perm);
 	ASSERT_EQ_INT(5, property->count);
 	indigo_release_property(property);
+	property = snapshot(SCRIPTING, "SEQUENCE_FAILURE");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(INDIGO_TEXT_VECTOR, property->type);
+	ASSERT_EQ_INT(INDIGO_RO_PERM, property->perm);
+	ASSERT_EQ_INT(1, property->count);
+	ASSERT_TRUE(indigo_get_item(property, "MESSAGE") != NULL);
+	indigo_release_property(property);
+	ASSERT_TRUE(failure_is(""));
 	property = snapshot(SCRIPTING, "SEQUENCE_STEP_STATE");
 	ASSERT_TRUE(property != NULL);
 	ASSERT_EQ_INT(INDIGO_LIGHT_VECTOR, property->type);
@@ -590,29 +660,69 @@ static void string_arguments_and_utc_break(void) {
 	ASSERT_TRUE(wait_message("quote \" slash \\", 5));
 }
 
+// the reason of the failed step is published before the update that ends the sequence Alert
 static void failure_abort_policy(void) {
+	int alerts_before = alerts();
 	ASSERT_TRUE(run_js("afterFailure=false; var s=new Sequence('abort failure'); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.evaluate('afterFailure=true'); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
 	ASSERT_TRUE(check_js("afterFailure===false"));
 	ASSERT_TRUE(wait_message("Sequence failed", 5));
+	ASSERT_TRUE(started_with(""));
+	ASSERT_TRUE(failed_with(alerts_before, MISSING_AGENT_FAILURE));
+	ASSERT_TRUE(failure_is(MISSING_AGENT_FAILURE));
+	ASSERT_TRUE(wait_message(MISSING_AGENT_FAILURE, 5));
 }
 
+// a failure the sequence continues after is no reason of its end
 static void failure_continue_policy(void) {
 	ASSERT_TRUE(run_js("afterFailure=false; var s=new Sequence('continue failure'); s.continue_on_failure(); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.evaluate('afterFailure=true'); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("afterFailure===true"));
+	ASSERT_TRUE(wait_message(MISSING_AGENT_FAILURE, 5));
+	ASSERT_TRUE(failure_is(""));
+	ASSERT_EQ_INT(0, alerts());
 }
 
 static void failure_recovery_policy(void) {
 	ASSERT_TRUE(run_js("recoveryTrace=''; var s=new Sequence('recover failure'); s.recover_on_failure(); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.evaluate(\"recoveryTrace+='S'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='R'\"); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("recoveryTrace==='R'"));
+	ASSERT_TRUE(failure_is(""));
+	ASSERT_EQ_INT(0, alerts());
 }
 
+// the failure that sent the sequence to a recovery point it did not find is the reason of its end
 static void recovery_without_point(void) {
+	int alerts_before = alerts();
 	ASSERT_TRUE(run_js("var s=new Sequence('recover without point'); s.recover_on_failure(); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.start();"));
 	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
 	ASSERT_TRUE(wait_message("no recovery point found", 5));
+	ASSERT_TRUE(failed_with(alerts_before, MISSING_AGENT_FAILURE));
+	ASSERT_TRUE(failure_is(MISSING_AGENT_FAILURE));
+}
+
+// the reason of an earlier failure is cleared before the next sequence starts, an abort and a reset leave no reason
+static void failure_reason_cleared_by_start_abort_and_reset(void) {
+	int alerts_before = alerts();
+	ASSERT_TRUE(run_js("var s=new Sequence('failed'); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.start();"));
+	ASSERT_TRUE(wait_message("Sequence failed", 5));
+	ASSERT_TRUE(failure_is(MISSING_AGENT_FAILURE));
+	ASSERT_TRUE(run_js("var s=new Sequence('aborted'); s.wait(10); s.start();"));
+	ASSERT_TRUE(wait_message("Suspended for 10s", 5));
+	ASSERT_TRUE(started_with(""));
+	ASSERT_TRUE(failure_is(""));
+	ASSERT_TRUE(change_switch(SCRIPTING, "AGENT_ABORT_PROCESS", "ABORT", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_message("Sequence aborted", 5));
+	ASSERT_TRUE(failed_with(alerts_before + 1, ""));
+	ASSERT_TRUE(failure_is(""));
+	ASSERT_TRUE(run_js("var s=new Sequence('failed again'); s.select_imager_agent('Missing Agent'); s.select_frame_type('Light'); s.start();"));
+	for (int i = 0; i < 500 && alerts() < alerts_before + 3; i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(failed_with(alerts_before + 2, MISSING_AGENT_FAILURE));
+	ASSERT_TRUE(failure_is(MISSING_AGENT_FAILURE));
+	ASSERT_TRUE(change_switch(SCRIPTING, "SEQUENCE_RESET", "RESET", true, INDIGO_OK_STATE));
+	ASSERT_TRUE(failure_is(""));
 }
 
 static void pause_resume_abort_reset(void) {
@@ -653,6 +763,7 @@ static void library_reload_keeps_running_sequence(void) {
 	loop = snapshot(SCRIPTING, "LOOP_0");
 	ASSERT_TRUE(loop != NULL);
 	indigo_release_property(loop);
+	ASSERT_TRUE(failure_is(""));
 	ASSERT_TRUE(wait_message("Sequencer reloaded, the running sequence continues", 5));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("reloadTrace===1"));
@@ -1030,6 +1141,7 @@ static bool failed_flip_keeps_sequence_state(indigo_property_state state) {
 	unsigned sequence_before = revision(SCRIPTING, "SEQUENCE_STATE");
 	unsigned steps_before = revision(SCRIPTING, "SEQUENCE_STEP_STATE");
 	unsigned abort_before = revision(SCRIPTING, "AGENT_ABORT_PROCESS");
+	unsigned failure_before = revision(SCRIPTING, "SEQUENCE_FAILURE");
 	int aborted_before = count_messages("Sequence aborted");
 	atomic_store(&solver_process_fails, true);
 	REQUIRE(run_flip_to_centering());
@@ -1042,6 +1154,7 @@ static bool failed_flip_keeps_sequence_state(indigo_property_state state) {
 	REQUIRE(same_state);
 	REQUIRE(revision(SCRIPTING, "SEQUENCE_STATE") == sequence_before);
 	REQUIRE(revision(SCRIPTING, "SEQUENCE_STEP_STATE") == steps_before);
+	REQUIRE(revision(SCRIPTING, "SEQUENCE_FAILURE") == failure_before);
 	REQUIRE(count_messages("Sequence aborted") == aborted_before);
 	return true;
 }
@@ -1056,6 +1169,7 @@ static void meridian_flip_failure_keeps_failed_state(void) {
 	ASSERT_TRUE(run_js("var s=new Sequence('flip after failure'); s.enable_meridian_flip(true,0); s.set_solver_filter('Missing'); s.start();"));
 	ASSERT_TRUE(wait_message("Sequence failed", 5));
 	ASSERT_TRUE(failed_flip_keeps_sequence_state(INDIGO_ALERT_STATE));
+	ASSERT_TRUE(failure_is("Failed to set non-existent option 'Missing' for 'Astrometry Agent -> Solver filter'"));
 }
 
 static void meridian_flip_failure_keeps_aborted_state(void) {
@@ -1130,6 +1244,7 @@ static void meridian_flip_failure_recovers(void) {
 	ASSERT_TRUE(check_js("recoveryTrace==='1' && indigo_sequencer.wait_for_timer===null && indigo_event_handlers.indigo_flipper===undefined"));
 	ASSERT_TRUE(wait_message("Meridian flip failed (due to sync & center failure)", 5));
 	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+	ASSERT_TRUE(failure_is(""));
 	indigo_property *property = snapshot(SCRIPTING, "FLIPPER_STATE");
 	ASSERT_TRUE(property != NULL);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
@@ -1224,13 +1339,18 @@ static void meridian_flip_failure_continues(void) {
 	ASSERT_TRUE(fail_flip_during_step("s.continue_on_failure(); s.enable_meridian_flip(true,0); s.wait(10); s.evaluate(\"recoveryTrace+='A'\");", NULL));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
 	ASSERT_TRUE(check_js("recoveryTrace==='A'"));
+	ASSERT_TRUE(failure_is(""));
 }
 
+// under abort_on_failure() the failed flip aborts the sequence, its reason is published before the end
 static void meridian_flip_failure_aborts(void) {
+	int alerts_before = alerts();
 	ASSERT_TRUE(fail_flip_during_step("s.enable_meridian_flip(true,0); s.wait(10); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\");", NULL));
 	ASSERT_TRUE(wait_sequence(INDIGO_ALERT_STATE, 5));
 	ASSERT_TRUE(wait_message("Sequence aborted", 5));
 	ASSERT_TRUE(check_js("recoveryTrace==='' && indigo_sequencer.step_states[''+indigo_sequencer.step]==='Alert'"));
+	ASSERT_TRUE(failed_with(alerts_before, "Meridian flip failed (due to sync & center failure)"));
+	ASSERT_TRUE(failure_is("Meridian flip failed (due to sync & center failure)"));
 }
 
 // An abort requested just before the sequence ended runs its timer afterwards
@@ -1390,6 +1510,7 @@ static const indigo_test_case tests[] = {
 	{ "failure continue policy", failure_continue_policy },
 	{ "failure recovery policy", failure_recovery_policy },
 	{ "recovery without point", recovery_without_point },
+	{ "failure reason cleared by start abort and reset", failure_reason_cleared_by_start_abort_and_reset },
 	{ "pause resume abort reset", pause_resume_abort_reset },
 	{ "past waits and breaks", past_waits_and_breaks },
 	{ "simulator imaging", simulator_imaging },

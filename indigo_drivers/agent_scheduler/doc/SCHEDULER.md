@@ -57,7 +57,7 @@ It deliberately leaves out continuous greedy preemption, anti-thrashing settings
 - **A preempted task is failed or re-queued.** The task's header chooses which. A re-queued task reruns its sequence from the beginning.
 - **A task is one human-readable text.** It consists of a header with the scheduling fields followed by an ordinary `Sequencer.js` body.
 - **The agent stores tasks like the Scripting Agent stores scripts.** Tasks live in agent properties and in the agent's INDIGO configuration. The agent never reads or writes task files; clients load, save and edit files and transfer them through properties.
-- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic. It requires two small additions to `Sequencer.js`: a load that does not replace a running sequence, see [Running a task](#running-a-task), and the `estimate()` method, see [Task duration](#task-duration). The only device actions the scheduler performs itself are aborts.
+- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic. It requires three small additions to `Sequencer.js`: a load that does not replace a running sequence, see [Running a task](#running-a-task), the `estimate()` method, see [Task duration](#task-duration), and the `SEQUENCE_FAILURE` property, which gives the reason of a failed run, see [Running a task](#running-a-task). The only device actions the scheduler performs itself are aborts.
 
 ## Architecture
 
@@ -87,7 +87,7 @@ The Scheduler Agent depends directly on these agents, found by their exact devic
 
 | Agent | Needed | Properties the scheduler uses | Without it |
 |---|---|---|---|
-| "Scripting Agent" | always | changes `AGENT_SCRIPTING_RUN_SCRIPT` to load `Sequencer.js`, estimate durations and run tasks; observes `SEQUENCE_STATE`, and the `SCHEDULER_RESULT` and `SCHEDULER_ESTIMATE` properties that the wrapper script defines there; changes `AGENT_ABORT_PROCESS` to abort a sequence | no task starts and no duration is estimated; `REASON` is `waiting for the Scripting Agent` |
+| "Scripting Agent" | always | changes `AGENT_SCRIPTING_RUN_SCRIPT` to load `Sequencer.js`, estimate durations and run tasks; observes `SEQUENCE_STATE`, `SEQUENCE_FAILURE`, and the `SCHEDULER_RESULT` and `SCHEDULER_ESTIMATE` properties that the wrapper script defines there; changes `AGENT_ABORT_PROCESS` to abort a sequence | no task starts and no duration is estimated; `REASON` is `waiting for the Scripting Agent` |
 | "Mount Agent" | for tasks with `@target` or `@twilight` | observes `GEOGRAPHIC_COORDINATES` for the site; observes `AGENT_START_PROCESS` to wait until the agent is idle after an abort | these tasks wait with `site coordinates unknown`; tasks with only time windows still run |
 | "Guider Agent" | optional | changes `AGENT_ABORT_PROCESS` on `ABORT` and preemption, because the sequencer's abort leaves guiding running; observes `AGENT_START_PROCESS` | nothing to stop |
 | "Imager Agent", "Astrometry Agent", "Platesolver Agent" | optional | observe `AGENT_START_PROCESS`, to wait until they are idle after an abort before the next task starts | nothing to wait for |
@@ -679,7 +679,7 @@ The item label shows:
 - the UTC start and end times;
 - the task name, with the run number and a hook or urgent mark where it applies;
 - the result;
-- for a failure, the reason: for a sequence that ended Alert, the last message the Scripting Agent sent while the sequence was Busy: the failure message of the step when a step failed, but an unrelated progress message such as `Suspended for 30s` when the sequence was aborted by hand outside the scheduler, because Sequencer.js does not yet publish the failure reason apart from its progress messages (a planned improvement); the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
+- for a failure, the reason: for a sequence that ended Alert, `SEQUENCE_FAILURE.MESSAGE` of the Scripting Agent, which is the failure message of the step when a step failed and empty when the sequence was aborted by hand outside the scheduler, see [Running a task](#running-a-task); the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
 
 For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted: by SN 2026abc`.
 
@@ -750,7 +750,7 @@ The agent relies on its token, not on the state of `AGENT_SCRIPTING_RUN_SCRIPT`.
 - `SCHEDULER_RESULT` with its token: `error` means the task failed to start, and `MESSAGE` becomes the failure reason in the run history.
 - An `ok` result together with a transition of `SEQUENCE_STATE` from not Busy to Busy after the wrapper was sent marks the start. The agent counts the transitions, so a sequence that ends quickly is still recognised. If no start is observed within `START_TIMEOUT` seconds, the start fails, for example because the body never calls `start()` or because another sequence is running.
 - After the start, Busy → Ok means success.
-- Busy → Alert means failure, unless the agent itself aborted the sequence.
+- Busy → Alert means failure, unless the agent itself aborted the sequence. The reason of the failure is `SEQUENCE_FAILURE.MESSAGE`, which `Sequencer.js` publishes before that update: the failure message of the step that ended the sequence, or empty after an abort by hand. The agent forgets the value at the start of a task and at every transition to Busy, so a reason from an earlier run is never reused.
 
 A failed start counts as a task failure.
 

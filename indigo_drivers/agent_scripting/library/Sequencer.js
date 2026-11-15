@@ -824,6 +824,8 @@ var indigo_sequencer = {
 	failure_handling: 0,
 	skip_to_resume_point: false,
 	flip_failure: null,
+	failure_message: "",
+	recovery_failure: "",
 	timer_generation: 0,
 	use_solver: false,
 	paused: false,
@@ -840,6 +842,12 @@ var indigo_sequencer = {
 		}
 		this.step_states[name] = state;
 		indigo_update_light_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STEP_STATE", this.step_states, "Ok");
+	},
+
+	// SEQUENCE_FAILURE.MESSAGE is the reason of the failure that ended the sequence Alert, published before that SEQUENCE_STATE update; it is empty while a sequence runs, after it finished, after an abort and after a reset
+	update_failure: function(message) {
+		this.failure_message = message;
+		indigo_update_text_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_FAILURE", { MESSAGE: message }, "Ok");
 	},
 
 	on_update: function(property) {
@@ -884,6 +892,9 @@ var indigo_sequencer = {
 			}
 			if (property.name == null || property.name == "SEQUENCE_STATE") {
 				indigo_define_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", "Sequencer", "State", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, { STEP: { label: "Executing step", format: "%g", min: -1, max: 1000000, step: 1 }, PROGRESS: { label: "Progress", format: "%g", min: 0, max: 1000000, step: 1 }, PROGRESS_TOTAL: { label: "Progress total", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE: { label: "Exposure time elapsed", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE_TOTAL: { label: "Exposure time total", format: "%g", min: 0, max: 1000000, step: 1 }}, this.sequence_state, "RO");
+			}
+			if (property.name == null || property.name == "SEQUENCE_FAILURE") {
+				indigo_define_text_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_FAILURE", "Sequencer", "Failure", { MESSAGE: this.failure_message }, { MESSAGE: { label: "Reason" }}, "Ok", "RO");
 			}
 			if (property.name == null || property.name == "SEQUENCE_STEP_STATE") {
 				indigo_define_light_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
@@ -947,6 +958,8 @@ var indigo_sequencer = {
 			} else if (property.name == "SEQUENCE_RESET") {
 				if (property.items.RESET) {
 					this.step = -1;
+					this.recovery_failure = "";
+					this.update_failure("");
 					indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step }, this.sequence_state = "Ok");
 					this.paused = false;
 					indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, this.pause_state = "Ok");
@@ -979,7 +992,8 @@ var indigo_sequencer = {
 		}
 	},
 
-	abort: function() {
+	// the reason is given only by a failed meridian flip which aborts the sequence, an abort by AGENT_ABORT_PROCESS has none
+	abort: function(reason) {
 		// a failed meridian flip or a pending abort timer also gets here after the sequence has ended, its result is kept then
 		var sequence_running = this.sequence != null;
 		this.timer_generation++;
@@ -1015,6 +1029,7 @@ var indigo_sequencer = {
 		this.cancel_wait_timer();
 		if (sequence_running) {
 			indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
+			this.update_failure(reason == undefined ? "" : reason);
 			indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence aborted");
 		}
 		indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Ok");
@@ -1035,11 +1050,13 @@ var indigo_sequencer = {
 			this.flip_failure = null;
 			this.failure_handling = 0;
 			this.skip_to_recovery_point = false;
+			this.recovery_failure = "";
 			this.ignore_failure = false;
 			this.skip_to_resume_point = false;
 			this.altitude_poll = null;
 			indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, this.pause_state = "Ok");
 			indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Ok");
+			this.update_failure("");
 			indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Busy");
 			this.name = name;
 			indigo_update_text_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_NAME", { NAME: this.name }, "Ok");
@@ -1128,6 +1145,7 @@ var indigo_sequencer = {
 					indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, this.pause_state = "Ok");
 				}
 				if (this.skip_to_recovery_point) {
+					this.update_failure(this.recovery_failure);
 					indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert");
 					indigo_send_message("Sequence failed, no recovery point found");
 				} else if (this.skip_to_resume_point) {
@@ -1187,6 +1205,7 @@ var indigo_sequencer = {
 	recovery_point: function(index) {
 		if (this.skip_to_recovery_point) {
 			this.skip_to_recovery_point = false;
+			this.recovery_failure = "";
 			indigo_send_message("Recovered from failure at recovery point #" + index);
 			indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
 		} else {
@@ -1363,11 +1382,11 @@ var indigo_sequencer = {
 		indigo_sequencer_set_step_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
-	// a failed meridian flip aborts the sequence under abort_on_failure() and the agents when no sequence runs, otherwise the step during which the flip ran fails
+	// a failed meridian flip aborts the sequence under abort_on_failure(), with the flip failure as its reason, and the agents when no sequence runs, otherwise the step during which the flip ran fails
 	flip_failed: function(message) {
 		if (this.sequence == null || this.failure_handling == 0) {
 			indigo_send_message(message);
-			this.abort();
+			this.abort(message);
 			return;
 		}
 		indigo_change_switch_property(this.devices[IMAGER_AGENT], "AGENT_ABORT_PROCESS", { ABORT: true });
@@ -1391,7 +1410,9 @@ var indigo_sequencer = {
 			this.update_step_state(this.step, "Alert");
 			indigo_sequencer_set_step_timer(indigo_sequencer_next_handler, 0);
 		} else if (this.failure_handling == 1) {
+			// the reason of the end when no recovery point follows
 			this.skip_to_recovery_point = true;
+			this.recovery_failure = message;
 			this.update_step_state(this.step, "Alert");
 			indigo_sequencer_set_step_timer(indigo_sequencer_next_handler, 0);
 		} else {
@@ -1407,6 +1428,7 @@ var indigo_sequencer = {
 				this.paused = false;
 				indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, this.pause_state = "Ok");
 			}
+			this.update_failure(message);
 			indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence failed");
 		}
 	},
