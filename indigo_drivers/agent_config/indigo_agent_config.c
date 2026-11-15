@@ -24,7 +24,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300001E
+#define DRIVER_VERSION 0x0300001F
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -192,6 +192,12 @@ static void process_restore_properties(indigo_device *device) {
 	}
 }
 
+static indigo_result config_reader_change_property(indigo_client *client, indigo_property *property) {
+	// the saved file holds no access tokens, authorize the replayed request like the per-device configuration restore does
+	property->access_token = indigo_get_device_or_master_token(property->device);
+	return indigo_change_property(client, property);
+}
+
 static void load_configuration(indigo_device *device) {
 	// request deselect everything from all agents first
 	indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Unloading current configuration, please wait...");
@@ -279,7 +285,7 @@ static void load_configuration(indigo_device *device) {
 				client->client_context = context;
 				client->version = INDIGO_VERSION_CURRENT;
 				clear_restore_properties(device);
-				indigo_xml_parse(NULL, client);
+				indigo_xml_parse_with_callback(NULL, client, config_reader_change_property);
 				if (!has_restore_properties(device)) {
 					DEVICE_PRIVATE_DATA->failure = true;
 				}
