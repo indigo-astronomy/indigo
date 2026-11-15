@@ -1,0 +1,724 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4ccea20d-893d-5373-80d3-3a1e1e998a28",
+  "revision": 36,
+  "title": "Sun and Moon positions referred to J2000 are used as coordinates of date in the scheduler sky",
+  "description": "indigocat_sun_equatorial_coords() returns a right ascension about 0.37 degrees (26.9 years of precession) below a coordinates-of-date reference for 2026-11-12, while indigo_radec_to_altaz() applies no precession and treats its input as coordinates of date. The Scheduler Agent (indigo_agent_scheduler_sky.c solar_system(), indigo_agent_scheduler_night.c sun_coordinates()) passes the indigocat result straight on, so Sun altitudes are off by up to about 0.37 degrees and twilight limits and night hook times by about 1.5 minutes at the equator, a little more at mid-latitudes. The Moon goes through the same path. The scheduler sandbox deliberately reproduces the agent's values. Next: confirm the equinox of the indigocat solar system functions against an independent ephemeris, then precess to the date where they are used (or fix indigocat), and adjust the sky and night unit tests.\n\nImported from .factory/findings/active/FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.904889Z",
+  "status": "closed",
+  "branch": "ticket/4ccea20d-893d-5373-80d3-3a1e1e998a28",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7fee52c9-9433-444b-87af-4b7fbc8b1c3b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:29:06.502954Z",
+          "last_activity_at": "2026-11-15T12:37:37.216419Z",
+          "ended_at": "2026-11-15T12:37:37.216419Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 510713.465,
+          "tokens": null
+        },
+        {
+          "attempt_id": "8d806deb-1822-4faa-a7ca-11f1ac9a775f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:41:14.433990Z",
+          "last_activity_at": "2026-11-15T12:46:21.166225Z",
+          "ended_at": "2026-11-15T12:46:21.166225Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 306732.235,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:29:06.502954Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/4ccea20d-893d-5373-80d3-3a1e1e998a28"
+        },
+        {
+          "at": "2026-11-15T12:37:37.216419Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T12:41:14.433990Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T12:46:21.166225Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 817445.7,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "325b61dc-b935-47ae-8036-518c7aebb025",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T12:37:37.216627Z",
+          "last_activity_at": "2026-11-15T12:41:14.433887Z",
+          "ended_at": "2026-11-15T12:41:14.433887Z",
+          "outcome": {
+            "summary": "Production change is correct: premise confirmed (indigocat Earth series is VSOP87B, L1 rate 6283.0758 rad/millennium = J2000 ecliptic, indigocat_earth.c:677; Moon ELP with Laskar P/Q rotation = J2000, indigocat_moon.c:39236-39248; precessed Sun at 2026-03-20 14:46 UT gives RA 359.9989 dec 0.0001). indigo_precess() direction, radians, 0..2pi wrap and per-sample epoch (indigo_eq_of_date(UT2JD(t))) are right and match an independent IAU 1976 precession to 0.0001 deg; precession happens before interpolation in both modules; elongation and target-Moon separation are now in one frame. Sandbox reproduces the C values exactly (227.6691/-17.7716 at 2026-11-12 12:00) and loads. Version 0x0300000A->0x0300000B, SCHEDULER.md sentence accurate, scope and whitespace OK. Night test is effective: rebuilt against night.c without precession it fails (worst 0.319 > 0.1), passes with the fix (0.006). DEFECT: the Sun half of the new sky test is ineffective. test_agent_scheduler_sky.c:103-104 compares sky.sun_altitude[144] (2026-11-12 12:00 UTC, lat 48.15, lon 17.11) with the reference, but at that sample the RA and Dec precession errors cancel in altitude: reference 21.4416, unprecessed 21.4416, precessed 21.4380. I rebuilt test_agent_scheduler_sky against a copy of indigo_agent_scheduler_sky.c with the Sun precession removed (Moon kept) and the whole suite passes, so the Sun precession in solar_system() (indigo_agent_scheduler_sky.c:89-92) has no effective test, and the comment at line 94 (Sun off by 0.35) is untrue for the asserted quantity. Only the Moon RA assertion fails without the fix. Correction: assert the Sun over a sweep of phase-0 grid samples (e.g. worst |error| over indices 0..288 step 12 < 0.1, as the night test does; the same site/day gives 0.32 unprecessed) or pick a sample far from that cancellation, and verify it fails without the Sun precession. Note (not blocking): the Moon dec assertion (-27.534, tol 0.1) also passes without the fix (unprecessed -27.562, precessed -",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 217217.26,
+          "tokens": null
+        },
+        {
+          "attempt_id": "cb395d72-bcc9-4637-8281-f4ed2f4f0162",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:46:21.166234Z",
+          "last_activity_at": "2026-11-15T12:46:21.166263Z",
+          "ended_at": "2026-11-15T12:46:21.166263Z",
+          "outcome": {
+            "summary": "Re-review of 11c4f3bab. Only indigo_test/unit/test_agent_scheduler_sky.c changed since 4dc5e1ee7 (git diff 4dc5e1ee7 HEAD); the rest of the diff, including indigo_agent_scheduler_sky.c, is byte-identical to what I reviewed; git diff --check clean. The Sun check now sweeps phase-0 grid samples 0..288 step 12 (no interpolation) against the independent Astronomical Almanac Sun of date. Rebuilt the test outside the worktree against scratch copies of sky.c: with the fix it passes (worst 0.0055 deg); with only the Sun precession removed it fails at test_agent_scheduler_sky.c:111 (worst 0.3194); with no precession it fails. Margins on both sides of the 0.1 limit are wide and the test is deterministic. Comment now accurate. Removing the Moon Dec assertion is acceptable: it passed without the fix (precession shifts Dec by only about 0.03 deg at RA 258, below the accuracy of the main-terms reference, which sits 0.058 deg from precessed indigocat), and the Moon precession is one rotation of both coordinates, so the remaining RA assertion (0.41 deg error without the fix vs 0.1 tolerance) covers that code path. Earlier findings on the production change, night test, sandbox, version and documentation stand. No defects.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.029,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:37:37.216627Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:41:14.433887Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Production change is correct: premise confirmed (indigocat Earth series is VSOP87B, L1 rate 6283.0758 rad/millennium = J2000 ecliptic, indigocat_earth.c:677; Moon ELP with Laskar P/Q rotation = J2000, indigocat_moon.c:39236-39248; precessed Sun at 2026-03-20 14:46 UT gives RA 359.9989 dec 0.0001). indigo_precess() direction, radians, 0..2pi wrap and per-sample epoch (indigo_eq_of_date(UT2JD(t))) are right and match an independent IAU 1976 precession to 0.0001 deg; precession happens before interpolation in both modules; elongation and target-Moon separation are now in one frame. Sandbox reproduces the C values exactly (227.6691/-17.7716 at 2026-11-12 12:00) and loads. Version 0x0300000A->0x0300000B, SCHEDULER.md sentence accurate, scope and whitespace OK. Night test is effective: rebuilt against night.c without precession it fails (worst 0.319 > 0.1), passes with the fix (0.006). DEFECT: the Sun half of the new sky test is ineffective. test_agent_scheduler_sky.c:103-104 compares sky.sun_altitude[144] (2026-11-12 12:00 UTC, lat 48.15, lon 17.11) with the reference, but at that sample the RA and Dec precession errors cancel in altitude: reference 21.4416, unprecessed 21.4416, precessed 21.4380. I rebuilt test_agent_scheduler_sky against a copy of indigo_agent_scheduler_sky.c with the Sun precession removed (Moon kept) and the whole suite passes, so the Sun precession in solar_system() (indigo_agent_scheduler_sky.c:89-92) has no effective test, and the comment at line 94 (Sun off by 0.35) is untrue for the asserted quantity. Only the Moon RA assertion fails without the fix. Correction: assert the Sun over a sweep of phase-0 grid samples (e.g. worst |error| over indices 0..288 step 12 < 0.1, as the night test does; the same site/day gives 0.32 unprecessed) or pick a sample far from that cancellation, and verify it fails without the Sun precession. Note (not blocking): the Moon dec assertion (-27.534, tol 0.1) also passes without the fix (unprecessed -27.562, precessed -"
+        },
+        {
+          "at": "2026-11-15T12:46:21.166234Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:46:21.166263Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review of 11c4f3bab. Only indigo_test/unit/test_agent_scheduler_sky.c changed since 4dc5e1ee7 (git diff 4dc5e1ee7 HEAD); the rest of the diff, including indigo_agent_scheduler_sky.c, is byte-identical to what I reviewed; git diff --check clean. The Sun check now sweeps phase-0 grid samples 0..288 step 12 (no interpolation) against the independent Astronomical Almanac Sun of date. Rebuilt the test outside the worktree against scratch copies of sky.c: with the fix it passes (worst 0.0055 deg); with only the Sun precession removed it fails at test_agent_scheduler_sky.c:111 (worst 0.3194); with no precession it fails. Margins on both sides of the 0.1 limit are wide and the test is deterministic. Comment now accurate. Removing the Moon Dec assertion is acceptable: it passed without the fix (precession shifts Dec by only about 0.03 deg at RA 258, below the accuracy of the main-terms reference, which sits 0.058 deg from precessed indigocat), and the Moon precession is one rotation of both coordinates, so the remaining RA assertion (0.41 deg error without the fix vs 0.1 tolerance) covers that code path. Earlier findings on the production change, night test, sandbox, version and documentation stand. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of 11c4f3bab. Only indigo_test/unit/test_agent_scheduler_sky.c changed since 4dc5e1ee7 (git diff 4dc5e1ee7 HEAD); the rest of the diff, including indigo_agent_scheduler_sky.c, is byte-identical to what I reviewed; git diff --check clean. The Sun check now sweeps phase-0 grid samples 0..288 step 12 (no interpolation) against the independent Astronomical Almanac Sun of date. Rebuilt the test outside the worktree against scratch copies of sky.c: with the fix it passes (worst 0.0055 deg); with only the Sun precession removed it fails at test_agent_scheduler_sky.c:111 (worst 0.3194); with no precession it fails. Margins on both sides of the 0.1 limit are wide and the test is deterministic. Comment now accurate. Removing the Moon Dec assertion is acceptable: it passed without the fix (precession shifts Dec by only about 0.03 deg at RA 258, below the accuracy of the main-terms reference, which sits 0.058 deg from precessed indigocat), and the Moon precession is one rotation of both coordinates, so the remaining RA assertion (0.41 deg error without the fix vs 0.1 tolerance) covers that code path. Earlier findings on the production change, night test, sandbox, version and documentation stand. No defects.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 217217.289,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fc366b4d-4f0d-490a-88fc-66a36a2cec18",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.904906Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-001.json",
+      "source": "422feaa98076b5bd7693854a1b78beb27430f270c27b73692321780f6395467b",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "7ab5c587-2cba-4683-833f-9bdda0755f25",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:15.736220Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "21e2e315-840a-4e6a-b566-33096ada9ffa",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:16.003264Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "dd97e696-b6d1-41de-b804-6a89326ff8e6",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:29:00.679125Z",
+      "actor": "human/owner",
+      "text": "Owner instruction 2026-11-15: fix this ticket. Coordinator's scope: first confirm the equinox of indigocat_sun_equatorial_coords() and indigocat_moon_equatorial_coords() with independent evidence; if they are J2000, precess to the date where the Scheduler Agent uses them (indigo_agent_scheduler_sky.c, indigo_agent_scheduler_night.c), adjust the sky and night unit tests and tools/scheduler_sandbox.py, and increment DRIVER_VERSION. Changing indigocat or other users of it is outside the scope and is reported to the owner instead.",
+      "tokens": null
+    },
+    {
+      "event_id": "50c53071-d038-4fc5-a75f-cadfd1a9804e",
+      "event": "task/progress",
+      "at": "2026-11-15T12:29:06.503373Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Implementation started on branch ticket/4ccea20d-893d-5373-80d3-3a1e1e998a28"
+    },
+    {
+      "event_id": "068e1fef-d8d9-4573-ad3d-fdb1b86be9cf",
+      "event": "ticket/started",
+      "at": "2026-11-15T12:29:06.505202Z",
+      "actor": "human/owner",
+      "branch": "ticket/4ccea20d-893d-5373-80d3-3a1e1e998a28",
+      "base": "master"
+    },
+    {
+      "event_id": "3a4ff8fd-6467-43aa-a843-3ae16b32d5f4",
+      "event": "task/progress",
+      "at": "2026-11-15T12:29:39.040243Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Implementer launched",
+      "attempt_id": "7fee52c9-9433-444b-87af-4b7fbc8b1c3b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "3e71d277-791c-4622-925f-5aa79780bd44",
+      "event": "task/progress",
+      "at": "2026-11-15T12:30:13.319869Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Checking equinox of indigocat Sun/Moon with scratch program"
+    },
+    {
+      "event_id": "ea2dd33d-4b57-449b-8c52-ba509580d10c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:30:13.408195Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Checking equinox of indigocat Sun/Moon with scratch program"
+    },
+    {
+      "event_id": "18292693-6820-425f-a6ee-e85f5613d0b4",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:30:54.259498Z",
+      "actor": "human/owner",
+      "text": "Reproduction evidence: indigocat Sun/Moon are J2000. Sun at the 2026-03-20 14:46 UT equinox: indigocat RA 359.663 dec -0.146 vs independent of-date (Meeus low-precision) RA 0.005 dec 0.002 (0.34 deg lag); 2026-09-23 00:05: 179.656/0.149 vs 179.993/0.003; solstice 2026-06-21: dec 23.4388 vs 23.4351; at J2000.0 both agree (281.278 vs 281.286). Moon vs of-date Meeus ch.47 main terms: 2026-11-12 0h RA 258.128 vs 258.542 (0.41 deg), 2026-03-20 17.260 vs 17.640, at J2000 222.447 vs 222.459 (agree). Both J2000, ticket claim confirmed. Scratch programs outside repo.",
+      "tokens": null
+    },
+    {
+      "event_id": "9ccc2fe7-4fa1-4335-9ee9-62c8044c7f6f",
+      "event": "task/progress",
+      "at": "2026-11-15T12:31:41.469444Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Building libs and scheduler unit tests"
+    },
+    {
+      "event_id": "7905d952-17df-4bbb-9968-da7145aee45e",
+      "event": "task/progress",
+      "at": "2026-11-15T12:32:52.521060Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Running flow check (unit) and the scheduler integration test"
+    },
+    {
+      "event_id": "dec3947c-31ca-4b5a-af9e-fb34b5ac09ef",
+      "event": "task/progress",
+      "at": "2026-11-15T12:32:52.839700Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "30b6622d-8f2f-412d-bd83-569f1d905170",
+      "event": "task/progress",
+      "at": "2026-11-15T12:32:52.879951Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5716b3fa-1452-4f72-bf07-a9bc30d57e43",
+      "event": "task/progress",
+      "at": "2026-11-15T12:32:52.881969Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "1c987602-02d1-42dd-9627-e7379446c5a2",
+      "event": "task/progress",
+      "at": "2026-11-15T12:34:23.547063Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "00968d1f-ee48-4336-89e0-6f993d4a53af",
+      "event": "check/passed",
+      "at": "2026-11-15T12:34:23.549365Z",
+      "actor": "human/owner",
+      "commit": "4dc5e1ee7689905cc3e0d3b2f9fa06397c03690f",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "224a0084-cf33-4fe8-85b8-6dc4445ad72b",
+      "event": "task/progress",
+      "at": "2026-11-15T12:34:28.757059Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "a6f0f0b6-84b7-4765-ba1c-138d5b1b8d76",
+      "event": "task/progress",
+      "at": "2026-11-15T12:37:08.544129Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "b5e7b50b-1eb4-4af1-b28e-241e79b95d86",
+      "event": "check/passed",
+      "at": "2026-11-15T12:37:08.546598Z",
+      "actor": "human/owner",
+      "commit": "4dc5e1ee7689905cc3e0d3b2f9fa06397c03690f",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "459edab5-5de5-4b7c-bccc-f70957127981",
+      "event": "task/progress",
+      "at": "2026-11-15T12:37:37.216695Z",
+      "actor": "human/owner",
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a6ddf674-cffc-4f7b-9797-1ae2639df1c3",
+      "event": "review/started",
+      "at": "2026-11-15T12:37:37.218071Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "2d5bc768-45d5-4950-b283-9b92426d772a",
+      "event": "task/progress",
+      "at": "2026-11-15T12:37:59.131627Z",
+      "actor": "human/owner",
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "text": "Reviewer launched",
+      "attempt_id": "325b61dc-b935-47ae-8036-518c7aebb025",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ce4fa479-54d3-44dd-98ca-eb23e7c42593",
+      "event": "task/progress",
+      "at": "2026-11-15T12:39:25.770369Z",
+      "actor": "human/owner",
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "text": "Numerical check of indigocat equinox and test sensitivity with scratch program"
+    },
+    {
+      "event_id": "034c2b12-26e2-4819-87e6-650f480f45cd",
+      "event": "task/progress",
+      "at": "2026-11-15T12:41:14.433986Z",
+      "actor": "human/owner",
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "7d89dc00-1b4e-4949-b059-8ed89b8b9706",
+      "event": "task/progress",
+      "at": "2026-11-15T12:41:14.434011Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "26ac7071-3c6f-4b25-8813-46f75aec91e6",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T12:41:14.435295Z",
+      "actor": "human/owner",
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "4dc5e1ee7689905cc3e0d3b2f9fa06397c03690f"
+    },
+    {
+      "event_id": "c87b0ed8-83da-4f47-bb0d-94310442f4ea",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:42:04.997586Z",
+      "actor": "human/owner",
+      "text": "Review fix: Sun check in test_agent_scheduler_sky.c now sweeps phase-0 samples 0..288 step 12 (limit 0.1 deg); the single sample 144 had cancelling RA/Dec errors. Evidence: with Sun precession removed from sky.c (Moon kept) the test FAILS (worst < 0.1); with the fix it passes. Moon Dec assertion removed (it passed without the fix); the Moon RA assertion is what covers the Moon.",
+      "tokens": null
+    },
+    {
+      "event_id": "d08c7c5f-116f-41fe-bc10-921f511fbb26",
+      "event": "task/progress",
+      "at": "2026-11-15T12:42:05.255521Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9d7117ce-e2df-4846-bc9e-4d878763fffb",
+      "event": "task/progress",
+      "at": "2026-11-15T12:42:05.278937Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "de2a801e-f818-42d4-88cd-645aba372c3b",
+      "event": "task/progress",
+      "at": "2026-11-15T12:42:05.281160Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "13863b92-4630-411f-b6dd-7159f19ea768",
+      "event": "task/progress",
+      "at": "2026-11-15T12:43:04.708871Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "7441c8f1-1d09-4d47-a346-e8eeef7ed408",
+      "event": "check/passed",
+      "at": "2026-11-15T12:43:04.711445Z",
+      "actor": "human/owner",
+      "commit": "11c4f3bab854ff5e1e0ecada679c9c2ce5f4830e",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "9519399d-29c0-4c2d-b578-164f49f0d8a6",
+      "event": "task/progress",
+      "at": "2026-11-15T12:43:04.906905Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "76d7443c-5134-4809-bc10-585c23c0b401",
+      "event": "task/progress",
+      "at": "2026-11-15T12:45:31.708201Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "02283c6d-6508-43cc-9d85-663c60329485",
+      "event": "check/passed",
+      "at": "2026-11-15T12:45:31.711350Z",
+      "actor": "human/owner",
+      "commit": "11c4f3bab854ff5e1e0ecada679c9c2ce5f4830e",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "ef918a81-899a-42ee-a90f-fcbff6001b41",
+      "event": "task/progress",
+      "at": "2026-11-15T12:45:36.290338Z",
+      "actor": "human/owner",
+      "task_id": "7627ffc6-4fd3-49b8-8c1c-55276f614a7d",
+      "text": "Re-reviewing the revised sky test"
+    },
+    {
+      "event_id": "a6a1539d-b8b3-4652-9910-d12486140cec",
+      "event": "task/progress",
+      "at": "2026-11-15T12:46:21.166331Z",
+      "actor": "human/owner",
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5a7bd162-24e3-4028-8bcd-d59d8234ec8d",
+      "event": "review/passed",
+      "at": "2026-11-15T12:46:21.167694Z",
+      "actor": "human/owner",
+      "task_id": "923e211c-0a76-48c5-a4a0-423d7bca041d",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "11c4f3bab854ff5e1e0ecada679c9c2ce5f4830e"
+    },
+    {
+      "event_id": "5d568642-7980-42eb-b086-de0b35b858ac",
+      "event": "ticket/closed",
+      "at": "2026-11-15T12:46:42.007013Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T12:46:42.006981Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "0dec4cb9f48a6cd117b4f79c1750bc6cb5445091"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 1034662.989,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 47,
+    "sha256": "a084b0f61fa5ebd1e44804f2fd3218eaa3a618c657408bef1aaf20027edaae37"
+  },
+  "priority": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "4dc5e1ee7689905cc3e0d3b2f9fa06397c03690f",
+        "tree": "11755acf57fcf79c0edf5fb8c25e1f6d5ea35f93",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:32:52.878977Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ccea20d-893d-5373-80d3-3a1e1e998a28/11755acf57fc-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "4dc5e1ee7689905cc3e0d3b2f9fa06397c03690f",
+        "tree": "11755acf57fcf79c0edf5fb8c25e1f6d5ea35f93",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:34:23.545933Z",
+        "duration_s": 90.7,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ccea20d-893d-5373-80d3-3a1e1e998a28/11755acf57fc-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "4dc5e1ee7689905cc3e0d3b2f9fa06397c03690f",
+        "tree": "11755acf57fcf79c0edf5fb8c25e1f6d5ea35f93",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:37:08.542636Z",
+        "duration_s": 159.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ccea20d-893d-5373-80d3-3a1e1e998a28/11755acf57fc-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "11c4f3bab854ff5e1e0ecada679c9c2ce5f4830e",
+        "tree": "620af73a1f7a8f3eb005d23da5ed81fefe6ee621",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:42:05.277827Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ccea20d-893d-5373-80d3-3a1e1e998a28/620af73a1f7a-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "11c4f3bab854ff5e1e0ecada679c9c2ce5f4830e",
+        "tree": "620af73a1f7a8f3eb005d23da5ed81fefe6ee621",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:43:04.707792Z",
+        "duration_s": 59.4,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ccea20d-893d-5373-80d3-3a1e1e998a28/620af73a1f7a-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "11c4f3bab854ff5e1e0ecada679c9c2ce5f4830e",
+        "tree": "620af73a1f7a8f3eb005d23da5ed81fefe6ee621",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:45:31.706773Z",
+        "duration_s": 146.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/4ccea20d-893d-5373-80d3-3a1e1e998a28/620af73a1f7a-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Production change is correct: premise confirmed (indigocat Earth series is VSOP87B, L1 rate 6283.0758 rad/millennium = J2000 ecliptic, indigocat_earth.c:677; Moon ELP with Laskar P/Q rotation = J2000, indigocat_moon.c:39236-39248; precessed Sun at 2026-03-20 14:46 UT gives RA 359.9989 dec 0.0001). indigo_precess() direction, radians, 0..2pi wrap and per-sample epoch (indigo_eq_of_date(UT2JD(t))) are right and match an independent IAU 1976 precession to 0.0001 deg; precession happens before interpolation in both modules; elongation and target-Moon separation are now in one frame. Sandbox reproduces the C values exactly (227.6691/-17.7716 at 2026-11-12 12:00) and loads. Version 0x0300000A->0x0300000B, SCHEDULER.md sentence accurate, scope and whitespace OK. Night test is effective: rebuilt against night.c without precession it fails (worst 0.319 > 0.1), passes with the fix (0.006). DEFECT: the Sun half of the new sky test is ineffective. test_agent_scheduler_sky.c:103-104 compares sky.sun_altitude[144] (2026-11-12 12:00 UTC, lat 48.15, lon 17.11) with the reference, but at that sample the RA and Dec precession errors cancel in altitude: reference 21.4416, unprecessed 21.4416, precessed 21.4380. I rebuilt test_agent_scheduler_sky against a copy of indigo_agent_scheduler_sky.c with the Sun precession removed (Moon kept) and the whole suite passes, so the Sun precession in solar_system() (indigo_agent_scheduler_sky.c:89-92) has no effective test, and the comment at line 94 (Sun off by 0.35) is untrue for the asserted quantity. Only the Moon RA assertion fails without the fix. Correction: assert the Sun over a sweep of phase-0 grid samples (e.g. worst |error| over indices 0..288 step 12 < 0.1, as the night test does; the same site/day gives 0.32 unprecessed) or pick a sample far from that cancellation, and verify it fails without the Sun precession. Note (not blocking): the Moon dec assertion (-27.534, tol 0.1) also passes without the fix (unprecessed -27.562, precessed -27.592); the RA assertion carries the Moon check.",
+        "reviewer": "human/owner",
+        "commit": "4dc5e1ee7689905cc3e0d3b2f9fa06397c03690f",
+        "tree": "11755acf57fcf79c0edf5fb8c25e1f6d5ea35f93",
+        "at": "2026-11-15T12:41:14.433684Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of 11c4f3bab. Only indigo_test/unit/test_agent_scheduler_sky.c changed since 4dc5e1ee7 (git diff 4dc5e1ee7 HEAD); the rest of the diff, including indigo_agent_scheduler_sky.c, is byte-identical to what I reviewed; git diff --check clean. The Sun check now sweeps phase-0 grid samples 0..288 step 12 (no interpolation) against the independent Astronomical Almanac Sun of date. Rebuilt the test outside the worktree against scratch copies of sky.c: with the fix it passes (worst 0.0055 deg); with only the Sun precession removed it fails at test_agent_scheduler_sky.c:111 (worst 0.3194); with no precession it fails. Margins on both sides of the 0.1 limit are wide and the test is deterministic. Comment now accurate. Removing the Moon Dec assertion is acceptable: it passed without the fix (precession shifts Dec by only about 0.03 deg at RA 258, below the accuracy of the main-terms reference, which sits 0.058 deg from precessed indigocat), and the Moon precession is one rotation of both coordinates, so the remaining RA assertion (0.41 deg error without the fix vs 0.1 tolerance) covers that code path. Earlier findings on the production change, night test, sandbox, version and documentation stand. No defects.",
+        "reviewer": "human/owner",
+        "commit": "11c4f3bab854ff5e1e0ecada679c9c2ce5f4830e",
+        "tree": "620af73a1f7a8f3eb005d23da5ed81fefe6ee621",
+        "at": "2026-11-15T12:46:21.166050Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T12:29:00.677702Z",
+        "actor": "human/owner",
+        "text": "Owner instruction 2026-11-15: fix this ticket. Coordinator's scope: first confirm the equinox of indigocat_sun_equatorial_coords() and indigocat_moon_equatorial_coords() with independent evidence; if they are J2000, precess to the date where the Scheduler Agent uses them (indigo_agent_scheduler_sky.c, indigo_agent_scheduler_night.c), adjust the sky and night unit tests and tools/scheduler_sandbox.py, and increment DRIVER_VERSION. Changing indigocat or other users of it is outside the scope and is reported to the owner instead.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:30:54.257916Z",
+        "actor": "human/owner",
+        "text": "Reproduction evidence: indigocat Sun/Moon are J2000. Sun at the 2026-03-20 14:46 UT equinox: indigocat RA 359.663 dec -0.146 vs independent of-date (Meeus low-precision) RA 0.005 dec 0.002 (0.34 deg lag); 2026-09-23 00:05: 179.656/0.149 vs 179.993/0.003; solstice 2026-06-21: dec 23.4388 vs 23.4351; at J2000.0 both agree (281.278 vs 281.286). Moon vs of-date Meeus ch.47 main terms: 2026-11-12 0h RA 258.128 vs 258.542 (0.41 deg), 2026-03-20 17.260 vs 17.640, at J2000 222.447 vs 222.459 (agree). Both J2000, ticket claim confirmed. Scratch programs outside repo.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:42:04.996072Z",
+        "actor": "human/owner",
+        "text": "Review fix: Sun check in test_agent_scheduler_sky.c now sweeps phase-0 samples 0..288 step 12 (limit 0.1 deg); the single sample 144 had cancelling RA/Dec errors. Evidence: with Sun precession removed from sky.c (Moon kept) the test FAILS (worst < 0.1); with the fix it passes. Moon Dec assertion removed (it passed without the fix); the Moon RA assertion is what covers the Moon.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "0dec4cb9f48a6cd117b4f79c1750bc6cb5445091",
+      "tree": "620af73a1f7a8f3eb005d23da5ed81fefe6ee621",
+      "base": "master",
+      "at": "2026-11-15T12:46:41.900518Z"
+    }
+  }
+}
