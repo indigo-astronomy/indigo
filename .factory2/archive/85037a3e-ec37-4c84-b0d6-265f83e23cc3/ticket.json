@@ -1,0 +1,418 @@
+{
+  "schema_version": 1,
+  "ticket_id": "85037a3e-ec37-4c84-b0d6-265f83e23cc3",
+  "revision": 16,
+  "title": "WeMacro Bluetooth manual move during a batch stalls the batch countdown",
+  "description": "In indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m the FOCUSER_STEPS change handler accepts a move while an X_RAIL_EXECUTE batch is running (X_RAIL_EXECUTE_PROPERTY in INDIGO_BUSY_STATE) and sends the move command to the rail. The notification handler (didUpdateValueForCharacteristic) checks FOCUSER_STEPS BUSY first and handles batch notifications only in the else branch, so while the move is BUSY the 0xf7 step notifications of the batch are dropped and the 0xf5/0xf6 notifications are attributed to the move. The COUNT countdown then no longer matches the rail and may never reach 0, leaving X_RAIL_EXECUTE BUSY; since ticket a2513f61-8af8-4ff2-a950-7bf0658d19a0 a BUSY batch refuses new batch requests, so only FOCUSER_ABORT_MOTION recovers it. Expected: the two operations are mutually exclusive, consistently with the portable sibling indigo_drivers/focuser_wemacro: a FOCUSER_STEPS request while a batch is running, and an X_RAIL_EXECUTE request while a move is running, is refused without sending commands to the rail or changing the running operation's state; abort keeps working for both. Add hardware-free regression coverage in indigo_test/unit/test_focuser_wemacro_bt.py and increment DRIVER_VERSION. Found by the reviewer of ticket a2513f61 as a pre-existing, out-of-scope issue; how the physical rail reacts to a move command during a batch was not measured.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T13:05:06.776890Z",
+  "status": "closed",
+  "branch": "ticket/85037a3e-ec37-4c84-b0d6-265f83e23cc3",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "634906eb-657c-4c5c-b148-1f6c49f5b42f",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "75de926e-4dc6-4718-932a-299a4524e5d7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T13:42:40.079275Z",
+          "last_activity_at": "2026-11-15T13:46:22.409785Z",
+          "ended_at": "2026-11-15T13:46:22.409785Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 222330.51,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T13:42:40.079275Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/85037a3e-ec37-4c84-b0d6-265f83e23cc3"
+        },
+        {
+          "at": "2026-11-15T13:46:22.409785Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 222330.51,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "ddc4fca8-3bf3-497e-b0e4-17296839655c",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d9699d45-c659-4a8f-b726-30ba1a475d6d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T13:46:22.410115Z",
+          "last_activity_at": "2026-11-15T13:48:24.264880Z",
+          "ended_at": "2026-11-15T13:48:24.264880Z",
+          "outcome": {
+            "summary": "Defect confirmed in source: didUpdateValueForCharacteristic (indigo_focuser_wemacro_bt.m:244-258) serves FOCUSER_STEPS BUSY first, so a move accepted during a batch swallowed 0xf7 and took 0xf5/0xf6. Fix: INDIGO_REJECT_CHANGE_IF guards at :389 (FOCUSER_STEPS refused while X_RAIL_EXECUTE BUSY) and :442 (X_RAIL_EXECUTE refused while FOCUSER_STEPS BUSY), both before indigo_property_copy_values and before any delegate cmd; matches portable sibling indigo_focuser_wemacro.c:629/642. indigo_reject_change (indigo_bus.c:1325-1350) sets the non-BUSY requested property ALERT with its unchanged values (documented use, indigo_bus.h:984-992); the next accepted request of that property resets it (STEPS :391-392, EXECUTE :448), and the running operation's state is untouched. Base focuser class does not handle FOCUSER_STEPS changes (driver returns at :400), so no bypass. Exit paths: STEPS leaves BUSY via 0xf5/0xf6, abort (:409) and base disconnect reset (indigo_focuser_driver.c:184); EXECUTE via notification, abort (:407) and loss (:196-197). The guards cannot leave both BUSY; abort still ends both. DRIVER_VERSION 0x02000006 -> 0x02000007. Tests: 4/4 pass; against master's driver source in a scratch copy both new assertions fail (rejects == 1 at probe lines 84 and 54). Non-blocking test notes: the mocked INDIGO_REJECT_CHANGE_IF ignores which property is rejected, and the X_RAIL_EXECUTE probe mocks copy_values as a no-op so guard-before-copy order is only covered for FOCUSER_STEPS.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 121854.765,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T13:46:22.410115Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T13:48:24.264880Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Defect confirmed in source: didUpdateValueForCharacteristic (indigo_focuser_wemacro_bt.m:244-258) serves FOCUSER_STEPS BUSY first, so a move accepted during a batch swallowed 0xf7 and took 0xf5/0xf6. Fix: INDIGO_REJECT_CHANGE_IF guards at :389 (FOCUSER_STEPS refused while X_RAIL_EXECUTE BUSY) and :442 (X_RAIL_EXECUTE refused while FOCUSER_STEPS BUSY), both before indigo_property_copy_values and before any delegate cmd; matches portable sibling indigo_focuser_wemacro.c:629/642. indigo_reject_change (indigo_bus.c:1325-1350) sets the non-BUSY requested property ALERT with its unchanged values (documented use, indigo_bus.h:984-992); the next accepted request of that property resets it (STEPS :391-392, EXECUTE :448), and the running operation's state is untouched. Base focuser class does not handle FOCUSER_STEPS changes (driver returns at :400), so no bypass. Exit paths: STEPS leaves BUSY via 0xf5/0xf6, abort (:409) and base disconnect reset (indigo_focuser_driver.c:184); EXECUTE via notification, abort (:407) and loss (:196-197). The guards cannot leave both BUSY; abort still ends both. DRIVER_VERSION 0x02000006 -> 0x02000007. Tests: 4/4 pass; against master's driver source in a scratch copy both new assertions fail (rejects == 1 at probe lines 84 and 54). Non-blocking test notes: the mocked INDIGO_REJECT_CHANGE_IF ignores which property is rejected, and the X_RAIL_EXECUTE probe mocks copy_values as a no-op so guard-before-copy order is only covered for FOCUSER_STEPS."
+        }
+      ],
+      "result": {
+        "summary": "Defect confirmed in source: didUpdateValueForCharacteristic (indigo_focuser_wemacro_bt.m:244-258) serves FOCUSER_STEPS BUSY first, so a move accepted during a batch swallowed 0xf7 and took 0xf5/0xf6. Fix: INDIGO_REJECT_CHANGE_IF guards at :389 (FOCUSER_STEPS refused while X_RAIL_EXECUTE BUSY) and :442 (X_RAIL_EXECUTE refused while FOCUSER_STEPS BUSY), both before indigo_property_copy_values and before any delegate cmd; matches portable sibling indigo_focuser_wemacro.c:629/642. indigo_reject_change (indigo_bus.c:1325-1350) sets the non-BUSY requested property ALERT with its unchanged values (documented use, indigo_bus.h:984-992); the next accepted request of that property resets it (STEPS :391-392, EXECUTE :448), and the running operation's state is untouched. Base focuser class does not handle FOCUSER_STEPS changes (driver returns at :400), so no bypass. Exit paths: STEPS leaves BUSY via 0xf5/0xf6, abort (:409) and base disconnect reset (indigo_focuser_driver.c:184); EXECUTE via notification, abort (:407) and loss (:196-197). The guards cannot leave both BUSY; abort still ends both. DRIVER_VERSION 0x02000006 -> 0x02000007. Tests: 4/4 pass; against master's driver source in a scratch copy both new assertions fail (rejects == 1 at probe lines 84 and 54). Non-blocking test notes: the mocked INDIGO_REJECT_CHANGE_IF ignores which property is rejected, and the X_RAIL_EXECUTE probe mocks copy_values as a no-op so guard-before-copy order is only covered for FOCUSER_STEPS.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 121854.765,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "5d8f7a15-82a9-4f36-80ba-9d2486fe6e07",
+      "event": "ticket/created",
+      "at": "2026-11-15T13:05:06.777456Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "f3007cdc-eac2-411c-a885-7120203a8e53",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T13:31:15.196451Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "49ff2d19-c520-4faa-b669-3c86dd87875d",
+      "event": "task/progress",
+      "at": "2026-11-15T13:42:40.079787Z",
+      "actor": "human/owner",
+      "task_id": "634906eb-657c-4c5c-b148-1f6c49f5b42f",
+      "text": "Implementation started on branch ticket/85037a3e-ec37-4c84-b0d6-265f83e23cc3"
+    },
+    {
+      "event_id": "d218de2c-44ac-41e5-9b95-99f82812947b",
+      "event": "ticket/started",
+      "at": "2026-11-15T13:42:40.081619Z",
+      "actor": "human/owner",
+      "branch": "ticket/85037a3e-ec37-4c84-b0d6-265f83e23cc3",
+      "base": "master"
+    },
+    {
+      "event_id": "98880029-eb77-421f-b6e1-00eda982c2eb",
+      "event": "task/progress",
+      "at": "2026-11-15T13:43:11.018974Z",
+      "actor": "human/owner",
+      "task_id": "634906eb-657c-4c5c-b148-1f6c49f5b42f",
+      "text": "Implementer started; reading driver",
+      "attempt_id": "75de926e-4dc6-4718-932a-299a4524e5d7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "6cf41528-ec42-4463-a6c8-bb838d36441a",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:43:47.524995Z",
+      "actor": "human/owner",
+      "text": "Reproduced: new assertions failed on the unmodified driver (X_RAIL_EXECUTE and FOCUSER_STEPS requests were accepted while the other was BUSY). Fix: INDIGO_REJECT_CHANGE_IF guards in both handlers (as portable sibling), DRIVER_VERSION 0x02000007. After fix test_focuser_wemacro_bt passes 4/4. Physical rail reaction not measured.",
+      "tokens": null
+    },
+    {
+      "event_id": "d6d65e8b-d42b-4d20-a4b1-f02243c89631",
+      "event": "task/progress",
+      "at": "2026-11-15T13:43:47.856795Z",
+      "actor": "human/owner",
+      "task_id": "634906eb-657c-4c5c-b148-1f6c49f5b42f",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "0186e003-32f8-4b6c-b885-bc99d01e4adc",
+      "event": "task/progress",
+      "at": "2026-11-15T13:43:47.901104Z",
+      "actor": "human/owner",
+      "task_id": "634906eb-657c-4c5c-b148-1f6c49f5b42f",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "eaa28ead-d2cc-442f-bf33-42fc8eeb9290",
+      "event": "task/progress",
+      "at": "2026-11-15T13:43:47.903301Z",
+      "actor": "human/owner",
+      "task_id": "634906eb-657c-4c5c-b148-1f6c49f5b42f",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "5c9545af-44ae-4b41-bc9a-12fe49d3550c",
+      "event": "task/progress",
+      "at": "2026-11-15T13:46:04.457124Z",
+      "actor": "human/owner",
+      "task_id": "634906eb-657c-4c5c-b148-1f6c49f5b42f",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b31674b0-d6a7-49ad-bad5-4e9809053930",
+      "event": "check/passed",
+      "at": "2026-11-15T13:46:04.459580Z",
+      "actor": "human/owner",
+      "commit": "6277ffc65916189f7ea841c8284afa6e126a047e",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "ed71b10e-624e-49dc-a58e-ceab21fb35ed",
+      "event": "task/progress",
+      "at": "2026-11-15T13:46:22.410223Z",
+      "actor": "human/owner",
+      "task_id": "ddc4fca8-3bf3-497e-b0e4-17296839655c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "03ec33dc-5764-4838-9fd1-26b7724a9c33",
+      "event": "review/started",
+      "at": "2026-11-15T13:46:22.412060Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "9738187d-e2f4-4637-b124-2d91a95c42cd",
+      "event": "task/progress",
+      "at": "2026-11-15T13:46:49.953243Z",
+      "actor": "human/owner",
+      "task_id": "ddc4fca8-3bf3-497e-b0e4-17296839655c",
+      "text": "Reviewing the move/batch mutual exclusion",
+      "attempt_id": "d9699d45-c659-4a8f-b726-30ba1a475d6d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f304ca8c-c90f-47a5-9354-412053e61067",
+      "event": "task/progress",
+      "at": "2026-11-15T13:47:55.568962Z",
+      "actor": "human/owner",
+      "task_id": "ddc4fca8-3bf3-497e-b0e4-17296839655c",
+      "text": "Running test_focuser_wemacro_bt directly"
+    },
+    {
+      "event_id": "3979a3b8-2001-4683-a19b-db7bfe551e11",
+      "event": "task/progress",
+      "at": "2026-11-15T13:48:24.264989Z",
+      "actor": "human/owner",
+      "task_id": "ddc4fca8-3bf3-497e-b0e4-17296839655c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d64ab2a4-c42e-4fe1-8b4c-7f16c2612d9b",
+      "event": "review/passed",
+      "at": "2026-11-15T13:48:24.266539Z",
+      "actor": "human/owner",
+      "task_id": "ddc4fca8-3bf3-497e-b0e4-17296839655c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6277ffc65916189f7ea841c8284afa6e126a047e"
+    },
+    {
+      "event_id": "01ebe78f-02c0-4241-96e2-f62631e6a857",
+      "event": "ticket/closed",
+      "at": "2026-11-15T13:56:47.328599Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T13:56:47.328563Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c560deefe134deea909b3016fec39664208c270c"
+  },
+  "priority": "low",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6277ffc65916189f7ea841c8284afa6e126a047e",
+        "tree": "70cfa2124b7bf650ff04651322cb9019b3dbf671",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:43:47.900277Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/85037a3e-ec37-4c84-b0d6-265f83e23cc3/70cfa2124b7b-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "6277ffc65916189f7ea841c8284afa6e126a047e",
+        "tree": "70cfa2124b7bf650ff04651322cb9019b3dbf671",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:46:04.455868Z",
+        "duration_s": 136.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/85037a3e-ec37-4c84-b0d6-265f83e23cc3/70cfa2124b7b-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Defect confirmed in source: didUpdateValueForCharacteristic (indigo_focuser_wemacro_bt.m:244-258) serves FOCUSER_STEPS BUSY first, so a move accepted during a batch swallowed 0xf7 and took 0xf5/0xf6. Fix: INDIGO_REJECT_CHANGE_IF guards at :389 (FOCUSER_STEPS refused while X_RAIL_EXECUTE BUSY) and :442 (X_RAIL_EXECUTE refused while FOCUSER_STEPS BUSY), both before indigo_property_copy_values and before any delegate cmd; matches portable sibling indigo_focuser_wemacro.c:629/642. indigo_reject_change (indigo_bus.c:1325-1350) sets the non-BUSY requested property ALERT with its unchanged values (documented use, indigo_bus.h:984-992); the next accepted request of that property resets it (STEPS :391-392, EXECUTE :448), and the running operation's state is untouched. Base focuser class does not handle FOCUSER_STEPS changes (driver returns at :400), so no bypass. Exit paths: STEPS leaves BUSY via 0xf5/0xf6, abort (:409) and base disconnect reset (indigo_focuser_driver.c:184); EXECUTE via notification, abort (:407) and loss (:196-197). The guards cannot leave both BUSY; abort still ends both. DRIVER_VERSION 0x02000006 -> 0x02000007. Tests: 4/4 pass; against master's driver source in a scratch copy both new assertions fail (rejects == 1 at probe lines 84 and 54). Non-blocking test notes: the mocked INDIGO_REJECT_CHANGE_IF ignores which property is rejected, and the X_RAIL_EXECUTE probe mocks copy_values as a no-op so guard-before-copy order is only covered for FOCUSER_STEPS.",
+        "reviewer": "human/owner",
+        "commit": "6277ffc65916189f7ea841c8284afa6e126a047e",
+        "tree": "70cfa2124b7bf650ff04651322cb9019b3dbf671",
+        "at": "2026-11-15T13:48:24.264674Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T13:43:47.523172Z",
+        "actor": "human/owner",
+        "text": "Reproduced: new assertions failed on the unmodified driver (X_RAIL_EXECUTE and FOCUSER_STEPS requests were accepted while the other was BUSY). Fix: INDIGO_REJECT_CHANGE_IF guards in both handlers (as portable sibling), DRIVER_VERSION 0x02000007. After fix test_focuser_wemacro_bt passes 4/4. Physical rail reaction not measured.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c560deefe134deea909b3016fec39664208c270c",
+      "tree": "70cfa2124b7bf650ff04651322cb9019b3dbf671",
+      "base": "master",
+      "at": "2026-11-15T13:56:47.254904Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-15T13:05:06.776890Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T13:31:15.196243Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 344185.275,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 22,
+    "sha256": "a0c56078d0b448a896b58fad4a2513bc9c2726837e8c3ec14e920d7c0677d8ee"
+  }
+}
