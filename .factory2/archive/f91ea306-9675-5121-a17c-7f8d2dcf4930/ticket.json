@@ -1,0 +1,557 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f91ea306-9675-5121-a17c-7f8d2dcf4930",
+  "revision": 28,
+  "title": "indigo_xml_escape_b() leaks its thread-local long escape buffer when a thread ends",
+  "description": "indigo_xml_escape_b() with an index of ESCAPE_BUFFER_COUNT or more escapes into a static INDIGO_THREAD_LOCAL long_escape_buffer grown with indigo_safe_realloc() and never freed. Each thread that escapes a long value with special characters (for example a handler queue thread saving a text property through indigo_save_property()) leaves one buffer behind when it ends, up to 6 x the longest escaped value. LeakSanitizer reported 1183 bytes after the Scheduler Agent case repeat_retry_and_failures. The loss is bounded per thread but repeats for every short-lived thread, such as the handler queue of a driver that is loaded and unloaded. Next (framework change, needs owner approval): free the buffer at thread exit (pthread key destructor or an explicit release helper called when a queue thread ends), or let callers pass their own buffer.\n\nImported from .factory/findings/active/FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.903448Z",
+  "status": "closed",
+  "branch": "ticket/f91ea306-9675-5121-a17c-7f8d2dcf4930",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "23f07135-6b20-4011-b561-5a96e3f29bed",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T10:01:04.903982Z",
+          "last_activity_at": "2026-11-15T10:08:09.575357Z",
+          "ended_at": "2026-11-15T10:08:09.575357Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 424671.375,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T10:01:04.903982Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/f91ea306-9675-5121-a17c-7f8d2dcf4930"
+        },
+        {
+          "at": "2026-11-15T10:08:09.575357Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 424671.375,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "c2c9e589-dec7-4653-bd5c-3eaaa074a0ad",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "655716fb-4dbc-4741-ac0e-d4b87fcb1f0c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T10:08:09.575597Z",
+          "last_activity_at": "2026-11-15T10:12:42.761464Z",
+          "ended_at": "2026-11-15T10:12:42.761464Z",
+          "outcome": {
+            "summary": "Pass. Lifetime logic is correct: pthread_once makes key creation and the key_ready read race-free; pthread_setspecific follows every (re)allocation, so the key always holds the current block; the destructor frees the value pthreads hands it and resets the file-scope thread-local pointer/size, so a later key destructor on the same thread that escapes again reallocates from NULL and re-registers (pthreads repeats destructors up to PTHREAD_DESTRUCTOR_ITERATIONS) instead of touching a freed block. Callers (indigo_driver.c:787 index 5, indigo_json.c:816/942 index JSON_ESCAPE_BUFFER_COUNT) consume the result immediately on the same thread, so the shortened lifetime (now ends at thread exit) breaks no caller. Signature, escaped output, size math and the fixed buffers are unchanged; all new symbols are static; indigo_xml.c and indigo_json.c are compiled as separate translation units in Makefiles, indigo.vcxproj, indigo_client.vcxproj and the mingw Makefile (no unity build). pthread.h was already included in both files; Windows links the pthreads4w DLL (pthreadVC3), whose thread-detach path also runs destructors for non-pthread threads; threads that never run destructors behave as before. Formatting matches AGENTS.md; git diff --check clean. Tests reach the long buffer (XML 5/7, JSON 2/4), check output with an independent escaper, grow (3000 to 9000 chars) and reuse, run on 16 sequential short-lived threads plus the main thread, free their own inputs. Reviewer re-ran the configured unit command: exit 0, both new cases PASS; MallocStackLogging=1 leaks --atExit: test_protocol_xml 0 leaks, test_protocol_json 0 leaks. Non-blocking observations: (1) the tests pass functionally with the fix reverted; the regression is visible only under a leak checker, which the unit target does not run (the before evidence is in the ticket note). (2) Theoretical hardening: if pthread_setspecific failed after realloc had moved an already registered block, the key would keep the freed pointer and t",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 273185.867,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T10:08:09.575597Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T10:12:42.761464Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Pass. Lifetime logic is correct: pthread_once makes key creation and the key_ready read race-free; pthread_setspecific follows every (re)allocation, so the key always holds the current block; the destructor frees the value pthreads hands it and resets the file-scope thread-local pointer/size, so a later key destructor on the same thread that escapes again reallocates from NULL and re-registers (pthreads repeats destructors up to PTHREAD_DESTRUCTOR_ITERATIONS) instead of touching a freed block. Callers (indigo_driver.c:787 index 5, indigo_json.c:816/942 index JSON_ESCAPE_BUFFER_COUNT) consume the result immediately on the same thread, so the shortened lifetime (now ends at thread exit) breaks no caller. Signature, escaped output, size math and the fixed buffers are unchanged; all new symbols are static; indigo_xml.c and indigo_json.c are compiled as separate translation units in Makefiles, indigo.vcxproj, indigo_client.vcxproj and the mingw Makefile (no unity build). pthread.h was already included in both files; Windows links the pthreads4w DLL (pthreadVC3), whose thread-detach path also runs destructors for non-pthread threads; threads that never run destructors behave as before. Formatting matches AGENTS.md; git diff --check clean. Tests reach the long buffer (XML 5/7, JSON 2/4), check output with an independent escaper, grow (3000 to 9000 chars) and reuse, run on 16 sequential short-lived threads plus the main thread, free their own inputs. Reviewer re-ran the configured unit command: exit 0, both new cases PASS; MallocStackLogging=1 leaks --atExit: test_protocol_xml 0 leaks, test_protocol_json 0 leaks. Non-blocking observations: (1) the tests pass functionally with the fix reverted; the regression is visible only under a leak checker, which the unit target does not run (the before evidence is in the ticket note). (2) Theoretical hardening: if pthread_setspecific failed after realloc had moved an already registered block, the key would keep the freed pointer and t"
+        }
+      ],
+      "result": {
+        "summary": "Pass. Lifetime logic is correct: pthread_once makes key creation and the key_ready read race-free; pthread_setspecific follows every (re)allocation, so the key always holds the current block; the destructor frees the value pthreads hands it and resets the file-scope thread-local pointer/size, so a later key destructor on the same thread that escapes again reallocates from NULL and re-registers (pthreads repeats destructors up to PTHREAD_DESTRUCTOR_ITERATIONS) instead of touching a freed block. Callers (indigo_driver.c:787 index 5, indigo_json.c:816/942 index JSON_ESCAPE_BUFFER_COUNT) consume the result immediately on the same thread, so the shortened lifetime (now ends at thread exit) breaks no caller. Signature, escaped output, size math and the fixed buffers are unchanged; all new symbols are static; indigo_xml.c and indigo_json.c are compiled as separate translation units in Makefiles, indigo.vcxproj, indigo_client.vcxproj and the mingw Makefile (no unity build). pthread.h was already included in both files; Windows links the pthreads4w DLL (pthreadVC3), whose thread-detach path also runs destructors for non-pthread threads; threads that never run destructors behave as before. Formatting matches AGENTS.md; git diff --check clean. Tests reach the long buffer (XML 5/7, JSON 2/4), check output with an independent escaper, grow (3000 to 9000 chars) and reuse, run on 16 sequential short-lived threads plus the main thread, free their own inputs. Reviewer re-ran the configured unit command: exit 0, both new cases PASS; MallocStackLogging=1 leaks --atExit: test_protocol_xml 0 leaks, test_protocol_json 0 leaks. Non-blocking observations: (1) the tests pass functionally with the fix reverted; the regression is visible only under a leak checker, which the unit target does not run (the before evidence is in the ticket note). (2) Theoretical hardening: if pthread_setspecific failed after realloc had moved an already registered block, the key would keep the freed pointer and t",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 273185.867,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "4260cb0f-7a1d-43c6-b497-84701b71b6df",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.903465Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001.json",
+      "source": "59d497b8dcdd61be5c5a19536945c0dc897ae167a759b783f85126d50e1f9d79",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "e66c5a58-2884-4a33-967a-d16cf63127b3",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:29.450197Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "688cbdcf-2f67-46f4-95a8-22d13e22715d",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:29.728504Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "77ca757e-e199-49a7-b290-6da867cc1916",
+      "event": "task/progress",
+      "at": "2026-11-15T10:01:04.904271Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Implementation started on branch ticket/f91ea306-9675-5121-a17c-7f8d2dcf4930"
+    },
+    {
+      "event_id": "61386110-02d7-4bc9-a395-cb4743d8213c",
+      "event": "ticket/started",
+      "at": "2026-11-15T10:01:04.905621Z",
+      "actor": "human/owner",
+      "branch": "ticket/f91ea306-9675-5121-a17c-7f8d2dcf4930",
+      "base": "master"
+    },
+    {
+      "event_id": "5ecd9e07-e638-457c-830f-c90414a52f03",
+      "event": "ticket/note",
+      "at": "2026-11-15T10:01:49.844148Z",
+      "actor": "human/owner",
+      "text": "Owner instruction (2026-11-15): resolve this ticket; this is the owner's approval for the framework change in indigo_libs. Coordinator's choice among the options in the description: free the long escape buffer at thread exit through a pthread key destructor (pthreads is used on all three platforms, pthreads4w on Windows), keeping the public signature of indigo_xml_escape_b() and its returned-pointer lifetime unchanged. Scope is indigo_xml_escape_b() only; indigo_json.c has the same long_escape_buffer pattern (around line 663) and is to be reported, not changed, unless the owner extends the scope.",
+      "tokens": null
+    },
+    {
+      "event_id": "71cecba2-f56d-4842-8204-c59c4d67b77e",
+      "event": "task/progress",
+      "at": "2026-11-15T10:01:53.134317Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Implementer launched",
+      "attempt_id": "23f07135-6b20-4011-b561-5a96e3f29bed",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "9390f6f9-a99b-4dc1-87be-0812702f61d0",
+      "event": "task/progress",
+      "at": "2026-11-15T10:02:39.488924Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Reproducing the leak on the original code with the new test and leaks"
+    },
+    {
+      "event_id": "2e23262f-c95f-4edf-9307-6dbfbe474731",
+      "event": "ticket/note",
+      "at": "2026-11-15T10:03:59.114353Z",
+      "actor": "human/owner",
+      "text": "Reproduction (macOS, before fix): new test xml_escape_long_buffer_is_per_thread_and_reusable (16 short-lived threads escaping 3000/9000-char values with all special characters through index 5 and 7) run as 'MallocStackLogging=1 leaks --atExit -- build/unit/test_protocol_xml' on the unmodified indigo_xml.c: 16 leaks for 1048576 bytes, all 'ROOT LEAK: realloc in indigo_xml_escape_b' (one 64K buffer per ended thread). The main-thread run of the same test does not leak because its thread-local pointer stays reachable.",
+      "tokens": null
+    },
+    {
+      "event_id": "f63be875-ab23-4dd9-b2ef-82f9b9068fb5",
+      "event": "task/progress",
+      "at": "2026-11-15T10:03:59.194750Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Running flow check (whitespace + unit)"
+    },
+    {
+      "event_id": "a09415a8-d64c-477b-8dfe-3081125b6187",
+      "event": "task/progress",
+      "at": "2026-11-15T10:03:59.443890Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c7130bd7-9021-4e36-b088-e789a891ef4d",
+      "event": "task/progress",
+      "at": "2026-11-15T10:03:59.466770Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "c67bb3ee-b865-441a-8f0a-621595090a1c",
+      "event": "task/progress",
+      "at": "2026-11-15T10:03:59.468442Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "4dfdfc98-9d73-4f65-8c9c-9a62186fea82",
+      "event": "ticket/note",
+      "at": "2026-11-15T10:05:41.776408Z",
+      "actor": "human/owner",
+      "text": "Owner instruction (2026-11-15): extend the scope to indigo_libs/indigo_json.c. Fix the same long_escape_buffer leak in the JSON escape function the same way (pthread key destructor, unchanged signature and returned-pointer lifetime) and cover it with the same kind of unit test.",
+      "tokens": null
+    },
+    {
+      "event_id": "b04aacd5-f871-4783-8dfd-5504e4db9725",
+      "event": "task/progress",
+      "at": "2026-11-15T10:06:08.045793Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "b2e5152e-e4b9-4127-8bc2-a220c758d79f",
+      "event": "check/passed",
+      "at": "2026-11-15T10:06:08.048376Z",
+      "actor": "human/owner",
+      "commit": "377e45d32915b42e8f17b383593230cc7e4924d3",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "6ff39335-be4e-4351-8a77-3d8d73b2dcb7",
+      "event": "ticket/note",
+      "at": "2026-11-15T10:06:45.153938Z",
+      "actor": "human/owner",
+      "text": "Evidence after fix (macOS leaks --atExit): XML before 16 leaks/1048576 bytes -> after 0 leaks. JSON (index 2 and 4 reach the long buffer; callers use JSON_ESCAPE_BUFFER_COUNT=2) before 16 leaks/327680 bytes (ROOT LEAK realloc in indigo_json_escape_b) -> after 0 leaks. Tests: xml_escape_long_buffer_is_per_thread_and_reusable, json_escape_long_buffer_is_per_thread_and_reusable.",
+      "tokens": null
+    },
+    {
+      "event_id": "c1b699a5-cf97-4229-87e1-dedd5e30e2a6",
+      "event": "task/progress",
+      "at": "2026-11-15T10:06:45.248863Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Running flow check for XML and JSON fix"
+    },
+    {
+      "event_id": "700be726-edde-48b9-9b27-219aa6d58898",
+      "event": "task/progress",
+      "at": "2026-11-15T10:06:45.512581Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2a5accd0-cbdb-4986-9ef3-cf7adc805669",
+      "event": "task/progress",
+      "at": "2026-11-15T10:06:45.536000Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "9990b6e8-0799-495a-a35f-ea4d08f88683",
+      "event": "task/progress",
+      "at": "2026-11-15T10:06:45.537852Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "79e7cdc2-aa44-4620-bed9-96042de1bb8a",
+      "event": "task/progress",
+      "at": "2026-11-15T10:07:44.802393Z",
+      "actor": "human/owner",
+      "task_id": "58de6195-dc2f-42d5-a3ed-816bed8e9725",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "c5a09540-a1c3-4d2c-a6d1-25b2f3606971",
+      "event": "check/passed",
+      "at": "2026-11-15T10:07:44.804625Z",
+      "actor": "human/owner",
+      "commit": "21265d8b14d96bd12ec8b2d83c9fe59c95678f6d",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "81c9f549-9ae0-45e1-af53-9974d883f498",
+      "event": "task/progress",
+      "at": "2026-11-15T10:08:09.575689Z",
+      "actor": "human/owner",
+      "task_id": "c2c9e589-dec7-4653-bd5c-3eaaa074a0ad",
+      "text": "Review started"
+    },
+    {
+      "event_id": "5e6c0ae6-6692-4275-8546-8e3c0e522e19",
+      "event": "review/started",
+      "at": "2026-11-15T10:08:09.577282Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "5f4d0095-37bb-4798-91b6-422bb6575f3c",
+      "event": "task/progress",
+      "at": "2026-11-15T10:08:38.809821Z",
+      "actor": "human/owner",
+      "task_id": "c2c9e589-dec7-4653-bd5c-3eaaa074a0ad",
+      "text": "Reviewer launched",
+      "attempt_id": "655716fb-4dbc-4741-ac0e-d4b87fcb1f0c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e5c4a396-0839-4656-abf9-6397bac9f0da",
+      "event": "task/progress",
+      "at": "2026-11-15T10:10:19.772327Z",
+      "actor": "human/owner",
+      "task_id": "c2c9e589-dec7-4653-bd5c-3eaaa074a0ad",
+      "text": "Reviewer running configured unit command and leaks --atExit on protocol tests"
+    },
+    {
+      "event_id": "c1015a51-06ea-4773-896b-690ec9eafce2",
+      "event": "task/progress",
+      "at": "2026-11-15T10:12:42.761573Z",
+      "actor": "human/owner",
+      "task_id": "c2c9e589-dec7-4653-bd5c-3eaaa074a0ad",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b4ed1358-285a-4790-8a9d-78eaad51fa33",
+      "event": "review/passed",
+      "at": "2026-11-15T10:12:42.762830Z",
+      "actor": "human/owner",
+      "task_id": "c2c9e589-dec7-4653-bd5c-3eaaa074a0ad",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "21265d8b14d96bd12ec8b2d83c9fe59c95678f6d"
+    },
+    {
+      "event_id": "99eeb2f5-f2ff-41b0-ba1b-b0b48bd51ad4",
+      "event": "ticket/closed",
+      "at": "2026-11-15T10:13:38.162321Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T10:13:38.162286Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "48e10c0442e28e936f9ab61e38a4d2407cd47ef2"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 697857.242,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 34,
+    "sha256": "fdb41dc4d07b10c36c1666fff436bb76db2ee4ff5a811fc7cd6b58dc2b712c9d"
+  },
+  "priority": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "377e45d32915b42e8f17b383593230cc7e4924d3",
+        "tree": "18683c691eb5d75738a3b10410fbb651736b33ce",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T10:03:59.466136Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/f91ea306-9675-5121-a17c-7f8d2dcf4930/18683c691eb5-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "377e45d32915b42e8f17b383593230cc7e4924d3",
+        "tree": "18683c691eb5d75738a3b10410fbb651736b33ce",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T10:06:08.044703Z",
+        "duration_s": 128.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/f91ea306-9675-5121-a17c-7f8d2dcf4930/18683c691eb5-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "21265d8b14d96bd12ec8b2d83c9fe59c95678f6d",
+        "tree": "ccdc4c0eb9f2a1bd310b9e3e0b61a8c53d163a64",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T10:06:45.535285Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/f91ea306-9675-5121-a17c-7f8d2dcf4930/ccdc4c0eb9f2-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "21265d8b14d96bd12ec8b2d83c9fe59c95678f6d",
+        "tree": "ccdc4c0eb9f2a1bd310b9e3e0b61a8c53d163a64",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T10:07:44.801389Z",
+        "duration_s": 59.3,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/f91ea306-9675-5121-a17c-7f8d2dcf4930/ccdc4c0eb9f2-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Lifetime logic is correct: pthread_once makes key creation and the key_ready read race-free; pthread_setspecific follows every (re)allocation, so the key always holds the current block; the destructor frees the value pthreads hands it and resets the file-scope thread-local pointer/size, so a later key destructor on the same thread that escapes again reallocates from NULL and re-registers (pthreads repeats destructors up to PTHREAD_DESTRUCTOR_ITERATIONS) instead of touching a freed block. Callers (indigo_driver.c:787 index 5, indigo_json.c:816/942 index JSON_ESCAPE_BUFFER_COUNT) consume the result immediately on the same thread, so the shortened lifetime (now ends at thread exit) breaks no caller. Signature, escaped output, size math and the fixed buffers are unchanged; all new symbols are static; indigo_xml.c and indigo_json.c are compiled as separate translation units in Makefiles, indigo.vcxproj, indigo_client.vcxproj and the mingw Makefile (no unity build). pthread.h was already included in both files; Windows links the pthreads4w DLL (pthreadVC3), whose thread-detach path also runs destructors for non-pthread threads; threads that never run destructors behave as before. Formatting matches AGENTS.md; git diff --check clean. Tests reach the long buffer (XML 5/7, JSON 2/4), check output with an independent escaper, grow (3000 to 9000 chars) and reuse, run on 16 sequential short-lived threads plus the main thread, free their own inputs. Reviewer re-ran the configured unit command: exit 0, both new cases PASS; MallocStackLogging=1 leaks --atExit: test_protocol_xml 0 leaks, test_protocol_json 0 leaks. Non-blocking observations: (1) the tests pass functionally with the fix reverted; the regression is visible only under a leak checker, which the unit target does not run (the before evidence is in the ticket note). (2) Theoretical hardening: if pthread_setspecific failed after realloc had moved an already registered block, the key would keep the freed pointer and the destructor would double-free it; on glibc, macOS and pthreads4w a set can only fail on a thread's first registration, so this is not reachable in practice. (3) On macOS the destructor's TLS write may re-create the image TLV block if dyld freed it first; it is freed on the next destructor pass and leaks showed 0. Not checked: Linux and Windows builds/runs, and an independent reproduction of the before state.",
+        "reviewer": "human/owner",
+        "commit": "21265d8b14d96bd12ec8b2d83c9fe59c95678f6d",
+        "tree": "ccdc4c0eb9f2a1bd310b9e3e0b61a8c53d163a64",
+        "at": "2026-11-15T10:12:42.761270Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T10:01:49.842539Z",
+        "actor": "human/owner",
+        "text": "Owner instruction (2026-11-15): resolve this ticket; this is the owner's approval for the framework change in indigo_libs. Coordinator's choice among the options in the description: free the long escape buffer at thread exit through a pthread key destructor (pthreads is used on all three platforms, pthreads4w on Windows), keeping the public signature of indigo_xml_escape_b() and its returned-pointer lifetime unchanged. Scope is indigo_xml_escape_b() only; indigo_json.c has the same long_escape_buffer pattern (around line 663) and is to be reported, not changed, unless the owner extends the scope.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T10:03:59.111867Z",
+        "actor": "human/owner",
+        "text": "Reproduction (macOS, before fix): new test xml_escape_long_buffer_is_per_thread_and_reusable (16 short-lived threads escaping 3000/9000-char values with all special characters through index 5 and 7) run as 'MallocStackLogging=1 leaks --atExit -- build/unit/test_protocol_xml' on the unmodified indigo_xml.c: 16 leaks for 1048576 bytes, all 'ROOT LEAK: realloc in indigo_xml_escape_b' (one 64K buffer per ended thread). The main-thread run of the same test does not leak because its thread-local pointer stays reachable.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T10:05:41.774054Z",
+        "actor": "human/owner",
+        "text": "Owner instruction (2026-11-15): extend the scope to indigo_libs/indigo_json.c. Fix the same long_escape_buffer leak in the JSON escape function the same way (pthread key destructor, unchanged signature and returned-pointer lifetime) and cover it with the same kind of unit test.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T10:06:45.152611Z",
+        "actor": "human/owner",
+        "text": "Evidence after fix (macOS leaks --atExit): XML before 16 leaks/1048576 bytes -> after 0 leaks. JSON (index 2 and 4 reach the long buffer; callers use JSON_ESCAPE_BUFFER_COUNT=2) before 16 leaks/327680 bytes (ROOT LEAK realloc in indigo_json_escape_b) -> after 0 leaks. Tests: xml_escape_long_buffer_is_per_thread_and_reusable, json_escape_long_buffer_is_per_thread_and_reusable.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "48e10c0442e28e936f9ab61e38a4d2407cd47ef2",
+      "tree": "ccdc4c0eb9f2a1bd310b9e3e0b61a8c53d163a64",
+      "base": "master",
+      "at": "2026-11-15T10:13:38.081953Z"
+    }
+  }
+}
