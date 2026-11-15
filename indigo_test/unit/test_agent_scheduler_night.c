@@ -27,6 +27,7 @@
 #include <time.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_align.h>
 
 #include "indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h"
 #include "../test_runner.h"
@@ -46,6 +47,33 @@ static void build(time_t now, double latitude, double limit, int start_offset, i
 }
 
 // -------------------------------------------------------------------------------- Night computation
+
+// an independent low precision Sun of date (Astronomical Almanac, about 0.01 degree), right ascension in hours, declination in degrees
+static void reference_sun_of_date(time_t t, double *ra, double *dec) {
+	double n = t / 86400.0 + 2440587.5 - 2451545.0;
+	double mean_longitude = fmod(280.460 + 0.9856474 * n, 360.0);
+	double anomaly = fmod(357.528 + 0.9856003 * n, 360.0) * DEG2RAD;
+	double longitude = (mean_longitude + 1.915 * sin(anomaly) + 0.020 * sin(2 * anomaly)) * DEG2RAD;
+	double obliquity = (23.439 - 0.0000004 * n) * DEG2RAD;
+	*ra = fmod(atan2(cos(obliquity) * sin(longitude), cos(longitude)) * RAD2DEG + 360.0, 360.0) / 15.0;
+	*dec = asin(sin(obliquity) * sin(longitude)) * RAD2DEG;
+}
+
+// indigocat gives J2000 positions; without the precession to the date the altitude is off by up to 0.35 degree
+static void test_sun_altitude_uses_coordinates_of_date(void) {
+	double worst = 0;
+	for (time_t t = T_NOVEMBER_NIGHT - 12 * 3600; t <= T_NOVEMBER_NIGHT + 12 * 3600; t += 1800) {
+		double ra, dec, altitude, azimuth;
+		reference_sun_of_date(t, &ra, &dec);
+		time_t tt = t;
+		indigo_radec_to_altaz(ra, dec, &tt, LATITUDE, LONGITUDE, ELEVATION, &altitude, &azimuth);
+		double error = fabs(altitude - indigo_scheduler_sun_altitude(t, LATITUDE, LONGITUDE, ELEVATION));
+		if (error > worst) {
+			worst = error;
+		}
+	}
+	ASSERT_TRUE(worst < 0.1);
+}
 
 static void test_ends_lie_on_the_limit(void) {
 	double limits[] = { -6, -12, -18 };
@@ -353,6 +381,7 @@ static void test_real_nights_over_three_days(void) {
 
 int main(void) {
 	indigo_test_case cases[] = {
+		{ "sun_altitude_uses_coordinates_of_date", test_sun_altitude_uses_coordinates_of_date },
 		{ "ends_lie_on_the_limit", test_ends_lie_on_the_limit },
 		{ "limits_nest", test_limits_nest },
 		{ "offsets_move_the_ends", test_offsets_move_the_ends },

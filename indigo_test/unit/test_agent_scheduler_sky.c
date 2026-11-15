@@ -28,6 +28,7 @@
 #include <stdint.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_align.h>
 
 #include "indigo_drivers/agent_scheduler/indigo_agent_scheduler_sky.h"
 #include "../test_runner.h"
@@ -37,6 +38,7 @@
 #define T_FULL_MOON			1772537880	// 2026-03-03 11:38 UTC
 #define T_NEW_MOON			1773883380	// 2026-03-19 01:23 UTC
 #define T_NOVEMBER_NIGHT	1794524400	// 2026-11-12 23:00 UTC
+#define T_NOVEMBER_MIDNIGHT	1794441600	// 2026-11-12 00:00 UTC
 #define T_NOVEMBER_NOON		1794484800	// 2026-11-12 12:00 UTC
 
 #define LATITUDE			48.15
@@ -69,6 +71,17 @@ static scheduler_header polaris(void) {
 	return header;
 }
 
+// an independent low precision Sun of date (Astronomical Almanac, about 0.01 degree), right ascension in hours, declination in degrees
+static void reference_sun_of_date(time_t t, double *ra, double *dec) {
+	double n = t / 86400.0 + 2440587.5 - 2451545.0;
+	double mean_longitude = fmod(280.460 + 0.9856474 * n, 360.0);
+	double anomaly = fmod(357.528 + 0.9856003 * n, 360.0) * DEG2RAD;
+	double longitude = (mean_longitude + 1.915 * sin(anomaly) + 0.020 * sin(2 * anomaly)) * DEG2RAD;
+	double obliquity = (23.439 - 0.0000004 * n) * DEG2RAD;
+	*ra = fmod(atan2(cos(obliquity) * sin(longitude), cos(longitude)) * RAD2DEG + 360.0, 360.0) / 15.0;
+	*dec = asin(sin(obliquity) * sin(longitude)) * RAD2DEG;
+}
+
 static void test_sun_at_equinox(void) {
 	indigo_scheduler_sky_build(&sky, T_EQUINOX_NOON, 0, 0, 0);
 	ASSERT_TRUE(sky.valid);
@@ -76,6 +89,26 @@ static void test_sun_at_equinox(void) {
 	ASSERT_TRUE(sky.sun_altitude[0] > 85);
 	indigo_scheduler_sky_build(&sky, T_EQUINOX_MIDNIGHT, 0, 0, 0);
 	ASSERT_TRUE(sky.sun_altitude[0] < -85);
+}
+
+// indigocat gives J2000 positions. Without the precession to the date the Moon RA is off by 0.4 degree and the Sun altitude by up to about 0.3 degree
+// (the errors of the right ascension and the declination cancel at some hours, so the Sun is swept over a day)
+static void test_solar_system_in_coordinates_of_date(void) {
+	// 2026-11-12 00:00 UTC; the Sun from the Astronomical Almanac low precision formula, the Moon from the main terms of Meeus chapter 47, both of date
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_MIDNIGHT, LATITUDE, LONGITUDE, 140);
+	ASSERT_NEAR(258.542 / 15.0, sky.moon_ra[0], 0.1 / 15.0);
+	double worst = 0;
+	for (int i = 0; i <= 288; i += 12) {
+		time_t t = T_NOVEMBER_MIDNIGHT + (time_t)i * SCHEDULER_GRID_STEP;
+		double ra, dec, altitude, azimuth;
+		reference_sun_of_date(t, &ra, &dec);
+		indigo_radec_to_altaz(ra, dec, &t, LATITUDE, LONGITUDE, 140, &altitude, &azimuth);
+		double error = fabs(altitude - sky.sun_altitude[i]);
+		if (error > worst) {
+			worst = error;
+		}
+	}
+	ASSERT_TRUE(worst < 0.1);
 }
 
 static void test_grid_alignment_and_coverage(void) {
@@ -413,6 +446,7 @@ static void test_night_end(void) {
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "sun_at_equinox", test_sun_at_equinox },
+		{ "solar_system_in_coordinates_of_date", test_solar_system_in_coordinates_of_date },
 		{ "grid_alignment_and_coverage", test_grid_alignment_and_coverage },
 		{ "moon_phase", test_moon_phase },
 		{ "lorentzian_limit", test_lorentzian_limit },

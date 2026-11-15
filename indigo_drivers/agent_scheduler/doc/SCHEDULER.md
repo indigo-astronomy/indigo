@@ -74,7 +74,7 @@ The scheduler is a separate C agent rather than a JavaScript library, for these 
   - `indigo_j2k_to_jnow()` converts the J2000 `@target` to the equinox of date;
   - `indigo_radec_to_altaz()` and `indigo_airmass()` give the altitude and airmass;
   - `indigo_raise_set()` gives the rise, transit and set times;
-  - `indigocat_sun_equatorial_coords()` and `indigocat_moon_equatorial_coords()` (`indigocat/indigocat_solar_system.h`) give the Sun and Moon positions.
+  - `indigocat_sun_equatorial_coords()` and `indigocat_moon_equatorial_coords()` (`indigocat/indigocat_solar_system.h`) give the Sun and Moon positions in J2000, which the agent precesses to the equinox of the evaluated time with `indigo_precess()`.
 
   No moon phase helper exists yet. The moon illumination and the number of days from full moon are derived from the Sun–Moon elongation. The elongation does not distinguish a waxing from a waning moon, which the constraints do not need, because the Lorentzian limit is symmetric about full moon.
 - Any client can submit an urgent task with a single property change. This includes AIN, the web UI, MCP clients and a future GCN/VOEvent bridge.

@@ -38,11 +38,15 @@
 #define SUN_STEP			12
 #define NIGHT_POINTS	(2 * SCHEDULER_NIGHT_SPAN / NIGHT_STEP + 1)
 
+// indigocat returns J2000 coordinates, indigo_radec_to_altaz() needs coordinates of date
 static void sun_coordinates(time_t t, double *ra, double *dec) {
+	double jd = UT2JD(t);
 	equatorial_coords_s sun;
-	indigocat_sun_equatorial_coords(UT2JD(t), &sun);
-	*ra = sun.ra / 15.0;
-	*dec = sun.dec;
+	indigocat_sun_equatorial_coords(jd, &sun);
+	indigo_spherical_point_t j2000 = { sun.ra * DEG2RAD, sun.dec * DEG2RAD, 1 };
+	indigo_spherical_point_t date = indigo_precess(&j2000, 2000.0, indigo_eq_of_date(jd));
+	*ra = date.a * RAD2DEG / 15.0;
+	*dec = date.d * RAD2DEG;
 }
 
 // right ascension in hours, interpolated across 24 h

@@ -84,10 +84,16 @@ static void solar_system(time_t t, double *sun_ra, double *sun_dec, double *moon
 	equatorial_coords_s sun, moon;
 	indigocat_sun_equatorial_coords(jd, &sun);
 	indigocat_moon_equatorial_coords(jd, &moon);
-	*sun_ra = sun.ra / 15.0;
-	*sun_dec = sun.dec;
-	*moon_ra = moon.ra / 15.0;
-	*moon_dec = moon.dec;
+	// indigocat returns J2000 coordinates, indigo_radec_to_altaz() needs coordinates of date
+	double eq = indigo_eq_of_date(jd);
+	indigo_spherical_point_t sun_j2000 = { sun.ra * DEG2RAD, sun.dec * DEG2RAD, 1 };
+	indigo_spherical_point_t sun_date = indigo_precess(&sun_j2000, 2000.0, eq);
+	indigo_spherical_point_t moon_j2000 = { moon.ra * DEG2RAD, moon.dec * DEG2RAD, 1 };
+	indigo_spherical_point_t moon_date = indigo_precess(&moon_j2000, 2000.0, eq);
+	*sun_ra = sun_date.a * RAD2DEG / 15.0;
+	*sun_dec = sun_date.d * RAD2DEG;
+	*moon_ra = moon_date.a * RAD2DEG / 15.0;
+	*moon_dec = moon_date.d * RAD2DEG;
 }
 
 void indigo_scheduler_sky_build(scheduler_sky_grid *sky, time_t start, double latitude, double longitude, double elevation) {

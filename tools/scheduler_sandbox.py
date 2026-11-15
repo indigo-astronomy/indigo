@@ -92,6 +92,10 @@ class _Equatorial(ctypes.Structure):
 	_fields_ = [("ra", ctypes.c_double), ("dec", ctypes.c_double)]
 
 
+class _SphericalPoint(ctypes.Structure):
+	_fields_ = [("a", ctypes.c_double), ("d", ctypes.c_double), ("r", ctypes.c_double)]
+
+
 def _load_ephemeris():
 	"""The Sun as the Scheduler Agent computes it, from the built INDIGO libraries; None if they cannot be loaded."""
 	suffix = ".dylib" if sys.platform == "darwin" else ".so"
@@ -102,6 +106,8 @@ def _load_ephemeris():
 		return None
 	catalog.indigocat_sun_equatorial_coords.argtypes = [ctypes.c_double, ctypes.POINTER(_Equatorial)]
 	catalog.indigocat_sun_equatorial_coords.restype = None
+	indigo.indigo_precess.argtypes = [ctypes.POINTER(_SphericalPoint), ctypes.c_double, ctypes.c_double]
+	indigo.indigo_precess.restype = _SphericalPoint
 	indigo.indigo_lst.argtypes = [ctypes.POINTER(ctypes.c_long), ctypes.c_double]
 	indigo.indigo_lst.restype = ctypes.c_double
 	return indigo, catalog
@@ -117,9 +123,13 @@ def sun_position(t):
 	if EPHEMERIS:
 		indigo, catalog = EPHEMERIS
 		sun = _Equatorial()
-		catalog.indigocat_sun_equatorial_coords(t / 86400.0 + 2440587.5 + DELTA_UT1_UTC, ctypes.byref(sun))
+		jd = t / 86400.0 + 2440587.5 + DELTA_UT1_UTC
+		catalog.indigocat_sun_equatorial_coords(jd, ctypes.byref(sun))
+		# indigocat returns J2000 coordinates, the agent precesses them to the equinox of date (indigo_eq_of_date())
+		j2000 = _SphericalPoint(math.radians(sun.ra), math.radians(sun.dec), 1.0)
+		date = indigo.indigo_precess(ctypes.byref(j2000), 2000.0, 2000.0 + (jd - 2451545.0) / 365.25)
 		utc = ctypes.c_long(int(t))
-		return sun.ra, sun.dec, indigo.indigo_lst(ctypes.byref(utc), 0.0) * 15
+		return math.degrees(date.a) % 360, math.degrees(date.d), indigo.indigo_lst(ctypes.byref(utc), 0.0) * 15
 	# a low precision formula of the Astronomical Almanac when the libraries are missing
 	n = t / 86400.0 + 2440587.5 - 2451545.0
 	mean_longitude = (280.460 + 0.9856474 * n) % 360
