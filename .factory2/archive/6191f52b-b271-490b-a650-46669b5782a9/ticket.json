@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6191f52b-b271-490b-a650-46669b5782a9",
+  "revision": 15,
+  "title": "Configuration restore sends the Server.DRIVERS change without a token and a protected Server rejects it",
+  "description": "Found while fixing ticket 8f313dbc (commit 3c54c69fa). process_configuration_property in indigo_drivers/agent_config/indigo_agent_config.c (around line 350) sends a copy of AGENT_CONFIG_DRIVERS to Server with indigo_change_property(agent_client, copy). The copy never gets an access token, so on a server with nonzero device/master ACLs the bus rejects it with \"Device 'Server' is protected or locked for exclusive access\". The sequencer simulator case 'restore private configuration' passes only because the saved driver set equals the drivers already loaded; a restore that has to load or unload drivers on a protected server still fails with 'Driver selection failed'. Likely fix: stamp the copy with indigo_get_device_or_master_token(copy->device) like the replay dispatch added in 8f313dbc; check the other indigo_change_property calls of the agent for the same gap. Acceptance: a restore that changes the loaded driver set succeeds on a protected server, and a test covers a saved configuration whose driver set differs from the loaded one. Observed in the server log by the implementer of 8f313dbc and confirmed by code reading in its review; not yet reproduced as a failing test.",
+  "type": "bug",
+  "discovered_at": "2026-11-15T18:40:00Z",
+  "created_at": "2026-11-15T18:42:42.512875Z",
+  "status": "closed",
+  "branch": "ticket/6191f52b-b271-490b-a650-46669b5782a9",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "ad43d529-d039-4840-b724-e22bf43caeb3",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "74d582f2-4207-44f6-9a1b-dd8f09b54b07",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T18:45:51.702948Z",
+          "last_activity_at": "2026-11-15T18:56:34.007290Z",
+          "ended_at": "2026-11-15T18:56:34.007290Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 642304.342,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T18:45:51.702948Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/6191f52b-b271-490b-a650-46669b5782a9"
+        },
+        {
+          "at": "2026-11-15T18:56:34.007290Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 642304.342,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "728f1702-4ddf-4944-b086-0c1f4a75e507",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "8e9dc7fa-4917-4dbd-b9a8-f103b440e299",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T18:56:34.007469Z",
+          "last_activity_at": "2026-11-15T18:58:02.452852Z",
+          "ended_at": "2026-11-15T18:58:02.452852Z",
+          "outcome": {
+            "summary": "Pass. indigo_agent_config.c:351 stamps the Server.DRIVERS copy with indigo_get_device_or_master_token(copy->device) before indigo_change_property, matching config_reader_change_property (line 197) and the token-stamping indigo_change_*_property helpers in indigo_bus.c. copy->device comes from DEVICE_PRIVATE_DATA->server, which update_drivers (line 778) sets only from local DRIVERS definitions (agent_define/update_property skip devices containing '@'), so the token goes only to the local Server device. The only other direct indigo_change_property call (line 198) is already stamped; all other outgoing requests use indigo_change_switch_property_1, which stamps the token itself. DRIVER_VERSION goes from 0x0300001F to 0x03000020. The new sequencer_simulators.js cases (lines 240-243) save a configuration with indigo_aux_simulator loaded, unload it and check the unload, restore with expected Ok and a DRIVERS readback, then unload again. Without the fix the restore case fails: 'Driver selection failed' marks AGENT_CONFIG_LOAD Alert and the readback is false, which matches the owner's before/after note. The cases leave the server in the same state as the existing load/unload unused simulator cases. The configuration names are distinct and are saved under the launcher's private HOME, so the existing 'private configuration' cases are unaffected. The documentation sentence is accurate. Formatting follows the file conventions. Limitation: I verified this by reading the code; I did not rerun the cases myself and relied on the owner's recorded reproduction (5/1 before, 6/0 after, full suite 139/0). Minor, not a defect: the save case's AGENT_CONFIG_SAVE Ok check is weak on its own because the earlier save already left it Ok, but the restore case proves the save happened.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 88445.383,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T18:56:34.007469Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T18:58:02.452852Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Pass. indigo_agent_config.c:351 stamps the Server.DRIVERS copy with indigo_get_device_or_master_token(copy->device) before indigo_change_property, matching config_reader_change_property (line 197) and the token-stamping indigo_change_*_property helpers in indigo_bus.c. copy->device comes from DEVICE_PRIVATE_DATA->server, which update_drivers (line 778) sets only from local DRIVERS definitions (agent_define/update_property skip devices containing '@'), so the token goes only to the local Server device. The only other direct indigo_change_property call (line 198) is already stamped; all other outgoing requests use indigo_change_switch_property_1, which stamps the token itself. DRIVER_VERSION goes from 0x0300001F to 0x03000020. The new sequencer_simulators.js cases (lines 240-243) save a configuration with indigo_aux_simulator loaded, unload it and check the unload, restore with expected Ok and a DRIVERS readback, then unload again. Without the fix the restore case fails: 'Driver selection failed' marks AGENT_CONFIG_LOAD Alert and the readback is false, which matches the owner's before/after note. The cases leave the server in the same state as the existing load/unload unused simulator cases. The configuration names are distinct and are saved under the launcher's private HOME, so the existing 'private configuration' cases are unaffected. The documentation sentence is accurate. Formatting follows the file conventions. Limitation: I verified this by reading the code; I did not rerun the cases myself and relied on the owner's recorded reproduction (5/1 before, 6/0 after, full suite 139/0). Minor, not a defect: the save case's AGENT_CONFIG_SAVE Ok check is weak on its own because the earlier save already left it Ok, but the restore case proves the save happened."
+        }
+      ],
+      "result": {
+        "summary": "Pass. indigo_agent_config.c:351 stamps the Server.DRIVERS copy with indigo_get_device_or_master_token(copy->device) before indigo_change_property, matching config_reader_change_property (line 197) and the token-stamping indigo_change_*_property helpers in indigo_bus.c. copy->device comes from DEVICE_PRIVATE_DATA->server, which update_drivers (line 778) sets only from local DRIVERS definitions (agent_define/update_property skip devices containing '@'), so the token goes only to the local Server device. The only other direct indigo_change_property call (line 198) is already stamped; all other outgoing requests use indigo_change_switch_property_1, which stamps the token itself. DRIVER_VERSION goes from 0x0300001F to 0x03000020. The new sequencer_simulators.js cases (lines 240-243) save a configuration with indigo_aux_simulator loaded, unload it and check the unload, restore with expected Ok and a DRIVERS readback, then unload again. Without the fix the restore case fails: 'Driver selection failed' marks AGENT_CONFIG_LOAD Alert and the readback is false, which matches the owner's before/after note. The cases leave the server in the same state as the existing load/unload unused simulator cases. The configuration names are distinct and are saved under the launcher's private HOME, so the existing 'private configuration' cases are unaffected. The documentation sentence is accurate. Formatting follows the file conventions. Limitation: I verified this by reading the code; I did not rerun the cases myself and relied on the owner's recorded reproduction (5/1 before, 6/0 after, full suite 139/0). Minor, not a defect: the save case's AGENT_CONFIG_SAVE Ok check is weak on its own because the earlier save already left it Ok, but the restore case proves the save happened.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 88445.383,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "3a8471ab-c3ab-4b2e-bc2f-ffac676a72ea",
+      "event": "ticket/created",
+      "at": "2026-11-15T18:42:42.514010Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "2957b4d0-3c4f-4cea-a94c-79eb30bc7720",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T18:44:19.798925Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "5a799b14-d77a-45ef-8a08-7d57831516c4",
+      "event": "task/progress",
+      "at": "2026-11-15T18:45:51.704041Z",
+      "actor": "human/owner",
+      "task_id": "ad43d529-d039-4840-b724-e22bf43caeb3",
+      "text": "Implementation started on branch ticket/6191f52b-b271-490b-a650-46669b5782a9"
+    },
+    {
+      "event_id": "6d69b5b0-a06a-4c48-8f17-e91988c7bbb4",
+      "event": "ticket/started",
+      "at": "2026-11-15T18:45:51.707910Z",
+      "actor": "human/owner",
+      "branch": "ticket/6191f52b-b271-490b-a650-46669b5782a9",
+      "base": "master"
+    },
+    {
+      "event_id": "9ccd7bda-808a-44cc-8c35-008fe1d43989",
+      "event": "task/progress",
+      "at": "2026-11-15T18:46:13.533450Z",
+      "actor": "human/owner",
+      "task_id": "ad43d529-d039-4840-b724-e22bf43caeb3",
+      "text": "Implementer launched",
+      "attempt_id": "74d582f2-4207-44f6-9a1b-dd8f09b54b07",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "36a32094-606e-4013-8e45-ff53237f3b40",
+      "event": "task/progress",
+      "at": "2026-11-15T18:48:46.106897Z",
+      "actor": "human/owner",
+      "task_id": "ad43d529-d039-4840-b724-e22bf43caeb3",
+      "text": "Running sequencer simulator suite filtered on private configuration cases to reproduce before fix"
+    },
+    {
+      "event_id": "f0957d38-8e30-4b26-b3a3-d72e50a7f0aa",
+      "event": "task/progress",
+      "at": "2026-11-15T18:50:23.810811Z",
+      "actor": "human/owner",
+      "task_id": "ad43d529-d039-4840-b724-e22bf43caeb3",
+      "text": "Fix applied; rebuilding and rerunning filtered then full sequencer suite"
+    },
+    {
+      "event_id": "8ea60d17-519a-4074-a623-9be0e1d7ec90",
+      "event": "task/progress",
+      "at": "2026-11-15T18:56:14.883860Z",
+      "actor": "human/owner",
+      "task_id": "ad43d529-d039-4840-b724-e22bf43caeb3",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "07778ea4-fd98-4619-8222-6cde5c211d83",
+      "event": "task/progress",
+      "at": "2026-11-15T18:56:14.907398Z",
+      "actor": "human/owner",
+      "task_id": "ad43d529-d039-4840-b724-e22bf43caeb3",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b463f371-2515-49a8-a234-668a6f05d05a",
+      "event": "check/passed",
+      "at": "2026-11-15T18:56:14.909068Z",
+      "actor": "human/owner",
+      "commit": "8f4af7def29a091cb0956a5d6d2b19b59947e9a6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "1607eee7-c124-47d0-a18f-75626060ea9f",
+      "event": "ticket/note",
+      "at": "2026-11-15T18:56:19.852959Z",
+      "actor": "human/owner",
+      "text": "Reproduction before fix: new cases (save config with extra driver aux_simulator, unload it, restore) with --case 'private configuration': 5 passed, 1 failed; 'restore private configuration loads driver on protected server' failed, messages.jsonl shows 3x \"Device 'Server' is protected or locked for exclusive access\" and 'Driver selection failed'. After fix (copy->access_token = indigo_get_device_or_master_token(copy->device) in process_configuration_property, DRIVER_VERSION 0x03000020): filtered 6 passed 0 failed; full suite with --index-dir 139 passed 0 failed (launcher exit status not judged, known missing estimate issue 94bdc899). flow check whitespace passed. No other direct indigo_change_property(agent_client,...) gap in agent_config (line 198 already stamped).",
+      "tokens": null
+    },
+    {
+      "event_id": "0a17d289-97dd-46b6-bc30-3f6e29247ef3",
+      "event": "task/progress",
+      "at": "2026-11-15T18:56:34.007541Z",
+      "actor": "human/owner",
+      "task_id": "728f1702-4ddf-4944-b086-0c1f4a75e507",
+      "text": "Review started"
+    },
+    {
+      "event_id": "3db79620-5f15-4cbf-aae1-586dd836bf16",
+      "event": "review/started",
+      "at": "2026-11-15T18:56:34.008692Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "54eeb8a3-6515-45ba-b927-645d2367c24b",
+      "event": "task/progress",
+      "at": "2026-11-15T18:56:50.075534Z",
+      "actor": "human/owner",
+      "task_id": "728f1702-4ddf-4944-b086-0c1f4a75e507",
+      "text": "Reviewer launched",
+      "attempt_id": "8e9dc7fa-4917-4dbd-b9a8-f103b440e299",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0ad2f204-a37f-4b33-a84d-eacc0893c908",
+      "event": "task/progress",
+      "at": "2026-11-15T18:58:02.452938Z",
+      "actor": "human/owner",
+      "task_id": "728f1702-4ddf-4944-b086-0c1f4a75e507",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "f2ac6d69-ffa1-4ae5-bc6e-debbdf604563",
+      "event": "review/passed",
+      "at": "2026-11-15T18:58:02.454164Z",
+      "actor": "human/owner",
+      "task_id": "728f1702-4ddf-4944-b086-0c1f4a75e507",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8f4af7def29a091cb0956a5d6d2b19b59947e9a6"
+    },
+    {
+      "event_id": "ad1f30e5-fe96-496e-972c-81a9e3316641",
+      "event": "ticket/closed",
+      "at": "2026-11-15T19:01:18.631345Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T19:01:18.631316Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "df42a5b365e3c4b9dc90e679821b8e479a205d20"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8f4af7def29a091cb0956a5d6d2b19b59947e9a6",
+        "tree": "7b7f26766265391e9c73091575b6b9b420179c2e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T18:56:14.906696Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6191f52b-b271-490b-a650-46669b5782a9/7b7f26766265-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. indigo_agent_config.c:351 stamps the Server.DRIVERS copy with indigo_get_device_or_master_token(copy->device) before indigo_change_property, matching config_reader_change_property (line 197) and the token-stamping indigo_change_*_property helpers in indigo_bus.c. copy->device comes from DEVICE_PRIVATE_DATA->server, which update_drivers (line 778) sets only from local DRIVERS definitions (agent_define/update_property skip devices containing '@'), so the token goes only to the local Server device. The only other direct indigo_change_property call (line 198) is already stamped; all other outgoing requests use indigo_change_switch_property_1, which stamps the token itself. DRIVER_VERSION goes from 0x0300001F to 0x03000020. The new sequencer_simulators.js cases (lines 240-243) save a configuration with indigo_aux_simulator loaded, unload it and check the unload, restore with expected Ok and a DRIVERS readback, then unload again. Without the fix the restore case fails: 'Driver selection failed' marks AGENT_CONFIG_LOAD Alert and the readback is false, which matches the owner's before/after note. The cases leave the server in the same state as the existing load/unload unused simulator cases. The configuration names are distinct and are saved under the launcher's private HOME, so the existing 'private configuration' cases are unaffected. The documentation sentence is accurate. Formatting follows the file conventions. Limitation: I verified this by reading the code; I did not rerun the cases myself and relied on the owner's recorded reproduction (5/1 before, 6/0 after, full suite 139/0). Minor, not a defect: the save case's AGENT_CONFIG_SAVE Ok check is weak on its own because the earlier save already left it Ok, but the restore case proves the save happened.",
+        "reviewer": "human/owner",
+        "commit": "8f4af7def29a091cb0956a5d6d2b19b59947e9a6",
+        "tree": "7b7f26766265391e9c73091575b6b9b420179c2e",
+        "at": "2026-11-15T18:58:02.452689Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T18:56:19.851776Z",
+        "actor": "human/owner",
+        "text": "Reproduction before fix: new cases (save config with extra driver aux_simulator, unload it, restore) with --case 'private configuration': 5 passed, 1 failed; 'restore private configuration loads driver on protected server' failed, messages.jsonl shows 3x \"Device 'Server' is protected or locked for exclusive access\" and 'Driver selection failed'. After fix (copy->access_token = indigo_get_device_or_master_token(copy->device) in process_configuration_property, DRIVER_VERSION 0x03000020): filtered 6 passed 0 failed; full suite with --index-dir 139 passed 0 failed (launcher exit status not judged, known missing estimate issue 94bdc899). flow check whitespace passed. No other direct indigo_change_property(agent_client,...) gap in agent_config (line 198 already stamped).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "df42a5b365e3c4b9dc90e679821b8e479a205d20",
+      "tree": "7b7f26766265391e9c73091575b6b9b420179c2e",
+      "base": "master",
+      "at": "2026-11-15T19:01:18.545847Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-15T18:42:42.512875Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T18:44:19.798625Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 730749.725,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 21,
+    "sha256": "b6ffd9e8d5cfde864cef2fff40418a32593879addc83bb024caee880e51d64d4"
+  }
+}
