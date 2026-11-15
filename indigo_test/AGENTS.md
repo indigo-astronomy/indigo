@@ -141,6 +141,12 @@ such cases several at a time.
   when measuring timing or bisecting a flaky case.
 - Keep cases that bind a fixed loopback port serial by setting the runner's
   `jobs` field to 1 for that mode.
+- In an AddressSanitizer build with LeakSanitizer (GCC, Linux Clang; run with
+  `ASAN_OPTIONS=detect_leaks=1`) the child calls
+  `__lsan_do_recoverable_leak_check()` after the case returns, because `_exit()`
+  skips the at-exit check; a leak fails a case that would otherwise pass, with
+  the report in that case's captured output. Apple Clang has no leak detector,
+  so the check is a no-op there. Other builds are unaffected.
 - Add `integration/parallel_case_runner.h` to the prerequisites of every test
   rule that includes it, like any other shared test header.
 

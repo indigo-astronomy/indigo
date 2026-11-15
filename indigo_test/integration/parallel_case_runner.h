@@ -53,6 +53,22 @@
 
 #include "../test_runner.h"
 
+// The child ends with _exit(), which skips LeakSanitizer's at-exit check, so a
+// sanitizer build runs the recoverable check itself after the case returns.
+// GCC defines __SANITIZE_ADDRESS__; Clang answers __has_feature(address_sanitizer).
+// Apple Clang accepts the interface but has no leak detector: the check returns 0.
+#if defined(__SANITIZE_ADDRESS__)
+#define PARALLEL_CASE_RUNNER_LSAN 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define PARALLEL_CASE_RUNNER_LSAN 1
+#endif
+#endif
+
+#ifdef PARALLEL_CASE_RUNNER_LSAN
+#include <sanitizer/lsan_interface.h>
+#endif
+
 #define PARALLEL_CASE_RUNNER_MIN_JOBS 2
 #define PARALLEL_CASE_RUNNER_MAX_JOBS 32
 // The cases wait on simulator hand-shakes, connect delays and driver timeouts
@@ -184,7 +200,15 @@ static void parallel_case_start(const parallel_case_runner *runner, parallel_cas
 				alarm(seconds);
 			}
 		}
-		_exit(runner->child(index, fixture));
+		int result = runner->child(index, fixture);
+#ifdef PARALLEL_CASE_RUNNER_LSAN
+		// Runs after the case's own cleanup; a leak fails an otherwise passing case. The report goes to the captured output.
+		if (result == 0 && __lsan_do_recoverable_leak_check() != 0) {
+			fprintf(stderr, "%s: leaks detected after %s\n", runner->label, runner->name(index));
+			result = 1;
+		}
+#endif
+		_exit(result);
 	}
 }
 
