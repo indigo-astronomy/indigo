@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "2b46dfdb-14ad-5163-b51d-57c8153fbc69",
-  "revision": 1,
+  "revision": 3,
   "title": "Three tool input safety tests fail on Linux x86_64 once the suite builds",
   "description": "indigo_test/unit/test_tool_input_safety.py could not build on Linux: it compiled without -D_GNU_SOURCE (test_runner.h uses nftw) and linked libindigo_client.a without the Avahi libraries. With both fixed in this task, 11 of 14 tests pass; RawCropSafety.test_allocation_read_write_and_close_errors (faults fread1 and fread2: expected a failure exit, got 0 with no output) and GaiaCatalogSafety.test_join_overflow_fails_before_opening_truncated_path (the over-long joined path is opened instead of rejected) fail. They concern indigo_raw_crop and the Gaia catalogue reader, not indigo_prop_tool, and were hidden by the build failure. Next: reproduce each on Linux and macOS and fix the tools or the fault wrapper.\n\nImported from .factory/findings/active/FND-20261114001953-a717-scheduler-sandbox-and-prop-tool-empty-002.json (category: quality, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "2775f9b4367f90de489a6893ec31e08a8b19f81f88a58553400bba28733917f1",
       "priority": "low",
       "severity": "low"
+    },
+    {
+      "event_id": "bf9221ac-3e12-47c3-b744-3beb6253a332",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:13.265218Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "d3bf33a6-679e-43bd-a4f8-904e54ea9523",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:13.535398Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "92b7aba62e2018dc34854486af582df64ab30a81fb59a8fc0040dcf22821a051"
-  }
+    "entries": 3,
+    "sha256": "802515c7678fc68342378a821836f7b38f9bee695913045a51d17278f3ffc661"
+  },
+  "priority": "low",
+  "difficulty": "medium"
 }

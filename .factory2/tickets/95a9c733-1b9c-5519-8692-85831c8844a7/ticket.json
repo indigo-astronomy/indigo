@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "ticket_id": "95a9c733-1b9c-5519-8692-85831c8844a7",
-  "revision": 1,
+  "revision": 4,
   "title": "Forked integration case runners never run the leak check",
   "description": "parallel_case_runner.h runs every case in a forked child that ends with _exit(), so LeakSanitizer never runs and ASAN_OPTIONS=detect_leaks=1 sanitizer runs of the scheduler and other suites report no leaks whatever happens. With an explicit __lsan_do_recoverable_leak_check() after each scheduler case, the only remaining report is the framework escape buffer, FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001. Next: after that is fixed, run the leak check in the case runner child before _exit() where LeakSanitizer is available.\n\nImported from .factory/findings/active/FND-20261113001457-32cc-scheduler-shutdown-command-leak-001.json (category: quality, blocking: no).",
-  "type": "bug",
+  "type": "change",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.902723Z",
   "status": "open",
@@ -22,6 +22,33 @@
       "source": "152952476923aa039e68911750158c1d5f8c65737a1cc17e729425f8c8f53af9",
       "priority": "low",
       "severity": "low"
+    },
+    {
+      "event_id": "21aedc2a-e915-4334-95c0-ba0ada10ea60",
+      "event": "ticket/type_changed",
+      "at": "2026-11-15T08:55:20.561401Z",
+      "actor": "human/owner",
+      "previous_type": "bug",
+      "type": "change"
+    },
+    {
+      "event_id": "080c9dda-d193-4384-8efa-c44563cd5302",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:20.700031Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "bf2aef51-d195-48ff-96d3-9375f5e2a6e5",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:20.976910Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +71,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "b0a75cf0868068a3c384cb88d4441e0e65d2f4d7a4accda224815b3659f6d794"
-  }
+    "entries": 4,
+    "sha256": "046459d50f2cad97ed869c312ef7c1b2cdcff9110533bae33997a65f05171a7c"
+  },
+  "priority": "low",
+  "difficulty": "medium"
 }

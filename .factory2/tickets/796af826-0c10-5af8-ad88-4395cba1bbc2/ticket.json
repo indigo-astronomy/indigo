@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "796af826-0c10-5af8-ad88-4395cba1bbc2",
-  "revision": 1,
+  "revision": 3,
   "title": "MinGW rebuild target depends on nonexistent build target",
   "description": "make -n -C indigo_windows/gcc rebuild exits 2: No rule to make target build, needed by rebuild. A real invocation first performs clean then fails. Point rebuild to the actual all target with safe ordering. No MinGW compiler or Windows runtime was executed.\n\nImported from .factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-005.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "89265c8ff10f3a5977674586b85b5167251afb7be581388021ce5799b1f256f7",
       "priority": "low",
       "severity": "low"
+    },
+    {
+      "event_id": "3d2e6aa2-73ec-4d18-a827-809b2aa4f9aa",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:18.826835Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "2e855d9c-32f6-45d4-bc75-f3458733fbf7",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:19.097220Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "3c28424833f18d5f11252ac639fde994ff4534ff5b7ed49cfe2042c8ba52f308"
-  }
+    "entries": 3,
+    "sha256": "8c276e46922de43b8cf786d6f681e4c353f362d22840978fa4ecac12dc3fd5d6"
+  },
+  "priority": "low",
+  "difficulty": "low"
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "9d9f8849-eb47-52d5-bba9-cfd813e3831f",
-  "revision": 1,
+  "revision": 3,
   "title": "Sky v2 updater installs the wrong package for advertised 3.x versions",
   "description": "The helper advertises indigo3 versions but install-version always requests indigo=VERSION, so a version available only for the intended3.x package cannot install. Preserve and allowlist package identity with the selected version; add synthetic apt argument regressions for both channels. No apt command ran. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-004.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "aeb38faaa3d26e2b7cc585b6af779569f038d5a268f731549b0be9f0c723870f",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "646ad471-9419-4353-b26a-4017528e889c",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:21.932177Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "f673af3d-51ef-4800-83b5-32675b0fae4c",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:22.212818Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "ab87fca60dfc71c560bd16f83f9a1171ca7193b821196ab081f2e7a5a868fb36"
-  }
+    "entries": 3,
+    "sha256": "4ec6b3ea5fc79221e1296408bd0fdc5e7bbb139319ba9d21c407b6887100de5d"
+  },
+  "priority": "medium",
+  "difficulty": "low"
 }

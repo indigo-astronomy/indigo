@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "2b3903ea-99c6-5fce-9967-9a845a77db4b",
-  "revision": 1,
+  "revision": 4,
   "title": "Protocol security unit test fails: device ACL accepts requests without a master token",
   "description": "test_protocol_security case 'device ACL requires device or nonzero master token' fails deterministically (unit/test_protocol_security.c:537) with the current build/lib/libindigo.a, also when built against the committed indigo_names.h; unrelated to the scheduler task. Next: determine whether libindigo is stale or the bus ACL check regressed, then fix and rerun make -C indigo_test test-unit.\n\nImported from .factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-001.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,10 +22,38 @@
       "source": "1d880a3446db43248600a04c80fce5a695ded8ffbe2aa5eae8a0c3802dc02fd5",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "342d6654-2835-4304-b3ab-53408120a008",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:10.757906Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "high",
+      "previous_priority": null,
+      "priority": "high"
+    },
+    {
+      "event_id": "f8f1ce63-7022-422b-94f8-886a535707dd",
+      "event": "ticket/severity_changed",
+      "at": "2026-11-15T08:55:10.893559Z",
+      "actor": "human/owner",
+      "field": "severity",
+      "previousOverride": "medium",
+      "newOverride": "high"
+    },
+    {
+      "event_id": "3cecba2e-552e-4229-aea5-4fba33dbad99",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:11.028834Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
-  "severity": "medium",
+  "severity": "high",
   "metrics": {
     "duration_ms": 0.0,
     "duration_basis": "sum_of_completed_attempt_wall_times",
@@ -44,7 +72,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "b542adabbdfc67253905e9de816c7d0924a25467173dddb8255983c0ed10d78f"
-  }
+    "entries": 4,
+    "sha256": "982579989b6174234676ea04c43b947c34fd26285ec825fdcaa5055c965a6153"
+  },
+  "priority": "high",
+  "difficulty": "medium"
 }

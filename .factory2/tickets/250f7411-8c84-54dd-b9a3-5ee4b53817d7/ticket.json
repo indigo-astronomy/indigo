@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "250f7411-8c84-54dd-b9a3-5ee4b53817d7",
-  "revision": 1,
+  "revision": 3,
   "title": "WeMacro Bluetooth valid zero batch count underflows the encoded count",
   "description": "COUNT advertises a minimum0 but the accepted batch encodes (uint32_t)count-1, turning0 into UINT32_MAX. This contradicts the bounded step-count contract and portable sibling minimum1. Set a correct minimum or define safe zero semantics before transmission and test zero/minimum/maximum encoding. Device execution was not measured. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-008.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "34591eb2440f791c839532e2dd58f9bf3557161ec389b9d54658eb457719ccb0",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "0275d934-31a7-4f2f-bdf0-e0de52129291",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:11.375851Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "0cab34f2-1472-4d11-96d0-9edd98e04229",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:11.649048Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "498c30e93659830f7def44c141843e5a46672010e25b70e804f6d6ccc2517583"
-  }
+    "entries": 3,
+    "sha256": "72c8ac5efda469ab897d73d6fc81c242f3522287b348a0233b4b761f387e4608"
+  },
+  "priority": "medium",
+  "difficulty": "low"
 }

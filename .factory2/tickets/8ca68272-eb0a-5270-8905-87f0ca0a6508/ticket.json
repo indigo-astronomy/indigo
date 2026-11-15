@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "8ca68272-eb0a-5270-8905-87f0ca0a6508",
-  "revision": 1,
+  "revision": 3,
   "title": "Scripting Agent change bindings omit local access tokens",
   "description": "Native scripting text/number/switch change bindings build property access_token 0 and dispatch directly. Protected targets reject writes with nonzero master/device ACLs. Next: use registered device/master token consistently with native change helpers, add regression coverage and increment driver version if owner authorizes repair.\n\nImported from .factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-004.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "deb287698a896633f42f1bb9b6eac01373074d3b4a9efc8cc4df434f341f29f8",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "18a36060-313d-4608-8586-ef51314411ee",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:19.447304Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "0563e4b0-5356-482e-87ce-479c44bbe0f9",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:19.721126Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "2fe284766e18336ce3fa1f4f4e946e5b0999ebd5300e144c091f3bf9500c3352"
-  }
+    "entries": 3,
+    "sha256": "50ab8e2503cbfad93e19718ffe8e005ef0fdaaa0e2c9588ccce1d8303a733306"
+  },
+  "priority": "medium",
+  "difficulty": "medium"
 }

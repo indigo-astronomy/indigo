@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "fa14dd64-a3f7-5743-97c8-f41e069f6a20",
-  "revision": 1,
+  "revision": 3,
   "title": "DRV-204: `selection subframe restore` fails deterministically: after guiding with `AGENT_GUIDER_SELECTION.SUBFRAME` set, aborting leaves `CCD_FRAME.WIDTH` at the subframe width (4",
   "description": "DRV-204: `selection subframe restore` fails deterministically: after guiding with `AGENT_GUIDER_SELECTION.SUBFRAME` set, aborting leaves `CCD_FRAME.WIDTH` at the subframe width (400) instead of restoring the full frame (1600), so the camera stays subframed after the agent stops. Reproduce with `build/integration/test_agent_guider \"selection subframe restore\"`. Verified pre-existing: it reproduces with `indigo_libs/` reverted to `6c28c23c6`, before this session's changes. Agents were outside the requested sweep, so it is recorded rather than fixed. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/active/FND-000007.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "6ddc4f9bc2acdc692b2574b65139511bf7caadea9431d1e01f3f683343763fd3",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "752c99cd-d2fb-4384-9472-9156ad76378d",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:30.705691Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "fb3a0827-9f34-4fe8-b6a4-514c0e821781",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:30.974263Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "d4189a71e739b3da08307f0665af7f58662326b377865a7eb5a5494579b2b469"
-  }
+    "entries": 3,
+    "sha256": "f8b6c056e21b59380fb03f7b7d2dcf74ea3fcaf05b1763b2b47e167fb1ef9e1f"
+  },
+  "priority": "medium",
+  "difficulty": "medium"
 }

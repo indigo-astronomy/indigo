@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "2939208c-28b3-539e-9059-37114ab265a2",
-  "revision": 1,
+  "revision": 3,
   "title": "OPTDRV-002: Andor shutdown destroys the static global `driver_mutex` inside the per-device loop after using it for the current device",
   "description": "OPTDRV-002: Andor shutdown destroys the static global `driver_mutex` inside the per-device loop after using it for the current device. With multiple cameras, the next iteration locks a destroyed mutex; after one shutdown/init cycle, future SDK operations can also use an invalid mutex. Do not destroy this static process-lifetime mutex per camera. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/active/FND-000020.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "83e40a670ab3eaa5a2764efa53037e60081c8398ec7adc9472e75dcf956e7759",
       "priority": "low",
       "severity": "high"
+    },
+    {
+      "event_id": "acdd20a9-5a8f-4312-9f55-e1d21cd9d505",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:11.997397Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "high",
+      "previous_priority": null,
+      "priority": "high"
+    },
+    {
+      "event_id": "e1955f66-e82a-40d0-91d2-b1e3c0f5687f",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:12.297889Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "def217079a388bf8508d3aa0bb380a738fad736b54fbf4674cc5d8a74ef36892"
-  }
+    "entries": 3,
+    "sha256": "ccaf6b75ca4cfa3d79ead2ad08aae3717d7fb388fa9210c55f75c8358c1bb138"
+  },
+  "priority": "high",
+  "difficulty": "low"
 }

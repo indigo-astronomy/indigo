@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "e7956088-24a3-50bd-bcb1-52e83ef58d10",
-  "revision": 1,
+  "revision": 4,
   "title": "Andor enumeration exceeds the eight-device storage capacity",
   "description": "The SDK count controls init/shutdown loops indexing devices[8] without a capacity bound; nine enumerated cameras can access outside the array. Cap before allocation and every array loop, ignoring/rejecting excess devices, then test with a fake SDK count9. Distinct from existing Andor mutex findings000019/000020. Local SDK/device prerequisite; no remote exploit or hardware execution claimed. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-015.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,10 +22,38 @@
       "source": "363812bca5e01142e245bee3c49c8859eba868819c9b5eb3c48b0c52e8aa659b",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "029a2cdb-5f91-4c7c-81a6-5c521702d2fd",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:27.568235Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "high",
+      "previous_priority": null,
+      "priority": "high"
+    },
+    {
+      "event_id": "bf24343b-3f83-47be-bd3a-910b0e7bf0cf",
+      "event": "ticket/severity_changed",
+      "at": "2026-11-15T08:55:27.701778Z",
+      "actor": "human/owner",
+      "field": "severity",
+      "previousOverride": "medium",
+      "newOverride": "high"
+    },
+    {
+      "event_id": "1076dcfa-c82a-4968-a008-54d7cc1522ae",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:27.838339Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
-  "severity": "medium",
+  "severity": "high",
   "metrics": {
     "duration_ms": 0.0,
     "duration_basis": "sum_of_completed_attempt_wall_times",
@@ -44,7 +72,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "3267f4fa572ad35d7459f673ce868fd5e57d15293d3d01140bed1e23c7f3d151"
-  }
+    "entries": 4,
+    "sha256": "e7dad27095939243c52c857032b382b216e09a0e5d5a87451575a7da30517b87"
+  },
+  "priority": "high",
+  "difficulty": "low"
 }

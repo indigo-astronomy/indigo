@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "ea48a942-7a0f-5a3f-b96d-41c06fd4ef0d",
-  "revision": 1,
+  "revision": 4,
   "title": "Wi-Fi client password guards execute text and continue destructive changes",
   "description": "Invalid password guards invoke a quoted message as a command instead of __ALERT. Exact isolated-function stubs show password x writes configuration/disables or deletes the old connection and returns OK despite command-not-found. Reject invalid length before mutations and test lower/upper bounds plus valid controls. No network/service/reboot was executed. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-003.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,10 +22,38 @@
       "source": "c6237e069898634172822b45d7d257d4ff1e097c0da83cdd740242edf866e224",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "336bcd7c-d7cc-4bd2-9eb3-6ed8dc739e53",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:28.174481Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "85a553be-e98c-4d09-8813-97a86d55fe63",
+      "event": "ticket/severity_changed",
+      "at": "2026-11-15T08:55:28.325266Z",
+      "actor": "human/owner",
+      "field": "severity",
+      "previousOverride": "medium",
+      "newOverride": "high"
+    },
+    {
+      "event_id": "3fee3257-dbb0-4017-8766-ab697a35e249",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:28.465139Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
-  "severity": "medium",
+  "severity": "high",
   "metrics": {
     "duration_ms": 0.0,
     "duration_basis": "sum_of_completed_attempt_wall_times",
@@ -44,7 +72,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "dc3695afb3c46792b1f110f11ebb2ad49ef62beb1647f20ad6bd126a716b292b"
-  }
+    "entries": 4,
+    "sha256": "5f58d073a88ba8cd219747fc6504426727380a33035f6d3c3cb597505d6baa40"
+  },
+  "priority": "medium",
+  "difficulty": "low"
 }

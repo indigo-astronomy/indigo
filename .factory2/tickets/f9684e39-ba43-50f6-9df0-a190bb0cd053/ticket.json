@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "ticket_id": "f9684e39-ba43-50f6-9df0-a190bb0cd053",
-  "revision": 1,
+  "revision": 5,
   "title": "Raspberry Pi autofocus cannot complete with one request per exposure",
   "description": "RPI_AF only queues AfModeAuto/AfTriggerStart for the next exposure; each exposure restarts the camera with a single request, so the scan cannot complete, RPI_AF reports OK immediately and the AF lens position is not read back. An abort or frame timeout also drops a pending trigger. Next: design streaming AF with AfState/LensPosition metadata and test on an autofocus camera (e.g. Camera Module 3).\n\nImported from .factory/findings/active/FND-20261024202957-6bd9-fix-ccd-rpi-001.json (category: functional, blocking: no).",
-  "type": "bug",
+  "type": "change",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.798339Z",
   "status": "open",
@@ -22,6 +22,44 @@
       "source": "93efee849532ec13bbfbf05136858f99a688fa8e0861b323b4ca40e1587791de",
       "priority": "low",
       "severity": "low"
+    },
+    {
+      "event_id": "688ca94d-8607-412d-95ab-7ac6cb66cd6a",
+      "event": "ticket/type_changed",
+      "at": "2026-11-15T08:55:29.937478Z",
+      "actor": "human/owner",
+      "previous_type": "bug",
+      "type": "change"
+    },
+    {
+      "event_id": "347ceef3-8469-441c-90c0-39838a362fc1",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:30.077737Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "8e8751e5-9287-4d5f-a807-8ce50aeef9ce",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:30.374514Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "high"
+    },
+    {
+      "event_id": "c9479111-a321-4843-b23b-0b674f6d5c0d",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T08:55:30.440603Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "full",
+      "corrected": "profile",
+      "previous_profile": "simple"
     }
   ],
   "closure": null,
@@ -44,7 +82,12 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "fa3b10f417d714306dbf2328c3dc88ee31d5bfa1ac6a6d5cdd2b717289262161"
+    "entries": 5,
+    "sha256": "c663ea86483ba6bbb180b7dd5b6f0660b1c4590215076c0a3875489400f53f00"
+  },
+  "priority": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full"
   }
 }

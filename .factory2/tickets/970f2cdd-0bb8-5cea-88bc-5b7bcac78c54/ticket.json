@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "970f2cdd-0bb8-5cea-88bc-5b7bcac78c54",
-  "revision": 1,
+  "revision": 3,
   "title": "Mount Agent derived coordinates assume J2000 for non-J2000 mount inputs",
   "description": "Source inspection shows Mount Agent forwards targets and mirrors mount coordinates without epoch conversion but unconditionally converts derived coordinates from J2000 to current epoch. The shared solver instead converts targets to the related mount's reported MOUNT_EPOCH. Non-J2000 mounts can therefore produce inconsistent derived geometry. Next action: assign a bounded Mount Agent epoch-contract fix and simulator regression; no runtime reproduction or risk acceptance is claimed.\n\nImported from .factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-001.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "1b057df0638bd697d9c38314cd0030088d81483633a943d67ec5332b9f573d1b",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "bfd5a835-e2f9-4435-bd93-04705c85095c",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:21.335096Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "5f31ca27-b48a-474e-b89b-410da1807c61",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:21.602163Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "63472313c39bfc42d48456ef9b2728499ca7ccd88b51e7168736ca136717acde"
-  }
+    "entries": 3,
+    "sha256": "caeffee43d6d582172200147d399a14682b7632d235b6dc561d1491a8493093d"
+  },
+  "priority": "medium",
+  "difficulty": "medium"
 }

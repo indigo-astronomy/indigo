@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "a78416cd-745e-57f8-96c8-3249d2ea1b44",
-  "revision": 1,
+  "revision": 3,
   "title": "OPTDRV-001: Andor initialization allocates `private_data` and `device`, locks `driver_mutex`, then breaks out of the camera loop when `Initialize()` fails without unlocking the mutex",
   "description": "OPTDRV-001: Andor initialization allocates `private_data` and `device`, locks `driver_mutex`, then breaks out of the camera loop when `Initialize()` fails without unlocking the mutex or freeing the just-allocated objects. A missing or invalid SDK path can leave the global mutex permanently locked and leak the partially constructed device. Use a cleanup path that unlocks the mutex, frees partial allocations, and continues or aborts cleanly. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/active/FND-000019.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "90abf5aebc36d1dd452a8ac4ed58d3a96ee4f6aa450f9cfff4e4d733a62ac370",
       "priority": "low",
       "severity": "high"
+    },
+    {
+      "event_id": "7a23bf85-765b-4c62-ac95-9df9f6608bf7",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:12.641057Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "high",
+      "previous_priority": null,
+      "priority": "high"
+    },
+    {
+      "event_id": "0d881c99-e086-4fea-88ad-a3bc3c6eee32",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:12.916953Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "0a65edf79de6ed5c5b1d29be90d0a178ca28b8d2ec369a5efb88505b74e6f1d4"
-  }
+    "entries": 3,
+    "sha256": "98a4ea80b20feb21be58926c22ea9535d822bb30bebb1231ddef6251fb93ed87"
+  },
+  "priority": "high",
+  "difficulty": "low"
 }

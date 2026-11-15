@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "e65f9da9-0c2f-5f30-85fa-a41248070896",
-  "revision": 1,
+  "revision": 3,
   "title": "Player One snapshots are processed as streaming frames",
   "description": "- Location: indigo_drivers/ccd_playerone/indigo_ccd_playerone.driver:413; finish behavior at 335-355. Cross-component contract: indigo_libs/indigo_ccd_driver.c:1806-1815,2316-2328. - Severity: medium; confidence: high; category: functional/image delivery. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: the shared snapshot/stream acquisition finalizer passes literal true for indigo_process_image's final streaming argument, even when PRIVATE_DATA->streaming is false. The base framework applies streaming update throttling and selects AVI/SER file output only when this argument is true. acquisition_finish finalizes video only when PRIVATE_DATA->streaming is actually true. - Impact: single exposures can be throttled like streams and JPEG_AVI/RAW_SER single exposures can create video files without the ordinary single-image/finalization behavior. SDK continuous-acquisition workarounds do not make a public single exposure a streaming operation. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-4). No fix or risk acceptance claimed.\n\nImported from .factory/findings/active/FND-20261024121920-3bd2-repository-audit-019.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "b963259af36804eddabbd23338a4876a1fcc92229f39bab03277d57ab972c7cd",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "394924b1-9837-4d80-9c3f-0821a0548786",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:26.932100Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "4ead638b-31fb-4654-90f2-b4676f79e8a3",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:27.228708Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "a42e0877eac0a03a1a3728f9a6d1d23cf68fb14a611d400431743eb5c7ed0438"
-  }
+    "entries": 3,
+    "sha256": "785ad493461b17159191b0dd7071863d446c356162ca8b6f981bc72801071959"
+  },
+  "priority": "medium",
+  "difficulty": "medium"
 }

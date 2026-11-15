@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "efb8a75f-3582-5bc1-86df-686b87e4ec1c",
-  "revision": 1,
+  "revision": 4,
   "title": "K-m bulb exposures fall short of requested duration",
   "description": "JPEG EXIF reports1.09/2.88s for1.2/3s requested; RAW reports1.100s for1.2s. Both JPEG points fail the diagnostic50ms criterion. Independently measure shutter/command timing before model-specific compensation; no guessed offset. Diagnostic/documentation delivery does not certify timing accuracy.\n\nImported from .factory/findings/active/FND-20261027204223-700a-pentax-bulb-accuracy-001.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,36 @@
       "source": "06fa8c7f637e2ff05e99cf6e2e5205060f0b9d03d0a5d5ac2620e9554e9ceda6",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "1138f06c-d650-48de-83e7-fd81b42ad931",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:28.808288Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "115e984a-88a9-4b25-8ccc-57f8e49b59b3",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:29.083869Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "high"
+    },
+    {
+      "event_id": "0736415d-ec6c-42d5-861d-12f94b81d821",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T08:55:29.156904Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "medium",
+      "profile": "full",
+      "corrected": "profile",
+      "previous_profile": "simple"
     }
   ],
   "closure": null,
@@ -44,7 +74,12 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "55a79cc71223824f0480f0131717138411f125cba6bdc5a4ec53571cae0426dc"
+    "entries": 4,
+    "sha256": "08dfb348c7a34b85dc5c3cb11283ac4531e860d4a6be73f849a4f972ecf21ecd"
+  },
+  "priority": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full"
   }
 }

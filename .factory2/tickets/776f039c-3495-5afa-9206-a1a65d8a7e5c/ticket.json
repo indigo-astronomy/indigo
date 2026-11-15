@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "776f039c-3495-5afa-9206-a1a65d8a7e5c",
-  "revision": 1,
+  "revision": 3,
   "title": "Scheduler loses the failure reason of a sequence that ends Alert",
   "description": "agent_update_property() takes the failure reason from the message of the SEQUENCE_STATE update (finish_message), but since commit 9ecac90d2 the bus delivers an update's message separately through send_message, and the Scheduler Agent's client has no send_message callback (NULL slot in agent_client_template). A sequence that ends Alert is therefore recorded in the history as plain 'failed' and the message reads 'Task ... failed' without the reason; start failures and JavaScript errors, which come through SCHEDULER_RESULT, still carry their text. Next: add a send_message callback that records the Scripting Agent's last message for SEQUENCE_STATE, and a regression case with a failing sequence step.\n\nImported from .factory/findings/active/FND-20261113011414-d873-scheduler-users-guide-001.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "64edc48a6cba99fef82fd488906cada16a525249a6609a57e13fd25a5bf67d54",
       "priority": "low",
       "severity": "low"
+    },
+    {
+      "event_id": "08c3d7f2-b5d7-4c11-8734-5e4159fa6900",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:18.231755Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "4ee427eb-eaec-4df2-b4d1-bcc57ff82f61",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:18.501000Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "b9257143ceeaa9872151227a1ccc9f4e355eaa520a7fd69578a657e15732aee8"
-  }
+    "entries": 3,
+    "sha256": "f8db2c8528ee1f01ea41e4037b65c9f6cef3f5583323127fede2478888664337"
+  },
+  "priority": "low",
+  "difficulty": "medium"
 }

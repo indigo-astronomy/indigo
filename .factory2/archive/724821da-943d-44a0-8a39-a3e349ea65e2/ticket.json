@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "ticket_id": "724821da-943d-44a0-8a39-a3e349ea65e2",
+  "revision": 2,
+  "title": "Add the native unit suite as a path-scoped flow check",
+  "description": "Split from ticket dc17c058 (Factory audit follow-up, part 2) on the owner's decision of 2026-11-15.\n\nAdd a 'unit' entry to checks in .factory2/config.json next to 'whitespace', proposed as: command 'make -C indigo_test test-unit', paths indigo_libs/*, indigo_server/*, indigo_test/unit/*, indigo_test/test_runner.h, indigo_test/Makefile, timeout_seconds 600. Paths are fnmatch globs and '*' also matches '/'; a check without matching changed files is not selected.\n\nTwo prerequisites, both found on 2026-11-15:\n1. The unit suite fails on master at test_protocol_security 'device ACL requires device or nonzero master token' (ticket 21bfa946; 50 of 88 suites ran, exit status 2). The check must not be added before that is fixed, or it blocks every ticket touching those paths.\n2. A ticket worktree has no Makefile.inc (generated, gitignored, with absolute BUILD_ROOT/BUILD_LIB of the primary checkout) and no built library, so the command fails there immediately. Decide and verify how the check gets a library in a worktree (reuse the primary build or build in the worktree) and measure the cost; in the primary checkout with a built library the suite took about 32 s.\n\nKeep driver, simulator, hardware and shell_compliance tests out of the generic check list, and keep project/commands in .factory2/project-rules.json consistent with the result.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T08:58:32.760014Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": "21bfa946-a854-5f9d-8246-0a728b5ea1d0",
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "8608288f-2680-4ca3-8e99-aa27674537a0",
+      "event": "ticket/created",
+      "at": "2026-11-15T08:58:32.760691Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "5f9757fc-bbcc-46c7-abe6-b9aeeef191c0",
+      "event": "ticket/closed",
+      "at": "2026-11-15T09:01:05.879635Z",
+      "actor": "human/owner",
+      "reason": "Created with a wrong parent link (related_ticket_id 21bfa946), which would have blocked closing 21bfa946; closed on the owner's instruction of 2026-11-15 and recreated without the link.",
+      "resolution": "unresolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T09:01:05.879426Z",
+    "reason": "Created with a wrong parent link (related_ticket_id 21bfa946), which would have blocked closing 21bfa946; closed on the owner's instruction of 2026-11-15 and recreated without the link.",
+    "resolution": "unresolved",
+    "mode": "manual",
+    "verification": "not_claimed"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T08:58:32.760014Z",
+    "actor": "human/owner",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "7618559da4f67a2bc17a77781f837970d4648b0e2df97bc95ae7b27ff65179dd"
+  }
+}

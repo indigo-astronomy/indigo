@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "acc2dbb5-815c-5b2d-82e7-6948758ac54b",
-  "revision": 1,
+  "revision": 3,
   "title": "Release helpers report success after failed build or archive commands",
   "description": "Release helpers continue after failed Docker/download/configure/build or ignore git archive pipeline failure and finish with successful cleanup/echo. Next: propagate command and pipeline failures and publish only complete outputs; disposable fake-command failure regressions. No install/network/build command was executed by the reviewer.\n\nImported from .factory/findings/active/FND-20261023101753-bc8d-complete-repository-audit-041.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "721f8802f01b4d09d2eb9925ad3896d669f578ec8c267a64ded5daf88796b7f9",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "637b531f-60db-4beb-a15e-93e2cda85616",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:22.555069Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "cbe05351-8388-47b8-9a3c-b2683c65c7b4",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:22.829952Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "0bd45607c72bd54cfaa204c9804c687fcc1844a84d190a188b3557d9eed332e3"
-  }
+    "entries": 3,
+    "sha256": "4717d06fdc61e029df0f795deb0316e5910948b07cea2a1d1d2e948df4fa8338"
+  },
+  "priority": "medium",
+  "difficulty": "medium"
 }

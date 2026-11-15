@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f",
-  "revision": 1,
+  "revision": 3,
   "title": "Editor property catalog omits generator-supported accept_while_busy",
   "description": "The current generator accepts accept_while_busy:boolean for inherited, switch, text, number and light properties, but the template-derived editor catalog omits it in all five contexts. This is source-confirmed on baseline af219db21 before this task and remains the single full editor attribute-contract failure after requested device-id/SDK-discover fixes. Next: scoped template/catalog correction with property context tests; no generator change or risk acceptance.\n\nImported from .factory/findings/active/FND-20261102201622-853f-fix-editor-build-doc-findings-001.json (category: quality, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "2069571663a519d5e24312ce4be872b156287dd110b7d4b2db87bf68ace99322",
       "priority": "low",
       "severity": "low"
+    },
+    {
+      "event_id": "be44ca9f-5fa4-4b49-9b51-08afc3c983c1",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:17.599031Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "ca284b64-173a-4cf5-959d-006a09013244",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:17.875933Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "ba68c8c525d61fdb9aab473aa0ab7305eaff773fbe6cd0d48b0abd2da8671d3c"
-  }
+    "entries": 3,
+    "sha256": "b8272cc375c8855a932ebc0296fde23196639cde88037103f57ca48365aabb15"
+  },
+  "priority": "low",
+  "difficulty": "low"
 }

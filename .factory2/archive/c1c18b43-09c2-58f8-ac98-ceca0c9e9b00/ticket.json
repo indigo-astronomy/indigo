@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "ticket_id": "c1c18b43-09c2-58f8-ac98-ceca0c9e9b00",
-  "revision": 1,
+  "revision": 4,
   "title": "Factory test suite fails when Python writes bytecode caches during the run",
   "description": "On Linux arm64 with Python 3.13.5, ./.factory/scripts/test reports 12 failures (context export, process check record-content/CLI and task archive tests) because the helpers' __pycache__ directories appear between the before/after tree or git status snapshots the tests compare. With PYTHONDONTWRITEBYTECODE=1 all 197 tests pass. Pre-existing harness behaviour, not caused by the task diff. Next: make the configured test command or the fixtures ignore bytecode caches (e.g. set PYTHONDONTWRITEBYTECODE or exclude __pycache__ from snapshots).\n\nImported from .factory/findings/active/FND-20261102101805-593a-solver-agent-integration-001.json (category: quality, blocking: no).",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.867082Z",
-  "status": "open",
+  "status": "closed",
   "branch": null,
   "related_ticket_id": null,
   "config_overrides": {},
@@ -22,9 +22,43 @@
       "source": "59ba0ffdf84c43487422320abf74dcbbb4e54bfb63b39ef051d2266480280127",
       "priority": "low",
       "severity": "low"
+    },
+    {
+      "event_id": "4ae956e1-f1a7-4660-a25b-119bc89a3b61",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:25.046178Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "d6c0bd6e-5ef7-461a-8007-2b3b88763f2c",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:25.334895Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
+    },
+    {
+      "event_id": "dce2d97b-4931-4a7b-ae84-f8f6f0d0f345",
+      "event": "ticket/closed",
+      "at": "2026-11-15T09:11:00.296378Z",
+      "actor": "human/owner",
+      "reason": "Obsolete: the ticket concerns ./.factory/scripts/test of the old .factory runtime, which was removed from the repository (commit 5a61a114b); the suite no longer exists here. Closed on the owner's instruction of 2026-11-15.",
+      "resolution": "unresolved"
     }
   ],
-  "closure": null,
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T09:11:00.296120Z",
+    "reason": "Obsolete: the ticket concerns ./.factory/scripts/test of the old .factory runtime, which was removed from the repository (commit 5a61a114b); the suite no longer exists here. Closed on the owner's instruction of 2026-11-15.",
+    "resolution": "unresolved",
+    "mode": "manual",
+    "verification": "not_claimed"
+  },
   "severity": "low",
   "metrics": {
     "duration_ms": 0.0,
@@ -44,7 +78,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "a48ac8e87ece37720f551916982b86ec16c1de65adb14a387349a980d71e7170"
-  }
+    "entries": 4,
+    "sha256": "321ccf0a5cf3732dee5a8f0a8f2a9ff2c754c36fa5a6b65859014910bac57aa2"
+  },
+  "priority": "low",
+  "difficulty": "low"
 }

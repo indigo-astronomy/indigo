@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "de0713ae-9e20-5c6d-965e-7e9f3e974b77",
-  "revision": 1,
+  "revision": 4,
   "title": "MinGW property tool link races the import library build",
   "description": "The executable depends only on its C source while linking libindigo_client.lib produced by the sibling DLL prerequisite of all. An isolated fixture used the unchanged Makefile and a synthetic delayed linker under make -j2: executable link started before the import library existed and make exited 2. Add an explicit dependency and correct directory ordering; test serial, parallel and direct executable targets.\n\nImported from .factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-004.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,10 +22,38 @@
       "source": "10b42c89157cce8d22f06a51a947f34faa64505f67b6af83da2c84c828c10c14",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "150b3202-a8b3-4299-aebb-fd3e15ebb5ed",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:26.308478Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "01c068e3-96a2-4dc7-bc3d-d1cb94d9beed",
+      "event": "ticket/severity_changed",
+      "at": "2026-11-15T08:55:26.449161Z",
+      "actor": "human/owner",
+      "field": "severity",
+      "previousOverride": "medium",
+      "newOverride": "low"
+    },
+    {
+      "event_id": "bb5553c1-a7f9-4b0b-9ad1-6267c2d1d819",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:26.588490Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
-  "severity": "medium",
+  "severity": "low",
   "metrics": {
     "duration_ms": 0.0,
     "duration_basis": "sum_of_completed_attempt_wall_times",
@@ -44,7 +72,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "e432a99628ddb1a4712b87a2f2accbfa1d968959f3598ed32d6372b05cd6b5fc"
-  }
+    "entries": 4,
+    "sha256": "d0acc4c882654afae1b8d5c8153ac1af8d91febc4b68e3443693ca3113cc376f"
+  },
+  "priority": "low",
+  "difficulty": "low"
 }

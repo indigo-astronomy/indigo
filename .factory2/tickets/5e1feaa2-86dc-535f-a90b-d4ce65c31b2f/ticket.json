@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ticket_id": "5e1feaa2-86dc-535f-a90b-d4ce65c31b2f",
-  "revision": 1,
+  "revision": 3,
   "title": "RPi ROI control membership compares iterators from different temporary maps",
   "description": "GetControls returns its ControlInfoMap by value, but ROI code compares find from one temporary with end from another. That is not a valid same-container membership test and can select unsupported ScalerCrop instead of the full-frame fallback. Store one local map and compare its own iterators; test a camera profile lacking the control. No platform runtime executed. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-013.json (category: functional, blocking: no).",
   "type": "bug",
@@ -22,6 +22,25 @@
       "source": "8240f9fd2fedbc69fe9880ec71a0b79386aa8643527be6bb4f858b73b2a3027c",
       "priority": "low",
       "severity": "medium"
+    },
+    {
+      "event_id": "34456a5e-7e01-4f68-9b6f-ebc45c1a49ee",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:16.351952Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "225049a7-520f-410f-8863-f74fb7d86dde",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:16.623983Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
     }
   ],
   "closure": null,
@@ -44,7 +63,9 @@
     }
   },
   "journal": {
-    "entries": 1,
-    "sha256": "ad1a4fad7f5c3a54d2830c7415faec8aac445083732bad5ade79f9fb5b09403b"
-  }
+    "entries": 3,
+    "sha256": "b7d19b989576801244a88a44bb4e26688a3b9f267b4e38249397b2d649259566"
+  },
+  "priority": "medium",
+  "difficulty": "low"
 }
