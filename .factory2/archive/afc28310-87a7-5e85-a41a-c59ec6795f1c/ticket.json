@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "ticket_id": "afc28310-87a7-5e85-a41a-c59ec6795f1c",
-  "revision": 3,
+  "revision": 4,
   "title": "Trailing whitespace of a stored scheduler task text is lost across a restart",
   "description": "The Scheduler Agent saves each stored task as an AGENT_SCHEDULER_ADD_TASK change in its configuration, and the configuration reader trims trailing whitespace of text values. A task whose text ends with a newline (the usual case) is therefore restored without it, so the text a client downloads from AGENT_SCHEDULER_TASK_<n> after a restart differs from the uploaded one by its trailing whitespace. Scheduling is not affected; the header and the body are unchanged. Owner chose on 2026-11-14 to record this only. Options for later: trim trailing whitespace on upload and edit so the text is the same before and after a restart, or document it.\n\nImported from .factory/findings/active/FND-20261114095750-d502-scheduler-eligibility-and-device-tests-001.json (category: functional, blocking: no).",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.907156Z",
-  "status": "open",
+  "status": "closed",
   "branch": null,
   "related_ticket_id": null,
   "config_overrides": {},
@@ -41,9 +41,24 @@
       "actor": "human/owner",
       "previous_difficulty": null,
       "difficulty": "low"
+    },
+    {
+      "event_id": "dc502357-d758-4caf-988e-700132b6db77",
+      "event": "ticket/closed",
+      "at": "2026-11-15T11:36:01.336740Z",
+      "actor": "human/owner",
+      "reason": "Not a bug: trimming trailing whitespace of a stored text is the expected behaviour of the configuration restore, the same as for the scripts stored by the Scripting Agent. Decided by the owner.",
+      "resolution": "unresolved"
     }
   ],
-  "closure": null,
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T11:36:01.336517Z",
+    "reason": "Not a bug: trimming trailing whitespace of a stored text is the expected behaviour of the configuration restore, the same as for the scripts stored by the Scripting Agent. Decided by the owner.",
+    "resolution": "unresolved",
+    "mode": "flow",
+    "verification": "not_claimed"
+  },
   "severity": "low",
   "metrics": {
     "duration_ms": 0.0,
@@ -63,9 +78,19 @@
     }
   },
   "journal": {
-    "entries": 3,
-    "sha256": "f0d19eb6953cbd1ca83288d7d3de75b4a4324680a2a573119f78c570f55760eb"
+    "entries": 4,
+    "sha256": "1a26c3649d3ccf396475c6e101baa0407fbb1c3890cbc23610e6268182ec1e33"
   },
   "priority": "low",
-  "difficulty": "low"
+  "difficulty": "low",
+  "flow": {
+    "profile": null,
+    "base": null,
+    "checks": [],
+    "reviews": [],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": []
+  }
 }
