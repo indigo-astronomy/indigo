@@ -1,0 +1,636 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e7ee0363-b2e8-4966-9255-444ea0f39bfe",
+  "revision": 27,
+  "title": "Web control panel ignores item hint warn_on_set",
+  "description": "Since ticket ba5bbe3e (commit 2ceaef803) the JSON protocol delivers item-level hints in def*Vector messages, and indigo_server/resource/indigo.js keeps them with the item objects (processDefineProperty). The web control panel still shows no confirmation for items carrying warn_on_set: changeProperty in indigo_server/resource/indigo.js (around lines 339-351) honours only the property-level hint warn_on_change, and nothing in indigo.js or components.js reads the item hint warn_on_set. Affected items include AGENT_SCHEDULER_TASK_COMMAND RESET_ALL and DELETE_ALL, SERVER RESTART ('Restart INDIGO Server?'), SERVER INSTALL items, MOUNT_ALIGNMENT_RESET and the Astroasis factory resets. Next: before sending a switch change that sets an item whose hints contain warn_on_set, show the hint text as a confirmation and send the change only when confirmed, consistent with the existing warn_on_change handling. Found during the review of ba5bbe3e on 2026-11-15; not verified in a browser.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T11:50:21.412830Z",
+  "status": "closed",
+  "branch": "ticket/e7ee0363-b2e8-4966-9255-444ea0f39bfe",
+  "related_ticket_id": "ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc",
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "900766d5-7467-498b-a092-d156895621b7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:53:03.151525Z",
+          "last_activity_at": "2026-11-15T11:56:27.389383Z",
+          "ended_at": "2026-11-15T11:56:27.389383Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 204237.858,
+          "tokens": null
+        },
+        {
+          "attempt_id": "6bb5d319-9beb-4ba2-a36c-5ddf5299b6f6",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:58:15.424277Z",
+          "last_activity_at": "2026-11-15T12:00:06.826174Z",
+          "ended_at": "2026-11-15T12:00:06.826174Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 111401.897,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:53:03.151525Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/e7ee0363-b2e8-4966-9255-444ea0f39bfe"
+        },
+        {
+          "at": "2026-11-15T11:56:27.389383Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T11:58:15.424277Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T12:00:06.826174Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 315639.755,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "6e5bd6b5-6ce2-4daa-9d38-46d1f059e133",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T11:56:27.389702Z",
+          "last_activity_at": "2026-11-15T11:58:15.424136Z",
+          "ended_at": "2026-11-15T11:58:15.424136Z",
+          "outcome": {
+            "summary": "The warn_on_set check in changeProperty (indigo_server/resource/indigo.js:353-372) is correct for the hint format every producer emits (warn_on_set:\"text\"; in indigo_server.c, indigo_mount_driver.c, agent_scheduler, astroasis drivers), and changeProperty is the only send path (doSend is called only from enumerateProperties and changeProperty). Verified under node with the extracted function and stub properties built from server-style JSON: confirm->sent, decline->not sent, false values / unknown items / items without hints -> no prompt, text values -> no prompt, multi-item changes prompt per set item and abort on any decline, warn_on_change is asked first. Defect (regression in two places that already confirm on their own, so the user is now asked twice): (1) components.js:3149 indigo-shutdown asks 'Do you really want to shutdown?' and then changeProperty asks the SERVER SHUTDOWN item hint 'Shutdown host computer?' (indigo_server.c:1179). (2) mng.html:80-84 checkState asks 'INDIGO X is available. Do you want to upgrade now?', then changeProperty asks the INSTALL item hint 'Install INDIGO X and reboot host computer?' (indigo_server.c:971); if the user declines the second prompt nothing is sent but mng.html:84 still shows 'Wait while INDIGO is updated and INDIGO Sky rebooted', which is false. Correction: drop the now-redundant page-level confirm in indigo-shutdown, and in mng.html avoid the double prompt or show the alert only when the change was actually sent (e.g. changeProperty returning whether it sent). Non-blocking, consistent with the existing warn_on_change code: hints written with a space after ';' or after ':' (the PROTOCOLS.md example and the test_protocol_json fixtures use 'warn_on_set: \"...\"') are either not detected or shown with a stray leading quote; no current producer uses that form. Coverage limit: no JS test infrastructure exists; browser behaviour not verified by me either; the node run is not committed.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 108034.434,
+          "tokens": null
+        },
+        {
+          "attempt_id": "d5675199-5c48-4db8-8007-055589e05649",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:00:06.826427Z",
+          "last_activity_at": "2026-11-15T12:01:04.569192Z",
+          "ended_at": "2026-11-15T12:01:04.569192Z",
+          "outcome": {
+            "summary": "Round 2, tree 30c13a6b (fa0ff2fda). The double prompts from round 1 are fixed. components.js:3148-3152: indigo-shutdown has no confirm of its own now, and changeProperty asks the SHUTDOWN item hint 'Shutdown host computer?' (indigo_server.c:1179). mng.html:80-85: the page's own confirm is gone, changeProperty asks the INSTALL item hint 'Install INDIGO <version> and reboot host computer?' (indigo_server.c:971 sets it on every item), and the alert appears only when changeProperty returns true. indigo.js:330-386: changeProperty returns false on a missing device or property and on any declined warn_on_change/warn_on_set prompt, and true after doSend. Return value: mng.html:83 is the only caller that uses it. Every other call in the .html pages, components.js and indigo.js is a plain statement; none is in an inline handler, return expression or submit handler, and Vue's @click.prevent=shutdown() ignores the result. checkState runs once per page load (indigo.js:261 setTimeout, no other caller), so the install prompt still appears at most once per load, as before. Verified under node with the extracted function and server-style JSON: INSTALL confirmed -> ret true, sent; declined -> ret false, nothing sent; missing device/property -> false; round-1 cases unchanged. flow status: whitespace and unit passed on the current tree 30c13a6b. Non-blocking: the install and shutdown confirmations now depend only on the server-supplied item hints (always set server-side and always carried in JSON); hints written with spaces after ';' or ':' are not handled, the same limitation as warn_on_change. Coverage limit: no JS test infrastructure; browser behaviour not verified; the node runs are not committed.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 57742.765,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:56:27.389702Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T11:58:15.424136Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "The warn_on_set check in changeProperty (indigo_server/resource/indigo.js:353-372) is correct for the hint format every producer emits (warn_on_set:\"text\"; in indigo_server.c, indigo_mount_driver.c, agent_scheduler, astroasis drivers), and changeProperty is the only send path (doSend is called only from enumerateProperties and changeProperty). Verified under node with the extracted function and stub properties built from server-style JSON: confirm->sent, decline->not sent, false values / unknown items / items without hints -> no prompt, text values -> no prompt, multi-item changes prompt per set item and abort on any decline, warn_on_change is asked first. Defect (regression in two places that already confirm on their own, so the user is now asked twice): (1) components.js:3149 indigo-shutdown asks 'Do you really want to shutdown?' and then changeProperty asks the SERVER SHUTDOWN item hint 'Shutdown host computer?' (indigo_server.c:1179). (2) mng.html:80-84 checkState asks 'INDIGO X is available. Do you want to upgrade now?', then changeProperty asks the INSTALL item hint 'Install INDIGO X and reboot host computer?' (indigo_server.c:971); if the user declines the second prompt nothing is sent but mng.html:84 still shows 'Wait while INDIGO is updated and INDIGO Sky rebooted', which is false. Correction: drop the now-redundant page-level confirm in indigo-shutdown, and in mng.html avoid the double prompt or show the alert only when the change was actually sent (e.g. changeProperty returning whether it sent). Non-blocking, consistent with the existing warn_on_change code: hints written with a space after ';' or after ':' (the PROTOCOLS.md example and the test_protocol_json fixtures use 'warn_on_set: \"...\"') are either not detected or shown with a stray leading quote; no current producer uses that form. Coverage limit: no JS test infrastructure exists; browser behaviour not verified by me either; the node run is not committed."
+        },
+        {
+          "at": "2026-11-15T12:00:06.826427Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:01:04.569192Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2, tree 30c13a6b (fa0ff2fda). The double prompts from round 1 are fixed. components.js:3148-3152: indigo-shutdown has no confirm of its own now, and changeProperty asks the SHUTDOWN item hint 'Shutdown host computer?' (indigo_server.c:1179). mng.html:80-85: the page's own confirm is gone, changeProperty asks the INSTALL item hint 'Install INDIGO <version> and reboot host computer?' (indigo_server.c:971 sets it on every item), and the alert appears only when changeProperty returns true. indigo.js:330-386: changeProperty returns false on a missing device or property and on any declined warn_on_change/warn_on_set prompt, and true after doSend. Return value: mng.html:83 is the only caller that uses it. Every other call in the .html pages, components.js and indigo.js is a plain statement; none is in an inline handler, return expression or submit handler, and Vue's @click.prevent=shutdown() ignores the result. checkState runs once per page load (indigo.js:261 setTimeout, no other caller), so the install prompt still appears at most once per load, as before. Verified under node with the extracted function and server-style JSON: INSTALL confirmed -> ret true, sent; declined -> ret false, nothing sent; missing device/property -> false; round-1 cases unchanged. flow status: whitespace and unit passed on the current tree 30c13a6b. Non-blocking: the install and shutdown confirmations now depend only on the server-supplied item hints (always set server-side and always carried in JSON); hints written with spaces after ';' or ':' are not handled, the same limitation as warn_on_change. Coverage limit: no JS test infrastructure; browser behaviour not verified; the node runs are not committed."
+        }
+      ],
+      "result": {
+        "summary": "Round 2, tree 30c13a6b (fa0ff2fda). The double prompts from round 1 are fixed. components.js:3148-3152: indigo-shutdown has no confirm of its own now, and changeProperty asks the SHUTDOWN item hint 'Shutdown host computer?' (indigo_server.c:1179). mng.html:80-85: the page's own confirm is gone, changeProperty asks the INSTALL item hint 'Install INDIGO <version> and reboot host computer?' (indigo_server.c:971 sets it on every item), and the alert appears only when changeProperty returns true. indigo.js:330-386: changeProperty returns false on a missing device or property and on any declined warn_on_change/warn_on_set prompt, and true after doSend. Return value: mng.html:83 is the only caller that uses it. Every other call in the .html pages, components.js and indigo.js is a plain statement; none is in an inline handler, return expression or submit handler, and Vue's @click.prevent=shutdown() ignores the result. checkState runs once per page load (indigo.js:261 setTimeout, no other caller), so the install prompt still appears at most once per load, as before. Verified under node with the extracted function and server-style JSON: INSTALL confirmed -> ret true, sent; declined -> ret false, nothing sent; missing device/property -> false; round-1 cases unchanged. flow status: whitespace and unit passed on the current tree 30c13a6b. Non-blocking: the install and shutdown confirmations now depend only on the server-supplied item hints (always set server-side and always carried in JSON); hints written with spaces after ';' or ':' are not handled, the same limitation as warn_on_change. Coverage limit: no JS test infrastructure; browser behaviour not verified; the node runs are not committed.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 165777.199,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "8abac6c1-d074-4607-9b4b-1777b2945d99",
+      "event": "ticket/created",
+      "at": "2026-11-15T11:50:21.413450Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "4e3fe39f-378f-4326-b81f-6837cc3c1af4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T11:52:57.141554Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "21880216-2486-47e3-8b2a-880cc83b6968",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:03.151882Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Implementation started on branch ticket/e7ee0363-b2e8-4966-9255-444ea0f39bfe"
+    },
+    {
+      "event_id": "5cfb2c85-674a-4013-b9e3-99b75ad66079",
+      "event": "ticket/started",
+      "at": "2026-11-15T11:53:03.153405Z",
+      "actor": "human/owner",
+      "branch": "ticket/e7ee0363-b2e8-4966-9255-444ea0f39bfe",
+      "base": "master"
+    },
+    {
+      "event_id": "ac920329-6211-4221-963e-e36907d763eb",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:23.903553Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Implementer launched",
+      "attempt_id": "900766d5-7467-498b-a092-d156895621b7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "bfcbd2bf-ed07-4443-8e40-b68fe2542247",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:43.726482Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Verifying changeProperty with node"
+    },
+    {
+      "event_id": "03315cc1-4b2b-44b9-a49c-bf4e032cc733",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:53:48.430532Z",
+      "actor": "human/owner",
+      "text": "Reproduction: grep of indigo_server/resource shows no reader of item hint warn_on_set; changeProperty checked only property-level warn_on_change, so SERVER RESTART etc. were sent unconfirmed. After fix: changeProperty (the single send point for all pages/components) confirms for each item set to true carrying warn_on_set. Verified by extracting the function and running under node with a stub property (confirmed -> sent, declined -> not sent, false/unhinted -> no prompt). Browser behaviour not verified; no JS test infrastructure exists in indigo_test.",
+      "tokens": null
+    },
+    {
+      "event_id": "dc65ba2f-d1e3-490a-a3ec-935e21f473ea",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:48.778749Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f4489c46-2a20-4f9d-bba9-1258701f5099",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:48.824806Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e1a69366-69e2-458a-9b5d-fb79eefce23e",
+      "event": "task/progress",
+      "at": "2026-11-15T11:53:48.826847Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "afe1005a-d0fc-4b19-900d-91fca9a95697",
+      "event": "task/progress",
+      "at": "2026-11-15T11:56:14.717518Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "8ff61146-4ffd-4ded-8e2a-07d6c35044d8",
+      "event": "check/passed",
+      "at": "2026-11-15T11:56:14.720827Z",
+      "actor": "human/owner",
+      "commit": "a2c26dd5e9bb91bc048f1f8710a1d25db8fc710c",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "7a829b99-1cad-42c5-9689-478e74352558",
+      "event": "task/progress",
+      "at": "2026-11-15T11:56:27.389798Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e2b0c9f1-c4cb-4c0f-a110-d95eda9247b7",
+      "event": "review/started",
+      "at": "2026-11-15T11:56:27.391583Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "478df86e-647d-48b0-9966-9d293324f7ad",
+      "event": "task/progress",
+      "at": "2026-11-15T11:56:44.159058Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Reviewer launched",
+      "attempt_id": "6e5bd6b5-6ce2-4daa-9d38-46d1f059e133",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4de69276-816a-4a87-9ae0-460a679a69c1",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:00.097809Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Exercising changeProperty under node with stub properties"
+    },
+    {
+      "event_id": "8bd17659-74f7-4c19-bbf0-7a5cfcd1fd38",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:15.424271Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "9d9c8b9c-727a-45aa-beb1-2aa1b58b3d5e",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:15.424299Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "3b6a0122-33a1-478d-aa8c-f91dbb90d146",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T11:58:15.425939Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "a2c26dd5e9bb91bc048f1f8710a1d25db8fc710c"
+    },
+    {
+      "event_id": "ad073688-8e3a-463c-8cef-54a7c0f4dfaf",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:58:58.466888Z",
+      "actor": "human/owner",
+      "text": "Review fix: removed redundant confirm in indigo-shutdown (components.js) and the pre-confirm in mng.html install check; changeProperty now returns true only when it sent, mng.html shows the 'Wait while INDIGO is updated' alert only then. Install prompt is now only the item hint (loses the 'is available' wording). No other confirm()/alert() precedes a hinted change. node check: returns true/false/false, sent=1. Not verified in browser.",
+      "tokens": null
+    },
+    {
+      "event_id": "a1bd8a81-50d7-4ec4-8749-59ed7ca49cb8",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:58.751224Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "961ee215-39e3-4e6c-97a7-d7fd950a20ce",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:58.775810Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "06ef2918-afa8-402a-b235-45bc7f01e698",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:58.778444Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a64d81aa-9e32-423c-b669-af91610efa53",
+      "event": "task/progress",
+      "at": "2026-11-15T11:59:55.798197Z",
+      "actor": "human/owner",
+      "task_id": "2b1176f1-e231-4b27-8e30-83afe3611de1",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "91be4f0a-80bb-4350-a161-b107b3de4e60",
+      "event": "check/passed",
+      "at": "2026-11-15T11:59:55.800650Z",
+      "actor": "human/owner",
+      "commit": "fa0ff2fda2ae6af6c703f43c3220ffbdfe76da61",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "559af923-303d-4129-88a6-fe321e103bec",
+      "event": "task/progress",
+      "at": "2026-11-15T12:00:06.826553Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Review started"
+    },
+    {
+      "event_id": "051ca214-2973-402a-8786-56e3dc6dd602",
+      "event": "review/started",
+      "at": "2026-11-15T12:00:06.828233Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "040d623d-05c3-43a1-9e93-d25d640ba03f",
+      "event": "task/progress",
+      "at": "2026-11-15T12:00:19.098698Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Second review round: rechecking diff after double-prompt fix"
+    },
+    {
+      "event_id": "41e47c70-6a55-43e3-a13f-c1cdd557ada2",
+      "event": "task/progress",
+      "at": "2026-11-15T12:00:53.891083Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Exercising changeProperty return value under node with stub properties"
+    },
+    {
+      "event_id": "36c2b6b0-4926-44d9-895e-724944276cca",
+      "event": "task/progress",
+      "at": "2026-11-15T12:01:04.569340Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0632f022-08e0-4704-970a-3efd9606e50f",
+      "event": "review/passed",
+      "at": "2026-11-15T12:01:04.571064Z",
+      "actor": "human/owner",
+      "task_id": "d87c8de6-3bb9-4b81-823f-087c32c8adfd",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "fa0ff2fda2ae6af6c703f43c3220ffbdfe76da61"
+    },
+    {
+      "event_id": "2ab6c4db-3975-478d-926e-5e6ed3642697",
+      "event": "ticket/closed",
+      "at": "2026-11-15T12:03:10.550533Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T12:03:10.550502Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "0525a12e17e71db273f7fec3969a2dd0883566f6"
+  },
+  "priority": "medium",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a2c26dd5e9bb91bc048f1f8710a1d25db8fc710c",
+        "tree": "1bfea810faa259b7c7bb9ca3bbbd32a0d2deb1c2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:53:48.824024Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e7ee0363-b2e8-4966-9255-444ea0f39bfe/1bfea810faa2-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "a2c26dd5e9bb91bc048f1f8710a1d25db8fc710c",
+        "tree": "1bfea810faa259b7c7bb9ca3bbbd32a0d2deb1c2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:56:14.715410Z",
+        "duration_s": 145.9,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e7ee0363-b2e8-4966-9255-444ea0f39bfe/1bfea810faa2-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "fa0ff2fda2ae6af6c703f43c3220ffbdfe76da61",
+        "tree": "30c13a6ba99a873076e5b5541dd9a66c98bd1b31",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:58:58.774801Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e7ee0363-b2e8-4966-9255-444ea0f39bfe/30c13a6ba99a-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "fa0ff2fda2ae6af6c703f43c3220ffbdfe76da61",
+        "tree": "30c13a6ba99a873076e5b5541dd9a66c98bd1b31",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:59:55.797065Z",
+        "duration_s": 57.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/e7ee0363-b2e8-4966-9255-444ea0f39bfe/30c13a6ba99a-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "The warn_on_set check in changeProperty (indigo_server/resource/indigo.js:353-372) is correct for the hint format every producer emits (warn_on_set:\"text\"; in indigo_server.c, indigo_mount_driver.c, agent_scheduler, astroasis drivers), and changeProperty is the only send path (doSend is called only from enumerateProperties and changeProperty). Verified under node with the extracted function and stub properties built from server-style JSON: confirm->sent, decline->not sent, false values / unknown items / items without hints -> no prompt, text values -> no prompt, multi-item changes prompt per set item and abort on any decline, warn_on_change is asked first. Defect (regression in two places that already confirm on their own, so the user is now asked twice): (1) components.js:3149 indigo-shutdown asks 'Do you really want to shutdown?' and then changeProperty asks the SERVER SHUTDOWN item hint 'Shutdown host computer?' (indigo_server.c:1179). (2) mng.html:80-84 checkState asks 'INDIGO X is available. Do you want to upgrade now?', then changeProperty asks the INSTALL item hint 'Install INDIGO X and reboot host computer?' (indigo_server.c:971); if the user declines the second prompt nothing is sent but mng.html:84 still shows 'Wait while INDIGO is updated and INDIGO Sky rebooted', which is false. Correction: drop the now-redundant page-level confirm in indigo-shutdown, and in mng.html avoid the double prompt or show the alert only when the change was actually sent (e.g. changeProperty returning whether it sent). Non-blocking, consistent with the existing warn_on_change code: hints written with a space after ';' or after ':' (the PROTOCOLS.md example and the test_protocol_json fixtures use 'warn_on_set: \"...\"') are either not detected or shown with a stray leading quote; no current producer uses that form. Coverage limit: no JS test infrastructure exists; browser behaviour not verified by me either; the node run is not committed.",
+        "reviewer": "human/owner",
+        "commit": "a2c26dd5e9bb91bc048f1f8710a1d25db8fc710c",
+        "tree": "1bfea810faa259b7c7bb9ca3bbbd32a0d2deb1c2",
+        "at": "2026-11-15T11:58:15.423865Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2, tree 30c13a6b (fa0ff2fda). The double prompts from round 1 are fixed. components.js:3148-3152: indigo-shutdown has no confirm of its own now, and changeProperty asks the SHUTDOWN item hint 'Shutdown host computer?' (indigo_server.c:1179). mng.html:80-85: the page's own confirm is gone, changeProperty asks the INSTALL item hint 'Install INDIGO <version> and reboot host computer?' (indigo_server.c:971 sets it on every item), and the alert appears only when changeProperty returns true. indigo.js:330-386: changeProperty returns false on a missing device or property and on any declined warn_on_change/warn_on_set prompt, and true after doSend. Return value: mng.html:83 is the only caller that uses it. Every other call in the .html pages, components.js and indigo.js is a plain statement; none is in an inline handler, return expression or submit handler, and Vue's @click.prevent=shutdown() ignores the result. checkState runs once per page load (indigo.js:261 setTimeout, no other caller), so the install prompt still appears at most once per load, as before. Verified under node with the extracted function and server-style JSON: INSTALL confirmed -> ret true, sent; declined -> ret false, nothing sent; missing device/property -> false; round-1 cases unchanged. flow status: whitespace and unit passed on the current tree 30c13a6b. Non-blocking: the install and shutdown confirmations now depend only on the server-supplied item hints (always set server-side and always carried in JSON); hints written with spaces after ';' or ':' are not handled, the same limitation as warn_on_change. Coverage limit: no JS test infrastructure; browser behaviour not verified; the node runs are not committed.",
+        "reviewer": "human/owner",
+        "commit": "fa0ff2fda2ae6af6c703f43c3220ffbdfe76da61",
+        "tree": "30c13a6ba99a873076e5b5541dd9a66c98bd1b31",
+        "at": "2026-11-15T12:01:04.568936Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T11:53:48.428576Z",
+        "actor": "human/owner",
+        "text": "Reproduction: grep of indigo_server/resource shows no reader of item hint warn_on_set; changeProperty checked only property-level warn_on_change, so SERVER RESTART etc. were sent unconfirmed. After fix: changeProperty (the single send point for all pages/components) confirms for each item set to true carrying warn_on_set. Verified by extracting the function and running under node with a stub property (confirmed -> sent, declined -> not sent, false/unhinted -> no prompt). Browser behaviour not verified; no JS test infrastructure exists in indigo_test.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T11:58:58.465512Z",
+        "actor": "human/owner",
+        "text": "Review fix: removed redundant confirm in indigo-shutdown (components.js) and the pre-confirm in mng.html install check; changeProperty now returns true only when it sent, mng.html shows the 'Wait while INDIGO is updated' alert only then. Install prompt is now only the item hint (loses the 'is available' wording). No other confirm()/alert() precedes a hinted change. node check: returns true/false/false, sent=1. Not verified in browser.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "0525a12e17e71db273f7fec3969a2dd0883566f6",
+      "tree": "30c13a6ba99a873076e5b5541dd9a66c98bd1b31",
+      "base": "master",
+      "at": "2026-11-15T12:03:10.462053Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-15T11:50:21.412830Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T11:52:57.141219Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 481416.954,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 40,
+    "sha256": "f18e98a1dcfbde358290c258cc32aed8a42dbb505e557bd33b8d12b98e2f3fe5"
+  }
+}
