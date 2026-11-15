@@ -997,18 +997,35 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 	return INDIGO_OK;
 }
 
+// true if name is "<device> @ host" for the remote-server adapter named "@ host"
+static bool has_host_suffix(const char *name, const char *adapter_name) {
+	size_t name_length = strlen(name), adapter_length = strlen(adapter_name);
+	return name_length > adapter_length + 1 && name[name_length - adapter_length - 1] == ' ' && !strcmp(name + name_length - adapter_length, adapter_name);
+}
+
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
 	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
 	INDIGO_TRACE(indigo_trace_property("Change", client, property, false, true));
+	// without host suffixes a request for a local device must not reach remote servers, it may carry a local token; the session device
+	// is exempt, its name "Server" is also the name of the server device of every remote server, which must stay reachable
+	bool local = false;
+	if (!indigo_use_host_suffix && *property->device) {
+		for (int i = 0; i < MAX_DEVICES && !local; i++) {
+			local = devices[i] != NULL && *devices[i]->name != '@' && !strcmp(property->device, devices[i]->name);
+#if !defined(INDIGO_CLIENT)
+			local = local && devices[i] != &indigo_session_device;
+#endif
+		}
+	}
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->change_property != NULL) {
 			bool route = *property->device == 0;
 			route = route || !strcmp(property->device, device->name);
-			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
-			route = route || (!indigo_use_host_suffix && *device->name == '@');
+			route = route || (indigo_use_host_suffix && *device->name == '@' && has_host_suffix(property->device, device->name));
+			route = route || (!indigo_use_host_suffix && *device->name == '@' && !local);
 			if (route) {
 				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
 					indigo_send_message(device, NULL, "Device '%s' is protected or locked for exclusive access", device->name);
