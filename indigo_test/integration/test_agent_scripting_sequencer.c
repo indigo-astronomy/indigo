@@ -1158,6 +1158,68 @@ static void meridian_flip_failure_during_endless_capture_recovers(void) {
 	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
 }
 
+static bool wait_mount_at_transit(double timeout) {
+	for (double deadline = indigo_monotonic_time() + timeout; indigo_monotonic_time() < deadline; indigo_usleep(10000)) {
+		indigo_property *property = snapshot(MOUNT, "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY");
+		if (property != NULL) {
+			bool at_transit = false;
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, "TIME_TO_TRANSIT") && fabs(property->items[i].number.value) < 0.2) {
+					at_transit = true;
+				}
+			}
+			indigo_release_property(property);
+			if (at_transit) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+// The Imager Agent itself is paused by the flip: the mount simulator is slewed to just before its transit, so the capture batch pauses before its exposure
+// and the flip is started by the pause the Imager Agent publishes. The target is the JNow RA minus the time to transit, but the simulator takes it as J2000,
+// so the mount lands 0.02-0.06 h early; the time to transit has to stay positive, otherwise the Mount Agent reports a flip and the flipper starts a real slew
+static void meridian_flip_failure_aborts_imager_paused_after_transit(void) {
+	char steps[1024];
+	ASSERT_TRUE(run_js("var s=new Sequence('track mount'); s.select_mount('Mount Simulator'); s.unpark(); s.enable_tracking(); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 15));
+	ASSERT_TRUE(check_js("indigo_devices['Mount Agent'].AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY != null"));
+	ASSERT_TRUE(run_js("var d=indigo_devices['Mount Agent'].AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY.items; var s=new Sequence('slew to transit'); s.select_mount('Mount Simulator'); s.slew((d.RA_JNOW-d.TIME_TO_TRANSIT+24)%24,45); s.start();"));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 60));
+	ASSERT_TRUE(wait_mount_at_transit(5));
+	// the Imager Agent learns the time to transit from its related Mount Agent
+	ASSERT_TRUE(run_js("indigo_change_switch_property('Imager Agent','FILTER_RELATED_AGENT_LIST',{'Mount Agent':true});"));
+	ASSERT_TRUE(wait_switch_item(IMAGER, "FILTER_RELATED_AGENT_LIST", "Mount Agent", true));
+	snprintf(steps, sizeof(steps), "s.recover_on_failure(); s.select_imager_camera('CCD Imager Simulator'); s.select_image_format('RAW'); s.set_directory('%s'); s.enable_meridian_flip(true,-0.5); s.capture_batch(1,30); s.evaluate(\"recoveryTrace+='A'\"); s.recovery_point(); s.evaluate(\"recoveryTrace+='1'\");", test_root);
+	char script[2048];
+	snprintf(script, sizeof(script), "recoveryTrace=''; var s=new Sequence('flip failure'); %s s.start();", steps);
+	ASSERT_TRUE(run_js(script));
+	ASSERT_TRUE(wait_sequence(INDIGO_BUSY_STATE, 2));
+	// the imager pauses itself and the sequencer reacts to the pause it published, no event is injected
+	ASSERT_TRUE(wait_message("Batch paused, transit", 10));
+	ASSERT_TRUE(wait_property_state(IMAGER, "AGENT_PAUSE_PROCESS", INDIGO_BUSY_STATE, 5));
+	ASSERT_TRUE(wait_switch_item(IMAGER, "AGENT_PAUSE_PROCESS", "PAUSE_AFTER_TRANSIT", true));
+	ASSERT_TRUE(wait_switch_item(SCRIPTING, "FLIPPER_STATE", "WAITING_FOR_TRANSIT", true));
+	ASSERT_TRUE(wait_message("Meridian flip waits for transit", 5));
+	ASSERT_TRUE(wait_property_state(IMAGER, "AGENT_START_PROCESS", INDIGO_BUSY_STATE, 5));
+	unsigned abort_before = revision(IMAGER, "AGENT_ABORT_PROCESS");
+	atomic_store(&solver_process_fails, true);
+	ASSERT_TRUE(run_js("indigo_flipper.waiting_for_transit=false; indigo_flipper.waiting_for_slew=true; indigo_flipper.on_update({device:indigo_flipper.devices[MOUNT_AGENT],name:'AGENT_START_PROCESS',state:'Ok',items:{}});"));
+	// the flip failure aborts the paused capture, which releases the pause, and the failed step recovers
+	ASSERT_TRUE(wait_message("Meridian flip failed (due to sync & center failure)", 5));
+	ASSERT_TRUE(wait_state(IMAGER, "AGENT_ABORT_PROCESS", abort_before, INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 20));
+	ASSERT_TRUE(check_js("recoveryTrace==='1' && indigo_sequencer.flip_failure===null && indigo_event_handlers.indigo_flipper===undefined"));
+	ASSERT_TRUE(wait_message("Recovered from failure at recovery point #1", 5));
+	ASSERT_TRUE(wait_property_state(IMAGER, "AGENT_START_PROCESS", INDIGO_ALERT_STATE, 5));
+	indigo_property *property = snapshot(SCRIPTING, "FLIPPER_STATE");
+	ASSERT_TRUE(property != NULL);
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, property->state);
+	indigo_release_property(property);
+	ASSERT_FALSE(has_message("Meridian flip finished"));
+}
+
 static void meridian_flip_failure_continues(void) {
 	ASSERT_TRUE(fail_flip_during_step("s.continue_on_failure(); s.enable_meridian_flip(true,0); s.wait(10); s.evaluate(\"recoveryTrace+='A'\");", NULL));
 	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 5));
@@ -1359,6 +1421,7 @@ static const indigo_test_case tests[] = {
 	{ "meridian flip failure recovers", meridian_flip_failure_recovers },
 	{ "meridian flip failure during capture recovers", meridian_flip_failure_during_capture_recovers },
 	{ "meridian flip failure during endless capture recovers", meridian_flip_failure_during_endless_capture_recovers },
+	{ "meridian flip failure aborts imager paused after transit", meridian_flip_failure_aborts_imager_paused_after_transit },
 	{ "meridian flip failure continues", meridian_flip_failure_continues },
 	{ "meridian flip failure aborts", meridian_flip_failure_aborts },
 	{ "meridian flip failure keeps finished state", meridian_flip_failure_keeps_finished_state },
