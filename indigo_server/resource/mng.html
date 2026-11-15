@@ -77,11 +77,12 @@
 				var install = INDIGO.devices["Server"]["INSTALL"];
 				if (install != null) {
 					var last = install.items.slice(-1)[0];
-					if (!last.value && confirm("INDIGO " +last.name+ " is available. Do you want to upgrade now?")) {
+					if (!last.value) {
 						var values = {};
 						values[last.name] = true;
-						changeProperty("Server", "INSTALL", values);
-						alert("Wait while INDIGO is updated and INDIGO Sky rebooted");
+						if (changeProperty("Server", "INSTALL", values)) {
+							alert("Wait while INDIGO is updated and INDIGO Sky rebooted");
+						}
 					}
 				}
 			}

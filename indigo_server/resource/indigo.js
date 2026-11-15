@@ -330,11 +330,11 @@ function enumerateProperties() {
 function changeProperty(deviceName, propertyName, values) {
 	var dev = INDIGO.devices[deviceName];
 	if (dev == null) {
-		return;
+		return false;
 	}
 	var prop = dev[propertyName];
 	if (prop == null) {
-		return;
+		return false;
 	}
 	var hints = prop.hints;
 	if (hints != null) {
@@ -345,7 +345,27 @@ function changeProperty(deviceName, propertyName, values) {
 				if (confirm(hint.substring(16, hint.length - 1))) {
 					break;
 				} else {
-					return;
+					return false;
+				}
+			}
+		}
+	}
+	for (var name in values) {
+		if (values[name] !== true) {
+			continue;
+		}
+		var item = prop.item(name);
+		var itemHints = item != null ? item.hints : null;
+		if (itemHints != null) {
+			itemHints = itemHints.split(";")
+			for (var i in itemHints) {
+				var hint = itemHints[i];
+				if (hint.startsWith("warn_on_set:")) {
+					if (confirm(hint.substring(13, hint.length - 1))) {
+						break;
+					} else {
+						return false;
+					}
 				}
 			}
 		}
@@ -362,6 +382,7 @@ function changeProperty(deviceName, propertyName, values) {
 	else if (typeof value == "boolean")
 		message = { "newSwitchVector": property };
 	doSend(JSON.stringify(message));
+	return true;
 }
 
 function doSend(message) {

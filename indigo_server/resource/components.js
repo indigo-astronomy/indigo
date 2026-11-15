@@ -3146,11 +3146,9 @@ app.component('indigo-shutdown', {
 	},
 	methods: {
 		shutdown: function() {
-			if (confirm("Do you really want to shutdown?")) {
-				var values = {};
-				values["SHUTDOWN"] = true;
-				changeProperty(this.property.device, this.property.name, values);
-			}
+			var values = {};
+			values["SHUTDOWN"] = true;
+			changeProperty(this.property.device, this.property.name, values);
 		}
 	},	
 	template: `
