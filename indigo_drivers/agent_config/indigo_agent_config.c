@@ -24,7 +24,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0300001F
+#define DRIVER_VERSION 0x03000020
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -348,6 +348,7 @@ static void process_configuration_property(indigo_device *device) {
 				pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 				bool has_server = *copy->device != 0;
 				if (has_server) {
+					copy->access_token = indigo_get_device_or_master_token(copy->device);
 					indigo_change_property(agent_client, copy); // synchronous local bus
 				}
 				bool restored = !copy->count;
