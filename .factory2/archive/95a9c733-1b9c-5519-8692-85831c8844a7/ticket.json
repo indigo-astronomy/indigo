@@ -1,0 +1,446 @@
+{
+  "schema_version": 1,
+  "ticket_id": "95a9c733-1b9c-5519-8692-85831c8844a7",
+  "revision": 21,
+  "title": "Forked integration case runners never run the leak check",
+  "description": "parallel_case_runner.h runs every case in a forked child that ends with _exit(), so LeakSanitizer never runs and ASAN_OPTIONS=detect_leaks=1 sanitizer runs of the scheduler and other suites report no leaks whatever happens. With an explicit __lsan_do_recoverable_leak_check() after each scheduler case, the only remaining report is the framework escape buffer, FND-20261113004147-cf2e-indigo-xml-escape-buffer-finding-001. Next: after that is fixed, run the leak check in the case runner child before _exit() where LeakSanitizer is available.\n\nImported from .factory/findings/active/FND-20261113001457-32cc-scheduler-shutdown-command-leak-001.json (category: quality, blocking: no).",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.902723Z",
+  "status": "closed",
+  "branch": "ticket/95a9c733-1b9c-5519-8692-85831c8844a7",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "53fbfdb4-bb43-4da1-aea4-fd9dc9eae41a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T10:16:41.742691Z",
+          "last_activity_at": "2026-11-15T10:29:07.474393Z",
+          "ended_at": "2026-11-15T10:29:07.474393Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 745731.702,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T10:16:41.742691Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/95a9c733-1b9c-5519-8692-85831c8844a7"
+        },
+        {
+          "at": "2026-11-15T10:29:07.474393Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 745731.702,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "e627bf6c-8355-4dcf-aba2-497aeaf505b8",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "76b8a24e-1b3b-4f13-b189-4185d53a8070",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T10:29:07.474683Z",
+          "last_activity_at": "2026-11-15T10:35:26.092757Z",
+          "ended_at": "2026-11-15T10:35:26.092757Z",
+          "outcome": {
+            "summary": "Pass. No concrete defect. Verified: (1) without sanitizer flags the preprocessed header differs from master only by 'int result = runner->child(...); _exit(result);'; (2) Apple clang 21 -fsanitize=address sets __has_feature(address_sanitizer) but not __SANITIZE_ADDRESS__; UBSan/TSan builds define neither, so they are unaffected; (3) the macOS ASan dylib (x86_64 and arm64 slices) exports ___lsan_do_recoverable_leak_check, a probe with a deliberate leak returns 0 on arm64 and on x86_64 under Rosetta, and detect_leaks=1 aborts with 'not supported on this platform' on both, so the AGENTS.md 'Apple Clang has no leak detector' holds for macOS; the shipped lsan_interface.h documents a 0 return when detection is disabled; (4) stub runner with -D__SANITIZE_ADDRESS__ and a check returning 1: the passing case prints 'Stub: leaks detected after passing' in its captured output followed by FAIL, the failing case is not checked; (5) make test-agent-scheduler 71/71; test_agent_scheduler_asan filtered case commands_queued_at_shutdown_are_released passes. False-positive risk under real LSan is low: all four suite parents are single-threaded at fork (no indigo_start before run_parallel_cases), so no allocations sit only on threads that are missing after fork; the scheduler child runs full cleanup() before returning; the archived ticket f91ea306 records a real LSan per-case run of the forked scheduler suite whose only report was the TLS escape buffer fixed in 48e10c044. Exposure is limited: the nexdome3 sanitize target forces detect_leaks=0, alpaca has no ASan build, only a manual Linux run of test_agent_scheduler_asan (detect_leaks defaults to 1 there) changes. Non-blocking doc nit: the AGENTS.md bullet implies detect_leaks=1 must be set, but on Linux it is the ASan default and the existing *-sanitize targets set detect_leaks=0, so they do not run the check. Out of scope: in nexdome3 --known-defects mode a leak would turn an UNEXPECTED PASS into EXPECTED FAIL (no make target combines ",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 378618.074,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T10:29:07.474683Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T10:35:26.092757Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Pass. No concrete defect. Verified: (1) without sanitizer flags the preprocessed header differs from master only by 'int result = runner->child(...); _exit(result);'; (2) Apple clang 21 -fsanitize=address sets __has_feature(address_sanitizer) but not __SANITIZE_ADDRESS__; UBSan/TSan builds define neither, so they are unaffected; (3) the macOS ASan dylib (x86_64 and arm64 slices) exports ___lsan_do_recoverable_leak_check, a probe with a deliberate leak returns 0 on arm64 and on x86_64 under Rosetta, and detect_leaks=1 aborts with 'not supported on this platform' on both, so the AGENTS.md 'Apple Clang has no leak detector' holds for macOS; the shipped lsan_interface.h documents a 0 return when detection is disabled; (4) stub runner with -D__SANITIZE_ADDRESS__ and a check returning 1: the passing case prints 'Stub: leaks detected after passing' in its captured output followed by FAIL, the failing case is not checked; (5) make test-agent-scheduler 71/71; test_agent_scheduler_asan filtered case commands_queued_at_shutdown_are_released passes. False-positive risk under real LSan is low: all four suite parents are single-threaded at fork (no indigo_start before run_parallel_cases), so no allocations sit only on threads that are missing after fork; the scheduler child runs full cleanup() before returning; the archived ticket f91ea306 records a real LSan per-case run of the forked scheduler suite whose only report was the TLS escape buffer fixed in 48e10c044. Exposure is limited: the nexdome3 sanitize target forces detect_leaks=0, alpaca has no ASan build, only a manual Linux run of test_agent_scheduler_asan (detect_leaks defaults to 1 there) changes. Non-blocking doc nit: the AGENTS.md bullet implies detect_leaks=1 must be set, but on Linux it is the ASan default and the existing *-sanitize targets set detect_leaks=0, so they do not run the check. Out of scope: in nexdome3 --known-defects mode a leak would turn an UNEXPECTED PASS into EXPECTED FAIL (no make target combines "
+        }
+      ],
+      "result": {
+        "summary": "Pass. No concrete defect. Verified: (1) without sanitizer flags the preprocessed header differs from master only by 'int result = runner->child(...); _exit(result);'; (2) Apple clang 21 -fsanitize=address sets __has_feature(address_sanitizer) but not __SANITIZE_ADDRESS__; UBSan/TSan builds define neither, so they are unaffected; (3) the macOS ASan dylib (x86_64 and arm64 slices) exports ___lsan_do_recoverable_leak_check, a probe with a deliberate leak returns 0 on arm64 and on x86_64 under Rosetta, and detect_leaks=1 aborts with 'not supported on this platform' on both, so the AGENTS.md 'Apple Clang has no leak detector' holds for macOS; the shipped lsan_interface.h documents a 0 return when detection is disabled; (4) stub runner with -D__SANITIZE_ADDRESS__ and a check returning 1: the passing case prints 'Stub: leaks detected after passing' in its captured output followed by FAIL, the failing case is not checked; (5) make test-agent-scheduler 71/71; test_agent_scheduler_asan filtered case commands_queued_at_shutdown_are_released passes. False-positive risk under real LSan is low: all four suite parents are single-threaded at fork (no indigo_start before run_parallel_cases), so no allocations sit only on threads that are missing after fork; the scheduler child runs full cleanup() before returning; the archived ticket f91ea306 records a real LSan per-case run of the forked scheduler suite whose only report was the TLS escape buffer fixed in 48e10c044. Exposure is limited: the nexdome3 sanitize target forces detect_leaks=0, alpaca has no ASan build, only a manual Linux run of test_agent_scheduler_asan (detect_leaks defaults to 1 there) changes. Non-blocking doc nit: the AGENTS.md bullet implies detect_leaks=1 must be set, but on Linux it is the ASan default and the existing *-sanitize targets set detect_leaks=0, so they do not run the check. Out of scope: in nexdome3 --known-defects mode a leak would turn an UNEXPECTED PASS into EXPECTED FAIL (no make target combines ",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 378618.074,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "ce9d7487-9a58-41a7-b506-a25a313a0234",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.902743Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261113001457-32cc-scheduler-shutdown-command-leak-001.json",
+      "source": "152952476923aa039e68911750158c1d5f8c65737a1cc17e729425f8c8f53af9",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "21aedc2a-e915-4334-95c0-ba0ada10ea60",
+      "event": "ticket/type_changed",
+      "at": "2026-11-15T08:55:20.561401Z",
+      "actor": "human/owner",
+      "previous_type": "bug",
+      "type": "change"
+    },
+    {
+      "event_id": "080c9dda-d193-4384-8efa-c44563cd5302",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:20.700031Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "bf2aef51-d195-48ff-96d3-9375f5e2a6e5",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:20.976910Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "33963649-57b2-43d9-8f0c-2b965e63aa55",
+      "event": "task/progress",
+      "at": "2026-11-15T10:16:41.742996Z",
+      "actor": "human/owner",
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "text": "Implementation started on branch ticket/95a9c733-1b9c-5519-8692-85831c8844a7"
+    },
+    {
+      "event_id": "e7b09085-287e-4d97-909b-13b63a0da4a3",
+      "event": "ticket/started",
+      "at": "2026-11-15T10:16:41.744595Z",
+      "actor": "human/owner",
+      "branch": "ticket/95a9c733-1b9c-5519-8692-85831c8844a7",
+      "base": "master"
+    },
+    {
+      "event_id": "ad63b999-8de7-4837-9da2-22df54586fe0",
+      "event": "task/progress",
+      "at": "2026-11-15T10:17:16.698214Z",
+      "actor": "human/owner",
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "text": "Implementer launched",
+      "attempt_id": "53fbfdb4-bb43-4da1-aea4-fd9dc9eae41a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "7b312358-359e-4be2-84a7-ba5738117704",
+      "event": "task/progress",
+      "at": "2026-11-15T10:19:31.075332Z",
+      "actor": "human/owner",
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "text": "Building libs and scheduler/nexdome3/alpaca suites"
+    },
+    {
+      "event_id": "7c6179da-fde6-4b35-bfff-ef724f8278ad",
+      "event": "ticket/note",
+      "at": "2026-11-15T10:26:18.896137Z",
+      "actor": "human/owner",
+      "text": "Verification on macOS arm64 (Apple clang 21, no Homebrew LLVM, no LSan): ordinary builds pass: test_agent_scheduler 71/71, test_dome_nexdome3_simulator 51/51, test_system_alpaca_simulator 277/277; omnisim suite skipped (needs external simulator). ASan build test_agent_scheduler_asan: Apple clang defines __has_feature(address_sanitizer) but not __SANITIZE_ADDRESS__; sanitizer/lsan_interface.h compiles and links, __lsan_do_recoverable_leak_check() returns 0, ASAN_OPTIONS=detect_leaks=1 aborts at startup (not supported on this platform), so the check is a no-op here. With detect_leaks=0 the ASan scheduler binary ran (filtered single case passes). Forced-path evidence: header compiled with -D__SANITIZE_ADDRESS__ and a stub lsan_interface.h whose check returns 1: the case fails with 'leaks detected after x' and the runner reports FAIL, exit 1. UNVERIFIED: real LeakSanitizer in the forked child (Linux/GCC/Linux clang) - false positives from parent-inherited state or threads absent after fork, and any real product leaks, could not be observed; no negative test with a real leak was possible. Windows: header is POSIX-only (fork, unistd.h) already, unaffected.",
+      "tokens": null
+    },
+    {
+      "event_id": "6f47891f-d7db-42df-9461-66852a04db3c",
+      "event": "task/progress",
+      "at": "2026-11-15T10:26:20.014450Z",
+      "actor": "human/owner",
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b0a196ad-4940-405f-80e5-9b008cea3588",
+      "event": "task/progress",
+      "at": "2026-11-15T10:26:20.037860Z",
+      "actor": "human/owner",
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b1a6139f-29ae-481a-8359-bd3b0cb5506f",
+      "event": "check/passed",
+      "at": "2026-11-15T10:26:20.039589Z",
+      "actor": "human/owner",
+      "commit": "bb4196b1e2f832f961c981a9c8d6c3215ebf2e8b",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "105ab76c-4d0b-4632-99a0-ae9168572ee9",
+      "event": "task/progress",
+      "at": "2026-11-15T10:26:20.192164Z",
+      "actor": "human/owner",
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "e00dbe70-c7bc-4665-9656-d729ffe8f9a1",
+      "event": "task/progress",
+      "at": "2026-11-15T10:28:46.577558Z",
+      "actor": "human/owner",
+      "task_id": "4e48dd73-58a9-429b-ac43-da30e0aa6f82",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "4b3ab44e-2f81-4c65-8471-0c822067bf07",
+      "event": "check/passed",
+      "at": "2026-11-15T10:28:46.579589Z",
+      "actor": "human/owner",
+      "commit": "bb4196b1e2f832f961c981a9c8d6c3215ebf2e8b",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "aa775d1b-5619-4a66-b7d4-e84f3324616a",
+      "event": "task/progress",
+      "at": "2026-11-15T10:29:07.474782Z",
+      "actor": "human/owner",
+      "task_id": "e627bf6c-8355-4dcf-aba2-497aeaf505b8",
+      "text": "Review started"
+    },
+    {
+      "event_id": "85867072-b2a9-43ab-876c-ea4792de1faa",
+      "event": "review/started",
+      "at": "2026-11-15T10:29:07.476240Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "207af79c-d55f-4217-8654-5a2482f74a02",
+      "event": "task/progress",
+      "at": "2026-11-15T10:29:33.956446Z",
+      "actor": "human/owner",
+      "task_id": "e627bf6c-8355-4dcf-aba2-497aeaf505b8",
+      "text": "Reviewer launched",
+      "attempt_id": "76b8a24e-1b3b-4f13-b189-4185d53a8070",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "22dc3376-1688-44fd-a6fb-703bf67dc3bc",
+      "event": "task/progress",
+      "at": "2026-11-15T10:31:02.472794Z",
+      "actor": "human/owner",
+      "task_id": "e627bf6c-8355-4dcf-aba2-497aeaf505b8",
+      "text": "Checking sanitizer macros, preprocessed output and the ASan runtime symbol"
+    },
+    {
+      "event_id": "6a76d8fd-07cb-40f9-9c40-f18efe4e8853",
+      "event": "task/progress",
+      "at": "2026-11-15T10:32:22.164959Z",
+      "actor": "human/owner",
+      "task_id": "e627bf6c-8355-4dcf-aba2-497aeaf505b8",
+      "text": "Building scheduler suites (plain, ASan) and a forced-path stub runner in scratch"
+    },
+    {
+      "event_id": "bfce453b-0b4c-4a0f-a6f7-ea07ca407885",
+      "event": "task/progress",
+      "at": "2026-11-15T10:35:26.092876Z",
+      "actor": "human/owner",
+      "task_id": "e627bf6c-8355-4dcf-aba2-497aeaf505b8",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "13727569-400f-4643-991f-b1f9755d99c5",
+      "event": "review/passed",
+      "at": "2026-11-15T10:35:26.094347Z",
+      "actor": "human/owner",
+      "task_id": "e627bf6c-8355-4dcf-aba2-497aeaf505b8",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "bb4196b1e2f832f961c981a9c8d6c3215ebf2e8b"
+    },
+    {
+      "event_id": "e511ca3f-5787-4f1b-b8a9-6922f8df9ffa",
+      "event": "ticket/closed",
+      "at": "2026-11-15T10:39:55.494982Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T10:39:55.494948Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "214e3ad0fbbee53372f35164b24106c9a6e8af1e"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 1124349.776,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 27,
+    "sha256": "257b43327cb53205f981a6513004760280b2a7be2632d6d00ec066495438fc67"
+  },
+  "priority": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "bb4196b1e2f832f961c981a9c8d6c3215ebf2e8b",
+        "tree": "b98596354f5a49c32086a6116277b9bd54234c11",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T10:26:20.037129Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/95a9c733-1b9c-5519-8692-85831c8844a7/b98596354f5a-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scheduler",
+        "commit": "bb4196b1e2f832f961c981a9c8d6c3215ebf2e8b",
+        "tree": "b98596354f5a49c32086a6116277b9bd54234c11",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T10:28:46.576448Z",
+        "duration_s": 146.4,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/95a9c733-1b9c-5519-8692-85831c8844a7/b98596354f5a-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. No concrete defect. Verified: (1) without sanitizer flags the preprocessed header differs from master only by 'int result = runner->child(...); _exit(result);'; (2) Apple clang 21 -fsanitize=address sets __has_feature(address_sanitizer) but not __SANITIZE_ADDRESS__; UBSan/TSan builds define neither, so they are unaffected; (3) the macOS ASan dylib (x86_64 and arm64 slices) exports ___lsan_do_recoverable_leak_check, a probe with a deliberate leak returns 0 on arm64 and on x86_64 under Rosetta, and detect_leaks=1 aborts with 'not supported on this platform' on both, so the AGENTS.md 'Apple Clang has no leak detector' holds for macOS; the shipped lsan_interface.h documents a 0 return when detection is disabled; (4) stub runner with -D__SANITIZE_ADDRESS__ and a check returning 1: the passing case prints 'Stub: leaks detected after passing' in its captured output followed by FAIL, the failing case is not checked; (5) make test-agent-scheduler 71/71; test_agent_scheduler_asan filtered case commands_queued_at_shutdown_are_released passes. False-positive risk under real LSan is low: all four suite parents are single-threaded at fork (no indigo_start before run_parallel_cases), so no allocations sit only on threads that are missing after fork; the scheduler child runs full cleanup() before returning; the archived ticket f91ea306 records a real LSan per-case run of the forked scheduler suite whose only report was the TLS escape buffer fixed in 48e10c044. Exposure is limited: the nexdome3 sanitize target forces detect_leaks=0, alpaca has no ASan build, only a manual Linux run of test_agent_scheduler_asan (detect_leaks defaults to 1 there) changes. Non-blocking doc nit: the AGENTS.md bullet implies detect_leaks=1 must be set, but on Linux it is the ASan default and the existing *-sanitize targets set detect_leaks=0, so they do not run the check. Out of scope: in nexdome3 --known-defects mode a leak would turn an UNEXPECTED PASS into EXPECTED FAIL (no make target combines that with LSan). Not verified: real LeakSanitizer on Linux.",
+        "reviewer": "human/owner",
+        "commit": "bb4196b1e2f832f961c981a9c8d6c3215ebf2e8b",
+        "tree": "b98596354f5a49c32086a6116277b9bd54234c11",
+        "at": "2026-11-15T10:35:26.092533Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T10:26:18.894387Z",
+        "actor": "human/owner",
+        "text": "Verification on macOS arm64 (Apple clang 21, no Homebrew LLVM, no LSan): ordinary builds pass: test_agent_scheduler 71/71, test_dome_nexdome3_simulator 51/51, test_system_alpaca_simulator 277/277; omnisim suite skipped (needs external simulator). ASan build test_agent_scheduler_asan: Apple clang defines __has_feature(address_sanitizer) but not __SANITIZE_ADDRESS__; sanitizer/lsan_interface.h compiles and links, __lsan_do_recoverable_leak_check() returns 0, ASAN_OPTIONS=detect_leaks=1 aborts at startup (not supported on this platform), so the check is a no-op here. With detect_leaks=0 the ASan scheduler binary ran (filtered single case passes). Forced-path evidence: header compiled with -D__SANITIZE_ADDRESS__ and a stub lsan_interface.h whose check returns 1: the case fails with 'leaks detected after x' and the runner reports FAIL, exit 1. UNVERIFIED: real LeakSanitizer in the forked child (Linux/GCC/Linux clang) - false positives from parent-inherited state or threads absent after fork, and any real product leaks, could not be observed; no negative test with a real leak was possible. Windows: header is POSIX-only (fork, unistd.h) already, unaffected.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "214e3ad0fbbee53372f35164b24106c9a6e8af1e",
+      "tree": "b98596354f5a49c32086a6116277b9bd54234c11",
+      "base": "master",
+      "at": "2026-11-15T10:39:55.381866Z"
+    }
+  }
+}
