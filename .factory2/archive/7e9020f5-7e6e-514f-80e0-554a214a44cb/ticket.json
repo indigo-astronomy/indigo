@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7e9020f5-7e6e-514f-80e0-554a214a44cb",
+  "revision": 1,
+  "title": "MCP numeric parser used POSIX-only strndup in Windows driver",
+  "description": "New MCP Windows v143/stdc11 target had no strndup compatibility, so POSIX-only numeric-token copy would not build/link there. Replaced with checked malloc/memcpy/NUL, preserving bytes/lifetime; strict and final30 native/sanitizer/recorded tests pass. Source-audit issue; MSVC runtime unavailable.\n\nImported from .factory/findings/archive/FND-20261103191737-ccab-mcp-agent-005.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.888419Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "0e61130a-d26e-4d46-a68f-96e4b09f7094",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.888437Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-005.json",
+      "source": "78917d648ebc355f103587ee262152a536778a6f7d6e71f7a241516edd8168fa",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "15e19e10-6eb4-4387-8238-6e8ce78264f5",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.888445Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "85bbf923b0671aa67a6edd8efd1a834209568414cdf67c325767781090b1a9d2"
+  }
+}

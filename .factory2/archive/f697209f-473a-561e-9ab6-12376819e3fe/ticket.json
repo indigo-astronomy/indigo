@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f697209f-473a-561e-9ab6-12376819e3fe",
+  "revision": 1,
+  "title": "focuser_primaluce calibration START failed on a SESTO SENSO 3 because its CAL_DIR write restarts the controller",
+  "description": "The SESTO SENSO 2 sequence writes CAL_DIR between Init and StoreAsMinPos; firmware 1.0.9 restarts after every CAL_DIR write, so the next steps went unanswered and the calibration failed.\n\nImported from .factory/findings/archive/FND-000055.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.679598Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "681b226e-11bf-4ecf-baa4-6a27960afd69",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.679615Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000055.json",
+      "source": "4db8344d8fa8215d5ecbc835608ba00e0d625ad788285b83e1e2eb8eb8f37e9a",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "9ed7a751-337d-4838-869b-f8a0555481ee",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.679623Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "2570183ef35997d394b12edfa29220a48f2dd48630d4bc956cb985dac0e6851a"
+  }
+}

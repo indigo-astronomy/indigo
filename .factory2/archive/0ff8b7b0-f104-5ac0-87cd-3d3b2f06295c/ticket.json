@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0ff8b7b0-f104-5ac0-87cd-3d3b2f06295c",
+  "revision": 1,
+  "title": "TESTS-003: Most compliance scripts save `WAS_CONNECTED` from `test_connection_battery()` and then ignore it, always disconnecting the target device at the end",
+  "description": "TESTS-003: Most compliance scripts save `WAS_CONNECTED` from `test_connection_battery()` and then ignore it, always disconnecting the target device at the end. Manual runs against already-connected hardware will leave devices disconnected and may disrupt an active setup. Restore the original connection state like `gps_compliance.sh` attempts to do, and fix the framework comment at `indigo_test_framework.sh:527` because the function returns original state, not final state. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000032.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.660005Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "6d8f94f1-679c-48c5-9d63-6d51b458e07c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.660032Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000032.json",
+      "source": "ea7e9b34cbae2411a11ea9170f9ca027d24b94359e10356e588754016fac4502",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "7ab56ed6-2e01-4db7-93bc-ba3070096185",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.660042Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "7f3a55fda21e503ae10d7d7168b7d5d2e17d894fe6a38b2311a0b2aa1446dc49"
+  }
+}

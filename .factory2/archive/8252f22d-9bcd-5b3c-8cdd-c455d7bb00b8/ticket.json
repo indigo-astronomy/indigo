@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8252f22d-9bcd-5b3c-8cdd-c455d7bb00b8",
+  "revision": 1,
+  "title": "Finding lifecycle moves leave the Xcode navigator stale",
+  "description": "Manual finding archival left nonexistent active references and omitted existing records. Correct the project and use the validated lifecycle helper for future moves.\n\nImported from .factory/findings/archive/FND-20261023195506-cdf8-fix-findings-xcode-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.759272Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "95ca9f6a-2b46-4298-ad79-d0477ebc6c7c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.759289Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023195506-cdf8-fix-findings-xcode-001.json",
+      "source": "38619a5ab91e1725b60d074b8e9d8deee9951e5ae7db50679819032538b821f8",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "ffec8246-aba2-4f36-ac3e-70d623327d47",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.759296Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e55d2643c43a907ee42b48ef001c8b471666ed7526bf395d4cd18b4e55abbb01"
+  }
+}

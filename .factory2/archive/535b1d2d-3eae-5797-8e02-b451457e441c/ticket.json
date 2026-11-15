@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "535b1d2d-3eae-5797-8e02-b451457e441c",
+  "revision": 1,
+  "title": "Sequencer suite has no test for a solver step with no solver agent loaded",
+  "description": "The fallback of indigo_sequencer.loaded_solver_agent() (keep the stored name, fail through the missing-property path so the failure policy applies) had no test; solver_failures_recover keeps the stand-in loaded and passes on the previous code. Next: add a case with the solver stand-in renamed to a non-solver name.\n\nImported from .factory/findings/archive/FND-20261103001429-668f-solver-agent-at-use-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.877809Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1c24ad63-c273-49d0-8a9c-5623a50e99fd",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.877826Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261103001429-668f-solver-agent-at-use-001.json",
+      "source": "b2a54791e292816dbd0c2930651024d39ee6295be2db7e00a4f26114a830ddeb",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "b09401c8-b937-4dd1-a3ae-345e2f099899",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.877833Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "96def5594b385d68c8a629b794ea695ffdb2dbe6f0ccf7f9ada4e03f8ac21eb9"
+  }
+}

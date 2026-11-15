@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c5f9fabb-78f1-579b-9205-b7b1feed1d9e",
+  "revision": 1,
+  "title": "Property copy reuse loses destination capacity and text ownership",
+  "description": "Repaired and reverified in task 20261024135437-8e0c-fix-property-copy. Original audit evidence retained. Independent source reviews and combined native/sanitizer/browser checks cover the scoped fix; see security.md and verification.md for exact coverage and platform/hardware limits.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-001.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.760874Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "502d8713-b352-43ff-bb7f-d9f12c91d7eb",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.760891Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-001.json",
+      "source": "44f150f3a04e8be39b196ffd9b14558ee2fc5d6642494fed2181dd7b94bbf493",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "6f0b44f9-07ea-443e-ae5c-8650f5e9e3ae",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.760898Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "b5ae4a8e517f4b85f7aac424b852226f90fd8539399dafc85d436f3afeb93419"
+  }
+}

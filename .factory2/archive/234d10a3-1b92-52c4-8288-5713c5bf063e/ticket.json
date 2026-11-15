@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "234d10a3-1b92-52c4-8288-5713c5bf063e",
+  "revision": 1,
+  "title": "DRV-095: CGUSB-ST4 used letter directions instead of numeric PHD2 encoding.",
+  "description": "Fixed in CGUSB-ST4 driver 3.0.0.10 using PHD2 N/S/E/W = 0/1/2/3 without a polarity swap. Numeric protocol is mandatory regression coverage and repaired-driver ST4 motor response is verified on NYX-101.\n\nImported from .factory/findings/archive/FND-000006.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.637822Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "80122937-22e0-4139-ac1a-2eff548d554c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.637838Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000006.json",
+      "source": "03beab089f64138121e146d1a2613568f783e6739fe29bafdf9ab70fecb965ab",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "1288cda8-3401-4c71-916d-648e98a4ca66",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.637846Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "76588d2f297ac3abd97c50dd287d63f339229b4068ced082d0180f1b1453da58"
+  }
+}

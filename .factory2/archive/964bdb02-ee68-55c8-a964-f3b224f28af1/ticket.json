@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "964bdb02-ee68-55c8-a964-f3b224f28af1",
+  "revision": 1,
+  "title": "Editor attribute catalog omits the generator-supported device id",
+  "description": "The template-derived device catalog does not offer id, accepted by parse_device_block and needed for named logical devices. Source-to-catalog contract test fails without any generator binary dependency. Next: coordinator assigns a template/editor catalog correction and reruns the existing attribute contract test; preserve existing DSL input.\n\nImported from .factory/findings/archive/FND-20261023065605-60d4-repository-audit-005.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.687965Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d7e33be3-8cb1-497f-9703-d2891dc53af0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.687983Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-005.json",
+      "source": "7e77e4c92896f8d2471116e6d1f9820abed95c8146d2c2f46ae0248a0468f438",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "7168fed2-f834-48b7-bcac-8985fe45b0fe",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.687991Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "03874d5c51f13d8adb956551196c770a31675e03c306f24ba2fd2918172d8938"
+  }
+}

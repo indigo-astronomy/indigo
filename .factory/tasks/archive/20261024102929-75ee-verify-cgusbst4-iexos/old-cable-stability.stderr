@@ -1,3 +1,0 @@
-Traceback (most recent call last):
-  File "<stdin>", line 11, in <module>
-termios.error: (5, 'Input/output error')

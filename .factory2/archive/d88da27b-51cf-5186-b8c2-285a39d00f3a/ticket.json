@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d88da27b-51cf-5186-b8c2-285a39d00f3a",
+  "revision": 1,
+  "title": "Two blank lines before select_solver_agent_step in the Sequencer test",
+  "description": "The diff left two blank lines between test functions; AGENTS.md requires exactly one.\n\nImported from .factory/findings/archive/FND-20261102123603-6a7f-select-solver-agent-003.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.872739Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "09336224-887b-44bb-9654-30c86824352d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.872759Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102123603-6a7f-select-solver-agent-003.json",
+      "source": "010201cdf9037fd93053946ed092bdf5d1df81aa6e46142b6de10e383d27b421",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "4f95f4d0-a6d1-409c-8230-a4e1c0ab9745",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.872768Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "97b69a611620d3e6e0b354bcb90641e3c5953b128fa503b45e919dc9a223030f"
+  }
+}

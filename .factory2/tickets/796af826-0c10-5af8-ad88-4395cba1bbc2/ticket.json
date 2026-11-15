@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "796af826-0c10-5af8-ad88-4395cba1bbc2",
+  "revision": 1,
+  "title": "MinGW rebuild target depends on nonexistent build target",
+  "description": "make -n -C indigo_windows/gcc rebuild exits 2: No rule to make target build, needed by rebuild. A real invocation first performs clean then fails. Point rebuild to the actual all target with safe ordering. No MinGW compiler or Windows runtime was executed.\n\nImported from .factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-005.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.837620Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d7b8d7cf-8e71-41b5-afc4-549eaf7f7102",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.837639Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-005.json",
+      "source": "89265c8ff10f3a5977674586b85b5167251afb7be581388021ce5799b1f256f7",
+      "priority": "low",
+      "severity": "low"
+    }
+  ],
+  "closure": null,
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "3c28424833f18d5f11252ac639fde994ff4534ff5b7ed49cfe2042c8ba52f308"
+  }
+}

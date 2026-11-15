@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1cd0bda1-4161-506e-84d0-f0951caff50c",
+  "revision": 1,
+  "title": "Stopped-short moves are reported successful",
+  "description": "Several authored finalizers treat idle as arrival despite having measured position and retaining a different requested target: `focuser_mypro2/indigo_focuser_mypro2.driver:333-338`, `focuser_dsd:215-217`, `focuser_dmfc:277-278`, `focuser_fc3:223-224`, `focuser_asi:207-208`, `focuser_usbv3:254-255`, and shared Lunatico rotator `focuser_lunatico/shared/lunatico_shared.c:889`. For example, mypro2 target1000, measured500 and moving0 enters the unconditional OK branch; the caller cannot distinguish target arrival from premature device stop. Shared Lunatico affects the rotator interface exposed by both focuser_lunatico and rotator_lunatico. Alpaca absolute focuser is excluded from this finding: its canonical class contract in `system_alpaca/indigo_system_alpaca_private.h` explicitly defines completion by IsMoving rather than comparing positions. Its deliberate settling window and idle completion are consistent with that accepted contract. A proposed target-equality finding there is rejected; changing the contract requires a separate explicit product decision. Remediation: distinguish commanded vs external/aborted motion, compare measured position with commanded expected position using protocol-appropriate tolerance/backlash semantics, publish ALERT on stopped-short and retain requested target. Add one early-stop regression per affected driver rather than assuming all protocols are identical. Existing exact-target handling in Astroasis, FLI, EFA, FocusDreamPro, Askar and SteelDrive2 shows a local behavior-preserving pattern.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-027.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.720561Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c42243cf-8c2d-4f53-b86c-0a5176220ee1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.720581Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-027.json",
+      "source": "cc36199c2935249e9f8134066d1dbc6aac3f880ac5146377ae1c3ae68c61c58f",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "3586c3bc-9836-4333-88f1-b14c2e14cb79",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.720588Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "716620c571143e852c398753765d5ff81efec5bb6daefeffdf607980327cff99"
+  }
+}

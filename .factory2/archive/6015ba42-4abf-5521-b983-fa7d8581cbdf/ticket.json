@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6015ba42-4abf-5521-b983-fa7d8581cbdf",
+  "revision": 1,
+  "title": "Lunatico connection poll can overwrite a queued focuser request",
+  "description": "Accepted Lunatico POSITION/STEPS intent is preserved until its queued worker starts. Old initial/external polls retain measured private position without overwriting requested public target/state; compensation and abort/disconnect ownership are coordinated. Both generated exports are versioned and covered by deterministic held-poll regression tests.\n\nImported from .factory/findings/archive/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.797592Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "972002b7-74c1-423a-8e95-697cb8bd616e",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.797611Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024183351-e8e1-fix-motion-image-alpaca-001.json",
+      "source": "5c53d1e426297187e95a87dc81b75485bf3f825f81bba6735e376e4633b393b2",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "73ed8944-16ac-4f62-abea-88b82236f884",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.797618Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "dbf76743eb98a9f4dba225412f2f22d24bfaee4b28f0629e0c528e0c5c374cfb"
+  }
+}

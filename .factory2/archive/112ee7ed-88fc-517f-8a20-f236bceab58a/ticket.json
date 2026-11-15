@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "112ee7ed-88fc-517f-8a20-f236bceab58a",
+  "revision": 1,
+  "title": "LIB-013: Concurrent enumeration can reach a device before attach initializes it",
+  "description": "LIB-013 repaired: indigo_attach_device retains the existing recursive bus mutex until the optional attach callback returns, then releases its registration hold before automatic CONFIG.LOAD. Concurrent enumeration cannot enter during the attach callback. The regression fails before the fix and passes after it; recursive publication and unlocked CONFIG dispatch are covered. Full rotator_lunatico and focuser_lunatico simulator suites pass.\n\nImported from .factory/findings/archive/FND-000013.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.643797Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "813faa2e-d168-4230-9dbd-f8f330770b20",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.643825Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000013.json",
+      "source": "de57ffffca4c48253a0343e65f763049be48f1dd14995cb9f8a919c7c7cc1842",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "5869b47a-26bf-4e94-a83e-d5c48a9863dd",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.643835Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1205be222559bd4796a13882f77ce572da9fa3a25f4b7a972be04fa0dc6db39f"
+  }
+}

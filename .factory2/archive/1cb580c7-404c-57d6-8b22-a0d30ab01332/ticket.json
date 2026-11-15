@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1cb580c7-404c-57d6-8b22-a0d30ab01332",
+  "revision": 1,
+  "title": "Upstream XML messages are interpreted as variadic formats",
+  "description": "Remote XML message attributes are passed directly to variadic property publication APIs, allowing undefined format evaluation. Repair literal forwarding and verify percent diagnostics on upstream adapter paths.\n\nImported from .factory/findings/archive/FND-20261023121227-a609-fix-server-security-high-001.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.755144Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f5009780-e0bb-4f5c-91e1-f882d7f14edc",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.755160Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023121227-a609-fix-server-security-high-001.json",
+      "source": "22acfadb3104546cf380f829cdf81e7c66eeff003fd8f2e7427992da02739980",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "1f70e2a0-5cbd-4a64-9dc0-9a7d05515bdf",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.755167Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "83addea3b96a5a52c778efd0cf099f09a744b3a27e6535b223ad8b8668514c9e"
+  }
+}

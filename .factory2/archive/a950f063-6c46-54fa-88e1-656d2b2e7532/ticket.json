@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a950f063-6c46-54fa-88e1-656d2b2e7532",
+  "revision": 1,
+  "title": "Star detectors read before luminance buffer on short images",
+  "description": "Fast and precise scan image edges when height < 4; 144 x 3 MONO16 with bright pixel zero reproduces a 2-byte heap overread before the 864-byte luminance buffer under ASan. Ensure every scanned candidate has valid 8-neighbors or reject unsupported geometry; verify all formats and small dimensions.\n\nImported from .factory/findings/archive/FND-20261101185459-950f-verify-star-detectors-001.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.832901Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5b61c798-60bb-44f9-9950-839e53aff976",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.832919Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101185459-950f-verify-star-detectors-001.json",
+      "source": "8fe73a0a545a9a4cb94faece5cce0d9282c0db7cd76bb065bbd223ea1367a909",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "b6c0eb42-1c12-408e-815c-87ec76ae58d0",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.832927Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "44fbe7532ce70ae73d3e84aea333287f5d0e027a1b404305b5cc978366b764bc"
+  }
+}

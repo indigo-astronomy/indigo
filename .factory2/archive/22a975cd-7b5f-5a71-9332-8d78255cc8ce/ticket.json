@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "22a975cd-7b5f-5a71-9332-8d78255cc8ce",
+  "revision": 1,
+  "title": "Temporary MCP client fixture ignored private-home setup failure",
+  "description": "Guarded reusable temporary simulator fixture now aborts before bus initialization when private-home setup fails. As-executed client artifacts retained; actual client runs positively used private homes and no user-config write was observed.\n\nImported from .factory/findings/archive/FND-20261103191737-ccab-mcp-agent-004.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.887620Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "003ec379-a095-4709-b24b-b682af5ccdb0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.887637Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-004.json",
+      "source": "0f2af86d5a537bd26f26ff5991af2c47135e72cd88b86102b291ae9331661b50",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f7a71fd2-5bc6-475a-a669-74775e559abc",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.887645Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "3c7b317cf8672e013134856f0c398e7156485c1d162e49480a006222ec56b9de"
+  }
+}

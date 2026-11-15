@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f30b9702-dc3b-505e-94e2-d65e3e293f2b",
+  "revision": 1,
+  "title": "SERVER-002: the bundled SHA-1 in indigo_server_tcp.c shifts int values into the sign bit, undefined behavior reported by UBSan on every WebSocket handshake",
+  "description": "sha1() promotes unsigned char bytes and the 0x80 padding constant to int and shifts them left by 24 (indigo_server_tcp.c sha1 block loop, tail loop and padding line), which is undefined behavior in C for values >= 0x80. UBSan reports 'left shift of 128 by 24 places cannot be represented in type int' during every handshake in test-server-websocket-sanitize, before and after the FND-000045 fix. Compilers currently produce the expected hash, so there is no observed functional failure. Next action: a scoped fix casting the shifted operands to unsigned, verified by the WebSocket sanitize test running without UBSan reports.\n\nImported from .factory/findings/archive/FND-000046.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.671952Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "86102271-34bc-44af-8b70-6d34f95d21fe",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.671970Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000046.json",
+      "source": "aa70f73555b2cfe305a85ee96c628df0bf7d52033fad609c20a0d28a9f676681",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "f9d4afd2-802a-4a3d-9d12-0118268c0260",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.671977Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ff8da16daee604e9075ee908bedbac52cafa40c10c76a745526d4439decf904f"
+  }
+}

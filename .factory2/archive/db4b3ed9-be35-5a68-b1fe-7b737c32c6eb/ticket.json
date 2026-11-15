@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "db4b3ed9-be35-5a68-b1fe-7b737c32c6eb",
+  "revision": 1,
+  "title": "Sequencer.md omits the fallbacks of solver agent selection",
+  "description": "Sequencer.md stated that the solver on the imager agent's host is used, but sequencer_solver_agent() also falls back to a solver on another host and finally to Astrometry Agent on the imager's host. Document both.\n\nImported from .factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-004.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.869489Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "529d8bea-d6c2-404c-a337-65c447710d2d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.869507Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-004.json",
+      "source": "dc7ebe0a1b3b9bca71e97efc0d84904d3b78ec1523b2d5263c7278590d3937b8",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "ec9a353c-758d-40d2-869b-9cc85c79bece",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.869515Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "7011d4616e75210a8d7592aecb3ab71add8bb6a6df88c645292dd2199e61911a"
+  }
+}

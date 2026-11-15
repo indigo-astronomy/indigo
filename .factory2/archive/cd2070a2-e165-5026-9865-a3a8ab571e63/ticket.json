@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "cd2070a2-e165-5026-9865-a3a8ab571e63",
+  "revision": 1,
+  "title": "TOOLS-006: The generator assumes allocations, reallocations, file redirects, and path copies always succeed",
+  "description": "TOOLS-006: The generator assumes allocations, reallocations, file redirects, and path copies always succeed. `allocate()` immediately `memset()`s a possibly NULL allocation, `realloc()` results overwrite the only pointer, `freopen()` results are ignored, and `strcpy(source_file, definition_file)` can overflow `PATH_MAX`. Failures can crash the generator, read from the wrong stream, or emit partial files. Add checked allocation helpers, temporary pointers for `realloc()`, bounded path copies, and explicit `freopen()` error handling before generating output. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000041.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.667892Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "db9a3280-8ef1-4309-8bfb-fe7a5290a77f",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.667912Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000041.json",
+      "source": "a05f011443748c2869f4e3edf44440bb8f331dc6b1714af09cb0f1403d2cd4d2",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "82ff6fca-112f-4ee3-ab70-259c64504361",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.667920Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e6a0badffc36aa36f0b81a241fa2571fac08affee882e9c6bfa23def48a0b41a"
+  }
+}

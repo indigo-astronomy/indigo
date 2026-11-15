@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "827cb326-a8de-545f-98d7-1ca6cb11e9bb",
+  "revision": 1,
+  "title": "Wait for asynchronous setting readback",
+  "description": "Aperture acknowledgement preceded application, producing false failures. Poll bounded full-state readback. Three-read delayed application fake and real aperture exercise pass.\n\nImported from .factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-003.json (category: functional, blocking: yes).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.827419Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fc1351cc-b483-4c07-87cb-6ee1cc3d5961",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.827434Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-003.json",
+      "source": "9c68ee20cd51485cefd89ff8955c97be648287991ce8eb57eabe8e532ed5c60f",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "07626ffc-5676-4a81-bef5-19868e86f45d",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.827442Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a0086c49a74725e3bd74e5aaf4250a44e8c2e3fc9265e33c39698d2a432c9b55"
+  }
+}

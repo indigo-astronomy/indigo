@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7dc4910d-0405-5065-aa3a-364885215d46",
+  "revision": 1,
+  "title": "MCP property listing omitted item schemas",
+  "description": "Initial list_properties omitted item schemas; snapshot/serializer now preserve item metadata without duplicating long-text values.\n\nImported from .factory/findings/archive/FND-20261103191737-ccab-mcp-agent-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.886026Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "907100fa-3f95-4764-aa34-b8c80b69aff6",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.886043Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-002.json",
+      "source": "1ea617dcd08e4095df5a69eb306b56a7ca412996597393df8f3c9d1fc685b22c",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "7322a115-d097-45bf-a89c-5c9ed195234f",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.886051Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8cb26a427845deb9b6ca13a92388f0c1ebbe76bd0fd201c745e95c78c381a8f6"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "26676148-eb8f-572d-847b-02eea7952d32",
+  "revision": 1,
+  "title": "Static server build includes an obsoleted driver header",
+  "description": "indigo_server.c includes ccd_gphoto2/indigo_ccd_gphoto2.h under STATIC_DRIVERS and INDIGO_LINUX, but the driver lives in obsoleted_drivers/, so a STATIC_DRIVERS build cannot compile. Pre-existing, found while checking the scheduler registration. Next: drop or guard the include and entry.\n\nImported from .factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-005.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.901146Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "bf5f93e6-a9e9-4c42-8f02-c3c811512100",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.901164Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-005.json",
+      "source": "40e43d27c9153a43bfc7fc5b8865547dce2d8cbe32d2a699ec9a45f582332186",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "857ce46e-5896-439a-8899-9ea0ce742dc5",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.901175Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "54d4b8ce079c6a7c7c1d71eb931ac3c67d984588446f4070548b0992105a375f"
+  }
+}

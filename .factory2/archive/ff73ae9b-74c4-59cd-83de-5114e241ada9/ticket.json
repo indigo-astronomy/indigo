@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ff73ae9b-74c4-59cd-83de-5114e241ada9",
+  "revision": 1,
+  "title": "RGB48 endian conversion swaps only one channel worth of samples",
+  "description": "indigo_ccd_driver.c:1829-1834: for48bit input and little_endianfalse, swaps size=widthheight uint16 samples while RGB48 has3size. Remaining two thirds byte-reversed before output/preview conversion. Iterate channelssamples, ordinary multichannel endian tests. No active endian record located; source-only. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-12). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-012.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.769910Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "6c430f44-f1f3-4ef1-8554-5e0cf343546b",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.769928Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-012.json",
+      "source": "e393e426382624be19b905f8f809221f6a4f5a865b4c3e92e017bf08a79a8f94",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "845f11b4-94ea-4c14-86c0-ac051e938061",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.769936Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "95b19315cc76d8ed75463e84f99c0d9590469fb12fde80be139cdf98a1587f61"
+  }
+}

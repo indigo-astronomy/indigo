@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "cf0ceb8c-73e9-53f3-9688-5864cf6b139a",
+  "revision": 1,
+  "title": "RPI management helper ALERT text becomes printf format",
+  "description": "execute_command supplies helper ALERT text as indigo_update_property format without arguments. Maintained rpi_ctrl.sh:574-578 and rpi_ctrl_v2.sh:565-569 echo failed date input from HOST_TIME, preserving percent directives despite shell quoting. Deployed s_rpi_ctrl.sh wrapper contract required; actual packaging untested. Undefined variadic reads can crash/disclose data; write directives can corrupt memory. Source-only confirmation, no exploitation run. Next: Use literal %s or raw-update API for helper output; handle absent message explicitly; test percent-containing diagnostics with stub helper.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-009.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.746460Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "e6fd3ae0-427f-4a3c-80e8-772cd6a97201",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.746478Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-009.json",
+      "source": "c5ec3f00d7b14290c3f8504c819025fa156eb7e758ebcbaeaf5da24a534f29b8",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "06e1076a-af4d-4ed4-b19a-f91af5526aff",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.746485Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "3efe7628fc15fe127229ed0557e9f6fe415805f567c8fe1218549cdc5f33036e"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "82a2b7a0-b0f4-5d5e-beed-2bdc2d5ea06e",
+  "revision": 1,
+  "title": "Driver test dry-run documentation promises no file changes",
+  "description": "tools/run_driver_test.py:109 promises no file changes, while dry-run suppresses only final README/summary records. Build, temporary files and requested simulator/hardware tests still execute. Correct the epilog to describe record preview; keep current execution semantics. Source-confirmed; no driver run performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (ROOT-1). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-040.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.793060Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ce72e560-9a40-48e4-8ce9-c82454154848",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.793079Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-040.json",
+      "source": "c3cc59a7b4b698b0c6c9f924110016c85b2b2ce4e7de139e877a095fa9f5fc01",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "7840922c-60c0-47dc-b716-a1457feb929e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.793087Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "b2aa0ae03921bd43db8a411e51a40613e2e89637e489aca0bc7568685882b727"
+  }
+}

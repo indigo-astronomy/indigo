@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c05571f8-9f9f-547d-87e7-4dd8576c487c",
+  "revision": 1,
+  "title": "Queued connection and teardown can deadlock or access released properties",
+  "description": "Public connection reproducer stalled; per-device queue owns master locking and is now drained before property teardown. Fake public connect/disconnect and ASan pass. Next: retain verified repair disposition and physical-test limitations.\n\nImported from .factory/findings/archive/FND-20261026212631-884a-complete-pentax-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.814355Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d46c4a3c-8f31-4289-9c62-7ffa3f645a7d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.814371Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-001.json",
+      "source": "cdae5c7622858735337fb28e9b62156d91a27e87536c34eca7bae2763f8d177b",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "3a023bb8-244f-431d-8e6c-1168b8333a41",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.814379Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "067643982630ad7b69a7a9b69627e45249444d0877f33059805e4a237ded6ee1"
+  }
+}

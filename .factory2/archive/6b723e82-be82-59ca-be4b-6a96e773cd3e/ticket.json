@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6b723e82-be82-59ca-be4b-6a96e773cd3e",
+  "revision": 1,
+  "title": "HTTP BLOB gzip uses an input-sized buffer and can serve an incomplete gzip stream",
+  "description": "The HTTP caller allocates only the uncompressed byte count for gzip output. The compressor accepts a non-final deflate result and reports partial output. For bytes 0..31 in a 32-byte buffer it returns 32 bytes; a zlib decoder returns -5 rather than Z_STREAM_END and recovers only 15/32 bytes. The HTTP caller would label and send the partial stream with 200 OK. Next: coordinator assigns bounded gzip-capacity/error-contract repair and HTTP incompressible-payload regression coverage; audit did not perform a network download.\n\nImported from .factory/findings/archive/FND-20261023065605-60d4-repository-audit-009.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.691691Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "cfaefdab-a29d-4218-8a38-29a81aa5eacb",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.691712Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-009.json",
+      "source": "7240276121b3499dc6e04a1ae38846b303d0f36a8e90aa521e7c14c2984d293b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "2e898b5d-16c2-4a18-8e58-4527bb1cfe17",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.691720Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "533c58732087ac17777b4872c51f4c2038b54e563328406c40d3eb9aa8f48df9"
+  }
+}

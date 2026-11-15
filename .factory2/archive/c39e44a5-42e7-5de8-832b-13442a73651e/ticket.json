@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c39e44a5-42e7-5de8-832b-13442a73651e",
+  "revision": 1,
+  "title": "Image writers accept failed or short I/O as a successful save",
+  "description": "indigo_avi.c:50-79, 338-344; indigo_ser.c:96-133: bool helpers consume long-valued indigo_uni_write/seek directly. -1 is true, so disk/seek failure can be reported as success, frame count advanced and corrupt/truncated recording accepted. AVI additionally assigns realloc directly without checking at lines 328-332, risking NULL dereference/loss of offset allocation. Next: Compare writes with exact requested size and seeks with >= 0; keep temporary realloc and advance counts only after complete write. Inject ordinary write/seek/allocation failures and verify false/cleanup. CCD local-save branches use !indigo_uni_write even though -1/positive short counts indicate failure, leaving IMAGE_FILE OK and incomplete files. Include both CCD branches and DSLR save callers in exact-byte/error cleanup regressions.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-004.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.701506Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "817c767d-d864-4b52-9e38-68f2ad9f9c76",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.701526Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-004.json",
+      "source": "2249b53c2d90941e56302bf36dfde77a170c87c9dc15db5e15acc0b5ea4467c7",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "3175c8d1-1f3c-4e93-99a3-275203a7c40f",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.701535Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "c58b8f65eec5dcd4cce14b5d7aed3130b53e9681809ef09eb7428c1efa01b266"
+  }
+}

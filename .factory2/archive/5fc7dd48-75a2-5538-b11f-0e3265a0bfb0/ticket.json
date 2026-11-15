@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5fc7dd48-75a2-5538-b11f-0e3265a0bfb0",
+  "revision": 1,
+  "title": "Invalid-image test fixture converts byte values through signed char",
+  "description": "Malformed-image fixture now uses unsigned char storage and cast, preserving byte inputs and rejection assertions. Full synthetic Solver ASan/UBSan and ordinary suites both pass26/26. No production change was required for this fixture issue.\n\nImported from .factory/findings/archive/FND-20261101183631-1a1e-solver-exclusive-init-002.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.832088Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "855b2c43-628e-4a5b-b391-f32f7f3ea1ac",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.832107Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101183631-1a1e-solver-exclusive-init-002.json",
+      "source": "af3a5e4cc63f692eecae48658231363a8445c71cc247a7a549a5590ce3a7e877",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "0b5cf13a-d21c-4c94-b88c-c3b306b0f7ec",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.832115Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "17fc3dae453769caba48476d4333c6497592cf2e4ee51ed9f60705f525c97756"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d22142ab-281e-5fdb-b35b-5e02635e4cf4",
+  "revision": 1,
+  "title": "SynScan AUTOHOME blocks its own queued abort/disconnect",
+  "description": "`mount_synscan/indigo_mount_synscan.driver:2132` calls `synscan_perform_autohome()` synchronously from AUTOHOME on_change. The helper calls30-second stopped-axis loops577-595,120-second index loops644-665 and711-764, and a three-second sleep698. The loops inspect `abort_motion`, but this source sets the flag only in the queued abort handler1961 and disconnect hook1672. There is no bus-thread on_change_request setting it. These handlers share the serialized queue and cannot run while auto-home waits. Urgent priority cannot preempt the currently executing callback. A requested abort/disconnect can consequently wait through multi-stage physical homing. Remediation: staged handler/finalizer home state machine with bounded single-transaction checks and named cancellation/stop paths. Preserve documented device command order; add timed simulator assertions that abort/disconnect execute during each stage, verify actual stop-command edges and failure/timeout state, then perform authorized hardware validation in the repair task. Merely setting a volatile flag is not a substitute for queue ownership/cancellation and does not resolve the synchronous waits.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-026.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.719799Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "14e11398-3a34-43dd-b717-e92b1a81f13d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.719817Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-026.json",
+      "source": "671fc831e3170428d9164cc014bfbd9aec9653a22da98a239943c796167e49b3",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "e70836cf-349d-46c0-8c8d-8ff4be2602c2",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.719825Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "4137ef19f13bba926e24f7f84e5bcafa1473aa566198408f69b6660137a888ea"
+  }
+}

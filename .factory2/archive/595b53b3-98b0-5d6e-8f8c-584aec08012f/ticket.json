@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "595b53b3-98b0-5d6e-8f8c-584aec08012f",
+  "revision": 1,
+  "title": "Pentax response lengths control stack allocation and unbounded fixed-offset decode",
+  "description": "Severity medium; confidence high; functional/security input-boundary finding. indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:551-568,582-596,605-613,621-655 obtain a uint32 length from camera readiness, allocate uint8_t buffer[length], pass length to the uint16 pentax_read argument at503, and decode identity/firmware/full-state offsets without a minimum payload check. Oversized replies can exhaust the stack; short or length-truncated transfers can leave the subsequent fixed offsets outside valid input. The SCSI helper399-447 also does not require an exact data-stage count before accepting CSW success. Distinct from active020 and021 (open/readiness). Minimal fix: bounded response storage, exact transfer count, reject unsupported lengths before allocation/narrowing, validate all model-state offsets against received bytes; fake USB short/large status regressions. Source-only evidence, no adversarial fixture or reproduction executed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-9). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-024.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.779345Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "9b35357d-547a-46ae-8a4f-a881732630c0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.779363Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-024.json",
+      "source": "145353ba3595abdaabc208d411fe7f40b03c86c5f1556e33e92421ab139e6675",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "8c2d30be-68d5-4019-b8b0-5b7f0919c8a8",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.779370Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "6b54bfb51816953c770d0fd87007f9ae2ca4b87edd7ba59c0015cc6ecf650d36"
+  }
+}

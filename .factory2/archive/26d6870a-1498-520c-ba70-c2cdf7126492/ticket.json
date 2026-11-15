@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "26d6870a-1498-520c-ba70-c2cdf7126492",
+  "revision": 1,
+  "title": "Lakeside valid stationary progress replies evade the stall bound",
+  "description": "`focuser_lakeside/indigo_focuser_lakeside.driver:177-225`: failed reads and unexpected lines increment `stalled`, but a valid repeated `P<n>` enters218-225, resets only if position changed, and otherwise reschedules without incrementing. An endless repeated position without DONE never reaches40, contradicting the comment's claimed stall bound. The handler yields, but the client remains BUSY and further motion stays excluded indefinitely. Remediation: count unchanged valid position frames or impose a separate overall deadline, send existing CH stop on expiry, preserve target and publish ALERT. Regression: repeated stationary P frames without DONE; genuine progressing P followed by DONE must still succeed.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-025.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.719040Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "3f91d48d-8336-42ed-9064-b7dfc518d46c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.719058Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-025.json",
+      "source": "d87ad8ee8dd7cd4c66976184563c0c9de449da231aaaa978298997a6e4d4b4fa",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "27a219c7-790b-4bb5-93f3-14468a6fffb2",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.719065Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "92d55747735e78db39ff4ddd91dbd62bab74d4229e9dc665adc0d9e35bfb355b"
+  }
+}

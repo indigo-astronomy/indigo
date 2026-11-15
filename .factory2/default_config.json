@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "git": {
+    "auto_commit": false,
+    "auto_merge_and_cleanup": false,
+    "auto_push": false
+  },
+  "models": {
+    "assignment_types": {
+      "analysis": "strong",
+      "planning": "strong",
+      "implementation": "balanced",
+      "test_design": "balanced",
+      "verification": "strong",
+      "review": "strong",
+      "documentation": "economy",
+      "security_review": "strong",
+      "repository_review": "strong"
+    },
+    "difficulty_floor": {
+      "low": "economy",
+      "medium": "balanced",
+      "high": "strong",
+      "unknown": "strong"
+    },
+    "retry_escalation": {
+      "after_failed_attempts": 2,
+      "tier": "strong"
+    },
+    "openai": {
+      "tiers": {
+        "economy": {
+          "model": "gpt-6-luna",
+          "reasoning": "low"
+        },
+        "balanced": {
+          "model": "gpt-6.1-sol",
+          "reasoning": "medium"
+        },
+        "strong": {
+          "model": "gpt-6-astra",
+          "reasoning": "high"
+        }
+      }
+    },
+    "anthropic": {
+      "tiers": {
+        "economy": {
+          "model": "claude-haiku-5-5",
+          "reasoning": "low"
+        },
+        "balanced": {
+          "model": "claude-sonnet-5-5",
+          "reasoning": "medium"
+        },
+        "strong": {
+          "model": "claude-opus-5-5",
+          "reasoning": "high"
+        }
+      }
+    },
+    "deepseek": {
+      "tiers": {
+        "economy": {
+          "model": "deepseek-flash",
+          "reasoning": "low"
+        },
+        "balanced": {
+          "model": "deepseek-flash",
+          "reasoning": "high"
+        },
+        "strong": {
+          "model": "deepseek-v4-pro",
+          "reasoning": "high"
+        }
+      }
+    }
+  }
+}

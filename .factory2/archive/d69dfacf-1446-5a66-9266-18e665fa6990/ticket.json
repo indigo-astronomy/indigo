@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d69dfacf-1446-5a66-9266-18e665fa6990",
+  "revision": 1,
+  "title": "Guider detach leaks its Multi Kernel GP reset property",
+  "description": "Category functional; severity low; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_drivers/agent_guider/indigo_agent_guider.c:2782-2786,:3267-3305. AGENT_GUIDER_RESET_MKGP_PROPERTY is allocated and exposed, but agent_device_detach releases RESET_PPEC and all the other custom property allocations while omitting RESET_MKGP. The macro points to the independent agent_reset_mkgp_property field, not an alias of RESET_PPEC. Repeated agent instances/load/unload leak one property per instance. Whole-agent source allocation/release pairing found this sole custom uppercase-property mismatch. Release this property alongside RESET_PPEC after stopping callbacks. Verify repeated attach/detach allocation accounting. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-6). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-034.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.788029Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "bda9b9c1-85ef-452d-9513-98be4c4ec155",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.788048Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-034.json",
+      "source": "2a373701b8795d588746ceb540f6ae56d14a2e3446123a81d2e5cca6fd5e9ddb",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "2bafa42e-ebaf-4cd5-996d-982510cbef08",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.788055Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "fe81eba93f663b7156a61d4956ab0ebfdbe8f8101a5713aa75dc6590a396e91d"
+  }
+}

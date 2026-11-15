@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6440db2d-2949-53fc-8389-dd6c7060be90",
+  "revision": 1,
+  "title": "Partial SESSION_FEATURES update copies another client's setting",
+  "description": "`indigo_libs/indigo_session.c:51-67` stores feature values in one shared property. Enumeration writes both fields from the enumerating client, but a change copies only named request items into that shared property and then copies **both** resulting values into the requesting client. For example A has FORCE_ITEM_UPDATES=true; B enumerates with both flags false; A sends only FORCE_PROPERTY_UPDATES=true. A's unmentioned FORCE_ITEM_UPDATES is reset to B's false value. Partial named-item updates are the normal bus contract, and these flags explicitly belong to the requesting client. Remediation: seed the shared response values from the requesting  Full evidence: C-02. Remediation: seed the shared response values from the requesting client under appropriate ownership before applying a partial update, or derive each client field independently from present request items; publish only to that client. Unit regression interleaves two clients' enumeration and one-item updates. No cross-client runtime test was run here.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-036.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.728312Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f33312cc-da4f-43bf-86b1-a68dea5929d9",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.728330Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-036.json",
+      "source": "c488dff4c0ad03351ed3b4978f5e1bec1eb146921f19d7a4aa93b9c67575c1b4",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "3e10747c-d384-4699-96af-5806c27af985",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.728338Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "653c3a9abc7aa6777dbc03f7567549d23876244d863d265a851a23861b7067bc"
+  }
+}

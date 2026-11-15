@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c1c18b43-09c2-58f8-ac98-ceca0c9e9b00",
+  "revision": 1,
+  "title": "Factory test suite fails when Python writes bytecode caches during the run",
+  "description": "On Linux arm64 with Python 3.13.5, ./.factory/scripts/test reports 12 failures (context export, process check record-content/CLI and task archive tests) because the helpers' __pycache__ directories appear between the before/after tree or git status snapshots the tests compare. With PYTHONDONTWRITEBYTECODE=1 all 197 tests pass. Pre-existing harness behaviour, not caused by the task diff. Next: make the configured test command or the fixtures ignore bytecode caches (e.g. set PYTHONDONTWRITEBYTECODE or exclude __pycache__ from snapshots).\n\nImported from .factory/findings/active/FND-20261102101805-593a-solver-agent-integration-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.867082Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "26b46662-b905-419c-af58-8eea9011d068",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.867102Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261102101805-593a-solver-agent-integration-001.json",
+      "source": "59ba0ffdf84c43487422320abf74dcbbb4e54bfb63b39ef051d2266480280127",
+      "priority": "low",
+      "severity": "low"
+    }
+  ],
+  "closure": null,
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "a48ac8e87ece37720f551916982b86ec16c1de65adb14a387349a980d71e7170"
+  }
+}

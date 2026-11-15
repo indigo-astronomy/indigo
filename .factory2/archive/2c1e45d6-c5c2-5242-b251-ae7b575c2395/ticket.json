@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "2c1e45d6-c5c2-5242-b251-ae7b575c2395",
+  "revision": 1,
+  "title": "Device-reported filter counts exceed allocated property arrays",
+  "description": "`wheel_trutek/indigo_wheel_trutek.driver:49`, `wheel_xagyl/indigo_wheel_xagyl.driver:58`, and `wheel_qhy/indigo_wheel_qhy.driver:106` assign response-derived `WHEEL_SLOT_NAME_PROPERTY->count` and `WHEEL_SLOT_OFFSET_PROPERTY->count` without checking the allocated capacities. Base wheel attach in `indigo_libs/indigo_wheel_driver.c:53` allocates16 slots. Trutek byte0xFF decodes207, Xagyl `FilterSlots 100` decodes100 and QHY `MXP` reply `Z` decodes35. Those become authoritative property counts; consumers iterate count rather than magically resizing the allocation. Corrupt/device-invalid responses can therefore expose invalid property metadata and out-of-bounds item access. `driver-b-evidence/wheel-count-contract.json` retains literal-expression examples; no malformed frame was sent to a real driver/device. Remediation: validate reply framing/checksum where applicable and the count against both `allocated_count` fields before storing or publishing; reject connection/readback on invalid counts. Add malformed-count simulator regressions proving no property publication exceeds allocation. Do not merely clamp device facts or weaken framework/client validation.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-023.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.717463Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fbce59a4-94cc-4c85-a856-bf82458e9ae6",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.717485Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-023.json",
+      "source": "1dc1eade190bbf06d5235dcd7be1cbd323dc9e80002ba430c1162ef9e99ebef5",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "6afd9234-66ac-46fc-9a1b-67e1bb5fb109",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.717493Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8d7f964b610177d387afcdee9e2abbbd370fcbe553101991d0719a432bf48c66"
+  }
+}

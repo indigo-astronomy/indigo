@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1630db56-51b8-59e9-b9c7-4a0e5bbb9af2",
+  "revision": 1,
+  "title": "Gaia indexer evaluates shell substitutions in directory arguments",
+  "description": "The -g directory is inserted into a double-quoted ls command passed to popen. Double quotes preserve command substitution. An exact-command synthetic marker printed before listing failed; this is distinct from metadata-extractor FND-000040. A directory copied from an untrusted source can execute with the invoking user privileges. Enumerate directories without a shell and check enumeration errors.\n\nImported from .factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-001.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.834569Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "92cb1978-5c3d-45f5-8445-98fe8d769f48",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.834587Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-001.json",
+      "source": "3e22afee716e266e518a88c6af89ee3b1323c679ea9b54216cbd1f52b23c04f9",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "cc8e8d1a-c748-42b1-b497-15619a211bfc",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.834596Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "594ab1443cadaaa48b6f11fb5081f178c0611bcff99e31dc3dcb0e4a61f9f31e"
+  }
+}

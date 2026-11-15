@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "cfa50886-2339-5159-bb8e-647149a0746f",
+  "revision": 1,
+  "title": "CCD_FPS property is never released by indigo_ccd_detach",
+  "description": "indigo_ccd_attach() creates CCD_FPS_PROPERTY (indigo_libs/indigo_ccd_driver.c:242) but indigo_ccd_detach() never releases it; it is the only CCD base-class property without a release. Every CCD device of every driver loses 3656 bytes per attach/detach: at driver unload and on every unplug of a hot-plug camera. Valgrind: 5 blocks, 18280 bytes, one per simulator CCD device. Next: release CCD_FPS_PROPERTY in indigo_ccd_detach().\n\nImported from .factory/findings/archive/FND-20261025093558-ece5-server-leak-check-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.799994Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "efb742ba-ed80-4569-bf24-e9afaf71d30a",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.800016Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025093558-ece5-server-leak-check-001.json",
+      "source": "c3d7530fbc6904bbc91c9056148c967fd1c187e4a9544874dddbeb99df9b10a4",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "e2e15d9e-82c3-4ec5-8878-772a81965832",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.800024Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "10cf3022471f3d0da691863c49a2d9ad12bf33cd1a38a7a10fef3a9320c07fbb"
+  }
+}

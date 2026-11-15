@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3f1182cc-095e-5b95-bdea-b25e947b914b",
+  "revision": 1,
+  "title": "focuser_primaluce did not publish the ARCO angle during a move",
+  "description": "The rotator movement finalizer read the angle every 0.2 s during a move but published ROTATOR_POSITION only when the move ended, so clients showed the start angle until arrival.\n\nImported from .factory/findings/archive/FND-20261023111747-3b69-primaluce-rotator-progress-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.738053Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "4b11f51e-c5fc-4233-8da7-660e08a3da29",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.738070Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023111747-3b69-primaluce-rotator-progress-001.json",
+      "source": "cd85b5539a79f7cbdcc60688e90a8a703a69079063464b52897a981624c75ddb",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "3ed68863-cb2f-4fc2-b857-ce18b546ed5a",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.738078Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ae8d092de1100f8a929cba50a0abffb696b7669f6dc702e1afd37b0ac20c0843"
+  }
+}

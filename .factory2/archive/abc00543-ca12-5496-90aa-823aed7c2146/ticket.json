@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "abc00543-ca12-5496-90aa-823aed7c2146",
+  "revision": 1,
+  "title": "PrimaLuce LED setter accepts nested command refusal as success",
+  "description": "Named LED refusal/malformed acknowledgement now overrides legacy success; accepted named/generic firmware acknowledgements remain supported. Protocol and filtered consumer regressions pass, with qualified scope in repair verification.\n\nImported from .factory/findings/archive/FND-20261102173307-8455-repair-serial-audit-findings-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.874449Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d23b8a13-6fb7-4f64-ba67-d2067d1c174f",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.874467Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102173307-8455-repair-serial-audit-findings-001.json",
+      "source": "5b9167c6b7119578f6ef3427adc061c7feb05adf131c083b318d8d0f1aa04fc3",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "6f92ca97-ee16-4416-98c6-6a1f05949b9b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.874475Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "fb43556a8186f657f38c707a72b1a323c1a4997e1a1baf59c3e7fca4524490ba"
+  }
+}

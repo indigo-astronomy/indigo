@@ -1,3 +1,0 @@
-Traceback (most recent call last):
-  File "<stdin>", line 157, in <module>
-RuntimeError: Cleanup incomplete: ['original parked motors/side not restored']

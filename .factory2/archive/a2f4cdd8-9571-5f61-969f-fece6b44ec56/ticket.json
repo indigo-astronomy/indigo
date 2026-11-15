@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a2f4cdd8-9571-5f61-969f-fece6b44ec56",
+  "revision": 1,
+  "title": "DNS-SD callbacks use undefined fields after a discovery error",
+  "description": "Error callbacks use name/domain/full_name although SDK documents those fields undefined on nonzero errorCode. Next: handle error before consuming fields, retain requested resolve context and add ordinary callback-error fixtures.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-031.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.723776Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "46ef1556-ca63-48bf-b5d0-f64d5164d8f0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.723792Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-031.json",
+      "source": "4d9e2d91a7a1188b003f7c93d45d304cca68625fb7059648a770168989018574",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "b25d1c83-f705-45ae-aca6-9c2a5d784c3b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.723800Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a1b42a003e8f8e37ec943b17b1818aff097ac33f3f596d2464f4e37d74f95006"
+  }
+}

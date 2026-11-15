@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6e9c13a2-b854-5aa8-8695-35e98ad5953c",
+  "revision": 1,
+  "title": "MJKZZ Bluetooth signed-value assembly overflows signed shifts",
+  "description": "Related notification decoder used signedleftshifts that can overflow for valid negativepositions (source confirmation only). Fixed by unsigned byte assembly followed by int32 cast, matching portable MJKZZ; actual callback validnegativeframe passes ASan/UBSan. No oldnegative runtime reproduction, hardware or exploitability claim.\n\nImported from .factory/findings/archive/FND-20261102185500-c325-fix-driver-protocol-followups-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.876170Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "317b6b9c-80e6-48c9-819d-e306cbff0633",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.876188Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102185500-c325-fix-driver-protocol-followups-001.json",
+      "source": "c9e45f580e8854b1a85e059d954065c7d228a11e604dc2ea332b93264fc949ec",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "ef884685-129b-4ac2-9277-f7a6cf59ee05",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.876196Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "bdff7a242eef8561aea9a46a8f1944a380b570df7ec82a7290a4c3c7c2ed36d3"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "029417f7-93d3-5514-903f-f12d7a984572",
+  "revision": 1,
+  "title": "DSI transport failures can be reported as successful acquisition",
+  "description": "dsi_start_exposure discards setup/start command failures and marks exposing success. dsi_read_image checks transfer status but not actual image byte count, allowing short successful planes to decode retained/partial contents. Next: propagate setup/start failures, commit exposing state only after accepted start, enforce exact expected plane lengths and add fake transport failed-start/short-frame regressions. Source-only, no device execution.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-044.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.734867Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "6afa7017-5956-4ecc-8822-0734ac9ffaa5",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.734887Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-044.json",
+      "source": "4d0f5e35d2fc8e4259076156865d7d37a806e50e9cd49276492b9ed9a794218f",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "750e00bf-879a-4dd9-8980-b2b1e61f6f73",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.734895Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ef8810b7b6ce94bf65da5ba5ff53d7ec43922aa5fe024b956b2bf7056233f52d"
+  }
+}

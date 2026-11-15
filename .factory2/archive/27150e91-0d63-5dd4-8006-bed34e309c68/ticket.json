@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "27150e91-0d63-5dd4-8006-bed34e309c68",
+  "revision": 1,
+  "title": "USB auto-detach can leave the system driver detached after failed claim",
+  "description": "A privileged failed claim left no Mass Storage child. Public kernel reattach restored it; explicit detach/claim/release/reattach now has transactional ownership and three rollback regressions pass. Next: retain verified repair disposition and physical-test limitations.\n\nImported from .factory/findings/archive/FND-20261026212631-884a-complete-pentax-007.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.819692Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "0f2a65a4-6f8d-42ec-96dd-4ab2ec7e1e9e",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.819708Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-007.json",
+      "source": "260622617e7a348e714d5c5de923dba23762f54543395e2ac807004501e8f91d",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "2dde9621-97c5-4c03-a324-4e063efb871f",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.819715Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "9ec28c538c35af3a70a8d488eb6ee32f3de3bb391cda15c2dc8aa31a2efd0f51"
+  }
+}

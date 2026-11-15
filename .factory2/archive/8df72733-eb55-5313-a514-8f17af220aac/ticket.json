@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8df72733-eb55-5313-a514-8f17af220aac",
+  "revision": 1,
+  "title": "Pentax connection-only profile can overwrite full hardware record",
+  "description": "New baseline profile requires explicit recording label; guard prevents an unlabeled partial success replacing full camera acceptance.\n\nImported from .factory/findings/archive/FND-20261027181603-4710-pentax-rpi-validation-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.824943Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "18c6620c-3cbb-459d-929b-7ddbac5ea51d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.824968Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261027181603-4710-pentax-rpi-validation-002.json",
+      "source": "1196e9ef4f4c7eb4ff0dcf386e77cced9eca058181b9c730f8ede8c231670c07",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "da869f4a-e2a0-4c06-8177-e2cd9f5dcd3c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.824976Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "6c5bba362569d021422bcd5671dfc53e66b4807e22e6ccb60d618081dd827cfc"
+  }
+}

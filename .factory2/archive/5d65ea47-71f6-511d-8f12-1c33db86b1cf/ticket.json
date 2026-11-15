@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5d65ea47-71f6-511d-8f12-1c33db86b1cf",
+  "revision": 1,
+  "title": "TOOLS-001: The property parsers build `sscanf()` formats with field widths equal to destination buffer sizes, which still leaves room for a terminating NUL beyond the array",
+  "description": "TOOLS-001: The property parsers build `sscanf()` formats with field widths equal to destination buffer sizes, which still leaves room for a terminating NUL beyond the array. The remote-server parser also uses `%[^:]:%s` with no widths for `hostname[255]` and `port_str[100]`. Exact-size or long command-line arguments can overflow stack/global buffers before validation. Use bounded widths of `sizeof(buffer) - 1`, check `item_count < MAX_ITEMS` before appending parsed items, and reject overlong fields. Repaired and verified by task 20261024113017-1e1c-fix-fnd-000036-000037; see its verification and independent security reports.\n\nImported from .factory/findings/archive/FND-000036.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.663297Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "b2ce9706-1a03-4b46-bc94-c4986a75d782",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.663315Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000036.json",
+      "source": "396b91e1058b0bdc5fd1a89edd8503cc23e8b3fecba60ce9c3847878b0a83d38",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "61f8886a-755f-4a8f-9eea-9b9aaaf9f97a",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.663323Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "0f6f48cfa24ba6beb63c33e7e47708e3a45f119a2fb2f70dbec7a192ba7d9842"
+  }
+}

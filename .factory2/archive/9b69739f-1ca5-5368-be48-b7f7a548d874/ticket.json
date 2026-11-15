@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9b69739f-1ca5-5368-be48-b7f7a548d874",
+  "revision": 1,
+  "title": "SER timestamp arithmetic narrows to 32-bit long on Windows",
+  "description": "Timestamp arithmetic uses long, which is 32 bits on Windows LLP64. The cast first narrows epoch seconds to long; subsequent multiplication by 10000000L can overflow signed long. The timezone multiplication likewise uses 32-bit long. The uint64_t serializer cannot repair prior truncation/overflow. Synthetic Unix seconds 1793563200 require 639291636000000000 ticks. Use explicit 64-bit epoch/tick and signed timezone arithmetic; assert serialized timestamps. Source-contract confirmed; Windows execution unavailable.\n\nImported from .factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-008.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.840075Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "a3d3d90f-f05e-4170-ac79-6665c873e3b4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.840093Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-008.json",
+      "source": "0efce58404602fd6ece48bf780a4b24c00bbda19c7645ff432b6ccc23d1fe0f9",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "cf519486-5367-4ce7-8127-0e51b7c7fc39",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.840101Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "9d3dd2e6e011d95411181421ce3805042d47a83a86eebec04becbe5517779a13"
+  }
+}

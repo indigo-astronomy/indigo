@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "11915e74-3c3d-5221-ad05-512ade56c621",
+  "revision": 1,
+  "title": "QSI fake trace writer claims success after output errors",
+  "description": "qsi_fake_trace_write returns file!=NULL after unchecked fprintf/fclose although its header promises false on I/O failure. A disk-full/write/close failure after successful open can be reported as a captured normalized migration trace. Check ferror and close status, with an injected write/close-error regression; no actual full-device or trace-output probe performed. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-020.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.862935Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "cde9514e-8134-4a6b-8811-5a7ffba4a7aa",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.862952Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-020.json",
+      "source": "4e680b0cf2470263f9486af048fed0bd89f2c8f82f54576f5b7954c6edbafb8f",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "1824d470-b9af-42f9-98e4-2033a552efd9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.862959Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a55c8db1f22d24ba393b8b2e4cd5d30a5ce11fb550dfc61a144cf5a1f3f1198e"
+  }
+}

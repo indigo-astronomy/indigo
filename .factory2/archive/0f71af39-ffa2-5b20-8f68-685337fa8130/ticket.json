@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0f71af39-ffa2-5b20-8f68-685337fa8130",
+  "revision": 1,
+  "title": "Numeric formatter reports failure for ordinary successful output",
+  "description": "indigo_client.c:572-599 (596): snprintf result compared to1, so ordinary valid multi-character numeric output reports FAILED. Header contract client.h165. Accept nonnegative in-capacity output, test regular numeric formats as well as sexagesimal. Root independently confirmed and owns ordinary functional check. Short-format suffix pointer arithmetic also lacks length guard; do not reproduce memory fault. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-4). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-004.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.763184Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "e3fc526b-e398-41fd-b01f-a911b8d15c34",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.763202Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-004.json",
+      "source": "c17ac7d2ebcc09274b1ce5ffa338ffb99d18b7bcf1a764df9697097b25b0680e",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "23216148-bb39-429e-a7a9-1f3b1cd6c792",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.763210Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8116c90afb90e0351feb42504c30d7e148d7300d8ac76dbae9feafad268e4b94"
+  }
+}

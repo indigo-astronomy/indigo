@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6ab592a1-9290-52d0-bc39-efa0395cea31",
+  "revision": 1,
+  "title": "USB serial enumeration can exceed caller capacity on multi-interface devices",
+  "description": "Fixed and reverified in task 20261024150354-a911-fix-usb-serial-gps-findings. macOS checks capacity before both iterator acquisitions and returns early for nonpositive capacities; metadata/order and owned resource release verified with fake IOKit and real CF values. Independent source review passed; exact command evidence and platform/hardware limits retained in repair reports.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.698840Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "e621fb83-93e9-47b9-bf1c-00bebd4eb965",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.698857Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-001.json",
+      "source": "27cff0494122113e0b64de33d06609378f5ea4c9b49ff2f892cb72a469477bb6",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "02414e49-2155-4b06-85a2-db9256a251c2",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.698864Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "179656fe9d36fd4ed35e31d8ca9d704ba85fd26271f72888e2da38200c00554e"
+  }
+}

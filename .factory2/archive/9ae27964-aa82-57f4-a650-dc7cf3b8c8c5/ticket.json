@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9ae27964-aa82-57f4-a650-dc7cf3b8c8c5",
+  "revision": 1,
+  "title": "Inactive upload error states can falsely fail a later exposure",
+  "description": "Capture completion checks only enabled upload outputs. CLIENT-to-LOCAL and LOCAL-to-CLIENT recovery regressions pass. Next: retain verified repair disposition and physical-test limitations.\n\nImported from .factory/findings/archive/FND-20261026212631-884a-complete-pentax-005.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.817822Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5d3f8752-c787-4873-ba0b-a9355fb9e4eb",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.817838Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-005.json",
+      "source": "9443bd54fd94b9d33c1322ac31be8d2c6fb8ab3d55057c62eb64569aeea73e44",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "9806f37e-07c6-4f63-90d6-a763bf2c695d",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.817845Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a99c00c85220702907ea42fb621d80cbcc2fa27e35030c1bbcd6e657dc2b2946"
+  }
+}

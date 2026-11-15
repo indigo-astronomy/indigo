@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "44ad4cfa-c9e8-5cea-b249-eea9948ebb72",
+  "revision": 1,
+  "title": "FlipFlat accepts a foreign operation acknowledgement as success",
+  "description": "The command helper accepts any positive reply beginning with *, so a delayed status or malformed acknowledgement can make light/intensity requests report OK without confirming the requested operation. Repository simulator defines distinct operation acknowledgements. Validate echoed opcode/shape/payload and test stale/wrong-operation replies; no hardware execution. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-010.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.853807Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "04e96c6d-50a8-49f1-91b0-23558bfa72ee",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.853823Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-010.json",
+      "source": "fde866fd351a45de5a5ff6ae1807fe6d073cc9d351afd7b19e7b2f2173d5ca9d",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "d14f6b0c-d109-40ab-af6a-5c870cd3fe90",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.853831Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e87be03d8a9078a8f8429fef1734b9a55befc2cae121c21c0d62fbebdb34b335"
+  }
+}

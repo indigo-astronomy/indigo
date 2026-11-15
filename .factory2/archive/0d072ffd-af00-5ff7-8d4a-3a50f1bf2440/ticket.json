@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0d072ffd-af00-5ff7-8d4a-3a50f1bf2440",
+  "revision": 1,
+  "title": "Native registries fail to reject their exact capacity boundary",
+  "description": "`indigo_libs/indigo_client.c:209`, `:400` and `:530` test `empty_slot > INDIGO_MAX_DRIVERS/SERVERS`. Arrays are declared with exactly those capacities (`:75`, `:313`, `:441`; public header defines256 drivers and10 servers). With no reusable slot, empty_slot equals the used count, so the257th distinct driver or11th live remote server/subprocess bypasses the intended TOO_MANY_ELEMENTS return and indexes the element after the registry. This is an ordinary full-capacity contract mismatch; no capacity stress or malicious-input run was performed. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; a Full evidence: C-01. Remediation: reject `>=` before any indexed access, preserving reuse of gaps and duplicate semantics; add bounded unit fixtures at capacity-1, capacity and after removal. Treat three registries together but do not rewrite unrelated connection behavior. Additional current boundary: indigo_bus.c:2470-2483 writes slaves[count] before count++ >= max, so zero/full capacity can index outside the caller-provided extent. Next: reject before writes and verify zero/full boundaries alongside registry limits.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-035.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.727532Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "7b4cc178-4574-455e-bea7-85c16565b071",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.727552Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-035.json",
+      "source": "e973a2a19e28eec1817241d0eb3e05921b26bf7cde3aa6d747d90ea393da2881",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "38675945-da22-4b64-9d1b-c80a8d858a48",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.727560Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "d7cc6544835c76c791e421a4ed28aa12adf364ff5e2e56055d09c37f76a03fa4"
+  }
+}

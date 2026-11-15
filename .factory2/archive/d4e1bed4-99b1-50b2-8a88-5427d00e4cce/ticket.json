@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d4e1bed4-99b1-50b2-8a88-5427d00e4cce",
+  "revision": 1,
+  "title": "TOOLS-007: The repair tools read whole files and then inspect or rewrite fixed offsets without first proving the file is large enough, and they do not check write results",
+  "description": "TOOLS-007: The repair tools read whole files and then inspect or rewrite fixed offsets without first proving the file is large enough, and they do not check write results. A small input can make `fix_fits` read past the loaded buffer at offset 5760, while `fix_xisf` can rewrite from `data + 2880` even when the file is shorter. Validate minimum sizes before fixed-offset access and check every `fwrite()`/`fputc()` result before reporting success. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000042.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.668795Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "2528719a-fa5b-47c8-9f3a-17d56670e066",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.668814Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000042.json",
+      "source": "afc4fcca71f683eb45687b1b3c419e6fce309ddb7484daa871badf6341728183",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "2594b85e-3c3f-402c-a459-072d5b35d571",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.668823Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "3c931bb9501a6af67d53f9b84caa51fef3ea0db7b93a51ba1af2a09b6b529fbf"
+  }
+}

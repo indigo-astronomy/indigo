@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "037989a9-bb0b-58ef-bd06-97dda87d5024",
+  "revision": 1,
+  "title": "PTP device-info decoders discard the received payload boundary",
+  "description": "Device-info path passes payload without remaining length into primitive/string/array decoders. Isolated helper diagnostic demonstrates missing bounds, not full transport reachability because transport adds padding. Next: bounded cursor parsing and fake transport short/oversized count regressions.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-019.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.714140Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "97c15f09-3bba-4785-8bef-cbadffc9162c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.714158Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-019.json",
+      "source": "b93890329c78850da68b9f19b9e004be00687db6aba67c9c2978315c8b4070a2",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "7b259034-c217-4943-bcb6-efcac9cd15c5",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.714166Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "71ea58a02a024e80ec3a47c89f9ac785130cbe7232b3efeef04738695a453669"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "925c3b01-7d84-5aa8-b8e0-50b346188382",
+  "revision": 1,
+  "title": "Canon text-property encoding may scan and send beyond its stack buffer",
+  "description": "Severity medium; confidence high; length/termination. indigo_drivers/ccd_ptp/indigo_ptp_canon.c:1534-1540 copies256 characters with strncpy into a256-byte payload without forcing NUL, then strlen derives the transfer length. The caller1545-1547 passes the framework text item's value, whose capacity is larger than256; a valid long text property is sufficient to lose termination. This can overread stack bytes and use that inflated length for the USB/ICA outgoing copy. Minimal fix: reject an overlong PTP text value or reserve and write a terminator with a checked explicit encoded length; test longest accepted property and one-too-long. No matching active finding identified. Source-only, no payload/reproduction. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-13). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-028.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.782700Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "cc5ea08b-b1dd-4332-9ad0-fab90cb2f7f6",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.782719Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-028.json",
+      "source": "b63bfabb5931f83bd6852dec7ecf089af98714a08ad96765461a9471ab3435f2",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "5b45597e-2422-42dd-86e1-0fccb4785375",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.782728Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "acdb1176b4dfc118fd3e117a189eebabc9edfc72ca39c658a8e0af49ae48369c"
+  }
+}

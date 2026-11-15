@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "291f1508-a91a-52dd-ac39-779f0856738d",
+  "revision": 1,
+  "title": "Astromechanics accepts malformed measurement replies as valid sky brightness",
+  "description": "Any positive section read is converted by indigo_atod without complete numeric parse validation; garbage newline becomes0 and OK, and numeric-prefix junk becomes a plausible reading. Validate complete finite device payloads and preserve previous data/ALERT on corruption; add fake serial malformed-reply checks. This concerns transport input, not framework property input. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-009.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.853057Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "db780659-0c6e-4a48-8463-5266c6c92575",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.853074Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-009.json",
+      "source": "8fad947240837063f2971782d3f76db885a395458b88a7627bdfa1bf8792564f",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "05e8e7e8-de32-425b-b1b6-b12e1ab939e1",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.853082Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "6c14e0ad90b557280fc68d856c9442329566dc0435ed9f54fecfb634fb84d554"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9e200f18-01d5-5531-b487-f8e7bae6267d",
+  "revision": 1,
+  "title": "Raspberry Pi private data never constructs its std::string",
+  "description": "Category functional; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_optional_drivers/ccd_rpi/indigo_ccd_rpi.cpp:1693-1694 and:1766; type:932-941 contains std::string eid. indigo_safe_malloc provides zeroed raw storage, not C++ construction, but attach immediately assigns to eid. This invokes a member of a non-live std::string, with implementation-dependent startup crash/invalid storage behavior. free at shutdown also skips the string destructor and can leak its heap allocation. Existing FND-000019–000027 cover different optional-driver failures, not this C++ lifetime mismatch. Use value-initializing new rpi_private_data{} and matching delete, or a deliberate placement-construction/destruction contract. Verify attach/detach with short and non-SSO camera IDs under a fake libcamera backend; Raspberry Pi/real libcamera unavailable in this read-only review. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-2). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-030.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.784711Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "2f37ef45-0b1f-4701-bf67-981869a02c62",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.784732Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-030.json",
+      "source": "a925c45a7a183e0206a0c0b8879b3301c00162fd11e712afdff2049fab2a79be",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "161596df-efff-434c-8ef8-902f1576ef31",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.784739Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "f7b3ac000bc92bb98044fe702918093c24e2099ec0b68f3363c2c6a34708c0ac"
+  }
+}

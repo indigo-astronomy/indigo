@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "abf5636d-e716-5372-a133-31069e8c2701",
+  "revision": 1,
+  "title": "focuser_optec descriptor_cleanup integration case fails on master",
+  "description": "Integration case descriptor_cleanup in indigo_test/integration/test_focuser_optec_simulator.c:762 fails (open_descriptors() != before) on master e7cbb62a6 in 3 of 3 filtered runs and on the task candidate. Either the driver/simulator leaks a descriptor across the case or the test counts an unrelated descriptor. Next: scoped focuser_optec task to identify the leaked descriptor and fix the driver or the test contract.\n\nImported from .factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.804850Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1a034a95-4bf5-47dc-87e5-bc8e775b3102",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.804867Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-001.json",
+      "source": "bdd7af8a1cd2fcca36a96e61bcba728a67a8b752c22d0fa5efc3335e2e5e63ad",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "946d497e-deb7-44e0-bce9-da4240217ab6",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.804874Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "44d7279f36d3c6a98c673750645df02c3a4d3b342e0df1a573f785a4d90ed21f"
+  }
+}

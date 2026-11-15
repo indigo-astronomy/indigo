@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8b930949-c24a-5b61-925e-38d523c9c48e",
+  "revision": 1,
+  "title": "FTDI DMG detach failure leaves an unprocessed archive target",
+  "description": "The macOS FTDI Make recipe installs the final archive before detach and stripping. Xcode can veto normal unmount; make then fails while the unprocessed target remains and may be reused. Repair the transaction, cover failures and rerun the real library build.\n\nImported from .factory/findings/archive/FND-000044.json (category: functional, blocking: yes).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.670440Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "88fb34ab-f30f-41bf-8b66-744c1aa7d357",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.670456Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000044.json",
+      "source": "6e5b4ffd5b457a9ca490f9bf2b8cbe334ded608108f604e2875695314fa8ea7b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "b0e45d7d-3053-4f59-a470-b762fd7d4b39",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.670464Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "f74e5b7341f6e50013f1fa768bc6ff2e202a4b6e9a2a742352b57865633fba43"
+  }
+}

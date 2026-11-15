@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8d6dd2b3-aa1f-5089-9e95-5d5b71da2076",
+  "revision": 1,
+  "title": "Fully masked contrast produces NaN that reaches focus estimates",
+  "description": "All saturated interior samples can be masked; dividing by real_count==0 yields NaN, while the caller only checks ==0. Next: define explicit no-valid-samples result, handle it in focus and cover fully saturated fixtures.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-032.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.724662Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "8ff1856f-9a46-4114-afd1-1daae4d3746d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.724693Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-032.json",
+      "source": "0ad83b14006c9905ccb1944553b1785eab8a368608cd9fdd292a7b85be57505b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "2ff92679-36a9-40d2-85fc-d6c45f55d362",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.724703Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1a996a922aa4df31e18108725d06cd0e2986c79f160fa330b3012c49b142bddf"
+  }
+}

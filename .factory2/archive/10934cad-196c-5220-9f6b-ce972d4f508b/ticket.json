@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "10934cad-196c-5220-9f6b-ce972d4f508b",
+  "revision": 1,
+  "title": "HID close falls through into descriptor cleanup",
+  "description": "indigo_uni_io.c:2389-2409: POSIX HID close calls hid_close(copy->hid_device), then continues through socket operations and close(copy->fd). indigo_uni_handle declares fd/hid_device in the same union, so these operations use pointer bits as a descriptor. Usually EBADF; a matching descriptor can be closed spuriously. Current wheel_atik/wheel_sx open via indigo_uni_open_hid. Next: Make HID cleanup mutually exclusive from fd/socket cleanup. Verify synthetic tagged-handle dispatch preserves an unrelated descriptor. Correction to early reviewer message: the aliased fd is not necessarily zero; the public union layout disproves that early detail.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-003.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.700634Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "8746142b-f0d1-4a77-86b3-7c49aa418df7",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.700655Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-003.json",
+      "source": "58fcc1fdaa4f2671fdea7c78408c9d154df2095f4f574ce5415a0cb258cb26ec",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "7c80956a-0599-4073-9cb1-5a367844bd89",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.700664Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8cbd5e7cd75fe4107dea642d284626d20d7ce70158bde9e237cea78274962c3d"
+  }
+}

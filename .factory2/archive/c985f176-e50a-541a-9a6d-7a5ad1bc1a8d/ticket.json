@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c985f176-e50a-541a-9a6d-7a5ad1bc1a8d",
+  "revision": 1,
+  "title": "SX AO simulator fails to clamp its axis limits",
+  "description": "`indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.ino:49,58,67,76` uses comparison expressions (`dec == limit`, etc.) where movement-limit assignment is intended. A normal GN/GS/GT/GW request crossing the configured ±50 limit acknowledges L but leaves the stored coordinate outside the limit. Subsequent L status uses exact equality at88-96, so it reports no matching limit bit for that overrun. The west negative branch also names positive limit. Current driver sends the same six-byte directional step commands and consumes the one-byte acknowledgement/limit status. This undermines manual limit/return-to-center testing without proving a physi Full source contracts: helper-manual-review.md H-01. Remedy: assign the matching positive/negative boundary after each crossing and verify all four directions, exact limit, first step beyond it, L status and K/R center reset using an isolated firmware fixture/board. No firmware was compiled/flashed or transport opened in this audit.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-045.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.735703Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d0d8b7b5-5321-460b-a72c-0926317a350d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.735726Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-045.json",
+      "source": "d2f062358141a2a0eec7f6dd80b70e116be68fbef0c0fcd4046fdc882e8ce37c",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "4a091f7c-361f-4de5-8206-67e2d08f8225",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.735734Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "27302e2e1359ab9672ba28f5ec1052bddd1a315b0cfb819d9686271e4048b245"
+  }
+}

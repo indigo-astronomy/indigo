@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "068ad86c-9e81-5af4-ab17-16f4852b1fe4",
+  "revision": 1,
+  "title": "Sony ILCE-7RM4 capture after a reconnect never completes and the exposure stays BUSY",
+  "description": "Hardware run 2026-10-25 13:00 UTC on 3.0.0.58: in the third iteration of the Reconnect case the A7R4 accepts the capture but sends no ObjectAdded or error, and CCD_EXPOSURE stays BUSY with no driver deadline. Intermittent (passed at 12:46, not reproduced manually). Next: capture completion deadline ending ALERT in ptp_sony_exposure(), fake case for a lost object, hardware rerun.\n\nImported from .factory/findings/archive/FND-20261025113906-c862-ptp-fuji-hardware-test-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.802466Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "9c4c6fab-4083-4d70-bc8c-fa36a359c6c4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.802484Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025113906-c862-ptp-fuji-hardware-test-001.json",
+      "source": "d35b9b5c27092db5d996fd9fbfde16e9fa3eed80c6b73299c8322cd17b2fdf67",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "d4c7eafb-24d8-419b-9cd6-1f3e87643964",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.802492Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ef0783934c586ec6dd19adb579723e374338316080d842f06b055f74655a41fe"
+  }
+}

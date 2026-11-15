@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "48320eae-a3ef-5d04-b75b-2e90c5c74c0f",
+  "revision": 1,
+  "title": "Abort of an imager paused after transit is not exercised by a test",
+  "description": "The flip failure tests inject the PAUSE_AFTER_TRANSIT event; the real Imager Agent is not paused when the flip failure aborts it. The Alert outcome through wait_for_resume is confirmed by code inspection only. Next: pause the real imager after transit (or with PAUSE_WAIT) before failing the flip in the capture test.\n\nImported from .factory/findings/active/FND-20261103010401-8b51-flip-failure-recovery-004.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.882777Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "4cf352ea-f4a6-42f2-b9b7-83e173d7b4f5",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.882794Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261103010401-8b51-flip-failure-recovery-004.json",
+      "source": "a6bf783908ea959f4eb96e7b384681f0fd099e02b849b4b22aac9f36e5383837",
+      "priority": "low",
+      "severity": "low"
+    }
+  ],
+  "closure": null,
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "d903fe28cd6ccbb1d1838a7d6d51105e4bbc4d998b3426c03a9af1fc569868d6"
+  }
+}

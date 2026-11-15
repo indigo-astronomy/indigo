@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "51134421-2392-5f87-8b93-e84c629b9b27",
+  "revision": 1,
+  "title": "focuser_primaluce read the calibrated range before the controller stored it after END",
+  "description": "CAL_MAXPOS keeps the previous value (0 or the previous calibration) for up to about 0.65 s after StoreAsMaxPos is acknowledged, so the driver refused moves as uncalibrated or published the position beyond a stale maximum.\n\nImported from .factory/findings/archive/FND-000056.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.680441Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c7b4ffe5-c612-4c60-845d-344eb44c5483",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.680459Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000056.json",
+      "source": "f30ab4abd748cdeb61aed524673cfd128581d40099c07eb0d54530449b84431a",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "e645867e-4b80-4cc8-ba21-cdbb03d3fddc",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.680467Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1c59f86aa47745b62b821ca179431434bb29080f8969e9f2a899dce884d0f691"
+  }
+}

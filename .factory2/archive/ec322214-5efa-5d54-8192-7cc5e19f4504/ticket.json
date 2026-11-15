@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ec322214-5efa-5d54-8192-7cc5e19f4504",
+  "revision": 1,
+  "title": "Cartesian conversion maps negative coordinate axes incorrectly",
+  "description": "indigo_align.c:471-478: cartesian_to_spherical returns north pole for both signs of z when x=y=0, and returns a=0 for y=0 regardless of negative x. Thus normalized (-1,0,0) converts to the opposite longitude and (0,0,-1) to the opposite pole. Polar error apply/correct call this conversion. Next: Use atan2 for non-pole longitude and distinguish south/north pole; clamp/normalize z according to stated unit-vector contract. Verify axis round trips and identity rotations.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-013.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.709408Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "447de514-4f28-4cc5-a985-2b419ce7ed17",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.709425Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-013.json",
+      "source": "f5a8908eed5d069e586905255c20b65835fc78a5269a5cafa2145ce3fc26a2ed",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "5ff74c42-bb1b-4d86-b215-5e3b9b891efe",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.709433Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "55c64f9596c3dfbed09d4aa89c1fd868c1d5296272edaabf61ffd013afef53fb"
+  }
+}

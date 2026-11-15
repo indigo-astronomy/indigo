@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9839cc70-7f99-579f-8b29-0e282fa04a5a",
+  "revision": 1,
+  "title": "Astrometry agent polar alignment cases end with AGENT_START_PROCESS ALERT",
+  "description": "test_agent_astrometry: 'polar alignment and recalculation', 'polar alignment targets J2000 mount' and 'polar alignment targets JNow mount' fail with AGENT_START_PROCESS ALERT instead of OK on Linux x64 (2.0.0.31 and 2.0.0.32). Not investigated. Next: run with INDIGO_TEST_DEBUG=1 and find which polar alignment step fails.\n\nImported from .factory/findings/archive/FND-20261025152706-abbf-fix-server-leaks-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.803277Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "15584e82-e84f-4f29-a27c-95d609997538",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.803295Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025152706-abbf-fix-server-leaks-001.json",
+      "source": "785ff2b7fdaecd7763f35df3c5c80e134ac2ecde6392c75b9a7bc3143314851b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "c9e98930-0f10-4dcd-aedf-6fe80718fe3d",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.803303Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1566642a7de6d1820cf2a31aa572699efa46f910ab52c25f56eb7449778bb773"
+  }
+}

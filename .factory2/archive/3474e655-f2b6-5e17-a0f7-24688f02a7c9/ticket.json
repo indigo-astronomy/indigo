@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3474e655-f2b6-5e17-a0f7-24688f02a7c9",
+  "revision": 1,
+  "title": "DSLR wrapper dereferences a failed LibRaw initialization",
+  "description": "Wrapper accesses raw_data->params without checking the allocation result. Next: guard init, return a clear allocation error and cover injected initialization failure.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-033.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.725948Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "b1ddf690-e4d0-447e-be67-7f7f7bcc8398",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.725969Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-033.json",
+      "source": "8f07798ac8135aaf84e901e026eb716c0e23c8f3bbb5f5a607f074edc56752d1",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "63da8690-a180-4314-89f8-f8f1023ca940",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.725979Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "4bae17627521eaed3fdacb0e626c5cdbc5c51b360289e46ddae27df855661a9e"
+  }
+}

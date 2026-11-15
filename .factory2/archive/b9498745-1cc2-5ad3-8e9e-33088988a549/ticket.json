@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b9498745-1cc2-5ad3-8e9e-33088988a549",
+  "revision": 1,
+  "title": "Pentax connection uses the handle after an unchecked USB open",
+  "description": "libusb_open result is overwritten before checking and the handle is immediately used. Next: stop the failed attempt, reset handle and cover open failure with fake USB.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-020.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.714929Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ba8c609c-dcb3-4d11-bd30-48526435a594",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.714947Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-020.json",
+      "source": "07c05e44a9a351293c49dee021f35937966d32574dff6927833ada5697e4456f",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "1afe21f7-41c4-4365-8c5c-a99016525616",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.714955Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "71dd71103a6e66339ed40144f3edf8173c7df6980d17ed725832b2926ecdc1ed"
+  }
+}

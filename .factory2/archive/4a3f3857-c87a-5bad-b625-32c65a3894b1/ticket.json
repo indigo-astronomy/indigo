@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4a3f3857-c87a-5bad-b625-32c65a3894b1",
+  "revision": 1,
+  "title": "Browser sexagesimal conversion loses the sign below one degree",
+  "description": "`indigo_server/resource/indigo.js:462-490`: dtos truncates signed degrees with `d | 0`, losing the minus sign when -1 < value <0. stod determines the sign using `parseInt(degrees) <0`, which is false for negative zero. Actual Node execution of the committed functions returned `dtos(-0.5) == \"0:30:00\"` and `stod(\"-0:30:00\") == +0.5`. `components.js:1124-1184` uses these functions for sexagesimal editing/display, and generic property controls use them at1418/1426/1445. `mount.html` uses those controls and dtos for picked target coordinates. Declinations/latitudes just south of zero can therefore be displayed or sent north of zero. Remediation:  Full evidence: C-03. Remediation: preserve the original sign separately from integer degree magnitude in formatting and parse the leading string sign; test positive/negative sub-degree values, zero, nonzero integer degrees and round-trip precision in ordinary coordinate widgets.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-037.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.729079Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "0daed3e6-7ceb-4316-9c0e-680d101993b3",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.729098Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-037.json",
+      "source": "0177ea09094ba9a2771f1fa85ae7db76403eaa8b4abe2d1ec44c52d7a84c7097",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "c568162b-3d6a-49f1-8ae0-d4b8a92f9647",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.729105Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "fd7ba57d0f49e6d78827b3e23b974368e3c169a3ba44aa8794d978824f1f2548"
+  }
+}

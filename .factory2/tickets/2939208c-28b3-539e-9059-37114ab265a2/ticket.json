@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "2939208c-28b3-539e-9059-37114ab265a2",
+  "revision": 1,
+  "title": "OPTDRV-002: Andor shutdown destroys the static global `driver_mutex` inside the per-device loop after using it for the current device",
+  "description": "OPTDRV-002: Andor shutdown destroys the static global `driver_mutex` inside the per-device loop after using it for the current device. With multiple cameras, the next iteration locks a destroyed mutex; after one shutdown/init cycle, future SDK operations can also use an invalid mutex. Do not destroy this static process-lifetime mutex per camera. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/active/FND-000020.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.649881Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "22c6f1b7-98a1-4f3c-a9e3-b6764d972146",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.649905Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-000020.json",
+      "source": "83e40a670ab3eaa5a2764efa53037e60081c8398ec7adc9472e75dcf956e7759",
+      "priority": "low",
+      "severity": "high"
+    }
+  ],
+  "closure": null,
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "def217079a388bf8508d3aa0bb380a738fad736b54fbf4674cc5d8a74ef36892"
+  }
+}

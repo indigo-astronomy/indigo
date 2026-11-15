@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a78416cd-745e-57f8-96c8-3249d2ea1b44",
+  "revision": 1,
+  "title": "OPTDRV-001: Andor initialization allocates `private_data` and `device`, locks `driver_mutex`, then breaks out of the camera loop when `Initialize()` fails without unlocking the mutex",
+  "description": "OPTDRV-001: Andor initialization allocates `private_data` and `device`, locks `driver_mutex`, then breaks out of the camera loop when `Initialize()` fails without unlocking the mutex or freeing the just-allocated objects. A missing or invalid SDK path can leave the global mutex permanently locked and leak the partially constructed device. Use a cleanup path that unlocks the mutex, frees partial allocations, and continues or aborts cleanly. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/active/FND-000019.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.649023Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "6b085e32-da34-456d-9bc4-d7f5c632a499",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.649044Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-000019.json",
+      "source": "90abf5aebc36d1dd452a8ac4ed58d3a96ee4f6aa450f9cfff4e4d733a62ac370",
+      "priority": "low",
+      "severity": "high"
+    }
+  ],
+  "closure": null,
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "0a65edf79de6ed5c5b1d29be90d0a178ca28b8d2ec369a5efb88505b74e6f1d4"
+  }
+}

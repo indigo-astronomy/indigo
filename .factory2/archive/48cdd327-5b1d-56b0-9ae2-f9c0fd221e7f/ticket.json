@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "48cdd327-5b1d-56b0-9ae2-f9c0fd221e7f",
+  "revision": 1,
+  "title": "PrimaLuce token lookup assumes an unused array sentinel",
+  "description": "- Location: indigo_drivers/shared/primalucelib/primalucelib.c:374-405, specifically 394-399; parser acceptance at 253-265; capacity in primalucelib.h:77-78,502-503. - Severity: medium; confidence: high from source; category: security/input validation. Owner: coordinator; status: open; nonblocking audit follow-up. - Evidence: parser accepts every positive jsmn return, including all 1024 allocated tokens; it does not retain the returned token count. The missing-key/subtree skip increments index and reads tokens[index] until an undefined sentinel or sibling is found, with no capacity/count bound. A completely occupied valid token array has no undefined sentinel after its last token. Searching for an absent field after a final nested subtree can therefore advance beyond tokens[1023]. The 8192-byte response buffer allows a token-dense JSON response to fill the token array. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-2). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-017.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.773707Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "3f431744-1039-4b63-9e1d-abc747de1e1b",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.773725Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-017.json",
+      "source": "cac5a36ce410a375691563f39575a7af46488a559fcada11d70aea056b4d418b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "985ea6f9-5cb9-40ae-bb08-e3730031346a",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.773732Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "78c0978b4810629517a5db31f0b6f3612914bedd1565e3669001876393837f2d"
+  }
+}

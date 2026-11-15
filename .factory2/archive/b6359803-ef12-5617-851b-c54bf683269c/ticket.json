@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b6359803-ef12-5617-851b-c54bf683269c",
+  "revision": 1,
+  "title": "Camera acknowledgements can falsely accept unapplied exposure settings",
+  "description": "Control and temporary exposure settings now require full-state readback; malformed and refused settings fail before trigger. Refused-program and zero-readback regressions pass. Next: retain verified repair disposition and physical-test limitations.\n\nImported from .factory/findings/archive/FND-20261026212631-884a-complete-pentax-004.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.816871Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "dabed3d2-73dc-4566-b3eb-457d6b556697",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.816889Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-004.json",
+      "source": "c9e704770f165dd7363f2e70ef46633fbe3db26f60aada7b4297ff05257167a4",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "bb4343f7-3cf8-4c52-8e9c-e3ea3d2cfe3b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.816896Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "cb2632391271c5126f020dc4d8c3e805f592ac5acba15304836cb25709e77d75"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "38f6389b-28ef-52ca-8625-8809308fa0fe",
+  "revision": 1,
+  "title": "RGB stretch selects the wrong reference on tied channel totals",
+  "description": "indigo_libs/indigo_stretch.cpp:616-670 uses strict largest-channel comparisons. R=G>B selects B as reference; all-zero totals divide by zero. Select a stable maximal channel and handle zero totals explicitly. Verify tied maxima, black input and ordinary RGB24/RGB48 data. Source-confirmed, no runtime AWB test. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-AWB). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-014.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.771420Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1cd4c1fb-2683-4ef1-b950-637f80fa8d97",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.771436Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-014.json",
+      "source": "44cc39027be2de7e0a02a0d5ac120b7947f102b67951f91a843ed7b2db96c74b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "8be25919-e3b4-49c2-b06e-f591c2a1f4b9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.771443Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "97c973253c1659e5468da34fb1e14f25ed420bc4b4932c978b3320c3e5698001"
+  }
+}

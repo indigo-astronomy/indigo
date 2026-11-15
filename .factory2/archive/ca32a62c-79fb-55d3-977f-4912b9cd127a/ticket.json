@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ca32a62c-79fb-55d3-977f-4912b9cd127a",
+  "revision": 1,
+  "title": "Gaia catalog infinite right ascension never completes normalization",
+  "description": "strtod accepts inf and no finite-value check precedes repeated subtraction of 2π. Exact extracted parser with CSV 10,20,10,0,0 completes; inf,20,10,0,0 exceeds a two-second subprocess timeout. Validate conversion, finite propagated coordinates, magnitude and proper motion before bounded normalization.\n\nImported from .factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.835373Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fbbcf708-d030-4780-86bc-09733c1d0d9d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.835394Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-002.json",
+      "source": "d2015723c8b45812163b7cb45f09bf59b094ace4751cb418eef9bb3430061223",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f417397a-1642-4712-bfa5-33d590794aef",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.835402Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "5bf4a5a33190572d605dd3a4f747fe31fbee1f1caf69325113f1733752ae42e2"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "aa35cf63-c94f-5389-8ed1-ed4f6cb8cbcb",
+  "revision": 1,
+  "title": "DOCS-003: Some developer-facing links point to names or paths that do not exist in the current tree",
+  "description": "DOCS-003: Some developer-facing links point to names or paths that do not exist in the current tree. `DEVELOPMENT.md` links `indigo_libs/indigo_bus.h`, but the header is under `indigo_libs/indigo/indigo_bus.h`; `CLIENT_DEVELOPMENT_BASICS.md` displays `indigo_examples/service_ddiscovery.c` even though the actual file is `indigo_examples/service_discovery.c`. Correct the link targets and visible labels so readers can navigate locally and on GitHub.\n\nImported from .factory/findings/archive/FND-000003.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.635482Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ae821020-41eb-48b1-a81e-509fa258fe55",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.635501Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000003.json",
+      "source": "ad92d2180da86fa7dd86fa45d38e1b7c376305a2692192d27f2141d6f4444279",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "93886546-1fa1-45f7-b26f-23106f44dd46",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.635508Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ece58b00d38439c5b6256f4b60173c8dc3e50cbc4562f3c3d7d886b8b59d12ad"
+  }
+}

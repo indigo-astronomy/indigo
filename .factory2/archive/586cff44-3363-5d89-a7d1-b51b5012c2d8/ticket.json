@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "586cff44-3363-5d89-a7d1-b51b5012c2d8",
+  "revision": 1,
+  "title": "XML attribute accumulation has no enforced bound",
+  "description": "Inbound XML attributes append without a capacity check before authorization, causing debug assertion failure or release heap overwrite. Next: enforce checked lexical limit with reserved NUL, session-local rejection, and boundary/read-split sanitizer regressions. Confirmed by current source contracts; no fix or runtime retest claimed.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-011.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.748219Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "e0d9977f-a4b5-4159-9b44-740358f8c2e8",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.748242Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-011.json",
+      "source": "dd68a71c15dda2da7a0208926ffe3ac042d71cf49ba79f9ba13cc11496d2c3a4",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "12a40cfc-2ffb-435f-a499-c54f4863c825",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.748249Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "765accb0575001808b01b2de460510b08a2e7b6c34b9eb3a5e6eccddc5af7bd8"
+  }
+}

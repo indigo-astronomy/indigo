@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9b8b5bb4-8824-5adf-aef9-b943ff43eaea",
+  "revision": 1,
+  "title": "TESTS-005: Property and range parsing is based on unanchored regular expressions over human-readable `indigo_prop_tool` output",
+  "description": "TESTS-005: Property and range parsing is based on unanchored regular expressions over human-readable `indigo_prop_tool` output. Item checks can match substrings from unrelated items, and range extraction takes the first bracketed expression from all output instead of the requested item line. Parse exact item names from structured tool output if available, or filter to the exact property item with fixed-string matching before extracting state, values, and ranges. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000034.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.661721Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "a0c37048-c8ed-4fae-976e-15ee9d45a97d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.661740Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000034.json",
+      "source": "c64512ee8a47148ac1245f91d1636e963d5b6031b03eb20f79f59fd930f1c2a8",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "658a7376-abd6-4b27-8c1f-83a97688e491",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.661748Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "19db8eafdb10ab5918d151d0a831501609a88bda498bdd175347898d7aa54d0b"
+  }
+}

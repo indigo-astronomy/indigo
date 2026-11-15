@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "55e0f2fa-1517-5c0b-af08-37aaca64450e",
+  "revision": 1,
+  "title": "OmniSim startup failure loses ownership of the launched process",
+  "description": "Fixed and reverified in task 20261024150354-a911-fix-usb-serial-gps-findings. OmniSim startup closes the parent log, cleans the owned child through existing best-effort stop on readiness errors/interrupts, preserves original errors and rejects exited children. Independent source review passed; exact command evidence and platform/hardware limits retained in repair reports.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-041.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.793854Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d36ce28f-ac64-43b7-aabd-720a3b1087f6",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.793871Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-041.json",
+      "source": "4da42ad29aaea92f64a4186009b8d4572c502867943b8364b0d875cb86643d8c",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "41e82ea5-6927-4fea-a9ee-749348cc4a85",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.793878Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1cae43265d7b1e00081777492562f23cafd37619c7f8bc2465d88b6cc9442038"
+  }
+}

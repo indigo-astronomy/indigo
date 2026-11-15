@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0fcd2a57-b24c-5567-a595-71abf968ba16",
+  "revision": 1,
+  "title": "Editor source mapping loses CCD properties on explicitly identified logical devices",
+  "description": "Mapping uses device kind for generated-function prefixes and misses explicit logical-device identifiers used by the generated CCD simulator. Corpus test finds an empty generated range for inherited CCD_EXPOSURE. Next: coordinator assigns device-identity-aware mapping and tests that select all CCD logical devices; do not alter generator output merely for highlighting.\n\nImported from .factory/findings/archive/FND-20261023065605-60d4-repository-audit-006.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.688742Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "453dd9ab-1a23-4587-b969-6ec753f045e4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.688760Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-006.json",
+      "source": "d37990567fc486c2d8542d127114923e1fc29d12ed0186e63658f5fbae9509a8",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "77283012-8b8d-4d60-a571-d98a6b3d4ef0",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.688768Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "b2a0e32928c8d4c3e22f5eaeee0b7e160c63c2db3c56a4d5b00b6594267d04bc"
+  }
+}

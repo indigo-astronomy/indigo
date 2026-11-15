@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "078db743-4620-5fff-8777-58b2b998ed92",
+  "revision": 1,
+  "title": "Partial HTTP requests retain admission slots without a framing deadline",
+  "description": "Reopened for incomplete HTTP framing/progress repair. Admission is now capped at 128 and initial protocol detection is bounded, but one supplied G enters an unlimited-interbyte line reader and retains a worker indefinitely. Next: enforce complete request/header progress and total deadlines without disrupting established sessions. Prior initial-admission repair remains implemented; no risk acceptance.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.744695Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "42131286-e837-48d2-a8c3-4ee436191b72",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.744711Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-007.json",
+      "source": "da4f4fb68787d6e9076d79148258f3b96abce2947551b4206377c96a271acae8",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "e4b8ae7c-6210-4c2a-9d8b-dd39c46a52f5",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.744718Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "77ce2a8b6a44dcc1907e6701500e01cad8506a26655bc0d79948cba9350595cb"
+  }
+}

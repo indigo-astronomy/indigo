@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e7943601-1930-5261-b2ae-6df6e5fcf93b",
+  "revision": 1,
+  "title": "Additional slave instances assign their base pointer to the master",
+  "description": "Additional-instance creation at indigo_driver.c:1830-1865 sets additional_device->base_device to slave_device instead of setting additional_slave_device. This corrupts cloned master/slave identity. Next: set the cloned slave base, preserve master base and cover one-master/one-slave create/enumerate/remove/recreate with private-data ownership assertions. Source-confirmed, no device lifecycle executed.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-043.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.733974Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "6e6e3398-550d-408f-9462-5824f5cd0ec1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.733992Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-043.json",
+      "source": "06c0a769546accaf19909cb77c58fdbca843f9ecd88680befccbc5c21e566ad4",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "ffccfe6b-6530-4dad-aea2-0c497d305cf0",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.733999Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "91190c66a307eb8be33bf211ffacf67a66752d07a7ae34308217f5af5d11566b"
+  }
+}

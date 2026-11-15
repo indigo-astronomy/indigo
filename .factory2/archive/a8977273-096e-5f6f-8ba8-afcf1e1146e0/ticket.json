@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a8977273-096e-5f6f-8ba8-afcf1e1146e0",
+  "revision": 1,
+  "title": "OPTDRV-009: The focuser device name is initialized, but the uniqueness call is accidentally applied to `device->name` again instead of `focuser->name`",
+  "description": "OPTDRV-009: The focuser device name is initialized, but the uniqueness call is accidentally applied to `device->name` again instead of `focuser->name`. Multiple RPi autofocus devices can therefore expose duplicate focuser names. Call `indigo_make_name_unique(focuser->name, ...)` for the focuser. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000027.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.655697Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "572d0c09-3130-4266-b4aa-0ec5fd7032f3",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.655719Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000027.json",
+      "source": "59985dae485c19fc57eb374fddb4406ddbc366407076c56403a25b8358978e2c",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "8a711e2c-0ed8-4e50-a381-c7900c62a99d",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.655728Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "57799ba6189411a9da1cbcd1cb8f54d788665a4a850e68998e7f7731d3e0e529"
+  }
+}

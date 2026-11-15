@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3ac335e3-1f61-5314-96f7-1ed624a556b6",
+  "revision": 1,
+  "title": "PrimaLuce shared archive recipe fails with the configured macOS libtool",
+  "description": "The recipe hard-codes ar-style rcs after $(AR), but macOS config sets AR=/usr/bin/libtool and ARFLAGS=-static -o. A clean archive build fails with libtool usage and exit 2, preventing a clean focuser_primaluce build. Reproduced with BUILD_LIB redirected to a new /tmp directory. Next: coordinator assigns a portable archive-recipe repair using configured ARFLAGS, with clean macOS and GNU-ar verification; preserve atomic publication.\n\nImported from .factory/findings/archive/FND-20261023065605-60d4-repository-audit-001.json (category: functional, blocking: yes).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.684660Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ff7f4184-e85e-4e1a-9294-330e32617aa5",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.684679Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-001.json",
+      "source": "0cc114ff338764d109868893e8b5b4bbbfd154917d391b2bd9024c9c5d11aeb2",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "dd6e4824-0ed6-4357-8297-29701f08e8a6",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.684686Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "4ab04caacb6fde1e8d3b91afaf31b792c2d1685a43fae9bcac1d55e5c18a4c68"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "33eeeabb-06a2-51e7-b8fe-955bb93c5ffd",
+  "revision": 1,
+  "title": "focuser_primaluce abort did not end a SESTO SENSO 3 calibration run",
+  "description": "Abort sent the ordinary motor stop; according to the SESTO SENSO 3 protocol document v1.0 the semi-automatic run ends only with CAL_FOCUSER StopMotor (stop_calib leaves the procedure).\n\nImported from .factory/findings/archive/FND-000058.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.682147Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "4ca8f40b-da3e-4d6b-94e7-f1a95795a034",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.682165Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000058.json",
+      "source": "06089b825f314eb1c13fb6c23e9895c9d9ef9a6acf15668b74f25c4bed580a89",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "fe6fb836-5129-42d2-964e-227229db7dc7",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.682173Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8edba4096029b8c2a6e2cff2449e8443079a22ffa281efe891aaedf5f2a037c8"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1949ac41-45d2-5ba3-97c1-294886e7bdd8",
+  "revision": 1,
+  "title": "Resource methods rejected standard request metadata",
+  "description": "Initial new resources/list and resources/read validation rejected standard optional _meta objects, causing valid clients with progress/request metadata to fail. Fixed before delivery by allowing and type-checking optional object metadata only on resource method params, preserving strict tool arguments; regression passed in final34-case native and sanitizer suites; independently reinspected.\n\nImported from .factory/findings/archive/FND-20261104203810-488c-mcp-agent-guides-004.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.891658Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "adb7e70d-f12a-435b-ae2a-913bca2fe849",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.891680Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261104203810-488c-mcp-agent-guides-004.json",
+      "source": "5c7c33ea48c4a012b883f7ab6dbd4e335ae66857bbf206e69a4c5e121d3966c6",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "3a969ac0-0bc8-4d2b-9eed-8750a555bb33",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.891688Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e7bb63b729750dc08959632f98e51fd033dcbcc5cf92e54d46be1dc809334e61"
+  }
+}

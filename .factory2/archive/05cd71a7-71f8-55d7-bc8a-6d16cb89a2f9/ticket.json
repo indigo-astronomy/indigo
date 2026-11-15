@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "05cd71a7-71f8-55d7-bc8a-6d16cb89a2f9",
+  "revision": 1,
+  "title": "Bulb deadline excludes readiness latency",
+  "description": "Deadline after full-press readiness extended1.2s to1.408s in fake and1.42s in physical RAW metadata. Timestamp command dispatch after staging; fake44/44 and sanitizer44/44 verify both bounds and overdue close. Final physical accuracy intentionally untested under owner offline instruction.\n\nImported from .factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-005.json (category: functional, blocking: yes).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.829011Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c09b9842-8f73-4c8b-bbf4-7a5c8bb00f0d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.829027Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261027184448-45d5-pentax-rpi-single-frame-005.json",
+      "source": "6df92aa95384121697701253eaf5828ffac0165ed19e3afd4e045a7bb6889217",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "1f95f0d4-c879-4da0-b2cf-eb5c11d01b86",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.829034Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "84c6c7f796c58b43f4b30b572faea9a1b707874b51d3dff0b7b3d5290dc46990"
+  }
+}

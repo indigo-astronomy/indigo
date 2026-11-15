@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "cd6aee5b-323c-5baa-8661-617603fbf6c9",
+  "revision": 1,
+  "title": "MCP numeric writes misconvert scaled finite decimal values",
+  "description": "Agent numeric boundary now uses locale-normalized strtod with full consumption and finite result checks; correctly scaled finite values are preserved.\n\nImported from .factory/findings/archive/FND-20261103191737-ccab-mcp-agent-003.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.886825Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "63fcec22-7d7f-4119-8d53-e931de365213",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.886842Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261103191737-ccab-mcp-agent-003.json",
+      "source": "44c4e3b8e61c76b496bb4d8b3ac2856455c196993ebfcd76555e4614307dfbca",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "dcc14698-4aa2-49aa-ad45-b95d3084f257",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.886850Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "01369a422d343d5438f872c55d82c95483c6805ab023658c55ebad36d97df9ea"
+  }
+}

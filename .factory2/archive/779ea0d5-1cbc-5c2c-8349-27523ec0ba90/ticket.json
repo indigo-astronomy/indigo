@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "779ea0d5-1cbc-5c2c-8349-27523ec0ba90",
+  "revision": 1,
+  "title": "Sequencer.js flipper start assigns the solver slot to itself",
+  "description": "Sequencer.js indigo_flipper.start() assigned indigo_sequencer.devices[SOLVER_AGENT] to this.devices[SOLVER_AGENT] although the only caller already sets indigo_flipper.devices to the sequencer's array; misleading dead code from f7f2b3257. Remove the line.\n\nImported from .factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-003.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.868693Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "cbc82e3a-04a9-432d-bfb9-b8e5b053ee72",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.868711Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-003.json",
+      "source": "596cd4d2a0573d6f6d44f5c7ea84c6e7a4a5e62c963ac81b6a735b572e7bc5b4",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "77747a79-a571-4ebc-a82a-c8df6e33770b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.868718Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "9098f5bc444ba5a0d09801e0619065e8ca384b00e36493509d0ba0a97ca648be"
+  }
+}

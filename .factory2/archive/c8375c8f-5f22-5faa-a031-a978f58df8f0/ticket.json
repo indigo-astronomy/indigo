@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c8375c8f-5f22-5faa-a031-a978f58df8f0",
+  "revision": 1,
+  "title": "focuser_primaluce sends WiFi SSIDs and passwords into the JSON request without escaping",
+  "description": "Fixed by bounded firmware INFO formatting and JSON credential encoding, as applicable; version 42. Library 32/32 and recorded driver 76/76 pass, with sanitizer regressions passing. See repair task verification and independent scoped reviews.\n\nImported from .factory/findings/archive/FND-000052.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.677002Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "dd7a0681-29a6-4c15-8710-ad8506c3b968",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.677020Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000052.json",
+      "source": "124551a9099bc44fd4aa277899611ae379256e204311cb505dc9c188bbfc01ab",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "381f9be9-2c1a-44f1-82ae-084a0c319715",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.677028Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "2baa1f8cead999973475e7f74c73363b6409036a31890665eee32178d8003f89"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4d53052f-87f7-50f4-a8bd-1d42c89365be",
+  "revision": 1,
+  "title": "Alpaca camera mapping writes past its fixed property capacity",
+  "description": "Category security; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_drivers/agent_alpaca/indigo_agent_alpaca.c:1210-1217. Camera Bayer property is allocated for ALPACA_MAX_ITEMS128 at:1000. When all slots are occupied, cam_number equals count128 and the code still forms items+128, writes label/name and increments count. The earlier main device mapping check at:1186 rejects more than128 devices but does not leave the enclosing CCD branch, so it does not guard this independent array. Distinct camera names can also accumulate through discovery/session churn. This causes out-of-bounds heap writes and subsequent over-count property publication. Unlike existing FND-...-035 (core native registry >= bug), this is a separate Alpaca property mapping contract. Reject/omit a new Bayer entry at capacity before forming the item pointer; preserve existing camera mappings and ensure an unmapped camera has no invalid Bayer pointer. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-3). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-031.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.785655Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1b5029c6-c3ed-4662-9ca6-96f2f8a93031",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.785673Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-031.json",
+      "source": "6642b56d6e016dbfa2d3b4673c293b9579290a51d5b5ed76a36cfa792a4cc416",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "43f15ee1-12cd-4642-b1ef-f70de4098d45",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.785680Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "6a6efc3c01281f6479b130489c657731f259e70a3fce5e6809b8f2c27bd7e3af"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8d936037-4152-54e5-95b4-1ff3e7149fbc",
+  "revision": 1,
+  "title": "LINUXDRV-002: PWM sysfs reads parse buffers with `atoi()` without adding a terminating NUL after `read()`",
+  "description": "LINUXDRV-002: PWM sysfs reads parse buffers with `atoi()` without adding a terminating NUL after `read()`. sysfs does not append NUL bytes, so parsing can read stale stack data past the bytes returned. Capture the read length, reject full-buffer reads, append `buf[n] = '\\0'`, and use `strtol()` with validation. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current shared sysfs reader reserves the terminator and NUL-terminates at the actual count; original unterminated-read shape is absent. Next: focused short/full read regression evidence and verified historical closure.\n\nImported from .factory/findings/archive/FND-000015.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.645468Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "a5a11882-2134-4ec7-8602-cb4f4aa35cfb",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.645489Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000015.json",
+      "source": "7245d2ba323d2bdb80188cb1afe863dfa761113c3dc534427ce4b08a7b40d11a",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "7307e401-1a10-47be-8d7c-545f0f3f16da",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.645497Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "c89cd53854941a01d74729db9902dae8306485b6623c9fead61324554673fe3d"
+  }
+}

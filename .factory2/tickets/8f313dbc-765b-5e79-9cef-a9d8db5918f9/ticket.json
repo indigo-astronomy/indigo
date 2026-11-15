@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8f313dbc-765b-5e79-9cef-a9d8db5918f9",
+  "revision": 1,
+  "title": "Configuration restore replays unauthenticated requests against protected Configuration Agent",
+  "description": "On a server with nonzero device/master ACLs, saving a private configuration succeeds but restoring it fails. The saved file contains new*Vector requests to Configuration Agent without tokens; load_configuration parses it through a CONFIG_READER client and the bus rejects those requests. Next: authorize trusted local configuration replay without allowing network ACL bypass, then rerun private configuration restoration. Owner explicitly requests tests/findings only; no production fix authorized.\n\nImported from .factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-005.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.896571Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c0ae381a-c0bf-468b-b7f9-52c46ed892d1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.896587Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-005.json",
+      "source": "3179c6fde712af4abfc0c3a98b107729f02a9c775eccc5275d16ce7c3b647ea9",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "4c7252394450f0a6fb4c2843c7a592408b2381b023a521a753fb739d02dc0e94"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1d287a5b-6353-568c-a0fe-7148b5098464",
+  "revision": 1,
+  "title": "JSON number parser silently misreads valid positive exponents",
+  "description": "The numeric token state accepts e/E and minus but omits plus. A current-source parser linked with a capture-only indigo_change_property substitute parsed 100 as 100 and 1e-2 as 0.01, but valid JSON 1e+2 as 1. This silently changes requested values. Accept the complete JSON numeric grammar and reject malformed/truncated tokens; add both exponent-sign regressions.\n\nImported from .factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-010.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.841761Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c41b6087-90e8-4e84-bbb4-cd24dc2e3220",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.841781Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-010.json",
+      "source": "da503cb706af820ca738f76e06270a22bb995c7cae903ede7daf8f6bcf8a105b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "e7b2238e-f1a1-4d8e-b7c4-bf97a2c93ee4",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.841789Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "15abe47002686cdae0223f454a6ac7dd17592d3e426a8a173f8186dad6f7b083"
+  }
+}

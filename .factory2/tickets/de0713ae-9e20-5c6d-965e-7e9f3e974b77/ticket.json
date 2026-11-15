@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "de0713ae-9e20-5c6d-965e-7e9f3e974b77",
+  "revision": 1,
+  "title": "MinGW property tool link races the import library build",
+  "description": "The executable depends only on its C source while linking libindigo_client.lib produced by the sibling DLL prerequisite of all. An isolated fixture used the unchanged Makefile and a synthetic delayed linker under make -j2: executable link started before the import library existed and make exited 2. Add an explicit dependency and correct directory ordering; test serial, parallel and direct executable targets.\n\nImported from .factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-004.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.836893Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fe08a204-cb5b-43ae-b2af-de88a4964c95",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.836909Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-004.json",
+      "source": "10b42c89157cce8d22f06a51a947f34faa64505f67b6af83da2c84c828c10c14",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "e432a99628ddb1a4712b87a2f2accbfa1d968959f3598ed32d6372b05cd6b5fc"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ec13449e-6d52-54a5-beef-e76409ece98b",
+  "revision": 1,
+  "title": "Driver editor omits the supported polaralign device class",
+  "description": "Editor backend/frontend catalogs recognize polaralign. Structural editing and both maintained-definition previews/mapping succeed without touching definitions/generated repository output. Three new regressions pass; two unrelated existing catalog findings remain open.\n\nImported from .factory/findings/archive/FND-20261023065605-60d4-repository-audit-004.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.687186Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "7b6c5f0f-2b4d-4365-b24f-c8200fe39c30",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.687204Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-004.json",
+      "source": "444e56ff058d75ff3d4457a19494b1716e9e58119d7548add95d9f03cd93f974",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "36409fa4-816b-43c5-a76d-50c73910bb29",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.687211Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "0b8f1d0b9c2e9953102eac864a16d93d0b12db666469b5d6bf4b4c80476f9c75"
+  }
+}

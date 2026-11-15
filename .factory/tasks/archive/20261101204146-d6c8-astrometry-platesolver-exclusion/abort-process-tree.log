@@ -1,5 +1,0 @@
-Running Astrometry Agent integration
-  PASS index abort removes partial multi-file index
-Astrometry Agent integration: all tests passed
-Kept test output in /tmp/indigo_astrometry_test_tkpXeQ
-Astrometry Agent: 1/1 passed (including cleanup)

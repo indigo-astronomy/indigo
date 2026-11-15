@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f021800b-42f6-588a-898d-ca56008939ca",
+  "revision": 1,
+  "title": "Browser HOST_TIME emits malformed fractional-hour offsets",
+  "description": "`indigo_server/resource/indigo.js:493-509` divides timezone minutes by60 and concatenates `'00'`, instead of formatting separate whole hours and remainder minutes. With getTimezoneOffset()=-330 the actual committed function produces suffix `+05.500`, whereas an ISO numeric UTC+05:30 offset is `+0530` (or `+05:30`). Every authored page calls timestamp() for initially empty Server.HOST_TIME; server setter `indigo_server.c:1540-1550` forwards the value to its existing date-management helper. Fractional-hour locales can fail first-time host clock setup. Remediation: format signed absolute hours and minutes separately, or use a validated UTC repre Full evidence: C-04. Remediation: format signed absolute hours and minutes separately, or use a validated UTC representation supported by the helper; regress ±30/45-minute offsets and ordinary whole-hour timezones. The test replaced only Date.getTimezoneOffset in an isolated VM; no system clock was changed.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-038.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.729843Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "4b45f958-6777-4060-b397-f9157b54b475",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.729863Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-038.json",
+      "source": "ce3c32f6318f73a6c052acf36516b712f83423a433f2652d2876553bf58dd760",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "0951c2ed-a347-4d2a-8bdd-20fe79f0e522",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.729870Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "881832f9399efc6a3796529fdea5027b5858e787fcc7e18a211e1c63b3b93150"
+  }
+}

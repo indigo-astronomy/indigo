@@ -1,0 +1,8 @@
+{
+  "checks": [
+    {
+      "name": "check/1",
+      "command": "git diff --check"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ea48a942-7a0f-5a3f-b96d-41c06fd4ef0d",
+  "revision": 1,
+  "title": "Wi-Fi client password guards execute text and continue destructive changes",
+  "description": "Invalid password guards invoke a quoted message as a command instead of __ALERT. Exact isolated-function stubs show password x writes configuration/disables or deletes the old connection and returns OK despite command-not-found. Reject invalid length before mutations and test lower/upper bounds plus valid controls. No network/service/reboot was executed. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-003.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.848218Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "2222ba7b-b1f4-433a-b6d0-5e7990f9fa31",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.848239Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-003.json",
+      "source": "c6237e069898634172822b45d7d257d4ff1e097c0da83cdd740242edf866e224",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "dc3695afb3c46792b1f110f11ebb2ad49ef62beb1647f20ad6bd126a716b292b"
+  }
+}

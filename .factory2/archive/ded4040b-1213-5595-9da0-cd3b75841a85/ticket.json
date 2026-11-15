@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ded4040b-1213-5595-9da0-cd3b75841a85",
+  "revision": 1,
+  "title": "USB Dewpoint failed identification retains its transport",
+  "description": "- Location: indigo_drivers/aux_usbdp/indigo_aux_usbdp.driver:103-149, especially 105-106 and 146-149. - Severity: medium; confidence: high; category: functional/resource lifecycle. Owner: coordinator; status: open; nonblocking audit follow-up. - Evidence: after serial open succeeds, cleanup at line 146 is inside the successful usbdp_command(UDP_IDENTIFY_CMD) branch. Failed writes/reads return false at 149 with PRIVATE_DATA->handle still live. Targeted inspection of generated aux_connection_handler at indigo_aux_usbdp.c:447-478 confirms the open-false branch publishes ALERT/disconnected without invoking close; the next connect overwrites the stored handle. - Impact: failed identification and reconnect can leak serial handles/resources and interfere with a subsequent connection. No runtime failure was induced. - Minimal remediation: make all unsuccessful open paths close the acquired handle before returning false; retain normal connected shutdown ownership. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-1). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-016.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.772928Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "daf9ab3a-3f61-4a1d-a5ab-7ed8ad1b6631",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.772949Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-016.json",
+      "source": "3065d20ce85f3bc705112ef3fa24c83f5edf157d4e22e904e57bf1e5761e79f3",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "04258b91-3df4-4148-b460-77eaeb425a80",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.772957Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "69fcd457c6a56067671651b729d893b1acf74c8400ba407947e5eac51ad898ce"
+  }
+}

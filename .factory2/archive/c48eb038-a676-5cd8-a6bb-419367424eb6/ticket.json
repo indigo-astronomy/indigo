@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c48eb038-a676-5cd8-a6bb-419367424eb6",
+  "revision": 1,
+  "title": "Driver development guides link a removed scoped instruction filename",
+  "description": "Five developer-facing relative links still name indigo_drivers/AGENTS.override.md, which does not exist after consolidation to AGENTS.md. Readers cannot reach the instructions the guides designate as authoritative. Next: coordinator assigns a scoped link/label update and verifies all affected local destinations.\n\nImported from .factory/findings/archive/FND-20261023065605-60d4-repository-audit-007.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.689622Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "7961f2e9-0519-448a-a132-cdc55621cefa",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.689641Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-007.json",
+      "source": "6b2395bd288f39cd63386f3f9d926dfb7a4b845881243ea7493885df6873511c",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "00a18994-79e3-497e-a167-919006bc9af7",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.689649Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ffa814e901599281df2a264c471c65a0ea8566f93af1ce477a90cf7188cb5097"
+  }
+}

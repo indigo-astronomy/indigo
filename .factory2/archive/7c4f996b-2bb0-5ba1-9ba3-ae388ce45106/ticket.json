@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7c4f996b-2bb0-5ba1-9ba3-ae388ce45106",
+  "revision": 1,
+  "title": "Step timers not stored survive an abort and change the step state afterwards",
+  "description": "indigo_sequencer_next_ok_handler() sets the step to Ok and runs execute_next() without checking that a sequence runs, and abort() cancels only wait_for_timer while most next_ok timers are not stored in it. An abort or failed flip inside such a window can turn the step state Alert back to Ok while SEQUENCE_STATE stays Alert. A late timer after a new start() might also advance that sequence, this was not traced. Pre-existing, found by code inspection, not reproduced. Next: return from the handler when no sequence runs, or store the timers, with a test that aborts inside the 0.5 s window after a mount process.\n\nImported from .factory/findings/archive/FND-20261103084208-ca1a-sequence-state-outside-sequence-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.883561Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c36a23ce-3217-4762-a653-5bb3304290a6",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.883580Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261103084208-ca1a-sequence-state-outside-sequence-001.json",
+      "source": "766d513342a3044160598ba956e3a6566c083fecc5c9a52b00fa353a1a6bf189",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "c97d8e87-de98-4bb0-b325-37d7b9ea00b6",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.883588Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "5551d2f422a156d0583b4af29faefad982efdf91a6b3f98dbe2df97f7b909b86"
+  }
+}

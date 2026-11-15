@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "19570ab0-e592-5585-af54-78f17b0917a0",
+  "revision": 1,
+  "title": "SERVER-001: the HTTP WebSocket upgrade handler overflows websocket_key[256] when the Sec-WebSocket-Key header value exceeds 219 bytes",
+  "description": "indigo_libs/indigo_server_tcp.c:134 copies the attacker-controlled Sec-WebSocket-Key header into a fixed websocket_key[256] with strncpy (up to 255 bytes + NUL), then line 152 unconditionally strcat()s the 36-byte GUID '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'. A header value of 220+ bytes makes the concatenation write past the 256-byte stack buffer; the worker reads the header with indigo_uni_read_line into header[1024], so values up to ~1004 bytes reach this path from an unauthenticated TCP/HTTP client requesting '/'. Confirmed by an isolated ASan reproducer of the exact copy/append operations (control exit 0; 255-byte value aborts with stack-buffer-overflow, WRITE of size 37). Next action: assign a scoped repair task (bound the strncpy length so the buffer always leaves room for the 36-byte suffix plus NUL, e.g. copy at most sizeof(websocket_key)-37, or reject over-length keys) and reverify; owner decision required because the overflow is remotely reachable.\n\nImported from .factory/findings/archive/FND-000045.json (category: security, blocking: yes).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.671194Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1f52d531-43d7-4472-a345-a181e6e5485c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.671212Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000045.json",
+      "source": "9a7178f8868e62e8188877ba5da952757529a70db421ecdbce93480bd77ce2d9",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "cc22931f-162c-410c-86d6-82a5c87fb9c0",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.671220Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "c8babf9aa76d405416c715f4abe99f35c7e8d50836f426dd593ae1d2dcd73f8c"
+  }
+}

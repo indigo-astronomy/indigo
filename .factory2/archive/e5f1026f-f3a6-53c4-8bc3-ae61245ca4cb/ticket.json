@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e5f1026f-f3a6-53c4-8bc3-ae61245ca4cb",
+  "revision": 1,
+  "title": "Simulator hot pixel row check lets a hot pixel land one row below the frame",
+  "description": "The hot pixel loop of create_frame() in indigo_ccd_simulator.driver skips a pixel with 'y > frame_height' where 'y >= frame_height' is meant, so a hot pixel whose binned row equals the bottom edge of a sub-frame is written one row below the frame; the frame buffer is the unbinned size, so for most columns the write lands in its slack, but columns beyond 1439 of a full-width row reach past the buffer. Found by source audit next to the binning change, not reproduced; out of the binning task's scope. Next: change the comparison and add a sub-frame hot pixel case to test_ccd_simulator.\n\nImported from .factory/findings/archive/FND-20261027140318-5859-fix-simulator-binning-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.822416Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5b2c4740-0bd6-4aef-8557-fa3679c42830",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.822433Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261027140318-5859-fix-simulator-binning-001.json",
+      "source": "a0b61b72797532f3d97f1fb8e71047e7a58f5acd8d132ca57427cb130b10ea46",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "4b96ebe8-9e1b-4830-a235-af8d43a99771",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.822440Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "bebcaa13a61b68e86cbbc6851b9b8ed7bc15bc02af3a0f697b8b72043f694cdc"
+  }
+}

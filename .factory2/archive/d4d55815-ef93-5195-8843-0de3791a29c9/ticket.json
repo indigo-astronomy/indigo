@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d4d55815-ef93-5195-8843-0de3791a29c9",
+  "revision": 1,
+  "title": "status_polling allowed exactly the 15 s the environment poll plus a silent reply take, so it failed whenever the poll came late",
+  "description": "test_focuser_primaluce_simulator status_polling waits 15 s for FOCUSER_TEMPERATURE ALERT after arming a silent EXT_T reply. The environment is polled every 10 s and a silent reply costs the 5 s serial read timeout, so the ALERT arrives up to 15 s later. On Linux it failed 2 of 3 isolated reruns and in all three full baseline runs.\n\nImported from .factory/findings/archive/FND-000050.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.675368Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c84d76d2-7ed4-4d8e-a16a-1e109eac88a9",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.675391Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000050.json",
+      "source": "27d9ee0d1f7cacf43d1fbe7f3587f2a16d090093140fa9d66f9e267668316652",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "b6b70be2-583c-4524-ae55-a50f8d86e367",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.675399Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e68cd6b987684fdab1ca7e3ba03877d3d594f56239c4031a9101a6bcf4a626bc"
+  }
+}

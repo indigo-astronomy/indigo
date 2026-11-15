@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0039acda-2dfc-5050-a024-8c890a1a61cc",
+  "revision": 1,
+  "title": "TGT-D29: the aux_upb focuser poll publishes FOCUSER_POSITION and FOCUSER_STEPS OK over a queued request when SI reports no motion",
+  "description": "TGT-D29 (alias from the retired indigo_drivers/REVIEW_SWITCH_TARGETS.md): the aux_upb focuser on_timer sets FOCUSER_POSITION and FOCUSER_STEPS OK when SI reports no motion without checking for a queued request. A position request whose handler has not sent the move yet is shown OK, and a FOCUSER_STEPS request that should be refused as overlapping is accepted. Seen as the intermittent focuser_overlapping_request_is_rejected failure (2 of 3 runs on 3.0.0.34, 2 of 9 on 3.0.0.35); still open in driver version 38. Next action: a scoped aux_upb repair task that leaves BUSY focuser properties to their pending handler in the SI branch, with a deterministic regression test.\n\nImported from .factory/findings/archive/FND-000048.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.673558Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "a55e5b11-b3e3-4f44-9c7b-9c3f7cde86af",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.673577Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000048.json",
+      "source": "febb067ed6c2db195d3d9b3180405380c92b1c9c6cf22910ed67eb18385b93de",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "b3113d4c-cf7a-46b8-a9f5-2769d8204b9b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.673585Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1ecb2d095e89df57254f518e0d816aad66e4f0f00d4cee5f90344ebc6d02b155"
+  }
+}

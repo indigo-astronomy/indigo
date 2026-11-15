@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fe435232-b1fc-5792-9919-53a4b7bab042",
+  "revision": 1,
+  "title": "NexStar GOTO completion has no overall deadline",
+  "description": "mount_nexstar GOTO completion in the timer still has no overall deadline; only park was bounded for FND-20261023101753-bc8d-complete-repository-audit-024, and an existing test asserts a stalled GOTO stays BUSY. Next: decide the GOTO timeout contract, add a deadline with abort and ALERT, and update the test.\n\nImported from .factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-006.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.808882Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1f4bd022-0fec-4e25-84f9-95608b1f6bec",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.808903Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-006.json",
+      "source": "551716be2b08ae08f4a9a7160257d234ac27d44b324a132c78367492428dd96c",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "6cb1719f-b306-49f7-b763-dd89f8740183",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.808911Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "719c3e2116f5b1cda393f936d1d97e931f1ce8993eaf39c006b9121504197b3c"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9897592c-89f3-59c3-8331-6fed64d86b40",
+  "revision": 1,
+  "title": "Dome hardware arrival assertion accepts missing or NaN azimuth",
+  "description": "Missing numeric data leaves current=NAN. The comparison distance > tolerance is false for NaN and dome_hw_at returns true. A temporary unchanged-header harness with empty cache and call dome_hw_at(0,90,0.1) exits 0 despite printing missing number item DOME_HORIZONTAL_COORDINATES.AZ. Actual callers include test_dome_baader_hw.c:127, test_dome_nexdome_hw.c:136 and test_dome_nexdome3_hw.c:142. Require successful item retrieval and finite inputs before accepting arrival. No hardware was operated.\n\nImported from .factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-013.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.844213Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d4c843d4-f168-47b4-b7f0-30b5c91e4320",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.844230Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-013.json",
+      "source": "03712f642e3e025ca3a2c6eeb432cf2de8c989f95227c0f08b896aec17ae40ab",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "66f23100-f761-4ca3-9941-58b71ce79ddf",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.844237Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "3dd91b474f56df2aed4b55fa6146e47ff90acb45ec8f03553e6684f825a944f2"
+  }
+}

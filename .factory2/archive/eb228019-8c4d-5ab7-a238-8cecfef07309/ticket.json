@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "eb228019-8c4d-5ab7-a238-8cecfef07309",
+  "revision": 1,
+  "title": "Trutek accepts replies with an invalid protocol checksum",
+  "description": "Identity, position and movement replies validate size/opcode/payload but never the fourth-byte additive checksum, unlike the repository simulator protocol. A corrupted frame with a plausible target slot can be accepted and report success. Validate checksum before consuming all reply types; add malformed-checksum regressions. Source-contract confirmation, no hardware claim. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-007.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.851547Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "44fd299c-9d82-4709-8e4d-989474061445",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.851565Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-007.json",
+      "source": "3885d1dcbc1a797fa3be223d89c05f7bf3656da48725f9397f9c4fae9cd1f4cc",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "c91a434d-16f5-4eda-9f29-929c3ba2607b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.851573Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "974be2e9d2b457d024775552e43576927e8bd81d058ef9e58ffe99ae3fee10e5"
+  }
+}

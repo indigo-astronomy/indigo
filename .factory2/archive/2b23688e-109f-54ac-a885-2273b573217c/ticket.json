@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "2b23688e-109f-54ac-a885-2273b573217c",
+  "revision": 1,
+  "title": "BLOB PUT violates the read-only cache contract",
+  "description": "Network access and published BLOB identifier; token system is documented as coordination, not a confidentiality/security boundary. Source-contract confirmed; runtime unverified. Next: Reject RO uploads and isolate writable upload staging by intended operation/client\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-003.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.741409Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ec5d510a-9e3a-492a-94a6-957f4cf59831",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.741430Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-003.json",
+      "source": "2139231b461d029d114c145c2d88ee94fd2407ad8ea4de12a2acbbcc3f2e9f90",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "5d6d8cae-664d-4fb7-9821-9ade0981cb11",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.741439Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "bb47bff21088711779c99e9ebc05ee528abdcb3ed9028e5cbf6ad23948efdc05"
+  }
+}

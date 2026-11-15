@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1891f053-5887-5c58-8691-0675cfb52274",
+  "revision": 1,
+  "title": "Proper motion is skipped when only one axis moves",
+  "description": "indigocat_precession.c:97: proper-motion wrapper applies motion only if BOTH pmra and pmdec are nonzero. A star with motion in one axis is treated as stationary in both before precession. Public API allows independent components and catalog accessor passes them directly. Next: Apply when either component is nonzero (or always); verify one-axis-only motions against apply_proper_motion plus precess.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-011.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.707606Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "9016fb9d-2e23-43dc-b6c6-37f25b8202da",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.707625Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-011.json",
+      "source": "c753141d512ad07e6a67b8da9e68e65ec14861a25160f35dc3ed59a8d7d8a4a2",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "77f45054-2329-4b6e-af20-56b8f8af8c24",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.707633Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e5523d1a6bc1609a9e13f757028ce1ad0e0da06231f24abf38f645a804cd6307"
+  }
+}

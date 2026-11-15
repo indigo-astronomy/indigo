@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "216ca401-6408-5dfb-9f99-751d691f4134",
+  "revision": 1,
+  "title": "EXAMPLES-004: Image-saving examples call `fopen()`, `fwrite()`, and `fclose()` without checking the file handle or write count",
+  "description": "EXAMPLES-004: Image-saving examples call `fopen()`, `fwrite()`, and `fclose()` without checking the file handle or write count. Running from an unwritable directory or hitting disk errors can crash or silently produce corrupt example output. Check `fopen()` before writing, verify `fwrite()` writes one complete BLOB, and log errors with `strerror(errno)`. Fixed: Check file creation, byte count and close result; propagate errors, release URL BLOB ownership, and require image delivery before completion.\n\nImported from .factory/findings/archive/FND-000011.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.642027Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "b964395e-9e7c-4b8f-8e12-c8fbbb8adc52",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.642049Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000011.json",
+      "source": "4428d7a0d819c3955d0fb03340ba4997117998019e73ad409627b39d6803ea51",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "47258c34-ef5c-45b9-8a47-bb96b837baf3",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.642057Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "31593af79a450c4baecd6fa230888e9afe3468c2b72230837a3460441d62f0d7"
+  }
+}

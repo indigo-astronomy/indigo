@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "929e5590-eafd-5982-a4b2-4033b77521a7",
+  "revision": 1,
+  "title": "TOOLS-004: The RAW-to-FITS utility has fragile file handling",
+  "description": "TOOLS-004: The RAW-to-FITS utility has fragile file handling. `write()` is treated as a one-shot full write, input allocation/reallocation is unchecked, `fseek()`/`ftell()` and `fread()` failures are ignored, and each glob pattern is evaluated repeatedly in separate `glob()` calls before `globfree()`. This can mis-handle partial I/O, leave uninitialized data in conversions, or leak glob state. Use checked `size_t` file sizes, loop until all output bytes are written, call `glob()` once per pattern, and check all I/O results. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000039.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.665850Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1772cadd-d197-4900-a0b6-536c928630bf",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.665870Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000039.json",
+      "source": "ca7ee309e417f98e688b201a918385d3a5d06c2a5a63e596021244a3ea29fdc9",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "97c88f92-6cda-4024-ab90-1c4a6265aae3",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.665878Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "40559ab26d16d345c64525505fa1d45be5758d5c5724e3e8b27149e34d389854"
+  }
+}

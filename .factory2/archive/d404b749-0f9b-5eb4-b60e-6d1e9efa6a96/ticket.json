@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d404b749-0f9b-5eb4-b60e-6d1e9efa6a96",
+  "revision": 1,
+  "title": "focuser_primaluce ended a SESTO SENSO 3 calibration OK while the controller reported a lost coordinate",
+  "description": "The SESTO SENSO 3 (firmware 1.0.9) sometimes reports ABS_POS_STEP 1000000 with STATUS.HIZ 1, apparently after losing its coordinate. Once a finished calibration was published OK with that value as the position, far outside the range just stored (target 13995, value 1000000).\n\nImported from .factory/findings/archive/FND-20261023091538-dfa4-primaluce-calibration-position-check-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.697296Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ba63fadd-777f-49ed-92e2-7e302ee7d899",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.697313Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023091538-dfa4-primaluce-calibration-position-check-001.json",
+      "source": "2d34e51bf7ec31b42da280a606bd6d8da870b3811a4c606db15d0ba0a2f82376",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "840daf6d-d2d2-41b0-a052-31f0e4829cb3",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.697320Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "3ea0d6ed023be99a2927c9562260619b91940a75fe5314beabe4f29566a27295"
+  }
+}

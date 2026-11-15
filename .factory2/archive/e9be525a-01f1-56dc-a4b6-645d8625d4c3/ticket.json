@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e9be525a-01f1-56dc-a4b6-645d8625d4c3",
+  "revision": 1,
+  "title": "Native image property can retain a freed capture buffer",
+  "description": "Framework retains native BLOB data; last_image now owns it through replacement/detach. Re-enumeration and post-abort BLOB access pass under ASan. Next: retain verified repair disposition and physical-test limitations.\n\nImported from .factory/findings/archive/FND-20261026212631-884a-complete-pentax-002.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.815119Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5c29380a-700a-43ae-93ee-ff0a45d7c718",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.815139Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026212631-884a-complete-pentax-002.json",
+      "source": "8446009ec7caf3e8125e5ab368c5a609e025842729fb4feeb60c82d52205fee9",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "35728694-e9fa-42c1-a685-ca187058eaf8",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.815146Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "5cda022800490d673d6e690d67afe4f6334fb5f2ccbeb5304ebb9f5a490a176e"
+  }
+}

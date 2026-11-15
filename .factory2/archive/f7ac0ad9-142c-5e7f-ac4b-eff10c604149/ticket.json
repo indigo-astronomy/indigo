@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f7ac0ad9-142c-5e7f-ac4b-eff10c604149",
+  "revision": 1,
+  "title": "PTP descriptor/vendor-extension collections trust input counts beyond destination capacities",
+  "description": "Severity medium; confidence high; input bounds. Generic descriptor indigo_drivers/ccd_ptp/indigo_ptp.c:751-814 stores unbounded enum counts then writes value.sw.values[i]; capacity is1024 at indigo_ptp.h:325. Text enums only decode first16 but preserve larger target->count, later indexed through that count by update at1506-1512 and1556 onward; text storage is16 at header329. Sony duplicates numeric enum writes at indigo_ptp_sony.c:1072-1132, and its extension-info classifier1325-1349 appends received entries to1024-element local collections without caps. Canon indigo_ptp_canon.c:1036-1074 validates group count/size only by assert but does not validate group ID before indexing ex_func_group[16][1024], record extent, or item count; its updated pointer list has unchecked appends1071 and1176 despite outer record framing. The generic positive count/fixed-array issue and Canon group/list issue may merit separate follow-up records. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-11). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-026.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.780865Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "8bb53afa-e970-449b-b8bf-6de9738e63dc",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.780884Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-026.json",
+      "source": "490d673c6849b7faa87c8c800147d89c090bf9e3fa3e78277693a54569b790c5",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "440e1cf9-c006-40bf-b2f6-68f33c4e00cc",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.780891Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1861bbf4d7b27ab959e4e3702ae54645ffeb218fc84eb8c590e2838f146aba14"
+  }
+}

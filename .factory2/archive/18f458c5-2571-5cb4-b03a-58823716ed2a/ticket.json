@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "18f458c5-2571-5cb4-b03a-58823716ed2a",
+  "revision": 1,
+  "title": "focuser_primaluce switched the ARCO off at every rotator disconnect, so the next connect lost the ARCO calibration",
+  "description": "The rotator disconnect sent {\"set\":{\"ARCO\":0}} and the connect {\"set\":{\"ARCO\":1}}. On a SESTO SENSO 3 (firmware 1.0.9) switching the ARCO port on again sets CALRESTART.MOT2, so the ARCO needed calibration after almost every connect. INDI only enables the ARCO.\n\nImported from .factory/findings/archive/FND-20261023193406-58c7-primaluce-arco-keep-enabled-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.758463Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "eb33ce42-edad-422e-8d27-216371a22e78",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.758484Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023193406-58c7-primaluce-arco-keep-enabled-001.json",
+      "source": "1f74bd8e2cd01902a39b839aad42c77244a84a4dc7af0639d7d64a442a6f49de",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "be75c84f-c411-4f3a-99ac-9fb830c5b1e1",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.758492Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "53aaaac6031ef4bea06b29a53f82937d082bf3805eef60b79b46bb08463d2f72"
+  }
+}

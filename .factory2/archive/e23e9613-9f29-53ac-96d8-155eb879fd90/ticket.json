@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e23e9613-9f29-53ac-96d8-155eb879fd90",
+  "revision": 1,
+  "title": "Embedded help links with section fragments were rejected",
+  "description": "The initial embedded catalog published URI links with section fragments while lookup accepted only the complete base URI. Following a published recipe link returned unknown topic/resource. Fixed before delivery by removing the fragment before exact compiled-whitelist lookup, with full-document/canonical-base response; regression passed in final34-case native and sanitizer suites; independently reinspected.\n\nImported from .factory/findings/archive/FND-20261104203810-488c-mcp-agent-guides-003.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.890794Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "78e53876-07c1-4850-b6ea-eb37c41b59a0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.890812Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261104203810-488c-mcp-agent-guides-003.json",
+      "source": "8c441550d187f9b8e294395e30a830006d432bf43496f6049d5ee629de9d85d8",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "d13d0db5-cf48-4858-b6a4-9ccc75aa9846",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.890820Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "3dfb24ca89931b0d131ad25963dac993598b7f9b4bc122c9c3beeb9625f70cd0"
+  }
+}

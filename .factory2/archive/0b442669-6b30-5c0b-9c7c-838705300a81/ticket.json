@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0b442669-6b30-5c0b-9c7c-838705300a81",
+  "revision": 1,
+  "title": "Legacy XML BLOB decode trusts declared size without bounding decoded bytes",
+  "description": "A connected legacy XML remote server can declare a small BLOB size while base64 decoding writes more bytes than size+3 allocation. Next: checked numeric/encoded/decoded budgets and exact length consistency; upstream-only source evidence, runtime unverified. Confirmed by current source contracts; no fix or runtime retest claimed.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-015.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.751570Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "b3e12716-34da-4ba9-ba6d-9a4433dc09cb",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.751587Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-015.json",
+      "source": "57fde7430de22a389a9ddfb60feb9665c08b6bbff0d03596a71474c6747819be",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "2fed242d-76a1-4ac8-9910-f41f9e7bc241",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.751596Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "4fcac854033b7d6df5bb52e7f751b12dd70434d91a16dddbcda945ea3a3de42b"
+  }
+}

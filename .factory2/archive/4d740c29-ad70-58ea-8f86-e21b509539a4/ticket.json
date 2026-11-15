@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4d740c29-ad70-58ea-8f86-e21b509539a4",
+  "revision": 1,
+  "title": "PTP value and Sony property-data decoders still read without a reply length",
+  "description": "Residual of audit 019/026 found by the fix review. ptp_sony_decode_property() walks GetAllDevicePropData by the received count without the buffer size; ptp_decode_property_value() (Fuji and Olympus value polls) decodes strings and numbers without a size; Canon AvailListChanged image-format entries are bounded by count, not by their variable size. Writes on these paths are now capacity-checked, so the remaining impact is reads past the reply (USB pads 1024 zeroed bytes, ICA does not). Source-only, not reproduced. Next: pass the reply end into these decoders and add fake truncated-reply cases.\n\nImported from .factory/findings/archive/FND-20261025093224-2d50-fix-ptp-findings-001.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.799129Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "eac97914-2330-4f52-b753-b3fb4cbd0829",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.799148Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025093224-2d50-fix-ptp-findings-001.json",
+      "source": "ea5866e618e858bbad0e105dc2758f4bea52d65dac598bb2197d327707814f40",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "67968e61-9e2b-4dc8-95c8-21af3559f3b4",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.799156Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "29bb1cd23c25cf83bd0a071fe04f1327738141291b5c871593e885ce2890fc6c"
+  }
+}

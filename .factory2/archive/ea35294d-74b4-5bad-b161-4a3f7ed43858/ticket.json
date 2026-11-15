@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ea35294d-74b4-5bad-b161-4a3f7ed43858",
+  "revision": 1,
+  "title": "TOOLS-003: `fits_to_raw` does not check CFITSIO status after reading image parameters or pixels, accepts any non-8-bit FITS image as 16-bit output, and allocates image buffers from",
+  "description": "TOOLS-003: `fits_to_raw` does not check CFITSIO status after reading image parameters or pixels, accepts any non-8-bit FITS image as 16-bit output, and allocates image buffers from unchecked axis multiplication. Bad or unsupported FITS inputs can produce corrupt RAW output or memory faults. Check `status` after every FITS call, explicitly accept only supported `bitpix` values, validate `naxis/naxes`, and verify allocation/write results. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000038.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.664889Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "cba35cba-3f4b-49c6-b769-c561f7639e90",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.664908Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000038.json",
+      "source": "c65580e6e3b5d36f2121b1b4b528049ddd9c1633621460cb5ce1b550550d681d",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "359ce95a-ab9f-4429-a0df-b154279be865",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.664916Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "7d0fcbc270bf3f43b801962ddc79898af360907a2e293e7b03e850b8c373c2a2"
+  }
+}

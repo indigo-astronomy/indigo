@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3bd56aa6-08d6-5e25-be8e-e87bccfe3987",
+  "revision": 1,
+  "title": "Firmware version concatenation can overwrite the focuser INFO item",
+  "description": "Fixed by bounded firmware INFO formatting and JSON credential encoding, as applicable; version 42. Library 32/32 and recorded driver 76/76 pass, with sanitizer regressions passing. See repair task verification and independent scoped reviews.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-029.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.783716Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fbd2e7bc-ed88-4559-8cb4-8aa70702a4b7",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.783734Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-029.json",
+      "source": "50df867281663fffe428ab3747992970d27f517d8af8441c59cd2799c3a736e7",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "bee63029-d151-4c25-a921-f7409a8f7518",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.783741Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "cfac452ff0c5aeb3231a1f8c3b4dd73cb5f1c698b72d354e70d89600affe079a"
+  }
+}

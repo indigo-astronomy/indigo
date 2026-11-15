@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e03f65db-2732-5e5f-ab25-18240d715228",
+  "revision": 1,
+  "title": "Darwin failed auto-claim leaves successful USB capture unreleased",
+  "description": "Successful auto-detach followed by failed raw claim does not restore the system driver; close cannot release an interface never marked claimed.\n\nImported from .factory/findings/archive/FND-20261026223438-4f82-pentax-terminal-validation-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.820627Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "6e4d1b41-0bcb-41c1-ac55-04f2d76e8c49",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.820643Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026223438-4f82-pentax-terminal-validation-001.json",
+      "source": "a9eae26eb065b77e3275dfe5a33b6cbf41d0cda01d54d6223123b0e1389fd57b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "90cf4ae2-b3c8-42a3-8b7a-8e92879d9426",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.820650Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1491f597fe3e3f314dcd14e13dbc37ff8043d74940eef29bb23648e7fce7f6ea"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6ab07760-7da7-5625-a633-80f6d4403cff",
+  "revision": 1,
+  "title": "focuser_primaluce calibration held the device queue during its waits",
+  "description": "START slept between its steps and waited up to 10 s for a SESTO SENSO 3 restart, and END polled the new range for up to 5 s, all inside the X_CALIBRATE handler. Requests queued meanwhile, an abort included, ran only after the wait, against the handler + finalizer rule. Listed as a 3.0.0.27 limitation in REFACTOR.md; the owner asked for the fix.\n\nImported from .factory/findings/archive/FND-000060.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.683819Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "32495af7-3203-46f8-bf4b-cdfc8efc44d0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.683841Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000060.json",
+      "source": "f8e11d131f58e11b99be0827a54860dc14ee29a19e6e5163d06d314dcafe6a6c",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "027fa090-2716-4e1c-ac07-31e7fa690c9e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.683849Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "368d0e7ce7254f34afb9ce150f3d816f3d25c025ab951768bc47b42b70432847"
+  }
+}

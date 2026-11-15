@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "92adc49b-894b-59ed-9a5a-7ccec40e5572",
+  "revision": 1,
+  "title": "Bayer corner interpolation reads a pixel beyond the frame",
+  "description": "indigo_stretch.cpp:60-65: red-pixel top-right Bayer interpolation includes raw[index+width+1], crossing the right edge; for a valid 2-row image this reaches past the entire allocation. Bottom-right also averages a cross-row sample at line 65. Public GRBG wrapper can place red at the top-right of an even-width frame. Next: Use only in-bounds diagonal samples at corners; verify all four patterns and corners for 2x2 and larger synthetic images.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-010.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.706643Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "554f71c8-dd32-4fb3-9b2d-d2653210044d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.706660Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-010.json",
+      "source": "9998fc32f9cfd6580dd03ed74396fede85fb48dd588fb4048c2b91a44f13d398",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "94679f57-5c45-4a61-b426-4c544aed19f0",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.706667Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "f862788491533676f64f7aa513e6c7f23b71f4d50c0d90f4901a9a597e11f303"
+  }
+}

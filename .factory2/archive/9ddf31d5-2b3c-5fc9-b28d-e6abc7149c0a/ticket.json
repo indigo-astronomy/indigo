@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9ddf31d5-2b3c-5fc9-b28d-e6abc7149c0a",
+  "revision": 1,
+  "title": "SynScan simulator discovery can initialize a physical network mount",
+  "description": "The existing simulator autodetection case broadcasts to 255.255.255.255 and connects before checking that DEVICE_PORT is local. A physical mount can answer before the fixture (which drops five replies), receive connection/initialization commands, and the test then skips as a pass. Constrain discovery to loopback in the test build, retain real UDP parsing/retries and fail a nonlocal responder; verify before closure. Production hardware discovery must remain unchanged.\n\nImported from .factory/findings/archive/FND-20261023180923-1f46-fix-synscan-autohome-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.757555Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f4747a08-1351-4225-9687-4242d7d75a69",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.757574Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023180923-1f46-fix-synscan-autohome-001.json",
+      "source": "f8eb21a95fd907ee46573593890fbeb6400d4fa3c423f30274d8907b48195494",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "547a9287-a381-40b1-b59e-d92dec213976",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.757582Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a5538c8e3a5b0fd83f3fdff9b9d9ace0032bae138b99cbad95b5b829ba3d0b22"
+  }
+}

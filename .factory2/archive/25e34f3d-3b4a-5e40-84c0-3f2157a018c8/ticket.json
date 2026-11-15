@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "25e34f3d-3b4a-5e40-84c0-3f2157a018c8",
+  "revision": 1,
+  "title": "Pentax unplug frees a NULL local instead of the allocated private state",
+  "description": "Severity low; confidence high; resource ownership. indigo_drivers/ccd_pentax/indigo_ccd_pentax.c:1138-1149 initializes private_data=NULL and never assigns it; after detaching/unref it frees that NULL and frees only the device. Allocation at1113 remains leaked on every unplug and driver shutdown routed through unplug. Minimal fix: capture device->private_data before detach and free that captured allocation exactly once; fake repeated attach/unplug ownership check. No matching active finding identified. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-10). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-025.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.780104Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "3faf92a7-508c-4d9f-b7ef-fab3458187bd",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.780121Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-025.json",
+      "source": "b8b27300ce2df54784d1b1e147a5ff604064c7d4fdfaab3fa5ab363835a73019",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "e6472264-bfe8-4a3e-aefa-2e7dd5f3210e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.780128Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "75b823d29e3531e272743d323cc8e750f4e906eb69a2a297455746332a00f609"
+  }
+}

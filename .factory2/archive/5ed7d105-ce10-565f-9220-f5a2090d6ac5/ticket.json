@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5ed7d105-ce10-565f-9220-f5a2090d6ac5",
+  "revision": 1,
+  "title": "RPI INSTALL incoming item names reach shell commands",
+  "description": "Enabled RPI management INSTALL iterates original incoming items after copying known values, then interpolates selected item.name unquoted into popen. JSON accepts arbitrary names and bus dispatch does not whitelist versions. Requires initialized INSTALL and permission to change Server; executes shell syntax with server privileges. Source-contract confirmation only; no command payload executed. Next: Reject unknown version items, iterate validated canonical selection, and use an argument-vector helper invocation or correct quoting. Verify with intercepted invocation without installing packages.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-008.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.745571Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "24357ec4-37ae-46c9-9060-7c096cb37db2",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.745588Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-008.json",
+      "source": "86c822f1ff7f9970a4588169f3315ec1a80d8555da549a517f9d2e9e0ebe9c67",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "28b56aac-243f-49c9-b6b7-275f5485199b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.745596Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "328a9e69d8395323ec70b7b38f1a5a991a4f713ecfaef5bed75aad6eb1283578"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "06330384-db27-533b-b89b-b7db394f4578",
+  "revision": 1,
+  "title": "Guider agent never releases AGENT_GUIDER_RESET_MKGP_PROPERTY",
+  "description": "agent_device_attach() creates AGENT_GUIDER_RESET_MKGP_PROPERTY (indigo_drivers/agent_guider/indigo_agent_guider.c:2782) and agent_device_detach() releases its neighbour AGENT_GUIDER_RESET_PPEC_PROPERTY but not this one; 3656 bytes lost per agent attach/detach. Next: add the release.\n\nImported from .factory/findings/archive/FND-20261025093558-ece5-server-leak-check-002.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.800832Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1f42934f-55ab-4282-bd9b-7888d7ea6558",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.800849Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025093558-ece5-server-leak-check-002.json",
+      "source": "d41797ad103314ca08bae14e18e044fd5042b2938b63c9ed84681074d24be959",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "513588e6-aa0b-4a40-b9a7-9237036d2247",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.800857Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "df69975f44decd60a6b5a596b3ebdded64dd37de4249a541961159fcb0e3b039"
+  }
+}

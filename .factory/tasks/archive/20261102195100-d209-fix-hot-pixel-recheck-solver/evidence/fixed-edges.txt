@@ -1,3 +1,0 @@
-Running CCD simulator integration tests
-  PASS simulator_hot_pixels_respect_subframe_edges
-CCD simulator integration tests: all tests passed

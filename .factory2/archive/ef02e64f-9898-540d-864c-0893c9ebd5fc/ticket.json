@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ef02e64f-9898-540d-864c-0893c9ebd5fc",
+  "revision": 1,
+  "title": "CGUSB-ST4 / NYX-101 ST4 DEC response is inverted relative to direct NYX guiding away from pole on both pier sides.",
+  "description": "Confirmed NYX ST4 DEC inversion remains uncorrected. Same adapter/cable produced expected N/S on iEXOS and reversed N/S on NYX relative to direct NYX guiding. On 2026-10-24 the owner ended investigation and closed the topic with driver mapping unchanged. No further action unless explicitly reopened.\n\nImported from .factory/findings/archive/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.760093Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c631072e-776d-4774-b17d-1eb1b1532a75",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.760110Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024095945-ac63-verify-cgusbst4-dec-orientation-001.json",
+      "source": "7884591197da5234b7f7b3d31af59149ef8965768a756ae71726bcfaf33a1e5d",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "eec8b5b7-0b6f-4c4e-9d2a-7bb882985e36",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.760117Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (accepted_risk); no new verification is claimed.",
+      "resolution": "unresolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (accepted_risk); no new verification is claimed.",
+    "resolution": "unresolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "063eaf689f3fb885f8e2fde128a5428f045a3443c4649484b9483ef4db45d794"
+  }
+}

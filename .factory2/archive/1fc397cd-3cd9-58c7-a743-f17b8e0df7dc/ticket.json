@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1fc397cd-3cd9-58c7-a743-f17b8e0df7dc",
+  "revision": 1,
+  "title": "Pentax fake USB fixture uses macOS-only temporary path",
+  "description": "Linux /private/tmp absent causes mkdtemp to fail and false recovery test failure; portable /tmp fixes while preserving assertions.\n\nImported from .factory/findings/archive/FND-20261027181603-4710-pentax-rpi-validation-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.824043Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1ecbe7dc-decd-4439-b100-d9148d2b9a2a",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.824060Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261027181603-4710-pentax-rpi-validation-001.json",
+      "source": "5896e932a107d42e7be8fb87f0bcf3ddca11738b42c5b8f4785c7b3a4a24f324",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "a4b03cda-e11f-4854-9a7a-b5f1a6796230",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.824067Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "38ce92d0c4f6b2c579095bc48c99ec663074fbf4f26e6c7183a037c1b9cb251d"
+  }
+}

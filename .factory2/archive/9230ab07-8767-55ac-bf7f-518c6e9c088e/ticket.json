@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9230ab07-8767-55ac-bf7f-518c6e9c088e",
+  "revision": 1,
+  "title": "EXAMPLES-001: The service discovery target is misspelled as `servce_discovery`, so `make all` builds a binary with the wrong name while `make clean` tries to remove `service_discovery`",
+  "description": "EXAMPLES-001: The service discovery target is misspelled as `servce_discovery`, so `make all` builds a binary with the wrong name while `make clean` tries to remove `service_discovery`. The clean rule also omits `remote_server_client_mount` and uses plain `rm`, so it fails when outputs are absent. Rename the target to `service_discovery`, update `all`, and use `rm -f` for every generated example binary. Fixed: Correct target spelling, build every checked-in client, and remove all generated binaries idempotently.\n\nImported from .factory/findings/archive/FND-000008.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.639396Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "359d3214-36a9-4c92-913f-e080feaeaf9a",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.639415Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000008.json",
+      "source": "5a3629016d1ae919b39f3d277e1ec5aa0d6385a1e17360a2de4d5cd3e5baf120",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "c52998c0-6bc3-4399-9b99-cda7ee76cc26",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.639424Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "5152bf1268e206c523900c6d5cfe2ac89274b3af9c870bc82e6401015e5862f8"
+  }
+}

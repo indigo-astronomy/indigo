@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e65c3117-afd8-51fb-94e7-3da961440bbf",
+  "revision": 1,
+  "title": "Solar aberration converts arcseconds to degrees incorrectly",
+  "description": "indigocat_sun.c:50: aberration constant 20.4898 arcseconds is divided by 360*60*60 before subtracting from sol.L in degrees. That makes correction 360 times too small (approximately 20 arcseconds lost near 1 AU). Solar accessor consumes this result. Next: Convert arcseconds to degrees with 60*60 only; verify degree/radian/arcsecond units and a known reference epoch.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-015.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.711034Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "629fe17c-7424-4b7d-a217-9f49b6456f45",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.711056Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-015.json",
+      "source": "19a93a10aae8c0a4d675edc062bfe46366cd56d3af4ad3388a2f9a0cebf1ee1b",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "627430fc-1eb3-4b7a-b670-07d36c7a0cbd",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.711064Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "eaeb34216b0e7d268bcc674f166258464a10526c8c439a10f841b43fc4ced3ff"
+  }
+}

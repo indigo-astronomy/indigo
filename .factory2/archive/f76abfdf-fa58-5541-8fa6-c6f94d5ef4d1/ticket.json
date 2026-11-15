@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f76abfdf-fa58-5541-8fa6-c6f94d5ef4d1",
+  "revision": 1,
+  "title": "Solver radius documentation promises a stricter boundary than implemented",
+  "description": "The README says a field outside the radius is not solved, but native solving uses radius plus half-field extent only to select catalogue stars and never checks fitted-center angular distance against the requested radius. A solve center may lie outside the stated boundary. Clarify the intended hint contract or enforce the documented fitted-center bound and test a near-boundary field. Source mismatch only; no recognition rerun. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-022.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.864591Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "cde372f7-d218-47e3-ad43-e13360a32339",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.864611Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-022.json",
+      "source": "ef63fa8a83e25a91b16757e47fbe3e11526558053c614a1ee35f1646df915e06",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "7fab338c-adf0-4950-b398-665f760c40fb",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.864619Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "993740597d7f5a39e3d8a1bfa547a43524118aa0963ba448e97d38d846caa14d"
+  }
+}

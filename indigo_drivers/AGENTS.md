@@ -8,7 +8,7 @@
 
 ## Mandatory refactoring record
 
-- Record every driver refactoring in its Factory task (`.factory/tasks/<task-id>/`), not in the driver's directory. The INDIGO 3.0 refactoring notes formerly kept in driver-local `REFACTOR.md` files are archived in `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/<driver>.md`; read them for history only and do not recreate `REFACTOR.md` files.
+- Record every driver refactoring in its Factory ticket, not in the driver's directory. The INDIGO 3.0 refactoring notes formerly kept in driver-local `REFACTOR.md` files are retained in Git history only, at commit `3dedba4cb` under `.factory/tasks/archive/20261027203747-a8d5-archive-refactor-notes/refactor/<driver>.md` (read one with `git show 3dedba4cb:PATH`); read them for history only and do not recreate `REFACTOR.md` files.
 - Before any production-code change, the task's `specification.md` and `plan.md` MUST record the baseline, audit, hardware-test decision, and initial atomic plan below. Do not start implementation until they are recorded.
 - The audit MUST cover the current state, including:
   - driver architecture and implementation, public properties, observable behavior, supported capabilities, protocol or vendor SDK, and available manufacturer or repository documentation;

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1b659bc2-023b-55e8-b059-2ec35cf0fcef",
+  "revision": 1,
+  "title": "Scripting queued property callbacks borrow cache pointers that can be reallocated",
+  "description": "Category security; severity medium; confidence high from source lifetime contract; Location: indigo_drivers/agent_scripting/indigo_agent_scripting.c:455-463,:477-483,:499,:725. Define/redefine/update callbacks receive the live cached property pointer as queued data. A later definition of the same named property resizes/reallocates that same cached object when more items are required; indigo_resize_property (indigo_libs/indigo_bus.c:1605-1607) calls realloc for non-BLOB growth. Pending handlers still hold the previous pointer. execute_script:1046-1058 evaluates ordinary script calls synchronously under the scripting mutex, while indigo_execute_handler_with_data enqueues work (indigo_driver.c:2266-2268, queue contract2221-2230). There is no property copy, reference-counted stable indirection or queue drain before mutation. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-7). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-035.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.788834Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "da9392eb-ca45-4fd7-9bc0-7208ba58f9a0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.788858Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-035.json",
+      "source": "6aabc941b6b5c1c48020b4c2270c18cffd38df78c776fd69cd9d8fb4201e3426",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "15d68145-4c23-4e94-a9bb-2c77df990dbe",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.788866Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "29bc439ce20e0da1f35fec9122e8576b8ae26990d6e3c0eb955678ae5a1c1567"
+  }
+}

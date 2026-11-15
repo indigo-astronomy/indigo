@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "cd8d6b49-e729-5fbd-880a-22c92f4233ab",
+  "revision": 1,
+  "title": "OPTDRV-006: `mmap()` results are stored without checking for `MAP_FAILED`",
+  "description": "OPTDRV-006: `mmap()` results are stored without checking for `MAP_FAILED`. A failed mapping is later read as image memory in `ReadFrame()` and later passed to `munmap()`, which can crash or corrupt exposure output under memory pressure or invalid buffer FDs. Check each mapping, unwind any mappings made for the request, and fail `StartCapture()` cleanly. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000024.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.653206Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d423cd04-34cb-4391-bac6-b1e89d3d002c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.653225Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000024.json",
+      "source": "20a59d9fe280db7fa149889f50d6d8e6799c89d2c8f2ec5577cd72d12df102d4",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "c785994b-35ec-4108-ae77-52a1ea02ad6e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.653233Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a54fd41d1bb7b2bd050c4003735f1479ff715eda199aec65bef3d1593e63a0aa"
+  }
+}

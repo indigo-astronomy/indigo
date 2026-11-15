@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "532b99e8-8ed9-5d32-90b2-663107a5f2e7",
+  "revision": 1,
+  "title": "PrimaLuce AP mode ignores a negative command acknowledgement",
+  "description": "set_access_point returns transport/verb success even for nested AP_SET_STATUS Error text. GIOTTO/ALTO/focuser consumers memoize the requested switch and publish OK while readback only changes separate status. Validate named acknowledgement and retain rejection error before memoizing state; use existing simulator refusal fixtures. Related credential/reboot acknowledgement handling is follow-up within this family. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-011.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.854562Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d25b4460-65ef-4570-9796-65b916f49038",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.854579Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-011.json",
+      "source": "a073fc34e74fc05eebf72e8cef4c4d2e65b5721927ecfd74fc4c40cbffffeb3b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "03028ca2-660d-48a7-994c-48460408eda1",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.854586Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e18f4aa4606b53202531966fbcb3e426f925f34d0c425b9567be959e64604b06"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e8120160-837a-5adc-acac-694ef996e1e6",
+  "revision": 1,
+  "title": "LINUXDRV-003: GPIO/PWM export and unexport helpers return on the first failure without rolling back or continuing cleanup",
+  "description": "LINUXDRV-003: GPIO/PWM export and unexport helpers return on the first failure without rolling back or continuing cleanup. A partial connect failure can leave some GPIOs/PWMs exported, and a disconnect can stop after one unexport error while leaving the rest of the pins exported. Track successfully exported resources during connect and perform best-effort cleanup of all resources on failure and disconnect. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current cleanup is best-effort and no longer stops at first failure. Remaining concrete ownership issue: rollback/disconnect can unexport resources already present before this driver session. Next: track per-session ownership and regress pre-exported resources plus partial setup failures; retain original provenance.\n\nImported from .factory/findings/archive/FND-000016.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.646282Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "e0906960-b69c-4106-a876-ccb204fdd4c1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.646301Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000016.json",
+      "source": "c910dc7f1b91241e19d0a1441de218398b487e1d3074d4f80b1f04d48a243e75",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "e58a5b76-1216-4990-9fda-73207b73f9df",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.646308Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ee2c7b9bdbe369118e33ab38cce638f415b854be35afb5f4a62cc12298d6675d"
+  }
+}

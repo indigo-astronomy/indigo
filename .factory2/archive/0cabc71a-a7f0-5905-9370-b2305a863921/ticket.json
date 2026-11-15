@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0cabc71a-a7f0-5905-9370-b2305a863921",
+  "revision": 1,
+  "title": "primalucelib accepted calibration steps the controller refused in the parameter field",
+  "description": "The SESTO SENSO 3 protocol v1.0 reports a refusal in the field of the parameter (\"Error: invalid parameter\"); the library only recognised ERROR keys, so CAL_FOCUSER steps and the CAL_DIR write were taken as done whatever the field said, and refused moves and syncs ended ALERT without the reason.\n\nImported from .factory/findings/archive/FND-20261023132326-3447-primaluce-field-errors-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.756766Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "9b773432-f135-40f5-9913-76dc30d7e1f5",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.756783Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023132326-3447-primaluce-field-errors-001.json",
+      "source": "3daae5c72e584f1992bfd976bfea36fe1fbbb62cca104aa88b65036f67b296bb",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "ceaea9f9-0766-4fb9-8e2a-c03afb8879e5",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.756790Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "b65af7a0e020225ee74b6dc1773c326da1dce92db3f41ea64ef8ae99747651e7"
+  }
+}

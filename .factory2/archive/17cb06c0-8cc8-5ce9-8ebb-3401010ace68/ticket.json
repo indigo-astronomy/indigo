@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "17cb06c0-8cc8-5ce9-8ebb-3401010ace68",
+  "revision": 1,
+  "title": "Star detectors overflow unchecked radius scratch-buffer arithmetic",
+  "description": "Radius 32768 produces signed overflow 65537 * 65537 in precise and fast scratch allocations under UBSan. Precise now fails even on a constant empty image after allocation hoisting in 21d2af5c5; previous precise returns zero stars. Validate radius/geometry and checked allocation arithmetic, preserving radius 0.\n\nImported from .factory/findings/archive/FND-20261101185459-950f-verify-star-detectors-002.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.833748Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "209da60b-55a9-491c-afcc-3fda12a3b729",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.833769Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101185459-950f-verify-star-detectors-002.json",
+      "source": "ce90ade5db3603a83e8562958b1edd61bbcde7e5be5577a2d9674bc44423d5db",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "ec8090a4-4923-4a63-ba45-cbe2896a390a",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.833777Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "4c38d0620138def89b95586e622fc1d3749e353ebd24d8b08ac18d905a74c6b0"
+  }
+}

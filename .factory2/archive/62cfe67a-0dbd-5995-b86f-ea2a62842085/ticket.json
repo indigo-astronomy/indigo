@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "62cfe67a-0dbd-5995-b86f-ea2a62842085",
+  "revision": 1,
+  "title": "Browser manual mount motion can miss release outside its button",
+  "description": "Repaired and reverified in task 20261024135437-8e0c-fix-property-copy. Original audit evidence retained. Independent source reviews and combined native/sanitizer/browser checks cover the scoped fix; see security.md and verification.md for exact coverage and platform/hardware limits.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-042.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.794615Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "0cbfc377-5c4d-4f05-a19f-e4ab7275cdbc",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.794631Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-042.json",
+      "source": "750ab90b6e536ac3c6c76d93b6abb8aa60dcf461329cb3b8fad754a79acda77f",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "e1ada5df-1325-446c-b0e2-d0e795dac3f7",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.794639Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "2291bdc8726976f644a7129dbf3c4c07072111a8d530dd6f0ac30b87f0c07494"
+  }
+}

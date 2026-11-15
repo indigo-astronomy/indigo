@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "eae6fb5e-71ab-53d8-823b-938dd9d1397b",
+  "revision": 1,
+  "title": "Linked-worktree builds lose their Git revision identifier",
+  "description": "The helper recognizes a checkout only when ../.git is a directory; linked worktrees use a regular gitdir file and are stamped production. Next: query git rev-parse context and verify normal checkout, linked worktree and exported tree with disposable fixtures.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-042.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.733135Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "0fc5bb3f-ec5c-486a-96ad-94418237e9de",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.733155Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-042.json",
+      "source": "6132364cce246a8bccd90450a2363742bdde3916a1309dd0503e2ffc42ea5df2",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "847709d9-2ba1-44bf-8872-0e86b4ee912c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.733163Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a5ec9b13ff682bce89629e01590630c3ede1b6d81ece08dfa5ab4861d23fd541"
+  }
+}

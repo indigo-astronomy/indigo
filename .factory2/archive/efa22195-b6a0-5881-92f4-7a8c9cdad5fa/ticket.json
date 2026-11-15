@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "efa22195-b6a0-5881-92f4-7a8c9cdad5fa",
+  "revision": 1,
+  "title": "File camera accepts a truncated RAW payload",
+  "description": "- Location: indigo_drivers/ccd_simulator/indigo_ccd_simulator.driver:761-771. Cross-component contract: indigo_libs/indigo_uni_io.c:1995-2027; allocation semantics indigo_libs/indigo_bus.c:1795-1802 and indigo/indigo_bus.h:1041-1047. - Severity: medium; confidence: high; category: functional/data validation. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: header and pixel indigo_uni_read return values are converted to bool. That API returns a short positive byte count at EOF and -1 on error, both truthy. Shape/signature arithmetic checks do not prove bytes were actually read. - Impact: truncated pixel input can connect as a valid file camera and produce full-size images with a zero-filled unread tail. Allocation is zero-initialized, so this finding does NOT claim uninitialized memory disclosure. No runtime reproduction performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-5). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-020.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.776215Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d613c52e-f70e-4d23-9200-ad32b757ec1c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.776237Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-020.json",
+      "source": "5a910615c83f3fbfa989fcdc81d15d74221fb1bff622d02f32a759658843c856",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f061a968-2469-4d45-859b-e3baf380babc",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.776245Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "6b734c932250b1f28a6168fe4d824a682aaf4575a68c9edb55332129cdaec631"
+  }
+}

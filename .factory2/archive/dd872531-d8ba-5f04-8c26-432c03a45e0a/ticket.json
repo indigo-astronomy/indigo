@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "dd872531-d8ba-5f04-8c26-432c03a45e0a",
+  "revision": 1,
+  "title": "Falcon motion publishes ALERT while still moving and occupies the handler queue",
+  "description": "After an accepted MD move and settle delay falcon_move sets ALERT, then FD progress updates publish it while FR can still report moving. The synchronous polling loop holds the queue for up to120s, delaying queued disconnect; asynchronous abort flag remains serviced. Keep BUSY until bounded finalizer completion and preserve abort/disconnect ownership; add healthy-progress/timeout/disconnect cases. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-006.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.850693Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "23eb0643-73d5-4cd5-ac0f-a1fbeff7eb08",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.850712Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-006.json",
+      "source": "d8b4d1bccb8c6f49f1b9a59314f3674ede6ad821d3d5d7f9a11f66bce9bb160a",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "e46954d0-c111-4aea-a595-92873c2817b9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.850720Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "0be462f8274cbf5ae5d1d6c0848e3014929b370cc815fa24cabbfe6a77a9505d"
+  }
+}

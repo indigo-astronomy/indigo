@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b056ed96-0065-5388-8e9e-e6127b887ceb",
+  "revision": 1,
+  "title": "MJKZZ Bluetooth replies skip the protocol checksum used by the serial driver",
+  "description": "Category functional; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_mac_drivers/focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:208-217. The notification callback checks only that at least one complete message exists and address is0x81, then immediately applies decoded position/speed/stop data; it never checks ucSUM or the response command high bit. The authored portable driver for this same message protocol explicitly validates address, response command and checksum (indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.driver:82-98; protocol rationale at89-90). A complete malformed/stale notification can change measured position or publish successful motion completion even when the protocol rejects its integrity. Validate the complete response frame with the shared message helpers before applying it, preserving only documented protocol flexibility; characterize invalid checksum/address/command and healthy notification cases. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-8). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-036.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.789650Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f488a2fc-7ec7-43cd-a247-012121d58e3d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.789669Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-036.json",
+      "source": "009d88003ccbcff472dc5fcdded36ed04e5fa60e49b95428c396c43c47f948c9",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "b661e10d-06cb-4ae5-a8a1-cd646ffa776e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.789677Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "4bbe165c54f70ca82d5ee2fabe88bb3b9723dd38144b81697b59940d51010bab"
+  }
+}

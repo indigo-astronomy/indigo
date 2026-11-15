@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "16122466-1e48-544b-9ac5-6180ffb9a815",
+  "revision": 1,
+  "title": "AO simulator sends the untruncated formatted length",
+  "description": "- Location: indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c:87-94,230-235. - Severity: low; confidence: high; category: functional/simulator memory boundary. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: --firmware accepts arbitrary-length text; firmware reply is snprintf'd into buffer[8], then sim_send uses the returned would-have-written length without a capacity check. - Impact: an overly long local firmware option makes the simulator read past the reply buffer, emitting unrelated stack bytes or failing. This requires local simulator configuration, not remote product input. No reproduction performed. - Minimal remediation: validate the firmware reply length or clamp/reject snprintf truncation before sending; add boundary-option tests. Distinct from active AO simulator axis-limit audit-045. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-7). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-022.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.777839Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "09694cea-0303-4c46-8846-3ba28f35323c",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.777857Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-022.json",
+      "source": "f9f7ccea26871b376548be8cb045d9ef5279ae41e00b3934aacaf241a04b0b42",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "f230ca9c-b9e1-4cac-86d0-95b5822c0e9c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.777865Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ae51a0444606f650935459194879b62e093d2ebb97c717626b7d2415eca1749d"
+  }
+}

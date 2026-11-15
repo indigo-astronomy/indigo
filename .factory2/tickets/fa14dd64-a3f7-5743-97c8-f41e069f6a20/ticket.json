@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fa14dd64-a3f7-5743-97c8-f41e069f6a20",
+  "revision": 1,
+  "title": "DRV-204: `selection subframe restore` fails deterministically: after guiding with `AGENT_GUIDER_SELECTION.SUBFRAME` set, aborting leaves `CCD_FRAME.WIDTH` at the subframe width (4",
+  "description": "DRV-204: `selection subframe restore` fails deterministically: after guiding with `AGENT_GUIDER_SELECTION.SUBFRAME` set, aborting leaves `CCD_FRAME.WIDTH` at the subframe width (400) instead of restoring the full frame (1600), so the camera stays subframed after the agent stops. Reproduce with `build/integration/test_agent_guider \"selection subframe restore\"`. Verified pre-existing: it reproduces with `indigo_libs/` reverted to `6c28c23c6`, before this session's changes. Agents were outside the requested sweep, so it is recorded rather than fixed. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/active/FND-000007.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.638594Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ea967b1e-2c3a-44ce-9206-d17cb07c5296",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.638612Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-000007.json",
+      "source": "6ddc4f9bc2acdc692b2574b65139511bf7caadea9431d1e01f3f683343763fd3",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "d4189a71e739b3da08307f0665af7f58662326b377865a7eb5a5494579b2b469"
+  }
+}

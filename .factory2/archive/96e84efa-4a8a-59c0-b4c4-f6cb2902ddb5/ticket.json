@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "96e84efa-4a8a-59c0-b4c4-f6cb2902ddb5",
+  "revision": 1,
+  "title": "CCD filename expansion exceeds intermediate and caller capacities",
+  "description": "Repaired and reverified in task 20261024135437-8e0c-fix-property-copy. Original audit evidence retained. Independent source reviews and combined native/sanitizer/browser checks cover the scoped fix; see security.md and verification.md for exact coverage and platform/hardware limits.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-011.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.769072Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "51b17e63-20cb-468a-b8a9-ae99ae13eba4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.769090Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-011.json",
+      "source": "76af07ed50fffcda274fe697a10345efc3e52e51728708732d71badd12b288c2",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "d9bde354-0dd2-4dd9-bbf3-c3b3c79e00d9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.769098Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "f04354393305fa6c43f3fe3c86ce4ddc8b9a087806d00718d975bf755081ebfe"
+  }
+}

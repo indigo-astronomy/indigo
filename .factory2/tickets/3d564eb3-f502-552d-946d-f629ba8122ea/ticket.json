@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3d564eb3-f502-552d-946d-f629ba8122ea",
+  "revision": 1,
+  "title": "Multicamera guide overstates the follower inter-frame delay bypass",
+  "description": "indigo_docs/INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md:126,160 claims controlled followers skip inter-frame delay/post-delay. indigo_agent_imager.c:1370-1394 gates only dithering; PRE_DELAY, delay and POST_DELAY1395-1425 remain unconditional. Users can configure timing/breakpoints expecting an absent bypass. Document current dithering-only bypass and actual delay behavior; specify any desired behavior change separately. Source-only comparison; no camera or driver run. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (ROOT-FOLLOWER). No fix or risk acceptance claimed.\n\nImported from .factory/findings/active/FND-20261024121920-3bd2-repository-audit-044.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.796121Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "9ac6f0ed-34c2-4e1a-9f00-29b962d55f16",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.796137Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-044.json",
+      "source": "047980ee77381ca5dd352853da6509450703287dab9862535f67e423edfa0e19",
+      "priority": "low",
+      "severity": "low"
+    }
+  ],
+  "closure": null,
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "a497c822ffde197a46c6705488d9e5da9ef47f2e0acc6e78d23a8b74eb12d962"
+  }
+}

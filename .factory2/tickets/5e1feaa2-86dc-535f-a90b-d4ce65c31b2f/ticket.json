@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5e1feaa2-86dc-535f-a90b-d4ce65c31b2f",
+  "revision": 1,
+  "title": "RPi ROI control membership compares iterators from different temporary maps",
+  "description": "GetControls returns its ControlInfoMap by value, but ROI code compares find from one temporary with end from another. That is not a valid same-container membership test and can select unsupported ScalerCrop instead of the full-frame fallback. Store one local map and compare its own iterators; test a camera profile lacking the control. No platform runtime executed. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-013.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.856147Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c1865301-774e-4ef5-bf4b-a2432a64a28e",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.856165Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-013.json",
+      "source": "8240f9fd2fedbc69fe9880ec71a0b79386aa8643527be6bb4f858b73b2a3027c",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "ad1a4fad7f5c3a54d2830c7415faec8aac445083732bad5ade79f9fb5b09403b"
+  }
+}

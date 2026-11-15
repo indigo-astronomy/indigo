@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "99f9b97d-fbea-5707-b13e-864acc0826fe",
+  "revision": 1,
+  "title": "Meridian flip without solver test does not assert the failure message and sequence abort",
+  "description": "meridian_flip_without_solver_fails asserted the flipper state and FLIPPER_STATE Alert but not the message 'Meridian flip failed (no solver agent is loaded)' nor the indigo_sequencer.abort() result. Next: wait for the message and SEQUENCE_STATE Alert.\n\nImported from .factory/findings/archive/FND-20261103001429-668f-solver-agent-at-use-002.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.878568Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "b032bfff-5da7-42bb-b8e3-4b6dfb9d4c31",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.878583Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261103001429-668f-solver-agent-at-use-002.json",
+      "source": "d020f9e9a7cb2d8d347eb1c97b2155e771263cc6f89061cde3b9d35b937116c6",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "b26be855-4740-4d8f-a9e3-2d70231bcbb3",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.878591Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "dff58a8bf452098da05711859d4502dd755761409e39ed1966a07988caac0235"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ef4d1471-688f-5708-adb0-49aea93eff65",
+  "revision": 1,
+  "title": "Sequencer.js solver lookup misses the solver names of older servers",
+  "description": "sequencer_solver_agent() matched Platesolver/Astrometry/ASTAP only, while the Imager Agent and the stated intent include the older-server INDIGO Solver Agent and Solver Agent names; such remote solvers fell back to a nonexistent Astrometry Agent @ host. Add the names.\n\nImported from .factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-005.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.870284Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "30de10c4-56ce-4e48-85dd-562ecebb2d39",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.870301Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102101805-593a-solver-agent-integration-005.json",
+      "source": "a807b00e2f08a64b4c1e0ea17240e5fb5ea246889de26e11f51703d992e46dd1",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "450ca571-4a51-4371-aef6-fc3cf6309f7e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.870309Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (not_a_bug); no new verification is claimed.",
+      "resolution": "unresolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (not_a_bug); no new verification is claimed.",
+    "resolution": "unresolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1ed71a895dda193d3adab41a35deca716fc98dc8a5bed808f147bb86f7dffcba"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "2b3903ea-99c6-5fce-9967-9a845a77db4b",
+  "revision": 1,
+  "title": "Protocol security unit test fails: device ACL accepts requests without a master token",
+  "description": "test_protocol_security case 'device ACL requires device or nonzero master token' fails deterministically (unit/test_protocol_security.c:537) with the current build/lib/libindigo.a, also when built against the committed indigo_names.h; unrelated to the scheduler task. Next: determine whether libindigo is stale or the bus ACL check regressed, then fix and rerun make -C indigo_test test-unit.\n\nImported from .factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.897538Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d0320c81-b219-4062-bf7c-ce656851ea70",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.897556Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261112184305-e0a6-scheduler-agent-core-001.json",
+      "source": "1d880a3446db43248600a04c80fce5a695ded8ffbe2aa5eae8a0c3802dc02fd5",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "b542adabbdfc67253905e9de816c7d0924a25467173dddb8255983c0ed10d78f"
+  }
+}

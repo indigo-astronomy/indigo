@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5bfa812b-daaa-5abe-b05f-8d6dec9c4e3e",
+  "revision": 1,
+  "title": "Legacy formatted writes use the untruncated length of a fixed buffer",
+  "description": "indigo_io.c:481-490: legacy indigo_printf formats into INDIGO_BUFFER_SIZE but passes vsnprintf's would-have-written length to indigo_write. Output longer than the buffer reads beyond its allocation rather than sending only produced bytes. The supported public helper differs from the correctly grown unified formatter. Next: Reject formatting errors and either grow/reformat or return a length-limit failure; exercise a format beyond the initial buffer in a synthetic local sink.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-016.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.711807Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f65a37ca-a062-40ea-be08-c2336b948a36",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.711825Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-016.json",
+      "source": "f6642881f943b4de77c6a93eefabf48fbc04d2edc370d2ffa861f66b5820213a",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "ddbe6fda-a194-49f4-9d67-d134b3bc3ed9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.711833Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "19925c4cd0c2c5d4f9b502581b8c4b0da9d9c29b9eb32544299eb285587b7ff8"
+  }
+}

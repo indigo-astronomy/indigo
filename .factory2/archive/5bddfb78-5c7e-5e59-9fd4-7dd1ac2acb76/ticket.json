@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5bddfb78-5c7e-5e59-9fd4-7dd1ac2acb76",
+  "revision": 1,
+  "title": "HTTP resource lookup outlives its registry ownership",
+  "description": "Repaired and reverified in task 20261024135437-8e0c-fix-property-copy. Original audit evidence retained. Independent source reviews and combined native/sanitizer/browser checks cover the scoped fix; see security.md and verification.md for exact coverage and platform/hardware limits.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-002.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.761632Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "b3b68d3c-8105-4ab6-bb3f-af74bd365d92",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.761648Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-002.json",
+      "source": "82c98dcb882700ea0e732423225f1149c303c823ad8bfba781dd2cd7eb8bf4c7",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "39824d30-3550-4a04-abf6-6cf4d0dfa85a",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.761655Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "fa3befc4d9b7577779413c4dea323de2a4d25651be946f7db73a6ec663cf1d15"
+  }
+}

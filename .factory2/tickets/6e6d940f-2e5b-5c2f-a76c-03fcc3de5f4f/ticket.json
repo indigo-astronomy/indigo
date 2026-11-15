@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f",
+  "revision": 1,
+  "title": "Editor property catalog omits generator-supported accept_while_busy",
+  "description": "The current generator accepts accept_while_busy:boolean for inherited, switch, text, number and light properties, but the template-derived editor catalog omits it in all five contexts. This is source-confirmed on baseline af219db21 before this task and remains the single full editor attribute-contract failure after requested device-id/SDK-discover fixes. Next: scoped template/catalog correction with property context tests; no generator change or risk acceptance.\n\nImported from .factory/findings/active/FND-20261102201622-853f-fix-editor-build-doc-findings-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.876956Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ad6bd7b4-ff8c-4f93-a78d-7a6d7054c485",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.876975Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261102201622-853f-fix-editor-build-doc-findings-001.json",
+      "source": "2069571663a519d5e24312ce4be872b156287dd110b7d4b2db87bf68ace99322",
+      "priority": "low",
+      "severity": "low"
+    }
+  ],
+  "closure": null,
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "ba68c8c525d61fdb9aab473aa0ab7305eaff773fbe6cd0d48b0abd2da8671d3c"
+  }
+}

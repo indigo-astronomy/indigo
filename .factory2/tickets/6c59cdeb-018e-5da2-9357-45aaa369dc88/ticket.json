@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6c59cdeb-018e-5da2-9357-45aaa369dc88",
+  "revision": 1,
+  "title": "Sequencer meridian-flip pause documentation disagrees with forwarded time units",
+  "description": "Canonical Sequencer.md describes enable_meridian_flip time as seconds. Sequencer.js forwards it unchanged through set_pause_after_transit to Imager AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT, whose source definition and computation use hours. Nonzero values interpreted as documented can schedule the wrong transit pause. Next action: reconcile the public unit contract, correct reference or conversion as appropriate, and verify with a focused simulator test. Draft guide exposes the discrepancy; no runtime validation or source fix here.\n\nImported from .factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-002.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.890004Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "db60499e-d157-41ef-8990-735945160ba4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.890025Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-002.json",
+      "source": "4ea93964a68421dbeed34d5c2d03fd293f8393a4db8ee2332b05d97410289628",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "0b421f565d27ef20c5cf87d233eb6e29653b19e433da4f14c58164858936cf7f"
+  }
+}

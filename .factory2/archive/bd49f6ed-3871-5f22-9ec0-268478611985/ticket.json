@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "bd49f6ed-3871-5f22-9ec0-268478611985",
+  "revision": 1,
+  "title": "Identical U-curve minima are all discarded and produce NaN focus",
+  "description": "Category functional; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_drivers/agent_imager/indigo_agent_imager.c:1944-1958; caller:2203-2218. With at least four equal valid per-star minima, standard deviation is zero and strict focus_diff < 3 best_focus_stddev excludes every value, leaving used_values0. best_focus /= used_values returns NaN; caller computes steps from it and sends the resulting focus movement without checking finiteness. This is a derived-data defect, not generic numeric change_property input validation. Distinct from existing masked-contrast FND-...-032. Handle zero variance as a valid common minimum and reject/fallback when no values survive; validate final computed focus before motion. Add numerical unit cases for equal values, ordinary outliers and no usable minima. No movement was commanded. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-5). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-033.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.787264Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "e3b3efe6-69b3-4660-a29e-2b0c3dc675b4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.787281Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-033.json",
+      "source": "686f7a83f2e30635fd43ce10f9b0fd7de191b775463179bbe1485cf770797387",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "7ec7f590-b2f7-42bb-8128-729da459f3f9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.787288Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "6590ee56213096914d3c0ba6ff7db977e65e098e1ac960a85c7ff9d4b5770c9f"
+  }
+}

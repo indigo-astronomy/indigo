@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "442fed7b-cbff-5a41-b9ba-e302908f62eb",
+  "revision": 1,
+  "title": "TESTS-002: Framework commands expand `$INDIGO_PROP_TOOL` and `$REMOTE_SERVER` unquoted and usually pipe output through `grep` without `pipefail`",
+  "description": "TESTS-002: Framework commands expand `$INDIGO_PROP_TOOL` and `$REMOTE_SERVER` unquoted and usually pipe output through `grep` without `pipefail`. Tool paths containing spaces break, remote arguments cannot be represented safely as an argv array, and command failures can be hidden when `grep` matches text from stderr. Store remote options in an array, invoke `\"${INDIGO_PROP_TOOL}\"`, and capture command status before filtering output. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000031.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.659135Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "107fc62d-66a0-4586-ae3f-004f3e9ddfad",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.659153Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000031.json",
+      "source": "7a7725fdc0b402f549c2db8af1c3b23daec5ede682100d979c37ca51b92082cf",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f8d4eb30-bfd8-403b-8f19-d1f8942a9941",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.659161Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ff63af97c579fe72ea972aeb146acef56e629c8054743a23b28ead9dd24b6505"
+  }
+}

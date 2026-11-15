@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e2bdd2b9-1369-511c-8412-2075fb55c8cf",
+  "revision": 1,
+  "title": "indigo_agent_astrometry: execute_command() leaks the getline() buffer allocated at end of output (120 bytes per solver command)",
+  "description": "In execute_command() the loop frees the line after every getline() call, but getline() allocates a new buffer for the final call that returns -1 at end of output, and that buffer is never freed (no free(line) after the loop). Valgrind on build/integration/test_agent_astrometry \"solve with filter\" reports 120 bytes definitely lost per image2xy/solve-field command (three per solve). Pre-existing, not caused by the solve-filter change; outside its scope. Proposed fix: free(line) after the while loop.\n\nImported from .factory/findings/archive/FND-20261026155455-61b6-platesolver-solve-filter-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.809730Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "9d0c550e-67db-4c9a-abd1-0ae4088f6271",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.809749Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026155455-61b6-platesolver-solve-filter-001.json",
+      "source": "e6d89e525bd785f6532ff4aab9aebb8cb29bf25dcded72001e27751b08f3fb65",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "dffd6f91-fa39-4ad5-babc-e2248c364222",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.809757Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "fe76c51fb7bb188f3600fdeb366329c2a45c3b6c11525d9e5e3e8063eb46c3db"
+  }
+}

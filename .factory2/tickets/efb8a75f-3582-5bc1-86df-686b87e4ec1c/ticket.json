@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "efb8a75f-3582-5bc1-86df-686b87e4ec1c",
+  "revision": 1,
+  "title": "K-m bulb exposures fall short of requested duration",
+  "description": "JPEG EXIF reports1.09/2.88s for1.2/3s requested; RAW reports1.100s for1.2s. Both JPEG points fail the diagnostic50ms criterion. Independently measure shutter/command timing before model-specific compensation; no guessed offset. Diagnostic/documentation delivery does not certify timing accuracy.\n\nImported from .factory/findings/active/FND-20261027204223-700a-pentax-bulb-accuracy-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.829763Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d9fe5c1d-a912-4e89-b5a2-33d8285dcb13",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.829779Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261027204223-700a-pentax-bulb-accuracy-001.json",
+      "source": "06fa8c7f637e2ff05e99cf6e2e5205060f0b9d03d0a5d5ac2620e9554e9ceda6",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "55a79cc71223824f0480f0131717138411f125cba6bdc5a4ec53571cae0426dc"
+  }
+}

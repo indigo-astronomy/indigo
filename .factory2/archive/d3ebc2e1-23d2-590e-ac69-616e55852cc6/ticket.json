@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d3ebc2e1-23d2-590e-ac69-616e55852cc6",
+  "revision": 1,
+  "title": "Imager and Alpaca image conversion omit RAW payload shape validation",
+  "description": "Received RAW data is cast and dimensions consumed without minimum header and overflow-safe pixel-span checks. BLOB registry validation does not validate image shape. Next: reuse guider-style header/signature/dimension/pixel-span checks and truncated-frame fixtures. Current audit also confirms platesolver preview at indigo_platesolver.c:63-100 does not validate payload size against RAW dimensions/type. Guider capture now validates shape/payload and is excluded from this current missing-check claim. Next: include platesolver preview in bounded image-consumer repair/retests.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-022.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.716585Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "30f811e0-ced5-413e-a0bd-dab1eb499b22",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.716610Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-022.json",
+      "source": "efb44c9da98466c40ecec83c8a6ccd1daf53a2b6f8901161b4d86606a3c04545",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "084ebc37-1ea8-4d9f-8117-d16ba8b906db",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.716618Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "f807aa7c66d69a48b09af0c86fbe78607a47dfd6b660e3549e725349e67ec8c0"
+  }
+}

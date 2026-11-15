@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a3dc0f43-5de7-5009-9847-4d34ac88b2d9",
+  "revision": 1,
+  "title": "Imager instance tests ignore failed teardown while reporting cleanup success",
+  "description": "The unchanged instance suite cleanup ignores shutdown and indigo_stop return values. A recorded 57/57 run logged an attached CCD simulator preventing bus stop but still reported cleanup success. Next: coordinator assigns test-maintenance work to verify shutdown/disconnection completion and make teardown failures fail the case; repeat full imager scope. This follow-up is distinct from the 15 repaired findings.\n\nImported from .factory/findings/archive/FND-20261024155149-8381-fix-core-audit-findings-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.796840Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "efabdc12-dd44-4893-a156-493e43dd2685",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.796856Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024155149-8381-fix-core-audit-findings-001.json",
+      "source": "60c9312bab752f626ca7ac9e9de0b5cd6b4a1dd60aced809d41b6b2db6c7a0d5",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "10c69ae2-280d-4527-8f87-b0a04f340978",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.796864Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "08d6d947eba8e2070fa5b0a1e0898c7fe3b63399173f5c6d00b95ac906016677"
+  }
+}

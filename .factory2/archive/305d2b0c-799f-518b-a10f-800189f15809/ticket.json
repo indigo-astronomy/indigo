@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "305d2b0c-799f-518b-a10f-800189f15809",
+  "revision": 1,
+  "title": "FBC duration handlers block queued operations",
+  "description": "Serialized handler sleeps for the requested duration up to 30 seconds, delaying disconnect and other queued requests. Next: delayed finalizers and fake-serial interruption tests.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-017.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.712586Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "864b8c7a-642a-44ef-8b5f-f7378bb1d424",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.712603Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-017.json",
+      "source": "c37eb12de032a19fba2ad364afd77def60284c2e17f8139145441dc1852da8ac",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "1467c823-033a-4e4b-8940-7153c4d3317c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.712611Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "659ba20d91c4398b5e881e271414f7c6aa1576810635b9f0b5f34d8ee523e697"
+  }
+}

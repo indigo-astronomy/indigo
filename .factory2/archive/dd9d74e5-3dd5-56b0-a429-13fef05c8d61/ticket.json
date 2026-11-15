@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "dd9d74e5-3dd5-56b0-a429-13fef05c8d61",
+  "revision": 1,
+  "title": "JSON token and frame terminators exceed allocations",
+  "description": "JSON name/value accumulation and full-capacity WebSocket frames append NUL beyond exact allocations before dispatch. Next: separate content/allocation capacities and test exact boundaries across input reads. Confirmed by current source contracts; no fix or runtime retest claimed.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-013.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.749899Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "55e67e03-1da7-40f7-b993-7de1294ecf59",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.749923Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-013.json",
+      "source": "af16d2af547c57db21e65564657198bb67d33bf60f851e8e9b0c49a2a57cc18a",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "7c92bf50-a7fd-4111-9877-c99c7d3e9c16",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.749931Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "312f4743622273faa496cbd03eabd820ab6b259dab918fd6118980c69df46342"
+  }
+}

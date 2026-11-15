@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "13a60f0e-33ab-52ef-82d8-106e1dc5f65f",
+  "revision": 1,
+  "title": "Scheduler next-start search is expensive with many long tasks",
+  "description": "When nothing is eligible, select_task() calls indigo_scheduler_next_eligible() for every task, which checks the whole duration at every 5-minute candidate: about 577 x duration points x tasks, up to ~21M point checks for 128 tasks of 24 h, on the handler queue every IDLE_CHECK_INTERVAL. Next: precompute per-task point validity and use a sliding window, and add the planned 128-task performance test (phase 3).\n\nImported from .factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-003.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.899375Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "507f804e-0ef1-411b-a9d7-ad2c452646c7",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.899393Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-003.json",
+      "source": "ccee64aa976cbfd7a3ac277f2811d5326b50f766452425458f5b0b50ec77308c",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "64c3700e-469f-4c25-b1d8-ab4d35dde359",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.899401Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "99b5a956dfdaa69d3990775a09b864cebddf6d1890428fab399d6f00b8017506"
+  }
+}

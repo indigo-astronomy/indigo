@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9954fbce-7bde-5f7c-881f-75e64828bb62",
+  "revision": 1,
+  "title": "Pentax hotplug uses uninitialized USB manufacturer/product strings",
+  "description": "Missing string descriptor indexes or failed ASCII reads left uninitialized vendor/product arrays used by %s during USB hotplug. Repair initialized fallbacks, reserve NUL, validate returned string length; verify fake missing/failed/full-length strings before closure.\n\nImported from .factory/findings/archive/FND-20261026210137-00fb-fix-pentax-findings-001.json (category: security, blocking: yes).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.813583Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "3d7dd587-6d1f-4167-ad1c-e3bb434e73f3",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.813599Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261026210137-00fb-fix-pentax-findings-001.json",
+      "source": "322cfb4521276416ff72102dd9737d30ef55ee38a7f49abb687c289bc69221cf",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "dc187fae-1c12-4143-95ff-f2bdc141203f",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.813606Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "654327d88a58013a9e66c6a948379b582c6a4fbffed26dc72a5d4fa474559dab"
+  }
+}

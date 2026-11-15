@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f487e887-ed54-5f40-9acc-ea4e139d265f",
+  "revision": 1,
+  "title": "ALTO simulator numeric helper accepts NaN as a passing comparison",
+  "description": "The new local number_is helper uses fabs(actual-expected)>tolerance, so a cached NaN passes. Exact unchanged-function synthetic proof returns true; environment/property/preset assertions use it. Reject nonfinite unexpected values/tolerance and use the shared corrected assertion contract. New custom helper scope is distinct from closed common ASSERT_NEAR findingbc8d-029. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-019.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.862117Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "dcbeaa05-49af-4adb-bc58-a9e513c60c23",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.862134Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-019.json",
+      "source": "2047e079da1130c72876ff2bfe9b5b97122d2b03da5afd488fb08148cf119770",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "a340c9e4-7151-490d-90ed-de3fa1fa8359",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.862141Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "032d62617ad5d90c7fd1628f8485431c6a8f9f7f1cdd4531a277dab8c5b73147"
+  }
+}

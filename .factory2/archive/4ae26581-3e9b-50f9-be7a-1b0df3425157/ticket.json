@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "4ae26581-3e9b-50f9-be7a-1b0df3425157",
+  "revision": 1,
+  "title": "DONUTS accepts narrow valid regions that violate its FFT/background window bounds",
+  "description": "Category security; severity medium; confidence high; owner coordinator; open, nonblocking follow-up. indigo_libs/indigo_raw_utils.c:1237-1248 rejects only nonpositive include widths/heights. It then allocates projection vectors with length next_power_2(include_width/height) at1360ff and runs calibrate_re1206-1230. BG_RADIUS is5 at1072; calibrate_re unconditionally writes vector[0..5] and starts another edge-zeroing loop at size-5, independent of allocation length. Region width/height1–4 therefore produces a vector allocation of1/2/4 elements but out-of-bounds writes before FFT. For a length1 transform _fft:318-348 has only n==2 as the recursion base, so1 recurses through0 indefinitely. RGB projection filtering also indexes include_width-2/include_height-2 for a one-column/row region. These are valid positive region dimensions accepted by the public function and by agent_guider validate_include_region878-933; the DONUTS include-region path at998ff passes these values. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (MATH-1). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-037.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.790487Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "934be61e-7a50-4755-9694-2825861a1b59",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.790509Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-037.json",
+      "source": "d22a389bd30eb8dc4ce33de5db459e04acd35f436b80cc55ff4cfdd5e6992d1e",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "562afa43-ab8a-4cfc-993b-4e859103bbdb",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.790517Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "d750a0cd4cbe183a0400ccbe230c26e44d55c34f5506f4b675f71ff03fc21312"
+  }
+}

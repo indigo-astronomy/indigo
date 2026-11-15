@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "abc17507-8022-5a51-b10e-6a2d7f214cc6",
+  "revision": 1,
+  "title": "LINUXDRV-001: PWM change handlers ignore failed `*_pwm_get()` calls, then compute frequency or duty from `period` initialized to zero",
+  "description": "LINUXDRV-001: PWM change handlers ignore failed `*_pwm_get()` calls, then compute frequency or duty from `period` initialized to zero. If the PWM sysfs node disappears, permission is denied, or a read fails, this can divide by zero or push nonsensical PWM values while still updating the property as successful. Check the read result, set the changed property to `INDIGO_ALERT_STATE`, and return before doing math or writes. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied. Current audit reconciliation: Current source inspection finds checked PWM reads and positive period guards; original division-by-zero shape is absent. Next: run focused current sysfs failure regressions and retain closure evidence before moving this historical record.\n\nImported from .factory/findings/archive/FND-000014.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.644668Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fb9a9515-31fb-4e58-b5b3-1e5fee3287db",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.644690Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000014.json",
+      "source": "fe3da92ee8fe898e266cd0b9ecc5700587412e4aff09502247af0f3951cfcf96",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "d331c602-71ed-4400-90ba-f907ddf8cae1",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.644698Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "94c90650b5338213d2264bd8dd70b331367161ce0cf137146074ec8dae6266a5"
+  }
+}

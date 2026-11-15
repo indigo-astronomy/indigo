@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b82fc728-0030-52eb-b233-fc6076ad7118",
+  "revision": 1,
+  "title": "GPIO pulse finalizers report OFF after a failed hardware stop",
+  "description": "Pulse finalizers ignore the failed OFF write, clear the deadline and publish OFF even when the relay may remain energized. Source-confirmed independent driver review; no hardware reproduction. Next: propagate stop failure and test failed OFF writes with a fake backend.\n\nImported from .factory/findings/archive/FND-20261023065605-60d4-repository-audit-011.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.693410Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1e1fa173-dcc7-4f3d-bd4c-65c36bf8de5f",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.693429Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023065605-60d4-repository-audit-011.json",
+      "source": "6e2a927c6b7540d1a4191b9ecf63e2ab400a3473b155b79718eb4fe8a316f22b",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "501aa1a9-f9eb-49dd-b694-0e3333cb5dfc",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.693438Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "40e70276548e9535ff767555a62a727b98c01636a2fe74e6de946d1b9a4882e1"
+  }
+}

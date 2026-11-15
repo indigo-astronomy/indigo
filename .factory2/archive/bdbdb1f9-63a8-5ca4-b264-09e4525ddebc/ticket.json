@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "bdbdb1f9-63a8-5ca4-b264-09e4525ddebc",
+  "revision": 1,
+  "title": "DOCS-002: The \"Handling Properties Asynchronously\" section contains two consecutive versions of the same paragraph, one typo-heavy and one corrected",
+  "description": "DOCS-002: The \"Handling Properties Asynchronously\" section contains two consecutive versions of the same paragraph, one typo-heavy and one corrected. This makes the guidance look contradictory or accidentally duplicated in a core developer document. Remove the obsolete first paragraph and keep one edited version.\n\nImported from .factory/findings/archive/FND-000002.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.634670Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c3758300-b645-44af-a073-d884b88fd209",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.634689Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000002.json",
+      "source": "510b994ee6659c43fedb39fc7b1fe6fb296d3916aea31c1b172e9e591feb17e8",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "1c878a14-ee4c-42d5-bbd8-bf00c6755f32",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.634698Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "d61b9db899cd28d4346cb7a2df1e825e96479144e9e2ff723a4bb47d2ce28fac"
+  }
+}

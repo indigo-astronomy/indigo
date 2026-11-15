@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "c95c8cae-4447-5dbc-88ac-7b711c232512",
+  "revision": 1,
+  "title": "TOOLS-002: `indigo_raw_crop` trusts the RAW header and ROI dimensions",
+  "description": "TOOLS-002: `indigo_raw_crop` trusts the RAW header and ROI dimensions. It does not validate the header read, RAW signature, positive crop width/height, multiplication overflow, allocation success, or payload read size. A truncated or crafted RAW file, or a crop like `0,0,-1,10`, can drive undersized allocation and out-of-bounds reads/writes. Validate the header and type, compute byte counts with overflow-checked `size_t`, require `width > 0 && height > 0`, and fail if reads or allocations are incomplete. Repaired and verified by task 20261024113017-1e1c-fix-fnd-000036-000037; see its verification and independent security reports.\n\nImported from .factory/findings/archive/FND-000037.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.664093Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "7d9a1fb1-a7e9-4bd4-8c90-cd64f7a1158f",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.664111Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000037.json",
+      "source": "f06b0dc88a25819c945196c473bacdbac061f01f449544ff96e2665b8806226b",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "f50502e7-fb1e-4160-8f88-42bac9089cbf",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.664118Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ec915fe4cbce5bd22fce2e25536bd7695e8ec0e57dc601f11683900dfa3c8996"
+  }
+}

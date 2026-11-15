@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6d4d2a3a-9e1f-59c8-94f4-d0dac6e19457",
+  "revision": 1,
+  "title": "Three-point polar alignment divides by a zero intermediate for solvable geometry",
+  "description": "Category functional; severity medium; confidence high; owner coordinator; open, nonblocking follow-up. indigo_libs/indigo_align.c:702-710 solves the two equations using v=(d3k1-d2k3)/(k4k1-k2k3) then u=(d2-vk2)/k1. When the first two hour angles are symmetric around the meridian (e.g -15°, +15°, followed by +45°), k1=cos(a2)-cos(a1)=0 although the determinant can be nonzero and the system remains solvable. The final division yields nonfinite u while returning true; near-symmetry is also poorly conditioned. This is a legitimate three-distinct-point polar alignment geometry. The actual platesolver reference3 path685 ignores the boolean and694-698 publishes the resulting state OK, passing error values into target coordinate generation692-693. Solve both outputs directly using the determinant (or choose a stable pivot), reject genuinely singular/nonfinite results, and require the caller to honor failure before publishing a target/OK. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (MATH-2). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-038.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.791403Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f7fe713a-6e4a-4b11-bdde-cbe93b838d27",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.791428Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-038.json",
+      "source": "431ef24d4fdfdec162b0f323496e9a37e9791f705ca7a52a965f9c3f5917b080",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "b1bdce8d-d754-4618-9144-c135376e6993",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.791436Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "402fa000ecd9a37d51e7f58e6da11825e8560e1083a83a702430babe38695d70"
+  }
+}

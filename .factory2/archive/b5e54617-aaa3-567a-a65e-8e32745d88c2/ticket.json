@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b5e54617-aaa3-567a-a65e-8e32745d88c2",
+  "revision": 1,
+  "title": "Removed start() argument was checked by arity only",
+  "description": "start.length===3 would pass with a stray arguments[3]. Assert that a fourth argument naming a loaded solver has no effect.\n\nImported from .factory/findings/archive/FND-20261102123603-6a7f-select-solver-agent-004.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.873612Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f37ff281-4866-4db8-934e-a23272269f95",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.873629Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102123603-6a7f-select-solver-agent-004.json",
+      "source": "97318c7a6186facf0f260d39135e203460c3cf58469591a9b5b99bb1b42a66a3",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "47e53470-1659-4a64-8a7b-b2420aa06c31",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.873637Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "c49856906a2f8f4f7125b226b472d1a5816f428ebe854d40328bfbaf75435611"
+  }
+}

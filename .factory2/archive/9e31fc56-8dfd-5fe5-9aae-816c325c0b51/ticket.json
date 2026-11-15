@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9e31fc56-8dfd-5fe5-9aae-816c325c0b51",
+  "revision": 1,
+  "title": "JSON decoding loses escaped backslashes",
+  "description": "indigo_json.c:510-533 checks fresh backslash before existing is_escaped; escaped backslash is never emitted, ordinary Windows paths lose separators and terminal escaped backslash can confuse closing quote. Same file encoder627ff and browser JSON.stringify emit escaped backslashes. Process escaped byte first, then fresh escape; test standard string roundtrips. Unicode escapes also unsupported but not separately claimed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-7). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-007.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.765734Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "84addce4-608e-4677-9ce8-a7ac820bad9a",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.765756Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-007.json",
+      "source": "a7e9cb4f0fef9b9f614bb88acdbb72a4eb300b9417960ea5c408e38c79a2132e",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "0b18592d-57f3-46e5-ad12-6757182673dc",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.765765Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "a104bcdf5e51b870d6ce16ded004092ee35ea824754107406d84f11976f98579"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e2bb6f3b-5ac5-5521-a4f1-b2f2483cdc45",
+  "revision": 1,
+  "title": "TESTS-004: Abort-motion tests assume a long-running move is still `BUSY` after a fixed two-second sleep",
+  "description": "TESTS-004: Abort-motion tests assume a long-running move is still `BUSY` after a fixed two-second sleep. Fast devices can finish before abort is sent and fail the required `BUSY -> OK` abort transition even though the driver is valid; slow devices can also leave a background `indigo_prop_tool` process running in the rotator test. Use a generated long move known to remain busy, wait until the motion property reports `BUSY`, send abort immediately, and wait/reap any background helper process. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000033.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.660865Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5ad8a55f-e093-4c04-864f-c4b8e57da9ef",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.660888Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000033.json",
+      "source": "ecd22a7a2c30a865725f742f2f1c8aefe35d17ad2405157798318969789d0892",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "33d9a18e-b403-4277-b0be-397a25b9d278",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.660896Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8c8f84d98bfb0b3b4f2c77e622b937a33456b793b9c18bccc2736c238e78fa01"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "e4669425-4a50-5a3f-ba98-0d624987cefc",
+  "revision": 1,
+  "title": "GIOTTO poll replaces a queued light/brightness request",
+  "description": "- Location: indigo_drivers/aux_giotto/indigo_aux_giotto.driver:89-91,133-145,239-240,272. Generated call-site check: indigo_aux_giotto.c:740-743 and441-477. - Severity: medium; confidence: high; category: functional/concurrency. Owner: coordinator; status: open; nonblocking follow-up. - Evidence: after panel_get_state I/O, a changed state or recovery from poll_alert calls giotto_publish_light, overwriting the light switch and brightness value AND target, then sets both properties OK. No per-property BUSY/pending guard exists. A concurrent bus-thread change sets BUSY and stores the request before its queued handler runs; that handler later reads the same overwritten switch or number.target. - Impact: an external panel-state change or poll-alert recovery concurrent with a client request can replace that request with old readback, resulting in a successful handler sending a different value. No race reproduction performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-6). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-021.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.777050Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "7f96080b-9592-4576-a84f-8803f197421e",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.777070Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-021.json",
+      "source": "f24c91d95be5e77db17c48e252c49a8e02426595f89894bf7a992ad40a997af2",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "b7460443-061f-40ff-a649-e884950f2e0b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.777078Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e8ba64f5673da34b7a4d57185a28f424cab7fb335d7dfcf11f2933cb934dd36c"
+  }
+}

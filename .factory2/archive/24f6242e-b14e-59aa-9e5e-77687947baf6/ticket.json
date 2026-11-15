@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "24f6242e-b14e-59aa-9e5e-77687947baf6",
+  "revision": 1,
+  "title": "OPTDRV-004: Raspberry Pi exposure startup sets image and exposure properties to `INDIGO_BUSY_STATE`, but if `StartExposure()` fails it only logs the error",
+  "description": "OPTDRV-004: Raspberry Pi exposure startup sets image and exposure properties to `INDIGO_BUSY_STATE`, but if `StartExposure()` fails it only logs the error. No property is moved to `INDIGO_ALERT_STATE`, no failure cleanup runs, and no client update reports completion/failure. Report the failed start through `CCD_EXPOSURE_PROPERTY` and image upload properties before returning. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000022.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.651564Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5834185d-071c-434a-b854-1078271931f2",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.651586Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000022.json",
+      "source": "acb7ecec012e598dd9794e0a318482f68a1e94d7c40c51698b42f70d24be0bf6",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "6c022886-f7e1-4089-ab01-8006a581a81f",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.651594Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "f1cef87612749fc53a1e2465f1554f57c8eefd6c9a710ddadf7dbefdf59f992e"
+  }
+}

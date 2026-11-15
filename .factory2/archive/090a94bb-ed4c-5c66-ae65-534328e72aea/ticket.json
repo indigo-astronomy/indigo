@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "090a94bb-ed4c-5c66-ae65-534328e72aea",
+  "revision": 1,
+  "title": "RAW selection geometry permits inclusive reads outside the frame",
+  "description": "indigo_raw_utils.c:438-449 and 667-675: selection guards accept xx == width-radius or yy == height-radius, but inclusive loops reach index width/height. PSF accesses all formats directly; selection digest RGB/RGBA variants do too. Public APIs and imager star selection can reach frame-edge selections. Radius zero also allocates zero border storage in PSF before writing one border value. PSF lines 509-515 use int squared-deviation sum, which overflows for ordinary high-contrast 16-bit borders and corrupts HFD/FWHM thresholds. Next: Require a complete positive-radius inclusive ROI (xx+radius < width, yy+radius < height); use double statistics; return failure before reads. Verify right/bottom boundary and a high-contrast mono16 border. This confirms the prior RAW/PSF boundary candidate, without assuming framework generic-number validation solves geometry.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-006.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.703156Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fc20d282-3f77-40e2-9582-285146ec9106",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.703175Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-006.json",
+      "source": "a69c583e696c5cc973d60fbee429bc0e422ded3d88070db740f4315bd0f879cd",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "34b822cd-1bf4-4b3d-babc-056b5000a6ec",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.703184Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "096e2f110b8529c6e60a201af8e5a4eee0e4d61e1321ae7dce4d2b6092c2c051"
+  }
+}

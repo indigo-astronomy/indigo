@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9dbd3fc5-92b2-5b4f-8ed2-c37e8fffcf9b",
+  "revision": 1,
+  "title": "Small-frame Bayer equalization mixes sampling parities",
+  "description": "indigo_raw_utils.c:76-128: Bayer channel estimator replaces a computed zero even step with 1. Common frames below about 447 pixels per axis therefore shift 2x2 windows through both parities and mix color channels before applying four separate parity gains. Existing 2x2 test passes because only one window exists; repeated 4x4 Bayer tiles expose the mismatch. Next: Keep sampling steps even (minimum 2) and verify repeated tiles in mono8/16 with distinct channel levels and near-saturation values.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-012.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.708591Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "06aa1071-5832-44c2-9a0a-82f1d32da643",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.708616Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-012.json",
+      "source": "fcc9201206eaea6436da9ce37bf670f2c1c9dfe8cff76a3adad4e8b34df0a2a3",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f90a44d1-aae2-4b43-9127-7400e5659bd6",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.708625Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "aac79909c01fe8cc8ca576f7a2ed2e7a23bcbd9d38bf0f346ae6617105d2dd12"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "37293308-abc2-5155-97a9-512fc9f74ea1",
+  "revision": 1,
+  "title": "Exponent notation changes numeric zero into a nonzero value",
+  "description": "indigo_bus.c:2736-2738 indigo_atod forces parsed zero to1 when exponent present. Normal0e0=>1,0e5=>100000,-0e3=>-1000. XML input and metadata handlers use this API. Remove forced1; test zero exponent forms and ordinary nonzero. Existing-library functional output agrees with source; no malformed input involved. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-13). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-013.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.770663Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "ec448c45-f92f-44fd-8858-33d9f001e79d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.770680Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-013.json",
+      "source": "e86cde4fd83fc4499228b976bd1c0d614cc65bc1a3034d318046d065848e62ca",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "722ed107-5e66-4a35-8868-3ea2d7b2afc3",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.770687Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "bd2ec7988f5a14eea56395ef59e81db6dd9b640ef3d1b64d18fdd7faee7a654e"
+  }
+}

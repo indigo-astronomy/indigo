@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f022965e-c8e0-559f-b953-fa17c08ed06c",
+  "revision": 1,
+  "title": "Unvalidated BLOB lengths reach a process-fatal allocator",
+  "description": "Network access and registered BLOB identifier. Source-contract confirmed; runtime unverified. Next: Validate bounded decimal framing, budgets and recoverable allocation\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-001.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.739692Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "3b6adbc1-2efa-4ffb-9576-294065b153ab",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.739715Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-001.json",
+      "source": "b8445b09a4639174b976b718356ec204b2fb03b9629d7749136c4311f29b720e",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "1ad60c33-9ced-4e9f-96c7-366854ac4599",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.739723Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "b20857bd652aea6b2c387e7f131ae7bde46497c5c761e590f0804294d4a5edc7"
+  }
+}

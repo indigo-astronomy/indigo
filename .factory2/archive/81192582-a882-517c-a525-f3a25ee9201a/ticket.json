@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "81192582-a882-517c-a525-f3a25ee9201a",
+  "revision": 1,
+  "title": "focuser_primaluce ended ARCO moves ALERT when the angle differed from the target by a rounding error",
+  "description": "The rotator move finalizer compared target and angle for equality; a SESTO SENSO 3 stops a move to 15 degrees at 14.99994.\n\nImported from .factory/findings/archive/FND-20261023080442-7930-primaluce-arco-sestosenso3-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.695730Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "128262c2-5252-4431-953d-70adc3e60830",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.695748Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023080442-7930-primaluce-arco-sestosenso3-002.json",
+      "source": "03debd393dac0e18bff0f4a818431b80e47189b91e589d459bcbf8b8bf83a360",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "7a90a9cc-0759-4641-a414-5fe8ebbb7807",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.695756Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1945bcf853c561ec6360a3945be1e3a195f7069975a588c9b60da36d065f0050"
+  }
+}

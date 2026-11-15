@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8cc35a3f-5b9e-5713-8a01-6c4817c4052e",
+  "revision": 1,
+  "title": "ALTO hardware restoration can fail without failing the test run",
+  "description": "Restoration ignores move_to/hw_set failures, while those helpers return bool without incrementing the global failure count. Exact extracted restore function with all four calls false still exits0/failures0, leaving changed state while reporting success. Aggregate restoration outcomes and propagate failure while retaining cleanup; no hardware was operated. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-017.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.860002Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c6504222-9b04-417f-99bd-6954096765fc",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.860029Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-017.json",
+      "source": "e4e9b89aa64a4489787d3cc4b6a982d5bbc9674aab93ed061d223351f375ea3c",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "95e14eae-8761-4958-91e7-ed81614a3bf6",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.860038Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "9c0bfa36e611ef99b65080b535cc52819715eeab605acb12ea0a3912d69fcf8f"
+  }
+}

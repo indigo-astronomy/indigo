@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "81ea53b4-eb3d-5cbf-859b-45f76e065639",
+  "revision": 1,
+  "title": "Scheduler commands queued at shutdown are leaked",
+  "description": "agent_change_property() queues a scheduler_command with a property copy; indigo_cancel_pending_handlers() in detach drops queued handlers without freeing their data. Only commands arriving in the last moment before unload leak. Next: track queued commands or drain them in detach.\n\nImported from .factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-004.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.900292Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "be1bb23d-349a-416d-bfc3-bb1afd1281d7",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.900314Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-004.json",
+      "source": "bad8b6cbfe1cd256e1927a3d94f5a52d052e807951c46bbb040c04a97f0b3b01",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "da4bb6c3-17fd-4d6c-a4b7-1e595975f204",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.900322Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "201b29cec908b7925f086efe58be44f089e00a6ded1e31b27f1bdc9f3ccad35d"
+  }
+}

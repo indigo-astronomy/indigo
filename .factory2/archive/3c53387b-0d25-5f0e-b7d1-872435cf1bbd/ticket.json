@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3c53387b-0d25-5f0e-b7d1-872435cf1bbd",
+  "revision": 1,
+  "title": "handshake_timeout checked the connection before the refused attempt ended, racing two 5 s timeouts",
+  "description": "handshake_timeout arms a silent MODNAME reply and asserts !context.connected right after connect_focuser() returns false. connect_focuser() gives up after 5 s, the same time the unanswered read takes, so the CONNECTION property can still be BUSY with CONNECTED on. On Linux it failed in all 5 runs (before and after the library extraction, with and without FND-000049 fixed); the macOS records pass.\n\nImported from .factory/findings/archive/FND-000051.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.676171Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fcd9d66c-8a4a-41db-b8d4-6ad4f83d70ae",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.676188Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000051.json",
+      "source": "ea40b0df9ee077cb4332a8d0889734d8c4710700d6dd578146b3e9656e832e2c",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "861b0ba4-6d5b-4185-a09b-880de616aa99",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.676195Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1f640e4b91cbfc77c3dc1c2834523934c160e324afee4061f0734c5723065aaf"
+  }
+}

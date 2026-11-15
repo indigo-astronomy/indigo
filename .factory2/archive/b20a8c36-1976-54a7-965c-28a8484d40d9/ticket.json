@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b20a8c36-1976-54a7-965c-28a8484d40d9",
+  "revision": 1,
+  "title": "Factory role and archive guidance mismatches the adopted layout and version",
+  "description": "The test-designer role points to nonexistent tests/AGENTS.md instead of indigo_test/AGENTS.md; documenter points to nonexistent docs/AGENTS.md instead of indigo_docs/AGENTS.md. The task-archive routine unconditionally promises idle/coordinator reset although archive_task.py:121-124 applies it only to legacy v1; modern task state remains completed. These mismatches can skip scoped instructions or misdiagnose correct completion state. Correct paths and qualify legacy behavior without changing helper semantics. Source-confirmed, no lifecycle mutation for this diagnostic. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (ROOT-FACTORY). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-043.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.795364Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "7a195d4d-6b71-4962-b554-4a6df3194fa0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.795381Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-043.json",
+      "source": "50d8ac16a8900aad1a60441feaf464e8ee51e4dd65602cc24a0f67e237d83974",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "b0a37be5-70e6-43cd-907f-5fd8ab188c80",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.795389Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "d499d617029f5d359175906e7766fad6e9293d4558f4a9243fc50dd50b8abe75"
+  }
+}

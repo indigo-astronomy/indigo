@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "87631eda-ecd0-5421-9566-54af6ac78637",
+  "revision": 1,
+  "title": "Mount alignment file loading trusts unchecked counts and rows",
+  "description": "indigo_mount_driver.c:425-451, alignment_points capacity100 indigo_mount_driver.h:479,505. Read/sscanf results ignored, count can be uninitialized/outside capacity, then assigned to context and property counts and used for indexing. Local truncated/stale file is sufficient. Parse transactionally with bounded count/complete finite rows; publish only after success. No bad-file reproduction. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-8). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-008.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.766591Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "619a9abf-f8e0-45a0-84de-04b3b77581c3",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.766609Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-008.json",
+      "source": "3d48ddbf65fd24c91593b756e35d87ea3fc070fd06770e860bc6d624bfa7e9af",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "d20d342f-d325-47b7-aef1-427da5ab665e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.766617Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "b6e4e827f061a9a3df947d76af5dcf467eb36f9c645825f52a0cb3e47ce04cfd"
+  }
+}

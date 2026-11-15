@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "afccc056-096f-5adb-b7a8-cfe752efb609",
+  "revision": 1,
+  "title": "focuser_primaluce showed the requested position as the value in the first BUSY update of a move",
+  "description": "FOCUSER_POSITION and ROTATOR_POSITION were dispatched with INDIGO_COPY_VALUES_PROCESS_CHANGE, so the request replaced the measured value and the first BUSY update showed the target for one update before the first readback.\n\nImported from .factory/findings/archive/FND-20261023111747-3b69-primaluce-rotator-progress-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.738861Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "64a43fc4-0e79-4629-8079-e2c9ac8f4af0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.738879Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023111747-3b69-primaluce-rotator-progress-002.json",
+      "source": "2d1df170db624e0439fa83b85f2ddcbc6c3ea0c7899f022d47c14d49f833d499",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "190bf0fa-e2e1-47ee-a4cd-da29b64b0827",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.738886Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "625655f1148a42371999439516d16cea8ac4d2c96d943a7cf141df6224651682"
+  }
+}

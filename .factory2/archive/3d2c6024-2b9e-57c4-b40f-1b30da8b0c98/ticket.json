@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3d2c6024-2b9e-57c4-b40f-1b30da8b0c98",
+  "revision": 1,
+  "title": "mount_ioptron manual motion cases failed once in a full run",
+  "description": "In one full run of mount_ioptron on candidate 9cab0070f, ioptron_manual_motion_8407/0100/0200/0205/0300 failed at test_mount_ioptron_simulator.c:1469 (RA did not change within the wait). A filtered rerun (6/6) and a second full run (137/137) passed. Not reproduced; possibly load-dependent wait. Next: repeat the full suite to characterize, then widen or rework the wait if the driver is not at fault.\n\nImported from .factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-003.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.806425Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "35af2e7a-f10b-4d15-aa56-780036b6b339",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.806446Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-003.json",
+      "source": "f3b91c141f888e183b25cf15314d6c2bf0114dd182bdeb95f64db8a21fc06c22",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "cb2a88cd-73bd-45b0-8389-a0ec5f1583de",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.806454Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "f8fbc59f8418005692aec1a60bf0db621f6319f91e437d04de4e73a73127afea"
+  }
+}

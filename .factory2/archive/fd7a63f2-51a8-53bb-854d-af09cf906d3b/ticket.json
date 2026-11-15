@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fd7a63f2-51a8-53bb-854d-af09cf906d3b",
+  "revision": 1,
+  "title": "focuser_primaluce ended a move the controller acknowledged but never ran ALERT without a reason",
+  "description": "A SESTO SENSO 3 with its motor bridges off (STATUS.HIZ) answered GOTO with done and stayed; the client saw ALERT and no message.\n\nImported from .factory/findings/archive/FND-000059.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.682978Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "52e6fd97-a72c-4fc8-8f43-2fa6d3cd8a61",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.682996Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000059.json",
+      "source": "fe342eb7bf86251c9d6e8736c0706277c5173fce2c8a6ec19abaaa7f5ae0ff64",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "68d3b415-cd56-41ce-a7b9-b91b83d5b11c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.683004Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "161b05249ad7d80ef364806efe54bb48ec5ef9bb7e28625cbaaada316ca11f17"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0d57b388-64b5-585a-b52b-307539da28f5",
+  "revision": 1,
+  "title": "Solver FITS dimensions and BITPIX convert nonfinite values to int",
+  "description": "fits_card_value accepts strtod nan; dimension comparisons with NaN all evaluate false. BITPIX is cast before validating supported values. A current-source extracted header parser compiled with undefined/float-cast-overflow sanitizers accepts a valid 8x8 control, but NAXIS1=nan, BITPIX=nan and BITPIX=1e100 each abort at the conversion. Require finite integer header fields and validate BITPIX before conversion; reject malformed FITS without changing framework property validation.\n\nImported from .factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-006.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.838372Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "390bfb99-3ed1-48ea-b191-12b6428e9deb",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.838394Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-006.json",
+      "source": "2dac42aeaf30bb3fca0572462a628e769054fa14f4d7a652d02794b350783cb1",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "91b8d2b3-be95-44cd-ab05-e945a57957c4",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.838402Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "afe51ecd000e720cff4422ab97ac4aa58782092dcc25b9122d77c6e180e5147b"
+  }
+}

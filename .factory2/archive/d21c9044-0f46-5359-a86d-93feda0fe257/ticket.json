@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d21c9044-0f46-5359-a86d-93feda0fe257",
+  "revision": 1,
+  "title": "PTP object downloads publish the metadata size instead of actual downloaded bytes",
+  "description": "Severity medium; confidence high; security/functional length contract. Generic indigo_drivers/ccd_ptp/indigo_ptp.c:1718-1737 reads advertised image size from ObjectInfo, then GetObject uses data_in_size=NULL and forwards the prior metadata size to preview/image. Sony indigo_ptp_sony.c:1410-1437 and Fuji indigo_ptp_fuji.c:379-392 repeat this. Transport allocates from actual data-container length (indigo_ptp.c:1387-1410, with1024 padding on raw USB; ICA allocates exact input length1150-1156). If metadata exceeds received length/padding, native publication or local save reads beyond that allocation. The sink trusts data_size for file write and blob size (indigo_libs/indigo_ccd_driver.c:2610,2629-2632). Minimal fix: request/retain actual downloaded length, validate metadata independently, and pass only verified actual bytes to all consumers. Add fake transport mismatched metadata/object tests. Distinct from active019 DeviceInfo parsing. No reproduction executed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-12). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-027.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.781694Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1734f29e-ea77-4e68-911c-72354aeef11a",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.781712Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-027.json",
+      "source": "9ee33656c9ac7c0fe1ee9ecbd19fad01af6b31ecdbc8eff278376e3d149e9d81",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "66678392-53ad-46af-921b-1974ea4a4011",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.781720Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "86031c71d2015bd7fe7c288611b4abad244c5b16971ef87e778075e8438bbd25"
+  }
+}

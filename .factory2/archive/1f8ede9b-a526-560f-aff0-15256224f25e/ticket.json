@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1f8ede9b-a526-560f-aff0-15256224f25e",
+  "revision": 1,
+  "title": "Explicit-port URL parsers do not bound the copied hostname",
+  "description": "indigo_uni_io.c:1584-1588 and indigo_io.c:367-370: explicit-port URL parsing copies colon-host bytes to host_name[INDIGO_NAME_SIZE] and writes a terminator at the same unbounded index. Public helpers accept longer URLs; drivers pass device URL property strings into this path. A malformed/overlong hostname corrupts stack before any network connection. Next: Reject host segments >= sizeof(host_name) before copying and validate URL/port syntax. Cover both helpers at limit-1/limit/over-limit. No network is needed to exercise parsing rejection.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.699721Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5e1866bc-dc54-4efb-a997-b1a42398a714",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.699743Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-002.json",
+      "source": "9f2961c4d33e61bc84a15a8a6088f0020289d5621b30ebaf3d8d7b9d1e8c2ade",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "a38b212a-b38e-49d1-a68c-69a7f6966116",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.699751Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "2e30203be36f580229db2229aabf35ab099883015118eac7cab83117686cfedf"
+  }
+}

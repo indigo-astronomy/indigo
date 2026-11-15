@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fb391287-4c31-594b-81fb-05b855356769",
+  "revision": 1,
+  "title": "Failed passive-discovery bind leaks its socket",
+  "description": "indigo_uni_io.c:1045-1077 and 1094-1116: passive-discovery bind failure logs but does not close udp_socket on either POSIX or Windows. Repeated failed discovery on an occupied/unusable port leaks a socket each attempt. Next: Close socket on every path after successful socket creation. Verify bind-failure cleanup with a controlled occupied local socket in an authorized test.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-014.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.710223Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5ce3d652-0163-4344-927d-d55b62d2436d",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.710241Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-014.json",
+      "source": "82de7be881ee26b86973388400471b18cebc3b77ad502fde7e35097197a016a9",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "d2a86dca-5d12-4caa-bb52-512274a1c587",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.710249Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "13818cfcccff06c5629a4655d857e3d4915a803ff1dd2edb0f37d6b3b658e644"
+  }
+}

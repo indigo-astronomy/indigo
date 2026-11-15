@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5663126b-25ca-535e-8a5b-547ce42f4d78",
+  "revision": 1,
+  "title": "Standard unified I/O handles initialize the wrong fields",
+  "description": "indigo_uni_io.c:87-89; public handle struct is index,type,fd-union but standard handle positional initializers supply FILE,1,0 / FILE,2,0. stdout is COM descriptor0 and stderrTCP descriptor0; generated standalone mains use stdin/stdout XML adapters. Use designated type/fd/index initialization. Source-only; no stream writes performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-6). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-006.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.764932Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c23d7e74-f268-4cfd-8a1b-aa5ec67c4aae",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.764952Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-006.json",
+      "source": "b8e6ca02d467ab729de1e0faee6ab42e4798fd5d29de740f590465ee5f05324e",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "d41ddb8b-6127-459f-8407-1ccaedfcd581",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.764960Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "691e5471dc06e8332020cdff7e6d66c2833bd055a3b97af88cd6b84bf8805f88"
+  }
+}

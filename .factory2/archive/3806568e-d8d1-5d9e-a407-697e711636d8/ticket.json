@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3806568e-d8d1-5d9e-a407-697e711636d8",
+  "revision": 1,
+  "title": "HC8406 guiding reports successful completion after a failed stop",
+  "description": "Category functional; severity medium; confidence high. Owner coordinator; open, nonblocking audit follow-up. Location: indigo_drivers/mount_ioptron/indigo_mount_ioptron.driver:2264-2279. For HC8406, both guide finalizers call ioptron_no_reply_command(:Qn#/:Qe#) and discard its boolean result, zero pulse values and publish unconditional OK. The pulse start path:1087-1115 uses indefinite directional commands for this protocol rather than device-timed pulses, so the final stop is the event that ends physical guiding. A failed transport stop leaves movement unconfirmed while reporting success. The helper:212 already returns a failure signal; use it to publish ALERT and retain/recover uncertain motion status. Disconnect/abort should not erase a failed-stop state without reconciliation. Compare other mount finalizers (lx2004498 etc.) that already use their stop result. Existing GPIO finalizer finding ...repository-audit-011 is a separate driver/sink. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (FM-4). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-032.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.786516Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f491a239-fac2-4256-adec-6b6d6a0c91a1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.786534Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-032.json",
+      "source": "407abbee51d6352aeb95b047c421573821d42f0ebc34c22bd4fb5bb01260d589",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "937c4641-97e5-4ac7-87a8-532a9175fa8e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.786541Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "67099cefa2234bd3bc2cd539b10764072041439dbc475ccfae6c98dbb9e3897b"
+  }
+}

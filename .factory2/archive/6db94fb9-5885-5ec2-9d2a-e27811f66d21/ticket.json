@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6db94fb9-5885-5ec2-9d2a-e27811f66d21",
+  "revision": 1,
+  "title": "TOOLS-008: The tools build target produces `indigo_drivers`, `indigo_driver_metadata`, and `indigo_scan_drivers`, but `install`, `uninstall`, and `clean` omit some of those binaries",
+  "description": "TOOLS-008: The tools build target produces `indigo_drivers`, `indigo_driver_metadata`, and `indigo_scan_drivers`, but `install`, `uninstall`, and `clean` omit some of those binaries. This can leave stale build artifacts and makes packaging behavior differ from `all`. Decide which helper tools are intentionally private; then either exclude them from `all` or handle them consistently in install/uninstall/clean rules. Next: revalidate historical evidence and assign a scoped repair task; no risk acceptance or closure is implied.\n\nImported from .factory/findings/archive/FND-000043.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.669641Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f3ea0e7e-a698-4eb9-9f39-54b3a02361f0",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.669659Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000043.json",
+      "source": "687a9ac16f9f3ce9ffd755cf6a31d45bdb4d5f03e386af55087f28ee1f028933",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "ce7d1d6a-7609-4c72-8fb5-01149482e1c9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.669667Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "00addbe93c4d9e223b337de4e6a25642452da0653eae618d4c7595a2236489a8"
+  }
+}

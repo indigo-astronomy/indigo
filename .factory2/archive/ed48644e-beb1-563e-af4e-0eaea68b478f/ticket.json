@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ed48644e-beb1-563e-af4e-0eaea68b478f",
+  "revision": 1,
+  "title": "GIOTTO simulator mutates LED state while refusing DIMLEDS",
+  "description": "GIOTTO simulator now mutates LED state only for accepted DIMLEDS requests. Configured-refusal and reconnect readback preserve the prior ON state; baseline confirmed by source, repaired behavior verified in scoped LED regression.\n\nImported from .factory/findings/archive/FND-20261102182442-b67b-fix-four-followup-findings-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.875297Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c3ca51b3-503c-4f64-bbcc-c234a7d6387e",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.875317Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261102182442-b67b-fix-four-followup-findings-001.json",
+      "source": "bf2c70d6538e639190ea46438ae56ff7f55b4e69a6c09d9b16b7c3974c9d1fc8",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "4fe4ee3a-cfc9-4cba-bfdb-675851184fdf",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.875325Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "308c66809a532d20aa3298213bc969106f3a1784ea442d815660519eaab87af0"
+  }
+}

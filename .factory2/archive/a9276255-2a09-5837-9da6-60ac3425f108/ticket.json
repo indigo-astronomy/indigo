@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "a9276255-2a09-5837-9da6-60ac3425f108",
+  "revision": 1,
+  "title": "XML dispatch accepts response-only handlers on inbound clients",
+  "description": "Inbound XML has NULL device context but dispatches response-only handlers that dereference/assert device, allowing a small invalid-direction element to terminate server. Next: enforce direction-specific allowlists and test all message forms in both directions. Confirmed by current source contracts; no fix or runtime retest claimed.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-014.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.750758Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f58e9009-96fb-4b7a-a242-d49ddea726ab",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.750776Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-014.json",
+      "source": "4fc68f0a1ebba1f121671e9a02c1cfb433d9dccc0c9f666ac447d5b1d62fd7c4",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "d514dac5-c916-4815-97fa-34e6123a1f94",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.750784Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "edae5e1f45749d9abbdd85b4eba1a83d1b0dad44cf27d56c04d7193ed5d0f44c"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "5a1fba0f-caa4-5725-a86c-d8e30e5d5f18",
+  "revision": 1,
+  "title": "WebSocket reads do not validate lengths in the correct integer domain or require complete frames",
+  "description": "WebSocket uint64 length is compared after signed-long conversion but masking uses original length; Windows 32-bit long can admit oversized masked frames. Positive short reads are also accepted. Next: validate before conversion, exact reads and frame semantics; Windows/LP64 regressions. Confirmed by current source contracts; no fix or runtime retest claimed.\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-017.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.753224Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "959e5c21-ab18-4526-a34c-1b98fb6c4e65",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.753241Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-017.json",
+      "source": "a4f17864c3e3b63a6ab47ae0ad45b8ee43d44a8ff9d05708c40f80903018961b",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "0701e45b-75e0-49dd-9b9a-02fd525f8d4e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.753249Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "7a0154a000177b48bc507e397adb622026883c210a10d7a815cf6759ee804a62"
+  }
+}

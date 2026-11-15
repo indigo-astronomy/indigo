@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "fe0b7ad6-b4e0-569b-b415-d6387f7c2599",
+  "revision": 1,
+  "title": "Custom Imager and Platesolver filters report success with zero executed cases",
+  "description": "An unmatched Imager environment filter records plan0/exits0, even with a nonexistent child binary; native Platesolver unmatched argv filter likewise selects0 and returns0. The prior common native runner repair did not cover these bespoke runners. Return explicit skip and aggregate no-execution failure consistently, retaining genuine selected-case behavior; add direct no-match regressions. Fixed and reverified by the linked repair task; source and runtime limits remain recorded there.\n\nImported from .factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-018.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.861025Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "b0858ea8-e50e-4727-a634-aa6b99c4de33",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.861042Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101215425-fa40-complete-full-repository-audit-018.json",
+      "source": "6c4f8bcb4955b84ed3efb712fa8bf2448294a73ec7d8857a5461172263edc97a",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "dfc2adb7-26f3-4d71-88e9-37e6a4541fe0",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.861050Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "6ab68f39799cb78fe4ba7af5940bd9519ae90bde06a99b6dd8bcc443a3852af3"
+  }
+}

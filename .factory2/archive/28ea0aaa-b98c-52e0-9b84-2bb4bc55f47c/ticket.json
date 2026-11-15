@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "28ea0aaa-b98c-52e0-9b84-2bb4bc55f47c",
+  "revision": 1,
+  "title": "TOOLS-005: Metadata extractor passes paths through a shell and trusts a failed pipe",
+  "description": "Current reconciliation: indigo_driver_metadata.c now uses PATH_MAX and checked snprintf; its old fixed128/strcpy subclaim is obsolete. indigo_metadata_extractor still interpolates a path into a shell command and does not check popen failure before use. Next: avoid shell interpretation and handle process/pipe failure; preserve bounded metadata path handling. No repair, closure or risk acceptance is claimed.\n\nImported from .factory/findings/archive/FND-000040.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.666871Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "222a1b59-569a-4160-9f38-8271afa16904",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.666890Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000040.json",
+      "source": "13cd7296bc5cce6fb0d0049edc96c7a609d46d1ffc4847c64cef6a2cb525fb4e",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "a851ffb9-9044-4cc8-aa58-91fb7d393e02",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.666899Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "274a9122fb652a1e1585c4932bf4ac3040b1b20fe46ad64758f4cb0587aadf2f"
+  }
+}

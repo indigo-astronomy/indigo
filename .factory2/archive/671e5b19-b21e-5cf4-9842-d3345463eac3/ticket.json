@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "671e5b19-b21e-5cf4-9842-d3345463eac3",
+  "revision": 1,
+  "title": "Platesolver reports an exposure started after its acceptance wait expires",
+  "description": "Category functional; severity medium; confidence high; owner coordinator; open, nonblocking follow-up. indigo_libs/indigo_platesolver.c:275-329 waits up to60s for Imager capture BUSY/ALERT or1s for Guider process BUSY/ALERT. After either loop it rejects only ALERT; a missing/ignored request whose state remains IDLE/OK falls through to Capture started and true. start_process:477-515 therefore leaves a solve/polar operation waiting for an image even though no fresh capture was accepted. Require observed request acceptance/completion, and return failure/ALERT on bounded acceptance timeout, preserving abort behavior. Characterize absent BUSY, immediate ALERT, accepted capture and fast completed capture without stale state confusion. No long wait or fake protocol reproduction was performed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (MATH-3). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-039.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.792235Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "9a28b5ec-de64-4311-a88e-9bb051bab6bc",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.792255Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-039.json",
+      "source": "b14c7f0a992e5deb00402e1b0d8c5b291f050deafb19ce9aea8e90cfec9da28a",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "2fbd6d1e-7ff6-4ee9-b2c9-08d6454aacb4",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.792263Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "1aa6fa659a2c17402a3051d0bde70ee89b4d905a88f773b8d6a2b2b632ac0cfe"
+  }
+}

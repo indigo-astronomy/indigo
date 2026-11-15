@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "921d1193-b25e-540c-a305-f6852b6840d8",
+  "revision": 1,
+  "title": "SVB powerbox boot drain has no overall deadline",
+  "description": "- Location: indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.driver:141-157, especially 147-156. - Severity: medium; confidence: high; category: functional/availability. Owner: coordinator; status: open; nonblocking audit follow-up. - Evidence: comment promises \"up to 3 seconds, 300 ms silence\", but the loop is conditioned only on repeated 300000-microsecond waits. No overall deadline, byte cap or iteration limit exists. Successful arriving data resets the effective wait indefinitely. - Impact: a controller in a reset/logging loop or continuous serial noise can keep the serialized connect handler active indefinitely, postponing disconnect and other operations. No hardware interaction or induced failure occurred. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (AC-3). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-018.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.774559Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "e0cb4420-2dfe-4697-8194-3001e664fb3f",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.774581Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-018.json",
+      "source": "7184fdbb6e901b2d735c222c091fe3b04c9f2f2a6d3457df092918c86edce698",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "8be7ac30-a83d-4b22-80b6-dcb3b01d0609",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.774590Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "fb9dab7809244ee567dd729f0eb0f3bf8f379741bc8248ae460d038dbb0a584f"
+  }
+}

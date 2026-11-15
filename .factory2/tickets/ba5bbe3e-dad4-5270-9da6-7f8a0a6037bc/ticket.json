@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc",
+  "revision": 1,
+  "title": "JSON protocol drops item hints in both directions",
+  "description": "indigo_libs/indigo_json.c writes the property-level \"hints\" of every def*Vector but no item-level hints, and its parser reads no hints at all, while indigo_xml.c writes and parses hints on both properties and items (indigo_xml.c hints_attribute(), defSwitch line 2136) and indigo_docs/PROTOCOLS.md line 80 says every item may carry hints. JSON clients such as the web control panel therefore never receive item hints: warn_on_set on AGENT_SCHEDULER_TASK_COMMAND RESET_ALL and DELETE_ALL, SERVER RESTART ('Restart INDIGO Server?'), SERVER INSTALL items, MOUNT_ALIGNMENT_RESET and the Astroasis factory resets. Next: add item \"hints\" to the JSON writer for all vector types and to the JSON parser, a JSON round-trip unit test, and a server acceptance check that the scheduler hints arrive over the network. Owner chose on 2026-11-14 to record this only.\n\nImported from .factory/findings/active/FND-20261114090521-b043-scheduler-bulk-command-tests-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.906325Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1f0b26a7-cd26-4ea2-8dfa-46bf2fed9560",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.906342Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261114090521-b043-scheduler-bulk-command-tests-001.json",
+      "source": "fb335210b22530d0f860d31058643a02b30b00c404117fb79315b39b0ee01cbc",
+      "priority": "low",
+      "severity": "low"
+    }
+  ],
+  "closure": null,
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "a34caafcbc964dd23cbca17b6dbbacd0bcf76638e07044889ca28107a71fb5b7"
+  }
+}

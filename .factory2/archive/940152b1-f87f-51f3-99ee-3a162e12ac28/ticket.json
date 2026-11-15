@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "940152b1-f87f-51f3-99ee-3a162e12ac28",
+  "revision": 1,
+  "title": "TESTS-001: The GPS script labels `UTC_TIME`, `GPS_STATUS`, and `GPS_ADVANCED` as optional, but tests them with `test_property_exists()`, which records failures when absent",
+  "description": "Fixed and reverified in task 20261024150354-a911-fix-usb-serial-gps-findings. Optional GPS properties are skipped when absent; present properties retain item/value checks; final failure status includes connection restoration. Independent source review passed; exact command evidence and platform/hardware limits retained in repair reports.\n\nImported from .factory/findings/archive/FND-000030.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.658292Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "02a8ac5c-79bb-47ee-b2af-3e87af636458",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.658315Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000030.json",
+      "source": "128e38639a9f5f83584f4d6958848a18f358d9815dab928ef792de41f27bae19",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "0b494230-c5bf-4d57-90cf-caf2dc191fec",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.658323Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8345b662f68832b9ef7aea0956812d6f5a9ad0d389d1bf99c6f9643a0f190854"
+  }
+}

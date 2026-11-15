@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "30d17ab5-9821-5685-931b-21c24643f682",
+  "revision": 1,
+  "title": "PSF map iterates beyond usable stars and consumes failed measurements",
+  "description": "indigo_raw_utils.c:3153-3166: last_star = used_stars-first_star is an exclusive upper bound, but loop uses k <= last_star. For 1-9 usable stars, it consumes stars[used_stars]; at capacity this reads beyond allocation, otherwise a zero-initialized unused entry contaminates edge averages. FF-06 also makes ignoring indigo_selection_psf failure at 3106 material: uninitialized outputs are used. Next: Use k < last_star and retain stars only when PSF succeeds; handle zero/constant usable values. Verify 0/1/9 and capacity-filled star lists with map output.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-007.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.703945Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "404db7cf-d88b-4f45-9df8-78641a2fc5ff",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.703962Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-007.json",
+      "source": "e3c355e15f5d515644496b10da269ab9c317f6691ca23b7f07bd5b5baca56410",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f8eac3a8-7345-418d-8255-c7b8f920b571",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.703969Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "94e5464ade2e46d2361d33734e7bcbfcb1c15625c657ab5660680beb14b8d001"
+  }
+}

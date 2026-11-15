@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "1ba878e4-1e5f-59f3-84f3-e464223f9b17",
+  "revision": 1,
+  "title": "Incomplete BLOB uploads expose unpublished allocation contents",
+  "description": "Registered BLOB; incomplete/error body; following GET before producer replaces cache. Source-contract confirmed; runtime unverified. Next: Receive privately and publish atomically only after exact read count\n\nImported from .factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-002.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.740545Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "56395f45-095e-4cbf-bf56-84f261899782",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.740563Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023112118-8e5e-server-security-audit-002.json",
+      "source": "23405eeb549a1630182e43bc45bfe97fd8b69480690a593cba6ee7dc9bd08cc7",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "93b53237-e2e9-4cf8-9835-fe448265d41c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.740571Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e05597d14b43c0171a7aa1e1a5cc06cee76ee4a3f7fef702ba091660b891f703"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6888db8a-5a76-5631-b52a-79792ef228bf",
+  "revision": 1,
+  "title": "Temma and NexStar motion deadline branches have no regression",
+  "description": "FND-20261023101753-bc8d-complete-repository-audit-024 added TEMMA_SLEW_TIMEOUT (600 s, GOTO and park, indigo_mount_temma.driver) and NEXSTAR_PARK_TIMEOUT (300 s, indigo_mount_nexstar.driver) without a test, because the simulators cannot shorten the deadline. Next: add an #ifndef override used by the test build (as wheel_asi/wheel_playerone do) and cover expiry, stop and ALERT.\n\nImported from .factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-004.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.807213Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "3586960b-713e-4f15-a7c4-e853e144f169",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.807233Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-004.json",
+      "source": "2927ac568d819b0e9f14231ba2f2eae26fbc66e4fc4171780cfbfcad4bab1708",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "0fef201e-539f-4d49-917f-cd34bb7db60a",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.807240Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "201a3fba4c1a1455371bc6ce7566cb6c15b93bd618dae00e73fd682ee0d66601"
+  }
+}

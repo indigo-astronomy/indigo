@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "02435c76-8012-511b-8341-f535aec02e0b",
+  "revision": 1,
+  "title": "ASI rotator reports OK when motion stops short of requested angle",
+  "description": "A stopped, non-aborted BUSY move is unconditionally completed OK after reading current angle, without comparing it to retained target_position. Successful CAAMoveTo(90), then CAAIsMoving=false and CAAGetDegree=30 reports OK at 30 with target 90. Require arrival within SDK-precision tolerance or ALERT; preserve manual-control, abort and overlap semantics. Current fake-SDK recovery test at integration/test_rotator_asi_sdk.c:444–446 refuses an overlapping request to 60 as intended, but then accepts completion at 10 for the previously accepted retained target 50. Independently review that completion expectation before changing the test. Source-contract evidence only.\n\nImported from .factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-012.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.843422Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "25165be7-ac3f-45ac-9a0c-3bd3bbe84dfd",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.843443Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261101193246-1248-periodic-repository-audit-012.json",
+      "source": "ab3655be4238cfb4bdbcb65b2f90b905f22243a784c46486cc834bbd140641f3",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "22aae959-1e1e-46bb-9b84-4c98e33b0a52",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.843451Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "69fee7088e4085beaa8fffc6b453499bea0275fccd4958afe991ea53d9814fb4"
+  }
+}

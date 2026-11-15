@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "01a4ed15-a53e-550a-b292-ea63b4a85968",
+  "revision": 1,
+  "title": "mount_simulator mount_abort_allows_fresh_goto fails intermittently",
+  "description": "mount_simulator case mount_abort_allows_fresh_goto fails intermittently at test_mount_simulator.c:582 ('RA unchanged after abort') and once at :591; 1 of 4 filtered runs on master e7cbb62a6, 2 of 5 before and 2 of 3 after the MULTI_POINT change in this task, and in the full candidate run. Timing-dependent assertion or abort race. Next: scoped task to make the case deterministic or fix the abort race.\n\nImported from .factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.805645Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "1fcdcb24-266d-4715-a920-7f95f16b7937",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.805663Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261025211159-e308-fix-audit-findings-batch-002.json",
+      "source": "b27a591cfe0d6c141525e1e7c2057a20d4ea0acd3c199a343a7aa9448ddb3fb7",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "ea695adf-1d4c-4e9a-b9a1-368cd173dcf2",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.805671Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8c3df420b98838579b1e73cdfdbe29f30d8abc7d4366518fda0f0a04e717b6cd"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9d2a4cf4-aafa-583d-bd8d-a5492e7a65a0",
+  "revision": 1,
+  "title": "Identity image stretch divides by a singular midpoint",
+  "description": "indigo_stretch.cpp:233-234,273-275: parameter computation may emit midtones0.5, while stretch divides by2midtones-1. Ordinary identity setting transforms [0,64,128,255] into allzero in existing library. Fix algebra/explicit midpoint branch; test identity and zero dynamic range. Related AWB616-656 chooses B when R=G>B because strict comparisons; allzero totals cause0/0. Bayer-corner defect remains old audit010 duplicate. AWB reference/totals behavior is a distinct canonical finding014. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-5). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-005.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.764072Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fcb73f05-0e61-49e4-b6a0-18aeaaa7df69",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.764093Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-005.json",
+      "source": "c9c78710193748446d280cd7f703c1e7ab4c4095ecc785d5e3c8f2b4156d0b4f",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "913e5201-484d-4793-8f9c-067d504baa60",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.764101Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ea58cdbe693a7c984f0b7c6909ac920a22e06cd1fcb98305e54bccd39129e53b"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "10e805a9-431a-5595-aa93-4bee8be6e59a",
+  "revision": 1,
+  "title": "Unset master token bypasses nonzero device ACL authorization",
+  "description": "indigo_change_property accepts omitted request token 0 as the default master token 0, bypassing nonzero device ACL. Confirmed by native XML/JSON regression and unauthorized Server module loading. Next: require nonzero master before master-token equality authorizes. Owner explicitly limited this task to tests and documented findings; coordinator must obtain separate repair authorization.\n\nImported from .factory/findings/archive/FND-20261105112837-9c3a-sequencer-simulator-suite-003.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.894945Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c5a40d51-e403-4a44-b6fa-d70e151d2694",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.894963Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261105112837-9c3a-sequencer-simulator-suite-003.json",
+      "source": "e9c8cec30115f6952663bfb9c078286cbe33f5a7d6b55e08921e2fa821c55001",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "b0633989-b380-4454-b21f-b68ccbd79a1b",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.894971Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (not_a_bug); no new verification is claimed.",
+      "resolution": "unresolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (not_a_bug); no new verification is claimed.",
+    "resolution": "unresolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "758491b46cd67f15d10b9a5d10fd07dc1399709c638680474ca079f71261dec2"
+  }
+}

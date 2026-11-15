@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b64c1a76-3da9-5516-9836-b3750e9f2cef",
+  "revision": 1,
+  "title": "EXAMPLES-002: `driver` is uninitialized when `indigo_load_driver()` fails, but `indigo_remove_driver(driver)` is still called",
+  "description": "EXAMPLES-002: `driver` is uninitialized when `indigo_load_driver()` fails, but `indigo_remove_driver(driver)` is still called. A missing simulator driver or load error can therefore pass an indeterminate pointer into the driver manager. Initialize `driver = NULL` and call `indigo_remove_driver()` only after a successful load. Fixed: Initialize driver entry; remove only after successful load, disconnect before unload, and propagate load/unload failures.\n\nImported from .factory/findings/archive/FND-000009.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.640277Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "23bb0e19-8353-4c2e-bbe6-6bd86b9386b1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.640295Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000009.json",
+      "source": "377f00ba15cd70dc482599a96bebfed287280520ab662528d0cfbd2b68cb77d5",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "8f325f15-b739-45cd-9c4d-ed21a3cc9b24",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.640303Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "9d3a3b478918f776e1422237fb8777ff8fa1319543e7e4d918f1b3f57f33effc"
+  }
+}

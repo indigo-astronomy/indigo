@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "351c377b-0afd-59c5-b6a5-0caf97809144",
+  "revision": 1,
+  "title": "Exposed multipoint mount alignment returns success without coordinates",
+  "description": "indigo_libs/indigo_mount_driver.c:1193,1250,1273,1329 contains MULTI_POINT success stubs without assigning output coordinates. Mount simulator exposes all four alignment choices and uses translations for motion/park/home. Implement the contract or hide/reject unsupported mode and test every direction. Source and live caller reachability confirmed by two reviewers; no movement executed. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (CORE-MULTI). No fix or risk acceptance claimed.\n\nImported from .factory/findings/archive/FND-20261024121920-3bd2-repository-audit-015.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.772171Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "79134892-69fe-401f-8e4a-e8e1c2550adf",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.772188Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261024121920-3bd2-repository-audit-015.json",
+      "source": "6cd8bbd0d959bcaf423ef0abfe8e249e2abe6026a16bbeb1e63034189fa36e7e",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "159d32f7-66d5-472f-8843-d9c9cce4db41",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.772195Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "cf914a6d7764cfe717464e1e2ab88fde60854fde945971b03b5928a8b4dc8d1e"
+  }
+}

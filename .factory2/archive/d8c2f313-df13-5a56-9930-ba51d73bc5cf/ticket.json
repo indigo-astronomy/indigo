@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d8c2f313-df13-5a56-9930-ba51d73bc5cf",
+  "revision": 1,
+  "title": "TEST-011: serial_open_reports_not_a_serial_port expects ENOTTY from /dev/null, macOS 27 returns ENODEV, so make test-unit fails and skips the remaining unit suites",
+  "description": "indigo_test/unit/test_uni_io.c:97 asserts the message 'Not a serial port', which needs the OS to fail TIOCEXCL or tcsetattr on /dev/null with ENOTTY. On macOS 27 both fail with ENODEV, which indigo_uni_io.c correctly maps to 'Serial device is not connected'. The test-unit loop exits on the first failing suite, so every run on this host fails and the RAW image suite never runs. Next action: make the expectation platform-independent (for example a regular file or a pty pair where ENOTTY is guaranteed, or accept the documented ENODEV mapping), without weakening the error-message contract.\n\nImported from .factory/findings/archive/FND-000047.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.672730Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "a444d0c6-0884-49b5-8b69-27562ec616b1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.672751Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-000047.json",
+      "source": "48315a2561f4d1520a92acaa368a5666fc64ef20c1dd9f009c35cc777e8725c2",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "cf27812b-6c23-4d31-8c79-8abc08879bf2",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.672758Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "bbef859e809bc3b444da1f6f419d0f9fb50cc2229968258ca0a14ccd565bc557"
+  }
+}

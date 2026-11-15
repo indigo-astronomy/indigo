@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "da288e57-5bae-5801-80f0-009dd9089635",
+  "revision": 1,
+  "title": "Imager deletes original file after an HTTP error response",
+  "description": "`indigo_server/resource/imager.html:507-519` handles xhr.onload by clicking a download link for any response and then sending AGENT_IMAGER_DELETE_FILE with the original filename. onload runs for completed HTTP404/500 responses too, and this callback does not inspect status. An ordinary expired/missing BLOB or server failure can therefore download an error body and then request deletion of the original image. This is a normal failure-handling issue; no server-security test was involved. The exact committed callback was executed in Node24.19.0 with a synthetic XMLHttpRequest status404 and Blob('BLOB not found!'), mocked DOM/blob URL, and captur Full evidence: C-05. Remediation: require a successful and complete image response before advancing/deleting, preserve the original and present an error/retry path on HTTP/transport/abort failures, and avoid relying on mutable global filename during asynchronous completion. Regression tests must show404/500/abort never enqueue deletion and successful transfer maintains the established sequence.\n\nImported from .factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-039.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.730657Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "742e9769-84ae-43cb-8174-0dedb39b85b6",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.730677Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261023101753-bc8d-complete-repository-audit-039.json",
+      "source": "27c114535eee40f50dbed321ace7e98dd215e05be84a641b763052057c0c021f",
+      "priority": "low",
+      "severity": "high"
+    },
+    {
+      "event_id": "97dd1e63-6da1-4ec7-abf2-f3bf9ac3d524",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.730687Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "8eb84203904c1f57520fb3435d0a6b9a4214636279234ef8a82c5a2d932b1cc2"
+  }
+}

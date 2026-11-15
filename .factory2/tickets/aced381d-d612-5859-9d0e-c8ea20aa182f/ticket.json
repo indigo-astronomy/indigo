@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "ticket_id": "aced381d-d612-5859-9d0e-c8ea20aa182f",
+  "revision": 1,
+  "title": "Documented macOS bootstrap executes unauthenticated HTTP sources",
+  "description": "The documented bootstrap downloads GNU sources over plain HTTP without pinned authentication/integrity, executes configure/make and invokes sudo make install. A network intermediary can replace executable source. Use authenticated initial transport and verified artifact authenticity/integrity in a private workspace with fail-fast checks. Independently confirmed from source; no download or external probe, no risk acceptance. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-005.json (category: security, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.849850Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "d0ffba62-2a9c-48e9-a2f0-e729c834ad81",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.849877Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-005.json",
+      "source": "a260ebac0ec61d0698c8e616835cbdb39297a84293ae8087a3e4fb6f47d29bc0",
+      "priority": "low",
+      "severity": "medium"
+    }
+  ],
+  "closure": null,
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "75e91e513647480f25d253c0fbd7867e33b6e9fd16e63bcf3bb23ef103e1624c"
+  }
+}

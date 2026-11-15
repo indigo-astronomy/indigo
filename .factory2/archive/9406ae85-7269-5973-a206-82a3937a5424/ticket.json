@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9406ae85-7269-5973-a206-82a3937a5424",
+  "revision": 1,
+  "title": "Reloading Sequencer.js replaces a running sequence",
+  "description": "Sequencer.js defines 'var indigo_sequencer = {...}' unconditionally (Sequencer.js:758) and clients such as the web UI send the library before every script (indigo_server/resource/indigo.js:198). A client running any script while a sequence, including one started by the Scheduler Agent, executes replaces the singleton and orphans the sequence. Owner deferred Sequencer.js changes on 2026-11-12. Next: keep the existing object while a sequence runs (design: indigo_docs/SCHEDULER.md 'Library reloads').\n\nImported from .factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-002.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.898418Z",
+  "status": "closed",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "c7c89b86-3fe0-4551-812c-fd4229c3cdcc",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.898435Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/archive/FND-20261112184305-e0a6-scheduler-agent-core-002.json",
+      "source": "85249352123d4ad0cb8ce4678ed90a98f90ee76b743863fbd0e9f8ae45afb500",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f0d298a3-b312-4239-b52f-a78587df7228",
+      "event": "ticket/closed",
+      "at": "2026-11-15T07:52:30.898443Z",
+      "actor": "upgrade/legacy",
+      "reason": "Imported closure (fixed); no new verification is claimed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "upgrade/legacy",
+    "at": null,
+    "reason": "Imported closure (fixed); no new verification is claimed.",
+    "resolution": "resolved",
+    "mode": "imported",
+    "verification": "not_claimed"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "d21813a3721c305525130f01fd6cbde3ea5f777c1943e8ee3930274d1d46255b"
+  }
+}
