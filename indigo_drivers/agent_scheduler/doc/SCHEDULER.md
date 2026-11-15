@@ -87,7 +87,7 @@ The Scheduler Agent depends directly on these agents, found by their exact devic
 
 | Agent | Needed | Properties the scheduler uses | Without it |
 |---|---|---|---|
-| "Scripting Agent" | always | changes `AGENT_SCRIPTING_RUN_SCRIPT` to load `Sequencer.js`, estimate durations and run tasks; observes `SEQUENCE_STATE` and `SEQUENCE_NAME`, and the `SCHEDULER_RESULT` and `SCHEDULER_ESTIMATE` properties that the wrapper script defines there; changes `AGENT_ABORT_PROCESS` to abort a sequence | no task starts and no duration is estimated; `REASON` is `waiting for the Scripting Agent` |
+| "Scripting Agent" | always | changes `AGENT_SCRIPTING_RUN_SCRIPT` to load `Sequencer.js`, estimate durations and run tasks; observes `SEQUENCE_STATE`, and the `SCHEDULER_RESULT` and `SCHEDULER_ESTIMATE` properties that the wrapper script defines there; changes `AGENT_ABORT_PROCESS` to abort a sequence | no task starts and no duration is estimated; `REASON` is `waiting for the Scripting Agent` |
 | "Mount Agent" | for tasks with `@target` or `@twilight` | observes `GEOGRAPHIC_COORDINATES` for the site; observes `AGENT_START_PROCESS` to wait until the agent is idle after an abort | these tasks wait with `site coordinates unknown`; tasks with only time windows still run |
 | "Guider Agent" | optional | changes `AGENT_ABORT_PROCESS` on `ABORT` and preemption, because the sequencer's abort leaves guiding running; observes `AGENT_START_PROCESS` | nothing to stop |
 | "Imager Agent", "Astrometry Agent", "Platesolver Agent", "ASTAP Agent" | optional | observe `AGENT_START_PROCESS`, to wait until they are idle after an abort before the next task starts | nothing to wait for |
@@ -155,7 +155,7 @@ var scheduler_task = { name: "M31 LRGB", ra: 0.712306, dec: 41.269167, run: 1, t
 - `token` identifies this run or estimate in the results the wrapper reports.
 - `estimate` is defined only while the agent estimates the task duration, see [Task duration](#task-duration).
 
-String values are JSON-encoded, so that quotes or backslashes in a task name cannot break or alter the script. The body uses these values, so the name and the coordinates are written only once, in the header. Naming the sequence after the task also lets the scheduler recognise its sequence in `SEQUENCE_NAME`. A task run by hand outside the scheduler must define `scheduler_task` itself or use literal values.
+String values are JSON-encoded, so that quotes or backslashes in a task name cannot break or alter the script. The body uses these values, so the name and the coordinates are written only once, in the header. Naming the sequence after the task also shows in clients which task the running sequence belongs to; the scheduler itself does not read the sequence name. A task run by hand outside the scheduler must define `scheduler_task` itself or use literal values.
 
 ### Lexical rules
 
@@ -379,7 +379,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 
 `AGENT_SCHEDULER_TASK_NAME` and `AGENT_SCHEDULER_TASK_COMMAND` form a two-step command, which is a common INDIGO idiom. Two clients that issue commands at the same moment can interfere. If both properties are changed in one client action, the command applies to the name sent with it.
 
-**Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit without splitting a UTF-8 character, and the full text, such as a long failure reason, is sent as the message of the update. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
+**Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit without splitting a UTF-8 character. These properties are defined and updated without a message; a full failure reason reaches the client in the agent's own message, such as `Task '<name>' failed: <reason>`. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
 
 Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. The agent therefore redefines a list only when its content has changed, and updates it in place when only states or labels change.
 
@@ -464,7 +464,7 @@ With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 M
 **Loading.** The agent loads its configuration in its attach callback, after its task store is initialised, the same way as the Imager Agent does. Each saved change is replayed through the agent's change handler, with the configuration reader as the client:
 
 - An `AGENT_SCHEDULER_ADD_TASK` change validates the header and creates the task, as an upload does. A non-empty `STATUS` restores the task's state and counters. `STATUS` from any other client is ignored.
-- A replayed task that fails validation, for example after a grammar change in a newer version, is skipped. The agent sends a message naming the task, and the rest of the configuration still loads.
+- A replayed task that fails validation, for example after a grammar change in a newer version, is skipped. The agent sends a message with the validation error, `The saved task '<name>' was skipped: <error>`, which names the task when its `@task` line could be read before the error, and `A saved task was skipped: <error>` otherwise. The rest of the configuration still loads.
 - An `AGENT_SCHEDULER_RESTORE_HISTORY` change rebuilds the history.
 - The duration estimates of the restored tasks are requested when the Scripting Agent appears.
 

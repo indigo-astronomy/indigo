@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000009
+#define DRIVER_VERSION 0x0300000A
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -229,7 +229,6 @@ typedef struct {
 	unsigned finish_events;
 	indigo_property_state finish_state;
 	char finish_message[INDIGO_VALUE_SIZE];
-	char sequence_name[INDIGO_VALUE_SIZE];
 	// results of the run and of the estimate are kept apart by their tokens
 	int run_token;
 	bool run_received;
@@ -297,6 +296,8 @@ typedef struct {
 	bool startup_pending;
 	bool shutdown_ran;
 	bool idle_hook_done;
+	// an idle hook that names no task is reported once per idle period, without keeping the hook from starting once it does
+	bool idle_hook_reported;
 	time_t idle_since;
 	// the night hooks: the computed nights, the state of the current night, and whether a hook has put the equipment away
 	scheduler_nights nights;
@@ -1264,6 +1265,7 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 		task->state = TASK_RUNNING;
 		PRIVATE_DATA->idle_since = 0;
 		PRIVATE_DATA->idle_hook_done = false;
+		PRIVATE_DATA->idle_hook_reported = false;
 		// a task start ends the standby, after the resume hook when there is one
 		PRIVATE_DATA->standby = false;
 		PRIVATE_DATA->chain_slot = -1;
@@ -1276,6 +1278,7 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 			// the night hooks begin a new idle period
 			PRIVATE_DATA->idle_since = 0;
 			PRIVATE_DATA->idle_hook_done = false;
+			PRIVATE_DATA->idle_hook_reported = false;
 		}
 		indigo_send_message(device, NULL, "Starting hook '%s'", task->header.name);
 	}
@@ -1829,8 +1832,13 @@ static void process_idle(indigo_device *device, time_t now) {
 	}
 	int idle = hook_slot(device, HOOKS_IDLE_ITEM);
 	// in standby the equipment is already put away
-	if (idle >= 0 && !PRIVATE_DATA->idle_hook_done && !PRIVATE_DATA->standby && now - PRIVATE_DATA->idle_since >= SETTINGS_IDLE_PARK_AFTER_ITEM->number.value * 60) {
-		start_task(device, idle, RUN_IDLE_HOOK);
+	if (*indigo_get_text_item_value(HOOKS_IDLE_ITEM) && !PRIVATE_DATA->idle_hook_done && !PRIVATE_DATA->standby && now - PRIVATE_DATA->idle_since >= SETTINGS_IDLE_PARK_AFTER_ITEM->number.value * 60) {
+		if (idle >= 0) {
+			start_task(device, idle, RUN_IDLE_HOOK);
+		} else if (!PRIVATE_DATA->idle_hook_reported) {
+			PRIVATE_DATA->idle_hook_reported = true;
+			indigo_send_message(device, NULL, "The idle hook '%s' names no task", indigo_get_text_item_value(HOOKS_IDLE_ITEM));
+		}
 	}
 }
 
@@ -2195,7 +2203,11 @@ static void add_task(indigo_device *device, indigo_property *request, bool confi
 	char error[INDIGO_VALUE_SIZE];
 	if (!indigo_scheduler_parse_header(text, &header, NULL, error, sizeof(error))) {
 		if (config_reader) {
-			indigo_send_message(device, NULL, "A saved task was skipped: %s", error);
+			if (*header.name) {
+				indigo_send_message(device, NULL, "The saved task '%s' was skipped: %s", header.name, error);
+			} else {
+				indigo_send_message(device, NULL, "A saved task was skipped: %s", error);
+			}
 		}
 		reject(device, ADD_TASK_PROPERTY, "Task rejected: %s", error);
 		return;
@@ -2422,6 +2434,7 @@ static void control(indigo_device *device, indigo_property *request) {
 			PRIVATE_DATA->shutdown_ran = false;
 			PRIVATE_DATA->idle_since = 0;
 			PRIVATE_DATA->idle_hook_done = false;
+			PRIVATE_DATA->idle_hook_reported = false;
 			// START finds the night anew and begins without standby
 			indigo_scheduler_night_reset(&PRIVATE_DATA->night_state);
 			PRIVATE_DATA->standby = false;
@@ -2885,7 +2898,7 @@ static unsigned agent_busy_bit(const char *device_name) {
 	if (!strcmp(device_name, GUIDER_AGENT)) {
 		return AGENT_GUIDER_BUSY;
 	}
-	if (!strcmp(device_name, "Astrometry Agent") || !strcmp(device_name, "Platesolver Agent") || !strcmp(device_name, "ASTAP Agent")) {
+	if (!strcmp(device_name, "Astrometry Agent") || !strcmp(device_name, "Platesolver Agent")) {
 		return AGENT_SOLVER_BUSY;
 	}
 	return 0;
@@ -2911,8 +2924,6 @@ static void observe_property(indigo_property *property, const char *message) {
 				INDIGO_COPY_VALUE(observed->finish_message, message ? message : "");
 			}
 			observed->sequence_state = property->state;
-		} else if (!strcmp(property->name, "SEQUENCE_NAME") && property->count > 0) {
-			INDIGO_COPY_VALUE(observed->sequence_name, indigo_get_text_item_value(property->items));
 		} else if (!strcmp(property->name, SCHEDULER_RESULT_PROPERTY)) {
 			indigo_item *token = indigo_get_item(property, "TOKEN");
 			indigo_item *result = indigo_get_item(property, "RESULT");

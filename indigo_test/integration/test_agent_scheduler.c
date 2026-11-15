@@ -1031,6 +1031,45 @@ static void persistence_across_restart(void) {
 	ASSERT_TRUE(task_label("Kept", label, NULL));
 }
 
+// replaces the first occurrence of from with to, of the same length, in the saved configuration
+static bool edit_saved_configuration(const char *from, const char *to) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/Scheduler_Agent.config", indigo_uni_config_folder());
+	FILE *file = fopen(path, "rb");
+	CHECK(file != NULL);
+	static char content[1048576];
+	size_t length = fread(content, 1, sizeof(content) - 1, file);
+	fclose(file);
+	content[length] = 0;
+	char *found = strstr(content, from);
+	CHECK(found != NULL && strlen(from) == strlen(to));
+	memcpy(found, to, strlen(to));
+	file = fopen(path, "wb");
+	CHECK(file != NULL);
+	CHECK(fwrite(content, 1, length, file) == length);
+	fclose(file);
+	return true;
+}
+
+static void saved_task_that_no_longer_validates_is_skipped(void) {
+	REQUIRE(upload("// @task Broken\n// @priority high\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @priority low\n// @task Nameless\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Kept\n" BODY_WAIT(1)));
+	stop_scheduler();
+	// a newer grammar would reject these values
+	REQUIRE(edit_saved_configuration("@priority high", "@priority hugh"));
+	REQUIRE(edit_saved_configuration("@priority low", "@priority lew"));
+	memset(messages, 0, sizeof(messages));
+	REQUIRE(start_scheduler());
+	ASSERT_TRUE(wait_task_state("Kept", "QUEUED", 5));
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_FALSE(task_label("Broken", label, NULL));
+	ASSERT_FALSE(task_label("Nameless", label, NULL));
+	// the task is named when its @task line was read before the error
+	ASSERT_EQ_INT(1, count_messages("The saved task 'Broken' was skipped: line 2: @priority: expected"));
+	ASSERT_EQ_INT(1, count_messages("A saved task was skipped: line 1: @priority: expected"));
+}
+
 static void running_task_restored_without_using_a_retry(void) {
 	REQUIRE(upload("// @task Interrupted\n// @retry 2\n" BODY_WAIT(30)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
@@ -1571,6 +1610,29 @@ static void missing_night_hook_task_is_reported(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("The night start hook 'Nope' names no task", 1, 15));
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+}
+
+static void missing_idle_hook_task_is_reported_once(void) {
+	char future[32];
+	time_t now = time(NULL);
+	utc(now - now % 60 + 7200, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	char text[256];
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Nope"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	// nothing is eligible until the window of Later opens, the idle period is reported once
+	ASSERT_TRUE(wait_message("The idle hook 'Nope' names no task", 1, 15));
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(1, count_messages("The idle hook 'Nope' names no task"));
+	ASSERT_TRUE(message_position("Task 'Work' completed") < message_position("The idle hook 'Nope' names no task"));
+	// the report does not keep the hook from running in the same idle period once its task exists
+	REQUIRE(upload("// @task Nope\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Starting hook 'Nope'", 1, 15));
+	ASSERT_EQ_INT(1, count_messages("The idle hook 'Nope' names no task"));
 }
 
 static void no_night_is_reported(void) {
@@ -2565,6 +2627,7 @@ static const indigo_test_case cases[] = {
 	{ "edit_of_running_task_is_deferred", edit_of_running_task_is_deferred },
 	{ "stop_timeout_stops_the_scheduler", stop_timeout_stops_the_scheduler },
 	{ "persistence_across_restart", persistence_across_restart },
+	{ "saved_task_that_no_longer_validates_is_skipped", saved_task_that_no_longer_validates_is_skipped },
 	{ "running_task_restored_without_using_a_retry", running_task_restored_without_using_a_retry },
 	{ "failure_after_start_aborts_the_sequence", failure_after_start_aborts_the_sequence },
 	{ "hand_started_sequence_blocks_all_but_urgent", hand_started_sequence_blocks_all_but_urgent },
@@ -2594,6 +2657,7 @@ static const indigo_test_case cases[] = {
 	{ "failed_resume_runs_the_shutdown_hook", failed_resume_runs_the_shutdown_hook },
 	{ "shared_hook_task_runs_once", shared_hook_task_runs_once },
 	{ "missing_night_hook_task_is_reported", missing_night_hook_task_is_reported },
+	{ "missing_idle_hook_task_is_reported_once", missing_idle_hook_task_is_reported_once },
 	{ "no_night_is_reported", no_night_is_reported },
 	{ "urgent_tasks_are_counted", urgent_tasks_are_counted },
 	{ "reset_all_keeps_running_task_and_urgent_order", reset_all_keeps_running_task_and_urgent_order },
