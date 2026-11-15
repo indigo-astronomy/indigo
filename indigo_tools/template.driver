@@ -175,6 +175,7 @@ driver XXXXX {
 			rule = XXXXX; // optional attribute; Switch rule (C expression). @type=expression // optional block; replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			preserve_values = true; // preserve values and set only target @type=boolean
 			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
+			accept_while_busy = true; // optional attribute, default is false; accept a change request while the property is BUSY, effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC (bool literal) @type=boolean
 			on_attach {
 				// optional C code block
 				// replace content of this section with property attach code
@@ -209,6 +210,7 @@ driver XXXXX {
 			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal) @type=boolean
 			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool literal) @type=boolean
 			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
+			accept_while_busy = true; // optional attribute, default is false; accept a change request while the property is BUSY, effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC (bool literal) @type=boolean
 			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal) @type=boolean
 			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal) @type=expression
 			item XXXXX {
@@ -256,6 +258,7 @@ driver XXXXX {
 			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal) @type=boolean
 			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool literal) @type=boolean
 			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
+			accept_while_busy = true; // optional attribute, default is false; accept a change request while the property is BUSY, effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC (bool literal) @type=boolean
 			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal) @type=boolean
 			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal) @type=expression
 			item XXXXX {
@@ -302,6 +305,7 @@ driver XXXXX {
 			persistent = true; // optional attribute, default is false; use this if property can be saved in driver configuration (bool literal) @type=boolean
 			asynchronous_change = false; // optional attribute, default is true; use this if property change should be asynchronous and serialized (bool literal) @type=boolean
 			pass_through_change = true; // optional attribute, default is false; continue to type handler after generated change handling @type=boolean
+			accept_while_busy = true; // optional attribute, default is false; accept a change request while the property is BUSY, effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC (bool literal) @type=boolean
 			always_defined = true; // optional attribute, default is false; use this if property should be always defined (bool literal) @type=boolean
 			hidden = true; // optional attribute, default is false; use if this property should be initially hidden (bool literal) @type=expression
 			preserve_values = true; // optional attribute, default is false; preserve values and set only target @type=boolean
@@ -351,6 +355,7 @@ driver XXXXX {
 			persistent = false; // optional attribute; Save the property in configuration (bool literal). @type=boolean
 			preserve_values = false; // optional attribute; Preserve values and update only targets (bool literal). @type=boolean
 			pass_through_change = false; // optional attribute; Continue to the device type change handler (bool literal). @type=boolean
+			accept_while_busy = false; // optional attribute; Accept a change request while the property is BUSY, effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC (bool literal). @type=boolean
 			perm = XXXXX; // optional attribute; Property permission (C expression). @type=expression
 			rule = XXXXX; // optional attribute; Switch rule (C expression). @type=expression
 			pointer = XXXXX; // optional attribute; Override the private property pointer field (C expression). @type=expression // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)

@@ -230,6 +230,17 @@ class ParserTests(unittest.TestCase):
 		self.assertIn('attach_if', catalog['device'])
 		self.assertIn('format', catalog['item:number'])
 
+	def test_catalog_accept_while_busy_in_all_property_contexts(self):
+		catalog = schema((ROOT / 'indigo_tools/template.driver').read_text())
+		for context in ('inherited', 'switch', 'text', 'number', 'light'):
+			self.assertEqual(catalog[context]['accept_while_busy']['type'], 'boolean', context)
+		source = 'driver sample {\n\tmount {\n\t\tswitch X_SW {\n\t\t\tlabel = "Switch";\n\t\t\tname = "X_SW";\n\t\t}\n\t}\n}'
+		root = parse(source)
+		prop = named(root, 'X_SW')
+		updated, root = edit(source, root, prop['id'], [dict(field='attribute', name='accept_while_busy', value='true')])
+		self.assertEqual(attributes(named(root, 'X_SW'))['accept_while_busy'], 'true')
+		self.assertIn('accept_while_busy = true;', updated)
+
 	def test_catalog_device_id_can_be_added_without_changing_device_code(self):
 		catalog = schema((ROOT / 'indigo_tools/template.driver').read_text())
 		self.assertEqual(catalog['device']['id']['type'], 'identifier')
