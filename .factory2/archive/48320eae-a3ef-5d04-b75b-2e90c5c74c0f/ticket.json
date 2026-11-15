@@ -1,0 +1,632 @@
+{
+  "schema_version": 1,
+  "ticket_id": "48320eae-a3ef-5d04-b75b-2e90c5c74c0f",
+  "revision": 34,
+  "title": "Abort of an imager paused after transit is not exercised by a test",
+  "description": "The flip failure tests inject the PAUSE_AFTER_TRANSIT event; the real Imager Agent is not paused when the flip failure aborts it. The Alert outcome through wait_for_resume is confirmed by code inspection only. Next: pause the real imager after transit (or with PAUSE_WAIT) before failing the flip in the capture test.\n\nImported from .factory/findings/active/FND-20261103010401-8b51-flip-failure-recovery-004.json (category: quality, blocking: no).",
+  "type": "check",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.882777Z",
+  "status": "closed",
+  "branch": "ticket/48320eae-a3ef-5d04-b75b-2e90c5c74c0f",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "7ea3c9e8-69a6-42c9-bcc0-cd5ea544557c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T10:40:01.618093Z",
+          "last_activity_at": "2026-11-15T11:05:58.532804Z",
+          "ended_at": "2026-11-15T11:05:58.532804Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1556914.711,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T10:40:01.618093Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/48320eae-a3ef-5d04-b75b-2e90c5c74c0f"
+        },
+        {
+          "at": "2026-11-15T11:05:58.532804Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1556914.711,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3a2f4de1-97f2-4444-a690-b9f47a69dcd3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:05:58.533183Z",
+          "last_activity_at": "2026-11-15T11:17:39.537411Z",
+          "ended_at": "2026-11-15T11:17:39.537411Z",
+          "outcome": {
+            "summary": "Pass. The new case pauses the real Imager Agent: with Mount Agent related and PAUSE_AFTER_TRANSIT=-0.5 the exposure_batch() check (indigo_agent_imager.c:1348-1359, TTT <= 30/3600+0.5 h) fires before the first CCD_EXPOSURE request, the Sequencer starts the flipper from that real AGENT_PAUSE_PROCESS update (Sequencer.js:846), no pause is injected; only the flip slew completion is injected as in run_flip_to_centering. Assertions cover the imager pause message/state/item, FLIPPER_STATE, imager abort, step recovery, imager START Alert and FLIPPER Alert. Non-vacuous: in a scratch build outside the repo with the ABORT call in flip_failed removed the case fails (the stored flip failure is never reported because the paused step never ends). Arithmetic checked numerically against indigo_time_to_transit/indigo_j2k_to_jnow for every LST and both park poles: the mount ends 0.019-0.055 h before transit, inside the 0.2 h tolerance, and FLIP_REQUIRED stays 0 for at least ~70 s, so the real flipper cannot start a real slew during the case. Runs: case alone 5/5 (9-10 s each), make -C indigo_test test-agent-scripting-sequencer 66/66 in 4:54. Each case forks with its own bus and private HOME, so no state leaks to other cases. Formatting and the case table are fine (one added row). Non-blocking notes: (1) the comment at test_agent_scripting_sequencer.c:1180 says the mount is 'synced to its transit', but it is slewed (line 1187), and the JNow display RA is passed to a J2000 target, so it ends slightly before transit. The case relies on that precession bias to keep TTT positive: with an exact JNow-to-J2000 conversion the final TTT could be <= 0 at some times of day, the Mount Agent would then report ~11.97 h after a slew past transit and wait_mount_at_transit would fail. Suggested comment: 'slewed to just before its transit'. (2) The implementer's note that the imager's AGENT_PAUSE_PROCESS stays Busy after the abort is inaccurate: a probe shows state Alert with PAUSE_AFTER_TRANSIT still t",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 701004.228,
+          "tokens": null
+        },
+        {
+          "attempt_id": "02a7908d-8618-46a0-8e7b-b1ab751e7d36",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:30:54.735484Z",
+          "last_activity_at": "2026-11-15T11:31:39.428429Z",
+          "ended_at": "2026-11-15T11:31:39.428429Z",
+          "outcome": {
+            "summary": "Round 2 pass. The only change since fbbeebbc1 is the comment above meridian_flip_failure_aborts_imager_paused_after_transit in test_agent_scripting_sequencer.c (two lines replaced by three, git diff fbbeebbc1 HEAD); whitespace and make -C indigo_test test-agent-scripting-sequencer passed on tree 669dfcba. The comment now matches the analysis: the mount is slewed, not synced; the target is the JNow display RA minus the time to transit and the Mount Agent and simulator treat it as J2000 (mount EPOCH 2000), so the mount lands early by the computed 0.019-0.055 h, given as 0.02-0.06 h; a time to transit that falls to zero or below while the mount tracks makes the Mount Agent publish FLIP_REQUIRED=1, which the waiting flipper turns into a real AGENT_START_PROCESS SLEW (Sequencer.js flipper on_update). Formatting is fine: tabs are untouched, there is no trailing whitespace, and these are line comments like the others in the file. Minor and non-blocking: the case where the time to transit is already zero or below at the end of the slew has a different effect. The Mount Agent then hides the negative time and reports about 11.97 h with FLIP_REQUIRED=0, so wait_mount_at_transit fails instead of a flip starting. 'Has to stay positive' still holds for that case.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 44692.945,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:05:58.533183Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T11:17:39.537411Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Pass. The new case pauses the real Imager Agent: with Mount Agent related and PAUSE_AFTER_TRANSIT=-0.5 the exposure_batch() check (indigo_agent_imager.c:1348-1359, TTT <= 30/3600+0.5 h) fires before the first CCD_EXPOSURE request, the Sequencer starts the flipper from that real AGENT_PAUSE_PROCESS update (Sequencer.js:846), no pause is injected; only the flip slew completion is injected as in run_flip_to_centering. Assertions cover the imager pause message/state/item, FLIPPER_STATE, imager abort, step recovery, imager START Alert and FLIPPER Alert. Non-vacuous: in a scratch build outside the repo with the ABORT call in flip_failed removed the case fails (the stored flip failure is never reported because the paused step never ends). Arithmetic checked numerically against indigo_time_to_transit/indigo_j2k_to_jnow for every LST and both park poles: the mount ends 0.019-0.055 h before transit, inside the 0.2 h tolerance, and FLIP_REQUIRED stays 0 for at least ~70 s, so the real flipper cannot start a real slew during the case. Runs: case alone 5/5 (9-10 s each), make -C indigo_test test-agent-scripting-sequencer 66/66 in 4:54. Each case forks with its own bus and private HOME, so no state leaks to other cases. Formatting and the case table are fine (one added row). Non-blocking notes: (1) the comment at test_agent_scripting_sequencer.c:1180 says the mount is 'synced to its transit', but it is slewed (line 1187), and the JNow display RA is passed to a J2000 target, so it ends slightly before transit. The case relies on that precession bias to keep TTT positive: with an exact JNow-to-J2000 conversion the final TTT could be <= 0 at some times of day, the Mount Agent would then report ~11.97 h after a slew past transit and wait_mount_at_transit would fail. Suggested comment: 'slewed to just before its transit'. (2) The implementer's note that the imager's AGENT_PAUSE_PROCESS stays Busy after the abort is inaccurate: a probe shows state Alert with PAUSE_AFTER_TRANSIT still t"
+        },
+        {
+          "at": "2026-11-15T11:30:54.735484Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T11:31:39.428429Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2 pass. The only change since fbbeebbc1 is the comment above meridian_flip_failure_aborts_imager_paused_after_transit in test_agent_scripting_sequencer.c (two lines replaced by three, git diff fbbeebbc1 HEAD); whitespace and make -C indigo_test test-agent-scripting-sequencer passed on tree 669dfcba. The comment now matches the analysis: the mount is slewed, not synced; the target is the JNow display RA minus the time to transit and the Mount Agent and simulator treat it as J2000 (mount EPOCH 2000), so the mount lands early by the computed 0.019-0.055 h, given as 0.02-0.06 h; a time to transit that falls to zero or below while the mount tracks makes the Mount Agent publish FLIP_REQUIRED=1, which the waiting flipper turns into a real AGENT_START_PROCESS SLEW (Sequencer.js flipper on_update). Formatting is fine: tabs are untouched, there is no trailing whitespace, and these are line comments like the others in the file. Minor and non-blocking: the case where the time to transit is already zero or below at the end of the slew has a different effect. The Mount Agent then hides the negative time and reports about 11.97 h with FLIP_REQUIRED=0, so wait_mount_at_transit fails instead of a flip starting. 'Has to stay positive' still holds for that case."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 pass. The only change since fbbeebbc1 is the comment above meridian_flip_failure_aborts_imager_paused_after_transit in test_agent_scripting_sequencer.c (two lines replaced by three, git diff fbbeebbc1 HEAD); whitespace and make -C indigo_test test-agent-scripting-sequencer passed on tree 669dfcba. The comment now matches the analysis: the mount is slewed, not synced; the target is the JNow display RA minus the time to transit and the Mount Agent and simulator treat it as J2000 (mount EPOCH 2000), so the mount lands early by the computed 0.019-0.055 h, given as 0.02-0.06 h; a time to transit that falls to zero or below while the mount tracks makes the Mount Agent publish FLIP_REQUIRED=1, which the waiting flipper turns into a real AGENT_START_PROCESS SLEW (Sequencer.js flipper on_update). Formatting is fine: tabs are untouched, there is no trailing whitespace, and these are line comments like the others in the file. Minor and non-blocking: the case where the time to transit is already zero or below at the end of the slew has a different effect. The Mount Agent then hides the negative time and reports about 11.97 h with FLIP_REQUIRED=0, so wait_mount_at_transit fails instead of a flip starting. 'Has to stay positive' still holds for that case.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 745697.173,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "4cf352ea-f4a6-42f2-b9b7-83e173d7b4f5",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.882794Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261103010401-8b51-flip-failure-recovery-004.json",
+      "source": "a6bf783908ea959f4eb96e7b384681f0fd099e02b849b4b22aac9f36e5383837",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "1b842893-020e-423d-b600-32efb1809eba",
+      "event": "ticket/type_changed",
+      "at": "2026-11-15T08:55:14.985650Z",
+      "actor": "human/owner",
+      "previous_type": "bug",
+      "type": "check"
+    },
+    {
+      "event_id": "9db19bfc-12a5-43c8-a4ba-b92883affd47",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:15.135129Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "869cc9e0-63aa-4d6b-826d-0cb979e2a3d6",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:15.416832Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
+    },
+    {
+      "event_id": "ad3bdbb0-3359-4c5b-a846-0b6e49ebabd5",
+      "event": "task/progress",
+      "at": "2026-11-15T10:40:01.618580Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Implementation started on branch ticket/48320eae-a3ef-5d04-b75b-2e90c5c74c0f"
+    },
+    {
+      "event_id": "5527f419-8616-4ae4-83c9-8970081bdb66",
+      "event": "ticket/started",
+      "at": "2026-11-15T10:40:01.620444Z",
+      "actor": "human/owner",
+      "branch": "ticket/48320eae-a3ef-5d04-b75b-2e90c5c74c0f",
+      "base": "master"
+    },
+    {
+      "event_id": "abc982fe-c02f-4934-bba7-e0e162664708",
+      "event": "task/progress",
+      "at": "2026-11-15T10:40:32.136154Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Implementer launched",
+      "attempt_id": "7ea3c9e8-69a6-42c9-bcc0-cd5ea544557c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "3fe45efb-5122-488b-bbaf-e1e7e3dd0ec2",
+      "event": "task/progress",
+      "at": "2026-11-15T10:41:08.102093Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Building library and sequencer test baseline"
+    },
+    {
+      "event_id": "1699b3e4-17a7-4ff2-8d88-bf93dfc61ef9",
+      "event": "task/progress",
+      "at": "2026-11-15T10:47:22.950165Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Running new imager-paused-after-transit case"
+    },
+    {
+      "event_id": "08f4b575-3e5b-45f7-8ce9-56ca8d30c7db",
+      "event": "task/progress",
+      "at": "2026-11-15T10:55:07.896581Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Running full sequencer suite after adding case"
+    },
+    {
+      "event_id": "40c0a400-8e8d-4661-9816-657ab4668079",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:00:07.841768Z",
+      "actor": "human/owner",
+      "text": "Added case 'meridian flip failure aborts imager paused after transit' (indigo_test/integration/test_agent_scripting_sequencer.c): mount simulator slewed to transit, Mount Agent related to Imager Agent, real Imager Agent pauses itself (PAUSE_AFTER_TRANSIT, message 'Batch paused, transit'), Sequencer starts flipper from that real event; flip then failed via solver stand-in; asserts abort of imager, step recovery, FLIPPER_STATE Alert. Non-vacuous: with the ABORT call in Sequencer.js flip_failed disabled the case fails (restored). Suite before 65/65, after 66/66; case alone passed 3/3 plus 3 earlier runs. Observation: after the abort AGENT_PAUSE_PROCESS of the imager stays Busy until the next start (reset on start), not asserted.",
+      "tokens": null
+    },
+    {
+      "event_id": "6ce02165-008d-47e0-91c8-b2830f0e3c6e",
+      "event": "task/progress",
+      "at": "2026-11-15T11:00:08.266879Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "905b2223-fcb1-4e14-87a9-d2a75d27c210",
+      "event": "task/progress",
+      "at": "2026-11-15T11:00:08.290401Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e8fe16e8-dd81-4af7-b9b9-deb7bcf72550",
+      "event": "check/passed",
+      "at": "2026-11-15T11:00:08.292495Z",
+      "actor": "human/owner",
+      "commit": "fbbeebbc142af1ca0b06c9f3fe661d3868192309",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7e8f3704-6aff-4daf-b6f4-390b90f3a9db",
+      "event": "task/progress",
+      "at": "2026-11-15T11:00:08.501964Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "f1b85f1c-63a7-43a1-bf0a-95765b863fe3",
+      "event": "task/progress",
+      "at": "2026-11-15T11:05:04.321830Z",
+      "actor": "human/owner",
+      "task_id": "d343a0e3-ccdf-4ae0-ab76-5555f9f79059",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "e5ca8159-d6b9-45e6-bbce-8dc28ac99ea1",
+      "event": "check/passed",
+      "at": "2026-11-15T11:05:04.327422Z",
+      "actor": "human/owner",
+      "commit": "fbbeebbc142af1ca0b06c9f3fe661d3868192309",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "80601e84-332e-4b95-a89c-67d76efa8933",
+      "event": "task/progress",
+      "at": "2026-11-15T11:05:58.533269Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "02fbdecf-e29f-48d8-872d-858b770bc282",
+      "event": "review/started",
+      "at": "2026-11-15T11:05:58.534839Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "c28320e6-0ca6-4b70-861c-3ddeaedd9ab1",
+      "event": "task/progress",
+      "at": "2026-11-15T11:06:03.742203Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Reviewer launched",
+      "attempt_id": "3a2f4de1-97f2-4444-a690-b9f47a69dcd3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "09d402f2-1b56-4208-b471-f3802c8cfbc1",
+      "event": "task/progress",
+      "at": "2026-11-15T11:10:28.168155Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Running the new case alone 5 times via test_agent_scripting_sequencer filter"
+    },
+    {
+      "event_id": "94884451-3431-4c84-bb79-fd516d79e7f8",
+      "event": "task/progress",
+      "at": "2026-11-15T11:11:23.506759Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Running make -C indigo_test test-agent-scripting-sequencer once"
+    },
+    {
+      "event_id": "b5223da7-56e7-4cc6-9a95-f83da4479d72",
+      "event": "task/progress",
+      "at": "2026-11-15T11:16:39.119422Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Scratch variants outside the repo: pause-state probe and ABORT-neutralised Sequencer.js"
+    },
+    {
+      "event_id": "83ee4fd4-e1c3-4a6a-ba1b-118c86138115",
+      "event": "task/progress",
+      "at": "2026-11-15T11:17:39.537561Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5111ef9d-1eba-465c-94c9-5f655d775b3a",
+      "event": "review/passed",
+      "at": "2026-11-15T11:17:39.539626Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "fbbeebbc142af1ca0b06c9f3fe661d3868192309"
+    },
+    {
+      "event_id": "b293765b-37c5-4901-954e-4a131ca809f1",
+      "event": "task/progress",
+      "at": "2026-11-15T11:25:24.602606Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Correcting comment of the imager paused after transit case"
+    },
+    {
+      "event_id": "c156b87b-71ff-4ef0-b3c0-5ac0c31b9b3c",
+      "event": "task/progress",
+      "at": "2026-11-15T11:25:25.008006Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2d125295-87cf-4d8c-a708-89a506743a7d",
+      "event": "task/progress",
+      "at": "2026-11-15T11:25:25.031931Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6461fd9d-02df-4dd3-bbb1-01f495f2d65e",
+      "event": "check/passed",
+      "at": "2026-11-15T11:25:25.034121Z",
+      "actor": "human/owner",
+      "commit": "ebb9ef7dec68e5bebab03a92238d138e309d8b17",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "e8e5f0e7-cd3e-4905-9b3c-be9605d0f393",
+      "event": "task/progress",
+      "at": "2026-11-15T11:25:30.157363Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "77153892-4cf9-42ec-9f6d-0c79972e135f",
+      "event": "task/progress",
+      "at": "2026-11-15T11:30:26.012710Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "c5446934-d7c4-4898-b2ca-3db888ac75e6",
+      "event": "check/passed",
+      "at": "2026-11-15T11:30:26.016690Z",
+      "actor": "human/owner",
+      "commit": "ebb9ef7dec68e5bebab03a92238d138e309d8b17",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "da091ce7-a64b-4ccf-874f-cc5db80dde05",
+      "event": "task/progress",
+      "at": "2026-11-15T11:30:54.735782Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9ff0036d-9ded-4e54-b9a9-1ae2f9de8ac9",
+      "event": "review/started",
+      "at": "2026-11-15T11:30:54.737274Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "7da22bf9-2eaa-4486-8cde-016bcd71dec8",
+      "event": "task/progress",
+      "at": "2026-11-15T11:31:15.434133Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Re-review round 2: comment-only change above the new case"
+    },
+    {
+      "event_id": "e2bbbca3-861c-498a-958f-bd40d393ee5d",
+      "event": "task/progress",
+      "at": "2026-11-15T11:31:39.428532Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "ed7df456-a6a5-4188-ae96-9510fc4f92d8",
+      "event": "review/passed",
+      "at": "2026-11-15T11:31:39.429898Z",
+      "actor": "human/owner",
+      "task_id": "b808b00c-c10e-4708-9782-c082b46178c0",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "ebb9ef7dec68e5bebab03a92238d138e309d8b17"
+    },
+    {
+      "event_id": "eee2b8e6-bbf0-4552-a567-e942cf3a0b58",
+      "event": "ticket/closed",
+      "at": "2026-11-15T11:32:25.293503Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T11:32:25.293471Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "9842428ff4379e1265936856f3182b6befe7c2f8"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 2302611.884,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 44,
+    "sha256": "0a2e5ecd3f01a2579bddb3e861ddfc03a29cd9d5a5a4cbce0e8567a1ea75c46f"
+  },
+  "priority": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "fbbeebbc142af1ca0b06c9f3fe661d3868192309",
+        "tree": "8dcbb8a64044206b43bdc4f91639df17490179de",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:00:08.289517Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/48320eae-a3ef-5d04-b75b-2e90c5c74c0f/8dcbb8a64044-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scripting-sequencer",
+        "commit": "fbbeebbc142af1ca0b06c9f3fe661d3868192309",
+        "tree": "8dcbb8a64044206b43bdc4f91639df17490179de",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:05:04.318063Z",
+        "duration_s": 295.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/48320eae-a3ef-5d04-b75b-2e90c5c74c0f/8dcbb8a64044-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ebb9ef7dec68e5bebab03a92238d138e309d8b17",
+        "tree": "669dfcba3e1492761ed5f582d804bf1ddc3dcd64",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:25:25.031014Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/48320eae-a3ef-5d04-b75b-2e90c5c74c0f/669dfcba3e14-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scripting-sequencer",
+        "commit": "ebb9ef7dec68e5bebab03a92238d138e309d8b17",
+        "tree": "669dfcba3e1492761ed5f582d804bf1ddc3dcd64",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:30:26.010951Z",
+        "duration_s": 295.9,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/48320eae-a3ef-5d04-b75b-2e90c5c74c0f/669dfcba3e14-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. The new case pauses the real Imager Agent: with Mount Agent related and PAUSE_AFTER_TRANSIT=-0.5 the exposure_batch() check (indigo_agent_imager.c:1348-1359, TTT <= 30/3600+0.5 h) fires before the first CCD_EXPOSURE request, the Sequencer starts the flipper from that real AGENT_PAUSE_PROCESS update (Sequencer.js:846), no pause is injected; only the flip slew completion is injected as in run_flip_to_centering. Assertions cover the imager pause message/state/item, FLIPPER_STATE, imager abort, step recovery, imager START Alert and FLIPPER Alert. Non-vacuous: in a scratch build outside the repo with the ABORT call in flip_failed removed the case fails (the stored flip failure is never reported because the paused step never ends). Arithmetic checked numerically against indigo_time_to_transit/indigo_j2k_to_jnow for every LST and both park poles: the mount ends 0.019-0.055 h before transit, inside the 0.2 h tolerance, and FLIP_REQUIRED stays 0 for at least ~70 s, so the real flipper cannot start a real slew during the case. Runs: case alone 5/5 (9-10 s each), make -C indigo_test test-agent-scripting-sequencer 66/66 in 4:54. Each case forks with its own bus and private HOME, so no state leaks to other cases. Formatting and the case table are fine (one added row). Non-blocking notes: (1) the comment at test_agent_scripting_sequencer.c:1180 says the mount is 'synced to its transit', but it is slewed (line 1187), and the JNow display RA is passed to a J2000 target, so it ends slightly before transit. The case relies on that precession bias to keep TTT positive: with an exact JNow-to-J2000 conversion the final TTT could be <= 0 at some times of day, the Mount Agent would then report ~11.97 h after a slew past transit and wait_mount_at_transit would fail. Suggested comment: 'slewed to just before its transit'. (2) The implementer's note that the imager's AGENT_PAUSE_PROCESS stays Busy after the abort is inaccurate: a probe shows state Alert with PAUSE_AFTER_TRANSIT still true, set by the abort handler (indigo_agent_imager.c:3218-3221) and cleared at the next start (3141-3144); that is intended and not a defect. (3) The argv filter 'meridian flip failure aborts' now also selects the new case.",
+        "reviewer": "human/owner",
+        "commit": "fbbeebbc142af1ca0b06c9f3fe661d3868192309",
+        "tree": "8dcbb8a64044206b43bdc4f91639df17490179de",
+        "at": "2026-11-15T11:17:39.537124Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 pass. The only change since fbbeebbc1 is the comment above meridian_flip_failure_aborts_imager_paused_after_transit in test_agent_scripting_sequencer.c (two lines replaced by three, git diff fbbeebbc1 HEAD); whitespace and make -C indigo_test test-agent-scripting-sequencer passed on tree 669dfcba. The comment now matches the analysis: the mount is slewed, not synced; the target is the JNow display RA minus the time to transit and the Mount Agent and simulator treat it as J2000 (mount EPOCH 2000), so the mount lands early by the computed 0.019-0.055 h, given as 0.02-0.06 h; a time to transit that falls to zero or below while the mount tracks makes the Mount Agent publish FLIP_REQUIRED=1, which the waiting flipper turns into a real AGENT_START_PROCESS SLEW (Sequencer.js flipper on_update). Formatting is fine: tabs are untouched, there is no trailing whitespace, and these are line comments like the others in the file. Minor and non-blocking: the case where the time to transit is already zero or below at the end of the slew has a different effect. The Mount Agent then hides the negative time and reports about 11.97 h with FLIP_REQUIRED=0, so wait_mount_at_transit fails instead of a flip starting. 'Has to stay positive' still holds for that case.",
+        "reviewer": "human/owner",
+        "commit": "ebb9ef7dec68e5bebab03a92238d138e309d8b17",
+        "tree": "669dfcba3e1492761ed5f582d804bf1ddc3dcd64",
+        "at": "2026-11-15T11:31:39.428212Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T11:00:07.840136Z",
+        "actor": "human/owner",
+        "text": "Added case 'meridian flip failure aborts imager paused after transit' (indigo_test/integration/test_agent_scripting_sequencer.c): mount simulator slewed to transit, Mount Agent related to Imager Agent, real Imager Agent pauses itself (PAUSE_AFTER_TRANSIT, message 'Batch paused, transit'), Sequencer starts flipper from that real event; flip then failed via solver stand-in; asserts abort of imager, step recovery, FLIPPER_STATE Alert. Non-vacuous: with the ABORT call in Sequencer.js flip_failed disabled the case fails (restored). Suite before 65/65, after 66/66; case alone passed 3/3 plus 3 earlier runs. Observation: after the abort AGENT_PAUSE_PROCESS of the imager stays Busy until the next start (reset on start), not asserted.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "9842428ff4379e1265936856f3182b6befe7c2f8",
+      "tree": "669dfcba3e1492761ed5f582d804bf1ddc3dcd64",
+      "base": "master",
+      "at": "2026-11-15T11:32:25.199528Z"
+    }
+  }
+}
