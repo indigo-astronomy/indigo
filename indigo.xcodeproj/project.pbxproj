@@ -5043,6 +5043,7 @@
 		59FA7BEF301D386600A35CFB /* test_dome_azimuth.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_azimuth.c; sourceTree = "<group>"; };
 		59FA7BF0301D386600A35CFB /* test_md5.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_md5.c; sourceTree = "<group>"; };
 		59FA7BF1301D386600A35CFB /* test_polynomial_fit.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_polynomial_fit.c; sourceTree = "<group>"; };
+		A7C3E1D2301D386600A35CFB /* test_gp_guider_alloc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gp_guider_alloc.c; sourceTree = "<group>"; };
 		59FA7BF2301D3A5800A35CFB /* test_bus_lifecycle.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_bus_lifecycle.c; sourceTree = "<group>"; };
 		D209CCD00000000000000001 /* ccd_simulator_test_driver.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ccd_simulator_test_driver.c; sourceTree = "<group>"; };
 		59FA7BF4301D3B9200A35CFB /* test_ccd_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_simulator.c; sourceTree = "<group>"; };
@@ -14371,6 +14372,7 @@
 				D2D6E33C60E4FE67E85DA347 /* test_driver_loader_fixture.c */,
 				59FA7BF0301D386600A35CFB /* test_md5.c */,
 				59FA7BF1301D386600A35CFB /* test_polynomial_fit.c */,
+				A7C3E1D2301D386600A35CFB /* test_gp_guider_alloc.c */,
 				59FA7BE6301D35FD00A35CFB /* test_bus_property.c */,
 				59FA7BE7301D35FD00A35CFB /* test_raw_image.c */,
 				E6B7A18DF9F2AC278C15028B /* test_bahtinov.c */,

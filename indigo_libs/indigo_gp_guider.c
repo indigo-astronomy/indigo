@@ -295,12 +295,13 @@ static void ldlt_free(ldlt_t *f) {
 }
 
 /* Solve A * X = B for X, where A = L D L^T was factorised by ldlt_factor.
-   B and X are n x m (m right-hand sides), X may alias B. */
-static void ldlt_solve(const ldlt_t *f, const double *B, double *X, int m) {
+   B and X are n x m (m right-hand sides), X may alias B. Returns false, leaving
+   X untouched, if the temporary buffer cannot be allocated. */
+static bool ldlt_solve(const ldlt_t *f, const double *B, double *X, int m) {
 	int n = f->n;
 	double *Y = (double *)malloc((size_t)n * m * sizeof(double));
 	if (!Y) {
-		return;
+		return false;
 	}
 	/* forward substitution: L Y = B */
 	for (int i = 0; i < n; i++) {
@@ -329,6 +330,7 @@ static void ldlt_solve(const ldlt_t *f, const double *B, double *X, int m) {
 		}
 	}
 	free(Y);
+	return true;
 }
 
 /*  Math tools: FFT, spectrum, Hamming window */
@@ -403,15 +405,8 @@ static bool compute_spectrum(const double *data, int n_data, int N, double **spe
 	if (len < 1) {
 		len = 1;
 	}
-	double *sp = (double *)malloc((size_t)len * sizeof(double));
-	double *fr = (double *)malloc((size_t)len * sizeof(double));
-	if (!sp || !fr) {
-		free(re);
-		free(im);
-		free(sp);
-		free(fr);
-		return false;
-	}
+	double *sp = (double *)indigo_safe_malloc((size_t)len * sizeof(double));
+	double *fr = (double *)indigo_safe_malloc((size_t)len * sizeof(double));
 	for (int k = 0; k < len; k++) {
 		int idx = low_index + k;
 		double mag2 = re[idx] * re[idx] + im[idx] * im[idx];
@@ -830,7 +825,12 @@ static void gp_infer_sd(indigo_gp_guider *g, const double *data_loc, const doubl
 		free(loc); free(out); free(var);
 		return;
 	}
-	ldlt_solve(&g->gp_chol, out, alpha, 1);
+	if (!ldlt_solve(&g->gp_chol, out, alpha, 1)) {
+		free(alpha);
+		ldlt_free(&g->gp_chol);
+		free(loc); free(out); free(var);
+		return;
+	}
 
 	/* explicit linear trend basis:
 	   feature_vectors (2 x nn): row0 = 1, row1 = loc
@@ -860,7 +860,12 @@ static void gp_infer_sd(indigo_gp_guider *g, const double *data_loc, const doubl
 		fvt[i * 2 + 0] = feature[0 * nn + i];
 		fvt[i * 2 + 1] = feature[1 * nn + i];
 	}
-	ldlt_solve(&g->gp_chol, fvt, S, 2);
+	if (!ldlt_solve(&g->gp_chol, fvt, S, 2)) {
+		free(fvt); free(S); free(feature); free(alpha);
+		ldlt_free(&g->gp_chol);
+		free(loc); free(out); free(var);
+		return;
+	}
 	double fmat[4];
 	mat_mul(feature, S, fmat, 2, nn, 2); /* (2 x nn)(nn x 2) = 2 x 2 */
 	if (!ldlt_factor(&g->gp_chol_feat, fmat, 2)) {
@@ -871,7 +876,13 @@ static void gp_infer_sd(indigo_gp_guider *g, const double *data_loc, const doubl
 	}
 	double fv_alpha[2];
 	mat_mul(feature, alpha, fv_alpha, 2, nn, 1); /* (2 x nn)(nn x 1) = 2 */
-	ldlt_solve(&g->gp_chol_feat, fv_alpha, g->gp_beta, 1);
+	if (!ldlt_solve(&g->gp_chol_feat, fv_alpha, g->gp_beta, 1)) {
+		free(fvt); free(S); free(feature); free(alpha);
+		ldlt_free(&g->gp_chol_feat);
+		ldlt_free(&g->gp_chol);
+		free(loc); free(out); free(var);
+		return;
+	}
 
 	free(fvt);
 	free(S);
@@ -921,7 +932,10 @@ static void gp_predict_projected(indigo_gp_guider *g, const double *locations, i
 			mixed_t[j * nloc + i] = mixed[i * nn + j];
 		}
 	}
-	ldlt_solve(&g->gp_chol, mixed_t, gamma, nloc);
+	if (!ldlt_solve(&g->gp_chol, mixed_t, gamma, nloc)) {
+		free(mixed); free(mixed_t); free(gamma);
+		return;
+	}
 
 	/* phi (2 x nloc): row0 = 1, row1 = locations
 	   R = phi - feature_vectors * gamma  (2 x nloc)
@@ -1051,13 +1065,9 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 	}
 	int count = N - 1;
 
-	double *timestamps = (double *)malloc((size_t)count * sizeof(double));
-	double *gear_error = (double *)malloc((size_t)count * sizeof(double));
-	double *variances = (double *)malloc((size_t)count * sizeof(double));
-	if (!timestamps || !gear_error || !variances) {
-		free(timestamps); free(gear_error); free(variances);
-		return false;
-	}
+	double *timestamps = (double *)indigo_safe_malloc((size_t)count * sizeof(double));
+	double *gear_error = (double *)indigo_safe_malloc((size_t)count * sizeof(double));
+	double *variances = (double *)indigo_safe_malloc((size_t)count * sizeof(double));
 
 	double sum_control = 0.0;
 	for (int i = 0; i < count; i++) {
@@ -1090,13 +1100,9 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 	if (grid_size < 1) {
 		grid_size = 1;
 	}
-	double *rt = (double *)malloc((size_t)grid_size * sizeof(double));
-	double *rg = (double *)malloc((size_t)grid_size * sizeof(double));
-	double *rv = (double *)malloc((size_t)grid_size * sizeof(double));
-	if (!rt || !rg || !rv) {
-		free(timestamps); free(gear_error); free(variances); free(rt); free(rg); free(rv);
-		return false;
-	}
+	double *rt = (double *)indigo_safe_malloc((size_t)grid_size * sizeof(double));
+	double *rg = (double *)indigo_safe_malloc((size_t)grid_size * sizeof(double));
+	double *rv = (double *)indigo_safe_malloc((size_t)grid_size * sizeof(double));
 	int T = regularize_dataset(g, ts, ge, vr, n, rt, rg, rv, grid_size);
 	free(timestamps);
 	free(gear_error);
@@ -1146,52 +1152,50 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 		}
 	}
 	if (want_spectrum && cb_last(g)->timestamp > g->min_periods_for_period_estimation * period_length) {
-		double *detrend = (double *)malloc((size_t)T * sizeof(double));
-		if (detrend) {
-			for (int i = 0; i < T; i++) {
-				detrend[i] = rg[i] - (w0 + w1 * rt[i]);
-			}
-
-			/* Stages in order. Each extra stage's search notches out the worm
-			   and every stage already resolved, so a stage can never lock onto
-			   a line an earlier one is already carrying. */
-			double known[GP_STAGES];
-			int n_known = 0;
-			for (int s = 0; s < GP_STAGES; s++) {
-				if (!g->stage[s].enabled) {
-					continue;
-				}
-				/* A pinned worm needs no estimate at all. A pinned extra stage
-				   still does, because its gate reads the line strength off the
-				   same search. */
-				if (!g->stage[s].compute_period && s == 0) {
-					known[n_known++] = get_stage_period(g, s);
-					continue;
-				}
-				double pl;
-				if (s == 0) {
-					/* the worm: anchor the peak search to the commanded period
-					   (NaN/0 for auto -> no anchoring, global peak) */
-					pl = estimate_period_length(rt, detrend, T, g->stage[0].commanded_period);
-				} else {
-					double strength = 0.0;
-					pl = estimate_extra_period(rt, detrend, T, known, n_known, g->stage[s].commanded_period, &strength);
-					/* the strength ramps toward the measured ratio, and decays
-					   back toward zero when no admissible line is present */
-					g->stage[s].strength = (1.0 - EXK_STRENGTH_SMOOTHING) * g->stage[s].strength + EXK_STRENGTH_SMOOTHING * strength;
-				}
-				if (!is_nan(pl) && pl > 0.0) {
-					/* how far the tracked period still is from what the FFT sees */
-					double rel = fabs(get_stage_period(g, s) - pl) / pl;
-					g->stage[s].disagreement = (1.0 - PERIOD_DISAGREEMENT_SMOOTHING) * g->stage[s].disagreement + PERIOD_DISAGREEMENT_SMOOTHING * rel;
-				}
-				/* when the caller pinned this stage's period, hold it; for an
-				   extra stage the gate still responds to the spectrum */
-				update_stage(g, s, g->stage[s].compute_period ? pl : NAN);
-				known[n_known++] = get_stage_period(g, s);
-			}
-			free(detrend);
+		double *detrend = (double *)indigo_safe_malloc((size_t)T * sizeof(double));
+		for (int i = 0; i < T; i++) {
+			detrend[i] = rg[i] - (w0 + w1 * rt[i]);
 		}
+
+		/* Stages in order. Each extra stage's search notches out the worm
+		   and every stage already resolved, so a stage can never lock onto
+		   a line an earlier one is already carrying. */
+		double known[GP_STAGES];
+		int n_known = 0;
+		for (int s = 0; s < GP_STAGES; s++) {
+			if (!g->stage[s].enabled) {
+				continue;
+			}
+			/* A pinned worm needs no estimate at all. A pinned extra stage
+			   still does, because its gate reads the line strength off the
+			   same search. */
+			if (!g->stage[s].compute_period && s == 0) {
+				known[n_known++] = get_stage_period(g, s);
+				continue;
+			}
+			double pl;
+			if (s == 0) {
+				/* the worm: anchor the peak search to the commanded period
+				   (NaN/0 for auto -> no anchoring, global peak) */
+				pl = estimate_period_length(rt, detrend, T, g->stage[0].commanded_period);
+			} else {
+				double strength = 0.0;
+				pl = estimate_extra_period(rt, detrend, T, known, n_known, g->stage[s].commanded_period, &strength);
+				/* the strength ramps toward the measured ratio, and decays
+				   back toward zero when no admissible line is present */
+				g->stage[s].strength = (1.0 - EXK_STRENGTH_SMOOTHING) * g->stage[s].strength + EXK_STRENGTH_SMOOTHING * strength;
+			}
+			if (!is_nan(pl) && pl > 0.0) {
+				/* how far the tracked period still is from what the FFT sees */
+				double rel = fabs(get_stage_period(g, s) - pl) / pl;
+				g->stage[s].disagreement = (1.0 - PERIOD_DISAGREEMENT_SMOOTHING) * g->stage[s].disagreement + PERIOD_DISAGREEMENT_SMOOTHING * rel;
+			}
+			/* when the caller pinned this stage's period, hold it; for an
+			   extra stage the gate still responds to the spectrum */
+			update_stage(g, s, g->stage[s].compute_period ? pl : NAN);
+			known[n_known++] = get_stage_period(g, s);
+		}
+		free(detrend);
 	}
 
 	/* GP inference uses the (non-detrended) gear error; the explicit trend
@@ -1271,9 +1275,9 @@ static double interp_peak_frequency(const double *spectrum, const double *freque
 	ldlt_t f;
 	if (ldlt_factor(&f, M, 3)) {
 		double w[3];
-		ldlt_solve(&f, rhs, w, 1);
+		bool solved = ldlt_solve(&f, rhs, w, 1);
 		ldlt_free(&f);
-		if (w[0] != 0.0) {
+		if (solved && w[0] != 0.0) {
 			max_frequency = max_frequency - w[1] / (2.0 * w[0]) * spread;
 		}
 	}
@@ -1295,10 +1299,7 @@ static double estimate_period_length(const double *time, const double *data, int
 		return NAN; /* not reachable: callers guard T >= 2 */
 	}
 
-	double *windowed = (double *)malloc((size_t)n * sizeof(double));
-	if (!windowed) {
-		return NAN;
-	}
+	double *windowed = (double *)indigo_safe_malloc((size_t)n * sizeof(double));
 	for (int i = 0; i < n; i++) {
 		double range = (n > 1) ? (double)i / (double)(n - 1) : 0.0;
 		double w = 0.54 - 0.46 * cos(2.0 * M_PI * range);
@@ -1399,10 +1400,7 @@ static double estimate_extra_period(const double *time, const double *data, int 
 		return NAN;
 	}
 
-	double *windowed = (double *)malloc((size_t)n * sizeof(double));
-	if (!windowed) {
-		return NAN;
-	}
+	double *windowed = (double *)indigo_safe_malloc((size_t)n * sizeof(double));
 	for (int i = 0; i < n; i++) {
 		double range = (n > 1) ? (double)i / (double)(n - 1) : 0.0;
 		double w = 0.54 - 0.46 * cos(2.0 * M_PI * range);

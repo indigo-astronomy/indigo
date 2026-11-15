@@ -66,6 +66,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_system_alpaca_json \
 	$(UNIT_BUILD)/test_raw_image \
 	$(UNIT_BUILD)/test_star_detection \
+	$(UNIT_BUILD)/test_gp_guider_alloc \
 	$(UNIT_BUILD)/test_raw_to_fits \
 	$(UNIT_BUILD)/test_recording_io \
 	$(UNIT_BUILD)/test_bahtinov
@@ -474,6 +475,10 @@ $(UNIT_BUILD)/test_raw_to_fits: unit/test_raw_to_fits.c test_runner.h | $(UNIT_B
 # Compile the implementation directly so sanitizer flags instrument the detector bodies.
 $(UNIT_BUILD)/test_star_detection: unit/test_star_detection.c ../indigo_libs/indigo_raw_utils.c ../indigo_libs/indigo/indigo_raw_utils.h test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< ../indigo_libs/indigo_raw_utils.c $(TEST_LDFLAGS)
+
+# Compile the implementation directly so malloc() can be replaced by a failing allocator.
+$(UNIT_BUILD)/test_gp_guider_alloc: unit/test_gp_guider_alloc.c ../indigo_libs/indigo_gp_guider.c ../indigo_libs/indigo/indigo_gp_guider.h test_runner.h | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_raw_image: unit/test_raw_image.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
