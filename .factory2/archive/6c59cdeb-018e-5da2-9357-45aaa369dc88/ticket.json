@@ -1,0 +1,635 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6c59cdeb-018e-5da2-9357-45aaa369dc88",
+  "revision": 28,
+  "title": "Sequencer meridian-flip pause documentation disagrees with forwarded time units",
+  "description": "Canonical Sequencer.md describes enable_meridian_flip time as seconds. Sequencer.js forwards it unchanged through set_pause_after_transit to Imager AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT, whose source definition and computation use hours. Nonzero values interpreted as documented can schedule the wrong transit pause. Next action: reconcile the public unit contract, correct reference or conversion as appropriate, and verify with a focused simulator test. Draft guide exposes the discrepancy; no runtime validation or source fix here.\n\nImported from .factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-002.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.890004Z",
+  "status": "closed",
+  "branch": "ticket/6c59cdeb-018e-5da2-9357-45aaa369dc88",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0c58bc27-c8cf-43c3-b437-ee11f6d1a710",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T09:50:21.071517Z",
+          "last_activity_at": "2026-11-15T09:51:34.339867Z",
+          "ended_at": "2026-11-15T09:51:34.339867Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 73268.35,
+          "tokens": null
+        },
+        {
+          "attempt_id": "5d1061b8-cf4e-4532-bc55-be51d4543e2d",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T09:53:27.055863Z",
+          "last_activity_at": "2026-11-15T09:55:56.456269Z",
+          "ended_at": "2026-11-15T09:55:56.456269Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 149400.406,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T09:50:21.071517Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/6c59cdeb-018e-5da2-9357-45aaa369dc88"
+        },
+        {
+          "at": "2026-11-15T09:51:34.339867Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T09:53:27.055863Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T09:55:56.456269Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 222668.756,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e5fa1d3c-a71b-4f3a-894f-5cd65eef2c3d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T09:51:34.340092Z",
+          "last_activity_at": "2026-11-15T09:53:27.055750Z",
+          "ended_at": "2026-11-15T09:53:27.055750Z",
+          "outcome": {
+            "summary": "The two edited rows are correct. Verified against the source: Sequencer.js:322-326 and 1734-1735 pass time unchanged into AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT. indigo_agent_imager.c:2664 labels it 'Pause after transit (h)', range -2..2. imager.c:1349 pauses when time_to_transit <= exposure_time/3600 - target, so a negative value pauses before transit. time_to_transit comes from Mount Agent TIME_TO_TRANSIT (hours, indigo_agent_mount.c:1143-1151, imager.c:3780). The framework clamps to min/max in indigo_property_copy_targets (indigo_bus.c:2238-2243) and does not enforce step, so 0.25 is accepted. Both rows still have 4 cells like the rows around them; whitespace check passed. Defects: (1) Generated help bundle left stale. indigo_drivers/agent_mcp/indigo_agent_mcp_help.h embeds both edited files (generate_help.py SOURCES, including reference/sequencer.md = Sequencer.md). 'python3 indigo_drivers/agent_mcp/generate_help.py --check' exits 1 'MCP help bundle is stale' in the worktree and passes on master. MCP clients would still be served the old 'seconds' and 'Draft gap' text, contrary to the regeneration rule in indigo_docs/mcp/README.md:52-56. Fix: run generate_help.py, check it with --check, and include the regenerated header (documentation content only, no code change). (2) Stale statements in the same guide now contradict the corrected row. indigo_docs/mcp/agents/sequencer.md:200 'The units discrepancy must be resolved before advertising a nonzero-offset recipe.' and :225 'This reference contains a known seconds-versus-hours discrepancy ... the warning above remains authoritative until the discrepancy is resolved.' Fix: remove the :200 sentence and the discrepancy sentence at :225. (3) indigo_docs/mcp/agents/mcp.md:59 'its known transit-offset units conflict remains explicit in the Sequencer guide' is also stale; remove that clause. indigo_docs/mcp/README.md:46 has the same stale clause ('known transit-offset unit discrepancy'), but it is a README.md, so per AGENTS",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 112715.658,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7e09a620-603f-4c35-a656-5d1850969d17",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T09:55:56.456500Z",
+          "last_activity_at": "2026-11-15T09:57:21.247102Z",
+          "ended_at": "2026-11-15T09:57:21.247102Z",
+          "outcome": {
+            "summary": "Round 2, tree 48b6553: all three round-1 defects fixed. sequencer.md drops the stale sentences at former :200 and :225, and the paragraphs still read correctly. mcp.md:59 drops its clause. Both README clauses are removed. The owner approved those edits (flow answer on the ticket), and nothing else changed in either README. Both table rows still have 4 cells. indigo_agent_mcp_help.h: generate_help.py --check reports it current, so the header is exactly the generator output and was not hand-edited. I decoded its byte arrays on master and on the candidate. The non-array C parts are identical, and the embedded text differs on exactly 6 lines: mcp/README:46, the sequencer.md table row, :200 and :225, mcp.md:59, and the Sequencer.md row. agent_mcp/README.md is not embedded. A git grep over tracked files outside .factory2 finds no remaining discrepancy, conflict, seconds-versus-hours or 'Draft gap' wording, and the decoded bundle has none either. The only remaining 'discrepancy' is unrelated guider.md:317 text. The whitespace check passed on the final tree; the unit check is not selected for these paths. DRIVER_VERSION is not bumped. AGENTS.md requires a bump only for a driver whose behavior is fixed, and this changes only regenerated help text, consistent with 4652c1d3e, so I accept the coordinator's decision.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 84790.602,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T09:51:34.340092Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T09:53:27.055750Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "The two edited rows are correct. Verified against the source: Sequencer.js:322-326 and 1734-1735 pass time unchanged into AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT. indigo_agent_imager.c:2664 labels it 'Pause after transit (h)', range -2..2. imager.c:1349 pauses when time_to_transit <= exposure_time/3600 - target, so a negative value pauses before transit. time_to_transit comes from Mount Agent TIME_TO_TRANSIT (hours, indigo_agent_mount.c:1143-1151, imager.c:3780). The framework clamps to min/max in indigo_property_copy_targets (indigo_bus.c:2238-2243) and does not enforce step, so 0.25 is accepted. Both rows still have 4 cells like the rows around them; whitespace check passed. Defects: (1) Generated help bundle left stale. indigo_drivers/agent_mcp/indigo_agent_mcp_help.h embeds both edited files (generate_help.py SOURCES, including reference/sequencer.md = Sequencer.md). 'python3 indigo_drivers/agent_mcp/generate_help.py --check' exits 1 'MCP help bundle is stale' in the worktree and passes on master. MCP clients would still be served the old 'seconds' and 'Draft gap' text, contrary to the regeneration rule in indigo_docs/mcp/README.md:52-56. Fix: run generate_help.py, check it with --check, and include the regenerated header (documentation content only, no code change). (2) Stale statements in the same guide now contradict the corrected row. indigo_docs/mcp/agents/sequencer.md:200 'The units discrepancy must be resolved before advertising a nonzero-offset recipe.' and :225 'This reference contains a known seconds-versus-hours discrepancy ... the warning above remains authoritative until the discrepancy is resolved.' Fix: remove the :200 sentence and the discrepancy sentence at :225. (3) indigo_docs/mcp/agents/mcp.md:59 'its known transit-offset units conflict remains explicit in the Sequencer guide' is also stale; remove that clause. indigo_docs/mcp/README.md:46 has the same stale clause ('known transit-offset unit discrepancy'), but it is a README.md, so per AGENTS"
+        },
+        {
+          "at": "2026-11-15T09:55:56.456500Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T09:57:21.247102Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2, tree 48b6553: all three round-1 defects fixed. sequencer.md drops the stale sentences at former :200 and :225, and the paragraphs still read correctly. mcp.md:59 drops its clause. Both README clauses are removed. The owner approved those edits (flow answer on the ticket), and nothing else changed in either README. Both table rows still have 4 cells. indigo_agent_mcp_help.h: generate_help.py --check reports it current, so the header is exactly the generator output and was not hand-edited. I decoded its byte arrays on master and on the candidate. The non-array C parts are identical, and the embedded text differs on exactly 6 lines: mcp/README:46, the sequencer.md table row, :200 and :225, mcp.md:59, and the Sequencer.md row. agent_mcp/README.md is not embedded. A git grep over tracked files outside .factory2 finds no remaining discrepancy, conflict, seconds-versus-hours or 'Draft gap' wording, and the decoded bundle has none either. The only remaining 'discrepancy' is unrelated guider.md:317 text. The whitespace check passed on the final tree; the unit check is not selected for these paths. DRIVER_VERSION is not bumped. AGENTS.md requires a bump only for a driver whose behavior is fixed, and this changes only regenerated help text, consistent with 4652c1d3e, so I accept the coordinator's decision."
+        }
+      ],
+      "result": {
+        "summary": "Round 2, tree 48b6553: all three round-1 defects fixed. sequencer.md drops the stale sentences at former :200 and :225, and the paragraphs still read correctly. mcp.md:59 drops its clause. Both README clauses are removed. The owner approved those edits (flow answer on the ticket), and nothing else changed in either README. Both table rows still have 4 cells. indigo_agent_mcp_help.h: generate_help.py --check reports it current, so the header is exactly the generator output and was not hand-edited. I decoded its byte arrays on master and on the candidate. The non-array C parts are identical, and the embedded text differs on exactly 6 lines: mcp/README:46, the sequencer.md table row, :200 and :225, mcp.md:59, and the Sequencer.md row. agent_mcp/README.md is not embedded. A git grep over tracked files outside .factory2 finds no remaining discrepancy, conflict, seconds-versus-hours or 'Draft gap' wording, and the decoded bundle has none either. The only remaining 'discrepancy' is unrelated guider.md:317 text. The whitespace check passed on the final tree; the unit check is not selected for these paths. DRIVER_VERSION is not bumped. AGENTS.md requires a bump only for a driver whose behavior is fixed, and this changes only regenerated help text, consistent with 4652c1d3e, so I accept the coordinator's decision.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 197506.26,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "db60499e-d157-41ef-8990-735945160ba4",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.890025Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-002.json",
+      "source": "4ea93964a68421dbeed34d5c2d03fd293f8393a4db8ee2332b05d97410289628",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "1618d9b0-566f-48fc-83e8-a4003edd13f2",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:16.959955Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "41ca242e-bf7e-427f-8b67-296d9e0e3888",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:17.260793Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
+    },
+    {
+      "event_id": "c7f015d6-75fc-432b-918c-1289369038e4",
+      "event": "task/progress",
+      "at": "2026-11-15T09:50:21.071813Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Implementation started on branch ticket/6c59cdeb-018e-5da2-9357-45aaa369dc88"
+    },
+    {
+      "event_id": "4d3200d4-d092-4c60-8ee8-c83fffce7ec9",
+      "event": "ticket/started",
+      "at": "2026-11-15T09:50:21.073144Z",
+      "actor": "human/owner",
+      "branch": "ticket/6c59cdeb-018e-5da2-9357-45aaa369dc88",
+      "base": "master"
+    },
+    {
+      "event_id": "eb809bb4-25f7-42bc-ae66-f730edde9e57",
+      "event": "ticket/note",
+      "at": "2026-11-15T09:50:43.934793Z",
+      "actor": "human/owner",
+      "text": "Owner instruction (2026-11-15): resolve this ticket by correcting the documentation only. The implementation (time forwarded unchanged to AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT, in hours) is the contract; no code conversion, no driver version change and no new test are part of this ticket. An earlier unmerged fix of the same finding exists on the leftover branch task/20261105140615-7cae-fix-sequencer-transit-units (commit fe62d2c7f, Sequencer.md only) and may be used as reference after verifying it against the source.",
+      "tokens": null
+    },
+    {
+      "event_id": "20b05238-11aa-4309-bdce-5ae6a19487d3",
+      "event": "task/progress",
+      "at": "2026-11-15T09:50:47.221827Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Implementer launched",
+      "attempt_id": "0c58bc27-c8cf-43c3-b437-ee11f6d1a710",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "e8c8e58f-cf8c-4fb9-b247-34ac289ce22e",
+      "event": "ticket/note",
+      "at": "2026-11-15T09:51:16.969752Z",
+      "actor": "human/owner",
+      "text": "Contract verified: Sequencer.js:322-326 enable_meridian_flip pushes set_pause_after_transit(time) unchanged; Sequencer.js:1734-1735 sets AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT = time with no conversion. indigo_agent_imager.c:2664 defines item label 'Pause after transit (h)', min -2, max 2, step 1, default 0; :1349 compares time_to_transit (hours, from Mount Agent TIME_TO_TRANSIT, indigo_agent_mount.c:1143/imager.c:3780) <= exposure_time/3600 - item target. No other conversion (no flipper script/library file converts it). indigo_docs/mcp/agents/imager.md:106,201 and imager.html presets (0.25, 0.5, 1, 2) already say hours. Docs fixed: Sequencer.md:311 and mcp/agents/sequencer.md:197.",
+      "tokens": null
+    },
+    {
+      "event_id": "5016cd7a-e1c4-440a-9a3e-af8b5a28a082",
+      "event": "task/progress",
+      "at": "2026-11-15T09:51:17.230687Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c32f59e4-ef73-4f09-8f1e-a15a0c63a669",
+      "event": "task/progress",
+      "at": "2026-11-15T09:51:17.253401Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "bd28ecea-5c57-49a1-a5c9-507db362973b",
+      "event": "check/passed",
+      "at": "2026-11-15T09:51:17.255122Z",
+      "actor": "human/owner",
+      "commit": "36b1e4b1c17da2a3e1f779b4cd1b612319b7b810",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "6afed791-c55a-4e1d-9089-05d548146025",
+      "event": "task/progress",
+      "at": "2026-11-15T09:51:34.340175Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "text": "Review started"
+    },
+    {
+      "event_id": "2c2f0cbd-021e-4923-8a40-94adc027edb6",
+      "event": "review/started",
+      "at": "2026-11-15T09:51:34.341503Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "08d3a627-dc30-4fa3-8fb5-98474ab59841",
+      "event": "task/progress",
+      "at": "2026-11-15T09:51:53.922230Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "text": "Reviewer launched",
+      "attempt_id": "e5fa1d3c-a71b-4f3a-894f-5cd65eef2c3d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b39482bf-da8e-48cd-9db4-193c74a659bb",
+      "event": "task/progress",
+      "at": "2026-11-15T09:53:27.055858Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "c0bda089-5ec6-4495-9ee6-0d08fc03beaa",
+      "event": "task/progress",
+      "at": "2026-11-15T09:53:27.055885Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "2381358c-71d6-49fb-aad6-c4a58c971ba5",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T09:53:27.057242Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "36b1e4b1c17da2a3e1f779b4cd1b612319b7b810"
+    },
+    {
+      "event_id": "bcd0b536-64d1-431a-959f-11218ee69346",
+      "event": "question/asked",
+      "at": "2026-11-15T09:54:00.391481Z",
+      "actor": "human/owner",
+      "text": "indigo_docs/mcp/README.md line 46 still says the 'known transit-offset unit discrepancy remain in the Sequencer guide', which becomes false with this ticket. README.md files may be changed only with the owner's explicit approval: may that clause be removed in this ticket?"
+    },
+    {
+      "event_id": "39a7e40b-47a4-4ba2-b272-c69d2aab714b",
+      "event": "task/progress",
+      "at": "2026-11-15T09:54:23.663138Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Removed stale discrepancy text and regenerated MCP help header"
+    },
+    {
+      "event_id": "a6cc87f0-b1d9-4d09-bae6-6ad8881acdc8",
+      "event": "task/progress",
+      "at": "2026-11-15T09:54:23.931526Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e076dfd5-f6c3-48a4-8f51-d5cd984a105e",
+      "event": "task/progress",
+      "at": "2026-11-15T09:54:23.954473Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f2413817-2caf-4207-8156-49b741944198",
+      "event": "check/passed",
+      "at": "2026-11-15T09:54:23.956592Z",
+      "actor": "human/owner",
+      "commit": "141c635ddeda0cd1ec217892f1f0422ed696be72",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "ba7f4ca1-c5ac-4484-8533-82fece0e3e9a",
+      "event": "question/answered",
+      "at": "2026-11-15T09:55:15.717751Z",
+      "actor": "human/owner",
+      "text": "Owner (2026-11-15): yes, edit README. Asked about both indigo_docs/mcp/README.md (line 46) and indigo_drivers/agent_mcp/README.md (line 41); the stale transit-offset discrepancy clause may be removed from both in this ticket."
+    },
+    {
+      "event_id": "a36caa9a-38be-49ba-9d5f-9a51086da7c8",
+      "event": "task/progress",
+      "at": "2026-11-15T09:55:31.368814Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Cleaned README clauses and regenerated help header"
+    },
+    {
+      "event_id": "420e89e3-0d77-4b09-ad32-0627d10538b4",
+      "event": "task/progress",
+      "at": "2026-11-15T09:55:31.650554Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c80741b8-fbfd-48ff-abff-f1f6e45614b1",
+      "event": "task/progress",
+      "at": "2026-11-15T09:55:31.673911Z",
+      "actor": "human/owner",
+      "task_id": "50133eca-538c-4401-bb56-5e2ab7dddbd3",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "88a04c2e-d803-4133-aadb-d7eeea66b3ea",
+      "event": "check/passed",
+      "at": "2026-11-15T09:55:31.675927Z",
+      "actor": "human/owner",
+      "commit": "cdf354737971137f91e3bfc147a1f0b3aa22556b",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a6bec7c0-3738-4638-b830-36170db25da7",
+      "event": "task/progress",
+      "at": "2026-11-15T09:55:56.456600Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "text": "Review started"
+    },
+    {
+      "event_id": "1d3722d6-b1f1-400c-8d84-e43baab91188",
+      "event": "review/started",
+      "at": "2026-11-15T09:55:56.458208Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "7b208c75-a6a3-4ed5-ad82-8ffda5452d56",
+      "event": "task/progress",
+      "at": "2026-11-15T09:56:02.685292Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "text": "Second review round started",
+      "attempt_id": "7e09a620-603f-4c35-a656-5d1850969d17",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "33056bcc-86dd-4733-bd82-78e71186b84f",
+      "event": "task/progress",
+      "at": "2026-11-15T09:57:21.247189Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "17a2b253-579d-415d-978a-0641ed69f169",
+      "event": "review/passed",
+      "at": "2026-11-15T09:57:21.248560Z",
+      "actor": "human/owner",
+      "task_id": "d8c0272a-d3b2-4983-9881-bba0a8837f55",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "cdf354737971137f91e3bfc147a1f0b3aa22556b"
+    },
+    {
+      "event_id": "0177b4bb-39b5-4c49-9de5-978eacf2ece8",
+      "event": "ticket/closed",
+      "at": "2026-11-15T09:58:10.643200Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T09:58:10.643162Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "ae4bb99258292e465459384d6adf98e6f42e6dc9"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 420175.016,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 41,
+    "sha256": "91a7e0ef08a48cbb55cbf40f874750280984ee3cc2c41126a1c9575f1ceb237e"
+  },
+  "priority": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "36b1e4b1c17da2a3e1f779b4cd1b612319b7b810",
+        "tree": "9ca3adbf3da32bfc72dfe7ca0714e3e2ee6abb38",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:51:17.252765Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6c59cdeb-018e-5da2-9357-45aaa369dc88/9ca3adbf3da3-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "141c635ddeda0cd1ec217892f1f0422ed696be72",
+        "tree": "6a1e0b0e03cff2cbc980c6d73b9d7554cdcc7ce9",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:54:23.953692Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6c59cdeb-018e-5da2-9357-45aaa369dc88/6a1e0b0e03cf-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "cdf354737971137f91e3bfc147a1f0b3aa22556b",
+        "tree": "48b655388a89e23a7ea3dd16bde9b180d2e29eed",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:55:31.673117Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6c59cdeb-018e-5da2-9357-45aaa369dc88/48b655388a89-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "The two edited rows are correct. Verified against the source: Sequencer.js:322-326 and 1734-1735 pass time unchanged into AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT. indigo_agent_imager.c:2664 labels it 'Pause after transit (h)', range -2..2. imager.c:1349 pauses when time_to_transit <= exposure_time/3600 - target, so a negative value pauses before transit. time_to_transit comes from Mount Agent TIME_TO_TRANSIT (hours, indigo_agent_mount.c:1143-1151, imager.c:3780). The framework clamps to min/max in indigo_property_copy_targets (indigo_bus.c:2238-2243) and does not enforce step, so 0.25 is accepted. Both rows still have 4 cells like the rows around them; whitespace check passed. Defects: (1) Generated help bundle left stale. indigo_drivers/agent_mcp/indigo_agent_mcp_help.h embeds both edited files (generate_help.py SOURCES, including reference/sequencer.md = Sequencer.md). 'python3 indigo_drivers/agent_mcp/generate_help.py --check' exits 1 'MCP help bundle is stale' in the worktree and passes on master. MCP clients would still be served the old 'seconds' and 'Draft gap' text, contrary to the regeneration rule in indigo_docs/mcp/README.md:52-56. Fix: run generate_help.py, check it with --check, and include the regenerated header (documentation content only, no code change). (2) Stale statements in the same guide now contradict the corrected row. indigo_docs/mcp/agents/sequencer.md:200 'The units discrepancy must be resolved before advertising a nonzero-offset recipe.' and :225 'This reference contains a known seconds-versus-hours discrepancy ... the warning above remains authoritative until the discrepancy is resolved.' Fix: remove the :200 sentence and the discrepancy sentence at :225. (3) indigo_docs/mcp/agents/mcp.md:59 'its known transit-offset units conflict remains explicit in the Sequencer guide' is also stale; remove that clause. indigo_docs/mcp/README.md:46 has the same stale clause ('known transit-offset unit discrepancy'), but it is a README.md, so per AGENTS.md it changes only with the owner's explicit approval; ask the owner. Mentioning the -2..2 range is optional: forwarding is accurately described as unchanged, and imager clamps out-of-range values.",
+        "reviewer": "human/owner",
+        "commit": "36b1e4b1c17da2a3e1f779b4cd1b612319b7b810",
+        "tree": "9ca3adbf3da32bfc72dfe7ca0714e3e2ee6abb38",
+        "at": "2026-11-15T09:53:27.055550Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2, tree 48b6553: all three round-1 defects fixed. sequencer.md drops the stale sentences at former :200 and :225, and the paragraphs still read correctly. mcp.md:59 drops its clause. Both README clauses are removed. The owner approved those edits (flow answer on the ticket), and nothing else changed in either README. Both table rows still have 4 cells. indigo_agent_mcp_help.h: generate_help.py --check reports it current, so the header is exactly the generator output and was not hand-edited. I decoded its byte arrays on master and on the candidate. The non-array C parts are identical, and the embedded text differs on exactly 6 lines: mcp/README:46, the sequencer.md table row, :200 and :225, mcp.md:59, and the Sequencer.md row. agent_mcp/README.md is not embedded. A git grep over tracked files outside .factory2 finds no remaining discrepancy, conflict, seconds-versus-hours or 'Draft gap' wording, and the decoded bundle has none either. The only remaining 'discrepancy' is unrelated guider.md:317 text. The whitespace check passed on the final tree; the unit check is not selected for these paths. DRIVER_VERSION is not bumped. AGENTS.md requires a bump only for a driver whose behavior is fixed, and this changes only regenerated help text, consistent with 4652c1d3e, so I accept the coordinator's decision.",
+        "reviewer": "human/owner",
+        "commit": "cdf354737971137f91e3bfc147a1f0b3aa22556b",
+        "tree": "48b655388a89e23a7ea3dd16bde9b180d2e29eed",
+        "at": "2026-11-15T09:57:21.246911Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T09:50:43.933219Z",
+        "actor": "human/owner",
+        "text": "Owner instruction (2026-11-15): resolve this ticket by correcting the documentation only. The implementation (time forwarded unchanged to AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT, in hours) is the contract; no code conversion, no driver version change and no new test are part of this ticket. An earlier unmerged fix of the same finding exists on the leftover branch task/20261105140615-7cae-fix-sequencer-transit-units (commit fe62d2c7f, Sequencer.md only) and may be used as reference after verifying it against the source.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T09:51:16.968238Z",
+        "actor": "human/owner",
+        "text": "Contract verified: Sequencer.js:322-326 enable_meridian_flip pushes set_pause_after_transit(time) unchanged; Sequencer.js:1734-1735 sets AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT = time with no conversion. indigo_agent_imager.c:2664 defines item label 'Pause after transit (h)', min -2, max 2, step 1, default 0; :1349 compares time_to_transit (hours, from Mount Agent TIME_TO_TRANSIT, indigo_agent_mount.c:1143/imager.c:3780) <= exposure_time/3600 - item target. No other conversion (no flipper script/library file converts it). indigo_docs/mcp/agents/imager.md:106,201 and imager.html presets (0.25, 0.5, 1, 2) already say hours. Docs fixed: Sequencer.md:311 and mcp/agents/sequencer.md:197.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "indigo_docs/mcp/README.md line 46 still says the 'known transit-offset unit discrepancy remain in the Sequencer guide', which becomes false with this ticket. README.md files may be changed only with the owner's explicit approval: may that clause be removed in this ticket?",
+        "at": "2026-11-15T09:54:00.390053Z",
+        "actor": "human/owner",
+        "answer": "Owner (2026-11-15): yes, edit README. Asked about both indigo_docs/mcp/README.md (line 46) and indigo_drivers/agent_mcp/README.md (line 41); the stale transit-offset discrepancy clause may be removed from both in this ticket.",
+        "answered_at": "2026-11-15T09:55:15.716224Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "ae4bb99258292e465459384d6adf98e6f42e6dc9",
+      "tree": "48b655388a89e23a7ea3dd16bde9b180d2e29eed",
+      "base": "master",
+      "at": "2026-11-15T09:58:10.556508Z"
+    }
+  }
+}
