@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ba0f10fc-0146-4a99-825d-fc5d49967f38",
+  "revision": 2,
+  "title": "Scheduler agent: four behaviours contradict the design document and the user guide",
+  "description": "Found by the review of agent_scheduler against indigo_drivers/agent_scheduler/doc/SCHEDULER.md and indigo_docs/INDIGO_SCHEDULER_GUIDE.md. For each item decide whether the code or the documents are corrected, and keep both documents consistent with the result.\n\n1. A missing IDLE hook task is skipped silently. SCHEDULER.md (Hooks) says a hook that names no task is reported by a message and skipped, and the guide (Messages) says the 'names no task' message exists also for the other hooks. process_idle() in indigo_agent_scheduler.c reports it for the startup, shutdown, night start, night end and resume hooks, but for the idle hook it only tests hook_slot() >= 0 and sends nothing.\n\n2. SEQUENCE_NAME is recorded but never used. SCHEDULER.md says naming the sequence after the task lets the scheduler recognise its sequence in SEQUENCE_NAME, and the dependency table lists it as observed. observe_property() stores observed->sequence_name and nothing reads it; a run is identified only by the token and the Busy/finish event counters. Either use it or remove the field and the claim.\n\n3. The message for a skipped saved task does not name the task. SCHEDULER.md (Persistence, Loading) promises a message naming the task. add_task() sends 'A saved task was skipped: <parser error>', and parser errors carry a line number, not the task name.\n\n4. The full label text is not sent with list updates. SCHEDULER.md (Labels and list properties) says the full text, such as a long failure reason, is sent as the message of the update. AGENT_SCHEDULER_TASK_STATE, AGENT_SCHEDULER_PLAN and AGENT_SCHEDULER_HISTORY are always defined and updated with a NULL message.\n\nThe lost failure reason of a sequence that ends Alert is already ticket 776f039c and is not part of this ticket. A behaviour fix needs a DRIVER_VERSION increment and test coverage in indigo_test/integration/test_agent_scheduler.c.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T11:25:08.018968Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "32b47893-1cd8-4a0a-bd1b-a3da33d394c1",
+      "event": "ticket/created",
+      "at": "2026-11-15T11:25:08.019897Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "be971ba2-35eb-4743-90f6-6f533ce67306",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T11:25:49.615864Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T11:25:08.018968Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T11:25:49.615664Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "ff896c3822ede6c7b2611f8d394f6b934e6fd29bef7d7096e149d910117266f0"
+  }
+}

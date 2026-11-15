@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "ticket_id": "dd4ec12f-9876-47d0-b58a-bca72e8fc396",
+  "revision": 2,
+  "title": "SCHEDULER.md is out of date with the implemented Scheduler agent",
+  "description": "Found by the review of agent_scheduler. The code, indigo_docs/INDIGO_SCHEDULER_GUIDE.md and indigo_docs/PROPERTIES.md agree with each other on the points below; indigo_drivers/agent_scheduler/doc/SCHEDULER.md does not. Documentation only, no code change.\n\nStale statements in SCHEDULER.md:\n- AGENT_SCHEDULER_STATE state: says Idle when stopped and Alert after ABORT or a failed STARTUP hook. The agent is Idle only before the first start, Ok after STOP and the automatic stop, and Alert also after a failed NIGHT_START, RESUME or SHUTDOWN hook, a stop timeout and ABORT while stopped.\n- Labels and list properties: says a list is updated in place when only states or labels change. A label change always redefines the property, as the Night plan limits already say.\n- Label limit: the properties section says 511 bytes, the Testing section says labels are cut to 127 bytes. The code cuts at 511.\n- SCHEDULER_ESTIMATE items: SUPPORTED is missing.\n- One-off urgent tasks are removed after their first end, so @repeat and @retry have no effect on them.\n- An urgent task never preempts a running hook.\n- Run history: a STOP_TIMEOUT stop is listed under 'aborted'; the entry keeps the result of what caused the stop (preempted, aborted or failed) with the reason 'did not stop in time'. The start-failure reason is given as 'not started'; the agent writes 'the sequence was not started' or 'no result from the Scripting Agent'.\n- State diagram: DISABLE is shown for any state but RUNNING; it is accepted on a running task, which finishes its run.\n- Persistence, Loading: says the agent loads its configuration in its attach callback like the Imager Agent. The agent makes no load call; verify the actual restore path (the bus issues CONFIG LOAD after attach, indigo_libs/indigo_bus.c) and describe it.\n- 'ASTAP Agent' in the dependency table names an agent that does not exist in the repository (the name is also tested in agent_busy_bit(); leave the code alone in this ticket and note it).\n- Preamble: still 'draft', 'subject to change until the agent is implemented' and 'INDIGO (proposed)'.\n\nMissing from SCHEDULER.md, present in the code:\n- header lines are limited to 255 characters;\n- value ranges: @airmass up to 100, @moon 0-180 with width 0.5-30, 'every' and 'after' 0-100000;\n- the 'script error' reason in the night plan;\n- repeat and retry delays are not kept across a restart;\n- changing FRAME_OVERHEAD or OPERATION_OVERHEAD does not recompute existing estimates (also missing from the guide).\n\nSmaller corrections in the other documents:\n- PROPERTIES.md, AGENT_SCHEDULER_STATE: Alert is listed only for an abort or a stop timeout, not for failed hooks.\n- INDIGO_SCHEDULER_GUIDE.md: @task is described as 1-40 characters; the limit is 40 bytes.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T11:25:08.104646Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "13d8fdd3-af1b-474c-a066-52b4420b4832",
+      "event": "ticket/created",
+      "at": "2026-11-15T11:25:08.105274Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "aed2e605-05bd-48cd-bdd7-af9bf86fff18",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T11:25:49.696971Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T11:25:08.104646Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T11:25:49.696777Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "2c6a52b28e5d9c46a2d1881fae2ca8f37edd5babd4075456a1cb2a157a28867a"
+  }
+}
