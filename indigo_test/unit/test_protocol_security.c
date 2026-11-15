@@ -503,13 +503,14 @@ static void cached_blob_retirement_lifetimes(void) {
 
 static void device_acl_requires_device_or_nonzero_master_token(void) {
 	const char *requests[] = { "<newSwitchVector device='Security' name='S'><oneSwitch name='ON'>On</oneSwitch></newSwitchVector>", "{\"newSwitchVector\":{\"device\":\"Security\",\"name\":\"S\",\"items\":[{\"name\":\"ON\",\"value\":true}]}}" };
-	bool rejected_without_master[2], rejected_with_master[2], accepted_device[2], accepted_master[2];
+	bool accepted_without_master[2], rejected_with_master[2], accepted_device[2], accepted_master[2];
 	for (int protocol = 0; protocol < 2; protocol++) {
 		device.access_token = 0x1234;
+		// Without a master token device tokens have no effect (INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md, Protected Devices).
 		indigo_set_master_token(0);
 		changes = 0;
 		parse(requests[protocol], strlen(requests[protocol]), protocol, false, INDIGO_VERSION_CURRENT);
-		rejected_without_master[protocol] = changes == 0;
+		accepted_without_master[protocol] = changes == 1;
 		indigo_set_master_token(0x5678);
 		changes = 0;
 		parse(requests[protocol], strlen(requests[protocol]), protocol, false, INDIGO_VERSION_CURRENT);
@@ -534,7 +535,7 @@ static void device_acl_requires_device_or_nonzero_master_token(void) {
 	device.access_token = 0;
 	indigo_set_master_token(0);
 	for (int protocol = 0; protocol < 2; protocol++) {
-		ASSERT_TRUE(rejected_without_master[protocol]);
+		ASSERT_TRUE(accepted_without_master[protocol]);
 		ASSERT_TRUE(rejected_with_master[protocol]);
 		ASSERT_TRUE(accepted_device[protocol]);
 		ASSERT_TRUE(accepted_master[protocol]);
