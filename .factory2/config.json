@@ -80,6 +80,18 @@
     {
       "name": "whitespace",
       "command": "git diff --check master...HEAD"
+    },
+    {
+      "name": "unit",
+      "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+      "paths": [
+        "indigo_libs/*",
+        "indigo_server/*",
+        "indigo_test/unit/*",
+        "indigo_test/test_runner.h",
+        "indigo_test/Makefile"
+      ],
+      "timeout_seconds": 600
     }
   ]
 }
