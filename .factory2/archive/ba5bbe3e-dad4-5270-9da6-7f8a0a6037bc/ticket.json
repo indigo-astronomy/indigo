@@ -1,0 +1,436 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc",
+  "revision": 19,
+  "title": "JSON protocol drops item hints in both directions",
+  "description": "indigo_libs/indigo_json.c writes the property-level \"hints\" of every def*Vector but no item-level hints, and its parser reads no hints at all, while indigo_xml.c writes and parses hints on both properties and items (indigo_xml.c hints_attribute(), defSwitch line 2136) and indigo_docs/PROTOCOLS.md line 80 says every item may carry hints. JSON clients such as the web control panel therefore never receive item hints: warn_on_set on AGENT_SCHEDULER_TASK_COMMAND RESET_ALL and DELETE_ALL, SERVER RESTART ('Restart INDIGO Server?'), SERVER INSTALL items, MOUNT_ALIGNMENT_RESET and the Astroasis factory resets. Next: add item \"hints\" to the JSON writer for all vector types and to the JSON parser, a JSON round-trip unit test, and a server acceptance check that the scheduler hints arrive over the network. Owner chose on 2026-11-14 to record this only.\n\nImported from .factory/findings/active/FND-20261114090521-b043-scheduler-bulk-command-tests-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.906325Z",
+  "status": "closed",
+  "branch": "ticket/ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3e85896a-17d3-4802-be56-e673835f0819",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:36:34.922610Z",
+          "last_activity_at": "2026-11-15T11:42:20.708850Z",
+          "ended_at": "2026-11-15T11:42:20.708850Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 345786.24,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:36:34.922610Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc"
+        },
+        {
+          "at": "2026-11-15T11:42:20.708850Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 345786.24,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "d12589c6-fb2c-4f22-957e-f9fe4b585c94",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "795ed408-d843-42b7-a078-d805d8e207f3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:42:20.709132Z",
+          "last_activity_at": "2026-11-15T11:47:15.081510Z",
+          "ended_at": "2026-11-15T11:47:15.081510Z",
+          "outcome": {
+            "summary": "Pass. indigo_json.c json_item_hints() (784-821) emits ', \"hints\": \"...\"' after label for every def*Vector item form (text, number rw/ro, switch, light, all three BLOB branches), mirroring indigo_xml.c 2135-2178. Escaping matches indigo_json_escape_b (quote, backslash, \\n, \\r, \\t); the private thread-local buffer (2*512+1+16) holds the worst case (12-byte prefix + 2*511 escaped + quote + NUL) so no truncation, and it does not collide with escape buffers 0/1 or the long buffer used by other arguments of the same SPRINTF. Items without hints get an empty string, so their output is byte-identical to master. Parser: the C JSON parser (top_level_handler, indigo_json.c 341-368) only accepts getProperties and newText/Number/SwitchVector client requests, and its only caller is indigo_server_tcp.c; new*Vector carries no hints in XML either, so omitting a parser change is correct. Tests: json_adapter_serializes_item_hints asserts hinted and unhinted items for every type and would fail on master; I decoded its 6 emitted messages with Python json.raw_decode, all valid with the expected item hints. The scheduler check serialises the agent's real AGENT_SCHEDULER_TASK_COMMAND (observer snapshot) through the real JSON device adapter and finds RESET_ALL/DELETE_ALL warn_on_set; it does not cross a TCP/WebSocket connection, but the server uses that same adapter function, so I accept it as a reasonable realisation. Ran make -C indigo_test test-agent-scheduler: 71 run, 71 passed, 0 failed (reset_all_keeps_running_task_and_urgent_order PASS); test_protocol_json all passed. PROTOCOLS.md line 80 and the 'same features as XML 2.0' claim now hold; no doc change needed. Minor, non-blocking: BLOB hints are only asserted for the no-value branch; the escape loop duplicates indigo_json_escape_b (justified by buffer ownership). Out of scope, for the owner: indigo_server/resource/indigo.js changeProperty (339-351) only honours property-level warn_on_change; nothing in indigo.js/components.js reads i",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 294372.378,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:42:20.709132Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T11:47:15.081510Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Pass. indigo_json.c json_item_hints() (784-821) emits ', \"hints\": \"...\"' after label for every def*Vector item form (text, number rw/ro, switch, light, all three BLOB branches), mirroring indigo_xml.c 2135-2178. Escaping matches indigo_json_escape_b (quote, backslash, \\n, \\r, \\t); the private thread-local buffer (2*512+1+16) holds the worst case (12-byte prefix + 2*511 escaped + quote + NUL) so no truncation, and it does not collide with escape buffers 0/1 or the long buffer used by other arguments of the same SPRINTF. Items without hints get an empty string, so their output is byte-identical to master. Parser: the C JSON parser (top_level_handler, indigo_json.c 341-368) only accepts getProperties and newText/Number/SwitchVector client requests, and its only caller is indigo_server_tcp.c; new*Vector carries no hints in XML either, so omitting a parser change is correct. Tests: json_adapter_serializes_item_hints asserts hinted and unhinted items for every type and would fail on master; I decoded its 6 emitted messages with Python json.raw_decode, all valid with the expected item hints. The scheduler check serialises the agent's real AGENT_SCHEDULER_TASK_COMMAND (observer snapshot) through the real JSON device adapter and finds RESET_ALL/DELETE_ALL warn_on_set; it does not cross a TCP/WebSocket connection, but the server uses that same adapter function, so I accept it as a reasonable realisation. Ran make -C indigo_test test-agent-scheduler: 71 run, 71 passed, 0 failed (reset_all_keeps_running_task_and_urgent_order PASS); test_protocol_json all passed. PROTOCOLS.md line 80 and the 'same features as XML 2.0' claim now hold; no doc change needed. Minor, non-blocking: BLOB hints are only asserted for the no-value branch; the escape loop duplicates indigo_json_escape_b (justified by buffer ownership). Out of scope, for the owner: indigo_server/resource/indigo.js changeProperty (339-351) only honours property-level warn_on_change; nothing in indigo.js/components.js reads i"
+        }
+      ],
+      "result": {
+        "summary": "Pass. indigo_json.c json_item_hints() (784-821) emits ', \"hints\": \"...\"' after label for every def*Vector item form (text, number rw/ro, switch, light, all three BLOB branches), mirroring indigo_xml.c 2135-2178. Escaping matches indigo_json_escape_b (quote, backslash, \\n, \\r, \\t); the private thread-local buffer (2*512+1+16) holds the worst case (12-byte prefix + 2*511 escaped + quote + NUL) so no truncation, and it does not collide with escape buffers 0/1 or the long buffer used by other arguments of the same SPRINTF. Items without hints get an empty string, so their output is byte-identical to master. Parser: the C JSON parser (top_level_handler, indigo_json.c 341-368) only accepts getProperties and newText/Number/SwitchVector client requests, and its only caller is indigo_server_tcp.c; new*Vector carries no hints in XML either, so omitting a parser change is correct. Tests: json_adapter_serializes_item_hints asserts hinted and unhinted items for every type and would fail on master; I decoded its 6 emitted messages with Python json.raw_decode, all valid with the expected item hints. The scheduler check serialises the agent's real AGENT_SCHEDULER_TASK_COMMAND (observer snapshot) through the real JSON device adapter and finds RESET_ALL/DELETE_ALL warn_on_set; it does not cross a TCP/WebSocket connection, but the server uses that same adapter function, so I accept it as a reasonable realisation. Ran make -C indigo_test test-agent-scheduler: 71 run, 71 passed, 0 failed (reset_all_keeps_running_task_and_urgent_order PASS); test_protocol_json all passed. PROTOCOLS.md line 80 and the 'same features as XML 2.0' claim now hold; no doc change needed. Minor, non-blocking: BLOB hints are only asserted for the no-value branch; the escape loop duplicates indigo_json_escape_b (justified by buffer ownership). Out of scope, for the owner: indigo_server/resource/indigo.js changeProperty (339-351) only honours property-level warn_on_change; nothing in indigo.js/components.js reads i",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 294372.378,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "1f0b26a7-cd26-4ea2-8dfa-46bf2fed9560",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.906342Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261114090521-b043-scheduler-bulk-command-tests-001.json",
+      "source": "fb335210b22530d0f860d31058643a02b30b00c404117fb79315b39b0ee01cbc",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "6d753499-160e-46d1-9197-381e87b00335",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:24.443079Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "d8471d1f-599f-4336-988f-906c591b90cd",
+      "event": "ticket/severity_changed",
+      "at": "2026-11-15T08:55:24.578180Z",
+      "actor": "human/owner",
+      "field": "severity",
+      "previousOverride": "low",
+      "newOverride": "medium"
+    },
+    {
+      "event_id": "45e4e174-dd96-467c-bb76-99757d363797",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:24.712202Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "01d6e4f2-5232-42b0-897c-51f4becebb55",
+      "event": "task/progress",
+      "at": "2026-11-15T11:36:34.923052Z",
+      "actor": "human/owner",
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "text": "Implementation started on branch ticket/ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc"
+    },
+    {
+      "event_id": "304eb852-c4af-4545-9193-54cd791ac8c5",
+      "event": "ticket/started",
+      "at": "2026-11-15T11:36:34.924728Z",
+      "actor": "human/owner",
+      "branch": "ticket/ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc",
+      "base": "master"
+    },
+    {
+      "event_id": "e4f4a118-9bf8-4981-89d9-e2bb6f4dae25",
+      "event": "task/progress",
+      "at": "2026-11-15T11:36:55.582604Z",
+      "actor": "human/owner",
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "text": "Implementer launched",
+      "attempt_id": "3e85896a-17d3-4802-be56-e673835f0819",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "454dc4b1-4669-48a1-a914-88bcd10f99b2",
+      "event": "task/progress",
+      "at": "2026-11-15T11:38:49.634861Z",
+      "actor": "human/owner",
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "text": "Reproducing: item hints test against unfixed writer"
+    },
+    {
+      "event_id": "f3b3b4cb-68d2-4e66-a602-2a68c0868fd8",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:40:34.654795Z",
+      "actor": "human/owner",
+      "text": "Reproduction: new unit test json_adapter_serializes_item_hints in indigo_test/unit/test_protocol_json.c FAILED against the unfixed indigo_json.c (defText/Number/Switch/Light/BLOB output had property hints but no item hints). After the fix it passes, and the scheduler integration case reset_all_keeps_running_task_and_urgent_order (extended with a JSON definition check of RESET_ALL/DELETE_ALL warn_on_set) passes. The C JSON parser handles only getProperties/new*Vector requests; there is no def*Vector parsing in C (indigo.js is the JSON client), so no parser change was made.",
+      "tokens": null
+    },
+    {
+      "event_id": "9a7ab607-a89b-4c95-bc81-1e0c1dc8a784",
+      "event": "task/progress",
+      "at": "2026-11-15T11:40:34.939906Z",
+      "actor": "human/owner",
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d997e960-3f30-4933-8858-c54661c7dc8c",
+      "event": "task/progress",
+      "at": "2026-11-15T11:40:34.963696Z",
+      "actor": "human/owner",
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "844f7623-067e-4f6f-ae6b-543c82f5f484",
+      "event": "task/progress",
+      "at": "2026-11-15T11:40:34.965505Z",
+      "actor": "human/owner",
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "368b020e-0505-4ed1-be75-3401141e6d33",
+      "event": "task/progress",
+      "at": "2026-11-15T11:42:02.983872Z",
+      "actor": "human/owner",
+      "task_id": "21a41242-5327-48c8-bd39-cf3a4c7d8794",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "1f08a7a3-46e5-4414-bf50-0f95f4cf3a6e",
+      "event": "check/passed",
+      "at": "2026-11-15T11:42:02.986732Z",
+      "actor": "human/owner",
+      "commit": "405f77a907b9c075b2fe7470a171f59453205ab3",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "4aa30a18-8eb4-40b8-b26e-8af31fef35cb",
+      "event": "task/progress",
+      "at": "2026-11-15T11:42:20.709227Z",
+      "actor": "human/owner",
+      "task_id": "d12589c6-fb2c-4f22-957e-f9fe4b585c94",
+      "text": "Review started"
+    },
+    {
+      "event_id": "8ac3ef86-47a6-498b-8430-dc8072477bce",
+      "event": "review/started",
+      "at": "2026-11-15T11:42:20.710700Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "d6e7bad3-1161-4973-860d-6744c681f92e",
+      "event": "task/progress",
+      "at": "2026-11-15T11:42:39.190551Z",
+      "actor": "human/owner",
+      "task_id": "d12589c6-fb2c-4f22-957e-f9fe4b585c94",
+      "text": "Reviewer launched",
+      "attempt_id": "795ed408-d843-42b7-a078-d805d8e207f3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "dc38e39f-ad95-4088-a6d5-7b82e051cbe2",
+      "event": "task/progress",
+      "at": "2026-11-15T11:44:06.727079Z",
+      "actor": "human/owner",
+      "task_id": "d12589c6-fb2c-4f22-957e-f9fe4b585c94",
+      "text": "Running scheduler integration test: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "925e1d8a-23c0-424e-a280-ef4b143beb2e",
+      "event": "task/progress",
+      "at": "2026-11-15T11:47:15.081645Z",
+      "actor": "human/owner",
+      "task_id": "d12589c6-fb2c-4f22-957e-f9fe4b585c94",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "002030e1-1c04-4e76-a090-ef595052cb92",
+      "event": "review/passed",
+      "at": "2026-11-15T11:47:15.083499Z",
+      "actor": "human/owner",
+      "task_id": "d12589c6-fb2c-4f22-957e-f9fe4b585c94",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "405f77a907b9c075b2fe7470a171f59453205ab3"
+    },
+    {
+      "event_id": "c8da60ef-3faf-4956-948b-9d9833a7367d",
+      "event": "ticket/closed",
+      "at": "2026-11-15T11:49:13.933558Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T11:49:13.933521Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "2ceaef803eb2d4cc8a0fd3a34f6c1c98234a7d3c"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 640158.618,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 25,
+    "sha256": "60dcb7fcada60f03d50352d70d97c4985d0cc258ca9a94983a2f0ea251b08e20"
+  },
+  "priority": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "405f77a907b9c075b2fe7470a171f59453205ab3",
+        "tree": "45c168da640e1dd580d0a68ef55c1c090f7729fd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:40:34.962942Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc/45c168da640e-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "405f77a907b9c075b2fe7470a171f59453205ab3",
+        "tree": "45c168da640e1dd580d0a68ef55c1c090f7729fd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:42:02.982133Z",
+        "duration_s": 88.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ba5bbe3e-dad4-5270-9da6-7f8a0a6037bc/45c168da640e-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. indigo_json.c json_item_hints() (784-821) emits ', \"hints\": \"...\"' after label for every def*Vector item form (text, number rw/ro, switch, light, all three BLOB branches), mirroring indigo_xml.c 2135-2178. Escaping matches indigo_json_escape_b (quote, backslash, \\n, \\r, \\t); the private thread-local buffer (2*512+1+16) holds the worst case (12-byte prefix + 2*511 escaped + quote + NUL) so no truncation, and it does not collide with escape buffers 0/1 or the long buffer used by other arguments of the same SPRINTF. Items without hints get an empty string, so their output is byte-identical to master. Parser: the C JSON parser (top_level_handler, indigo_json.c 341-368) only accepts getProperties and newText/Number/SwitchVector client requests, and its only caller is indigo_server_tcp.c; new*Vector carries no hints in XML either, so omitting a parser change is correct. Tests: json_adapter_serializes_item_hints asserts hinted and unhinted items for every type and would fail on master; I decoded its 6 emitted messages with Python json.raw_decode, all valid with the expected item hints. The scheduler check serialises the agent's real AGENT_SCHEDULER_TASK_COMMAND (observer snapshot) through the real JSON device adapter and finds RESET_ALL/DELETE_ALL warn_on_set; it does not cross a TCP/WebSocket connection, but the server uses that same adapter function, so I accept it as a reasonable realisation. Ran make -C indigo_test test-agent-scheduler: 71 run, 71 passed, 0 failed (reset_all_keeps_running_task_and_urgent_order PASS); test_protocol_json all passed. PROTOCOLS.md line 80 and the 'same features as XML 2.0' claim now hold; no doc change needed. Minor, non-blocking: BLOB hints are only asserted for the no-value branch; the escape loop duplicates indigo_json_escape_b (justified by buffer ownership). Out of scope, for the owner: indigo_server/resource/indigo.js changeProperty (339-351) only honours property-level warn_on_change; nothing in indigo.js/components.js reads item warn_on_set, so the web panel still shows no confirmation for RESET_ALL/DELETE_ALL/SERVER RESTART even though the hints now arrive.",
+        "reviewer": "human/owner",
+        "commit": "405f77a907b9c075b2fe7470a171f59453205ab3",
+        "tree": "45c168da640e1dd580d0a68ef55c1c090f7729fd",
+        "at": "2026-11-15T11:47:15.081172Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T11:40:34.652878Z",
+        "actor": "human/owner",
+        "text": "Reproduction: new unit test json_adapter_serializes_item_hints in indigo_test/unit/test_protocol_json.c FAILED against the unfixed indigo_json.c (defText/Number/Switch/Light/BLOB output had property hints but no item hints). After the fix it passes, and the scheduler integration case reset_all_keeps_running_task_and_urgent_order (extended with a JSON definition check of RESET_ALL/DELETE_ALL warn_on_set) passes. The C JSON parser handles only getProperties/new*Vector requests; there is no def*Vector parsing in C (indigo.js is the JSON client), so no parser change was made.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "2ceaef803eb2d4cc8a0fd3a34f6c1c98234a7d3c",
+      "tree": "45c168da640e1dd580d0a68ef55c1c090f7729fd",
+      "base": "master",
+      "at": "2026-11-15T11:49:13.851094Z"
+    }
+  }
+}
