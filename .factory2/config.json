@@ -75,5 +75,11 @@
         }
       }
     }
-  }
+  },
+  "checks": [
+    {
+      "name": "whitespace",
+      "command": "git diff --check master...HEAD"
+    }
+  ]
 }
