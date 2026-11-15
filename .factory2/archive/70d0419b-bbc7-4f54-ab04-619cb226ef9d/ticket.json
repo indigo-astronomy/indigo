@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "ticket_id": "70d0419b-bbc7-4f54-ab04-619cb226ef9d",
+  "revision": 22,
+  "title": "Add the native unit suite as a path-scoped flow check",
+  "description": "Split from ticket dc17c058 (Factory audit follow-up, part 2) on the owner's decision of 2026-11-15. Replaces ticket 724821da, closed because it was created with a wrong parent link.\n\nAdd a 'unit' entry to checks in .factory2/config.json next to 'whitespace', proposed as: command 'make -C indigo_test test-unit', paths indigo_libs/*, indigo_server/*, indigo_test/unit/*, indigo_test/test_runner.h, indigo_test/Makefile, timeout_seconds 600. Paths are fnmatch globs and '*' also matches '/'; a check without matching changed files is not selected.\n\nTwo prerequisites, both found on 2026-11-15:\n1. The unit suite fails on master at test_protocol_security 'device ACL requires device or nonzero master token' (ticket 21bfa946, not linked as a parent on purpose; 50 of 88 suites ran, exit status 2). The check must not be added before that is fixed, or it blocks every ticket touching those paths.\n2. A ticket worktree has no Makefile.inc (generated, gitignored, with absolute BUILD_ROOT/BUILD_LIB of the primary checkout) and no built library, so the command fails there immediately. Decide and verify how the check gets a library in a worktree (reuse the primary build or build in the worktree) and measure the cost; in the primary checkout with a built library the suite took about 32 s.\n\nKeep driver, simulator, hardware and shell_compliance tests out of the generic check list, and keep project/commands in .factory2/project-rules.json consistent with the result.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T09:01:05.963833Z",
+  "status": "closed",
+  "branch": "ticket/70d0419b-bbc7-4f54-ab04-619cb226ef9d",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "11733b5c-b27a-4682-a59b-49c8df8df69e",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T09:30:32.322289Z",
+          "last_activity_at": "2026-11-15T09:41:23.125278Z",
+          "ended_at": "2026-11-15T09:41:23.125278Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 650802.989,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T09:30:32.322289Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/70d0419b-bbc7-4f54-ab04-619cb226ef9d"
+        },
+        {
+          "at": "2026-11-15T09:41:23.125278Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 650802.989,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "7376b2ae-4eb5-42bd-9ee8-0a3266136e0c",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d815165a-2842-41bb-a979-2f203e623d4b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T09:41:23.125554Z",
+          "last_activity_at": "2026-11-15T09:45:14.184572Z",
+          "ended_at": "2026-11-15T09:45:14.184572Z",
+          "outcome": {
+            "summary": "Pass. Diff limited to .factory2/config.json (new 'unit' check) and the project/commands rule; both valid JSON, config.validate accepts the entry, no other rule changed, no pbxproj change. Configured command is byte-identical to the recorded command-1 (passed at 59a76292e3). Reviewer reran it in the worktree: exit 0 in 61 s warm, 39 suites, 512 PASS, 0 FAIL; worktree status clean afterwards; Makefile.inc BUILD_ROOT/BUILD_LIB/BUILD_DRIVERS point into the worktree. The three archives match the BUILD_DRIVERS dependencies of UNIT_TESTS (platesolver_core, scheduler_*, system_alpaca_json); libprimalucelib is built by test-unit itself, libraw/libindigocat by indigo_libs all. test-unit exits with the failing suite's status. Real fnmatch selection: unit is selected for indigo_libs/, indigo_server/, indigo_test/unit/, test_runner.h, indigo_test/Makefile and not for indigo_docs/, drivers, .factory2/, top-level Makefile or other indigo_test dirs. Timeout 600 s vs 143 s cold / 61 s warm is adequate. Out of scope, for the owner: changes to agent_platesolver/agent_scheduler/system_alpaca, shared/primalucelib, Makefile or Makefile.drv do not select the check although the suite covers or depends on them (matches the approved path list); several unit test rules lack header dependencies, so warm incremental runs after indigo_libs header edits can run stale test binaries; on hosts without make (Windows) a selected unit check cannot pass, which would block closing core tickets there.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 231059.018,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T09:41:23.125554Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T09:45:14.184572Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Pass. Diff limited to .factory2/config.json (new 'unit' check) and the project/commands rule; both valid JSON, config.validate accepts the entry, no other rule changed, no pbxproj change. Configured command is byte-identical to the recorded command-1 (passed at 59a76292e3). Reviewer reran it in the worktree: exit 0 in 61 s warm, 39 suites, 512 PASS, 0 FAIL; worktree status clean afterwards; Makefile.inc BUILD_ROOT/BUILD_LIB/BUILD_DRIVERS point into the worktree. The three archives match the BUILD_DRIVERS dependencies of UNIT_TESTS (platesolver_core, scheduler_*, system_alpaca_json); libprimalucelib is built by test-unit itself, libraw/libindigocat by indigo_libs all. test-unit exits with the failing suite's status. Real fnmatch selection: unit is selected for indigo_libs/, indigo_server/, indigo_test/unit/, test_runner.h, indigo_test/Makefile and not for indigo_docs/, drivers, .factory2/, top-level Makefile or other indigo_test dirs. Timeout 600 s vs 143 s cold / 61 s warm is adequate. Out of scope, for the owner: changes to agent_platesolver/agent_scheduler/system_alpaca, shared/primalucelib, Makefile or Makefile.drv do not select the check although the suite covers or depends on them (matches the approved path list); several unit test rules lack header dependencies, so warm incremental runs after indigo_libs header edits can run stale test binaries; on hosts without make (Windows) a selected unit check cannot pass, which would block closing core tickets there."
+        }
+      ],
+      "result": {
+        "summary": "Pass. Diff limited to .factory2/config.json (new 'unit' check) and the project/commands rule; both valid JSON, config.validate accepts the entry, no other rule changed, no pbxproj change. Configured command is byte-identical to the recorded command-1 (passed at 59a76292e3). Reviewer reran it in the worktree: exit 0 in 61 s warm, 39 suites, 512 PASS, 0 FAIL; worktree status clean afterwards; Makefile.inc BUILD_ROOT/BUILD_LIB/BUILD_DRIVERS point into the worktree. The three archives match the BUILD_DRIVERS dependencies of UNIT_TESTS (platesolver_core, scheduler_*, system_alpaca_json); libprimalucelib is built by test-unit itself, libraw/libindigocat by indigo_libs all. test-unit exits with the failing suite's status. Real fnmatch selection: unit is selected for indigo_libs/, indigo_server/, indigo_test/unit/, test_runner.h, indigo_test/Makefile and not for indigo_docs/, drivers, .factory2/, top-level Makefile or other indigo_test dirs. Timeout 600 s vs 143 s cold / 61 s warm is adequate. Out of scope, for the owner: changes to agent_platesolver/agent_scheduler/system_alpaca, shared/primalucelib, Makefile or Makefile.drv do not select the check although the suite covers or depends on them (matches the approved path list); several unit test rules lack header dependencies, so warm incremental runs after indigo_libs header edits can run stale test binaries; on hosts without make (Windows) a selected unit check cannot pass, which would block closing core tickets there.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 231059.018,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "2767b55d-a349-4d57-b4f2-fb912d491186",
+      "event": "ticket/created",
+      "at": "2026-11-15T09:01:05.964479Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "13adfa65-078c-47f1-9272-98eb798ea507",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T09:05:29.861906Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "ae44a253-293e-4c17-9afe-546a3a23c9ae",
+      "event": "task/progress",
+      "at": "2026-11-15T09:30:32.322810Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Implementation started on branch ticket/70d0419b-bbc7-4f54-ab04-619cb226ef9d"
+    },
+    {
+      "event_id": "851647a4-deda-4af3-9be0-51bd25fc404b",
+      "event": "ticket/started",
+      "at": "2026-11-15T09:30:32.325626Z",
+      "actor": "human/owner",
+      "branch": "ticket/70d0419b-bbc7-4f54-ab04-619cb226ef9d",
+      "base": "master"
+    },
+    {
+      "event_id": "949c45b1-678c-4bab-9cdd-a049315de8c8",
+      "event": "task/progress",
+      "at": "2026-11-15T09:31:06.443440Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Implementer launched",
+      "attempt_id": "11733b5c-b27a-4682-a59b-49c8df8df69e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "f5f95298-9737-4d1e-a468-c7d03ada7ec5",
+      "event": "task/progress",
+      "at": "2026-11-15T09:31:31.050323Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Building worktree library to measure cold unit run"
+    },
+    {
+      "event_id": "24080422-15a9-448f-a993-8b140d05292b",
+      "event": "task/progress",
+      "at": "2026-11-15T09:32:37.145880Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Cold run of configured unit command"
+    },
+    {
+      "event_id": "ec61d518-a0f0-4666-9cf3-7ed75de43652",
+      "event": "task/progress",
+      "at": "2026-11-15T09:33:37.063550Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Cold run again; unit suite also needs system_alpaca archive"
+    },
+    {
+      "event_id": "2360fd0d-ecf6-4179-8dde-f146fd982e7c",
+      "event": "task/progress",
+      "at": "2026-11-15T09:35:53.536820Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Measuring truly fresh cold run in a scratch git worktree"
+    },
+    {
+      "event_id": "4c9512d9-42ae-4d77-8f2a-9a82cd4b3b77",
+      "event": "task/progress",
+      "at": "2026-11-15T09:39:58.523419Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Running flow check (whitespace) and unit command via --command"
+    },
+    {
+      "event_id": "d2e4c587-27e4-4e49-a2db-fd4e0c04f453",
+      "event": "task/progress",
+      "at": "2026-11-15T09:39:58.791747Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2136be7b-0832-46f1-a8f4-c56d26b185dc",
+      "event": "task/progress",
+      "at": "2026-11-15T09:39:58.819239Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b699eb95-0eea-4907-bae1-739437a33f9d",
+      "event": "check/passed",
+      "at": "2026-11-15T09:39:58.821113Z",
+      "actor": "human/owner",
+      "commit": "59a76292e37e68d64699435a55b9a31f73fd2531",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "4f8c7c86-01b1-499c-83b4-cd838432481a",
+      "event": "task/progress",
+      "at": "2026-11-15T09:39:59.012154Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C"
+    },
+    {
+      "event_id": "881b6b56-35d8-443a-bbd3-6be1e5d4dd3b",
+      "event": "task/progress",
+      "at": "2026-11-15T09:40:57.147180Z",
+      "actor": "human/owner",
+      "task_id": "caf92b23-db1d-4e19-9667-793d519d9998",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "4037e8d3-ef6d-4722-b50d-03aa86b00d1e",
+      "event": "check/passed",
+      "at": "2026-11-15T09:40:57.148992Z",
+      "actor": "human/owner",
+      "commit": "59a76292e37e68d64699435a55b9a31f73fd2531",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "c08c607a-f1e4-42b7-afcc-e2b9a5e563ec",
+      "event": "ticket/note",
+      "at": "2026-11-15T09:41:01.941437Z",
+      "actor": "human/owner",
+      "text": "Unit check: command builds from the worktree (make Makefile.inc, make init, indigo_libs, archives agent_platesolver/agent_scheduler/system_alpaca, then test-unit); only those 3 driver archives are needed by UNIT_TESTS (not 104). Measured in a fresh scratch git worktree: cold 143 s, warm 58 s (512 PASS); timeout 600 s. Failure propagation: a broken md5 assertion made the command exit 2. Paths select the check for indigo_libs/indigo_server/indigo_test/unit/test_runner.h/indigo_test/Makefile changes, not for .factory2 or indigo_docs changes. Factory reads config.json from the PRIMARY checkout, so the new check is not selectable by name before merge; it was run via --command with the exact configured command (passed, exit 0, 58 s warm).",
+      "tokens": null
+    },
+    {
+      "event_id": "e4eed97a-881d-4fb6-a0b7-04543da4268e",
+      "event": "task/progress",
+      "at": "2026-11-15T09:41:23.125637Z",
+      "actor": "human/owner",
+      "task_id": "7376b2ae-4eb5-42bd-9ee8-0a3266136e0c",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e8a58a76-c2f4-4d87-80f5-dcc6b4b8ab8d",
+      "event": "review/started",
+      "at": "2026-11-15T09:41:23.127194Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "869b85a4-bd52-4531-ba51-b63b25da44a3",
+      "event": "task/progress",
+      "at": "2026-11-15T09:41:48.865436Z",
+      "actor": "human/owner",
+      "task_id": "7376b2ae-4eb5-42bd-9ee8-0a3266136e0c",
+      "text": "Reviewer launched",
+      "attempt_id": "d815165a-2842-41bb-a979-2f203e623d4b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f3157c7a-ea82-45c0-8fea-1cb2fa2744ad",
+      "event": "task/progress",
+      "at": "2026-11-15T09:43:09.981158Z",
+      "actor": "human/owner",
+      "task_id": "7376b2ae-4eb5-42bd-9ee8-0a3266136e0c",
+      "text": "Reviewer running the configured unit command once in the worktree"
+    },
+    {
+      "event_id": "c3cba785-e15c-4f8b-af05-6fc37625a2db",
+      "event": "task/progress",
+      "at": "2026-11-15T09:45:14.184665Z",
+      "actor": "human/owner",
+      "task_id": "7376b2ae-4eb5-42bd-9ee8-0a3266136e0c",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "39a68b5c-3372-4379-9696-c9143c654122",
+      "event": "review/passed",
+      "at": "2026-11-15T09:45:14.186195Z",
+      "actor": "human/owner",
+      "task_id": "7376b2ae-4eb5-42bd-9ee8-0a3266136e0c",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "59a76292e37e68d64699435a55b9a31f73fd2531"
+    },
+    {
+      "event_id": "927e7444-90b7-43f8-b86c-84063cc7f837",
+      "event": "ticket/closed",
+      "at": "2026-11-15T09:46:10.547267Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T09:46:10.547236Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "36e8b7a1c7b249f7b3a3d701bada6ea4ab5f37f2"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "59a76292e37e68d64699435a55b9a31f73fd2531",
+        "tree": "190cd155699fcf29be848679c2c30bb5c8e80dcd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:39:58.818504Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/70d0419b-bbc7-4f54-ab04-619cb226ef9d/190cd155699f-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "59a76292e37e68d64699435a55b9a31f73fd2531",
+        "tree": "190cd155699fcf29be848679c2c30bb5c8e80dcd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:40:57.146373Z",
+        "duration_s": 58.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/70d0419b-bbc7-4f54-ab04-619cb226ef9d/190cd155699f-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Diff limited to .factory2/config.json (new 'unit' check) and the project/commands rule; both valid JSON, config.validate accepts the entry, no other rule changed, no pbxproj change. Configured command is byte-identical to the recorded command-1 (passed at 59a76292e3). Reviewer reran it in the worktree: exit 0 in 61 s warm, 39 suites, 512 PASS, 0 FAIL; worktree status clean afterwards; Makefile.inc BUILD_ROOT/BUILD_LIB/BUILD_DRIVERS point into the worktree. The three archives match the BUILD_DRIVERS dependencies of UNIT_TESTS (platesolver_core, scheduler_*, system_alpaca_json); libprimalucelib is built by test-unit itself, libraw/libindigocat by indigo_libs all. test-unit exits with the failing suite's status. Real fnmatch selection: unit is selected for indigo_libs/, indigo_server/, indigo_test/unit/, test_runner.h, indigo_test/Makefile and not for indigo_docs/, drivers, .factory2/, top-level Makefile or other indigo_test dirs. Timeout 600 s vs 143 s cold / 61 s warm is adequate. Out of scope, for the owner: changes to agent_platesolver/agent_scheduler/system_alpaca, shared/primalucelib, Makefile or Makefile.drv do not select the check although the suite covers or depends on them (matches the approved path list); several unit test rules lack header dependencies, so warm incremental runs after indigo_libs header edits can run stale test binaries; on hosts without make (Windows) a selected unit check cannot pass, which would block closing core tickets there.",
+        "reviewer": "human/owner",
+        "commit": "59a76292e37e68d64699435a55b9a31f73fd2531",
+        "tree": "190cd155699fcf29be848679c2c30bb5c8e80dcd",
+        "at": "2026-11-15T09:45:14.184369Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T09:41:01.940122Z",
+        "actor": "human/owner",
+        "text": "Unit check: command builds from the worktree (make Makefile.inc, make init, indigo_libs, archives agent_platesolver/agent_scheduler/system_alpaca, then test-unit); only those 3 driver archives are needed by UNIT_TESTS (not 104). Measured in a fresh scratch git worktree: cold 143 s, warm 58 s (512 PASS); timeout 600 s. Failure propagation: a broken md5 assertion made the command exit 2. Paths select the check for indigo_libs/indigo_server/indigo_test/unit/test_runner.h/indigo_test/Makefile changes, not for .factory2 or indigo_docs changes. Factory reads config.json from the PRIMARY checkout, so the new check is not selectable by name before merge; it was run via --command with the exact configured command (passed, exit 0, 58 s warm).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "36e8b7a1c7b249f7b3a3d701bada6ea4ab5f37f2",
+      "tree": "190cd155699fcf29be848679c2c30bb5c8e80dcd",
+      "base": "master",
+      "at": "2026-11-15T09:46:10.453093Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T09:01:05.963833Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T09:05:29.861690Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 881862.007,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 28,
+    "sha256": "51b3cf8caef8fa536ffa10f5b5b73e05a4f75c4bc4f0be6df44cb31ae446caff"
+  }
+}
