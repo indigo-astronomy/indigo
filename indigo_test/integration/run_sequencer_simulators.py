@@ -188,7 +188,7 @@ def main():
 	parser.add_argument("--timeout", type=float, default=1200)
 	parser.add_argument("--case", help="Run case names containing any pipe-separated text fragment")
 	parser.add_argument("--exclude", help="Exclude case names containing this text (recorded in results)")
-	parser.add_argument("--native-bindings", action="store_true", help="Diagnose native scripting token failures without the authenticated test relay")
+	parser.add_argument("--native-bindings", action="store_true", help="Use the native scripting change bindings instead of the authenticated test relay")
 	args = parser.parse_args()
 	repo = Path(__file__).resolve().parents[2]
 	output = args.output.resolve() if args.output else Path(tempfile.mkdtemp(prefix="indigo-sequencer-results-"))

@@ -431,7 +431,7 @@ indigo_event_handlers.seqtest_observer = { devices: ["Guider Agent", "Scripting 
 } };
 
 // This test-only transport relay signs real bus writes in the native client.
-// It isolates the documented native binding-token defect without changing Sequence.
+// It keeps Sequencer behavior independent of native binding token propagation without changing Sequence.
 if (seqtest_options.authenticated_relay) {
 	indigo_define_text_property("Scripting Agent", "X_SEQ_TEST_REQUEST", "Sequencer tests", "Authenticated write request", { JSON: "{}" }, { JSON: { label: "JSON" } }, "Ok", "RO");
 	indigo_change_text_property = function(device, property, items) { seqtest.relay("newTextVector", device, property, items); };
