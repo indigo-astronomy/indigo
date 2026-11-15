@@ -1,0 +1,621 @@
+{
+  "schema_version": 1,
+  "ticket_id": "21bfa946-a854-5f9d-8246-0a728b5ea1d0",
+  "revision": 37,
+  "title": "Unit test 'device ACL requires device or nonzero master token' fails on master",
+  "description": "indigo_test/unit/test_protocol_security.c device_acl_requires_device_or_nonzero_master_token fails deterministically on master ddd7ad5b6 without any task change, so make -C indigo_test test-unit stops there and does not run the suites after it. Either the device/master token ACL in the XML/JSON request parsers or the test expectation regressed; not investigated in the origin task, which does not touch the protocol code. Next: find which of the four assertions fails, bisect since d02bc87dc, fix and rerun the unit suite.\n\nImported from .factory/findings/active/FND-20261112204155-dae8-warn-sync-near-pole-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.901983Z",
+  "status": "closed",
+  "branch": "ticket/21bfa946-a854-5f9d-8246-0a728b5ea1d0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "946abdc3-7fd6-4504-aeda-eba98608c0d7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T09:12:57.199768Z",
+          "last_activity_at": "2026-11-15T09:26:43.973244Z",
+          "ended_at": "2026-11-15T09:26:43.973244Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 826773.476,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T09:12:57.199768Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/21bfa946-a854-5f9d-8246-0a728b5ea1d0"
+        },
+        {
+          "at": "2026-11-15T09:26:43.973244Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 826773.476,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "e1a3d15e-e280-4b2d-b071-e2b538f09fa5",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "2775a6ec-eac5-4a5f-9bdc-fa3a54b26040",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T09:26:43.973429Z",
+          "last_activity_at": "2026-11-15T09:29:24.846279Z",
+          "ended_at": "2026-11-15T09:29:24.846279Z",
+          "outcome": {
+            "summary": "Net diff vs master touches only indigo_test/unit/test_protocol_security.c (git diff master -- indigo_libs empty). The changed expectation (device token set, master token 0, tokenless request delivered) matches INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md (Protected Devices; Master Tokens: without a master token no devices can be protected) and indigo_change_property() at indigo_bus.c:1013, whose semantics date from d834de662/94c2caee2 (2020) and were never changed; the old expectation came from b53c9d145 (unrelated Sequencer commit) and was never implemented. Owner chose the documented contract (question/answer in journal). Assertion is non-vacuous (changes == 1); rejected_with_master still fails if the ACL were removed, accepted_without_master fails if tokenless requests were refused regardless of master, device/master-token acceptance asserts unchanged; both XML and JSON paths covered. Formatting: tabs, one-line calls, no blank lines; git diff --check clean. Reviewer reran make -C indigo_test test-unit in the worktree: exit 0, 39/39 UNIT_TESTS suites ran (78 Running lines), 512 PASS, 0 FAIL, binary rebuilt after the source edit. Non-blocking: the test name now reads ambiguously; out of scope: with master 0 a request carrying a wrong nonzero token is still refused, which the doc's 'no effect' wording does not describe.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 160872.85,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T09:26:43.973429Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T09:29:24.846279Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Net diff vs master touches only indigo_test/unit/test_protocol_security.c (git diff master -- indigo_libs empty). The changed expectation (device token set, master token 0, tokenless request delivered) matches INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md (Protected Devices; Master Tokens: without a master token no devices can be protected) and indigo_change_property() at indigo_bus.c:1013, whose semantics date from d834de662/94c2caee2 (2020) and were never changed; the old expectation came from b53c9d145 (unrelated Sequencer commit) and was never implemented. Owner chose the documented contract (question/answer in journal). Assertion is non-vacuous (changes == 1); rejected_with_master still fails if the ACL were removed, accepted_without_master fails if tokenless requests were refused regardless of master, device/master-token acceptance asserts unchanged; both XML and JSON paths covered. Formatting: tabs, one-line calls, no blank lines; git diff --check clean. Reviewer reran make -C indigo_test test-unit in the worktree: exit 0, 39/39 UNIT_TESTS suites ran (78 Running lines), 512 PASS, 0 FAIL, binary rebuilt after the source edit. Non-blocking: the test name now reads ambiguously; out of scope: with master 0 a request carrying a wrong nonzero token is still refused, which the doc's 'no effect' wording does not describe."
+        }
+      ],
+      "result": {
+        "summary": "Net diff vs master touches only indigo_test/unit/test_protocol_security.c (git diff master -- indigo_libs empty). The changed expectation (device token set, master token 0, tokenless request delivered) matches INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md (Protected Devices; Master Tokens: without a master token no devices can be protected) and indigo_change_property() at indigo_bus.c:1013, whose semantics date from d834de662/94c2caee2 (2020) and were never changed; the old expectation came from b53c9d145 (unrelated Sequencer commit) and was never implemented. Owner chose the documented contract (question/answer in journal). Assertion is non-vacuous (changes == 1); rejected_with_master still fails if the ACL were removed, accepted_without_master fails if tokenless requests were refused regardless of master, device/master-token acceptance asserts unchanged; both XML and JSON paths covered. Formatting: tabs, one-line calls, no blank lines; git diff --check clean. Reviewer reran make -C indigo_test test-unit in the worktree: exit 0, 39/39 UNIT_TESTS suites ran (78 Running lines), 512 PASS, 0 FAIL, binary rebuilt after the source edit. Non-blocking: the test name now reads ambiguously; out of scope: with master 0 a request carrying a wrong nonzero token is still refused, which the doc's 'no effect' wording does not describe.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 160872.85,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "e825e4fd-5830-42e1-a1ce-acef37e21f1b",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.902000Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261112204155-dae8-warn-sync-near-pole-001.json",
+      "source": "df9718408db65a9051dfeae9f4439a27900cf269c4045e6f0568251bb95eaddd",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "93ce57f4-1905-4e45-950a-fa361d8e0204",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:10.117455Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "high",
+      "previous_priority": null,
+      "priority": "high"
+    },
+    {
+      "event_id": "56ed2f68-424f-4897-b49a-208844b6d243",
+      "event": "ticket/severity_changed",
+      "at": "2026-11-15T08:55:10.270255Z",
+      "actor": "human/owner",
+      "field": "severity",
+      "previousOverride": "medium",
+      "newOverride": "high"
+    },
+    {
+      "event_id": "c3e8f804-2b90-4133-897a-c4f0458486b7",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:10.412716Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "979e09c5-d6ed-42cd-b234-cde71bf8a0c3",
+      "event": "task/progress",
+      "at": "2026-11-15T09:12:57.200055Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Implementation started on branch ticket/21bfa946-a854-5f9d-8246-0a728b5ea1d0"
+    },
+    {
+      "event_id": "7b1b348e-6004-46ce-874e-60c17419f193",
+      "event": "ticket/started",
+      "at": "2026-11-15T09:12:57.201509Z",
+      "actor": "human/owner",
+      "branch": "ticket/21bfa946-a854-5f9d-8246-0a728b5ea1d0",
+      "base": "master"
+    },
+    {
+      "event_id": "c98f7591-70a1-4f30-8124-30c196d9738a",
+      "event": "task/progress",
+      "at": "2026-11-15T09:13:27.859203Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Implementer launched",
+      "attempt_id": "946abdc3-7fd6-4504-aeda-eba98608c0d7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "c7f88583-b9b1-40da-9cc3-952c1b8a5548",
+      "event": "task/progress",
+      "at": "2026-11-15T09:15:22.012985Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Generating Makefile.inc and building libindigo in worktree"
+    },
+    {
+      "event_id": "44bbf1c6-470d-4287-abc7-2bbe7741a14a",
+      "event": "task/progress",
+      "at": "2026-11-15T09:18:22.726247Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Reproducing before fix: reverting edit, rebuilding libindigo, running test_protocol_security"
+    },
+    {
+      "event_id": "23d80308-a01b-4aba-92d1-60708578f790",
+      "event": "task/progress",
+      "at": "2026-11-15T09:18:43.291140Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Fix applied; rebuilding lib and running full test-unit"
+    },
+    {
+      "event_id": "af948f63-e787-476a-8742-120ebc870279",
+      "event": "task/progress",
+      "at": "2026-11-15T09:19:06.031021Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Building driver archives needed by unit suite in the worktree"
+    },
+    {
+      "event_id": "d5a4a7bc-2940-4bb5-af5e-f5f90142f906",
+      "event": "ticket/note",
+      "at": "2026-11-15T09:21:30.451562Z",
+      "actor": "human/owner",
+      "text": "Reproduction (worktree source, before fix): build/unit/test_protocol_security prints 'FAIL device ACL requires device or nonzero master token'. Cause: indigo_bus.c indigo_change_property() accepted a request when property->access_token == indigo_get_master_token(); with no master token set (0) a tokenless request (0) matched and bypassed a device token. Test added in b53c9d145 with the intended contract (nonzero master token only); the check dates from 94c2caee2 (2020), so it is a long-standing hole, not a recent regression, and the test expectation is right.",
+      "tokens": null
+    },
+    {
+      "event_id": "0542a5bf-9bf0-40b5-a211-5ba0a28810f1",
+      "event": "ticket/note",
+      "at": "2026-11-15T09:21:30.547808Z",
+      "actor": "human/owner",
+      "text": "After fix (master token must be nonzero to match): worktree make -C indigo_test test-unit exits 0, 0 FAIL, 512 PASS lines, test_protocol_security all pass. Worktree build: make Makefile.inc; make init; make -C indigo_libs all (~3 min incl. externals); 104 driver archives via make -C indigo_drivers/D all (30s, -P8); suite 101s.",
+      "tokens": null
+    },
+    {
+      "event_id": "07098c75-8b5a-4a66-9d54-0f13447e6e5d",
+      "event": "task/progress",
+      "at": "2026-11-15T09:21:30.810510Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1e8b6811-4c60-44c7-9e8a-cb963596b9d4",
+      "event": "task/progress",
+      "at": "2026-11-15T09:21:30.833704Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d01de776-47fd-4c5d-b054-337a25ba101d",
+      "event": "check/passed",
+      "at": "2026-11-15T09:21:30.835435Z",
+      "actor": "human/owner",
+      "commit": "7999c5d72a718873df86aae06f6af12f493be036",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7a895e2c-8617-4654-baa7-05ea77fd54dd",
+      "event": "task/progress",
+      "at": "2026-11-15T09:21:30.991971Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check command-1 started: make -C .factory2/local/worktrees/21bfa946-a854-5f9d-8246-0a728b5ea1d0/indigo_test test-unit"
+    },
+    {
+      "event_id": "1063ea2b-8b84-4792-91f2-5eaf1736448e",
+      "event": "task/progress",
+      "at": "2026-11-15T09:21:31.015645Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check command-1 failed: exit code 2"
+    },
+    {
+      "event_id": "3228c740-3d4a-4f95-9436-0e4900faa092",
+      "event": "check/failed",
+      "at": "2026-11-15T09:21:31.017505Z",
+      "actor": "human/owner",
+      "commit": "7999c5d72a718873df86aae06f6af12f493be036",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "746bdf51-09c0-47eb-ae4d-5623d9441ff8",
+      "event": "task/progress",
+      "at": "2026-11-15T09:21:36.211926Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check command-1 started: make -C indigo_test test-unit"
+    },
+    {
+      "event_id": "5e747436-8e17-4094-88e2-45bfbc749d31",
+      "event": "task/progress",
+      "at": "2026-11-15T09:22:26.351209Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "ac9d1ab4-d17b-4828-9d0d-6e19cb1a3323",
+      "event": "check/passed",
+      "at": "2026-11-15T09:22:26.353343Z",
+      "actor": "human/owner",
+      "commit": "7999c5d72a718873df86aae06f6af12f493be036",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "4153f73f-7af8-42b0-87e9-a971c7fb3d04",
+      "event": "question/asked",
+      "at": "2026-11-15T09:23:01.453839Z",
+      "actor": "human/owner",
+      "text": "The failing assertion expects a tokenless request to be refused by a device with a device token when the server has no master token. indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md states the opposite contract ('the server must have master token set, otherwise device tokens will have no effect'; 'if the server has no master token set ... no devices can be protected, even if they have device token set'), and indigo_bus.c has implemented that since 94c2caee2 (2020). The test was added in b53c9d145 (2026-11-05). The implementer changed indigo_bus.c to satisfy the test, which changes documented protocol behaviour. Which is the intended contract: (a) the documented one - revert the indigo_bus.c change and correct the test expectation for the no-master case; (b) the stricter one - keep the indigo_bus.c change and update the documentation?"
+    },
+    {
+      "event_id": "a1b2768a-e56b-4118-aa31-10ca1702d2a7",
+      "event": "question/answered",
+      "at": "2026-11-15T09:23:51.897309Z",
+      "actor": "human/owner",
+      "text": "Owner (2026-11-15): option (a). The documented contract holds: without a server master token device tokens have no effect. Revert the indigo_bus.c change and correct the test expectation for the no-master case."
+    },
+    {
+      "event_id": "d76f7055-a6ad-4284-a685-3539b42d2abf",
+      "event": "task/progress",
+      "at": "2026-11-15T09:24:10.585148Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Reverting bus fix on owner decision; correcting test expectation"
+    },
+    {
+      "event_id": "f364c1a7-e602-4f15-ab65-f1a2bb4cb37a",
+      "event": "ticket/note",
+      "at": "2026-11-15T09:25:38.133024Z",
+      "actor": "human/owner",
+      "text": "The first fix (indigo_bus.c master-token check) was REVERTED on the owner's decision: INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md states that without a master token device tokens have no effect, and indigo_bus.c has implemented that since 94c2caee2. Test corrected instead: with device token set and master 0 a tokenless request is delivered (changes == 1); other three assertions unchanged. indigo_libs identical to master. Worktree test-unit: exit 0, 39 of 39 suites defined in UNIT_TESTS ran and passed, 512 PASS, 0 FAIL (the 78 'Running' lines are 2 per suite: binary line plus suite-name line).",
+      "tokens": null
+    },
+    {
+      "event_id": "4bb9f6b7-2a31-44c7-bb29-22d396445abd",
+      "event": "task/progress",
+      "at": "2026-11-15T09:25:38.390093Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b24eb86a-6121-4223-ba50-7fa95089c8f8",
+      "event": "task/progress",
+      "at": "2026-11-15T09:25:38.413725Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f3949272-1b44-43f7-b2d0-69a11598a5ac",
+      "event": "check/passed",
+      "at": "2026-11-15T09:25:38.415772Z",
+      "actor": "human/owner",
+      "commit": "7bf5fa99a896ee0b9e84d458e14db8ccdc3e308a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "3c42f249-8a8d-4974-a411-cc9ae0946d11",
+      "event": "task/progress",
+      "at": "2026-11-15T09:25:38.571278Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check command-1 started: make -C indigo_test test-unit"
+    },
+    {
+      "event_id": "593230f2-7472-4f07-9312-ab7838e0548a",
+      "event": "task/progress",
+      "at": "2026-11-15T09:26:28.388334Z",
+      "actor": "human/owner",
+      "task_id": "72137b60-42c2-4456-a646-1768f18a7e5e",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "ece0dea4-aa3b-4aa7-ab2a-dd6097a40c70",
+      "event": "check/passed",
+      "at": "2026-11-15T09:26:28.390456Z",
+      "actor": "human/owner",
+      "commit": "7bf5fa99a896ee0b9e84d458e14db8ccdc3e308a",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "0a76979f-b762-45e4-81a1-523edd31725c",
+      "event": "task/progress",
+      "at": "2026-11-15T09:26:43.973494Z",
+      "actor": "human/owner",
+      "task_id": "e1a3d15e-e280-4b2d-b071-e2b538f09fa5",
+      "text": "Review started"
+    },
+    {
+      "event_id": "a36c531a-de7b-4ec9-9352-351152d926ad",
+      "event": "review/started",
+      "at": "2026-11-15T09:26:43.974660Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "4038d8a1-9f1a-4aee-b20f-7fb70aed7e87",
+      "event": "task/progress",
+      "at": "2026-11-15T09:27:03.995369Z",
+      "actor": "human/owner",
+      "task_id": "e1a3d15e-e280-4b2d-b071-e2b538f09fa5",
+      "text": "Reviewer launched",
+      "attempt_id": "2775a6ec-eac5-4a5f-9bdc-fa3a54b26040",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "c1904dde-452f-4672-8890-f4ac46f17e4f",
+      "event": "task/progress",
+      "at": "2026-11-15T09:28:08.894230Z",
+      "actor": "human/owner",
+      "task_id": "e1a3d15e-e280-4b2d-b071-e2b538f09fa5",
+      "text": "Reviewer running make -C indigo_test test-unit in the worktree"
+    },
+    {
+      "event_id": "70bce281-0b2a-4175-82d6-c7d88c02d94d",
+      "event": "task/progress",
+      "at": "2026-11-15T09:29:24.846369Z",
+      "actor": "human/owner",
+      "task_id": "e1a3d15e-e280-4b2d-b071-e2b538f09fa5",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "463ac4c6-cfab-4d02-a636-41832a0b4fca",
+      "event": "review/passed",
+      "at": "2026-11-15T09:29:24.847575Z",
+      "actor": "human/owner",
+      "task_id": "e1a3d15e-e280-4b2d-b071-e2b538f09fa5",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "7bf5fa99a896ee0b9e84d458e14db8ccdc3e308a"
+    },
+    {
+      "event_id": "08c3d395-245a-4c33-8708-aecfe7a5de14",
+      "event": "ticket/closed",
+      "at": "2026-11-15T09:30:26.057550Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T09:30:26.057519Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "b3467d56f3d578edba4356783deb711143ebf489"
+  },
+  "severity": "high",
+  "metrics": {
+    "duration_ms": 987646.326,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 43,
+    "sha256": "367f6cb1194126a8cd361108912d9d32d7b010be9aeaedd957dacffe86e8e9b5"
+  },
+  "priority": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7999c5d72a718873df86aae06f6af12f493be036",
+        "tree": "edff17be17a44a506ecc3903580544e4969ca43d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:21:30.833028Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/21bfa946-a854-5f9d-8246-0a728b5ea1d0/edff17be17a4-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-unit",
+        "commit": "7999c5d72a718873df86aae06f6af12f493be036",
+        "tree": "edff17be17a44a506ecc3903580544e4969ca43d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:22:26.350263Z",
+        "duration_s": 50.1,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/21bfa946-a854-5f9d-8246-0a728b5ea1d0/edff17be17a4-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7bf5fa99a896ee0b9e84d458e14db8ccdc3e308a",
+        "tree": "0cc58936842b377620b109a0a1e49778f1d32244",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:25:38.412850Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/21bfa946-a854-5f9d-8246-0a728b5ea1d0/0cc58936842b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-unit",
+        "commit": "7bf5fa99a896ee0b9e84d458e14db8ccdc3e308a",
+        "tree": "0cc58936842b377620b109a0a1e49778f1d32244",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T09:26:28.387391Z",
+        "duration_s": 49.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/21bfa946-a854-5f9d-8246-0a728b5ea1d0/0cc58936842b-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Net diff vs master touches only indigo_test/unit/test_protocol_security.c (git diff master -- indigo_libs empty). The changed expectation (device token set, master token 0, tokenless request delivered) matches INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md (Protected Devices; Master Tokens: without a master token no devices can be protected) and indigo_change_property() at indigo_bus.c:1013, whose semantics date from d834de662/94c2caee2 (2020) and were never changed; the old expectation came from b53c9d145 (unrelated Sequencer commit) and was never implemented. Owner chose the documented contract (question/answer in journal). Assertion is non-vacuous (changes == 1); rejected_with_master still fails if the ACL were removed, accepted_without_master fails if tokenless requests were refused regardless of master, device/master-token acceptance asserts unchanged; both XML and JSON paths covered. Formatting: tabs, one-line calls, no blank lines; git diff --check clean. Reviewer reran make -C indigo_test test-unit in the worktree: exit 0, 39/39 UNIT_TESTS suites ran (78 Running lines), 512 PASS, 0 FAIL, binary rebuilt after the source edit. Non-blocking: the test name now reads ambiguously; out of scope: with master 0 a request carrying a wrong nonzero token is still refused, which the doc's 'no effect' wording does not describe.",
+        "reviewer": "human/owner",
+        "commit": "7bf5fa99a896ee0b9e84d458e14db8ccdc3e308a",
+        "tree": "0cc58936842b377620b109a0a1e49778f1d32244",
+        "at": "2026-11-15T09:29:24.846104Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T09:21:30.449960Z",
+        "actor": "human/owner",
+        "text": "Reproduction (worktree source, before fix): build/unit/test_protocol_security prints 'FAIL device ACL requires device or nonzero master token'. Cause: indigo_bus.c indigo_change_property() accepted a request when property->access_token == indigo_get_master_token(); with no master token set (0) a tokenless request (0) matched and bypassed a device token. Test added in b53c9d145 with the intended contract (nonzero master token only); the check dates from 94c2caee2 (2020), so it is a long-standing hole, not a recent regression, and the test expectation is right.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T09:21:30.546492Z",
+        "actor": "human/owner",
+        "text": "After fix (master token must be nonzero to match): worktree make -C indigo_test test-unit exits 0, 0 FAIL, 512 PASS lines, test_protocol_security all pass. Worktree build: make Makefile.inc; make init; make -C indigo_libs all (~3 min incl. externals); 104 driver archives via make -C indigo_drivers/D all (30s, -P8); suite 101s.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T09:25:38.131833Z",
+        "actor": "human/owner",
+        "text": "The first fix (indigo_bus.c master-token check) was REVERTED on the owner's decision: INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md states that without a master token device tokens have no effect, and indigo_bus.c has implemented that since 94c2caee2. Test corrected instead: with device token set and master 0 a tokenless request is delivered (changes == 1); other three assertions unchanged. indigo_libs identical to master. Worktree test-unit: exit 0, 39 of 39 suites defined in UNIT_TESTS ran and passed, 512 PASS, 0 FAIL (the 78 'Running' lines are 2 per suite: binary line plus suite-name line).",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "The failing assertion expects a tokenless request to be refused by a device with a device token when the server has no master token. indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md states the opposite contract ('the server must have master token set, otherwise device tokens will have no effect'; 'if the server has no master token set ... no devices can be protected, even if they have device token set'), and indigo_bus.c has implemented that since 94c2caee2 (2020). The test was added in b53c9d145 (2026-11-05). The implementer changed indigo_bus.c to satisfy the test, which changes documented protocol behaviour. Which is the intended contract: (a) the documented one - revert the indigo_bus.c change and correct the test expectation for the no-master case; (b) the stricter one - keep the indigo_bus.c change and update the documentation?",
+        "at": "2026-11-15T09:23:01.452202Z",
+        "actor": "human/owner",
+        "answer": "Owner (2026-11-15): option (a). The documented contract holds: without a server master token device tokens have no effect. Revert the indigo_bus.c change and correct the test expectation for the no-master case.",
+        "answered_at": "2026-11-15T09:23:51.895407Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "b3467d56f3d578edba4356783deb711143ebf489",
+      "tree": "0cc58936842b377620b109a0a1e49778f1d32244",
+      "base": "master",
+      "at": "2026-11-15T09:30:25.966655Z"
+    }
+  }
+}
