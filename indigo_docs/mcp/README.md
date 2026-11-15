@@ -43,7 +43,7 @@ Each manual includes a function inventory, exact property/item mappings, prerequ
 
 `get_help` returns raw Markdown text in content, without `structuredContent`. Help reads do not load an agent, access runtime files, contact the Internet or operate hardware. All manuals remain discoverable when their agents are unloaded. The original four bus tools retain their existing contracts.
 
-The 18 topics are the 17 Markdown pages in this manual directory tree and the complete canonical Sequencer reference at `reference/sequencer.md`. Its URI is `indigo://help/reference/sequencer.md`. That reference is documentation only: the executable Sequencer library is not embedded/evaluated. Its native bootstrap prerequisite and known transit-offset unit discrepancy remain in the [Sequencer guide](agents/sequencer.md).
+The 18 topics are the 17 Markdown pages in this manual directory tree and the complete canonical Sequencer reference at `reference/sequencer.md`. Its URI is `indigo://help/reference/sequencer.md`. That reference is documentation only: the executable Sequencer library is not embedded/evaluated. Its native bootstrap prerequisite remains in the [Sequencer guide](agents/sequencer.md).
 
 Included relative Markdown links are rewritten during generation to embedded URIs, preserving anchors. Source/property/provenance links outside the bundle are optional review references; they are not additional runtime help resources or prerequisites for using the manuals.
 

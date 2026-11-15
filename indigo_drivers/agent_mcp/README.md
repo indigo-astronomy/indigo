@@ -38,7 +38,7 @@ The agent compiles 18 Markdown resources into its binary. Start with `get_help({
 
 Help reads are read-only and require no runtime documentation files, Internet access or loaded science agents. Included manual links are rewritten to embedded URIs with anchors preserved. Links outside the bundle are optional provenance, not required runtime resources. The manuals describe agent-first setup, prerequisites, operation, monitoring and recovery; recipe gaps and lack of model/hardware validation remain explicit.
 
-The complete canonical Sequencer reference is `indigo://help/reference/sequencer.md`. This embeds documentation, not executable Sequencer.js: pre-evaluation through a native client/configuration remains necessary, and the known nonzero transit-offset units discrepancy is documented in the Sequencer guide.
+The complete canonical Sequencer reference is `indigo://help/reference/sequencer.md`. This embeds documentation, not executable Sequencer.js: pre-evaluation through a native client/configuration remains necessary.
 
 Manual sources are in [indigo_docs/mcp](../../indigo_docs/mcp/README.md). After changing them or the canonical Sequencer reference, run from the repository root:
 
