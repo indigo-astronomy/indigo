@@ -735,7 +735,7 @@ The plan is a forecast. It assumes that every run succeeds and takes its expecte
 | Result | Light | Meaning |
 |---|---|---|
 | `succeeded` | Ok | The sequence ended Ok |
-| `failed` | Alert | The sequence ended Alert, or the task could not start. A start failure or a JavaScript error is followed by its reason; for a sequence that ended Alert, look at the Scripting Agent's messages |
+| `failed` | Alert | The sequence ended Alert, or the task could not start. A start failure or a JavaScript error is followed by its reason; for a sequence that ended Alert the reason is the last message the Scripting Agent sent while the sequence was running. For a failed step it is the failure message of the step, for example `There is no CCD_GAIN on Imager Agent`. For a sequence aborted by hand, outside the scheduler, it is an unrelated progress message such as `Suspended for 30s`, so check the Scripting Agent's messages |
 | `preempted` | Busy | An urgent task interrupted the run. The reason names the urgent task, or says `did not stop in time` when the sequence did not stop within `STOP_TIMEOUT` |
 | `aborted` | Busy | `ABORT` or a delete of the running task. A deleted task has the reason `deleted`; when a task run aborted by `ABORT` does not stop within `STOP_TIMEOUT`, the reason says `did not stop in time` |
 
@@ -925,7 +925,7 @@ With `--script`, or with commands on standard input, an `until` that times out e
 | The equipment stays parked after a pause | Set a `RESUME` hook, or make every task prepare what it needs |
 | The idle hook does not run again | After `IDLE` or `NIGHT_END` the equipment is in standby; `IDLE` runs again after a task or the night start hook has run |
 | An urgent task does not interrupt the running task | Its own constraints do not hold yet, its duration estimate is still running, the running task is a hook, or a `STOP` is pending; see `REASON` |
-| A failed run shows no reason in the history | The scheduler does not yet receive the failure message of a sequence; the Scripting Agent's messages show why it failed |
+| The reason of a failed run in the history looks unrelated | The reason is the last message the Scripting Agent sent while the sequence was running. Sequencer.js does not publish the failure reason apart from its progress messages, so a sequence aborted by hand shows a progress message such as `Suspended for 30s`; the Scripting Agent's messages show why it failed |
 | A finished task should run again | `RESET` it, or `RESET_ALL` for all tasks |
 | The tasks run in an unexpected order | The order is decided by the priority class, the level and the sky bonuses, not by the list; see [Priorities](#priorities) |
 

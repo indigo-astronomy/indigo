@@ -68,6 +68,7 @@ typedef struct {
 static observation cache[512];
 static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char messages[262144];
+static char scripting_messages[65536];
 static indigo_client observer;
 static bool scheduler_running, scripting_running, mount_attached, guider_attached;
 static char fixture_dir[256];
@@ -124,6 +125,10 @@ static indigo_result deleted(indigo_client *client, indigo_device *device, indig
 
 static indigo_result message_received(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	pthread_mutex_lock(&cache_mutex);
+	if (message && device && !strcmp(device->name, SCRIPTING_AGENT_NAME) && strlen(scripting_messages) + strlen(message) + 2 < sizeof(scripting_messages)) {
+		strcat(scripting_messages, message);
+		strcat(scripting_messages, "\n");
+	}
 	if (message && device && !strcmp(device->name, AGENT)) {
 		if (strlen(messages) + strlen(message) + 2 < sizeof(messages)) {
 			strcat(messages, message);
@@ -1099,6 +1104,34 @@ static void failure_after_start_aborts_the_sequence(void) {
 	ASSERT_TRUE(wait_task_state("Thrower", "FAILED", 5));
 	// the sequence started by the failed body was aborted, so the next task can run
 	ASSERT_TRUE(wait_task_state("Follower", "DONE", 15));
+}
+
+static void failed_sequence_step_reports_its_reason(void) {
+	REQUIRE(upload("// @task Broken step\nvar sequence = new Sequence(scheduler_task.name);\nsequence.set_gain(100);\nsequence.start();\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Broken step' failed: There is no CCD_GAIN on Imager Agent", 1, 15));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 15));
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(history_label("Broken step #1", 0, label) && strstr(label, "failed: There is no CCD_GAIN on Imager Agent"));
+}
+
+// Sequencer.js publishes no separate failure reason, so a sequence aborted by hand fails with the last progress message sent while it ran
+static void hand_aborted_sequence_reports_the_last_progress_message(void) {
+	REQUIRE(upload("// @task Hand abort\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Hand abort", "RUNNING", 30));
+	bool suspended = false;
+	for (int i = 0; i < 1500 && !suspended; i++) {
+		pthread_mutex_lock(&cache_mutex);
+		suspended = strstr(scripting_messages, "Suspended for 30s") != NULL;
+		pthread_mutex_unlock(&cache_mutex);
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(suspended);
+	indigo_change_switch_property_1(&observer, SCRIPTING_AGENT_NAME, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
+	ASSERT_TRUE(wait_message("Task 'Hand abort' failed: Suspended for 30s", 1, 15));
+	char label[INDIGO_VALUE_SIZE];
+	ASSERT_TRUE(history_label("Hand abort #1", 0, label) && strstr(label, "failed: Suspended for 30s"));
 }
 
 static void hand_started_sequence_blocks_all_but_urgent(void) {
@@ -2630,6 +2663,8 @@ static const indigo_test_case cases[] = {
 	{ "saved_task_that_no_longer_validates_is_skipped", saved_task_that_no_longer_validates_is_skipped },
 	{ "running_task_restored_without_using_a_retry", running_task_restored_without_using_a_retry },
 	{ "failure_after_start_aborts_the_sequence", failure_after_start_aborts_the_sequence },
+	{ "failed_sequence_step_reports_its_reason", failed_sequence_step_reports_its_reason },
+	{ "hand_aborted_sequence_reports_the_last_progress_message", hand_aborted_sequence_reports_the_last_progress_message },
 	{ "hand_started_sequence_blocks_all_but_urgent", hand_started_sequence_blocks_all_but_urgent },
 	{ "stop_request_blocks_preemption", stop_request_blocks_preemption },
 	{ "pending_rename_reserves_the_name", pending_rename_reserves_the_name },

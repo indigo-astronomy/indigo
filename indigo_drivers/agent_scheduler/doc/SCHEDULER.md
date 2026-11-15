@@ -679,7 +679,7 @@ The item label shows:
 - the UTC start and end times;
 - the task name, with the run number and a hook or urgent mark where it applies;
 - the result;
-- for a failure, the reason: the last alert message of the sequence, the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
+- for a failure, the reason: for a sequence that ended Alert, the last message the Scripting Agent sent while the sequence was Busy: the failure message of the step when a step failed, but an unrelated progress message such as `Suspended for 30s` when the sequence was aborted by hand outside the scheduler, because Sequencer.js does not yet publish the failure reason apart from its progress messages (a planned improvement); the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
 
 For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted: by SN 2026abc`.
 

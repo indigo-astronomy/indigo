@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300000B
+#define DRIVER_VERSION 0x0300000C
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -229,6 +229,8 @@ typedef struct {
 	unsigned finish_events;
 	indigo_property_state finish_state;
 	char finish_message[INDIGO_VALUE_SIZE];
+	// the last message of the Scripting Agent while the sequence is Busy, which Sequencer.js sends before it ends the sequence Alert
+	char sequence_message[INDIGO_VALUE_SIZE];
 	// results of the run and of the estimate are kept apart by their tokens
 	int run_token;
 	bool run_received;
@@ -1249,6 +1251,7 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 	pthread_mutex_lock(&PRIVATE_DATA->observed.mutex);
 	PRIVATE_DATA->busy_baseline = PRIVATE_DATA->observed.busy_events;
 	PRIVATE_DATA->finish_baseline = PRIVATE_DATA->observed.finish_events;
+	PRIVATE_DATA->observed.sequence_message[0] = 0;
 	PRIVATE_DATA->observed.run_token = token;
 	PRIVATE_DATA->observed.run_received = false;
 	pthread_mutex_unlock(&PRIVATE_DATA->observed.mutex);
@@ -2904,7 +2907,7 @@ static unsigned agent_busy_bit(const char *device_name) {
 	return 0;
 }
 
-static void observe_property(indigo_property *property, const char *message) {
+static void observe_property(indigo_property *property) {
 	if (agent_device == NULL || !strcmp(property->device, agent_device->name)) {
 		return;
 	}
@@ -2918,10 +2921,11 @@ static void observe_property(indigo_property *property, const char *message) {
 			observed->sequencer_present = true;
 			if (property->state == INDIGO_BUSY_STATE && observed->sequence_state != INDIGO_BUSY_STATE) {
 				observed->busy_events++;
+				observed->sequence_message[0] = 0;
 			} else if (property->state != INDIGO_BUSY_STATE && observed->sequence_state == INDIGO_BUSY_STATE) {
 				observed->finish_events++;
 				observed->finish_state = property->state;
-				INDIGO_COPY_VALUE(observed->finish_message, message ? message : "");
+				INDIGO_COPY_VALUE(observed->finish_message, property->state == INDIGO_ALERT_STATE ? observed->sequence_message : "");
 			}
 			observed->sequence_state = property->state;
 		} else if (!strcmp(property->name, SCHEDULER_RESULT_PROPERTY)) {
@@ -2984,12 +2988,27 @@ static indigo_result agent_client_attach(indigo_client *client) {
 }
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	observe_property(property, message);
+	observe_property(property);
 	return INDIGO_OK;
 }
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	observe_property(property, message);
+	observe_property(property);
+	return INDIGO_OK;
+}
+
+// the messages of the bus arrive after the update of the property; the last message sent while the sequence is Busy is the failure message of a failed step, but only a progress message after an abort by hand, because Sequencer.js sends no separate failure reason
+static indigo_result agent_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_device *scheduler = agent_device;
+	if (scheduler == NULL || device == NULL || message == NULL || !*message || strcmp(device->name, SCRIPTING_AGENT)) {
+		return INDIGO_OK;
+	}
+	scheduler_observed *observed = &((scheduler_private_data *)scheduler->private_data)->observed;
+	pthread_mutex_lock(&observed->mutex);
+	if (observed->sequence_state == INDIGO_BUSY_STATE) {
+		INDIGO_COPY_VALUE(observed->sequence_message, message);
+	}
+	pthread_mutex_unlock(&observed->mutex);
 	return INDIGO_OK;
 }
 
@@ -3028,7 +3047,7 @@ static scheduler_private_data *private_data = NULL;
 
 indigo_result indigo_agent_scheduler(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(SCHEDULER_AGENT_NAME, agent_device_attach, agent_enumerate_properties, agent_change_property, NULL, agent_device_detach);
-	static indigo_client agent_client_template = { SCHEDULER_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL, agent_client_attach, agent_define_property, agent_update_property, agent_delete_property, NULL, agent_client_detach };
+	static indigo_client agent_client_template = { SCHEDULER_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL, agent_client_attach, agent_define_property, agent_update_property, agent_delete_property, agent_send_message, agent_client_detach };
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	SET_DRIVER_INFO(info, SCHEDULER_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 	if (action == last_action) {
