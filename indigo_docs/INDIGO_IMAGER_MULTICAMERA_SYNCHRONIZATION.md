@@ -34,7 +34,7 @@ As a rule:
 
 * Start with **Pre-capture** if you only need simultaneous exposure start.
 * Add **Post-capture** when you want all cameras to finish a frame before the next common step.
-* Let only one Imager Agent handle dithering and inter-frame delay.
+* Let only one Imager Agent handle dithering, and set the batch delay of the followers to 0 so that only the coordinator's inter-frame delay determines the cycle time.
 * Avoid circular related-agent graphs.
 
 ## Quick Decision Guide
@@ -122,8 +122,8 @@ The batch can pause at any combination of the following stages:
 | **Pre-batch** | Before the first frame of the batch | Synchronize whole-batch start |
 | **Pre-capture** | Immediately before each exposure starts | Simultaneous shutter start |
 | **Post-capture** | Immediately after each exposure ends | Wait until all cameras have finished the frame |
-| **Pre-delay** | Before the inter-frame delay starts | Coordinate the post-capture transition — **coordinator only** (followers skip the delay section entirely) |
-| **Post-delay** | After the inter-frame delay ends | Synchronize the next cycle after waiting — **coordinator only** (followers skip the delay section entirely) |
+| **Pre-delay** | Before the inter-frame delay starts | Coordinate the post-capture transition — applies to every Imager Agent in the synchronized group |
+| **Post-delay** | After the inter-frame delay ends | Synchronize the next cycle after waiting — applies to every Imager Agent in the synchronized group |
 | **Post-batch** | After the final frame of the batch | Synchronize batch completion |
 
 The most useful breakpoint for ordinary multi-camera imaging is usually **Pre-capture**.
@@ -155,9 +155,10 @@ Followers are the other Imager Agents participating in the synchronized batch.
 They should:
 
 * use the breakpoints imposed by the coordinator,
-* use **`AGENT_IMAGER_RESUME_CONDITION = Trigger/manual`**.
+* use **`AGENT_IMAGER_RESUME_CONDITION = Trigger/manual`**,
+* have their batch delay (**`AGENT_IMAGER_BATCH.DELAY`**) set to 0, so that only the coordinator's delay determines the cycle time.
 
-In the code path used for synchronized control, any Imager Agent with Resume Condition = Trigger/manual and at least one breakpoint enabled is treated as a **controlled instance**. After each frame it immediately waits at the breakpoint and **automatically skips dithering and the inter-frame delay** — these are performed only by the coordinator. This is enforced by the code, not just a guideline.
+In the code path used for synchronized control, any Imager Agent with Resume Condition = Trigger/manual and at least one breakpoint enabled is treated as a **controlled instance**. It follows the normal batch sequence, pauses at each enabled breakpoint like any other Imager Agent and **automatically skips dithering** — this is performed only by the coordinator. The inter-frame delay is **not** skipped: each Imager Agent applies its own **`AGENT_IMAGER_BATCH.DELAY`**, so a follower delay longer than the coordinator's delay lengthens the cycle, and on frames where the coordinator dithers it lengthens the cycle by its full length (the coordinator waits until all members are paused before dithering, and a follower pauses only after its own delay). Set the follower delay to 0.
 
 ## Configuration Recipe 1: Synchronize Exposure Start
 
@@ -174,6 +175,7 @@ Use this when several cameras should begin each exposure together.
 
 * Do not select related Imager Agents.
 * Use **`AGENT_IMAGER_RESUME_CONDITION.TRIGGER`**.
+* Set **`AGENT_IMAGER_BATCH.DELAY`** to 0.
 * Use the same batch count as the coordinator.
 
 ### Result
@@ -196,6 +198,7 @@ Use this when several cameras image the same target and should all wait for the 
 
 * Use **`AGENT_IMAGER_RESUME_CONDITION.TRIGGER`**.
 * Do not configure them as the dithering controller.
+* Set **`AGENT_IMAGER_BATCH.DELAY`** to 0.
 * Use the same batch count as the coordinator.
 
 ### Result
@@ -217,7 +220,7 @@ The same mechanism can also be used for:
 * **Only one Imager Agent should use Barrier** in a synchronized group.
 * **Do not create circular related-agent references**.
 * **Use the same batch count** when frame-by-frame synchronization is required.
-* **Dithering and the inter-frame delay are automatically suppressed for followers** (any agent with Trigger/manual + a breakpoint enabled skips dithering and delay entirely).
+* **Only dithering is automatically suppressed for followers** (any agent with Trigger/manual + a breakpoint enabled skips dithering). The inter-frame delay is not suppressed: each agent applies its own `AGENT_IMAGER_BATCH.DELAY`, so a follower delay longer than the coordinator's delay lengthens the cycle (by its full length on frames where the coordinator dithers); set it to 0 on followers.
 * **Auto-start of follower batches has a known race condition** — when the coordinator starts a batch and immediately launches the follower batches, there is a small window where a follower may not yet be ready. In practice this is rarely a problem, but be aware when designing time-critical configurations.
 
 ## Comparison Summary
