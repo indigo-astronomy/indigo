@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "ticket_id": "93290d52-5fd1-4e47-9776-0d4e90c54a57",
+  "revision": 2,
+  "title": "Sequencer simulator test documentation still describes the fixed scripting binding token defect",
+  "description": "Ticket 8ca68272 (commit 57762ed63) fixed the Scripting Agent change bindings so they forward the local device/master access token. Test documentation still describes that defect as current: indigo_test/integration/sequencer_simulators.md:27 says --native-bindings 'is expected to fail on the current production code'; indigo_test/integration/sequencer_simulators.js:433-434 has a comment about the 'documented native binding-token defect'; indigo_test/integration/run_sequencer_simulators.py:191 has --help text about the same defect. Update these texts to the current behavior. The remaining --native-bindings failure of 'restore private configuration' belongs to ticket 8f313dbc-765b-5e79-9cef-a9d8db5918f9 and is not part of this ticket. Text-only change; no test logic or production code changes.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T15:02:54.993414Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "a5d76385-e085-4273-bb6a-ad471fdcfe5d",
+      "event": "ticket/created",
+      "at": "2026-11-15T15:02:54.994273Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "fbdd998c-5103-4da8-9c85-ec23ad55c775",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T15:03:01.320983Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T15:02:54.993414Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T15:03:01.320721Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "fef424334171707f5fc251088f08b32f91fd06b168328a7d19f1c10545565e13"
+  }
+}
