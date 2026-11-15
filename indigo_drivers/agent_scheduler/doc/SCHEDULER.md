@@ -1,12 +1,12 @@
 # INDIGO Scheduler
 
-Revision: 13.11.2026 (draft)
+Revision: 15.11.2026
 
 Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 
-This document is the design of the INDIGO Scheduler Agent. The agent decides which imaging task runs next, when it runs and under which sky conditions, and it can interrupt the running task for an urgent one. It is a design document. Property names, limits and defaults are subject to change until the agent is implemented. How to use the scheduler is described in the [Scheduler User Guide](../../../indigo_docs/INDIGO_SCHEDULER_GUIDE.md).
+This document is the design of the INDIGO Scheduler Agent. The agent decides which imaging task runs next, when it runs and under which sky conditions, and it can interrupt the running task for an urgent one. It is a design document. The agent is implemented as described here, except for the parts marked as planned, see [Implementation phases](#implementation-phases). How to use the scheduler is described in the [Scheduler User Guide](../../../indigo_docs/INDIGO_SCHEDULER_GUIDE.md).
 
 ## Motivation
 
@@ -20,9 +20,9 @@ The following are missing:
 
 ## Survey of existing schedulers
 
-The last column shows the proposed INDIGO scheduler for comparison.
+The last column shows the INDIGO scheduler for comparison.
 
-| Feature | Ekos | SGP | N.I.N.A. Target Scheduler | Voyager RoboTarget | ACP Scheduler | INDIGO (proposed) |
+| Feature | Ekos | SGP | N.I.N.A. Target Scheduler | Voyager RoboTarget | ACP Scheduler | INDIGO |
 |---|---|---|---|---|---|---|
 | Job unit | target + `.esq` sequence, job list `.esl` | target with events, sequence file | project → target → exposure plan (database) | set → target → shots | project → plan → observation (plan text files) | task text: `// @key` header + `Sequencer.js` body, stored in agent properties |
 | Selection | greedy, re-planned every second | list order | weighted score, re-planned per step | priority order | weighted efficiency score | score, selected only between tasks |
@@ -47,7 +47,7 @@ The INDIGO scheduler adopts:
 - repeat and retry;
 - startup, shutdown and idle hooks;
 - night start, night end and resume hooks for unattended runs over several nights, run every evening and morning at a twilight limit (ACP model);
-- safety handling.
+- safety handling, planned for a later phase.
 
 It deliberately leaves out continuous greedy preemption, anti-thrashing settings and frame-level resume. Image grading and mosaics are possible later extensions.
 
@@ -90,7 +90,7 @@ The Scheduler Agent depends directly on these agents, found by their exact devic
 | "Scripting Agent" | always | changes `AGENT_SCRIPTING_RUN_SCRIPT` to load `Sequencer.js`, estimate durations and run tasks; observes `SEQUENCE_STATE`, and the `SCHEDULER_RESULT` and `SCHEDULER_ESTIMATE` properties that the wrapper script defines there; changes `AGENT_ABORT_PROCESS` to abort a sequence | no task starts and no duration is estimated; `REASON` is `waiting for the Scripting Agent` |
 | "Mount Agent" | for tasks with `@target` or `@twilight` | observes `GEOGRAPHIC_COORDINATES` for the site; observes `AGENT_START_PROCESS` to wait until the agent is idle after an abort | these tasks wait with `site coordinates unknown`; tasks with only time windows still run |
 | "Guider Agent" | optional | changes `AGENT_ABORT_PROCESS` on `ABORT` and preemption, because the sequencer's abort leaves guiding running; observes `AGENT_START_PROCESS` | nothing to stop |
-| "Imager Agent", "Astrometry Agent", "Platesolver Agent", "ASTAP Agent" | optional | observe `AGENT_START_PROCESS`, to wait until they are idle after an abort before the next task starts | nothing to wait for |
+| "Imager Agent", "Astrometry Agent", "Platesolver Agent" | optional | observe `AGENT_START_PROCESS`, to wait until they are idle after an abort before the next task starts | nothing to wait for |
 
 An unconfigured Mount Agent reports 0° latitude and 0° longitude, which the scheduler cannot tell from a real site, so the site must be configured in the Mount Agent: set directly with the default `AGENT_SITE_DATA_SOURCE` `HOST`, or taken from the mount, dome or GPS selected there. The sky tables are rebuilt with a new site at the next selection check.
 
@@ -160,7 +160,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 ### Lexical rules
 
 - The text is UTF-8. A leading byte-order mark is ignored, and CRLF line endings are accepted.
-- A **header line** is `//`, optional spaces or tabs, `@`, a key, then at least one space or tab and the value. Trailing whitespace is ignored.
+- A **header line** is `//`, optional spaces or tabs, `@`, a key, then at least one space or tab and the value. Trailing whitespace is ignored. A header line is at most 255 bytes long; trailing whitespace and the CR of a CRLF line ending count.
 - An **empty comment line** (`//` with only whitespace after it) is allowed inside the header.
 - The header starts at the first line and ends at the first line that is neither a header line nor an empty comment line. A blank line ends the header.
 - `// @key` lines after the end of the header belong to the body and are ignored by the scheduler.
@@ -175,15 +175,15 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | `@priority` | `urgent` \| `high` \| `normal` \| `low` [`level`] | Priority class and level 0–100 within the class. The level is ignored for `urgent` | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal) and Dec in degrees (`±dd:mm:ss` or decimal) | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
-| `@airmass` | `< value` | Maximum target airmass, ≥ 1 | off |
+| `@airmass` | `< value` | Maximum target airmass, 1–100 | off |
 | `@ha` | `from .. to` | Allowed hour-angle range in hours, −12 to +12. `from` greater than `to` wraps across 12h | off |
-| `@moon` | `> degrees` [`width days`] | Minimum moon separation, see [Lorentzian moon avoidance](#lorentzian-moon-avoidance); ignored while the moon is below the horizon | off |
+| `@moon` | `> degrees` [`width days`] | Minimum moon separation, 0–180, with a width of 0.5–30 days, see [Lorentzian moon avoidance](#lorentzian-moon-avoidance); ignored while the moon is below the horizon | off |
 | `@illumination` | `< percent` | Maximum moon illumination, 0–100; ignored while the moon is below the horizon | off |
 | `@twilight` | `none` \| `civil` \| `nautical` \| `astronomical` | No limit, or the Sun must be below −6°, −12° or −18° | `none` |
 | `@window` | `[start] .. [end]` | UTC time window, see below | open |
 | `@duration` | `minutes` | Expected run time, 1–1440; all constraints must hold for this whole interval before the task starts | estimated, see [Task duration](#task-duration) |
-| `@repeat` | `count` [`every minutes`] | Number of successful runs, 1–10000, with an optional pause between them | `1` |
-| `@retry` | `count` [`after minutes`] | Number of reruns after a failure, 0–100, with an optional delay | `0` |
+| `@repeat` | `count` [`every minutes`] | Number of successful runs, 1–10000, with an optional pause of 0–100000 minutes between them | `1` |
+| `@retry` | `count` [`after minutes`] | Number of reruns after a failure, 0–100, with an optional delay of 0–100000 minutes | `0` |
 | `@preempted` | `retry` \| `fail` | What happens to the task when an urgent task preempts it | `retry` |
 | `@enabled` | `yes` \| `no` | A disabled task is kept but never selected | `yes` |
 
@@ -268,14 +268,14 @@ Steps inside `repeat()` are counted once per iteration, because `repeat()` runs 
 **Estimation.** The agent estimates a task when it is uploaded, edited, reset after a script error or loaded from the configuration. Estimates run one at a time, also while another task runs, because they never start a sequence. The agent loads `Sequencer.js` for them even when the scheduler is stopped. A task is not selected while its estimate is pending, so that script errors are found before the first run and the constraints are checked against the right duration. While any selectable task waits for its estimate, no other ordinary task starts either, because the waiting task may have the higher priority; only an eligible urgent task starts. The estimate timeout bounds this wait.
 
 1. The agent sends the body to the Scripting Agent in estimation mode, inside the wrapper script described in [Running a task](#running-a-task). In this mode, the wrapper temporarily replaces `Sequence.prototype.start()` with a function that calls `this.estimate()` and publishes the result instead of starting the sequence, and restores `start()` afterwards.
-2. The result is published in the `SCHEDULER_ESTIMATE` property of the Scripting Agent. Its items are `TOKEN`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS` and `UNKNOWN`. An error in the body is reported in `SCHEDULER_RESULT` instead.
+2. The result is published in the `SCHEDULER_ESTIMATE` property of the Scripting Agent. Its items are `TOKEN`, `SUPPORTED`, `EXPOSURE`, `FRAMES`, `OPERATIONS`, `WAITS` and `UNKNOWN`. `SUPPORTED` is 0 when the loaded `Sequencer.js` has no `estimate()`, and the other counts are then 0. An error in the body is reported in `SCHEDULER_RESULT` instead.
 3. The agent matches the token and computes the duration:
 
    ```
    duration = exposure + frames * FRAME_OVERHEAD + operations * OPERATION_OVERHEAD + waits
    ```
 
-   `FRAME_OVERHEAD` covers download, saving, dithering and settling of one frame. `OPERATION_OVERHEAD` is a typical time for one equipment step.
+   `FRAME_OVERHEAD` covers download, saving, dithering and settling of one frame. `OPERATION_OVERHEAD` is a typical time for one equipment step. The agent keeps the computed duration, so a change of `FRAME_OVERHEAD` or `OPERATION_OVERHEAD` does not recompute existing estimates; it applies to the estimates made after it, for example after an upload or an edit.
 
 An estimation can run while another sequence is executing, because nothing is started.
 
@@ -326,12 +326,13 @@ Its upload succeeds with a warning that recommends an explicit `@duration`. The 
    +---------------- delay elapsed ----------------------------+--+
 
    QUEUED, WAITING, RETRY, REPEAT -- window end passed --> EXPIRED
-   any state but RUNNING -- DISABLE --> DISABLED -- ENABLE --> previous state
+   any state -- DISABLE --> DISABLED -- ENABLE --> previous state
    any state but RUNNING -- RESET --> QUEUED, counters cleared
 ```
 
 Further rules:
 
+- `DISABLE` of a RUNNING task does not stop it: the run finishes and its result is applied, and the task is not selected again until it is enabled.
 - A preemption does not consume a retry, because the task did not fail on its own.
 - A sequence that ends Ok counts as a successful run, even if it ended early. This includes a `break_if_target_altitude_below()` or `break_at()` without a resume point, and failures skipped by `continue_on_failure()`. A body that must not count a shortened run as a success has to end with a failing step.
 - RESET of a RUNNING task is rejected.
@@ -346,11 +347,11 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_TASK_<n>` | text | `TASK` | One stored task, group "Tasks", label equal to the task name. Clients download a task by reading it and edit it by writing it |
 | `AGENT_SCHEDULER_DELETE_TASK` | text | `NAME` | Delete a stored or urgent task. A running task is aborted first, as with `ABORT` |
 | `AGENT_SCHEDULER_URGENT_TASK` | text | `TASK` | Submit a task as urgent, regardless of its `@priority` |
-| `AGENT_SCHEDULER_TASK_STATE` | light | one per task | Idle = QUEUED, WAITING, RETRY, REPEAT or DISABLED; Busy = RUNNING; Ok = DONE; Alert = FAILED or EXPIRED. The label shows the name, state, completed runs and retries left; urgent tasks are marked as urgent |
+| `AGENT_SCHEDULER_TASK_STATE` | light | one per task | Idle = QUEUED, WAITING, RETRY, REPEAT or DISABLED; Busy = RUNNING; Ok = DONE; Alert = FAILED or EXPIRED. A task with a script error is Alert, and otherwise a task named as a hook is Idle, also while the hook runs. The label shows the name, state, completed runs and retries left; urgent tasks are marked as urgent |
 | `AGENT_SCHEDULER_TASK_NAME` | text | `NAME` | Target of `AGENT_SCHEDULER_TASK_COMMAND` |
 | `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | The first five apply to the task named in `AGENT_SCHEDULER_TASK_NAME`; `RESET_ALL` and `DELETE_ALL` apply to all tasks, see [Commands for all tasks](#commands-for-all-tasks). List order breaks score ties |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Scheduler control, see [Scheduler control](#scheduler-control) |
-| `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Task counters: `DONE` and `FAILED` (failed or expired) count the tasks of the list; `URGENT_DONE` and `URGENT_FAILED` count the one-off urgent tasks, which leave the list when they end; a deleted or aborted one-off task is not counted. The urgent counters are saved with the history and reset with it. `TOTAL` counts the tasks of the list. The property state is Idle when stopped, Busy while scheduling and Alert after `ABORT` or a failed `STARTUP` hook |
+| `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Task counters: `DONE` and `FAILED` (failed or expired) count the tasks of the list; `URGENT_DONE` and `URGENT_FAILED` count the one-off urgent tasks, which leave the list when they end; a deleted or aborted one-off task is not counted. The urgent counters are saved with the history and reset with it. `TOTAL` counts the tasks of the list. The property state is Idle before the first `START`, Busy while scheduling, Ok after `STOP` and the automatic stop, and Alert after `ABORT` (also while stopped), a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a `STOP_TIMEOUT` stop |
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `NEXT`, `NEXT_START`, `REASON` | The running task, the task expected next, the UTC time it becomes eligible (`YYYY-MM-DDTHH:MM:SS`), and why nothing is eligible when the scheduler waits |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The forecast of the rest of the night in expected run order, see [Night plan preview](#night-plan-preview) |
 | `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, newest first, see [Run history](#run-history) |
@@ -381,7 +382,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 
 **Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit without splitting a UTF-8 character. These properties are defined and updated without a message; a full failure reason reaches the client in the agent's own message, such as `Task '<name>' failed: <reason>`. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
 
-Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. The agent therefore redefines a list only when its content has changed, and updates it in place when only states or labels change.
+Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. INDIGO cannot change an item label with an update either. The agent therefore redefines `AGENT_SCHEDULER_TASK_STATE` and `AGENT_SCHEDULER_PLAN` only when their items or labels change, and updates them in place when only the lights change. `AGENT_SCHEDULER_HISTORY` is redefined whenever it changes.
 
 ### Editing tasks
 
@@ -410,7 +411,7 @@ A task submitted through `AGENT_SCHEDULER_URGENT_TASK` is not stored:
 
 - It appears in `AGENT_SCHEDULER_TASK_STATE` while it is pending or running.
 - It can be cancelled by name with `AGENT_SCHEDULER_DELETE_TASK`.
-- It is removed when it ends or expires, and it is not persisted, so a server restart drops it.
+- It is removed when it ends or expires, and it is not persisted, so a server restart drops it. It is removed after its first run whatever the result, so `@repeat` and `@retry` have no effect on it.
 
 A stored task with `@priority urgent` behaves the same way while it is pending, but it remains stored and follows the normal state rules.
 
@@ -461,7 +462,7 @@ Changes that come in quick succession are written once, two seconds after the la
 
 With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 MiB.
 
-**Loading.** The agent loads its configuration in its attach callback, after its task store is initialised, the same way as the Imager Agent does. Each saved change is replayed through the agent's change handler, with the configuration reader as the client:
+**Loading.** The agent makes no load call itself. Its attach callback initialises the task store and defines its properties; right after the attach callback returns, the bus (`indigo_attach_device()`) sends the device a `CONFIG.LOAD` change, which the agent passes to `indigo_device_change_property()`. That starts the standard configuration restore of `indigo_driver.c`, which parses the file and replays the saved changes in file order. Each saved change is replayed through the agent's change handler, with the configuration reader as the client:
 
 - An `AGENT_SCHEDULER_ADD_TASK` change validates the header and creates the task, as an upload does. A non-empty `STATUS` restores the task's state and counters. `STATUS` from any other client is ignored.
 - A replayed task that fails validation, for example after a grammar change in a newer version, is skipped. The agent sends a message with the validation error, `The saved task '<name>' was skipped: <error>`, which names the task when its `@task` line could be read before the error, and `A saved task was skipped: <error>` otherwise. The rest of the configuration still loads.
@@ -472,6 +473,7 @@ With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 M
 
 - Finished work is not repeated: DONE, FAILED and EXPIRED tasks keep their state, and the counters are kept.
 - A task that was RUNNING when the server stopped is restored as RETRY without consuming a retry.
+- Repeat and retry delays are not saved: a RETRY or REPEAT task returns to QUEUED without waiting for the rest of its delay.
 - WAITING tasks are restored as QUEUED and re-evaluated.
 - Pending urgent tasks submitted through `AGENT_SCHEDULER_URGENT_TASK` are lost. A stored task with `@priority urgent` is kept.
 - The scheduler itself always starts stopped. Scheduling resumes only after `START`.
@@ -501,7 +503,7 @@ The grid and the task tables are rebuilt when the site coordinates change and ev
 
 - `START` runs the `STARTUP` hook, then begins scheduling. If the hook fails, the scheduler stops and its state becomes Alert.
 - `STOP` lets the running task finish, then runs the `SHUTDOWN` hook and stops.
-- `ABORT` aborts the running task as described in [Aborting a sequence](#aborting-a-sequence) and marks it RETRY without consuming a retry. It then runs the `SHUTDOWN` hook and stops.
+- `ABORT` aborts the running task as described in [Aborting a sequence](#aborting-a-sequence) and marks it RETRY without consuming a retry. It then runs the `SHUTDOWN` hook and stops. `ABORT` while the scheduler is stopped sets its state to Alert.
 - When there is at least one task and every task is DONE, FAILED, EXPIRED, DISABLED or has a script error, the scheduler runs the `SHUTDOWN` hook and stops. With no tasks at all it keeps running, ready for urgent tasks. A task added or reset before the shutdown hook of this automatic stop starts cancels the stop.
 
 ### Hooks
@@ -634,7 +636,7 @@ The simulation works on a copy of the runtime status and never changes the real 
 
 - The label shows the expected UTC start and end, the task name and its priority, for example `20:15–23:15  M31 LRGB (normal 50)`. A task that repeats appears once per planned run, with the run number.
 - The light is Busy for the running task and Idle for future runs.
-- Tasks that cannot run before the end of the night follow the planned runs as Alert items, with the reason, for example `M42 — target below the altitude limit`, `NGC 7000 — disabled` or `M33 — no time left tonight`, the last for a task that could run but finds no room after the planned runs. DONE, FAILED and EXPIRED tasks are not listed.
+- Tasks that cannot run before the end of the night follow the planned runs as Alert items, with the reason, for example `M42 — target below the altitude limit`, `NGC 7000 — disabled`, `M45 — script error` or `M33 — no time left tonight`, the last for a task that could run but finds no room after the planned runs. DONE, FAILED and EXPIRED tasks are not listed.
 
 **Updates.** The plan is recomputed:
 
@@ -666,16 +668,18 @@ It is also published while the scheduler is stopped, as the plan that `START` wo
 | `succeeded` | Ok | The sequence ended Ok |
 | `failed` | Alert | The sequence ended Alert, or the task failed to start |
 | `preempted` | Busy | An urgent task interrupted the run |
-| `aborted` | Busy | `ABORT`, a delete of the running task, or a `STOP_TIMEOUT` stop |
+| `aborted` | Busy | `ABORT` or a delete of the running task |
 
 The Busy light is used for interrupted runs, so that they stand out from both successes and failures.
+
+A run that does not stop within `STOP_TIMEOUT` keeps the result of what caused the stop: `preempted`, `aborted` or `failed`. The reason of a task run preempted or aborted by `ABORT` is then `did not stop in time`; a deleted task keeps `deleted` and a failed run its failure reason.
 
 The item label shows:
 
 - the UTC start and end times;
 - the task name, with the run number and a hook or urgent mark where it applies;
 - the result;
-- for a failure, the reason: the last alert message of the sequence, the script error message, or `not started`.
+- for a failure, the reason: the last alert message of the sequence, the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
 
 For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted: by SN 2026abc`.
 
@@ -700,7 +704,7 @@ An urgent task is one submitted through `AGENT_SCHEDULER_URGENT_TASK`, or a stor
 
 1. The agent queues a handler immediately on submission, and checks pending urgent tasks every `IDLE_CHECK_INTERVAL` while a task runs.
 2. An urgent task preempts only if it is **eligible now** over its whole `@duration`. Otherwise it waits like any other task, and the running task is not touched.
-3. If no task is running, or the running task is itself urgent, the eligible urgent task waits at the head of the queue. Urgent tasks never preempt each other.
+3. If no task is running, or the running task is itself urgent or a hook, the eligible urgent task waits at the head of the queue. Urgent tasks never preempt each other, and they never preempt a running hook.
 4. If a non-urgent task is running, the agent aborts it as described in [Aborting a sequence](#aborting-a-sequence).
 5. The agent marks the preempted task RETRY or FAILED according to its `@preempted` key.
 6. The agent starts the urgent task. The urgent task performs its own slew, centering, guiding and capture.
@@ -753,6 +757,8 @@ A failed start counts as a task failure.
 A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. The scheduler does not start a task while such a sequence runs. An eligible urgent task aborts it like a preempted task.
 
 ## Implementation phases
+
+Phases 1, 2, 3 and 5 are implemented. Phases 4, 6 and 7 are planned.
 
 1. This design document.
 2. Scheduler Agent core in `indigo_drivers/agent_scheduler/`, built in this order:
@@ -811,7 +817,7 @@ A sequence started by hand, outside the scheduler, keeps `SEQUENCE_STATE` Busy. 
   - `Sequence.prototype.estimate()` in the sequencer tests: every counted builder, `repeat()` and the `unknown` flag;
   - the duration: estimates for bodies with `repeat()`, captures, operations and fixed waits; `UNKNOWN` for time and sky waits and for a loaded `Sequencer.js` without `estimate()`; a set `@duration` taking precedence; the measured duration replacing the estimate after a successful run and being discarded after an edit; no sequence started during estimation, also while another sequence runs;
   - the run history: one entry per finished run with the correct result and reason for success, failure, failed start, preemption and abort, the entry limit, persistence across restarts and clearing;
-  - labels cut to 127 bytes, and list properties redefined only when their content changes;
+  - labels cut to 511 bytes, and list properties redefined only when their items or labels change;
   - a body that fails only when it runs, and a body without `start()`, counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task;
   - `RESET_ALL` and `DELETE_ALL`: their hints, the item order, a running task left alone, the order of pending urgent tasks kept, `DELETE_ALL` rejected while the scheduler runs, the tasks named as hooks kept, and both results across a restart;

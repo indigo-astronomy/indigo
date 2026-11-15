@@ -1,6 +1,6 @@
 # INDIGO Scheduler Agent - User Guide
 
-Revision: 14.11.2026 (draft)
+Revision: 15.11.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -154,7 +154,7 @@ sequence.stop_guiding();
 sequence.start();
 ```
 
-- The **header** is the block of `// @key value` lines at the top. It ends at the first line that is not a header line: a blank line, as above, but also a plain comment such as `// my notes`. Empty `//` lines are allowed inside it. A `// @key` line after the end of the header belongs to the body and is ignored, so keep all header lines together at the top. A header line may be at most 255 characters long.
+- The **header** is the block of `// @key value` lines at the top. It ends at the first line that is not a header line: a blank line, as above, but also a plain comment such as `// my notes`. Empty `//` lines are allowed inside it. A `// @key` line after the end of the header belongs to the body and is ignored, so keep all header lines together at the top. A header line may be at most 255 bytes long.
 - The **body** is everything after the header: a normal `Sequencer.js` sequence that ends with `sequence.start()`.
 - Because the header consists only of comments, the whole task is valid JavaScript.
 - Keys and keywords are not case-sensitive. Each key may appear only once. Only `@task` is required.
@@ -175,7 +175,7 @@ Before the body runs, the scheduler defines a `scheduler_task` object from the h
 
 | Key | Syntax | Meaning | Default |
 |---|---|---|---|
-| `@task` | `name` | Name of the task, 1–40 characters, unique (not case-sensitive) | required |
+| `@task` | `name` | Name of the task, 1–40 bytes, unique (not case-sensitive) | required |
 | `@priority` | `urgent`, `high`, `normal` or `low`, optionally followed by a level 0–100 | Importance, see [Priorities](#priorities) | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal), Dec in degrees (`±dd:mm:ss` or decimal). A task with a target also needs the target above the horizon | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
@@ -261,7 +261,7 @@ The scheduler needs to know how long a task takes, to check the constraints befo
 3. an estimate computed from the sequence (`estimated`);
 4. 60 minutes (`default`).
 
-**Estimate.** After you upload or edit a task, the scheduler runs its body once in estimation mode: the body builds the sequence, but `sequence.start()` only counts the steps instead of starting them. The duration is the total exposure time plus `FRAME_OVERHEAD` seconds per frame, `OPERATION_OVERHEAD` seconds per operation, and the fixed waits. Operations are the steps that move or calibrate equipment: slews and centering, focusing, guiding calibration and start, park, unpark, home and the dome steps. Steps whose length cannot be known, `wait_until()`, `wait_until_solar_altitude_below()` and `wait_until_target_altitude_above()`, make the estimate impossible; the scheduler then uses 60 minutes until the task has run once, and tells you to set `@duration`. It also uses 60 minutes when the estimate gets no answer within ten seconds.
+**Estimate.** After you upload or edit a task, the scheduler runs its body once in estimation mode: the body builds the sequence, but `sequence.start()` only counts the steps instead of starting them. The duration is the total exposure time plus `FRAME_OVERHEAD` seconds per frame, `OPERATION_OVERHEAD` seconds per operation, and the fixed waits. A change of `FRAME_OVERHEAD` or `OPERATION_OVERHEAD` does not recompute the estimates of existing tasks; it applies to the estimates made after it, for example after you upload or edit a task. Operations are the steps that move or calibrate equipment: slews and centering, focusing, guiding calibration and start, park, unpark, home and the dome steps. Steps whose length cannot be known, `wait_until()`, `wait_until_solar_altitude_below()` and `wait_until_target_altitude_above()`, make the estimate impossible; the scheduler then uses 60 minutes until the task has run once, and tells you to set `@duration`. It also uses 60 minutes when the estimate gets no answer within ten seconds.
 
 **Measurement.** After every successful run the scheduler remembers how long the run really took, including meridian flips, autofocus retries and slow downloads, and uses that from then on. An edit of the task forgets the measurement.
 
@@ -414,7 +414,7 @@ The file name and its extension do not matter to the scheduler; `.task` only rem
 2. If it is right, the task is stored. It gets a property `AGENT_SCHEDULER_TASK_<n>`, labelled with the task name, and a line in the task list.
 3. The scheduler estimates the duration. If the body has an error, even a syntax error, the task is marked `SCRIPT ERROR`, the message tells you the error, and the task is not run until you fix it.
 
-**Limits:** at most 128 tasks, counting hook tasks and pending urgent tasks, at most 16 KiB of text per task, task names of at most 40 characters, and the body must not be empty. A task name must be unique, also among urgent tasks.
+**Limits:** at most 128 tasks, counting hook tasks and pending urgent tasks, at most 16 KiB of text per task, task names of at most 40 bytes, and the body must not be empty. A task name must be unique, also among urgent tasks.
 
 ### Urgent tasks
 
@@ -736,8 +736,8 @@ The plan is a forecast. It assumes that every run succeeds and takes its expecte
 |---|---|---|
 | `succeeded` | Ok | The sequence ended Ok |
 | `failed` | Alert | The sequence ended Alert, or the task could not start. A start failure or a JavaScript error is followed by its reason; for a sequence that ended Alert, look at the Scripting Agent's messages |
-| `preempted` | Busy | An urgent task interrupted the run |
-| `aborted` | Busy | `ABORT` or a delete of the running task. When the sequence then does not stop within `STOP_TIMEOUT`, the reason says `did not stop in time` |
+| `preempted` | Busy | An urgent task interrupted the run. The reason names the urgent task, or says `did not stop in time` when the sequence did not stop within `STOP_TIMEOUT` |
+| `aborted` | Busy | `ABORT` or a delete of the running task. A deleted task has the reason `deleted`; when a task run aborted by `ABORT` does not stop within `STOP_TIMEOUT`, the reason says `did not stop in time` |
 
 The history survives restarts. To clear it, together with the urgent counters of `AGENT_SCHEDULER_STATE`:
 
