@@ -1,6 +1,7 @@
 # ADR-003: Keep Factory metadata outside Xcode projects
 
 - Status: accepted
+- Note: still in force for .factory2/ (project rule `project/xcode-metadata-boundary`); references to .factory describe the retired runtime.
 - Date: 2026-10-25
 - Decision owner: Peter Polakovic, explicit all-adopters request
 - Related task: 20261025182421-7a16-exclude-factory-from-xcode

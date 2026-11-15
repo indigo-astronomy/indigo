@@ -7,6 +7,6 @@ Follow the root AGENTS.md and explicitly assigned role. This subtree contains th
 - Validate external data at boundaries and enforce authorization in trusted code.
 - Use explicit error handling; avoid sensitive information in errors and logs.
 - Avoid hidden mutable global state and unnecessary abstractions.
-- Explain dependency additions and update the lockfile using the project's package manager.
+- Dependencies are managed by the existing makefiles, vendored SDKs under externals/ and platform projects; there is no package manager or lockfile. Explain any dependency addition.
 - Include useful tests for behavior and failure cases proportional to the change.
 - Use English for new comments and implementation documentation.

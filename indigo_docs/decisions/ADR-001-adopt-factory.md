@@ -1,6 +1,7 @@
 # ADR-001: Adopt AI Factory while preserving INDIGO authority
 
 - Status: accepted
+- Note: the Factory mechanism adopted here was later replaced by Factory 2 (.factory2/); the INDIGO-authority decision remains in force. Task IDs refer to the retired .factory records kept in Git history.
 - Date: 2026-10-21
 - Decision owner: Peter Polakovic, explicit adoption request and clarification
 - Related task: 20261021193138-70b4-adopt-ai-factory

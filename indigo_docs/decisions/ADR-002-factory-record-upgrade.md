@@ -1,6 +1,7 @@
 # ADR-002: Ordered tasks and independent Factory records
 
-- Status: accepted
+- Status: superseded
+- Superseded by: Factory 2 tickets (.factory2/), which replaced the ordered task and finding records of the removed .factory runtime. This text is kept as history.
 - Date: 2026-10-23
 - Decision owner: Peter Polakovic, explicit Factory upgrade request
 - Related task: 20261023053418-4c0a-upgrade-factory

@@ -1,6 +1,7 @@
 # ADR-004: Separate incremental and full repository audits
 
-- Status: accepted
+- Status: superseded
+- Superseded by: the `repository-review` rule in .factory2/rules.json, which treats a whole-project audit as separate requested work instead of an incremental audit after 20 tasks. This text is kept as history.
 - Date: 2026-11-01
 - Decision owner: Peter Polakovic
 - Related task: 20261101213045-9647-scale-repository-audits
