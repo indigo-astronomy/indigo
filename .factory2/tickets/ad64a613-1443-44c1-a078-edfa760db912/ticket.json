@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ad64a613-1443-44c1-a078-edfa760db912",
+  "revision": 2,
+  "title": "Sequencer.js does not publish the failure reason of a sequence in a form another agent can read",
+  "description": "Follow-up of ticket 776f039c (Scheduler loses the failure reason of a sequence that ends Alert), registered on the owner's decision of 2026-11-15.\n\nSequencer.js (indigo_drivers/agent_scripting/library/Sequencer.js) reports the reason of a failed step only as a plain Scripting Agent message sent before the SEQUENCE_STATE update to Alert, in the same stream as progress messages ('Sequence started', 'Suspended for 30s', 'Settling down...'). abort() ends the sequence Alert with no reason before the update and 'Sequence aborted' after it. Another agent therefore cannot tell a failure reason from a progress message except by its text.\n\nConsequence in the Scheduler Agent after 776f039c: the history reason of a failed run is the last Scripting Agent message received while the sequence was Busy. For a failed step that is the real reason; for a sequence aborted by hand (web UI, AGENT_ABORT_PROCESS from another client) it is an unrelated progress message, for example 'failed: Suspended for 30s'. This is documented in INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md as a limitation.\n\nProposed: make Sequencer.js publish the failure reason explicitly (for example an item or property set by failure() and cleared by start() and abort(), or a distinct result for an abort), regenerate the Sequencer.js.dat copies, and make the Scheduler Agent read it instead of the last message, so that a failed step keeps its reason and an abort by hand has none. Needs a decision on the property name (PROPERTIES.md) and tests in the sequencer and scheduler integration suites.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T13:17:31.298707Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "fd0a8836-9603-4f67-afd4-ab995779f5c0",
+      "event": "ticket/created",
+      "at": "2026-11-15T13:17:31.299263Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "dd5c5234-4449-43e9-b761-4c91fe2a9503",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T13:30:43.257474Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T13:17:31.298707Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T13:30:43.256971Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "e3b13873457d271a1c68c789226ddde8dcd633a54b421f763ccb5b032145d159"
+  }
+}
