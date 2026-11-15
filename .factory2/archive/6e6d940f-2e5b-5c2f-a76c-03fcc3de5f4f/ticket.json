@@ -1,0 +1,653 @@
+{
+  "schema_version": 1,
+  "ticket_id": "6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f",
+  "revision": 31,
+  "title": "Editor property catalog omits generator-supported accept_while_busy",
+  "description": "The current generator accepts accept_while_busy:boolean for inherited, switch, text, number and light properties, but the template-derived editor catalog omits it in all five contexts. This is source-confirmed on baseline af219db21 before this task and remains the single full editor attribute-contract failure after requested device-id/SDK-discover fixes. Next: scoped template/catalog correction with property context tests; no generator change or risk acceptance.\n\nImported from .factory/findings/active/FND-20261102201622-853f-fix-editor-build-doc-findings-001.json (category: quality, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.876956Z",
+  "status": "closed",
+  "branch": "ticket/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "277e28d9-a50d-4fdf-8923-5eac590d95fc",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:33:38.044266Z",
+          "last_activity_at": "2026-11-15T12:35:13.823800Z",
+          "ended_at": "2026-11-15T12:35:13.823800Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 95779.534,
+          "tokens": null
+        },
+        {
+          "attempt_id": "0dcbde85-0a5d-4135-857c-8be360c7f2ff",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:37:51.300591Z",
+          "last_activity_at": "2026-11-15T12:38:48.134566Z",
+          "ended_at": "2026-11-15T12:38:48.134566Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 56833.975,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:33:38.044266Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f"
+        },
+        {
+          "at": "2026-11-15T12:35:13.823800Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T12:37:51.300591Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T12:38:48.134566Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 152613.509,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "190883ce-9c0b-4e09-8ca1-2b0fc93c5eb1",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T12:35:13.824007Z",
+          "last_activity_at": "2026-11-15T12:37:51.300485Z",
+          "ended_at": "2026-11-15T12:37:51.300485Z",
+          "outcome": {
+            "summary": "Core fix is correct: indigo_generator.c parse_property_block (lines 755-816) accepts accept_while_busy via parse_bool_attribute for all five kinds (text/number/switch/light/inherited, outside the type[0] != 'i' block), and template.driver now lists it as @type=boolean in all five contexts. Verified: test_editor 44 run, OK, 16 skipped (no build/bin/indigo_generator in worktree); rerun with a scratch-built unchanged generator: 44 run, 0 skipped, OK. Against master's template both the new test (KeyError) and test_template_matches_generator_attribute_contexts (FAIL) fail, so the test is effective. git diff --check clean, tabs used. DRIVER_GENERATOR_BASICS.md:199 already documents the attribute; no doc update needed. Two small corrections requested on the added lines: (1) template.driver:178,213,261,308 use example value 'false', but in inherited/switch/text/number every other default-false boolean uses 'true' as the example (persistent, pass_through_change, always_defined, preserve_values) and the default-true asynchronous_change uses 'false'. static/app.js:394-395 preselects the example in the add-attribute row, so the editor offers a no-op 'accept_while_busy = false;' by default. Use 'true' in those four contexts (light at :358 follows its own all-false convention and may stay). (2) The help text 'accept a change request while the property is BUSY' is shown as the editor tooltip (driver_format.py:296-300, app.js:390) and is untrue for every property except GUIDER_GUIDE_RA/GUIDER_GUIDE_DEC, according to indigo_docs/DRIVER_GENERATOR_BASICS.md:554 known issue 3 and indigo_generator.c:2124-2130. State that limitation in the help text, e.g. 'effective only on GUIDER_GUIDE_RA/GUIDER_GUIDE_DEC'. Non-blocking: the edit() half of the new test passes even without the fix (edit does not consult the catalog); only the catalog assertions make it effective.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 157476.478,
+          "tokens": null
+        },
+        {
+          "attempt_id": "e14fe687-f370-457b-bd07-883f53c3a01f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:38:48.134824Z",
+          "last_activity_at": "2026-11-15T12:39:29.322872Z",
+          "ended_at": "2026-11-15T12:39:29.322872Z",
+          "outcome": {
+            "summary": "Round 2 recheck of 8292c0358: both corrections applied. In template.driver the example is true in inherited/switch/text/number (:178,:213,:261,:308), consistent with the other default-false booleans there, and false in light (:358), consistent with that context's all-false examples and its 'optional attribute; ... (bool literal).' wording. The help text now says 'effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC', matching indigo_generator.c:2124-2130 and DRIVER_GENERATOR_BASICS.md:554 known issue 3. schema() parses all five entries as type boolean with that help. Nothing else changed: git diff master shows only template.driver +5 and test_editor.py +11, and test_editor.py is identical to round 1. git diff --check is clean. test_editor: 44 run, OK, 16 skipped (no build/bin/indigo_generator in worktree); with a scratch-built unchanged generator: 44 run, 0 skipped, OK. Round 1 showed the new test and the attribute-contract test both fail on master's template. Not checked: editor UI in a browser. Remaining note (not blocking): the edit() half of the new test does not depend on the fix.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 41188.048,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:35:13.824007Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:37:51.300485Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Core fix is correct: indigo_generator.c parse_property_block (lines 755-816) accepts accept_while_busy via parse_bool_attribute for all five kinds (text/number/switch/light/inherited, outside the type[0] != 'i' block), and template.driver now lists it as @type=boolean in all five contexts. Verified: test_editor 44 run, OK, 16 skipped (no build/bin/indigo_generator in worktree); rerun with a scratch-built unchanged generator: 44 run, 0 skipped, OK. Against master's template both the new test (KeyError) and test_template_matches_generator_attribute_contexts (FAIL) fail, so the test is effective. git diff --check clean, tabs used. DRIVER_GENERATOR_BASICS.md:199 already documents the attribute; no doc update needed. Two small corrections requested on the added lines: (1) template.driver:178,213,261,308 use example value 'false', but in inherited/switch/text/number every other default-false boolean uses 'true' as the example (persistent, pass_through_change, always_defined, preserve_values) and the default-true asynchronous_change uses 'false'. static/app.js:394-395 preselects the example in the add-attribute row, so the editor offers a no-op 'accept_while_busy = false;' by default. Use 'true' in those four contexts (light at :358 follows its own all-false convention and may stay). (2) The help text 'accept a change request while the property is BUSY' is shown as the editor tooltip (driver_format.py:296-300, app.js:390) and is untrue for every property except GUIDER_GUIDE_RA/GUIDER_GUIDE_DEC, according to indigo_docs/DRIVER_GENERATOR_BASICS.md:554 known issue 3 and indigo_generator.c:2124-2130. State that limitation in the help text, e.g. 'effective only on GUIDER_GUIDE_RA/GUIDER_GUIDE_DEC'. Non-blocking: the edit() half of the new test passes even without the fix (edit does not consult the catalog); only the catalog assertions make it effective."
+        },
+        {
+          "at": "2026-11-15T12:38:48.134824Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:39:29.322872Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2 recheck of 8292c0358: both corrections applied. In template.driver the example is true in inherited/switch/text/number (:178,:213,:261,:308), consistent with the other default-false booleans there, and false in light (:358), consistent with that context's all-false examples and its 'optional attribute; ... (bool literal).' wording. The help text now says 'effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC', matching indigo_generator.c:2124-2130 and DRIVER_GENERATOR_BASICS.md:554 known issue 3. schema() parses all five entries as type boolean with that help. Nothing else changed: git diff master shows only template.driver +5 and test_editor.py +11, and test_editor.py is identical to round 1. git diff --check is clean. test_editor: 44 run, OK, 16 skipped (no build/bin/indigo_generator in worktree); with a scratch-built unchanged generator: 44 run, 0 skipped, OK. Round 1 showed the new test and the attribute-contract test both fail on master's template. Not checked: editor UI in a browser. Remaining note (not blocking): the edit() half of the new test does not depend on the fix."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 recheck of 8292c0358: both corrections applied. In template.driver the example is true in inherited/switch/text/number (:178,:213,:261,:308), consistent with the other default-false booleans there, and false in light (:358), consistent with that context's all-false examples and its 'optional attribute; ... (bool literal).' wording. The help text now says 'effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC', matching indigo_generator.c:2124-2130 and DRIVER_GENERATOR_BASICS.md:554 known issue 3. schema() parses all five entries as type boolean with that help. Nothing else changed: git diff master shows only template.driver +5 and test_editor.py +11, and test_editor.py is identical to round 1. git diff --check is clean. test_editor: 44 run, OK, 16 skipped (no build/bin/indigo_generator in worktree); with a scratch-built unchanged generator: 44 run, 0 skipped, OK. Round 1 showed the new test and the attribute-contract test both fail on master's template. Not checked: editor UI in a browser. Remaining note (not blocking): the edit() half of the new test does not depend on the fix.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 198664.526,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "ad6bd7b4-ff8c-4f93-a78d-7a6d7054c485",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.876975Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261102201622-853f-fix-editor-build-doc-findings-001.json",
+      "source": "2069571663a519d5e24312ce4be872b156287dd110b7d4b2db87bf68ace99322",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "be44ca9f-5fa4-4b49-9b51-08afc3c983c1",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:17.599031Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "ca284b64-173a-4cf5-959d-006a09013244",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:17.875933Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
+    },
+    {
+      "event_id": "72a95779-2893-426f-9f41-d68999e74f3c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:33:38.044750Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Implementation started on branch ticket/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f"
+    },
+    {
+      "event_id": "db1517ef-541a-43f2-a034-2a6402accfbc",
+      "event": "ticket/started",
+      "at": "2026-11-15T12:33:38.046765Z",
+      "actor": "human/owner",
+      "branch": "ticket/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f",
+      "base": "master"
+    },
+    {
+      "event_id": "eb1222fa-0904-498b-a402-c9676a16513e",
+      "event": "task/progress",
+      "at": "2026-11-15T12:33:58.540139Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Implementer launched",
+      "attempt_id": "277e28d9-a50d-4fdf-8923-5eac590d95fc",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "81c3c235-9bc8-4966-84c0-b5b1307b5090",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:34:52.779785Z",
+      "actor": "human/owner",
+      "text": "Reproduction: python3 -m unittest test_editor.ParserTests.test_template_matches_generator_attribute_contexts (in indigo_tools/driver_editor) FAILED before the fix: catalog lacked accept_while_busy (boolean) in inherited/switch/text/number/light while parse_property_block in indigo_generator.c accepts it. Fix: added accept_while_busy attribute line to the five property contexts of indigo_tools/template.driver, plus test_catalog_accept_while_busy_in_all_property_contexts. After fix: full test_editor run 44 tests OK (16 skipped, generator-dependent).",
+      "tokens": null
+    },
+    {
+      "event_id": "d2d44e6c-00b7-4198-9780-b1e1ad97db91",
+      "event": "task/progress",
+      "at": "2026-11-15T12:34:52.877252Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Running flow check"
+    },
+    {
+      "event_id": "741c2f79-54d8-4e6a-bf2e-28e3c120c3d9",
+      "event": "task/progress",
+      "at": "2026-11-15T12:34:53.187337Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5cad4e3f-c5a7-4d5d-84b6-fe966d954da3",
+      "event": "task/progress",
+      "at": "2026-11-15T12:34:53.210832Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8843bb46-2e29-42fe-b6ad-b478e1953eb4",
+      "event": "check/passed",
+      "at": "2026-11-15T12:34:53.213015Z",
+      "actor": "human/owner",
+      "commit": "7e8e7ab4f2bac28adc13211fb0c6d9691aff9aef",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "eaafe56b-86af-4195-84fc-717a55be709d",
+      "event": "task/progress",
+      "at": "2026-11-15T12:34:56.867122Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check command-1 started: python3 -m unittest discover -s indigo_tools/driver_editor -p 'test_editor.py'"
+    },
+    {
+      "event_id": "9f855f81-3478-4620-aa98-b6318c918fd1",
+      "event": "task/progress",
+      "at": "2026-11-15T12:35:00.237403Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check command-1 passed: 44 tests"
+    },
+    {
+      "event_id": "ee2f56c2-1636-4a68-afe8-f34d7d3fc856",
+      "event": "check/passed",
+      "at": "2026-11-15T12:35:00.239189Z",
+      "actor": "human/owner",
+      "commit": "7e8e7ab4f2bac28adc13211fb0c6d9691aff9aef",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "c36116d2-f73d-4efd-a80c-51a37a4c492c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:35:13.824084Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Review started"
+    },
+    {
+      "event_id": "bafab2ab-4aff-4a55-a9de-86ddc02090a8",
+      "event": "review/started",
+      "at": "2026-11-15T12:35:13.825474Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "02d5d88b-3688-4cfc-8f7a-7fda9fdd50ab",
+      "event": "task/progress",
+      "at": "2026-11-15T12:35:29.811299Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Reviewer launched",
+      "attempt_id": "190883ce-9c0b-4e09-8ca1-2b0fc93c5eb1",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "09362869-c9fd-48f2-8141-4f789b25c598",
+      "event": "task/progress",
+      "at": "2026-11-15T12:36:16.605372Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Running editor tests: test_editor.py in ticket worktree"
+    },
+    {
+      "event_id": "ffb38b52-78cd-4697-9006-95575dba4aa1",
+      "event": "task/progress",
+      "at": "2026-11-15T12:36:49.700114Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Running test_editor with scratch-built generator to cover generator-dependent tests"
+    },
+    {
+      "event_id": "00c4e93d-e230-4238-844b-209cb4ab5a18",
+      "event": "task/progress",
+      "at": "2026-11-15T12:37:51.300587Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "fc159d46-13bc-4337-901d-8fc250056699",
+      "event": "task/progress",
+      "at": "2026-11-15T12:37:51.300612Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "9ff76fc0-d257-420c-96e8-8f41249aaf5b",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T12:37:51.301896Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "7e8e7ab4f2bac28adc13211fb0c6d9691aff9aef"
+    },
+    {
+      "event_id": "860ac4f3-9997-4d5e-874c-080b3826a324",
+      "event": "task/progress",
+      "at": "2026-11-15T12:38:26.612580Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Applying review corrections to accept_while_busy catalog entries"
+    },
+    {
+      "event_id": "df2b688a-f00f-4880-be06-ab0799c1ad1d",
+      "event": "task/progress",
+      "at": "2026-11-15T12:38:26.940035Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "fcb845c3-9d0c-47da-b182-309fc0e9a991",
+      "event": "task/progress",
+      "at": "2026-11-15T12:38:26.964958Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "46f866bf-c26a-4f95-b45d-390bb4cebf98",
+      "event": "check/passed",
+      "at": "2026-11-15T12:38:26.967119Z",
+      "actor": "human/owner",
+      "commit": "8292c0358a71de34a24c7364a49a8c0c7f227227",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "eb013551-214f-4d49-9d26-1514241c499b",
+      "event": "task/progress",
+      "at": "2026-11-15T12:38:27.138426Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check command-1 started: python3 -m unittest discover -s indigo_tools/driver_editor -p 'test_editor.py'"
+    },
+    {
+      "event_id": "69a29cc3-83dc-43f7-ab40-7c92e74f5476",
+      "event": "task/progress",
+      "at": "2026-11-15T12:38:30.588101Z",
+      "actor": "human/owner",
+      "task_id": "0e18f0ba-a05b-4f4e-a3e8-0093113e1b7b",
+      "text": "Check command-1 passed: 44 tests"
+    },
+    {
+      "event_id": "277a6691-fa6f-4f17-a628-08ec45f593cd",
+      "event": "check/passed",
+      "at": "2026-11-15T12:38:30.590661Z",
+      "actor": "human/owner",
+      "commit": "8292c0358a71de34a24c7364a49a8c0c7f227227",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "00d191a6-d115-4b7c-81ae-6bd782d790e0",
+      "event": "task/progress",
+      "at": "2026-11-15T12:38:48.134963Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Review started"
+    },
+    {
+      "event_id": "19b10445-442d-4402-a5b2-dafafc6e7d4d",
+      "event": "review/started",
+      "at": "2026-11-15T12:38:48.136685Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "8dc94a66-089e-412a-b633-0866d11df1fb",
+      "event": "task/progress",
+      "at": "2026-11-15T12:38:59.631426Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Round 2 review: inspecting updated diff"
+    },
+    {
+      "event_id": "b37aa827-65de-4f8c-862f-b008118dd1ed",
+      "event": "task/progress",
+      "at": "2026-11-15T12:39:09.468581Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Round 2: running test_editor without and with scratch-built generator"
+    },
+    {
+      "event_id": "f6daba1a-7414-4acc-9323-9e28b7f57c9a",
+      "event": "task/progress",
+      "at": "2026-11-15T12:39:29.323010Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0cbd4480-9259-4fb1-bbae-c7d2b84abe0a",
+      "event": "review/passed",
+      "at": "2026-11-15T12:39:29.324626Z",
+      "actor": "human/owner",
+      "task_id": "e89051af-75e2-477f-b3d9-cc08e89a75a4",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8292c0358a71de34a24c7364a49a8c0c7f227227"
+    },
+    {
+      "event_id": "436e5b65-7586-43ab-a900-6fbdd3595c2a",
+      "event": "ticket/closed",
+      "at": "2026-11-15T12:45:24.526532Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T12:45:24.526502Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "d8b3ae6c14423173108b084e3cfa21eef57b3b82"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 351278.035,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 44,
+    "sha256": "8109d17896672d33aa1feaac9827513c5e27cb096db98623a9ca6bb46c3d2f91"
+  },
+  "priority": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7e8e7ab4f2bac28adc13211fb0c6d9691aff9aef",
+        "tree": "68b99a74d3acfa5a133201a4c1449eba5d35853f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:34:53.209991Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f/68b99a74d3ac-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "python3 -m unittest discover -s indigo_tools/driver_editor -p 'test_editor.py'",
+        "commit": "7e8e7ab4f2bac28adc13211fb0c6d9691aff9aef",
+        "tree": "68b99a74d3acfa5a133201a4c1449eba5d35853f",
+        "exit_code": 0,
+        "counts": {
+          "executed": 44,
+          "failed": 0,
+          "skipped": 16
+        },
+        "passed": true,
+        "at": "2026-11-15T12:35:00.236619Z",
+        "duration_s": 3.4,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f/68b99a74d3ac-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8292c0358a71de34a24c7364a49a8c0c7f227227",
+        "tree": "0c03b8340a7895e05cc5dac19cf9487a9e4e0b40",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:38:26.963967Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f/0c03b8340a78-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "python3 -m unittest discover -s indigo_tools/driver_editor -p 'test_editor.py'",
+        "commit": "8292c0358a71de34a24c7364a49a8c0c7f227227",
+        "tree": "0c03b8340a7895e05cc5dac19cf9487a9e4e0b40",
+        "exit_code": 0,
+        "counts": {
+          "executed": 44,
+          "failed": 0,
+          "skipped": 16
+        },
+        "passed": true,
+        "at": "2026-11-15T12:38:30.587107Z",
+        "duration_s": 3.5,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/6e6d940f-2e5b-5c2f-a76c-03fcc3de5f4f/0c03b8340a78-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Core fix is correct: indigo_generator.c parse_property_block (lines 755-816) accepts accept_while_busy via parse_bool_attribute for all five kinds (text/number/switch/light/inherited, outside the type[0] != 'i' block), and template.driver now lists it as @type=boolean in all five contexts. Verified: test_editor 44 run, OK, 16 skipped (no build/bin/indigo_generator in worktree); rerun with a scratch-built unchanged generator: 44 run, 0 skipped, OK. Against master's template both the new test (KeyError) and test_template_matches_generator_attribute_contexts (FAIL) fail, so the test is effective. git diff --check clean, tabs used. DRIVER_GENERATOR_BASICS.md:199 already documents the attribute; no doc update needed. Two small corrections requested on the added lines: (1) template.driver:178,213,261,308 use example value 'false', but in inherited/switch/text/number every other default-false boolean uses 'true' as the example (persistent, pass_through_change, always_defined, preserve_values) and the default-true asynchronous_change uses 'false'. static/app.js:394-395 preselects the example in the add-attribute row, so the editor offers a no-op 'accept_while_busy = false;' by default. Use 'true' in those four contexts (light at :358 follows its own all-false convention and may stay). (2) The help text 'accept a change request while the property is BUSY' is shown as the editor tooltip (driver_format.py:296-300, app.js:390) and is untrue for every property except GUIDER_GUIDE_RA/GUIDER_GUIDE_DEC, according to indigo_docs/DRIVER_GENERATOR_BASICS.md:554 known issue 3 and indigo_generator.c:2124-2130. State that limitation in the help text, e.g. 'effective only on GUIDER_GUIDE_RA/GUIDER_GUIDE_DEC'. Non-blocking: the edit() half of the new test passes even without the fix (edit does not consult the catalog); only the catalog assertions make it effective.",
+        "reviewer": "human/owner",
+        "commit": "7e8e7ab4f2bac28adc13211fb0c6d9691aff9aef",
+        "tree": "68b99a74d3acfa5a133201a4c1449eba5d35853f",
+        "at": "2026-11-15T12:37:51.300290Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 recheck of 8292c0358: both corrections applied. In template.driver the example is true in inherited/switch/text/number (:178,:213,:261,:308), consistent with the other default-false booleans there, and false in light (:358), consistent with that context's all-false examples and its 'optional attribute; ... (bool literal).' wording. The help text now says 'effective only on GUIDER_GUIDE_RA and GUIDER_GUIDE_DEC', matching indigo_generator.c:2124-2130 and DRIVER_GENERATOR_BASICS.md:554 known issue 3. schema() parses all five entries as type boolean with that help. Nothing else changed: git diff master shows only template.driver +5 and test_editor.py +11, and test_editor.py is identical to round 1. git diff --check is clean. test_editor: 44 run, OK, 16 skipped (no build/bin/indigo_generator in worktree); with a scratch-built unchanged generator: 44 run, 0 skipped, OK. Round 1 showed the new test and the attribute-contract test both fail on master's template. Not checked: editor UI in a browser. Remaining note (not blocking): the edit() half of the new test does not depend on the fix.",
+        "reviewer": "human/owner",
+        "commit": "8292c0358a71de34a24c7364a49a8c0c7f227227",
+        "tree": "0c03b8340a7895e05cc5dac19cf9487a9e4e0b40",
+        "at": "2026-11-15T12:39:29.322598Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T12:34:52.778326Z",
+        "actor": "human/owner",
+        "text": "Reproduction: python3 -m unittest test_editor.ParserTests.test_template_matches_generator_attribute_contexts (in indigo_tools/driver_editor) FAILED before the fix: catalog lacked accept_while_busy (boolean) in inherited/switch/text/number/light while parse_property_block in indigo_generator.c accepts it. Fix: added accept_while_busy attribute line to the five property contexts of indigo_tools/template.driver, plus test_catalog_accept_while_busy_in_all_property_contexts. After fix: full test_editor run 44 tests OK (16 skipped, generator-dependent).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "d8b3ae6c14423173108b084e3cfa21eef57b3b82",
+      "tree": "0c03b8340a7895e05cc5dac19cf9487a9e4e0b40",
+      "base": "master",
+      "at": "2026-11-15T12:45:24.449076Z"
+    }
+  }
+}
