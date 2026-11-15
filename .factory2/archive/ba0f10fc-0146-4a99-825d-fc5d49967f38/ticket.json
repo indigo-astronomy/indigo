@@ -1,0 +1,694 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ba0f10fc-0146-4a99-825d-fc5d49967f38",
+  "revision": 35,
+  "title": "Scheduler agent: four behaviours contradict the design document and the user guide",
+  "description": "Found by the review of agent_scheduler against indigo_drivers/agent_scheduler/doc/SCHEDULER.md and indigo_docs/INDIGO_SCHEDULER_GUIDE.md. For each item decide whether the code or the documents are corrected, and keep both documents consistent with the result.\n\n1. A missing IDLE hook task is skipped silently. SCHEDULER.md (Hooks) says a hook that names no task is reported by a message and skipped, and the guide (Messages) says the 'names no task' message exists also for the other hooks. process_idle() in indigo_agent_scheduler.c reports it for the startup, shutdown, night start, night end and resume hooks, but for the idle hook it only tests hook_slot() >= 0 and sends nothing.\n\n2. SEQUENCE_NAME is recorded but never used. SCHEDULER.md says naming the sequence after the task lets the scheduler recognise its sequence in SEQUENCE_NAME, and the dependency table lists it as observed. observe_property() stores observed->sequence_name and nothing reads it; a run is identified only by the token and the Busy/finish event counters. Either use it or remove the field and the claim.\n\n3. The message for a skipped saved task does not name the task. SCHEDULER.md (Persistence, Loading) promises a message naming the task. add_task() sends 'A saved task was skipped: <parser error>', and parser errors carry a line number, not the task name.\n\n4. The full label text is not sent with list updates. SCHEDULER.md (Labels and list properties) says the full text, such as a long failure reason, is sent as the message of the update. AGENT_SCHEDULER_TASK_STATE, AGENT_SCHEDULER_PLAN and AGENT_SCHEDULER_HISTORY are always defined and updated with a NULL message.\n\nThe lost failure reason of a sequence that ends Alert is already ticket 776f039c and is not part of this ticket. A behaviour fix needs a DRIVER_VERSION increment and test coverage in indigo_test/integration/test_agent_scheduler.c.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T11:25:08.018968Z",
+  "status": "closed",
+  "branch": "ticket/ba0f10fc-0146-4a99-825d-fc5d49967f38",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ed4af969-16c9-44d4-97e7-9687d701b16c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T11:46:23.977978Z",
+          "last_activity_at": "2026-11-15T11:58:23.967035Z",
+          "ended_at": "2026-11-15T11:58:23.967035Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 719989.057,
+          "tokens": null
+        },
+        {
+          "attempt_id": "94fe020c-cd9f-4b25-bc02-8a308680e312",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:03:06.442837Z",
+          "last_activity_at": "2026-11-15T12:13:20.559729Z",
+          "ended_at": "2026-11-15T12:13:20.559729Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 614116.892,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:46:23.977978Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/ba0f10fc-0146-4a99-825d-fc5d49967f38"
+        },
+        {
+          "at": "2026-11-15T11:58:23.967035Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T12:03:06.442837Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T12:13:20.559729Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "unknown",
+      "metrics": {
+        "duration_ms": 1334105.949,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d09cc512-d686-4157-b510-cdf24e37fe00",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T11:58:23.967253Z",
+          "last_activity_at": "2026-11-15T12:03:06.442711Z",
+          "ended_at": "2026-11-15T12:03:06.442711Z",
+          "outcome": {
+            "summary": "One defect in item 1. indigo_agent_scheduler.c process_idle() (lines 1831-1837 of the candidate) marks the missing-task report by setting PRIVATE_DATA->idle_hook_done = true. idle_hook_done is the flag that gates the idle hook start itself and is reset only by a task start (line 1265), a night hook start (line 1277) and START (line 2433). Consequence: if the user reacts to 'The idle hook X names no task' by uploading task X, or by correcting AGENT_SCHEDULER_HOOKS IDLE to an existing task, during the same idle period, the idle hook (typically park/close) no longer runs until a task or night hook runs or the scheduler is restarted. Before the change it started at the next decision (idle >= 0 and idle_hook_done false). This changes the existing idle-hook start path and contradicts SCHEDULER.md (Hooks: IDLE runs once per idle period, IDLE_PARK_AFTER minutes after the scheduler last found nothing eligible). Correction: keep a separate flag (e.g. idle_hook_reported) that only suppresses the repeated message, reset at the same three places as idle_hook_done, and leave idle_hook_done to mean the hook ran; optionally extend missing_idle_hook_task_is_reported_once to upload 'Nope' after the report and wait for 'Starting hook 'Nope''. Everything else checked and fine: item 2 (sequence_name field and SEQUENCE_NAME observation and both SCHEDULER.md claims removed, no other readers), item 3 (parser memsets the header and sets name only for a valid @task value, so header.name is safe on failure; message format matches SCHEDULER.md; test covers both branches by editing the saved config), item 4 (SCHEDULER.md now describes the NULL-message list updates), ASTAP removed from agent_busy_bit(), DRIVER_VERSION 0x03000009 -> 0x0300000A, formatting conforms. Reran make -C indigo_test test-agent-scheduler in the worktree: 73 run, 73 passed, 0 failed. Out of scope and not counted: the remaining 'ASTAP Agent' in the SCHEDULER.md dependency table row (dd4ec12f).",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 282475.458,
+          "tokens": null
+        },
+        {
+          "attempt_id": "cf2f0a19-7b2f-44ea-b76f-31e77e09db92",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:13:20.559747Z",
+          "last_activity_at": "2026-11-15T12:13:20.559813Z",
+          "ended_at": "2026-11-15T12:13:20.559813Z",
+          "outcome": {
+            "summary": "Re-review of 56a8b2971. The previous defect is fixed: process_idle() no longer sets idle_hook_done for a missing idle hook task; a separate idle_hook_reported flag only suppresses the repeated 'names no task' message, and it is cleared at all three places where idle_hook_done is cleared (task start line 1268, night hook start line 1281, START line 2437). idle_hook_done is again set only when the idle hook finishes (line 1089), so the existing idle-hook start path is unchanged and standby is untouched. missing_idle_hook_task_is_reported_once now uploads 'Nope' after the single report, waits for 'Starting hook 'Nope'' and checks the message stayed at one, which exercises the regression. The change since 7dbe3851e touches only these two files (+11/-3); the rest of the diff (items 2-4, ASTAP removal in agent_busy_bit(), DRIVER_VERSION 0x0300000A, SCHEDULER.md) is unchanged from the previous review. git diff --check is clean. make -C indigo_test test-agent-scheduler in the worktree: 73 run, 73 passed, 0 failed. Out of scope and not counted: 'ASTAP Agent' in the SCHEDULER.md dependency table (dd4ec12f).",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.066,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T11:58:23.967253Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:03:06.442711Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "One defect in item 1. indigo_agent_scheduler.c process_idle() (lines 1831-1837 of the candidate) marks the missing-task report by setting PRIVATE_DATA->idle_hook_done = true. idle_hook_done is the flag that gates the idle hook start itself and is reset only by a task start (line 1265), a night hook start (line 1277) and START (line 2433). Consequence: if the user reacts to 'The idle hook X names no task' by uploading task X, or by correcting AGENT_SCHEDULER_HOOKS IDLE to an existing task, during the same idle period, the idle hook (typically park/close) no longer runs until a task or night hook runs or the scheduler is restarted. Before the change it started at the next decision (idle >= 0 and idle_hook_done false). This changes the existing idle-hook start path and contradicts SCHEDULER.md (Hooks: IDLE runs once per idle period, IDLE_PARK_AFTER minutes after the scheduler last found nothing eligible). Correction: keep a separate flag (e.g. idle_hook_reported) that only suppresses the repeated message, reset at the same three places as idle_hook_done, and leave idle_hook_done to mean the hook ran; optionally extend missing_idle_hook_task_is_reported_once to upload 'Nope' after the report and wait for 'Starting hook 'Nope''. Everything else checked and fine: item 2 (sequence_name field and SEQUENCE_NAME observation and both SCHEDULER.md claims removed, no other readers), item 3 (parser memsets the header and sets name only for a valid @task value, so header.name is safe on failure; message format matches SCHEDULER.md; test covers both branches by editing the saved config), item 4 (SCHEDULER.md now describes the NULL-message list updates), ASTAP removed from agent_busy_bit(), DRIVER_VERSION 0x03000009 -> 0x0300000A, formatting conforms. Reran make -C indigo_test test-agent-scheduler in the worktree: 73 run, 73 passed, 0 failed. Out of scope and not counted: the remaining 'ASTAP Agent' in the SCHEDULER.md dependency table row (dd4ec12f)."
+        },
+        {
+          "at": "2026-11-15T12:13:20.559747Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T12:13:20.559813Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review of 56a8b2971. The previous defect is fixed: process_idle() no longer sets idle_hook_done for a missing idle hook task; a separate idle_hook_reported flag only suppresses the repeated 'names no task' message, and it is cleared at all three places where idle_hook_done is cleared (task start line 1268, night hook start line 1281, START line 2437). idle_hook_done is again set only when the idle hook finishes (line 1089), so the existing idle-hook start path is unchanged and standby is untouched. missing_idle_hook_task_is_reported_once now uploads 'Nope' after the single report, waits for 'Starting hook 'Nope'' and checks the message stayed at one, which exercises the regression. The change since 7dbe3851e touches only these two files (+11/-3); the rest of the diff (items 2-4, ASTAP removal in agent_busy_bit(), DRIVER_VERSION 0x0300000A, SCHEDULER.md) is unchanged from the previous review. git diff --check is clean. make -C indigo_test test-agent-scheduler in the worktree: 73 run, 73 passed, 0 failed. Out of scope and not counted: 'ASTAP Agent' in the SCHEDULER.md dependency table (dd4ec12f)."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of 56a8b2971. The previous defect is fixed: process_idle() no longer sets idle_hook_done for a missing idle hook task; a separate idle_hook_reported flag only suppresses the repeated 'names no task' message, and it is cleared at all three places where idle_hook_done is cleared (task start line 1268, night hook start line 1281, START line 2437). idle_hook_done is again set only when the idle hook finishes (line 1089), so the existing idle-hook start path is unchanged and standby is untouched. missing_idle_hook_task_is_reported_once now uploads 'Nope' after the single report, waits for 'Starting hook 'Nope'' and checks the message stayed at one, which exercises the regression. The change since 7dbe3851e touches only these two files (+11/-3); the rest of the diff (items 2-4, ASTAP removal in agent_busy_bit(), DRIVER_VERSION 0x0300000A, SCHEDULER.md) is unchanged from the previous review. git diff --check is clean. make -C indigo_test test-agent-scheduler in the worktree: 73 run, 73 passed, 0 failed. Out of scope and not counted: 'ASTAP Agent' in the SCHEDULER.md dependency table (dd4ec12f).",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "unknown",
+      "metrics": {
+        "duration_ms": 282475.524,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "32b47893-1cd8-4a0a-bd1b-a3da33d394c1",
+      "event": "ticket/created",
+      "at": "2026-11-15T11:25:08.019897Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "be971ba2-35eb-4743-90f6-6f533ce67306",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T11:25:49.615864Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "e00a6416-1a3a-49f0-8ab3-bcbf3abb3a1d",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:46:18.663889Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15: fix the ticket, and remove ASTAP from everywhere, it is not supposed to be supported. Coordinator's resolution per item: (1) code: report a named IDLE hook that names no task, once per idle period; (2) remove the unused observed sequence_name field from the code and the SEQUENCE_NAME claims from SCHEDULER.md; (3) code: name the task in the skipped-saved-task message when its @task line was parsed; (4) documents: SCHEDULER.md describes what the code does (the reason is sent as a device message, list properties carry no message). Also remove the 'ASTAP Agent' name from agent_busy_bit(). Documentation-only ASTAP removals belong to dd4ec12f.",
+      "tokens": null
+    },
+    {
+      "event_id": "1bb1b725-8b46-4ba7-9f15-818f49271f7e",
+      "event": "task/progress",
+      "at": "2026-11-15T11:46:23.978435Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Implementation started on branch ticket/ba0f10fc-0146-4a99-825d-fc5d49967f38"
+    },
+    {
+      "event_id": "28a06481-80a3-44d7-8100-3231f05f7240",
+      "event": "ticket/started",
+      "at": "2026-11-15T11:46:23.980266Z",
+      "actor": "human/owner",
+      "branch": "ticket/ba0f10fc-0146-4a99-825d-fc5d49967f38",
+      "base": "master"
+    },
+    {
+      "event_id": "f78b7fee-d644-4965-8061-4b10af0f344b",
+      "event": "task/progress",
+      "at": "2026-11-15T11:47:22.196482Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Implementer launched",
+      "attempt_id": "ed4af969-16c9-44d4-97e7-9687d701b16c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7e247ab7-1e65-4189-be51-5c7fcfcde80a",
+      "event": "task/progress",
+      "at": "2026-11-15T11:49:03.732356Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Writing regression tests for the idle hook and skipped saved task messages"
+    },
+    {
+      "event_id": "0ff5354c-83df-48db-8d2f-aeed125d6cef",
+      "event": "task/progress",
+      "at": "2026-11-15T11:49:44.793776Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Building lib and scheduler/scripting archives, running new tests against unfixed code"
+    },
+    {
+      "event_id": "6fe53172-ccee-4c75-bbe1-3055481133aa",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:51:14.299613Z",
+      "actor": "human/owner",
+      "text": "Reproduction before the fix (worktree build, macOS arm64): new cases in indigo_test/integration/test_agent_scheduler.c run with build/integration/test_agent_scheduler <filter>. saved_task_that_no_longer_validates_is_skipped FAILED: no 'The saved task 'Broken' was skipped: line 2: @priority: expected' message (expected 1, got 0); only 'A saved task was skipped: ...' was sent. missing_idle_hook_task_is_reported_once FAILED: after 'Task 'Work' completed' no 'The idle hook 'Nope' names no task' message within 15 s.",
+      "tokens": null
+    },
+    {
+      "event_id": "cc71e4ee-38a8-4916-b275-1920e49b979d",
+      "event": "task/progress",
+      "at": "2026-11-15T11:51:14.410862Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Fixing idle hook report, skipped task name, removing sequence_name and ASTAP name"
+    },
+    {
+      "event_id": "dfd533ea-0095-4693-b3c1-f95840206869",
+      "event": "task/progress",
+      "at": "2026-11-15T11:52:16.384941Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Running scheduler integration suite: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "8bba58e2-3473-48b5-a53b-1834c79dc7a3",
+      "event": "ticket/note",
+      "at": "2026-11-15T11:55:01.635841Z",
+      "actor": "human/owner",
+      "text": "After the fix (DRIVER_VERSION 0x0300000A): make -C indigo_test test-agent-scheduler in the ticket worktree passed 73 run, 73 passed, 0 failed, including saved_task_that_no_longer_validates_is_skipped (now 'The saved task 'Broken' was skipped: line 2: ...' and, for a task whose error precedes @task, 'A saved task was skipped: line 1: ...') and missing_idle_hook_task_is_reported_once ('The idle hook 'Nope' names no task' exactly once in the idle period).",
+      "tokens": null
+    },
+    {
+      "event_id": "a4430045-2ab3-436f-8c81-8f4854adbcc9",
+      "event": "task/progress",
+      "at": "2026-11-15T11:55:05.303214Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "23b1ae4c-c50d-44b1-b499-dfafdc0d34a4",
+      "event": "task/progress",
+      "at": "2026-11-15T11:55:05.326971Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "26727ce6-9aab-41bd-9976-3e723814cb4d",
+      "event": "check/passed",
+      "at": "2026-11-15T11:55:05.329070Z",
+      "actor": "human/owner",
+      "commit": "7dbe3851ed9234e85d4156d4ca51022d403f2bdf",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "24015397-96ac-4e6c-a8f6-7d6d85866b89",
+      "event": "task/progress",
+      "at": "2026-11-15T11:55:13.240029Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "f55bf447-ba5d-4129-9fbe-cf678b9416d4",
+      "event": "task/progress",
+      "at": "2026-11-15T11:57:45.023307Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "ee84bed5-f2d2-43f7-ba3a-2a7efedbd98b",
+      "event": "check/passed",
+      "at": "2026-11-15T11:57:45.026322Z",
+      "actor": "human/owner",
+      "commit": "7dbe3851ed9234e85d4156d4ca51022d403f2bdf",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "1c768009-a28f-49b2-8ec4-125e569909e4",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:23.967335Z",
+      "actor": "human/owner",
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "86bf4076-d845-4483-8eff-00336f442deb",
+      "event": "review/started",
+      "at": "2026-11-15T11:58:23.968881Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "d74af6b3-d6ca-4889-bcba-f06ca9dbc3a9",
+      "event": "task/progress",
+      "at": "2026-11-15T11:58:41.512589Z",
+      "actor": "human/owner",
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "text": "Reviewer launched",
+      "attempt_id": "d09cc512-d686-4157-b510-cdf24e37fe00",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a0085682-f97e-4072-a4f3-f61728b55062",
+      "event": "task/progress",
+      "at": "2026-11-15T12:00:15.702666Z",
+      "actor": "human/owner",
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "text": "Rebuilding and running the scheduler integration test"
+    },
+    {
+      "event_id": "da0af64f-f333-4fd3-95d0-94b11af00068",
+      "event": "task/progress",
+      "at": "2026-11-15T12:03:06.442831Z",
+      "actor": "human/owner",
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "bf39add9-6c57-4fb9-8d3c-7f74569e858c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:03:06.442861Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "97105ae7-6a76-46e3-80d5-6adb20e2e65d",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T12:03:06.444320Z",
+      "actor": "human/owner",
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "7dbe3851ed9234e85d4156d4ca51022d403f2bdf"
+    },
+    {
+      "event_id": "5d6bb85e-0521-4020-94e2-368b489960f4",
+      "event": "task/progress",
+      "at": "2026-11-15T12:03:46.722135Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Review fix: separate idle_hook_reported flag, extend idle hook test"
+    },
+    {
+      "event_id": "3ac6f27e-bb68-4018-8dcc-06f6b571bfe4",
+      "event": "task/progress",
+      "at": "2026-11-15T12:04:23.049641Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Running extended idle hook test against previous driver revision to reproduce review defect"
+    },
+    {
+      "event_id": "cff81696-d45e-4c86-8cbc-e56ce228b92c",
+      "event": "task/progress",
+      "at": "2026-11-15T12:04:55.863974Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Running scheduler integration suite: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "7ebcb3ac-8925-44ff-8cb9-f61ae9033780",
+      "event": "task/progress",
+      "at": "2026-11-15T12:07:33.407824Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "92af313f-b992-4592-b6fb-84ecf73cb4b1",
+      "event": "task/progress",
+      "at": "2026-11-15T12:07:33.433635Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0c1e83d0-280a-45f3-9800-cb9a11652af6",
+      "event": "check/passed",
+      "at": "2026-11-15T12:07:33.436098Z",
+      "actor": "human/owner",
+      "commit": "56a8b2971c4c11cbf73758dc1ba3f891ebd8768f",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7df93d7f-1688-4664-bce5-98cb291e01a8",
+      "event": "task/progress",
+      "at": "2026-11-15T12:07:33.630128Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "a6937f58-46b3-4747-a2c5-8a70884ff66f",
+      "event": "task/progress",
+      "at": "2026-11-15T12:10:02.431998Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "b2ed5c8e-8ca1-4f11-9266-06610691972e",
+      "event": "check/passed",
+      "at": "2026-11-15T12:10:02.435371Z",
+      "actor": "human/owner",
+      "commit": "56a8b2971c4c11cbf73758dc1ba3f891ebd8768f",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "ab5bc685-3dd0-4b87-88eb-4cad3a4a220f",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:10:14.276740Z",
+      "actor": "human/owner",
+      "text": "Review fix (item 1): the 'names no task' report no longer sets idle_hook_done; a separate idle_hook_reported flag, cleared with idle_hook_done on a task start, a night hook start and START, only stops the message from repeating. missing_idle_hook_task_is_reported_once now uploads the named task after the single report and expects 'Starting hook 'Nope''. Reproduction: with the previous driver revision (commit 7dbe3851) the extended case FAILED (no 'Starting hook 'Nope'' within 15 s after the upload). After the fix: make -C indigo_test test-agent-scheduler 73 run, 73 passed, 0 failed; flow check (whitespace) passed and flow check --command (build + test-agent-scheduler) passed on tree 77b17650, its log showing 73/73.",
+      "tokens": null
+    },
+    {
+      "event_id": "0e23696f-d5d4-46bd-a9e5-ab217fcc3e10",
+      "event": "task/progress",
+      "at": "2026-11-15T12:10:46.527154Z",
+      "actor": "human/owner",
+      "task_id": "4f0027a0-6d51-4a2c-bb39-855e2140b27b",
+      "text": "Rerunning the scheduler integration test on the new candidate"
+    },
+    {
+      "event_id": "896e3ed1-cbed-428b-af9e-9274f462ddbf",
+      "event": "task/progress",
+      "at": "2026-11-15T12:13:20.559921Z",
+      "actor": "human/owner",
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "3949e877-13c8-4455-910f-e8b1aa662b02",
+      "event": "review/passed",
+      "at": "2026-11-15T12:13:20.561755Z",
+      "actor": "human/owner",
+      "task_id": "f54b18e3-2ce7-473d-a064-c5d91fddcc3b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "56a8b2971c4c11cbf73758dc1ba3f891ebd8768f"
+    },
+    {
+      "event_id": "7f735e7b-0d9e-4167-987e-ad220ca3130c",
+      "event": "ticket/closed",
+      "at": "2026-11-15T12:13:40.140397Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T12:13:40.140354Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "e74af1c7a4b12f8fa38ceb1dd1d21e5b7e1fd94a"
+  },
+  "priority": "low",
+  "severity": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T11:25:08.018968Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T11:25:49.615664Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 1616581.473,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 46,
+    "sha256": "21c55c75b8c3c0e18d1ce70e28774b19ea6700f18ccf0cbb5f5e8259d22fc02f"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "7dbe3851ed9234e85d4156d4ca51022d403f2bdf",
+        "tree": "be70eadf6d3eef41ee07f20ef3b4e13e06cf6976",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:55:05.326214Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ba0f10fc-0146-4a99-825d-fc5d49967f38/be70eadf6d3e-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "7dbe3851ed9234e85d4156d4ca51022d403f2bdf",
+        "tree": "be70eadf6d3eef41ee07f20ef3b4e13e06cf6976",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T11:57:45.021793Z",
+        "duration_s": 151.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ba0f10fc-0146-4a99-825d-fc5d49967f38/be70eadf6d3e-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "56a8b2971c4c11cbf73758dc1ba3f891ebd8768f",
+        "tree": "77b17650d98b3cc545f6a280a423efb1716424fa",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:07:33.432569Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ba0f10fc-0146-4a99-825d-fc5d49967f38/77b17650d98b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "56a8b2971c4c11cbf73758dc1ba3f891ebd8768f",
+        "tree": "77b17650d98b3cc545f6a280a423efb1716424fa",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T12:10:02.430102Z",
+        "duration_s": 148.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ba0f10fc-0146-4a99-825d-fc5d49967f38/77b17650d98b-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "One defect in item 1. indigo_agent_scheduler.c process_idle() (lines 1831-1837 of the candidate) marks the missing-task report by setting PRIVATE_DATA->idle_hook_done = true. idle_hook_done is the flag that gates the idle hook start itself and is reset only by a task start (line 1265), a night hook start (line 1277) and START (line 2433). Consequence: if the user reacts to 'The idle hook X names no task' by uploading task X, or by correcting AGENT_SCHEDULER_HOOKS IDLE to an existing task, during the same idle period, the idle hook (typically park/close) no longer runs until a task or night hook runs or the scheduler is restarted. Before the change it started at the next decision (idle >= 0 and idle_hook_done false). This changes the existing idle-hook start path and contradicts SCHEDULER.md (Hooks: IDLE runs once per idle period, IDLE_PARK_AFTER minutes after the scheduler last found nothing eligible). Correction: keep a separate flag (e.g. idle_hook_reported) that only suppresses the repeated message, reset at the same three places as idle_hook_done, and leave idle_hook_done to mean the hook ran; optionally extend missing_idle_hook_task_is_reported_once to upload 'Nope' after the report and wait for 'Starting hook 'Nope''. Everything else checked and fine: item 2 (sequence_name field and SEQUENCE_NAME observation and both SCHEDULER.md claims removed, no other readers), item 3 (parser memsets the header and sets name only for a valid @task value, so header.name is safe on failure; message format matches SCHEDULER.md; test covers both branches by editing the saved config), item 4 (SCHEDULER.md now describes the NULL-message list updates), ASTAP removed from agent_busy_bit(), DRIVER_VERSION 0x03000009 -> 0x0300000A, formatting conforms. Reran make -C indigo_test test-agent-scheduler in the worktree: 73 run, 73 passed, 0 failed. Out of scope and not counted: the remaining 'ASTAP Agent' in the SCHEDULER.md dependency table row (dd4ec12f).",
+        "reviewer": "human/owner",
+        "commit": "7dbe3851ed9234e85d4156d4ca51022d403f2bdf",
+        "tree": "be70eadf6d3eef41ee07f20ef3b4e13e06cf6976",
+        "at": "2026-11-15T12:03:06.442463Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of 56a8b2971. The previous defect is fixed: process_idle() no longer sets idle_hook_done for a missing idle hook task; a separate idle_hook_reported flag only suppresses the repeated 'names no task' message, and it is cleared at all three places where idle_hook_done is cleared (task start line 1268, night hook start line 1281, START line 2437). idle_hook_done is again set only when the idle hook finishes (line 1089), so the existing idle-hook start path is unchanged and standby is untouched. missing_idle_hook_task_is_reported_once now uploads 'Nope' after the single report, waits for 'Starting hook 'Nope'' and checks the message stayed at one, which exercises the regression. The change since 7dbe3851e touches only these two files (+11/-3); the rest of the diff (items 2-4, ASTAP removal in agent_busy_bit(), DRIVER_VERSION 0x0300000A, SCHEDULER.md) is unchanged from the previous review. git diff --check is clean. make -C indigo_test test-agent-scheduler in the worktree: 73 run, 73 passed, 0 failed. Out of scope and not counted: 'ASTAP Agent' in the SCHEDULER.md dependency table (dd4ec12f).",
+        "reviewer": "human/owner",
+        "commit": "56a8b2971c4c11cbf73758dc1ba3f891ebd8768f",
+        "tree": "77b17650d98b3cc545f6a280a423efb1716424fa",
+        "at": "2026-11-15T12:13:20.559406Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T11:46:18.662528Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-15: fix the ticket, and remove ASTAP from everywhere, it is not supposed to be supported. Coordinator's resolution per item: (1) code: report a named IDLE hook that names no task, once per idle period; (2) remove the unused observed sequence_name field from the code and the SEQUENCE_NAME claims from SCHEDULER.md; (3) code: name the task in the skipped-saved-task message when its @task line was parsed; (4) documents: SCHEDULER.md describes what the code does (the reason is sent as a device message, list properties carry no message). Also remove the 'ASTAP Agent' name from agent_busy_bit(). Documentation-only ASTAP removals belong to dd4ec12f.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T11:51:14.297977Z",
+        "actor": "human/owner",
+        "text": "Reproduction before the fix (worktree build, macOS arm64): new cases in indigo_test/integration/test_agent_scheduler.c run with build/integration/test_agent_scheduler <filter>. saved_task_that_no_longer_validates_is_skipped FAILED: no 'The saved task 'Broken' was skipped: line 2: @priority: expected' message (expected 1, got 0); only 'A saved task was skipped: ...' was sent. missing_idle_hook_task_is_reported_once FAILED: after 'Task 'Work' completed' no 'The idle hook 'Nope' names no task' message within 15 s.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T11:55:01.634507Z",
+        "actor": "human/owner",
+        "text": "After the fix (DRIVER_VERSION 0x0300000A): make -C indigo_test test-agent-scheduler in the ticket worktree passed 73 run, 73 passed, 0 failed, including saved_task_that_no_longer_validates_is_skipped (now 'The saved task 'Broken' was skipped: line 2: ...' and, for a task whose error precedes @task, 'A saved task was skipped: line 1: ...') and missing_idle_hook_task_is_reported_once ('The idle hook 'Nope' names no task' exactly once in the idle period).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:10:14.275148Z",
+        "actor": "human/owner",
+        "text": "Review fix (item 1): the 'names no task' report no longer sets idle_hook_done; a separate idle_hook_reported flag, cleared with idle_hook_done on a task start, a night hook start and START, only stops the message from repeating. missing_idle_hook_task_is_reported_once now uploads the named task after the single report and expects 'Starting hook 'Nope''. Reproduction: with the previous driver revision (commit 7dbe3851) the extended case FAILED (no 'Starting hook 'Nope'' within 15 s after the upload). After the fix: make -C indigo_test test-agent-scheduler 73 run, 73 passed, 0 failed; flow check (whitespace) passed and flow check --command (build + test-agent-scheduler) passed on tree 77b17650, its log showing 73/73.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "e74af1c7a4b12f8fa38ceb1dd1d21e5b7e1fd94a",
+      "tree": "77b17650d98b3cc545f6a280a423efb1716424fa",
+      "base": "master",
+      "at": "2026-11-15T12:13:40.047508Z"
+    }
+  }
+}
