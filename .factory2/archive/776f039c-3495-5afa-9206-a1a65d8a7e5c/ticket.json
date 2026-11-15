@@ -1,0 +1,715 @@
+{
+  "schema_version": 1,
+  "ticket_id": "776f039c-3495-5afa-9206-a1a65d8a7e5c",
+  "revision": 36,
+  "title": "Scheduler loses the failure reason of a sequence that ends Alert",
+  "description": "agent_update_property() takes the failure reason from the message of the SEQUENCE_STATE update (finish_message), but since commit 9ecac90d2 the bus delivers an update's message separately through send_message, and the Scheduler Agent's client has no send_message callback (NULL slot in agent_client_template). A sequence that ends Alert is therefore recorded in the history as plain 'failed' and the message reads 'Task ... failed' without the reason; start failures and JavaScript errors, which come through SCHEDULER_RESULT, still carry their text. Next: add a send_message callback that records the Scripting Agent's last message for SEQUENCE_STATE, and a regression case with a failing sequence step.\n\nImported from .factory/findings/active/FND-20261113011414-d873-scheduler-users-guide-001.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.904174Z",
+  "status": "closed",
+  "branch": "ticket/776f039c-3495-5afa-9206-a1a65d8a7e5c",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "b7fee93e-8a7e-4690-8e9a-0307d43fe3f9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T12:46:49.032368Z",
+          "last_activity_at": "2026-11-15T13:07:34.118793Z",
+          "ended_at": "2026-11-15T13:07:34.118793Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1245086.425,
+          "tokens": null
+        },
+        {
+          "attempt_id": "32671616-9e8a-4461-849d-3c9a44159281",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T13:12:18.738720Z",
+          "last_activity_at": "2026-11-15T13:26:31.832853Z",
+          "ended_at": "2026-11-15T13:26:31.832853Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 853094.133,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T12:46:49.032368Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/776f039c-3495-5afa-9206-a1a65d8a7e5c"
+        },
+        {
+          "at": "2026-11-15T13:07:34.118793Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T13:12:18.738720Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T13:26:31.832853Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2098180.558,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "08e1ec3c-777a-46a8-bb3c-c9ea35d5aa70",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T13:07:34.119421Z",
+          "last_activity_at": "2026-11-15T13:12:18.738627Z",
+          "ended_at": "2026-11-15T13:12:18.738627Z",
+          "outcome": {
+            "summary": "Verdict: changes. One defect (code behaviour plus false documentation); the fixed failed-step path itself is correct.\n\nPremise and ordering verified. indigo_bus.c:1309-1316 calls update_property(..., NULL) and then send_message(client, device, property, message) for each client, under client_mutex. Sequencer.js failure() (1383-1411) sends the reason with indigo_send_message first, then the SEQUENCE_STEP_STATE update, then the SEQUENCE_STATE Alert update with 'Sequence failed'. indigo_agent_scripting.c queues every JS send_message (295-305) and every JS property update together with its message (723-760) as handlers on the Scripting Agent queue, so another client receives them in FIFO order: reason, Alert update, 'Sequence failed'. Failure paths: the plain failure path is correct. Under recover_on_failure with no recovery point found (1130-1132), the reason is the original failure message, which is fine. continue_on_failure ends Ok with no reason, also fine. A flip failure under abort_on_failure (1368-1370) sends its message before abort(), fine. Thread safety, NULL device and message checks, the bounded INDIGO_COPY_VALUE and shutdown order (client detached before agent_device is set to NULL and private_data is freed) are all fine. finish_message is consumed only in process_running (1532-1539). Preempt, abort, delete and STOP_FAILURE use stop_message and are unchanged. A run that succeeds gets no reason.\n\nDEFECT: an Alert that is not caused by a failed step now gets a misleading reason, and the new documents say the reason is empty in that case. Sequencer.js start() queues the SEQUENCE_STATE Busy update (1043) before 'Sequence started' (1066). The Busy event clears sequence_message, so 'Sequence started' is always recorded. After that, every progress message sent while Busy replaces it, for example 'Suspended for 30s' (1419), 'Settling down...' or 'Meridian flip finished'. abort() (1018) ends Alert with only the trailing 'Sequence aborted'. So when the sequence is ab",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 284619.206,
+          "tokens": null
+        },
+        {
+          "attempt_id": "cfd6e85b-7c7c-44d3-ac5f-7988341611ef",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T13:26:31.833019Z",
+          "last_activity_at": "2026-11-15T13:27:11.285573Z",
+          "ended_at": "2026-11-15T13:27:11.285573Z",
+          "outcome": {
+            "summary": "Re-review of e941f72b9: pass, no defects. As the owner decided (option b), a sequence aborted by hand being recorded with its last progress message is accepted, documented behaviour.\n\nProduction code: the only change from the reviewed 536215e57 is the comment above agent_send_message. The comment now matches the behaviour.\n\nDocuments: guide line 738 (the failed row), guide line 928 (troubleshooting) and SCHEDULER.md line 682 all say the same thing, and it matches the code: the reason is the last Scripting Agent message while the sequence was running (Busy). For a failed step it is that step's failure message, because Sequencer.js failure() sends it before the Alert update. For a sequence aborted by hand outside the scheduler it is an unrelated progress message, because abort() sends only the trailing 'Sequence aborted'. The false claim that the reason is empty is gone. 'such as Suspended for 30s' also covers the case where the last message is 'Sequence started'. Under recover_on_failure with no recovery point, the reason is the original failure message, which matches 'failure message of the step'. No other sentence in either document contradicts the change.\n\nTest: hand_aborted_sequence_reports_the_last_progress_message waits for the Scripting Agent's own 'Suspended for 30s' (Sequencer.js wait(), line 1419) before it aborts. The scheduler client receives that message in the same bus delivery loop, under client_mutex, that also delivers it to the observer. So the scheduler has recorded it before the Alert update caused by the abort can be delivered, which makes the test deterministic. It uses SCRIPTING_AGENT_NAME and AGENT_ABORT_PROCESS from the public headers and polls with timeouts like the existing helpers. The test-support change only appends Scripting Agent messages to a new, bounded scripting_messages buffer under cache_mutex. It does not touch the messages buffer, and every case runs in its own forked child, so existing cases cannot be affected.\n\nFormatting and",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 39452.554,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T13:07:34.119421Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T13:12:18.738627Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Verdict: changes. One defect (code behaviour plus false documentation); the fixed failed-step path itself is correct.\n\nPremise and ordering verified. indigo_bus.c:1309-1316 calls update_property(..., NULL) and then send_message(client, device, property, message) for each client, under client_mutex. Sequencer.js failure() (1383-1411) sends the reason with indigo_send_message first, then the SEQUENCE_STEP_STATE update, then the SEQUENCE_STATE Alert update with 'Sequence failed'. indigo_agent_scripting.c queues every JS send_message (295-305) and every JS property update together with its message (723-760) as handlers on the Scripting Agent queue, so another client receives them in FIFO order: reason, Alert update, 'Sequence failed'. Failure paths: the plain failure path is correct. Under recover_on_failure with no recovery point found (1130-1132), the reason is the original failure message, which is fine. continue_on_failure ends Ok with no reason, also fine. A flip failure under abort_on_failure (1368-1370) sends its message before abort(), fine. Thread safety, NULL device and message checks, the bounded INDIGO_COPY_VALUE and shutdown order (client detached before agent_device is set to NULL and private_data is freed) are all fine. finish_message is consumed only in process_running (1532-1539). Preempt, abort, delete and STOP_FAILURE use stop_message and are unchanged. A run that succeeds gets no reason.\n\nDEFECT: an Alert that is not caused by a failed step now gets a misleading reason, and the new documents say the reason is empty in that case. Sequencer.js start() queues the SEQUENCE_STATE Busy update (1043) before 'Sequence started' (1066). The Busy event clears sequence_message, so 'Sequence started' is always recorded. After that, every progress message sent while Busy replaces it, for example 'Suspended for 30s' (1419), 'Settling down...' or 'Meridian flip finished'. abort() (1018) ends Alert with only the trailing 'Sequence aborted'. So when the sequence is ab"
+        },
+        {
+          "at": "2026-11-15T13:26:31.833019Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T13:27:11.285573Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review of e941f72b9: pass, no defects. As the owner decided (option b), a sequence aborted by hand being recorded with its last progress message is accepted, documented behaviour.\n\nProduction code: the only change from the reviewed 536215e57 is the comment above agent_send_message. The comment now matches the behaviour.\n\nDocuments: guide line 738 (the failed row), guide line 928 (troubleshooting) and SCHEDULER.md line 682 all say the same thing, and it matches the code: the reason is the last Scripting Agent message while the sequence was running (Busy). For a failed step it is that step's failure message, because Sequencer.js failure() sends it before the Alert update. For a sequence aborted by hand outside the scheduler it is an unrelated progress message, because abort() sends only the trailing 'Sequence aborted'. The false claim that the reason is empty is gone. 'such as Suspended for 30s' also covers the case where the last message is 'Sequence started'. Under recover_on_failure with no recovery point, the reason is the original failure message, which matches 'failure message of the step'. No other sentence in either document contradicts the change.\n\nTest: hand_aborted_sequence_reports_the_last_progress_message waits for the Scripting Agent's own 'Suspended for 30s' (Sequencer.js wait(), line 1419) before it aborts. The scheduler client receives that message in the same bus delivery loop, under client_mutex, that also delivers it to the observer. So the scheduler has recorded it before the Alert update caused by the abort can be delivered, which makes the test deterministic. It uses SCRIPTING_AGENT_NAME and AGENT_ABORT_PROCESS from the public headers and polls with timeouts like the existing helpers. The test-support change only appends Scripting Agent messages to a new, bounded scripting_messages buffer under cache_mutex. It does not touch the messages buffer, and every case runs in its own forked child, so existing cases cannot be affected.\n\nFormatting and"
+        }
+      ],
+      "result": {
+        "summary": "Re-review of e941f72b9: pass, no defects. As the owner decided (option b), a sequence aborted by hand being recorded with its last progress message is accepted, documented behaviour.\n\nProduction code: the only change from the reviewed 536215e57 is the comment above agent_send_message. The comment now matches the behaviour.\n\nDocuments: guide line 738 (the failed row), guide line 928 (troubleshooting) and SCHEDULER.md line 682 all say the same thing, and it matches the code: the reason is the last Scripting Agent message while the sequence was running (Busy). For a failed step it is that step's failure message, because Sequencer.js failure() sends it before the Alert update. For a sequence aborted by hand outside the scheduler it is an unrelated progress message, because abort() sends only the trailing 'Sequence aborted'. The false claim that the reason is empty is gone. 'such as Suspended for 30s' also covers the case where the last message is 'Sequence started'. Under recover_on_failure with no recovery point, the reason is the original failure message, which matches 'failure message of the step'. No other sentence in either document contradicts the change.\n\nTest: hand_aborted_sequence_reports_the_last_progress_message waits for the Scripting Agent's own 'Suspended for 30s' (Sequencer.js wait(), line 1419) before it aborts. The scheduler client receives that message in the same bus delivery loop, under client_mutex, that also delivers it to the observer. So the scheduler has recorded it before the Alert update caused by the abort can be delivered, which makes the test deterministic. It uses SCRIPTING_AGENT_NAME and AGENT_ABORT_PROCESS from the public headers and polls with timeouts like the existing helpers. The test-support change only appends Scripting Agent messages to a new, bounded scripting_messages buffer under cache_mutex. It does not touch the messages buffer, and every case runs in its own forked child, so existing cases cannot be affected.\n\nFormatting and",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 324071.76,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "db84a9d7-bdd4-4f05-9e45-cadb1ee6a4c1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.904191Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261113011414-d873-scheduler-users-guide-001.json",
+      "source": "64edc48a6cba99fef82fd488906cada16a525249a6609a57e13fd25a5bf67d54",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "08c3d7f2-b5d7-4c11-8734-5e4159fa6900",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:18.231755Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "4ee427eb-eaec-4df2-b4d1-bcc57ff82f61",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:18.501000Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "medium"
+    },
+    {
+      "event_id": "01481399-571b-4f49-a13d-fb3f03e880c8",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:46:43.191393Z",
+      "actor": "human/owner",
+      "text": "Owner instruction 2026-11-15: fix this ticket. Coordinator's scope: restore the failure reason of a sequence that ends Alert in the history entry and the 'Task ... failed' message, with a regression case with a failing sequence step in indigo_test/integration/test_agent_scheduler.c; increment DRIVER_VERSION; correct the guide and SCHEDULER.md statements that describe the gap or the reason (the guide's history table 'failed' row and troubleshooting row 'A failed run shows no reason in the history', and the SCHEDULER.md Run history bullet wording 'the last alert message of the sequence') to what the code then does.",
+      "tokens": null
+    },
+    {
+      "event_id": "a235723f-23cb-46e9-a403-6895f18e5a85",
+      "event": "task/progress",
+      "at": "2026-11-15T12:46:49.032726Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Implementation started on branch ticket/776f039c-3495-5afa-9206-a1a65d8a7e5c"
+    },
+    {
+      "event_id": "918150ef-35ff-4e66-b2c0-c7f6f84896b2",
+      "event": "ticket/started",
+      "at": "2026-11-15T12:46:49.034332Z",
+      "actor": "human/owner",
+      "branch": "ticket/776f039c-3495-5afa-9206-a1a65d8a7e5c",
+      "base": "master"
+    },
+    {
+      "event_id": "d18eacf2-7343-42d6-8f39-845b0c533509",
+      "event": "task/progress",
+      "at": "2026-11-15T12:47:17.326233Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Implementer launched",
+      "attempt_id": "b7fee93e-8a7e-4690-8e9a-0307d43fe3f9",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "794a1c23-6b43-4854-aad1-8a32271cc5c3",
+      "event": "task/progress",
+      "at": "2026-11-15T12:48:32.223022Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Building and running the new regression case against unfixed code"
+    },
+    {
+      "event_id": "c1c76bde-f2f9-4bff-9d02-08478bc8d865",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:54:00.297748Z",
+      "actor": "human/owner",
+      "text": "Reproduction before the fix: new case failed_sequence_step_reports_its_reason (sequence.select_switch on a missing device) fails on the unfixed scheduler; run 74 run, 73 passed, 1 failed; message was 'Task Broken step failed' without the reason. Facts: since 9ecac90d2 update_property gets message NULL and send_message(client, device, property, message) is called right after it; Sequencer.js failure() sends the reason via indigo_send_message (queued on the Scripting Agent handler queue) before the SEQUENCE_STATE Alert update, whose own 'Sequence failed' message follows it, FIFO on the same queue.",
+      "tokens": null
+    },
+    {
+      "event_id": "5b9f8731-1ae3-4f1e-9875-5425e529801a",
+      "event": "ticket/note",
+      "at": "2026-11-15T12:59:12.588900Z",
+      "actor": "human/owner",
+      "text": "Corrected reproduction (set_gain with no Imager Agent) on unfixed code: 74 run, 73 passed, 1 failed; message was only 'Task Broken step failed'.",
+      "tokens": null
+    },
+    {
+      "event_id": "64146711-f998-4515-a9b2-597fafe43bc2",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:04:32.613549Z",
+      "actor": "human/owner",
+      "text": "After fix: scheduler integration 74 run, 74 passed, 0 failed, including failed_sequence_step_reports_its_reason.",
+      "tokens": null
+    },
+    {
+      "event_id": "7e56b407-19dd-4af0-877e-f679b49d22c4",
+      "event": "task/progress",
+      "at": "2026-11-15T13:04:32.965611Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1e3e4923-dc6a-494f-a9e4-374452607f10",
+      "event": "task/progress",
+      "at": "2026-11-15T13:04:32.989211Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2fd87b58-7e89-4853-85ff-8ad03f752fec",
+      "event": "check/passed",
+      "at": "2026-11-15T13:04:32.991326Z",
+      "actor": "human/owner",
+      "commit": "536215e57415b38dc2248fd3e9bdd81af91acfb7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "43b70216-e8de-4a0d-bec2-03053144800e",
+      "event": "task/progress",
+      "at": "2026-11-15T13:04:37.099831Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "3253fa5d-f7db-4311-9dfd-dbf0ea2ceeeb",
+      "event": "task/progress",
+      "at": "2026-11-15T13:07:05.482338Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "50e2c059-f754-4a81-a83a-b9e6275abfd0",
+      "event": "check/passed",
+      "at": "2026-11-15T13:07:05.484707Z",
+      "actor": "human/owner",
+      "commit": "536215e57415b38dc2248fd3e9bdd81af91acfb7",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "6827bbf4-0d2d-4349-919b-cede38922702",
+      "event": "task/progress",
+      "at": "2026-11-15T13:07:34.119532Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Review started"
+    },
+    {
+      "event_id": "320dd099-e2f1-4303-8aa6-9cdc972f91a1",
+      "event": "review/started",
+      "at": "2026-11-15T13:07:34.121769Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "85560709-720a-45fc-89fe-a1816f2a93cd",
+      "event": "task/progress",
+      "at": "2026-11-15T13:08:00.902866Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Reviewer launched",
+      "attempt_id": "08e1ec3c-777a-46a8-bb3c-c9ea35d5aa70",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3eb0f16b-f9f1-4fe5-95f0-146d2e34befd",
+      "event": "task/progress",
+      "at": "2026-11-15T13:09:51.007330Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Running scheduler integration test (failed_sequence filter) in worktree"
+    },
+    {
+      "event_id": "0173d357-cc13-4a08-9b43-5b25d2a89fd4",
+      "event": "task/progress",
+      "at": "2026-11-15T13:10:50.642962Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Probing hand-abort reason with a scratch test copy outside the worktree"
+    },
+    {
+      "event_id": "d675ce81-ed89-499d-befc-4b9544a53689",
+      "event": "task/progress",
+      "at": "2026-11-15T13:12:18.738715Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "26b869d6-f8e1-4836-93e0-b6dacab0e3f9",
+      "event": "task/progress",
+      "at": "2026-11-15T13:12:18.738740Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "9e674779-1cc1-456f-8e56-d2fabeff149a",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T13:12:18.739994Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "536215e57415b38dc2248fd3e9bdd81af91acfb7"
+    },
+    {
+      "event_id": "74a7d28a-7fa5-4022-b94b-3ef499bf189a",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:17:31.219906Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15 on the review finding (a sequence aborted by hand is recorded with the last progress message as its reason): keep the code, correct the guide and SCHEDULER.md to say the reason is the last Scripting Agent message during the run, which after an abort by hand is an unrelated progress message, and pin the behaviour with a test. A separate ticket is registered for Sequencer.js to publish the failure reason explicitly.",
+      "tokens": null
+    },
+    {
+      "event_id": "ad39c622-661a-4964-87d0-e0c40c37f8b6",
+      "event": "task/progress",
+      "at": "2026-11-15T13:17:52.202604Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Addressing review: docs wording and hand-abort test"
+    },
+    {
+      "event_id": "989b8419-74ab-4004-b756-28a72a856260",
+      "event": "task/progress",
+      "at": "2026-11-15T13:23:32.503296Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "ec63fdb5-ab62-4863-8d02-bbe7c4ee54b5",
+      "event": "task/progress",
+      "at": "2026-11-15T13:23:32.526945Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "086a5686-0646-45d5-8aa5-86ab5a321b0f",
+      "event": "check/passed",
+      "at": "2026-11-15T13:23:32.529420Z",
+      "actor": "human/owner",
+      "commit": "e941f72b9e41f892086572c724db84bf45ef9ffb",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "35708475-1b36-438b-b533-58e4c6f58204",
+      "event": "task/progress",
+      "at": "2026-11-15T13:23:32.697300Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "4a06ae60-3799-4656-b946-1f3cb2a9bcd8",
+      "event": "task/progress",
+      "at": "2026-11-15T13:26:01.398196Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "886b8ebd-a1d3-4090-b5de-9ec1ecf4e28b",
+      "event": "check/passed",
+      "at": "2026-11-15T13:26:01.401641Z",
+      "actor": "human/owner",
+      "commit": "e941f72b9e41f892086572c724db84bf45ef9ffb",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "9f98d00c-4bce-4d96-b741-23455bb622c1",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:26:05.673698Z",
+      "actor": "human/owner",
+      "text": "Review resolution: docs corrected (hand abort gives a progress message as reason), pinned by hand_aborted_sequence_reports_the_last_progress_message; integration 75 run, 75 passed, 0 failed.",
+      "tokens": null
+    },
+    {
+      "event_id": "18bb3df0-634f-42ee-9983-ddeda78f8803",
+      "event": "task/progress",
+      "at": "2026-11-15T13:26:31.690350Z",
+      "actor": "human/owner",
+      "task_id": "7570b9e4-10ff-443a-bcdc-21a3134307ef",
+      "text": "Re-reviewing the new candidate after the doc and test changes"
+    },
+    {
+      "event_id": "5563f332-045b-4a0f-b711-f9742cd9b67d",
+      "event": "task/progress",
+      "at": "2026-11-15T13:26:31.833115Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Review started"
+    },
+    {
+      "event_id": "1bf325e1-402e-4eb3-a79f-55900aacbd5a",
+      "event": "review/started",
+      "at": "2026-11-15T13:26:31.834352Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "ed0d30d3-0c68-4c51-a1e0-53d1b6a809b5",
+      "event": "task/progress",
+      "at": "2026-11-15T13:26:53.678119Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Running the two new scheduler cases (narrow filter) in the worktree"
+    },
+    {
+      "event_id": "8d02da36-f3be-46ea-ad21-fbe9a256a49a",
+      "event": "task/progress",
+      "at": "2026-11-15T13:27:11.285680Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "17e6e6e5-376c-4c44-a60e-55153f40fe2f",
+      "event": "review/passed",
+      "at": "2026-11-15T13:27:11.287087Z",
+      "actor": "human/owner",
+      "task_id": "aa6d038b-45a1-45e9-904d-c78524d0bab9",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e941f72b9e41f892086572c724db84bf45ef9ffb"
+    },
+    {
+      "event_id": "64ad794f-2760-4988-af11-99f9dfc5752e",
+      "event": "ticket/closed",
+      "at": "2026-11-15T13:27:28.716804Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T13:27:28.716768Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "03cc8346e1ef523e857f41e3d6d25328ef630d2a"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 2422252.318,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 49,
+    "sha256": "ab781c0eb77b6c1e497ea3ec0d61935ecdba81f049c0c22916b30f800d6167e4"
+  },
+  "priority": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "536215e57415b38dc2248fd3e9bdd81af91acfb7",
+        "tree": "a99a201a444498b3ed00f390b7329952142ddcfd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:04:32.988448Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/776f039c-3495-5afa-9206-a1a65d8a7e5c/a99a201a4444-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "536215e57415b38dc2248fd3e9bdd81af91acfb7",
+        "tree": "a99a201a444498b3ed00f390b7329952142ddcfd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:07:05.481146Z",
+        "duration_s": 148.4,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/776f039c-3495-5afa-9206-a1a65d8a7e5c/a99a201a4444-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e941f72b9e41f892086572c724db84bf45ef9ffb",
+        "tree": "451eed381df940c0c48e0731b848c9cc7a070353",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:23:32.525949Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/776f039c-3495-5afa-9206-a1a65d8a7e5c/451eed381df9-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "e941f72b9e41f892086572c724db84bf45ef9ffb",
+        "tree": "451eed381df940c0c48e0731b848c9cc7a070353",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:26:01.396212Z",
+        "duration_s": 148.7,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/776f039c-3495-5afa-9206-a1a65d8a7e5c/451eed381df9-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Verdict: changes. One defect (code behaviour plus false documentation); the fixed failed-step path itself is correct.\n\nPremise and ordering verified. indigo_bus.c:1309-1316 calls update_property(..., NULL) and then send_message(client, device, property, message) for each client, under client_mutex. Sequencer.js failure() (1383-1411) sends the reason with indigo_send_message first, then the SEQUENCE_STEP_STATE update, then the SEQUENCE_STATE Alert update with 'Sequence failed'. indigo_agent_scripting.c queues every JS send_message (295-305) and every JS property update together with its message (723-760) as handlers on the Scripting Agent queue, so another client receives them in FIFO order: reason, Alert update, 'Sequence failed'. Failure paths: the plain failure path is correct. Under recover_on_failure with no recovery point found (1130-1132), the reason is the original failure message, which is fine. continue_on_failure ends Ok with no reason, also fine. A flip failure under abort_on_failure (1368-1370) sends its message before abort(), fine. Thread safety, NULL device and message checks, the bounded INDIGO_COPY_VALUE and shutdown order (client detached before agent_device is set to NULL and private_data is freed) are all fine. finish_message is consumed only in process_running (1532-1539). Preempt, abort, delete and STOP_FAILURE use stop_message and are unchanged. A run that succeeds gets no reason.\n\nDEFECT: an Alert that is not caused by a failed step now gets a misleading reason, and the new documents say the reason is empty in that case. Sequencer.js start() queues the SEQUENCE_STATE Busy update (1043) before 'Sequence started' (1066). The Busy event clears sequence_message, so 'Sequence started' is always recorded. After that, every progress message sent while Busy replaces it, for example 'Suspended for 30s' (1419), 'Settling down...' or 'Meridian flip finished'. abort() (1018) ends Alert with only the trailing 'Sequence aborted'. So when the sequence is aborted by hand, for example with the web UI Abort button or AGENT_ABORT_PROCESS from any client, process_running records 'failed: <last progress message>'. Before the change the reason was empty.\n\nReproduced with a scratch copy of test_agent_scheduler.c outside the worktree. The probe case uploads a task with BODY_WAIT(30), starts it, waits until it runs, and has the observer client set Scripting Agent AGENT_ABORT_PROCESS.ABORT. The result is the history entry 'Hand abort #1 failed: Suspended for 30s' and the message \"Task 'Hand abort' failed: Suspended for 30s\".\n\nThis contradicts the new text. INDIGO_SCHEDULER_GUIDE.md:928 says that no message was sent 'for example when the sequence was aborted by hand'. SCHEDULER.md:682 says the reason 'is the reason Sequencer.js reports for the failed step' and that the agent 'leaves the reason empty when no such message was sent'. In practice the reason is never empty, because 'Sequence started' is always recorded. guide:738 'before the sequence failed' is likewise inexact.\n\nCorrection, owner's choice: (a) In the scheduler, drop or replace the recorded reason when the Alert of SEQUENCE_STATE comes from an abort. One way is to defer the finish until the next Scripting Agent message and discard the reason when that message is 'Sequence aborted'. This depends on the wording of Sequencer.js. (b) Keep the code and correct guide:738, guide:928 and SCHEDULER.md:682 to the real behaviour: the reason is the last Scripting Agent message while the sequence ran, which for an Alert not caused by a failed step (an abort by hand, for example) is an unrelated progress message such as 'Sequence started' or 'Suspended for 30s'. If either is done, a test case that aborts by hand would pin it down. A reliable distinction without matching message text would need Sequencer.js or Scripting Agent changes, which are out of scope, so that is a finding for the owner.\n\nOther checks: DRIVER_VERSION goes from 0x0300000B to 0x0300000C. Formatting is fine. Only the four files in scope are changed. The new case uses the existing helpers and does not depend on timing, because it waits for messages with timeouts. Without the fix the message has no ': reason' suffix, so wait_message fails; I confirmed this by reading the code and did not rerun it on master. Run: SCHEDULER_TEST_FILTER=failed_sequence_step build/integration/test_agent_scheduler in the worktree: 1 run, 1 passed. Not done: the full 74-case suite rerun, and other Alert paths of Sequencer.js beyond those listed.",
+        "reviewer": "human/owner",
+        "commit": "536215e57415b38dc2248fd3e9bdd81af91acfb7",
+        "tree": "a99a201a444498b3ed00f390b7329952142ddcfd",
+        "at": "2026-11-15T13:12:18.738442Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of e941f72b9: pass, no defects. As the owner decided (option b), a sequence aborted by hand being recorded with its last progress message is accepted, documented behaviour.\n\nProduction code: the only change from the reviewed 536215e57 is the comment above agent_send_message. The comment now matches the behaviour.\n\nDocuments: guide line 738 (the failed row), guide line 928 (troubleshooting) and SCHEDULER.md line 682 all say the same thing, and it matches the code: the reason is the last Scripting Agent message while the sequence was running (Busy). For a failed step it is that step's failure message, because Sequencer.js failure() sends it before the Alert update. For a sequence aborted by hand outside the scheduler it is an unrelated progress message, because abort() sends only the trailing 'Sequence aborted'. The false claim that the reason is empty is gone. 'such as Suspended for 30s' also covers the case where the last message is 'Sequence started'. Under recover_on_failure with no recovery point, the reason is the original failure message, which matches 'failure message of the step'. No other sentence in either document contradicts the change.\n\nTest: hand_aborted_sequence_reports_the_last_progress_message waits for the Scripting Agent's own 'Suspended for 30s' (Sequencer.js wait(), line 1419) before it aborts. The scheduler client receives that message in the same bus delivery loop, under client_mutex, that also delivers it to the observer. So the scheduler has recorded it before the Alert update caused by the abort can be delivered, which makes the test deterministic. It uses SCRIPTING_AGENT_NAME and AGENT_ABORT_PROCESS from the public headers and polls with timeouts like the existing helpers. The test-support change only appends Scripting Agent messages to a new, bounded scripting_messages buffer under cache_mutex. It does not touch the messages buffer, and every case runs in its own forked child, so existing cases cannot be affected.\n\nFormatting and scope: formatting is fine, only the four in-scope files are changed, and DRIVER_VERSION is 0x0300000C.\n\nRan in the worktree (binary up to date): SCHEDULER_TEST_FILTER=failed_sequence_step gives 1 run, 1 passed. SCHEDULER_TEST_FILTER=hand_aborted_sequence, run twice, gives 1 run, 1 passed each time. Not rerun: the full 75-case suite. The implementer's note reports 75 run, 75 passed.",
+        "reviewer": "human/owner",
+        "commit": "e941f72b9e41f892086572c724db84bf45ef9ffb",
+        "tree": "451eed381df940c0c48e0731b848c9cc7a070353",
+        "at": "2026-11-15T13:27:11.285365Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T12:46:43.190039Z",
+        "actor": "human/owner",
+        "text": "Owner instruction 2026-11-15: fix this ticket. Coordinator's scope: restore the failure reason of a sequence that ends Alert in the history entry and the 'Task ... failed' message, with a regression case with a failing sequence step in indigo_test/integration/test_agent_scheduler.c; increment DRIVER_VERSION; correct the guide and SCHEDULER.md statements that describe the gap or the reason (the guide's history table 'failed' row and troubleshooting row 'A failed run shows no reason in the history', and the SCHEDULER.md Run history bullet wording 'the last alert message of the sequence') to what the code then does.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:54:00.296448Z",
+        "actor": "human/owner",
+        "text": "Reproduction before the fix: new case failed_sequence_step_reports_its_reason (sequence.select_switch on a missing device) fails on the unfixed scheduler; run 74 run, 73 passed, 1 failed; message was 'Task Broken step failed' without the reason. Facts: since 9ecac90d2 update_property gets message NULL and send_message(client, device, property, message) is called right after it; Sequencer.js failure() sends the reason via indigo_send_message (queued on the Scripting Agent handler queue) before the SEQUENCE_STATE Alert update, whose own 'Sequence failed' message follows it, FIFO on the same queue.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T12:59:12.587376Z",
+        "actor": "human/owner",
+        "text": "Corrected reproduction (set_gain with no Imager Agent) on unfixed code: 74 run, 73 passed, 1 failed; message was only 'Task Broken step failed'.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T13:04:32.611927Z",
+        "actor": "human/owner",
+        "text": "After fix: scheduler integration 74 run, 74 passed, 0 failed, including failed_sequence_step_reports_its_reason.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T13:17:31.218505Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-15 on the review finding (a sequence aborted by hand is recorded with the last progress message as its reason): keep the code, correct the guide and SCHEDULER.md to say the reason is the last Scripting Agent message during the run, which after an abort by hand is an unrelated progress message, and pin the behaviour with a test. A separate ticket is registered for Sequencer.js to publish the failure reason explicitly.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T13:26:05.671971Z",
+        "actor": "human/owner",
+        "text": "Review resolution: docs corrected (hand abort gives a progress message as reason), pinned by hand_aborted_sequence_reports_the_last_progress_message; integration 75 run, 75 passed, 0 failed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "03cc8346e1ef523e857f41e3d6d25328ef630d2a",
+      "tree": "451eed381df940c0c48e0731b848c9cc7a070353",
+      "base": "master",
+      "at": "2026-11-15T13:27:28.620303Z"
+    }
+  }
+}
