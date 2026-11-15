@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "ticket_id": "de0713ae-9e20-5c6d-965e-7e9f3e974b77",
-  "revision": 4,
+  "revision": 5,
   "title": "MinGW property tool link races the import library build",
   "description": "The executable depends only on its C source while linking libindigo_client.lib produced by the sibling DLL prerequisite of all. An isolated fixture used the unchanged Makefile and a synthetic delayed linker under make -j2: executable link started before the import library existed and make exited 2. Add an explicit dependency and correct directory ordering; test serial, parallel and direct executable targets.\n\nImported from .factory/findings/active/FND-20261101193246-1248-periodic-repository-audit-004.json (category: functional, blocking: no).",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.836893Z",
-  "status": "open",
+  "status": "closed",
   "branch": null,
   "related_ticket_id": null,
   "config_overrides": {},
@@ -50,9 +50,24 @@
       "actor": "human/owner",
       "previous_difficulty": null,
       "difficulty": "low"
+    },
+    {
+      "event_id": "da575b08-ad48-459f-abca-1d75a965d181",
+      "event": "ticket/closed",
+      "at": "2026-11-15T10:14:37.016606Z",
+      "actor": "human/owner",
+      "reason": "Not fixed: the MinGW build environment (indigo_windows/gcc) is no longer used, so the defect is not worth fixing. Closed on the owner's instruction of 2026-11-15.",
+      "resolution": "unresolved"
     }
   ],
-  "closure": null,
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T10:14:37.016269Z",
+    "reason": "Not fixed: the MinGW build environment (indigo_windows/gcc) is no longer used, so the defect is not worth fixing. Closed on the owner's instruction of 2026-11-15.",
+    "resolution": "unresolved",
+    "mode": "manual",
+    "verification": "not_claimed"
+  },
   "severity": "low",
   "metrics": {
     "duration_ms": 0.0,
@@ -72,8 +87,8 @@
     }
   },
   "journal": {
-    "entries": 4,
-    "sha256": "d0acc4c882654afae1b8d5c8153ac1af8d91febc4b68e3443693ca3113cc376f"
+    "entries": 5,
+    "sha256": "ad331e0af30622cdb0a906cac95c856f44b3c0bc374f41bd5cd4a4a33e6d36a6"
   },
   "priority": "low",
   "difficulty": "low"
