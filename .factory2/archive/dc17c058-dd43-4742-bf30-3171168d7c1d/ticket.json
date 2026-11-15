@@ -1,0 +1,424 @@
+{
+  "schema_version": 1,
+  "ticket_id": "dc17c058-dd43-4742-bf30-3171168d7c1d",
+  "revision": 18,
+  "title": "Factory audit follow-up: classify open tickets, add a real flow check, mark superseded ADRs, fix indigo_libs/AGENTS.md",
+  "description": "Follow-up to the Factory 2 audit of 2026-11-15. Four parts, landing together.\n\n1. Classify the 34 open tickets. All were imported by upgrade/legacy as type bug, priority low, with no profile and difficulty unknown, so every worker gets the strong tier. For each open ticket read its description and set priority, severity, flow profile and difficulty (ticket priority / ticket severity / flow profile / ticket edit --difficulty), and correct the type where it is not a bug. The owner delegated the choice of these values to the agent's own judgement (2026-11-15); record them with ticket confirm and list the resulting values per ticket in a note on this ticket so the owner can review them. Do not start, edit the scope of, or close any of those tickets.\n\n2. Flow checks. .factory2/config.json configures only the whitespace check (git diff --check master...HEAD), so a ticket can close without any build or test. Propose and add checks that are cheap and safe for every ticket (for example the native unit suite, make -C indigo_test test-unit, once the open unit-test failure ticket 21bfa946 allows it), keep driver-specific tests out of the generic check list, and keep project/commands in .factory2/project-rules.json consistent with the result. Present the proposed check list to the owner before adding it.\n\n3. Decision records. indigo_docs/decisions/ADR-002-factory-record-upgrade.md and ADR-004-scale-repository-audits.md describe the removed .factory mechanism (ordered tasks, incremental audit after 20 tasks) and still read as accepted, while the repository-review rule in .factory2/rules.json now governs audits. Mark what is superseded (status and a short pointer to the current rule), without rewriting the historical text, and update indigo_docs/decisions/README.md accordingly, including the 'Related task' column that holds old task IDs. Add a new ADR only if the owner asks for one.\n\n4. indigo_libs/AGENTS.md tells agents to 'update the lockfile using the project's package manager', which contradicts project/commands (no package manager, dependencies come from makefiles and vendored SDKs). Replace that line with the actual INDIGO convention.\n\nOut of scope: the Factory runtime itself (settings show listing ignored directories), the leftover branch task/20261105140615-7cae-fix-sequencer-transit-units, and any Xcode project change beyond what the repository rules require for touched files.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T08:53:53.611034Z",
+  "status": "closed",
+  "branch": "ticket/dc17c058-dd43-4742-bf30-3171168d7c1d",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "df5a1ffd-2210-4bf8-b5b0-6e3d727bd249",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T08:54:11.092764Z",
+          "last_activity_at": "2026-11-15T08:58:32.860667Z",
+          "ended_at": "2026-11-15T08:58:32.860667Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 261767.903,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T08:54:11.092764Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/dc17c058-dd43-4742-bf30-3171168d7c1d"
+        },
+        {
+          "at": "2026-11-15T08:58:32.860667Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 261767.903,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "f12e3516-abbe-4ac5-b620-19fe65f21f02",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "625e4b98-33d1-4897-a6a2-5b2699e1e395",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T08:58:32.860894Z",
+          "last_activity_at": "2026-11-15T09:00:46.559511Z",
+          "ended_at": "2026-11-15T09:00:46.559511Z",
+          "outcome": {
+            "summary": "Independent review of tree def8c050 (commit c822b3b2a). Part 3: only header lines of ADR-001..004 changed; historical bodies untouched. ADR-002/004 status superseded with pointers; ADR-004 pointer matches the repository-review rule in .factory2/rules.json; ADR-003 note names project/xcode-metadata-boundary, which exists in project-rules.json. README index rows match the ADR headers and the new sentence explains the Related task column; all four task IDs exist under .factory/tasks/archive/ at 3dedba4cb. Part 4: the indigo_libs/AGENTS.md line agrees with project/commands; indigo_libs/externals exists; no other AGENTS.md mentions a lockfile. Part 1: all 34 other open tickets carry type/priority/severity/difficulty exactly as in the ticket note (profile full set on 8f313dbc, efb8a75f, f9684e39; the rest use the default simple); all remain open with no branch or task, and no title/description change events. Sampled 21 descriptions; grades are defensible. Part 2: question, owner answer (option a) and split ticket 724821da (related to 21bfa946) are recorded; config.json and project-rules.json unchanged. Minor non-blocking: ticket confirm recorded only on the 3 full-profile tickets, values on the other 31 set via priority/severity/type/edit commands; ADR-002 pointer names Factory 2 tickets rather than a specific rule. whitespace check passed on this tree.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 133698.617,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T08:58:32.860894Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T09:00:46.559511Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Independent review of tree def8c050 (commit c822b3b2a). Part 3: only header lines of ADR-001..004 changed; historical bodies untouched. ADR-002/004 status superseded with pointers; ADR-004 pointer matches the repository-review rule in .factory2/rules.json; ADR-003 note names project/xcode-metadata-boundary, which exists in project-rules.json. README index rows match the ADR headers and the new sentence explains the Related task column; all four task IDs exist under .factory/tasks/archive/ at 3dedba4cb. Part 4: the indigo_libs/AGENTS.md line agrees with project/commands; indigo_libs/externals exists; no other AGENTS.md mentions a lockfile. Part 1: all 34 other open tickets carry type/priority/severity/difficulty exactly as in the ticket note (profile full set on 8f313dbc, efb8a75f, f9684e39; the rest use the default simple); all remain open with no branch or task, and no title/description change events. Sampled 21 descriptions; grades are defensible. Part 2: question, owner answer (option a) and split ticket 724821da (related to 21bfa946) are recorded; config.json and project-rules.json unchanged. Minor non-blocking: ticket confirm recorded only on the 3 full-profile tickets, values on the other 31 set via priority/severity/type/edit commands; ADR-002 pointer names Factory 2 tickets rather than a specific rule. whitespace check passed on this tree."
+        }
+      ],
+      "result": {
+        "summary": "Independent review of tree def8c050 (commit c822b3b2a). Part 3: only header lines of ADR-001..004 changed; historical bodies untouched. ADR-002/004 status superseded with pointers; ADR-004 pointer matches the repository-review rule in .factory2/rules.json; ADR-003 note names project/xcode-metadata-boundary, which exists in project-rules.json. README index rows match the ADR headers and the new sentence explains the Related task column; all four task IDs exist under .factory/tasks/archive/ at 3dedba4cb. Part 4: the indigo_libs/AGENTS.md line agrees with project/commands; indigo_libs/externals exists; no other AGENTS.md mentions a lockfile. Part 1: all 34 other open tickets carry type/priority/severity/difficulty exactly as in the ticket note (profile full set on 8f313dbc, efb8a75f, f9684e39; the rest use the default simple); all remain open with no branch or task, and no title/description change events. Sampled 21 descriptions; grades are defensible. Part 2: question, owner answer (option a) and split ticket 724821da (related to 21bfa946) are recorded; config.json and project-rules.json unchanged. Minor non-blocking: ticket confirm recorded only on the 3 full-profile tickets, values on the other 31 set via priority/severity/type/edit commands; ADR-002 pointer names Factory 2 tickets rather than a specific rule. whitespace check passed on this tree.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 133698.617,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "4e74667e-684a-46fb-99b6-9a98121094a5",
+      "event": "ticket/created",
+      "at": "2026-11-15T08:53:53.611827Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "aee3f207-a5e5-4a59-8ff8-833cbd7702d1",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T08:54:05.675094Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "219bd758-c9a4-449a-aea3-cdfa1b1a69c2",
+      "event": "task/progress",
+      "at": "2026-11-15T08:54:11.093079Z",
+      "actor": "human/owner",
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "text": "Implementation started on branch ticket/dc17c058-dd43-4742-bf30-3171168d7c1d"
+    },
+    {
+      "event_id": "8040a96f-7710-4fd4-907e-8236dbf51317",
+      "event": "ticket/started",
+      "at": "2026-11-15T08:54:11.094445Z",
+      "actor": "human/owner",
+      "branch": "ticket/dc17c058-dd43-4742-bf30-3171168d7c1d",
+      "base": "master"
+    },
+    {
+      "event_id": "f3bf9069-0fd9-4d39-b908-6184ee213db7",
+      "event": "task/progress",
+      "at": "2026-11-15T08:54:41.485446Z",
+      "actor": "human/owner",
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "text": "Implementer launched",
+      "attempt_id": "df5a1ffd-2210-4bf8-b5b0-6e3d727bd249",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "cfe1e387-7342-4316-b93c-5b7465ee8257",
+      "event": "task/progress",
+      "at": "2026-11-15T08:55:02.312660Z",
+      "actor": "human/owner",
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "text": "Part 1: classifying the open tickets"
+    },
+    {
+      "event_id": "c9105b93-e638-431e-b344-d54137c39465",
+      "event": "task/progress",
+      "at": "2026-11-15T08:55:44.260692Z",
+      "actor": "human/owner",
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "text": "Parts 3 and 4 done; investigating flow checks"
+    },
+    {
+      "event_id": "7d52ee94-b911-4b3c-808c-1bed1e4b6dbb",
+      "event": "task/progress",
+      "at": "2026-11-15T08:55:59.296499Z",
+      "actor": "human/owner",
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "text": "Running make -C indigo_test test-unit once in primary checkout (read-only evidence)"
+    },
+    {
+      "event_id": "459cc9a2-879f-414d-9643-cfe017957ff9",
+      "event": "ticket/note",
+      "at": "2026-11-15T08:56:44.485484Z",
+      "actor": "human/owner",
+      "text": "Classification by the implementer (owner delegated). id | title | type | priority | severity | profile | difficulty\n21bfa946 | Unit test device ACL fails on master | bug | high | high | simple | medium\n2b3903ea | Protocol security unit test ACL (duplicate of 21bfa946) | bug | high | high | simple | medium\n250f7411 | WeMacro BT zero batch count underflow | bug | medium | medium | simple | low\n2939208c | Andor shutdown destroys static mutex | bug | high | high | simple | low\na78416cd | Andor init leaks mutex lock on failure | bug | high | high | simple | low\ne7956088 | Andor enumeration >8 devices overflow | bug | high | high | simple | low\n2b46dfdb | 3 tool input safety tests fail on Linux | bug | low | low | simple | medium\n36c2852f | Sequencer hangs if solver unloaded | bug | medium | medium | simple | medium\n3d564eb3 | Multicamera guide follower delay doc | change | low | low | simple | low\n48320eae | Imager abort after transit untested | check | low | low | simple | low\n4ccea20d | Sun/Moon J2000 vs of-date in scheduler | bug | low | low | simple | medium\n5e1feaa2 | RPi ROI map iterator comparison | bug | medium | medium | simple | low\n6c59cdeb | Sequencer flip pause units doc | bug | medium | medium | simple | low\n6e6d940f | Editor catalog omits accept_while_busy | bug | low | low | simple | low\n776f039c | Scheduler loses Alert failure reason | bug | low | low | simple | medium\n796af826 | MinGW rebuild target missing build | bug | low | low | simple | low\n8ca68272 | Scripting Agent bindings omit tokens | bug | medium | medium | simple | medium\n8f313dbc | Config restore unauthenticated replay | bug | medium | medium | full | high\n95a9c733 | Forked runners skip leak check | change | low | low | simple | medium\n970f2cdd | Mount Agent J2000 assumption | bug | medium | medium | simple | medium\n9d9f8849 | Sky v2 updater wrong package | bug | medium | medium | simple | low\nacc2dbb5 | Release helpers hide failures | bug | medium | medium | simple | medium\naced381d | macO",
+      "tokens": null
+    },
+    {
+      "event_id": "5d44c60a-853b-4978-8636-c44e0286fd83",
+      "event": "task/progress",
+      "at": "2026-11-15T08:56:44.737737Z",
+      "actor": "human/owner",
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "7702a6eb-cd19-4b15-a478-b41204604af7",
+      "event": "task/progress",
+      "at": "2026-11-15T08:56:44.760657Z",
+      "actor": "human/owner",
+      "task_id": "d0908433-c7fb-4f02-80f2-559a87a70bd1",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "74e62977-3515-405c-9f50-8f76e8d4563e",
+      "event": "check/passed",
+      "at": "2026-11-15T08:56:44.762314Z",
+      "actor": "human/owner",
+      "commit": "c822b3b2af3a828c974483461657bbce48e41de2",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "102fc688-39ed-46ed-944f-db1521856d6b",
+      "event": "question/asked",
+      "at": "2026-11-15T08:57:29.567863Z",
+      "actor": "human/owner",
+      "text": "Part 2 (flow checks): the proposed 'unit' check (make -C indigo_test test-unit, scoped to indigo_libs/*, indigo_server/*, indigo_test/unit/*, indigo_test/test_runner.h, indigo_test/Makefile, timeout 600 s) cannot be added now: the suite fails on master at test_protocol_security (ticket 21bfa946, reproduced 2026-11-15, 50 of 88 suites ran) and a ticket worktree has no Makefile.inc or built library, so the command fails there. Options: (a) keep only the whitespace check in this ticket and register the unit check as a separate ticket depending on 21bfa946 and on a worktree build decision; (b) add the check now anyway."
+    },
+    {
+      "event_id": "89d83a52-bf74-406e-a886-3f019bb14024",
+      "event": "question/answered",
+      "at": "2026-11-15T08:58:32.668374Z",
+      "actor": "human/owner",
+      "text": "Owner (2026-11-15): option (a). Keep only the whitespace check in this ticket; the unit check is split into a separate ticket. Part 2 of this ticket is therefore complete with the recorded proposal and no change to .factory2/config.json or project-rules.json."
+    },
+    {
+      "event_id": "d1344358-075e-4e04-a482-05eda61399b4",
+      "event": "task/progress",
+      "at": "2026-11-15T08:58:32.860973Z",
+      "actor": "human/owner",
+      "task_id": "f12e3516-abbe-4ac5-b620-19fe65f21f02",
+      "text": "Review started"
+    },
+    {
+      "event_id": "314ac4ec-655a-4f27-849a-75edcaed880f",
+      "event": "review/started",
+      "at": "2026-11-15T08:58:32.862449Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "23f51004-4951-4ff0-92ef-b8edf5bd7160",
+      "event": "task/progress",
+      "at": "2026-11-15T08:58:54.716593Z",
+      "actor": "human/owner",
+      "task_id": "f12e3516-abbe-4ac5-b620-19fe65f21f02",
+      "text": "Reviewer launched",
+      "attempt_id": "625e4b98-33d1-4897-a6a2-5b2699e1e395",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "341c4523-6975-42c9-a292-82a0ff76b32c",
+      "event": "task/progress",
+      "at": "2026-11-15T09:00:46.559697Z",
+      "actor": "human/owner",
+      "task_id": "f12e3516-abbe-4ac5-b620-19fe65f21f02",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "847d5e09-571f-4066-a394-0a89786394fd",
+      "event": "review/passed",
+      "at": "2026-11-15T09:00:46.561510Z",
+      "actor": "human/owner",
+      "task_id": "f12e3516-abbe-4ac5-b620-19fe65f21f02",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "c822b3b2af3a828c974483461657bbce48e41de2"
+    },
+    {
+      "event_id": "17b42711-c6ce-4901-b2ba-eb2bd2f319b9",
+      "event": "ticket/closed",
+      "at": "2026-11-15T09:04:47.070666Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T09:04:47.070634Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "525a1dfe5a1438f0587d73610956da65b436e137"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c822b3b2af3a828c974483461657bbce48e41de2",
+        "tree": "def8c05042bf72fdf17b2ed314a1ef75f859f5b8",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T08:56:44.759955Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/dc17c058-dd43-4742-bf30-3171168d7c1d/def8c05042bf-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Independent review of tree def8c050 (commit c822b3b2a). Part 3: only header lines of ADR-001..004 changed; historical bodies untouched. ADR-002/004 status superseded with pointers; ADR-004 pointer matches the repository-review rule in .factory2/rules.json; ADR-003 note names project/xcode-metadata-boundary, which exists in project-rules.json. README index rows match the ADR headers and the new sentence explains the Related task column; all four task IDs exist under .factory/tasks/archive/ at 3dedba4cb. Part 4: the indigo_libs/AGENTS.md line agrees with project/commands; indigo_libs/externals exists; no other AGENTS.md mentions a lockfile. Part 1: all 34 other open tickets carry type/priority/severity/difficulty exactly as in the ticket note (profile full set on 8f313dbc, efb8a75f, f9684e39; the rest use the default simple); all remain open with no branch or task, and no title/description change events. Sampled 21 descriptions; grades are defensible. Part 2: question, owner answer (option a) and split ticket 724821da (related to 21bfa946) are recorded; config.json and project-rules.json unchanged. Minor non-blocking: ticket confirm recorded only on the 3 full-profile tickets, values on the other 31 set via priority/severity/type/edit commands; ADR-002 pointer names Factory 2 tickets rather than a specific rule. whitespace check passed on this tree.",
+        "reviewer": "human/owner",
+        "commit": "c822b3b2af3a828c974483461657bbce48e41de2",
+        "tree": "def8c05042bf72fdf17b2ed314a1ef75f859f5b8",
+        "at": "2026-11-15T09:00:46.559206Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T08:56:44.484047Z",
+        "actor": "human/owner",
+        "text": "Classification by the implementer (owner delegated). id | title | type | priority | severity | profile | difficulty\n21bfa946 | Unit test device ACL fails on master | bug | high | high | simple | medium\n2b3903ea | Protocol security unit test ACL (duplicate of 21bfa946) | bug | high | high | simple | medium\n250f7411 | WeMacro BT zero batch count underflow | bug | medium | medium | simple | low\n2939208c | Andor shutdown destroys static mutex | bug | high | high | simple | low\na78416cd | Andor init leaks mutex lock on failure | bug | high | high | simple | low\ne7956088 | Andor enumeration >8 devices overflow | bug | high | high | simple | low\n2b46dfdb | 3 tool input safety tests fail on Linux | bug | low | low | simple | medium\n36c2852f | Sequencer hangs if solver unloaded | bug | medium | medium | simple | medium\n3d564eb3 | Multicamera guide follower delay doc | change | low | low | simple | low\n48320eae | Imager abort after transit untested | check | low | low | simple | low\n4ccea20d | Sun/Moon J2000 vs of-date in scheduler | bug | low | low | simple | medium\n5e1feaa2 | RPi ROI map iterator comparison | bug | medium | medium | simple | low\n6c59cdeb | Sequencer flip pause units doc | bug | medium | medium | simple | low\n6e6d940f | Editor catalog omits accept_while_busy | bug | low | low | simple | low\n776f039c | Scheduler loses Alert failure reason | bug | low | low | simple | medium\n796af826 | MinGW rebuild target missing build | bug | low | low | simple | low\n8ca68272 | Scripting Agent bindings omit tokens | bug | medium | medium | simple | medium\n8f313dbc | Config restore unauthenticated replay | bug | medium | medium | full | high\n95a9c733 | Forked runners skip leak check | change | low | low | simple | medium\n970f2cdd | Mount Agent J2000 assumption | bug | medium | medium | simple | medium\n9d9f8849 | Sky v2 updater wrong package | bug | medium | medium | simple | low\nacc2dbb5 | Release helpers hide failures | bug | medium | medium | simple | medium\naced381d | macOS bootstrap plain HTTP sources | bug | medium | high | simple | medium\nafc28310 | Scheduler task trailing whitespace lost | bug | low | low | simple | low\nba5bbe3e | JSON protocol drops item hints | bug | medium | medium | simple | medium\nc1c18b43 | Retired .factory test suite pycache (likely obsolete) | bug | low | low | simple | low\nd8ca35b4 | GP solve allocation failure | bug | medium | medium | simple | medium\nde0713ae | MinGW prop tool link race | bug | low | low | simple | low\ne65f9da9 | Player One snapshots as streaming | bug | medium | medium | simple | medium\nea48a942 | Wi-Fi password guards destructive | bug | medium | high | simple | low\nefb8a75f | K-m bulb exposures short | bug | low | medium | full | high\nf91ea306 | xml_escape_b thread-local leak | bug | low | low | simple | medium\nf9684e39 | RPi autofocus single request | change | low | low | full | high\nfa14dd64 | Guider subframe restore fails | bug | medium | medium | simple | medium",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Part 2 (flow checks): the proposed 'unit' check (make -C indigo_test test-unit, scoped to indigo_libs/*, indigo_server/*, indigo_test/unit/*, indigo_test/test_runner.h, indigo_test/Makefile, timeout 600 s) cannot be added now: the suite fails on master at test_protocol_security (ticket 21bfa946, reproduced 2026-11-15, 50 of 88 suites ran) and a ticket worktree has no Makefile.inc or built library, so the command fails there. Options: (a) keep only the whitespace check in this ticket and register the unit check as a separate ticket depending on 21bfa946 and on a worktree build decision; (b) add the check now anyway.",
+        "at": "2026-11-15T08:57:29.566447Z",
+        "actor": "human/owner",
+        "answer": "Owner (2026-11-15): option (a). Keep only the whitespace check in this ticket; the unit check is split into a separate ticket. Part 2 of this ticket is therefore complete with the recorded proposal and no change to .factory2/config.json or project-rules.json.",
+        "answered_at": "2026-11-15T08:58:32.666678Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "525a1dfe5a1438f0587d73610956da65b436e137",
+      "tree": "def8c05042bf72fdf17b2ed314a1ef75f859f5b8",
+      "base": "master",
+      "at": "2026-11-15T09:04:46.996333Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T08:53:53.611034Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T08:54:05.674866Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 395466.52,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 24,
+    "sha256": "4a9af5865466b58b705872673f41593057534cc67a2903ea783dd706375c378c"
+  }
+}
