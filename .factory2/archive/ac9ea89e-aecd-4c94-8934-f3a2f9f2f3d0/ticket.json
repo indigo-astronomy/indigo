@@ -1,0 +1,1033 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0",
+  "revision": 55,
+  "title": "Locally stamped device or master token may be forwarded to connected remote servers",
+  "description": "Raised by the code review of ticket 8f313dbc; found by reading the code, not reproduced. When indigo_use_host_suffix is false, indigo_change_property in indigo_libs/indigo_bus.c (around line 1011) also routes every change request to the '@ host' remote-server adapter devices. The XML client adapter then writes any nonzero property->access_token into the outgoing request (indigo_libs/indigo_xml.c around line 2007). A request stamped locally with indigo_get_device_or_master_token, for example by config_restore_handler in indigo_libs/indigo_driver.c, by the Configuration Agent replay dispatch added in 8f313dbc or by the indigo_change_*_property helpers, could therefore carry the local device or master token to a connected remote INDIGO server. First step: confirm or refute this with a test that connects a server to a second server and inspects the forwarded request. If confirmed, decide with the owner where the token should be dropped; this touches the bus/adapter trust boundary, hence the full profile. Severity is unknown until the behaviour is confirmed.",
+  "type": "bug",
+  "discovered_at": "2026-11-15T18:40:00Z",
+  "created_at": "2026-11-15T18:42:42.594075Z",
+  "status": "closed",
+  "branch": "ticket/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "0eec108e-f6eb-47b2-9f98-00bdaba2a712",
+      "title": "Design",
+      "type": "planning",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "24766a39-087a-4e32-a3db-da287c85386a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T19:18:00.043408Z",
+          "last_activity_at": "2026-11-15T19:29:09.291265Z",
+          "ended_at": "2026-11-15T19:29:09.291265Z",
+          "outcome": {
+            "summary": "Approved design.md",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 669247.857,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T19:18:00.043408Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Design started"
+        },
+        {
+          "at": "2026-11-15T19:29:09.291265Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Approved design.md"
+        }
+      ],
+      "result": {
+        "summary": "Approved design.md",
+        "source": "owner",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "phase": "design",
+      "action": "implement",
+      "workflow_step": "design/implement",
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 669247.857,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "caa221fc-1f47-4d20-89b4-2adfa23f8975",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T19:29:15.382764Z",
+          "last_activity_at": "2026-11-15T19:39:13.792072Z",
+          "ended_at": "2026-11-15T19:39:13.792072Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 598409.308,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a8741871-2a33-4dc3-98d2-d4b94346eab0",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T19:43:14.111400Z",
+          "last_activity_at": "2026-11-15T20:05:37.418163Z",
+          "ended_at": "2026-11-15T20:05:37.418163Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1343306.763,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T19:29:15.382764Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0"
+        },
+        {
+          "at": "2026-11-15T19:39:13.792072Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T19:43:14.111400Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T20:05:37.418163Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 1941716.071,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "74f3b900-ca11-47da-b9f8-df003d24bff9",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-15T19:39:13.792384Z",
+          "last_activity_at": "2026-11-15T19:43:14.111277Z",
+          "ended_at": "2026-11-15T19:43:14.111277Z",
+          "outcome": {
+            "summary": "Bus change itself is correct and matches option A: has_host_suffix (indigo_libs/indigo_bus.c:1001-1004) matches exactly the names indigo_xml.c builds on receive ('%s %s' with the adapter name, indigo_xml.c:593 and the other set/def handlers) and is consistent with the strrchr('@') strip on send (indigo_xml.c:1999-2006), including chained names 'X @ upstream @ host'; boundaries (name equal to or shorter than the adapter name, no space before '@', adapter names with spaces) are handled; the suffix-off pre-scan (indigo_bus.c:1012-1018) is a bounded O(MAX_DEVICES=256) strcmp pass under the already held device_mutex with no callbacks, empty names keep broadcasting, '@'-names are excluded from the scan, remote-only names keep reaching adapters, prop_tool (no local devices) and indigo_server chains behave as before apart from L1/L3. New unit cases are sound: they would fail on the old routing (strstr matches '@ host' in 'X @ host:7625' and '@ indigo' in 'X @ indigosky'; suffix off broadcast to '@ Remote'), assertions are inside helpers so global state (indigo_use_host_suffix, master/device tokens, adapters) is always restored, capture files are removed. I ran test_protocol_security: 23/23 pass, no .tmp left; test_agent_config (suffix off, '@Config test peers' catch-all): 56/56 pass. DEFECT (blocking): the change breaks an existing test that asserts the old containment routing. indigo_test/integration/system_alpaca/core_cases.h:1333 (core_proxy_names_without_at) expects a request for 'Focuser Simulator @ ' SA_SERVER_NAME ('... @ INDIGO Alpaca Simulator') to reach the adapter '@ INDIGO'; with exact suffix routing it no longer does. Ran: INDIGO_TEST_CASE_FILTER=core_proxy_names ./build/integration/test_system_alpaca_simulator -> 'core_cases.h:1333: check failed ... atomic_load(&core_remote_requests) == 1', FAIL core_proxy_names_without_at (the other three core_proxy_names cases pass). This test is opt-in (OPT_IN_DRIVER_TESTS) so flow check unit did not catch it, but it is par",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 240318.893,
+          "tokens": null
+        },
+        {
+          "attempt_id": "504fbdc9-9778-497c-87ee-281c34c862d8",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T20:05:37.418384Z",
+          "last_activity_at": "2026-11-15T20:07:48.725663Z",
+          "ended_at": "2026-11-15T20:07:48.725663Z",
+          "outcome": {
+            "summary": "Round 2: no defects. (1) Round-1 finding fixed: the positive control in indigo_test/integration/system_alpaca/core_cases.h:1334 now sends to 'Focuser @ Pier', which ends exactly with ' @ Pier' and reaches only the attached '@ Pier' (count == 1), under both old and exact routing; it still proves the counter works for a name that keeps its '@', so the preceding zero count for the real proxy names stays meaningful; the case is not weakened. Comments at core_cases.h:1300-1302 and indigo_drivers/system_alpaca/indigo_system_alpaca.c:323-326 now correctly describe exact suffix routing for change requests and containment for enumeration/BLOB mode (comment only, no version bump needed). (2) Session-device exemption (indigo_libs/indigo_bus.c:1011-1021) matches the owner decision: the exemption is applied before the loop condition is re-evaluated, so a session match leaves local false and the scan continues, and a later non-session device with the same name still sets it; the #if !defined(INDIGO_CLIENT) guard mirrors the attach/detach guards at indigo_bus.c:863-865 and 1427-1429 and uses the same column-0 preprocessor style; the comment above the scan is accurate. indigo_start attaches no other device, and the other library-internal attachments (indigo_client.c adapters, additional/slave devices in indigo_driver.c and indigo_filter.c) are not always-present, so no other device shadows a remote one by default. New case 'server request forwarded without host suffix' links full libindigo (session device 'Server' attached), so without the exemption the pre-scan would find 'Server' locally and the assertion would fail; it restores the master token and detaches its adapter. Ran: test_protocol_security 24/24 pass; the ASan/UBSan variant build/security/test_protocol_security all pass, no sanitizer reports; test_system_alpaca_simulator filtered to core_proxy_names 4/4 pass; libindigo_client.a rebuilt with no indigo_session_device reference. Workspace left clean. Out of scope for the ow",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 131307.279,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T19:39:13.792384Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T19:43:14.111277Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Bus change itself is correct and matches option A: has_host_suffix (indigo_libs/indigo_bus.c:1001-1004) matches exactly the names indigo_xml.c builds on receive ('%s %s' with the adapter name, indigo_xml.c:593 and the other set/def handlers) and is consistent with the strrchr('@') strip on send (indigo_xml.c:1999-2006), including chained names 'X @ upstream @ host'; boundaries (name equal to or shorter than the adapter name, no space before '@', adapter names with spaces) are handled; the suffix-off pre-scan (indigo_bus.c:1012-1018) is a bounded O(MAX_DEVICES=256) strcmp pass under the already held device_mutex with no callbacks, empty names keep broadcasting, '@'-names are excluded from the scan, remote-only names keep reaching adapters, prop_tool (no local devices) and indigo_server chains behave as before apart from L1/L3. New unit cases are sound: they would fail on the old routing (strstr matches '@ host' in 'X @ host:7625' and '@ indigo' in 'X @ indigosky'; suffix off broadcast to '@ Remote'), assertions are inside helpers so global state (indigo_use_host_suffix, master/device tokens, adapters) is always restored, capture files are removed. I ran test_protocol_security: 23/23 pass, no .tmp left; test_agent_config (suffix off, '@Config test peers' catch-all): 56/56 pass. DEFECT (blocking): the change breaks an existing test that asserts the old containment routing. indigo_test/integration/system_alpaca/core_cases.h:1333 (core_proxy_names_without_at) expects a request for 'Focuser Simulator @ ' SA_SERVER_NAME ('... @ INDIGO Alpaca Simulator') to reach the adapter '@ INDIGO'; with exact suffix routing it no longer does. Ran: INDIGO_TEST_CASE_FILTER=core_proxy_names ./build/integration/test_system_alpaca_simulator -> 'core_cases.h:1333: check failed ... atomic_load(&core_remote_requests) == 1', FAIL core_proxy_names_without_at (the other three core_proxy_names cases pass). This test is opt-in (OPT_IN_DRIVER_TESTS) so flow check unit did not catch it, but it is par"
+        },
+        {
+          "at": "2026-11-15T20:05:37.418384Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T20:07:48.725663Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2: no defects. (1) Round-1 finding fixed: the positive control in indigo_test/integration/system_alpaca/core_cases.h:1334 now sends to 'Focuser @ Pier', which ends exactly with ' @ Pier' and reaches only the attached '@ Pier' (count == 1), under both old and exact routing; it still proves the counter works for a name that keeps its '@', so the preceding zero count for the real proxy names stays meaningful; the case is not weakened. Comments at core_cases.h:1300-1302 and indigo_drivers/system_alpaca/indigo_system_alpaca.c:323-326 now correctly describe exact suffix routing for change requests and containment for enumeration/BLOB mode (comment only, no version bump needed). (2) Session-device exemption (indigo_libs/indigo_bus.c:1011-1021) matches the owner decision: the exemption is applied before the loop condition is re-evaluated, so a session match leaves local false and the scan continues, and a later non-session device with the same name still sets it; the #if !defined(INDIGO_CLIENT) guard mirrors the attach/detach guards at indigo_bus.c:863-865 and 1427-1429 and uses the same column-0 preprocessor style; the comment above the scan is accurate. indigo_start attaches no other device, and the other library-internal attachments (indigo_client.c adapters, additional/slave devices in indigo_driver.c and indigo_filter.c) are not always-present, so no other device shadows a remote one by default. New case 'server request forwarded without host suffix' links full libindigo (session device 'Server' attached), so without the exemption the pre-scan would find 'Server' locally and the assertion would fail; it restores the master token and detaches its adapter. Ran: test_protocol_security 24/24 pass; the ASan/UBSan variant build/security/test_protocol_security all pass, no sanitizer reports; test_system_alpaca_simulator filtered to core_proxy_names 4/4 pass; libindigo_client.a rebuilt with no indigo_session_device reference. Workspace left clean. Out of scope for the ow"
+        }
+      ],
+      "result": {
+        "summary": "Round 2: no defects. (1) Round-1 finding fixed: the positive control in indigo_test/integration/system_alpaca/core_cases.h:1334 now sends to 'Focuser @ Pier', which ends exactly with ' @ Pier' and reaches only the attached '@ Pier' (count == 1), under both old and exact routing; it still proves the counter works for a name that keeps its '@', so the preceding zero count for the real proxy names stays meaningful; the case is not weakened. Comments at core_cases.h:1300-1302 and indigo_drivers/system_alpaca/indigo_system_alpaca.c:323-326 now correctly describe exact suffix routing for change requests and containment for enumeration/BLOB mode (comment only, no version bump needed). (2) Session-device exemption (indigo_libs/indigo_bus.c:1011-1021) matches the owner decision: the exemption is applied before the loop condition is re-evaluated, so a session match leaves local false and the scan continues, and a later non-session device with the same name still sets it; the #if !defined(INDIGO_CLIENT) guard mirrors the attach/detach guards at indigo_bus.c:863-865 and 1427-1429 and uses the same column-0 preprocessor style; the comment above the scan is accurate. indigo_start attaches no other device, and the other library-internal attachments (indigo_client.c adapters, additional/slave devices in indigo_driver.c and indigo_filter.c) are not always-present, so no other device shadows a remote one by default. New case 'server request forwarded without host suffix' links full libindigo (session device 'Server' attached), so without the exemption the pre-scan would find 'Server' locally and the assertion would fail; it restores the master token and detaches its adapter. Ran: test_protocol_security 24/24 pass; the ASan/UBSan variant build/security/test_protocol_security all pass, no sanitizer reports; test_system_alpaca_simulator filtered to core_proxy_names 4/4 pass; libindigo_client.a rebuilt with no indigo_session_device reference. Workspace left clean. Out of scope for the ow",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 371626.172,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c50b1fcd-23e8-451c-b386-b464542c2bd5",
+      "event": "ticket/created",
+      "at": "2026-11-15T18:42:42.594736Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "full"
+    },
+    {
+      "event_id": "365f9383-5151-4640-ab54-cd990cfa7962",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T18:44:19.893342Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "unknown",
+      "profile": "full",
+      "corrected": null
+    },
+    {
+      "event_id": "fcb50586-cd03-4718-88c8-9ca8c91f89aa",
+      "event": "task/progress",
+      "at": "2026-11-15T19:18:00.043713Z",
+      "actor": "human/owner",
+      "task_id": "0eec108e-f6eb-47b2-9f98-00bdaba2a712",
+      "text": "Design started"
+    },
+    {
+      "event_id": "4154e1bc-6c17-4966-9c91-477b17150566",
+      "event": "stage/started",
+      "at": "2026-11-15T19:18:00.045233Z",
+      "actor": "human/owner",
+      "stage": "design",
+      "task_id": "0eec108e-f6eb-47b2-9f98-00bdaba2a712"
+    },
+    {
+      "event_id": "d7ee84ab-e1b3-4b56-a471-b3f81e5712a8",
+      "event": "task/progress",
+      "at": "2026-11-15T19:18:33.618023Z",
+      "actor": "human/owner",
+      "task_id": "0eec108e-f6eb-47b2-9f98-00bdaba2a712",
+      "text": "Design worker launched",
+      "attempt_id": "24766a39-087a-4e32-a3db-da287c85386a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0313690b-67a8-47bc-ab7b-5d6469c8ddc2",
+      "event": "task/progress",
+      "at": "2026-11-15T19:23:27.716421Z",
+      "actor": "human/owner",
+      "task_id": "0eec108e-f6eb-47b2-9f98-00bdaba2a712",
+      "text": "Code reading done, writing design.md (no experiment run)"
+    },
+    {
+      "event_id": "9a837dbd-0388-4017-9fdb-b53d8a7c8409",
+      "event": "stage/presented",
+      "at": "2026-11-15T19:25:27.117472Z",
+      "actor": "human/owner",
+      "stage": "design",
+      "file": "design.md"
+    },
+    {
+      "event_id": "82311e54-c3ee-40b4-b913-edf748fc4c1f",
+      "event": "task/progress",
+      "at": "2026-11-15T19:29:09.291345Z",
+      "actor": "human/owner",
+      "task_id": "0eec108e-f6eb-47b2-9f98-00bdaba2a712",
+      "text": "Design approved: design.md"
+    },
+    {
+      "event_id": "50fec7bb-6fdb-45f2-8672-598249ad18b8",
+      "event": "stage/approved",
+      "at": "2026-11-15T19:29:09.292634Z",
+      "actor": "human/owner",
+      "stage": "design",
+      "task_id": "0eec108e-f6eb-47b2-9f98-00bdaba2a712",
+      "file": "design.md"
+    },
+    {
+      "event_id": "cdde6690-88e2-4ec0-af51-10cb9875df09",
+      "event": "ticket/note",
+      "at": "2026-11-15T19:29:09.390490Z",
+      "actor": "human/owner",
+      "text": "Owner approved the design on 2026-11-15 with option A only: make the remote-server routing in indigo_change_property exact (scenarios L1 and L3 in design.md). Option B is not approved: the server master token is still sent over server chains (scenario L2 stays as it is) and the '@ servername' ACL entry is neither implemented nor removed from the documentation. Not approved either: extending exact routing to indigo_enumerate_properties and indigo_enable_blob (design open question 4); report it, do not implement it. Tests as in the design test plan for option A, in indigo_test/unit/test_protocol_security.c.",
+      "tokens": null
+    },
+    {
+      "event_id": "8e48b8a8-b5fb-44b8-8be3-602acb401e32",
+      "event": "task/progress",
+      "at": "2026-11-15T19:29:15.383137Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Implementation started on branch ticket/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0"
+    },
+    {
+      "event_id": "848a1176-d7c2-4427-aae4-067f0e48f3fa",
+      "event": "ticket/started",
+      "at": "2026-11-15T19:29:15.384811Z",
+      "actor": "human/owner",
+      "branch": "ticket/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0",
+      "base": "master"
+    },
+    {
+      "event_id": "9e6905c9-8d8a-4158-8997-840cbe38eb90",
+      "event": "task/progress",
+      "at": "2026-11-15T19:29:42.694039Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Implementer launched",
+      "attempt_id": "caa221fc-1f47-4d20-89b4-2adfa23f8975",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8126e7b6-cd71-45ae-bcb7-c1565ff8e9fe",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T19:31:05.063979Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "full",
+      "corrected": "severity",
+      "previous_severity": "unknown"
+    },
+    {
+      "event_id": "a6be1080-21b9-4d08-acb5-5ed2c675b611",
+      "event": "task/progress",
+      "at": "2026-11-15T19:31:11.562534Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Writing L1/L3 routing reproduction tests in test_protocol_security.c"
+    },
+    {
+      "event_id": "41d69547-a24a-471e-9bc2-c4681f6fc605",
+      "event": "task/progress",
+      "at": "2026-11-15T19:32:22.814989Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Building library and running test_protocol_security on unfixed code (reproduction)"
+    },
+    {
+      "event_id": "e55f23ba-cab7-4bd9-897f-438e4dabb299",
+      "event": "ticket/note",
+      "at": "2026-11-15T19:34:46.705212Z",
+      "actor": "human/owner",
+      "text": "Reproduction on the unfixed tree (worktree based on master f9b1a34ed), new cases in indigo_test/unit/test_protocol_security.c with file-capturing XML client adapters (is_remote set, synthetic tokens). L1 confirmed: with indigo_use_host_suffix false, indigo_change_switch_property_1(NULL, 'Security', ...) reached the local device and was also written to adapter '@ Remote' as newSwitchVector device='Security' name='S' token=<local device token>, and after removing the device token again with token=<master token>. L3 confirmed: with the suffix on and adapters '@ host'/'@ host:7625' and '@ indigo'/'@ indigosky', a request for 'X @ host:7625' (resp. 'X @ indigosky') stamped with its device token was written to the right adapter and also to '@ host' (resp. '@ indigo') as device='X' token=<token of X @ host:7625>. Requests for 'X @ host' / 'X @ indigo' were not misrouted. Regression cases passed before the fix: suffix off request for 'RemoteOnly' forwarded with the master token (prop_tool path); suffix on network-client request (server-side XML adapter, client->is_remote true) for 'X @ Remote' relayed with the client's own token. Result: test_protocol_security 3 failed assertions in 2 cases, 21 passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "58fe9e10-e75b-4340-8554-a9a6fe5a6185",
+      "event": "task/progress",
+      "at": "2026-11-15T19:35:18.229035Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Rebuilding library with exact routing fix and rerunning test_protocol_security"
+    },
+    {
+      "event_id": "9ea710bd-f948-4ec0-a073-c457d2fbcd6f",
+      "event": "task/progress",
+      "at": "2026-11-15T19:36:14.017553Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9d67f80e-d57f-48f2-bafb-a957c95ece2c",
+      "event": "task/progress",
+      "at": "2026-11-15T19:36:14.041907Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "01c84e2b-85cd-4862-abb0-1a18bb918ccb",
+      "event": "task/progress",
+      "at": "2026-11-15T19:36:14.044037Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "63c7c062-0eb2-4750-9669-b9461091719b",
+      "event": "task/progress",
+      "at": "2026-11-15T19:37:47.904252Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "e0008ee8-af5e-41ec-95cf-91762ccb7790",
+      "event": "check/passed",
+      "at": "2026-11-15T19:37:47.909057Z",
+      "actor": "human/owner",
+      "commit": "efc65bccf2b9a9e056cf7421ce5db8a6d2f01079",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "6ba0fd4b-610c-47db-afe2-f79d04211f63",
+      "event": "ticket/note",
+      "at": "2026-11-15T19:38:11.004390Z",
+      "actor": "human/owner",
+      "text": "After the fix (option A, indigo_change_property only): new static helper has_host_suffix() in indigo_libs/indigo_bus.c; with the suffix on a request goes to adapter '@ host' only when its device name ends exactly with ' @ host' (at least one character before the space); with the suffix off adapters get no request whose device name equals a local (non-'@') device. test_protocol_security: all 23 cases pass, including L1 (nothing for 'Security' written to '@ Remote', the local device still received both requests), L3 (requests for 'X @ host', 'X @ host:7625', 'X @ indigo', 'X @ indigosky' each written only to their own adapter, as device='X' with the device token), and the regressions (suffix-off 'RemoteOnly' still forwarded with the master token; network-client token relayed unchanged for 'X @ Remote'). flow check passed on tree fa90fbf2: whitespace and unit (80 unit executables, exit 0, no FAIL lines). Not changed, per owner decision: L2 (master token over server chains), the '@ servername' ACL entry, and the substring routing in indigo_enumerate_properties / indigo_enable_blob (still misroute for L3 naming, no tokens involved). No documentation in indigo_docs describes the substring routing, so no doc change; the comment in indigo_drivers/system_alpaca/indigo_system_alpaca.c:322-325 still describes containment routing, which remains true for enumerate/enable_blob; drivers were out of scope, left unchanged.",
+      "tokens": null
+    },
+    {
+      "event_id": "05b76408-e9bc-4446-8c02-6280893db058",
+      "event": "task/progress",
+      "at": "2026-11-15T19:39:13.663669Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Reviewer launched",
+      "attempt_id": "caa221fc-1f47-4d20-89b4-2adfa23f8975",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "2cd26e94-7589-428d-84a1-6cc0979c38a6",
+      "event": "task/progress",
+      "at": "2026-11-15T19:39:13.792490Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9a0d8117-1c97-4624-8236-0016f8e72d1f",
+      "event": "review/started",
+      "at": "2026-11-15T19:39:13.794219Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "9e12bc9a-c4f9-4246-92e0-dc01c5cb44db",
+      "event": "task/progress",
+      "at": "2026-11-15T19:40:31.307540Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "text": "Running test_protocol_security and system_alpaca core_proxy_names cases in the worktree"
+    },
+    {
+      "event_id": "518025e6-7c66-4963-9515-24d7279da01c",
+      "event": "task/progress",
+      "at": "2026-11-15T19:43:14.111395Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "bbe0bf4e-2df5-4b84-aa16-eaa52fb52760",
+      "event": "task/progress",
+      "at": "2026-11-15T19:43:14.111420Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "11394f5d-e161-4f4a-8345-686e478ae195",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T19:43:14.113064Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "efc65bccf2b9a9e056cf7421ce5db8a6d2f01079"
+    },
+    {
+      "event_id": "07a7e5fd-c3d2-4f2e-a6fd-c3d7910aa086",
+      "event": "task/progress",
+      "at": "2026-11-15T19:44:28.959519Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Checking core_proxy_names_without_at on master's bus routing (temporary swap)"
+    },
+    {
+      "event_id": "ac0e2a2e-ef99-4b7e-b6aa-399f9ca57039",
+      "event": "task/progress",
+      "at": "2026-11-15T19:46:59.732668Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Running full test_system_alpaca_simulator with fixed bus and unchanged core_cases.h (before)"
+    },
+    {
+      "event_id": "8af48c5b-004c-40ae-a294-bef00b4221cf",
+      "event": "task/progress",
+      "at": "2026-11-15T19:48:51.863163Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Running full test_system_alpaca_simulator with adjusted proxy-name probe (after)"
+    },
+    {
+      "event_id": "c21743f6-9c2f-4e13-b00b-9e27852c4cab",
+      "event": "task/progress",
+      "at": "2026-11-15T19:50:36.243932Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Running test_protocol_security and test_agent_config on the fixed bus"
+    },
+    {
+      "event_id": "c247f740-4752-4728-a76e-f69044a37a43",
+      "event": "task/progress",
+      "at": "2026-11-15T19:51:19.179010Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Running test_server_driver_stress (1 driver, short) to check remote Server routing with suffix off"
+    },
+    {
+      "event_id": "41dff0d9-7e4d-481e-aeac-1ad4999af221",
+      "event": "task/progress",
+      "at": "2026-11-15T19:52:00.405056Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "905db0ce-6849-4fba-b35c-1314d54ffc3f",
+      "event": "task/progress",
+      "at": "2026-11-15T19:52:00.428711Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4a1093de-5fa7-48fb-a221-8bce67c067cc",
+      "event": "task/progress",
+      "at": "2026-11-15T19:52:00.431367Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "e7999af1-4735-4b25-a7f9-b97250386a45",
+      "event": "task/progress",
+      "at": "2026-11-15T19:53:27.042367Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "41aff81b-7d4c-4b9c-b6e3-f1fd581d119c",
+      "event": "check/passed",
+      "at": "2026-11-15T19:53:27.045079Z",
+      "actor": "human/owner",
+      "commit": "3335ddd2eeca6900d889020c4d11fb50b747187e",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "1c54fe6b-faa9-4361-ac09-232976b234f0",
+      "event": "ticket/note",
+      "at": "2026-11-15T19:53:38.065927Z",
+      "actor": "human/owner",
+      "text": "Review round 1 (changes) addressed. core_proxy_names_without_at passed on master's bus routing (temporary swap of indigo_bus.c in the worktree: 4/4 core_proxy_names cases passed) and failed with the fix because its positive control 'Focuser Simulator @ INDIGO Alpaca Simulator' reached adapter '@ INDIGO' only through the substring match. The control now sends to 'Focuser @ Pier' (the configured DeviceName with its '@' kept), which is routed to the attached '@ Pier' under both the old and the exact routing, so the case still proves that proxy names without '@' reach no remote service; comments in core_cases.h and the comment in indigo_drivers/system_alpaca/indigo_system_alpaca.c:322-326 now describe exact suffix routing for change requests and containment for enumeration/BLOB mode (comment only, no version bump). test_system_alpaca_simulator full run: before the adjustment 277 run, 276 passed, 1 failed (core_proxy_names_without_at); after 277 run, 277 passed. test_protocol_security all passed; test_agent_config 56/56 passed. flow check passed on tree 135def31 (whitespace, unit). OPEN ISSUE, not fixed: the design's statement that suffix-off processes host no colliding local devices is wrong for libindigo (non-INDIGO_CLIENT) builds: indigo_start() attaches the local session device 'Server' (indigo_session.c), so with indigo_use_host_suffix false a change request for the remote 'Server' device (Server.DRIVERS, LOAD, ...) is no longer forwarded to any remote server. Confirmed with a scratch in-process program linked against the worktree libindigo: master routing forwarded newSwitchVector device='Server' name='DRIVERS' to '@ Remote', the fixed routing sent nothing. indigo_prop_tool links libindigo_client (INDIGO_CLIENT, no session device) and is unaffected; indigo_test/integration/test_server_driver_stress.c (opt-in, suffix off, drives Server.DRIVERS of a spawned indigo_server through -lindigo) is affected by code reading but could not be exercised here: the worktree has n",
+      "tokens": null
+    },
+    {
+      "event_id": "dbdb69c9-3db5-4cd4-8583-c868f4e0b820",
+      "event": "question/asked",
+      "at": "2026-11-15T19:54:33.547299Z",
+      "actor": "human/owner",
+      "text": "The approved L1 fix (host suffix off: do not forward a request to remote servers when a local device has exactly that name) has a regression found in review round 2: a process built on full libindigo attaches a local session device named 'Server' (indigo_bus.c:863-864, indigo_session.c), so with the suffix off a request for 'Server' (for example Server.DRIVERS) is no longer forwarded to any remote server. Confirmed with a throwaway program: master forwards it to '@ Remote', the fixed routing sends nothing. indigo_prop_tool is not affected (libindigo_client has no session device); indigo_test/integration/test_server_driver_stress.c and third-party embedders are. Owner decision needed: (1) keep the L1 fix but leave the local session 'Server' device out of the local-name check, so 'Server' requests are still forwarded with the suffix off; (2) drop the L1 part and keep only the exact suffix routing (L3); (3) keep the fix as it is and accept the regression."
+    },
+    {
+      "event_id": "6e3ccbf6-9879-486e-81ca-2ebcbb7d9e3e",
+      "event": "question/answered",
+      "at": "2026-11-15T19:56:54.324483Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15: option 1. Keep the L1 fix but leave the local session 'Server' device out of the local-name check, so with the host suffix off requests for 'Server' are still forwarded to remote servers as before. Accepted consequence: for the 'Server' device a locally stamped token can still reach remote servers when the suffix is off."
+    },
+    {
+      "event_id": "0e21bf7f-e4f7-490e-8530-f98f77bcb144",
+      "event": "task/progress",
+      "at": "2026-11-15T19:57:26.488681Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Running test_protocol_security with new Server case before the session exemption"
+    },
+    {
+      "event_id": "5be8b883-c73c-4c21-aa83-2d0deaed7252",
+      "event": "task/progress",
+      "at": "2026-11-15T19:58:10.920698Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Building full and INDIGO_CLIENT libraries plus indigo_prop_tool with the session exemption"
+    },
+    {
+      "event_id": "891d0da1-fc13-4a98-9149-26faf618ebd1",
+      "event": "task/progress",
+      "at": "2026-11-15T19:58:27.559211Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Running test_protocol_security, test_agent_config and full test_system_alpaca_simulator with the exemption"
+    },
+    {
+      "event_id": "471cf1e1-4b51-462e-87e2-ca4df18aefdf",
+      "event": "ticket/note",
+      "at": "2026-11-15T20:00:31.243300Z",
+      "actor": "human/owner",
+      "text": "Owner confirmed on 2026-11-15, after the compatibility impact was explained, that both intended behaviour changes are accepted: with the host suffix on a request is routed only to the remote server whose name is the exact suffix of the device name, and with the suffix off a name that exists locally (other than the session 'Server' device) addresses only the local device (design open question 3).",
+      "tokens": null
+    },
+    {
+      "event_id": "d776ebe6-8d06-411d-8981-c9bedad188aa",
+      "event": "task/progress",
+      "at": "2026-11-15T20:01:08.547148Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Generating a one-driver list and running test_server_driver_stress (short) with the exemption"
+    },
+    {
+      "event_id": "68b718f2-4a69-4e1e-8e00-a1022214671a",
+      "event": "task/progress",
+      "at": "2026-11-15T20:03:11.342740Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "51f88bff-7f95-4608-8336-918f342509f2",
+      "event": "task/progress",
+      "at": "2026-11-15T20:03:11.365038Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7e0c055a-42c7-47dc-bcc8-6d09dc55ae6c",
+      "event": "task/progress",
+      "at": "2026-11-15T20:03:11.367405Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a6fb9382-3569-41ea-82c8-af74ffb96a5a",
+      "event": "task/progress",
+      "at": "2026-11-15T20:04:36.012750Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "480bc761-c2d4-4508-b67b-ac45f90c95ea",
+      "event": "check/passed",
+      "at": "2026-11-15T20:04:36.017503Z",
+      "actor": "human/owner",
+      "commit": "de5459a348ae2f3e37abb408b9b267bb11c9ba03",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "9259fc7c-32e4-452b-adc3-5ad3cc3af17c",
+      "event": "ticket/note",
+      "at": "2026-11-15T20:04:54.636529Z",
+      "actor": "human/owner",
+      "text": "Owner decision implemented: in indigo_change_property the local-name check (suffix off) skips the session device, identified by pointer (devices[i] != &indigo_session_device, declared in indigo/indigo_session.h which indigo_bus.c already includes), guarded by #if !defined(INDIGO_CLIENT) like the existing attach/detach of that device, since libindigo_client has no session device. New unit case 'server request forwarded without host suffix': before the exemption nothing was written to '@ Remote' for a 'Server' request (FAIL); after, newSwitchVector device='Server' name='S' token=<master token> is forwarded, which is the accepted consequence; the L1 case for local 'Security' still passes. Results on the final source: test_protocol_security 24/24 passed; test_agent_config 56/56 passed; test_system_alpaca_simulator 277 run, 277 passed, 0 failed. Both libindigo and libindigo_client built; indigo_prop_tool linked against libindigo_client.a (no session-device reference in the client indigo_bus.o). test_server_driver_stress (opt-in) run with a one-driver list generated by indigo_driver_metadata for indigo_system_alpaca (INDIGO_STRESS_DRIVERS=indigo_system_alpaca, cycles 2, iterations 3, seed 1, timeout 20 s): 3/3 passed; the same run with the exemption temporarily removed (cycles 1, iterations 1, timeout 10 s) failed 3/3 with 'server hung: no answer to loading indigo_system_alpaca', confirming the regression found in round 2 and its fix. flow check passed on tree d4fb5697 (whitespace, unit).",
+      "tokens": null
+    },
+    {
+      "event_id": "b12b41ec-baac-48f4-b1a5-0e855031c4e7",
+      "event": "task/progress",
+      "at": "2026-11-15T20:05:37.307948Z",
+      "actor": "human/owner",
+      "task_id": "fcaeb080-fa97-41fa-8c46-d3bbb55e00f4",
+      "text": "Second review round: reading updated diff and notes"
+    },
+    {
+      "event_id": "dbde3e0b-89af-472d-88c2-e31063e63d96",
+      "event": "task/progress",
+      "at": "2026-11-15T20:05:37.418493Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "text": "Review started"
+    },
+    {
+      "event_id": "eea3d7a2-8679-4aa9-9ce9-c2ec863cdf10",
+      "event": "review/started",
+      "at": "2026-11-15T20:05:37.420084Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "167511b6-48ff-4229-96ba-3482fc3ca022",
+      "event": "task/progress",
+      "at": "2026-11-15T20:06:21.663514Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "text": "Round 2: running test_protocol_security (plain and ASan), alpaca core_proxy_names cases"
+    },
+    {
+      "event_id": "e03b624a-635d-45a2-a0f6-2b7ff5461a08",
+      "event": "task/progress",
+      "at": "2026-11-15T20:07:48.725774Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "32be3e4a-3d51-4e95-a313-4a5cf1a187ff",
+      "event": "review/passed",
+      "at": "2026-11-15T20:07:48.727454Z",
+      "actor": "human/owner",
+      "task_id": "071c0724-f62d-4e7e-87fb-d4edd9062bbc",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "de5459a348ae2f3e37abb408b9b267bb11c9ba03"
+    },
+    {
+      "event_id": "47b9d132-30ba-49e4-9a1f-a8f17e4d5276",
+      "event": "ticket/closed",
+      "at": "2026-11-15T20:20:06.461935Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T20:20:06.461888Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "9f1fc208a32948468e6e4dbe5f31fa68b7cb201d"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "high",
+  "flow": {
+    "profile": "full",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "efc65bccf2b9a9e056cf7421ce5db8a6d2f01079",
+        "tree": "fa90fbf2638e702f4bd664cba2f53124c62243af",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T19:36:14.041037Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0/fa90fbf2638e-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "efc65bccf2b9a9e056cf7421ce5db8a6d2f01079",
+        "tree": "fa90fbf2638e702f4bd664cba2f53124c62243af",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T19:37:47.901752Z",
+        "duration_s": 93.9,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0/fa90fbf2638e-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "3335ddd2eeca6900d889020c4d11fb50b747187e",
+        "tree": "135def316ec6e524e2660c53826d52a13baee594",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T19:52:00.427713Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0/135def316ec6-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "3335ddd2eeca6900d889020c4d11fb50b747187e",
+        "tree": "135def316ec6e524e2660c53826d52a13baee594",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T19:53:27.041032Z",
+        "duration_s": 86.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0/135def316ec6-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "de5459a348ae2f3e37abb408b9b267bb11c9ba03",
+        "tree": "d4fb569767a2791ea3b587e0254860eec52e8218",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T20:03:11.363978Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0/d4fb569767a2-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "de5459a348ae2f3e37abb408b9b267bb11c9ba03",
+        "tree": "d4fb569767a2791ea3b587e0254860eec52e8218",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T20:04:36.010417Z",
+        "duration_s": 84.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ac9ea89e-aecd-4c94-8934-f3a2f9f2f3d0/d4fb569767a2-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Bus change itself is correct and matches option A: has_host_suffix (indigo_libs/indigo_bus.c:1001-1004) matches exactly the names indigo_xml.c builds on receive ('%s %s' with the adapter name, indigo_xml.c:593 and the other set/def handlers) and is consistent with the strrchr('@') strip on send (indigo_xml.c:1999-2006), including chained names 'X @ upstream @ host'; boundaries (name equal to or shorter than the adapter name, no space before '@', adapter names with spaces) are handled; the suffix-off pre-scan (indigo_bus.c:1012-1018) is a bounded O(MAX_DEVICES=256) strcmp pass under the already held device_mutex with no callbacks, empty names keep broadcasting, '@'-names are excluded from the scan, remote-only names keep reaching adapters, prop_tool (no local devices) and indigo_server chains behave as before apart from L1/L3. New unit cases are sound: they would fail on the old routing (strstr matches '@ host' in 'X @ host:7625' and '@ indigo' in 'X @ indigosky'; suffix off broadcast to '@ Remote'), assertions are inside helpers so global state (indigo_use_host_suffix, master/device tokens, adapters) is always restored, capture files are removed. I ran test_protocol_security: 23/23 pass, no .tmp left; test_agent_config (suffix off, '@Config test peers' catch-all): 56/56 pass. DEFECT (blocking): the change breaks an existing test that asserts the old containment routing. indigo_test/integration/system_alpaca/core_cases.h:1333 (core_proxy_names_without_at) expects a request for 'Focuser Simulator @ ' SA_SERVER_NAME ('... @ INDIGO Alpaca Simulator') to reach the adapter '@ INDIGO'; with exact suffix routing it no longer does. Ran: INDIGO_TEST_CASE_FILTER=core_proxy_names ./build/integration/test_system_alpaca_simulator -> 'core_cases.h:1333: check failed ... atomic_load(&core_remote_requests) == 1', FAIL core_proxy_names_without_at (the other three core_proxy_names cases pass). This test is opt-in (OPT_IN_DRIVER_TESTS) so flow check unit did not catch it, but it is part of the system_alpaca recorded run. Correction: change the probe to a name that ends exactly with an attached adapter suffix (e.g. 'Focuser Simulator @ INDIGO', still proving the probe works) and update the comments that describe containment routing for change requests at core_cases.h:1300-1301 and 1332. Non-blocking: indigo_drivers/system_alpaca/indigo_system_alpaca.c:322-324 says indigo_bus.c routes to a remote service whose name is contained in the device name; after this change that is true only for enumerate/enable_blob, so a comment-only correction would be accurate (no behaviour change, no version bump). Formatting of the diff follows AGENTS.md; no indigo_docs text describes the substring routing.",
+        "reviewer": "human/owner",
+        "commit": "efc65bccf2b9a9e056cf7421ce5db8a6d2f01079",
+        "tree": "fa90fbf2638e702f4bd664cba2f53124c62243af",
+        "at": "2026-11-15T19:43:14.111028Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: no defects. (1) Round-1 finding fixed: the positive control in indigo_test/integration/system_alpaca/core_cases.h:1334 now sends to 'Focuser @ Pier', which ends exactly with ' @ Pier' and reaches only the attached '@ Pier' (count == 1), under both old and exact routing; it still proves the counter works for a name that keeps its '@', so the preceding zero count for the real proxy names stays meaningful; the case is not weakened. Comments at core_cases.h:1300-1302 and indigo_drivers/system_alpaca/indigo_system_alpaca.c:323-326 now correctly describe exact suffix routing for change requests and containment for enumeration/BLOB mode (comment only, no version bump needed). (2) Session-device exemption (indigo_libs/indigo_bus.c:1011-1021) matches the owner decision: the exemption is applied before the loop condition is re-evaluated, so a session match leaves local false and the scan continues, and a later non-session device with the same name still sets it; the #if !defined(INDIGO_CLIENT) guard mirrors the attach/detach guards at indigo_bus.c:863-865 and 1427-1429 and uses the same column-0 preprocessor style; the comment above the scan is accurate. indigo_start attaches no other device, and the other library-internal attachments (indigo_client.c adapters, additional/slave devices in indigo_driver.c and indigo_filter.c) are not always-present, so no other device shadows a remote one by default. New case 'server request forwarded without host suffix' links full libindigo (session device 'Server' attached), so without the exemption the pre-scan would find 'Server' locally and the assertion would fail; it restores the master token and detaches its adapter. Ran: test_protocol_security 24/24 pass; the ASan/UBSan variant build/security/test_protocol_security all pass, no sanitizer reports; test_system_alpaca_simulator filtered to core_proxy_names 4/4 pass; libindigo_client.a rebuilt with no indigo_session_device reference. Workspace left clean. Out of scope for the owner: enumerate/enable_blob still use containment (Q4), L2 unchanged, and with the suffix off a locally stamped token for 'Server' still reaches remote servers (accepted).",
+        "reviewer": "human/owner",
+        "commit": "de5459a348ae2f3e37abb408b9b267bb11c9ba03",
+        "tree": "d4fb569767a2791ea3b587e0254860eec52e8218",
+        "at": "2026-11-15T20:07:48.725425Z"
+      }
+    ],
+    "approvals": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "approved": true,
+        "text": "",
+        "sha256": "6c8a9c3ae1b035c41541b9083d1b13b6ae6640d84ed33e08b7f72827ad469582",
+        "actor": "human/owner",
+        "at": "2026-11-15T19:29:09.290066Z"
+      }
+    ],
+    "notes": [
+      {
+        "at": "2026-11-15T19:29:09.388875Z",
+        "actor": "human/owner",
+        "text": "Owner approved the design on 2026-11-15 with option A only: make the remote-server routing in indigo_change_property exact (scenarios L1 and L3 in design.md). Option B is not approved: the server master token is still sent over server chains (scenario L2 stays as it is) and the '@ servername' ACL entry is neither implemented nor removed from the documentation. Not approved either: extending exact routing to indigo_enumerate_properties and indigo_enable_blob (design open question 4); report it, do not implement it. Tests as in the design test plan for option A, in indigo_test/unit/test_protocol_security.c.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T19:34:46.703251Z",
+        "actor": "human/owner",
+        "text": "Reproduction on the unfixed tree (worktree based on master f9b1a34ed), new cases in indigo_test/unit/test_protocol_security.c with file-capturing XML client adapters (is_remote set, synthetic tokens). L1 confirmed: with indigo_use_host_suffix false, indigo_change_switch_property_1(NULL, 'Security', ...) reached the local device and was also written to adapter '@ Remote' as newSwitchVector device='Security' name='S' token=<local device token>, and after removing the device token again with token=<master token>. L3 confirmed: with the suffix on and adapters '@ host'/'@ host:7625' and '@ indigo'/'@ indigosky', a request for 'X @ host:7625' (resp. 'X @ indigosky') stamped with its device token was written to the right adapter and also to '@ host' (resp. '@ indigo') as device='X' token=<token of X @ host:7625>. Requests for 'X @ host' / 'X @ indigo' were not misrouted. Regression cases passed before the fix: suffix off request for 'RemoteOnly' forwarded with the master token (prop_tool path); suffix on network-client request (server-side XML adapter, client->is_remote true) for 'X @ Remote' relayed with the client's own token. Result: test_protocol_security 3 failed assertions in 2 cases, 21 passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T19:38:11.003065Z",
+        "actor": "human/owner",
+        "text": "After the fix (option A, indigo_change_property only): new static helper has_host_suffix() in indigo_libs/indigo_bus.c; with the suffix on a request goes to adapter '@ host' only when its device name ends exactly with ' @ host' (at least one character before the space); with the suffix off adapters get no request whose device name equals a local (non-'@') device. test_protocol_security: all 23 cases pass, including L1 (nothing for 'Security' written to '@ Remote', the local device still received both requests), L3 (requests for 'X @ host', 'X @ host:7625', 'X @ indigo', 'X @ indigosky' each written only to their own adapter, as device='X' with the device token), and the regressions (suffix-off 'RemoteOnly' still forwarded with the master token; network-client token relayed unchanged for 'X @ Remote'). flow check passed on tree fa90fbf2: whitespace and unit (80 unit executables, exit 0, no FAIL lines). Not changed, per owner decision: L2 (master token over server chains), the '@ servername' ACL entry, and the substring routing in indigo_enumerate_properties / indigo_enable_blob (still misroute for L3 naming, no tokens involved). No documentation in indigo_docs describes the substring routing, so no doc change; the comment in indigo_drivers/system_alpaca/indigo_system_alpaca.c:322-325 still describes containment routing, which remains true for enumerate/enable_blob; drivers were out of scope, left unchanged.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T19:53:38.064477Z",
+        "actor": "human/owner",
+        "text": "Review round 1 (changes) addressed. core_proxy_names_without_at passed on master's bus routing (temporary swap of indigo_bus.c in the worktree: 4/4 core_proxy_names cases passed) and failed with the fix because its positive control 'Focuser Simulator @ INDIGO Alpaca Simulator' reached adapter '@ INDIGO' only through the substring match. The control now sends to 'Focuser @ Pier' (the configured DeviceName with its '@' kept), which is routed to the attached '@ Pier' under both the old and the exact routing, so the case still proves that proxy names without '@' reach no remote service; comments in core_cases.h and the comment in indigo_drivers/system_alpaca/indigo_system_alpaca.c:322-326 now describe exact suffix routing for change requests and containment for enumeration/BLOB mode (comment only, no version bump). test_system_alpaca_simulator full run: before the adjustment 277 run, 276 passed, 1 failed (core_proxy_names_without_at); after 277 run, 277 passed. test_protocol_security all passed; test_agent_config 56/56 passed. flow check passed on tree 135def31 (whitespace, unit). OPEN ISSUE, not fixed: the design's statement that suffix-off processes host no colliding local devices is wrong for libindigo (non-INDIGO_CLIENT) builds: indigo_start() attaches the local session device 'Server' (indigo_session.c), so with indigo_use_host_suffix false a change request for the remote 'Server' device (Server.DRIVERS, LOAD, ...) is no longer forwarded to any remote server. Confirmed with a scratch in-process program linked against the worktree libindigo: master routing forwarded newSwitchVector device='Server' name='DRIVERS' to '@ Remote', the fixed routing sent nothing. indigo_prop_tool links libindigo_client (INDIGO_CLIENT, no session device) and is unaffected; indigo_test/integration/test_server_driver_stress.c (opt-in, suffix off, drives Server.DRIVERS of a spawned indigo_server through -lindigo) is affected by code reading but could not be exercised here: the worktree has no driver list in build/share/indigo, so it fails with '0 of 0 drivers listed' independent of this change. Owner decision needed on how L1 should treat the session device.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T20:00:31.241239Z",
+        "actor": "human/owner",
+        "text": "Owner confirmed on 2026-11-15, after the compatibility impact was explained, that both intended behaviour changes are accepted: with the host suffix on a request is routed only to the remote server whose name is the exact suffix of the device name, and with the suffix off a name that exists locally (other than the session 'Server' device) addresses only the local device (design open question 3).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T20:04:54.634895Z",
+        "actor": "human/owner",
+        "text": "Owner decision implemented: in indigo_change_property the local-name check (suffix off) skips the session device, identified by pointer (devices[i] != &indigo_session_device, declared in indigo/indigo_session.h which indigo_bus.c already includes), guarded by #if !defined(INDIGO_CLIENT) like the existing attach/detach of that device, since libindigo_client has no session device. New unit case 'server request forwarded without host suffix': before the exemption nothing was written to '@ Remote' for a 'Server' request (FAIL); after, newSwitchVector device='Server' name='S' token=<master token> is forwarded, which is the accepted consequence; the L1 case for local 'Security' still passes. Results on the final source: test_protocol_security 24/24 passed; test_agent_config 56/56 passed; test_system_alpaca_simulator 277 run, 277 passed, 0 failed. Both libindigo and libindigo_client built; indigo_prop_tool linked against libindigo_client.a (no session-device reference in the client indigo_bus.o). test_server_driver_stress (opt-in) run with a one-driver list generated by indigo_driver_metadata for indigo_system_alpaca (INDIGO_STRESS_DRIVERS=indigo_system_alpaca, cycles 2, iterations 3, seed 1, timeout 20 s): 3/3 passed; the same run with the exemption temporarily removed (cycles 1, iterations 1, timeout 10 s) failed 3/3 with 'server hung: no answer to loading indigo_system_alpaca', confirming the regression found in round 2 and its fix. flow check passed on tree d4fb5697 (whitespace, unit).",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "The approved L1 fix (host suffix off: do not forward a request to remote servers when a local device has exactly that name) has a regression found in review round 2: a process built on full libindigo attaches a local session device named 'Server' (indigo_bus.c:863-864, indigo_session.c), so with the suffix off a request for 'Server' (for example Server.DRIVERS) is no longer forwarded to any remote server. Confirmed with a throwaway program: master forwards it to '@ Remote', the fixed routing sends nothing. indigo_prop_tool is not affected (libindigo_client has no session device); indigo_test/integration/test_server_driver_stress.c and third-party embedders are. Owner decision needed: (1) keep the L1 fix but leave the local session 'Server' device out of the local-name check, so 'Server' requests are still forwarded with the suffix off; (2) drop the L1 part and keep only the exact suffix routing (L3); (3) keep the fix as it is and accept the regression.",
+        "at": "2026-11-15T19:54:33.545459Z",
+        "actor": "human/owner",
+        "answer": "Owner decision 2026-11-15: option 1. Keep the L1 fix but leave the local session 'Server' device out of the local-name check, so with the host suffix off requests for 'Server' are still forwarded to remote servers as before. Accepted consequence: for the 'Server' device a locally stamped token can still reach remote servers when the suffix is off.",
+        "answered_at": "2026-11-15T19:56:54.322869Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [
+      {
+        "stage": "design",
+        "file": "design.md",
+        "actor": "human/owner",
+        "at": "2026-11-15T19:25:27.115579Z"
+      }
+    ],
+    "landing": {
+      "commit": "9f1fc208a32948468e6e4dbe5f31fa68b7cb201d",
+      "tree": "d4fb569767a2791ea3b587e0254860eec52e8218",
+      "base": "master",
+      "at": "2026-11-15T20:20:06.348875Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "unknown",
+    "profile": "full",
+    "at": "2026-11-15T18:42:42.594075Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T18:44:19.893109Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 2982590.1,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 72,
+    "sha256": "8cd9e1e760926f7a8c4790ce9b4202d857752d806ac3ec3789411472e9f57adb"
+  }
+}
