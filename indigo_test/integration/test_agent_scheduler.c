@@ -36,6 +36,7 @@
 
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_driver_json.h>
 #include <indigo_drivers/agent_scripting/indigo_agent_scripting.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler.h>
 #include <indigo_drivers/agent_scheduler/indigo_agent_scheduler_night.h>
@@ -1692,6 +1693,30 @@ static void reset_all_keeps_running_task_and_urgent_order(void) {
 	ASSERT_TRUE(!strncmp(commands->items[5].hints, "warn_on_set:\"", 13));
 	ASSERT_TRUE(!strncmp(commands->items[6].hints, "warn_on_set:\"", 13));
 	ASSERT_TRUE(commands->items[0].hints[0] == 0);
+	// the JSON protocol served to web clients carries the item hints too
+	char json_path[320], json_text[16384];
+	snprintf(json_path, sizeof(json_path), "%s/command_definition.json", fixture_dir);
+	indigo_uni_handle *json_handle = indigo_uni_create_file(json_path, INDIGO_LOG_NONE);
+	REQUIRE(json_handle != NULL);
+	indigo_client *json_client = indigo_json_device_adapter(json_handle, json_handle, false);
+	REQUIRE(json_client != NULL);
+	json_client->version = INDIGO_VERSION_CURRENT;
+	indigo_device json_device;
+	memset(&json_device, 0, sizeof(json_device));
+	INDIGO_COPY_NAME(json_device.name, AGENT);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(json_client, &json_device, commands, NULL));
+	indigo_release_json_device_adapter(json_client);
+	indigo_uni_close(&json_handle);
+	FILE *json_file = fopen(json_path, "rb");
+	REQUIRE(json_file != NULL);
+	size_t json_size = fread(json_text, 1, sizeof(json_text) - 1, json_file);
+	json_text[json_size] = 0;
+	fclose(json_file);
+	char needle[INDIGO_NAME_SIZE + 128];
+	snprintf(needle, sizeof(needle), "{ \"name\": \"%s\", \"label\": \"%s\", \"hints\": \"warn_on_set:", AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, commands->items[5].label);
+	ASSERT_TRUE(strstr(json_text, needle) != NULL);
+	snprintf(needle, sizeof(needle), "{ \"name\": \"%s\", \"label\": \"%s\", \"hints\": \"warn_on_set:", AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, commands->items[6].label);
+	ASSERT_TRUE(strstr(json_text, needle) != NULL);
 	indigo_release_property(commands);
 	// the urgent task submitted first takes the higher slot, the reset keeps it first
 	REQUIRE(upload("// @task Filler\n" BODY_WAIT(1)));

@@ -252,6 +252,63 @@ static void json_adapter_serializes_define_update_delete_and_blob_url(void) {
 	assert_contains(output, "\"setBLOBVector\"");
 }
 
+/* Items carry their own hints in every definition, the web control panel reads warn_on_set from them. */
+static void json_adapter_serializes_item_hints(void) {
+	char output[16384];
+	indigo_uni_handle *handle = NULL;
+	indigo_client *client = new_output_adapter("build/unit/protocol_json_hints.tmp", &handle);
+	ASSERT_TRUE(client != NULL);
+	indigo_device device;
+	memset(&device, 0, sizeof(device));
+	INDIGO_COPY_NAME(device.name, TEST_DEVICE_NAME);
+	indigo_property *text = indigo_init_text_property(NULL, TEST_DEVICE_NAME, "HINT_TEXT", "Protocol", "Text", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	indigo_init_text_item(text->items, "PLAIN", "Plain", "a");
+	indigo_init_text_item(text->items + 1, "HINTED", "Hinted", "b");
+	INDIGO_COPY_VALUE(text->hints, "widget: \"entry\";");
+	INDIGO_COPY_VALUE(text->items[1].hints, "warn_on_set: \"Really?\";");
+	text->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, text, NULL));
+	indigo_release_property(text);
+	indigo_property *number = indigo_init_number_property(NULL, TEST_DEVICE_NAME, "HINT_NUMBER", "Protocol", "Number", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_number_item(number->items, "VALUE", "Value", 0, 10, 1, 5);
+	INDIGO_COPY_VALUE(number->items[0].hints, "number_hint: 1;");
+	number->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, number, NULL));
+	number->perm = INDIGO_RO_PERM;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, number, NULL));
+	indigo_release_property(number);
+	indigo_property *sw = indigo_init_switch_property(NULL, TEST_DEVICE_NAME, "HINT_SWITCH", "Protocol", "Switch", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+	indigo_init_switch_item(sw->items, "RESET_ALL", "Reset all", false);
+	indigo_init_switch_item(sw->items + 1, "OTHER", "Other", false);
+	INDIGO_COPY_VALUE(sw->items[0].hints, "warn_on_set: \"Reset all?\";");
+	sw->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, sw, NULL));
+	indigo_release_property(sw);
+	indigo_property *light = indigo_init_light_property(NULL, TEST_DEVICE_NAME, "HINT_LIGHT", "Protocol", "Light", INDIGO_OK_STATE, 1);
+	indigo_init_light_item(light->items, "LAMP", "Lamp", INDIGO_OK_STATE);
+	INDIGO_COPY_VALUE(light->items[0].hints, "light_hint: 1;");
+	light->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, light, NULL));
+	indigo_release_property(light);
+	indigo_property *blob = indigo_init_blob_property_p(NULL, TEST_DEVICE_NAME, "HINT_BLOB", "Protocol", "BLOB", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
+	indigo_init_blob_item(blob->items, "IMAGE", "Image");
+	INDIGO_COPY_VALUE(blob->items[0].hints, "blob_hint: 1;");
+	blob->version = INDIGO_VERSION_CURRENT;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, blob, NULL));
+	indigo_release_property(blob);
+	close_output_adapter(client, &handle);
+	ASSERT_TRUE(read_file("build/unit/protocol_json_hints.tmp", output, sizeof(output)));
+	assert_contains(output, "\"hints\": \"widget: \\\"entry\\\";\", \"items\"");
+	assert_contains(output, "{ \"name\": \"PLAIN\", \"label\": \"Plain\", \"value\": \"a\" }");
+	assert_contains(output, "{ \"name\": \"HINTED\", \"label\": \"Hinted\", \"hints\": \"warn_on_set: \\\"Really?\\\";\", \"value\": \"b\" }");
+	assert_contains(output, "\"label\": \"Value\", \"hints\": \"number_hint: 1;\", \"min\": 0, \"max\": 10, \"step\": 1, \"format\": \"%g\", \"target\": 5, \"value\": 5");
+	assert_contains(output, "\"label\": \"Value\", \"hints\": \"number_hint: 1;\", \"min\": 0, \"max\": 10, \"step\": 1, \"format\": \"%g\", \"value\": 5");
+	assert_contains(output, "{ \"name\": \"RESET_ALL\", \"label\": \"Reset all\", \"hints\": \"warn_on_set: \\\"Reset all?\\\";\", \"value\": false }");
+	assert_contains(output, "{ \"name\": \"OTHER\", \"label\": \"Other\", \"value\": false }");
+	assert_contains(output, "{ \"name\": \"LAMP\", \"label\": \"Lamp\", \"hints\": \"light_hint: 1;\", \"value\": \"Ok\" }");
+	assert_contains(output, "{ \"name\": \"IMAGE\", \"label\": \"Image\", \"hints\": \"blob_hint: 1;\"");
+}
+
 /* Agents list devices by name in switch items, a device name with a quote must not break the JSON string. */
 static void json_adapter_escapes_device_and_item_names(void) {
 	char output[8192];
@@ -457,6 +514,7 @@ int main(void) {
 		{ "json_escape_handles_special_characters", json_escape_handles_special_characters },
 		{ "json_escape_long_buffer_is_per_thread_and_reusable", json_escape_long_buffer_is_per_thread_and_reusable },
 		{ "json_adapter_serializes_define_update_delete_and_blob_url", json_adapter_serializes_define_update_delete_and_blob_url },
+		{ "json_adapter_serializes_item_hints", json_adapter_serializes_item_hints },
 		{ "json_adapter_escapes_device_and_item_names", json_adapter_escapes_device_and_item_names },
 		{ "json_adapter_serializes_whole_long_text_value", json_adapter_serializes_whole_long_text_value },
 		{ "json_parser_routes_number_and_switch_fixtures", json_parser_routes_number_and_switch_fixtures },
