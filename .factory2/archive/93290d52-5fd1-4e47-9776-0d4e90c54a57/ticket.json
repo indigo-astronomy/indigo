@@ -1,0 +1,525 @@
+{
+  "schema_version": 1,
+  "ticket_id": "93290d52-5fd1-4e47-9776-0d4e90c54a57",
+  "revision": 19,
+  "title": "Sequencer simulator test documentation still describes the fixed scripting binding token defect",
+  "description": "Ticket 8ca68272 (commit 57762ed63) fixed the Scripting Agent change bindings so they forward the local device/master access token. Test documentation still describes that defect as current: indigo_test/integration/sequencer_simulators.md:27 says --native-bindings 'is expected to fail on the current production code'; indigo_test/integration/sequencer_simulators.js:433-434 has a comment about the 'documented native binding-token defect'; indigo_test/integration/run_sequencer_simulators.py:191 has --help text about the same defect. Update these texts to the current behavior. The remaining --native-bindings failure of 'restore private configuration' belongs to ticket 8f313dbc-765b-5e79-9cef-a9d8db5918f9 and is not part of this ticket. Text-only change; no test logic or production code changes.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T15:02:54.993414Z",
+  "status": "closed",
+  "branch": "ticket/93290d52-5fd1-4e47-9776-0d4e90c54a57",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "9f122f25-9b0f-44b3-aa39-678a3526077f",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T15:06:42.811761Z",
+          "last_activity_at": "2026-11-15T15:07:49.027829Z",
+          "ended_at": "2026-11-15T15:07:49.027829Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 66216.068,
+          "tokens": null
+        },
+        {
+          "attempt_id": "0fb8b05e-5965-4e56-a906-558b5c0bf716",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T15:09:30.748122Z",
+          "last_activity_at": "2026-11-15T15:10:23.922789Z",
+          "ended_at": "2026-11-15T15:10:23.922789Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 53174.667,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T15:06:42.811761Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/93290d52-5fd1-4e47-9776-0d4e90c54a57"
+        },
+        {
+          "at": "2026-11-15T15:07:49.027829Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T15:09:30.748122Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T15:10:23.922789Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 119390.735,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "499caa3c-a1b0-46f8-83b4-01ca8aadf3a7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T15:07:49.027993Z",
+          "last_activity_at": "2026-11-15T15:09:30.748042Z",
+          "ended_at": "2026-11-15T15:09:30.748042Z",
+          "outcome": {
+            "summary": "Diff is text-only (one markdown line, one JS comment, one argparse help string; git diff --check clean). Verified true: DRIVER_VERSION 0x03000012 = 3.0.0.18 (indigo_agent_scripting.c:28); change_property_handler sets access_token = indigo_get_device_or_master_token() (indigo_agent_scripting.c:392), shared by all three change bindings (lines 413/435/457), and indigo_token.c:111-124 returns the device token, else the master token; relay is still the default (run_sequencer_simulators.py:261 authenticated_relay = not args.native_bindings; sequencer_simulators.js:435-440 replaces exactly the three named bindings); new help text and md describe --native-bindings neutrally and do not claim it passes; test_agent_scripting 'change bindings forward local access tokens' (test_agent_scripting.c:725) exists. No other stale binding-token-defect claim found in indigo_test (excluding shell_compliance/build) or indigo_docs. DEFECT: sequencer_simulators.md:27, rewritten by this change, still states 'the test_protocol_security unset-master regression exposes its separate defect directly. The latter must not be interpreted as fixed by setting a test master token.' That is no longer true on master: b3467d56f (closed ticket 21bfa946, an ancestor of this branch) resolved it as a wrong test expectation; test_protocol_security.c:509-513/538 now asserts that without a master token device tokens have no effect and the write is accepted, as documented in INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md:21/43. Requested fix: drop or rewrite that clause (e.g. say the unset-master behavior is documented and covered by test_protocol_security 'device ACL requires device or nonzero master token'), keeping it text-only. No tests run (text-only change).",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 101720.049,
+          "tokens": null
+        },
+        {
+          "attempt_id": "91e4d591-eb0d-44a1-956e-ba5bcff17f5e",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T15:10:23.922932Z",
+          "last_activity_at": "2026-11-15T15:10:40.779475Z",
+          "ended_at": "2026-11-15T15:10:40.779475Z",
+          "outcome": {
+            "summary": "Round 2. The only change since round 1 is commit 6d58f097c, which edits one line, indigo_test/integration/sequencer_simulators.md:27. The full diff against master is still text-only in the same three files (md line, JS comment at sequencer_simulators.js:434, argparse help at run_sequencer_simulators.py:191), and git diff --check is clean. The new ending is true. test_protocol_security.c:509-513/538 asserts that without a master token a device-token-protected write is accepted, which is the behaviour documented in INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md:21/43. The cited case name matches test_protocol_security.c:554 exactly. Round-1 checks still hold: version 3.0.0.18 = 0x03000012; device-or-master token forwarding at indigo_agent_scripting.c:392 via indigo_token.c:111-124; the relay remains the default (run_sequencer_simulators.py:261); test_agent_scripting.c:725 exists; nothing claims the suite passes with --native-bindings. No stale binding-token-defect text remains in indigo_test (excluding shell_compliance) or indigo_docs. No tests run (text-only change).",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 16856.543,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T15:07:49.027993Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T15:09:30.748042Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Diff is text-only (one markdown line, one JS comment, one argparse help string; git diff --check clean). Verified true: DRIVER_VERSION 0x03000012 = 3.0.0.18 (indigo_agent_scripting.c:28); change_property_handler sets access_token = indigo_get_device_or_master_token() (indigo_agent_scripting.c:392), shared by all three change bindings (lines 413/435/457), and indigo_token.c:111-124 returns the device token, else the master token; relay is still the default (run_sequencer_simulators.py:261 authenticated_relay = not args.native_bindings; sequencer_simulators.js:435-440 replaces exactly the three named bindings); new help text and md describe --native-bindings neutrally and do not claim it passes; test_agent_scripting 'change bindings forward local access tokens' (test_agent_scripting.c:725) exists. No other stale binding-token-defect claim found in indigo_test (excluding shell_compliance/build) or indigo_docs. DEFECT: sequencer_simulators.md:27, rewritten by this change, still states 'the test_protocol_security unset-master regression exposes its separate defect directly. The latter must not be interpreted as fixed by setting a test master token.' That is no longer true on master: b3467d56f (closed ticket 21bfa946, an ancestor of this branch) resolved it as a wrong test expectation; test_protocol_security.c:509-513/538 now asserts that without a master token device tokens have no effect and the write is accepted, as documented in INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md:21/43. Requested fix: drop or rewrite that clause (e.g. say the unset-master behavior is documented and covered by test_protocol_security 'device ACL requires device or nonzero master token'), keeping it text-only. No tests run (text-only change)."
+        },
+        {
+          "at": "2026-11-15T15:10:23.922932Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T15:10:40.779475Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2. The only change since round 1 is commit 6d58f097c, which edits one line, indigo_test/integration/sequencer_simulators.md:27. The full diff against master is still text-only in the same three files (md line, JS comment at sequencer_simulators.js:434, argparse help at run_sequencer_simulators.py:191), and git diff --check is clean. The new ending is true. test_protocol_security.c:509-513/538 asserts that without a master token a device-token-protected write is accepted, which is the behaviour documented in INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md:21/43. The cited case name matches test_protocol_security.c:554 exactly. Round-1 checks still hold: version 3.0.0.18 = 0x03000012; device-or-master token forwarding at indigo_agent_scripting.c:392 via indigo_token.c:111-124; the relay remains the default (run_sequencer_simulators.py:261); test_agent_scripting.c:725 exists; nothing claims the suite passes with --native-bindings. No stale binding-token-defect text remains in indigo_test (excluding shell_compliance) or indigo_docs. No tests run (text-only change)."
+        }
+      ],
+      "result": {
+        "summary": "Round 2. The only change since round 1 is commit 6d58f097c, which edits one line, indigo_test/integration/sequencer_simulators.md:27. The full diff against master is still text-only in the same three files (md line, JS comment at sequencer_simulators.js:434, argparse help at run_sequencer_simulators.py:191), and git diff --check is clean. The new ending is true. test_protocol_security.c:509-513/538 asserts that without a master token a device-token-protected write is accepted, which is the behaviour documented in INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md:21/43. The cited case name matches test_protocol_security.c:554 exactly. Round-1 checks still hold: version 3.0.0.18 = 0x03000012; device-or-master token forwarding at indigo_agent_scripting.c:392 via indigo_token.c:111-124; the relay remains the default (run_sequencer_simulators.py:261); test_agent_scripting.c:725 exists; nothing claims the suite passes with --native-bindings. No stale binding-token-defect text remains in indigo_test (excluding shell_compliance) or indigo_docs. No tests run (text-only change).",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 118576.592,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "a5d76385-e085-4273-bb6a-ad471fdcfe5d",
+      "event": "ticket/created",
+      "at": "2026-11-15T15:02:54.994273Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "fbdd998c-5103-4da8-9c85-ec23ad55c775",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T15:03:01.320983Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "8cb27787-9d2b-4600-a28c-1e6515ee54ff",
+      "event": "task/progress",
+      "at": "2026-11-15T15:06:42.812220Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Implementation started on branch ticket/93290d52-5fd1-4e47-9776-0d4e90c54a57"
+    },
+    {
+      "event_id": "13691272-f0fd-428c-97c8-ce37a27d071b",
+      "event": "ticket/started",
+      "at": "2026-11-15T15:06:42.814029Z",
+      "actor": "human/owner",
+      "branch": "ticket/93290d52-5fd1-4e47-9776-0d4e90c54a57",
+      "base": "master"
+    },
+    {
+      "event_id": "4b499a9a-38bf-4f75-95cb-aaed5c20825a",
+      "event": "task/progress",
+      "at": "2026-11-15T15:07:14.851294Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Implementer launched",
+      "attempt_id": "9f122f25-9b0f-44b3-aa39-678a3526077f",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "0334278e-e5fd-45b5-bc50-c9120e18cafb",
+      "event": "task/progress",
+      "at": "2026-11-15T15:07:32.986270Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e84be1b4-1ba0-464f-b076-5dc10cd939cd",
+      "event": "task/progress",
+      "at": "2026-11-15T15:07:33.008576Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "315b5c33-8a3c-4d26-905a-36528859848a",
+      "event": "check/passed",
+      "at": "2026-11-15T15:07:33.010144Z",
+      "actor": "human/owner",
+      "commit": "6ef04e1999e76a5c5c048e0f2fcdb58fa860ca36",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "f570a19d-c536-45b0-ad7e-6e7a90751db5",
+      "event": "task/progress",
+      "at": "2026-11-15T15:07:49.028050Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "text": "Review started"
+    },
+    {
+      "event_id": "573017c1-c064-4422-a5b3-0e4be0d02241",
+      "event": "review/started",
+      "at": "2026-11-15T15:07:49.029120Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "967e1e7e-a42e-4eae-9e13-e31fc5744ff0",
+      "event": "task/progress",
+      "at": "2026-11-15T15:08:10.399980Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "text": "Reviewer started: reading diff and verifying statements against source",
+      "attempt_id": "499caa3c-a1b0-46f8-83b4-01ca8aadf3a7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "db8a4891-ec66-4187-be34-f9b3edc3669a",
+      "event": "task/progress",
+      "at": "2026-11-15T15:09:30.748118Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "64ef532d-5fd8-4b72-8d27-995d19212d43",
+      "event": "task/progress",
+      "at": "2026-11-15T15:09:30.748141Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "9aa890a0-3480-4fa4-88e1-642386e7652e",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T15:09:30.749241Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "6ef04e1999e76a5c5c048e0f2fcdb58fa860ca36"
+    },
+    {
+      "event_id": "15322cb6-e564-4814-8f04-c4a86e034662",
+      "event": "task/progress",
+      "at": "2026-11-15T15:10:08.155010Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Replaced the test_protocol_security clause per review"
+    },
+    {
+      "event_id": "e720e49d-b835-4a45-89ae-0513d88d7343",
+      "event": "task/progress",
+      "at": "2026-11-15T15:10:08.404701Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "45d0a54d-6c14-40b8-b90f-5ec08a568798",
+      "event": "task/progress",
+      "at": "2026-11-15T15:10:08.431287Z",
+      "actor": "human/owner",
+      "task_id": "7865e07c-28c6-4000-9ade-4e58ee8a5e74",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "af71e507-ba9b-47dc-a332-a230c9e1c148",
+      "event": "check/passed",
+      "at": "2026-11-15T15:10:08.433069Z",
+      "actor": "human/owner",
+      "commit": "6d58f097c1f7c1ccfe12b7e394a5fb5435336063",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "522c9ab4-53f2-4e1d-a5fb-3fa9ff9c255a",
+      "event": "task/progress",
+      "at": "2026-11-15T15:10:23.923007Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "text": "Review started"
+    },
+    {
+      "event_id": "110695cc-edd2-4edb-a145-2f9328dc3232",
+      "event": "review/started",
+      "at": "2026-11-15T15:10:23.924102Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "9bfc9f24-b1c4-4006-ad0d-c48a7f1c0c69",
+      "event": "task/progress",
+      "at": "2026-11-15T15:10:29.682965Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "text": "Reviewer round 2: rechecking md:27 test_protocol_security clause"
+    },
+    {
+      "event_id": "092573bc-46c2-4930-bb7f-d0e26e8cbb13",
+      "event": "task/progress",
+      "at": "2026-11-15T15:10:40.779556Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "ae67b2f2-b7b0-49ae-83fd-af8a4ba72a45",
+      "event": "review/passed",
+      "at": "2026-11-15T15:10:40.780703Z",
+      "actor": "human/owner",
+      "task_id": "e9163840-9433-4fe4-bada-caf223141680",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "6d58f097c1f7c1ccfe12b7e394a5fb5435336063"
+    },
+    {
+      "event_id": "0aa9390b-046e-45ea-8dc1-6b62478e87b1",
+      "event": "ticket/closed",
+      "at": "2026-11-15T18:04:51.527447Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T18:04:51.527409Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "9c08d32bee5adbdee4536e47a92dda5bba781fe8"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6ef04e1999e76a5c5c048e0f2fcdb58fa860ca36",
+        "tree": "d1e3023a4a29975e0b467ef7dfde0cf290801e03",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T15:07:33.007934Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/93290d52-5fd1-4e47-9776-0d4e90c54a57/d1e3023a4a29-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "6d58f097c1f7c1ccfe12b7e394a5fb5435336063",
+        "tree": "0bbbeb78c5c59b8d8e00eda4063d0a44928e0b99",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T15:10:08.430519Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/93290d52-5fd1-4e47-9776-0d4e90c54a57/0bbbeb78c5c5-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Diff is text-only (one markdown line, one JS comment, one argparse help string; git diff --check clean). Verified true: DRIVER_VERSION 0x03000012 = 3.0.0.18 (indigo_agent_scripting.c:28); change_property_handler sets access_token = indigo_get_device_or_master_token() (indigo_agent_scripting.c:392), shared by all three change bindings (lines 413/435/457), and indigo_token.c:111-124 returns the device token, else the master token; relay is still the default (run_sequencer_simulators.py:261 authenticated_relay = not args.native_bindings; sequencer_simulators.js:435-440 replaces exactly the three named bindings); new help text and md describe --native-bindings neutrally and do not claim it passes; test_agent_scripting 'change bindings forward local access tokens' (test_agent_scripting.c:725) exists. No other stale binding-token-defect claim found in indigo_test (excluding shell_compliance/build) or indigo_docs. DEFECT: sequencer_simulators.md:27, rewritten by this change, still states 'the test_protocol_security unset-master regression exposes its separate defect directly. The latter must not be interpreted as fixed by setting a test master token.' That is no longer true on master: b3467d56f (closed ticket 21bfa946, an ancestor of this branch) resolved it as a wrong test expectation; test_protocol_security.c:509-513/538 now asserts that without a master token device tokens have no effect and the write is accepted, as documented in INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md:21/43. Requested fix: drop or rewrite that clause (e.g. say the unset-master behavior is documented and covered by test_protocol_security 'device ACL requires device or nonzero master token'), keeping it text-only. No tests run (text-only change).",
+        "reviewer": "human/owner",
+        "commit": "6ef04e1999e76a5c5c048e0f2fcdb58fa860ca36",
+        "tree": "d1e3023a4a29975e0b467ef7dfde0cf290801e03",
+        "at": "2026-11-15T15:09:30.747886Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2. The only change since round 1 is commit 6d58f097c, which edits one line, indigo_test/integration/sequencer_simulators.md:27. The full diff against master is still text-only in the same three files (md line, JS comment at sequencer_simulators.js:434, argparse help at run_sequencer_simulators.py:191), and git diff --check is clean. The new ending is true. test_protocol_security.c:509-513/538 asserts that without a master token a device-token-protected write is accepted, which is the behaviour documented in INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md:21/43. The cited case name matches test_protocol_security.c:554 exactly. Round-1 checks still hold: version 3.0.0.18 = 0x03000012; device-or-master token forwarding at indigo_agent_scripting.c:392 via indigo_token.c:111-124; the relay remains the default (run_sequencer_simulators.py:261); test_agent_scripting.c:725 exists; nothing claims the suite passes with --native-bindings. No stale binding-token-defect text remains in indigo_test (excluding shell_compliance) or indigo_docs. No tests run (text-only change).",
+        "reviewer": "human/owner",
+        "commit": "6d58f097c1f7c1ccfe12b7e394a5fb5435336063",
+        "tree": "0bbbeb78c5c59b8d8e00eda4063d0a44928e0b99",
+        "at": "2026-11-15T15:10:40.779320Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "9c08d32bee5adbdee4536e47a92dda5bba781fe8",
+      "tree": "0bbbeb78c5c59b8d8e00eda4063d0a44928e0b99",
+      "base": "master",
+      "at": "2026-11-15T18:04:51.443890Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T15:02:54.993414Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T15:03:01.320721Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 237967.327,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 32,
+    "sha256": "9ddc4a0914cddf235e28fb66383b10d97b04c60e178b72a1a244e496c53b71cb"
+  }
+}
