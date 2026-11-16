@@ -23,7 +23,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300000C
+#define DRIVER_VERSION 0x0300000D
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -1263,6 +1263,9 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 	PRIVATE_DATA->phase = RUN_STARTING;
 	PRIVATE_DATA->deadline = indigo_monotonic_time() + SETTINGS_START_TIMEOUT_ITEM->number.value;
 	PRIVATE_DATA->plan_dirty = true;
+	// what follows this run comes from the next plan
+	PRIVATE_DATA->next_task = -1;
+	PRIVATE_DATA->next_start = 0;
 	set_reason(device, "");
 	if (kind == RUN_TASK) {
 		task->state = TASK_RUNNING;
@@ -2023,6 +2026,77 @@ static void publish_plan(indigo_device *device, char (*labels)[INDIGO_VALUE_SIZE
 	}
 }
 
+// true when the scheduler stops after the running run: nothing else is left to run
+static bool finishing_after_current(indigo_device *device) {
+	bool any = false;
+	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
+		int slot = PRIVATE_DATA->order[i];
+		scheduler_task *task = PRIVATE_DATA->tasks + slot;
+		if (is_hook(device, task)) {
+			continue;
+		}
+		// a one-off urgent task leaves the list after its run, whatever the result
+		if (slot == PRIVATE_DATA->current && PRIVATE_DATA->kind == RUN_TASK && !task->stored) {
+			continue;
+		}
+		any = true;
+		if (slot == PRIVATE_DATA->current && PRIVATE_DATA->kind == RUN_TASK) {
+			if (task->header.repeat - task->runs > 1) {
+				return false;
+			}
+		} else if (is_enabled(task) && !is_terminal_state(task->state) && !task->script_error) {
+			return false;
+		}
+	}
+	return any;
+}
+
+// the shutdown hook task, -1 when none is named or it is the task that runs now, because a task that serves as several hooks runs once
+static int shutdown_after_current(indigo_device *device) {
+	int slot = hook_slot(device, HOOKS_SHUTDOWN_ITEM);
+	return slot == PRIVATE_DATA->current ? -1 : slot;
+}
+
+// while a run is in progress, NEXT and NEXT_START show what follows it: the first planned run after it or the shutdown hook when the scheduler stops
+static void update_following(indigo_device *device, time_t now, int runs) {
+	// a preempting stop has no current run, NEXT keeps the urgent task selected for it
+	if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->current < 0) {
+		return;
+	}
+	int next = -1;
+	time_t next_start = 0;
+	if (PRIVATE_DATA->kind != RUN_SHUTDOWN_HOOK) {
+		time_t end = PRIVATE_DATA->run_start + task_duration(PRIVATE_DATA->tasks + PRIVATE_DATA->current, NULL);
+		if (end < now) {
+			end = now;
+		}
+		// the scheduler stops after the run: the shutdown hook follows and the plan, which still holds the night end hook, is not used
+		if (PRIVATE_DATA->stop_requested || (PRIVATE_DATA->started && finishing_after_current(device))) {
+			next = shutdown_after_current(device);
+			next_start = end;
+		} else {
+			bool after = PRIVATE_DATA->kind != RUN_TASK;
+			for (int i = 0; i < runs && next < 0; i++) {
+				if (plan_runs[i].running) {
+					after = true;
+				} else if (after) {
+					int slot = plan_runs[i].task >= 0 ? plan_slots[plan_runs[i].task] : plan_hook_slots[plan_runs[i].hook];
+					// a task that serves as several hooks runs once when they follow each other
+					if (PRIVATE_DATA->kind != RUN_TASK && slot == PRIVATE_DATA->current && plan_runs[i].start <= end) {
+						continue;
+					}
+					next = slot;
+					// the plan of a running hook starts at now, the next run cannot start before the hook ends
+					next_start = plan_runs[i].start > end ? plan_runs[i].start : end;
+				}
+			}
+		}
+	}
+	PRIVATE_DATA->next_task = next;
+	PRIVATE_DATA->next_start = next >= 0 ? next_start : 0;
+	update_current(device);
+}
+
 // the forecast of the rest of the night: the runs the scheduler would make if every run took its duration and succeeded
 static void update_plan(indigo_device *device, time_t now) {
 	static char labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
@@ -2134,6 +2208,7 @@ static void update_plan(indigo_device *device, time_t now) {
 		states[items++] = INDIGO_ALERT_STATE;
 	}
 	publish_plan(device, labels, states, items);
+	update_following(device, now, runs);
 }
 
 static void process(indigo_device *device) {

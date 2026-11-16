@@ -667,8 +667,8 @@ A one-off urgent task leaves the task list when it ends, so it is counted in `UR
 | Item | Meaning |
 |---|---|
 | `CURRENT` | The running task or hook, empty when none runs |
-| `NEXT` | The task the scheduler expects to run next |
-| `NEXT_START` | When `NEXT` can start, in UTC (`YYYY-MM-DDTHH:MM:SS`) |
+| `NEXT` | The task or hook the scheduler expects to run next. While a task or hook runs, it is the `SHUTDOWN` hook when the scheduler stops after the current run because a stop is pending or no other task is left (the `NIGHT_END` hook then does not run), otherwise the first run of the night plan after the current one (a hook, such as `NIGHT_END`, when the plan puts it next). It is the running task only when that task repeats |
+| `NEXT_START` | When `NEXT` can start, in UTC (`YYYY-MM-DDTHH:MM:SS`); while a run is in progress, when `NEXT` is planned to start, for the `SHUTDOWN` hook when the current run is expected to end |
 | `REASON` | Why nothing runs now: the reason of the first waiting task in the list, see [Reasons](#reasons) |
 
 ```
