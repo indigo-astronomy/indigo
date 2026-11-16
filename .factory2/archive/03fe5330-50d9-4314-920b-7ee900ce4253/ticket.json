@@ -1,0 +1,1329 @@
+{
+  "schema_version": 1,
+  "ticket_id": "03fe5330-50d9-4314-920b-7ee900ce4253",
+  "revision": 69,
+  "title": "indigo_agent_scheduler: relate observation data to the task that produced it",
+  "description": "Relate the observation data to the scheduler task that produced it. Today every task saves into whatever the Imager Agent's CCD_LOCAL_MODE holds, so frames of all tasks land in the same place with no link to the task (TODO at indigo_agent_scheduler.c:25). Design agreed with the owner on 2026-11-16; defaults below were accepted as proposed.\n\nApproach: everything is done by the Scheduler Agent in C, no change to Sequencer.js or indigo_ccd_driver.c. Reasons: PREFIX cannot create subfolders (create_file_name() sanitizes '/' to '_'), only DIR can (indigo_uni_mkdir is recursive); Sequence.start() returns immediately, so a wrapper finally or appended steps cannot restore state after a failure or abort; the scheduler already observes the bus and knows when a run ends.\n\nNew properties (Scheduler group, persisted with the other settings):\n- AGENT_SCHEDULER_DATA, switch, any of many: OBJECT (set the Imager Agent object name to the task name, default on), FITS (write task keywords, default on), FOLDER (save each task into its own subfolder, default off).\n- AGENT_SCHEDULER_DATA_DIR, text: BASE = parent folder of the task folders; empty = the Imager Agent DIR captured when the scheduler starts (default empty).\n\nNew header key @folder name|none (1-40 bytes, parsed in indigo_agent_scheduler_header.c, new field in scheduler_header): name forces <base>/<name>/ for this task even with FOLDER off, letting several tasks share a folder; none disables the folder for this task.\n\nLifecycle:\n1. observe_property() also records DIR and OBJECT of \"Imager Agent\" CCD_LOCAL_MODE (under observed, with its mutex).\n2. On scheduler START, snapshot the original DIR and OBJECT; base = BASE or the snapshot DIR. All runs are computed from this snapshot so folders never nest.\n3. In start_task(), before RUN_SCRIPT, for tasks and hooks alike: OBJECT on -> CCD_LOCAL_MODE.OBJECT = task name; folder applies -> CCD_LOCAL_MODE.DIR = <base><sanitized folder>/ (folder = @folder or task name, same character set as the CCD sanitize()); FITS on -> CCD_SET_FITS_HEADER SCHTASK = '<task name>', SCHRUN = <run number>, SCHNIGHT = '<YYYY-MM-DD>' (session night date as %N, links flats to lights). String values carry FITS quotes because the driver stores VALUE verbatim; all fit the 58 character limit.\n4. Script-level set_object_name / set_directory / set_fits_header run later as sequence steps and take precedence.\n5. After every run (succeeded, failed, preempted, aborted) and on stop/abort: restore the snapshot DIR and OBJECT and send CCD_REMOVE_FITS_HEADER for the three keywords, from one helper called from finish_task(), finish_hook() and the stop/abort path.\n6. Estimate runs apply nothing.\n\nEdge cases: no Imager Agent or no CCD_LOCAL_MODE observed -> apply and restore nothing, no error. Ordering: settings are sent on the same client before RUN_SCRIPT; the first sequence step comes later from the Scripting Agent; tests must verify. A script that starts the sequence on another imager agent gets no labels (same limit as the existing busy check on \"Imager Agent\"). Behaviour change to document: a script's set_directory no longer persists after the run.\n\nAlso in this ticket: INDIGO_SCHEDULER_GUIDE.md (new section \"Where the data goes\", @folder in the header table, both properties in the property reference); PROPERTIES.md (the two new properties, and the missing %o object-name token in CCD_LOCAL_MODE.PREFIX); DRIVER_VERSION 0x0300000D -> 0x0300000E; remove the TODO at line 25. Tests in the scheduler suite under indigo_test/: context set before the first step, script overrides win, restore after success/failure/preemption/abort/stop, @folder name and none, BASE set and empty, no Imager Agent, estimate untouched. No new files, so no Xcode project change.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-16T08:14:23.584282Z",
+  "status": "closed",
+  "branch": "ticket/03fe5330-50d9-4314-920b-7ee900ce4253",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "fb969424-d5e1-4d41-80ea-d2bb6b30afdf",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T08:36:37.096976Z",
+          "last_activity_at": "2026-11-16T09:00:26.838493Z",
+          "ended_at": "2026-11-16T09:00:26.838493Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1429741.517,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a686456a-7c83-4756-bdee-758aa5762749",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T09:03:34.685219Z",
+          "last_activity_at": "2026-11-16T09:10:02.869944Z",
+          "ended_at": "2026-11-16T09:10:02.869944Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 388184.725,
+          "tokens": null
+        },
+        {
+          "attempt_id": "812939be-81f6-4b1c-9f32-a073953f8a1b",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T10:25:39.306578Z",
+          "last_activity_at": "2026-11-16T11:02:50.866559Z",
+          "ended_at": "2026-11-16T11:02:50.866559Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 2231559.981,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T08:36:37.096976Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/03fe5330-50d9-4314-920b-7ee900ce4253"
+        },
+        {
+          "at": "2026-11-16T09:00:26.838493Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T09:03:34.685219Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T09:10:02.869944Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T10:25:39.306578Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T11:02:50.866559Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 4049486.223,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "520afe05-166d-4931-9927-58daed57f85d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-16T09:00:26.838564Z",
+          "last_activity_at": "2026-11-16T09:03:34.684893Z",
+          "ended_at": "2026-11-16T09:03:34.684893Z",
+          "outcome": {
+            "summary": "One defect, Windows path building.\n\n1. indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:1119 (data_directory). The separator is hard-coded as '/' both in the trailing-separator test and in the separators it appends: snprintf(directory, size, \"%s%s%s/\", base, ... base[length - 1] == '/' ? \"\" : \"/\", folder). The captured base is the Imager Agent CCD_LOCAL_MODE.DIR, which indigo_ccd_driver.c:825-832 always ends with INDIGO_PATH_SEPATATOR ('\\\\' on Windows, indigo_uni_io.h:45). On Windows the base 'C:\\\\Users\\\\u\\\\indigo_image_cache\\\\' therefore becomes 'C:\\\\...\\\\indigo_image_cache\\\\/M31/', and the CCD driver then appends another '\\\\' because the last character is not INDIGO_PATH_SEPATATOR, giving 'C:\\\\...\\\\indigo_image_cache\\\\/M31/\\\\'. A BASE typed with backslashes behaves the same way. Windows usually tolerates mixed and doubled separators, but the DIR shown to users and written to config is malformed. It also breaks the repository rule against platform-dependent code in drivers and the INDIGO_PATH_SEPATATOR convention that indigo_ccd_driver.c uses for the same item. Fix: treat a base ending in INDIGO_PATH_SEPATATOR (or '/') as already terminated, and append INDIGO_PATH_SEPATATOR, for example \"%s%s%s%c\" with INDIGO_PATH_SEPATATOR. The Linux tests keep their expectations ('/' is the separator there).\n\nVerified as correct: apply happens before RUN_SCRIPT, for tasks and hooks alike. Restore runs on every run-ending path through finish_task, finish_hook and finish_stop: success, failure before or after start, start timeout, preemption, abort, delete (task and hook), stop timeout, and shutdown or startup hook chains. The snapshot is taken at START when idle, or lazily at the first apply when the Imager was unknown; it stays valid for the session and is dropped by stop_scheduler, or by restore when the run outlives the stop, so folders do not nest. Observed fields are read and written under observed.mutex, and the PRIVATE_DATA context fields are touched only on the devi",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 187846.329,
+          "tokens": null
+        },
+        {
+          "attempt_id": "76b98d01-00d5-4e45-9c90-c84a1ade5a8b",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T09:10:02.869953Z",
+          "last_activity_at": "2026-11-16T09:10:02.869975Z",
+          "ended_at": "2026-11-16T09:10:02.869975Z",
+          "outcome": {
+            "summary": "Re-review on tree b67a15c5b1a0 (commit 2f0b55781). git diff 0d6815fd5c HEAD shows only the requested change in indigo_agent_scheduler.c data_directory() (lines 1119-1120), and the worktree is clean.\n\nThe fix: a base ending in '/' or INDIGO_PATH_SEPATATOR now counts as terminated, and the code appends INDIGO_PATH_SEPATATOR between the base and the folder and after the folder. A Windows base 'C:\\\\...\\\\' therefore becomes 'C:\\\\...\\\\M31\\\\', and the CCD driver no longer adds a second separator. On Linux the result is unchanged, consistent with the integration tests (103 pass).\n\nPortability of the compound literal (char[]){ INDIGO_PATH_SEPATATOR, 0 }: the file compiles as C (indigo_agent_scheduler.vcxproj has no CompileAs override), and Directory.Build.props:24 sets LanguageStandard_C stdc11. MSVC supports C99 compound literals in C mode, so this is valid. The literal's lifetime covers the snprintf call in the same block. The formatting follows the conventions: one-line call,  spacing, no blank lines.\n\nThe earlier finding is resolved and no new defects were found. The out-of-scope notes from the first review stand as information for the owner.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.022,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1e56aa10-8d35-4c6a-87a2-4b0573ccb464",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-16T10:25:14.819371Z",
+          "last_activity_at": "2026-11-16T10:25:39.306508Z",
+          "ended_at": "2026-11-16T10:25:39.306508Z",
+          "outcome": {
+            "summary": "Review of tree 16de4a30e0b7 (commit ea5eef561); diff 2f0b55781..HEAD touches only indigo_ccd_driver.c, test_rgb48.c, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md.\n\nDefect: indigo_libs/indigo_ccd_driver.c:1373 and :1955 size the escaped OBJECT buffer as char object[55] (54 characters), which makes the card 80 characters: 11 ('OBJECT  = ' plus the opening quote) + 54 + 1 (closing quote) + 14 (' / object name'). add_key() (line 1270) formats with vsnprintf(buffer, 80, ...), which writes at most 79 characters and puts the NUL at index 79, and returns length 80.\n- FITS path: buffer[80] = ' ' lands on the next card, so the NUL at column 80 stays inside the header, which is an invalid FITS card.\n- TIFF path (raw_to_tiff, fits false): buffer[80] = '\\\\n' and the header advances past the NUL, so the TIFF keyword text is cut at the OBJECT line and every later key is lost.\nThis is reachable through the property: OBJECT_LENGTH 41 allows 40 characters, and any name with 14 or more quotes among them escapes to 54 or more (40 quotes escape to 80, cut to 54). Before this change the object was at most 40 characters, so the card was at most 66 and could not reach this.\nThe new test exercises exactly this boundary but checks only up to column 79 ('' / object nam'), so it misses the NUL.\nFix: use char object[54] at both sites (53 characters, card at most 79 with the closing quote intact), and have the test assert that card[79] is a space and that strlen of the header covers the card, or that no NUL appears before the END card.\n\nThe rest is correct:\n- fits_escape() never splits a doubled quote, always terminates the string, and respects size - 1.\n- The Barnard''s Star case would fail without the fix.\n- The two doc corrections match data_directory(), which returns false for @folder none, so DIR is untouched and BASE is unused. PROPERTIES.md does not claim otherwise.\n- Formatting follows the conventions.\nNote, not a defect: the test lives in test_rgb48.c under the suite title 'RGB48 endian conv",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 24487.137,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ee46fb92-3c07-441b-809c-fb9edae4b732",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T11:02:50.866568Z",
+          "last_activity_at": "2026-11-16T11:02:50.866583Z",
+          "ended_at": "2026-11-16T11:02:50.866583Z",
+          "outcome": {
+            "summary": "Round 3 on tree 84c2c41f59fe (commit 45ae46bbb). Since ea5eef561 only five files changed: indigo_ccd_driver.c, the new indigo_test/unit/test_ccd_fits_header.c, indigo_test/Makefile, project.pbxproj, and test_rgb48.c, which now has no diff against master. The worktree is clean.\n\nFix: both OBJECT sites (indigo_ccd_driver.c:1373 and 1955) now use char object[54]. That caps the escaped name at 53 characters, in doubled pairs, so a worst-case all-quote name gives 52 quotes and a 78-character card. The rest of the card is filled from the memset(header, ' ') at line 1888, so vsnprintf no longer puts a NUL inside the header, and the TIFF text is no longer cut.\n\nThe long-name test would have failed with object[55]: 54 quotes give an 80-character card with vsnprintf's NUL at index 79. Both card[79] == ' ' and header_is_complete() catch that. The odd quote count (pairs plus the closing quote) and the comment-prefix assertions are consistent with the fixed code. The Barnard''s Star case fails without escaping.\n\nThe new file has the INDIGO license header. Its Makefile wiring matches test_rgb48 (it is listed in UNIT_TESTS and has a rule with the same flags). In project.pbxproj the file reference ID 5C3E71A0D4B94F2A8E10B6C7 is unique, appearing only on the reference line and the group line. The file sits in the unit test group next to test_rgb48.c, with no target membership, like its neighbours. No .factory2 reference was added. Formatting follows the conventions.\n\nNo defects. The out-of-scope notes from round 1 still stand for the owner.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.015,
+          "tokens": null
+        },
+        {
+          "attempt_id": "c326cc70-7dbd-4f22-8a2a-60dea39e96fb",
+          "number": 5,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T11:34:11.764556Z",
+          "last_activity_at": "2026-11-16T11:34:18.368696Z",
+          "ended_at": "2026-11-16T11:34:18.368696Z",
+          "outcome": {
+            "summary": "Review of tree 7c572357f9d7 (commit 9cfc64b18). The worktree is clean.\n\n- git diff 45ae46bbb HEAD touches only indigo_ccd_driver.c, test_ccd_fits_header.c, indigo_test/Makefile and project.pbxproj.\n- git diff 9189f551e HEAD on those four paths is empty, so they now equal the old master.\n- The remaining diff against 9189f551e is the 9 scheduler files already passed in rounds 1 to 3 (guide, PROPERTIES.md, SCHEDULER.md, scheduler .c, header .c and .h, indigo_names.h, integration and unit scheduler tests), unchanged since 45ae46bbb.\n- git merge-tree --write-tree 0d7fea497 HEAD exits 0 with no conflicts.\n- The scheduler docs and tests do not depend on the CCD fix. The Barnard's Star integration case checks SCHTASK quoting and the OBJECT value on the Imager Agent stand-in, not the CCD FITS card.\n\nNo defects.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 6604.14,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T09:00:26.838564Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T09:03:34.684893Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "One defect, Windows path building.\n\n1. indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:1119 (data_directory). The separator is hard-coded as '/' both in the trailing-separator test and in the separators it appends: snprintf(directory, size, \"%s%s%s/\", base, ... base[length - 1] == '/' ? \"\" : \"/\", folder). The captured base is the Imager Agent CCD_LOCAL_MODE.DIR, which indigo_ccd_driver.c:825-832 always ends with INDIGO_PATH_SEPATATOR ('\\\\' on Windows, indigo_uni_io.h:45). On Windows the base 'C:\\\\Users\\\\u\\\\indigo_image_cache\\\\' therefore becomes 'C:\\\\...\\\\indigo_image_cache\\\\/M31/', and the CCD driver then appends another '\\\\' because the last character is not INDIGO_PATH_SEPATATOR, giving 'C:\\\\...\\\\indigo_image_cache\\\\/M31/\\\\'. A BASE typed with backslashes behaves the same way. Windows usually tolerates mixed and doubled separators, but the DIR shown to users and written to config is malformed. It also breaks the repository rule against platform-dependent code in drivers and the INDIGO_PATH_SEPATATOR convention that indigo_ccd_driver.c uses for the same item. Fix: treat a base ending in INDIGO_PATH_SEPATATOR (or '/') as already terminated, and append INDIGO_PATH_SEPATATOR, for example \"%s%s%s%c\" with INDIGO_PATH_SEPATATOR. The Linux tests keep their expectations ('/' is the separator there).\n\nVerified as correct: apply happens before RUN_SCRIPT, for tasks and hooks alike. Restore runs on every run-ending path through finish_task, finish_hook and finish_stop: success, failure before or after start, start timeout, preemption, abort, delete (task and hook), stop timeout, and shutdown or startup hook chains. The snapshot is taken at START when idle, or lazily at the first apply when the Imager was unknown; it stays valid for the session and is dropped by stop_scheduler, or by restore when the run outlives the stop, so folders do not nest. Observed fields are read and written under observed.mutex, and the PRIVATE_DATA context fields are touched only on the devi"
+        },
+        {
+          "at": "2026-11-16T09:10:02.869953Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T09:10:02.869975Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review on tree b67a15c5b1a0 (commit 2f0b55781). git diff 0d6815fd5c HEAD shows only the requested change in indigo_agent_scheduler.c data_directory() (lines 1119-1120), and the worktree is clean.\n\nThe fix: a base ending in '/' or INDIGO_PATH_SEPATATOR now counts as terminated, and the code appends INDIGO_PATH_SEPATATOR between the base and the folder and after the folder. A Windows base 'C:\\\\...\\\\' therefore becomes 'C:\\\\...\\\\M31\\\\', and the CCD driver no longer adds a second separator. On Linux the result is unchanged, consistent with the integration tests (103 pass).\n\nPortability of the compound literal (char[]){ INDIGO_PATH_SEPATATOR, 0 }: the file compiles as C (indigo_agent_scheduler.vcxproj has no CompileAs override), and Directory.Build.props:24 sets LanguageStandard_C stdc11. MSVC supports C99 compound literals in C mode, so this is valid. The literal's lifetime covers the snprintf call in the same block. The formatting follows the conventions: one-line call,  spacing, no blank lines.\n\nThe earlier finding is resolved and no new defects were found. The out-of-scope notes from the first review stand as information for the owner."
+        },
+        {
+          "at": "2026-11-16T10:25:14.819371Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T10:25:39.306508Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Review of tree 16de4a30e0b7 (commit ea5eef561); diff 2f0b55781..HEAD touches only indigo_ccd_driver.c, test_rgb48.c, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md.\n\nDefect: indigo_libs/indigo_ccd_driver.c:1373 and :1955 size the escaped OBJECT buffer as char object[55] (54 characters), which makes the card 80 characters: 11 ('OBJECT  = ' plus the opening quote) + 54 + 1 (closing quote) + 14 (' / object name'). add_key() (line 1270) formats with vsnprintf(buffer, 80, ...), which writes at most 79 characters and puts the NUL at index 79, and returns length 80.\n- FITS path: buffer[80] = ' ' lands on the next card, so the NUL at column 80 stays inside the header, which is an invalid FITS card.\n- TIFF path (raw_to_tiff, fits false): buffer[80] = '\\\\n' and the header advances past the NUL, so the TIFF keyword text is cut at the OBJECT line and every later key is lost.\nThis is reachable through the property: OBJECT_LENGTH 41 allows 40 characters, and any name with 14 or more quotes among them escapes to 54 or more (40 quotes escape to 80, cut to 54). Before this change the object was at most 40 characters, so the card was at most 66 and could not reach this.\nThe new test exercises exactly this boundary but checks only up to column 79 ('' / object nam'), so it misses the NUL.\nFix: use char object[54] at both sites (53 characters, card at most 79 with the closing quote intact), and have the test assert that card[79] is a space and that strlen of the header covers the card, or that no NUL appears before the END card.\n\nThe rest is correct:\n- fits_escape() never splits a doubled quote, always terminates the string, and respects size - 1.\n- The Barnard''s Star case would fail without the fix.\n- The two doc corrections match data_directory(), which returns false for @folder none, so DIR is untouched and BASE is unused. PROPERTIES.md does not claim otherwise.\n- Formatting follows the conventions.\nNote, not a defect: the test lives in test_rgb48.c under the suite title 'RGB48 endian conv"
+        },
+        {
+          "at": "2026-11-16T11:02:50.866568Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T11:02:50.866583Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 3 on tree 84c2c41f59fe (commit 45ae46bbb). Since ea5eef561 only five files changed: indigo_ccd_driver.c, the new indigo_test/unit/test_ccd_fits_header.c, indigo_test/Makefile, project.pbxproj, and test_rgb48.c, which now has no diff against master. The worktree is clean.\n\nFix: both OBJECT sites (indigo_ccd_driver.c:1373 and 1955) now use char object[54]. That caps the escaped name at 53 characters, in doubled pairs, so a worst-case all-quote name gives 52 quotes and a 78-character card. The rest of the card is filled from the memset(header, ' ') at line 1888, so vsnprintf no longer puts a NUL inside the header, and the TIFF text is no longer cut.\n\nThe long-name test would have failed with object[55]: 54 quotes give an 80-character card with vsnprintf's NUL at index 79. Both card[79] == ' ' and header_is_complete() catch that. The odd quote count (pairs plus the closing quote) and the comment-prefix assertions are consistent with the fixed code. The Barnard''s Star case fails without escaping.\n\nThe new file has the INDIGO license header. Its Makefile wiring matches test_rgb48 (it is listed in UNIT_TESTS and has a rule with the same flags). In project.pbxproj the file reference ID 5C3E71A0D4B94F2A8E10B6C7 is unique, appearing only on the reference line and the group line. The file sits in the unit test group next to test_rgb48.c, with no target membership, like its neighbours. No .factory2 reference was added. Formatting follows the conventions.\n\nNo defects. The out-of-scope notes from round 1 still stand for the owner."
+        },
+        {
+          "at": "2026-11-16T11:34:11.764556Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T11:34:18.368696Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Review of tree 7c572357f9d7 (commit 9cfc64b18). The worktree is clean.\n\n- git diff 45ae46bbb HEAD touches only indigo_ccd_driver.c, test_ccd_fits_header.c, indigo_test/Makefile and project.pbxproj.\n- git diff 9189f551e HEAD on those four paths is empty, so they now equal the old master.\n- The remaining diff against 9189f551e is the 9 scheduler files already passed in rounds 1 to 3 (guide, PROPERTIES.md, SCHEDULER.md, scheduler .c, header .c and .h, indigo_names.h, integration and unit scheduler tests), unchanged since 45ae46bbb.\n- git merge-tree --write-tree 0d7fea497 HEAD exits 0 with no conflicts.\n- The scheduler docs and tests do not depend on the CCD fix. The Barnard's Star integration case checks SCHTASK quoting and the OBJECT value on the Imager Agent stand-in, not the CCD FITS card.\n\nNo defects."
+        }
+      ],
+      "result": {
+        "summary": "Review of tree 7c572357f9d7 (commit 9cfc64b18). The worktree is clean.\n\n- git diff 45ae46bbb HEAD touches only indigo_ccd_driver.c, test_ccd_fits_header.c, indigo_test/Makefile and project.pbxproj.\n- git diff 9189f551e HEAD on those four paths is empty, so they now equal the old master.\n- The remaining diff against 9189f551e is the 9 scheduler files already passed in rounds 1 to 3 (guide, PROPERTIES.md, SCHEDULER.md, scheduler .c, header .c and .h, indigo_names.h, integration and unit scheduler tests), unchanged since 45ae46bbb.\n- git merge-tree --write-tree 0d7fea497 HEAD exits 0 with no conflicts.\n- The scheduler docs and tests do not depend on the CCD fix. The Barnard's Star integration case checks SCHTASK quoting and the OBJECT value on the Imager Agent stand-in, not the CCD FITS card.\n\nNo defects.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 218937.643,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 5
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "215d7626-c711-4b72-a94b-13fa6bc60d52",
+      "event": "ticket/created",
+      "at": "2026-11-16T08:14:23.585726Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "b19b87c4-262f-4457-82dc-8c166b2d9a96",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T08:36:04.117625Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "eb0576f9-47c3-4a17-af75-fc270b1808d4",
+      "event": "task/progress",
+      "at": "2026-11-16T08:36:37.101145Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Implementation started on branch ticket/03fe5330-50d9-4314-920b-7ee900ce4253"
+    },
+    {
+      "event_id": "4ef6bc10-deb0-4c3f-b57f-43961000a445",
+      "event": "ticket/started",
+      "at": "2026-11-16T08:36:37.105096Z",
+      "actor": "human/owner",
+      "branch": "ticket/03fe5330-50d9-4314-920b-7ee900ce4253",
+      "base": "master"
+    },
+    {
+      "event_id": "fa51f6e3-6356-4de7-af2e-c3a4351de5d6",
+      "event": "task/progress",
+      "at": "2026-11-16T08:37:04.995080Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Implementer started",
+      "attempt_id": "fb969424-d5e1-4d41-80ea-d2bb6b30afdf",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "6e3da4cd-70ec-4e44-9d73-d9c72cf51c73",
+      "event": "task/progress",
+      "at": "2026-11-16T08:49:50.175631Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Running flow check"
+    },
+    {
+      "event_id": "b18dd08b-27cc-410b-a5ca-d6f7f7ec11c9",
+      "event": "task/progress",
+      "at": "2026-11-16T08:49:50.424796Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "6a5b43c1-f7eb-4297-81fc-577ecea28283",
+      "event": "task/progress",
+      "at": "2026-11-16T08:49:50.451778Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b53c9f2c-b1e1-4758-a868-9bc4c9a60eca",
+      "event": "task/progress",
+      "at": "2026-11-16T08:49:50.457533Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "9283abe0-fc5f-40b6-b449-d1f826847a09",
+      "event": "task/progress",
+      "at": "2026-11-16T08:50:55.979423Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "4927654d-c1f9-4143-b43d-56d681261b5a",
+      "event": "check/passed",
+      "at": "2026-11-16T08:50:55.988722Z",
+      "actor": "human/owner",
+      "commit": "0d6815fd5c437e8ad5b494445d77c959ba06a31a",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "670df874-3075-4245-ba73-a20385b160cd",
+      "event": "task/progress",
+      "at": "2026-11-16T08:56:08.086882Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "55f56fb9-0411-4c76-986c-d94cc6994b10",
+      "event": "task/progress",
+      "at": "2026-11-16T09:00:22.692431Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "31ed9347-1b3d-4185-a1bb-707484dc7dd8",
+      "event": "check/passed",
+      "at": "2026-11-16T09:00:22.720382Z",
+      "actor": "human/owner",
+      "commit": "0d6815fd5c437e8ad5b494445d77c959ba06a31a",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "c097973d-b48d-4b84-b803-c21004edcdb2",
+      "event": "task/progress",
+      "at": "2026-11-16T09:00:26.838631Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9dcd80e9-9ad2-4c0e-9d5c-6934baad55ea",
+      "event": "review/started",
+      "at": "2026-11-16T09:00:26.838969Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "5f4ba6b3-6e9a-44d2-97ed-2dfdc26aba99",
+      "event": "task/progress",
+      "at": "2026-11-16T09:00:41.618537Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Reviewer started",
+      "attempt_id": "520afe05-166d-4931-9927-58daed57f85d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "826a6058-e51a-481f-9f14-29af65a1b2ef",
+      "event": "task/progress",
+      "at": "2026-11-16T09:03:34.685207Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "63488224-7193-401c-839d-34871a159129",
+      "event": "task/progress",
+      "at": "2026-11-16T09:03:34.685249Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "56b38ef0-cc09-4bea-b397-d846adaa49d1",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T09:03:34.686042Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "0d6815fd5c437e8ad5b494445d77c959ba06a31a"
+    },
+    {
+      "event_id": "b4369850-005a-43f5-9709-817b1961a4a4",
+      "event": "task/progress",
+      "at": "2026-11-16T09:04:11.842167Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Fixing path separator in data_directory"
+    },
+    {
+      "event_id": "3dbf86ec-845a-4832-b765-3ee7b43a1c4f",
+      "event": "task/progress",
+      "at": "2026-11-16T09:04:12.061516Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "9da8f597-c15c-4f86-8c62-5bea017f12a1",
+      "event": "task/progress",
+      "at": "2026-11-16T09:04:12.086475Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ca356da7-83f0-46ce-b65d-1e39879bdcf1",
+      "event": "task/progress",
+      "at": "2026-11-16T09:04:12.091741Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "4df96503-943f-48ce-94b2-404bfde1d0ef",
+      "event": "task/progress",
+      "at": "2026-11-16T09:05:00.833663Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "0f4927e3-0175-4d92-84bc-9002bb1e9394",
+      "event": "check/passed",
+      "at": "2026-11-16T09:05:00.841459Z",
+      "actor": "human/owner",
+      "commit": "2f0b55781600dba4fe260669b41a3c520a005a16",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "236bc1b0-d52a-435b-a3b7-ecf7383e8c8b",
+      "event": "task/progress",
+      "at": "2026-11-16T09:05:05.431162Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "b922b65e-d9e6-45c3-8161-8092eb688a00",
+      "event": "task/progress",
+      "at": "2026-11-16T09:09:24.654903Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "74762dbf-70ea-4542-9c27-2c77e1e1287b",
+      "event": "check/passed",
+      "at": "2026-11-16T09:09:24.672651Z",
+      "actor": "human/owner",
+      "commit": "2f0b55781600dba4fe260669b41a3c520a005a16",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "b4a172e9-cb25-45b5-8f4c-edff842a3ebc",
+      "event": "task/progress",
+      "at": "2026-11-16T09:10:02.870162Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "4ac187b3-450f-4ba0-a43e-1ac94331a7bb",
+      "event": "review/passed",
+      "at": "2026-11-16T09:10:02.870513Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "2f0b55781600dba4fe260669b41a3c520a005a16"
+    },
+    {
+      "event_id": "4aff8c49-0e38-4e60-8dc4-f919930f75f7",
+      "event": "task/progress",
+      "at": "2026-11-16T09:49:51.330977Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "E2E simulator stress run started"
+    },
+    {
+      "event_id": "ab3337dc-4f78-48ac-b457-0f00174ca18c",
+      "event": "task/progress",
+      "at": "2026-11-16T09:55:44.621462Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "E2E: harness ready in scratchpad e2e/, phase A (main scenario) works on cycle 1; running disturbance phases"
+    },
+    {
+      "event_id": "d6188a18-23c8-4bc7-89e0-791e9929ca5e",
+      "event": "task/progress",
+      "at": "2026-11-16T09:59:04.761622Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "E2E: disturbance phases clean on cycle 1; starting full 4-cycle run"
+    },
+    {
+      "event_id": "e6513d4f-f412-4f3b-a8a2-c22e0888c6f7",
+      "event": "ticket/note",
+      "at": "2026-11-16T10:06:14.789780Z",
+      "actor": "human/owner",
+      "text": "E2E simulator stress run (non-interactive, real server + CCD Imager Simulator, FITS saved LOCAL): 4 cycles (FOLDER off; FOLDER on + original OBJECT; FOLDER on + DATA_DIR.BASE; FOLDER off + BASE + original OBJECT), 52 tasks, 268 scheduler frames and 24 manual frames read back from disk. Per cycle: plain, @repeat 3, two @folder Shared, quote-name task, @folder none, name with slash; then abort, stop/start, urgent preemption, failing task with @retry 1; manual frame after each. 3330 checks pass, 18 fail, 0 unexplained. Defects: (1) OBJECT card of a task with a quote in its name is written unescaped by indigo_ccd_driver.c:1938 (OBJECT = 'Barnard's Star'), invalid FITS; SCHTASK is correctly doubled; pre-existing CCD driver bug, not the scheduler. (2) @folder none with AGENT_SCHEDULER_DATA_DIR.BASE set saves in the original Imager Agent DIR, not BASE (data_directory() returns false); the guide says 'saves in the base folder': clarify the guide or change the code. Observations: SCHRUN stays 1 for a retry or a rerun after preemption (same as scheduler_task.run and history '#1'); SCHNIGHT equals %N of the file name; all restore checks after success/failure/abort/stop/preemption passed; server log clean; RSS 47 MB -> 82 MB after cycle 1, then flat (82-85 MB), threads 10 -> 12.",
+      "tokens": null
+    },
+    {
+      "event_id": "5fb06c81-b7c8-41fa-90e0-299b1245329a",
+      "event": "ticket/note",
+      "at": "2026-11-16T10:16:50.530610Z",
+      "actor": "human/owner",
+      "text": "Owner decisions after the E2E simulator stress run (2026-11-16): (1) Scope extended: fix in this ticket the CCD driver writing OBJECT into FITS without doubling single quotes (indigo_libs/indigo_ccd_driver.c, both OBJECT add_key calls near lines 1358 and 1938), with a unit test; a task named Barnard's Star produced an invalid OBJECT card. (2) '@folder none' keeps the code behaviour (the scheduler leaves DIR untouched, as with FOLDER off; BASE only applies when a folder is used); correct INDIGO_SCHEDULER_GUIDE.md (and SCHEDULER.md/PROPERTIES.md if they say otherwise), which currently says it saves in the base folder.",
+      "tokens": null
+    },
+    {
+      "event_id": "beeed2ca-c559-4bfc-bc35-1795284885d2",
+      "event": "task/progress",
+      "at": "2026-11-16T10:19:15.422603Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "FITS OBJECT quote fix and docs done, rerunning checks"
+    },
+    {
+      "event_id": "de6b9f30-52b2-42c4-91c0-dbdafeb8d1c1",
+      "event": "task/progress",
+      "at": "2026-11-16T10:19:15.584879Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "442e367c-01ce-431f-8366-a0dcaf232426",
+      "event": "task/progress",
+      "at": "2026-11-16T10:19:15.608652Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e44cc971-0a1f-44cd-a511-069f09984217",
+      "event": "task/progress",
+      "at": "2026-11-16T10:19:15.614248Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "d89f3ba4-27a3-4e5f-9896-d303aa6f6d10",
+      "event": "task/progress",
+      "at": "2026-11-16T10:20:02.557323Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "fd2545e4-5b58-49a8-91bd-bba06b769f4a",
+      "event": "check/passed",
+      "at": "2026-11-16T10:20:02.567194Z",
+      "actor": "human/owner",
+      "commit": "ea5eef561d9e10c170aa74bf398d97a8197b211a",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "546e147b-12a6-4205-87de-9d157f2e871b",
+      "event": "task/progress",
+      "at": "2026-11-16T10:20:08.354894Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler | tee /tmp/sched_final.log"
+    },
+    {
+      "event_id": "dbbc145b-7c61-4bc3-9328-cc13a8af3f78",
+      "event": "task/progress",
+      "at": "2026-11-16T10:24:27.030835Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "a8118cbc-0b69-4ceb-ab1a-f2c4fb7c0638",
+      "event": "check/passed",
+      "at": "2026-11-16T10:24:27.054961Z",
+      "actor": "human/owner",
+      "commit": "ea5eef561d9e10c170aa74bf398d97a8197b211a",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "9b84eaec-9f6e-4d31-8208-2e67e172c17f",
+      "event": "task/progress",
+      "at": "2026-11-16T10:25:14.819482Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review started"
+    },
+    {
+      "event_id": "97cbcf20-4e17-4a16-bece-f0a38f6fdfd5",
+      "event": "review/started",
+      "at": "2026-11-16T10:25:14.819839Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "2f2d3dfc-9222-476f-85fa-14bff1f708eb",
+      "event": "task/progress",
+      "at": "2026-11-16T10:25:39.306574Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "b379db6a-7295-42e5-8402-0751c74e58f7",
+      "event": "task/progress",
+      "at": "2026-11-16T10:25:39.306591Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "8346cdd8-8322-4896-837e-c3de1609d3c8",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T10:25:39.307021Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "ea5eef561d9e10c170aa74bf398d97a8197b211a"
+    },
+    {
+      "event_id": "9338e701-9b81-49b2-83b7-9ece006fdb37",
+      "event": "question/asked",
+      "at": "2026-11-16T10:25:59.359751Z",
+      "actor": "human/owner",
+      "text": "Second review asked for changes: the escaped OBJECT buffer (char object[55]) allows an 80-character card that add_key() truncates, leaving a NUL in the FITS header (and dropping later TIFF keys) for names with 14+ quotes. Proposed: use char object[54] at both sites and make the test assert column 80 is a space / no NUL before END. Continue with this fix? Also: keep the new test in test_rgb48.c or move it to a new CCD/FITS header test file?"
+    },
+    {
+      "event_id": "eb1116c2-cf6d-4bd8-93c8-ab5d7553490a",
+      "event": "question/answered",
+      "at": "2026-11-16T10:55:56.043086Z",
+      "actor": "human/owner",
+      "text": "Owner: continue. Apply the fix: cap the escaped OBJECT at 53 characters (char object[54]) at both sites and make the test assert column 80 is a space and that no NUL appears before END. Move the OBJECT test out of test_rgb48.c into a new indigo_test/unit test file for CCD FITS headers, added to indigo_test/Makefile and the Xcode project."
+    },
+    {
+      "event_id": "ab8c3a2b-c3ed-483f-9b89-4c52fbbcfa7c",
+      "event": "task/progress",
+      "at": "2026-11-16T10:56:42.424643Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Review round 2: object[54], new ccd fits header test, rerunning checks"
+    },
+    {
+      "event_id": "6af2df09-7331-4717-81aa-1cc2cea99ec5",
+      "event": "task/progress",
+      "at": "2026-11-16T10:56:42.643894Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "c6993774-1494-4aaa-9836-eeb5a8f2ace0",
+      "event": "task/progress",
+      "at": "2026-11-16T10:56:42.683987Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5de0ab10-20a9-4d74-a7e1-3d6e8752d681",
+      "event": "task/progress",
+      "at": "2026-11-16T10:56:42.690749Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "2c5bf03c-eb1b-41e3-b067-60f1915cdb44",
+      "event": "task/progress",
+      "at": "2026-11-16T10:57:30.007886Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "cb1f8fcc-34ef-4d62-a06c-4a67be9a77c4",
+      "event": "check/passed",
+      "at": "2026-11-16T10:57:30.016259Z",
+      "actor": "human/owner",
+      "commit": "45ae46bbb1ad0431e60fc2a6bcc71acc0a807aa5",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "a106c715-7eb1-4145-9441-999b8aaaf939",
+      "event": "task/progress",
+      "at": "2026-11-16T10:57:34.502979Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler | tee /tmp/sched_final2.log"
+    },
+    {
+      "event_id": "73db095c-e032-4ce7-9d2c-dab4af64c8aa",
+      "event": "task/progress",
+      "at": "2026-11-16T11:01:53.872329Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "37158da1-4254-4dca-a8a9-c50cf1b79c4d",
+      "event": "check/passed",
+      "at": "2026-11-16T11:01:53.888148Z",
+      "actor": "human/owner",
+      "commit": "45ae46bbb1ad0431e60fc2a6bcc71acc0a807aa5",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "1ab93fa9-c536-41a6-aa93-2e6938878d1b",
+      "event": "task/progress",
+      "at": "2026-11-16T11:02:36.523271Z",
+      "actor": "human/owner",
+      "task_id": "3cd3ff1e-53db-4348-adb7-65ea8e5c854a",
+      "text": "E2E rerun on final tree started"
+    },
+    {
+      "event_id": "26325689-e22e-44e7-a566-a3c9f4f74e4d",
+      "event": "task/progress",
+      "at": "2026-11-16T11:02:50.866631Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "402f3401-327b-4da4-849b-30de700e72a0",
+      "event": "review/passed",
+      "at": "2026-11-16T11:02:50.867028Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "45ae46bbb1ad0431e60fc2a6bcc71acc0a807aa5"
+    },
+    {
+      "event_id": "a1c413c2-88a2-494f-9564-45f65f5f8dce",
+      "event": "ticket/note",
+      "at": "2026-11-16T11:16:40.192740Z",
+      "actor": "human/owner",
+      "text": "E2E simulator rerun on final tree 84c2c41f59fe (libs, tools, agents, ccd simulator rebuilt): same 4 cycles and scenario plus tasks with 14 and 18 quotes in the name. 60 tasks, 292 scheduler frames, 24 manual frames, 3952 checks pass, 0 fail. OBJECT card valid FITS in all 36 quoted-name frames (exact name round trip, column 80 space, no NUL, ASCII only, END present, cards after OBJECT intact); the 18-quote name is capped at 53 escaped characters on a pair boundary. @folder none with BASE set saves in the original DIR as documented. Restores, labels, directories, ordering, abort/stop/preemption/retry all clean; server log clean; RSS flat after cycle 1 (84-86 MB), threads 12.",
+      "tokens": null
+    },
+    {
+      "event_id": "2d25cf8d-d5fc-46db-b29c-497d94b2229f",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:17.345761Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Coordinator moved the CCD OBJECT fix to ticket 78027aa7 on the owner's request"
+    },
+    {
+      "event_id": "13366baf-31f4-4528-b510-ee03aa141eb7",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:26.104118Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "135763b8-eec2-451f-b305-19aa54ce9eb1",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:26.147720Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7a2c2fbe-978a-4d9f-88de-163b4c957cee",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:26.154600Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "601432a0-ed6a-4666-b2d6-9684a786ba39",
+      "event": "task/progress",
+      "at": "2026-11-16T11:29:37.853814Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "209cb681-0b18-41fd-85f6-cf788c29f331",
+      "event": "check/passed",
+      "at": "2026-11-16T11:29:37.873276Z",
+      "actor": "human/owner",
+      "commit": "9cfc64b1806edb7459f4d52bc3eabaa2c3f2062f",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "4c78dcb0-8163-4f8b-a073-3cbba378db1a",
+      "event": "task/progress",
+      "at": "2026-11-16T11:29:38.049649Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "afaef319-761d-46d6-bafc-d0b8abb53ee6",
+      "event": "task/progress",
+      "at": "2026-11-16T11:33:55.154841Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "a2d9221d-1011-4ffa-b716-ac6ab101da95",
+      "event": "check/passed",
+      "at": "2026-11-16T11:33:55.179008Z",
+      "actor": "human/owner",
+      "commit": "9cfc64b1806edb7459f4d52bc3eabaa2c3f2062f",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "aa99a4d8-0dac-4c4f-bf97-7803e839041d",
+      "event": "task/progress",
+      "at": "2026-11-16T11:34:11.764744Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review started"
+    },
+    {
+      "event_id": "8adc71ad-020c-47c4-9a0f-d254205ca58b",
+      "event": "review/started",
+      "at": "2026-11-16T11:34:11.765228Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "d2c95702-929b-40ce-90a2-f7720d46bc81",
+      "event": "task/progress",
+      "at": "2026-11-16T11:34:18.368768Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "67e9e8bf-95f8-468b-a5f1-88b7fe94254b",
+      "event": "review/passed",
+      "at": "2026-11-16T11:34:18.369248Z",
+      "actor": "human/owner",
+      "task_id": "14dc8725-5ed3-4c24-9b08-1059ff5ce279",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "9cfc64b1806edb7459f4d52bc3eabaa2c3f2062f"
+    },
+    {
+      "event_id": "91581907-668f-4c93-bfb4-178e48b6f8f7",
+      "event": "ticket/closed",
+      "at": "2026-11-16T11:34:32.694569Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-16T11:34:32.694545Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "dc7946d21f6e54b119bd9b8a286f5f8f2e574161"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0d6815fd5c437e8ad5b494445d77c959ba06a31a",
+        "tree": "a9f5572eb25bb182f9acb46050926cee4475b0c3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T08:49:50.451357Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/a9f5572eb25b-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "0d6815fd5c437e8ad5b494445d77c959ba06a31a",
+        "tree": "a9f5572eb25bb182f9acb46050926cee4475b0c3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T08:50:55.976951Z",
+        "duration_s": 65.5,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/a9f5572eb25b-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "0d6815fd5c437e8ad5b494445d77c959ba06a31a",
+        "tree": "a9f5572eb25bb182f9acb46050926cee4475b0c3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T09:00:22.687617Z",
+        "duration_s": 254.6,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/a9f5572eb25b-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "2f0b55781600dba4fe260669b41a3c520a005a16",
+        "tree": "b67a15c5b1a0693ce4c4d58840abbd2446bd5db3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T09:04:12.085967Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/b67a15c5b1a0-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "2f0b55781600dba4fe260669b41a3c520a005a16",
+        "tree": "b67a15c5b1a0693ce4c4d58840abbd2446bd5db3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T09:05:00.831882Z",
+        "duration_s": 48.7,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/b67a15c5b1a0-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "2f0b55781600dba4fe260669b41a3c520a005a16",
+        "tree": "b67a15c5b1a0693ce4c4d58840abbd2446bd5db3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T09:09:24.651551Z",
+        "duration_s": 259.2,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/b67a15c5b1a0-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ea5eef561d9e10c170aa74bf398d97a8197b211a",
+        "tree": "16de4a30e0b7e192cb0b9ae486910b902f2054d5",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T10:19:15.608131Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/16de4a30e0b7-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "ea5eef561d9e10c170aa74bf398d97a8197b211a",
+        "tree": "16de4a30e0b7e192cb0b9ae486910b902f2054d5",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T10:20:02.553215Z",
+        "duration_s": 46.9,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/16de4a30e0b7-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler | tee /tmp/sched_final.log",
+        "commit": "ea5eef561d9e10c170aa74bf398d97a8197b211a",
+        "tree": "16de4a30e0b7e192cb0b9ae486910b902f2054d5",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T10:24:27.022491Z",
+        "duration_s": 258.7,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/16de4a30e0b7-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "45ae46bbb1ad0431e60fc2a6bcc71acc0a807aa5",
+        "tree": "84c2c41f59fef7d8f9fdfd2103b982d79651aeea",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T10:56:42.682918Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/84c2c41f59fe-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "45ae46bbb1ad0431e60fc2a6bcc71acc0a807aa5",
+        "tree": "84c2c41f59fef7d8f9fdfd2103b982d79651aeea",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T10:57:29.998584Z",
+        "duration_s": 47.3,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/84c2c41f59fe-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler | tee /tmp/sched_final2.log",
+        "commit": "45ae46bbb1ad0431e60fc2a6bcc71acc0a807aa5",
+        "tree": "84c2c41f59fef7d8f9fdfd2103b982d79651aeea",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T11:01:53.861134Z",
+        "duration_s": 259.4,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/84c2c41f59fe-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9cfc64b1806edb7459f4d52bc3eabaa2c3f2062f",
+        "tree": "7c572357f9d7ddf8855e32742f70db8c3208141e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T11:28:26.126569Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/7c572357f9d7-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "9cfc64b1806edb7459f4d52bc3eabaa2c3f2062f",
+        "tree": "7c572357f9d7ddf8855e32742f70db8c3208141e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T11:29:37.845295Z",
+        "duration_s": 71.7,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/7c572357f9d7-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "9cfc64b1806edb7459f4d52bc3eabaa2c3f2062f",
+        "tree": "7c572357f9d7ddf8855e32742f70db8c3208141e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T11:33:55.149652Z",
+        "duration_s": 257.1,
+        "log": "/tmp/factory-flow/03fe5330-50d9-4314-920b-7ee900ce4253/7c572357f9d7-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "One defect, Windows path building.\n\n1. indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:1119 (data_directory). The separator is hard-coded as '/' both in the trailing-separator test and in the separators it appends: snprintf(directory, size, \"%s%s%s/\", base, ... base[length - 1] == '/' ? \"\" : \"/\", folder). The captured base is the Imager Agent CCD_LOCAL_MODE.DIR, which indigo_ccd_driver.c:825-832 always ends with INDIGO_PATH_SEPATATOR ('\\\\' on Windows, indigo_uni_io.h:45). On Windows the base 'C:\\\\Users\\\\u\\\\indigo_image_cache\\\\' therefore becomes 'C:\\\\...\\\\indigo_image_cache\\\\/M31/', and the CCD driver then appends another '\\\\' because the last character is not INDIGO_PATH_SEPATATOR, giving 'C:\\\\...\\\\indigo_image_cache\\\\/M31/\\\\'. A BASE typed with backslashes behaves the same way. Windows usually tolerates mixed and doubled separators, but the DIR shown to users and written to config is malformed. It also breaks the repository rule against platform-dependent code in drivers and the INDIGO_PATH_SEPATATOR convention that indigo_ccd_driver.c uses for the same item. Fix: treat a base ending in INDIGO_PATH_SEPATATOR (or '/') as already terminated, and append INDIGO_PATH_SEPATATOR, for example \"%s%s%s%c\" with INDIGO_PATH_SEPATATOR. The Linux tests keep their expectations ('/' is the separator there).\n\nVerified as correct: apply happens before RUN_SCRIPT, for tasks and hooks alike. Restore runs on every run-ending path through finish_task, finish_hook and finish_stop: success, failure before or after start, start timeout, preemption, abort, delete (task and hook), stop timeout, and shutdown or startup hook chains. The snapshot is taken at START when idle, or lazily at the first apply when the Imager was unknown; it stays valid for the session and is dropped by stop_scheduler, or by restore when the run outlives the stop, so folders do not nest. Observed fields are read and written under observed.mutex, and the PRIVATE_DATA context fields are touched only on the device handler queue. FITS quoting doubles quotes, never splits a pair and keeps the value at most 58 characters. sanitize_folder matches CCD sanitize() and maps '.' and '..' to '_'. The parser accepts 1-40 bytes, rejects control characters and treats 'none' case-insensitively. Config save and restore cover both properties. Docs match the code (PROPERTIES.md %o token checked against create_file_name). The SCHEDULER.md edits are necessary accuracy fixes: its statements that the agent performs only aborts and does not reset agent state would otherwise be false. Version bumped, TODO removed. The tests are effective: they assert event order on a logging Imager stand-in, and only the delete and stop-timeout paths go untested, which the brief did not require.\n\nOut-of-scope notes for the owner, not required: (a) agent_device_detach does not restore. If the server stops mid-run, the CCD may persist the task folder in its config, and the next START captures it as the original. (b) With a remote CCD, a STOP immediately followed by START can capture a stale observed DIR before the restore echo arrives. (c) SCHNIGHT is fixed at run start, whereas %N is evaluated per frame.",
+        "reviewer": "human/owner",
+        "commit": "0d6815fd5c437e8ad5b494445d77c959ba06a31a",
+        "tree": "a9f5572eb25bb182f9acb46050926cee4475b0c3",
+        "at": "2026-11-16T09:03:34.684387Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review on tree b67a15c5b1a0 (commit 2f0b55781). git diff 0d6815fd5c HEAD shows only the requested change in indigo_agent_scheduler.c data_directory() (lines 1119-1120), and the worktree is clean.\n\nThe fix: a base ending in '/' or INDIGO_PATH_SEPATATOR now counts as terminated, and the code appends INDIGO_PATH_SEPATATOR between the base and the folder and after the folder. A Windows base 'C:\\\\...\\\\' therefore becomes 'C:\\\\...\\\\M31\\\\', and the CCD driver no longer adds a second separator. On Linux the result is unchanged, consistent with the integration tests (103 pass).\n\nPortability of the compound literal (char[]){ INDIGO_PATH_SEPATATOR, 0 }: the file compiles as C (indigo_agent_scheduler.vcxproj has no CompileAs override), and Directory.Build.props:24 sets LanguageStandard_C stdc11. MSVC supports C99 compound literals in C mode, so this is valid. The literal's lifetime covers the snprintf call in the same block. The formatting follows the conventions: one-line call,  spacing, no blank lines.\n\nThe earlier finding is resolved and no new defects were found. The out-of-scope notes from the first review stand as information for the owner.",
+        "reviewer": "human/owner",
+        "commit": "2f0b55781600dba4fe260669b41a3c520a005a16",
+        "tree": "b67a15c5b1a0693ce4c4d58840abbd2446bd5db3",
+        "at": "2026-11-16T09:10:02.869462Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Review of tree 16de4a30e0b7 (commit ea5eef561); diff 2f0b55781..HEAD touches only indigo_ccd_driver.c, test_rgb48.c, INDIGO_SCHEDULER_GUIDE.md, SCHEDULER.md.\n\nDefect: indigo_libs/indigo_ccd_driver.c:1373 and :1955 size the escaped OBJECT buffer as char object[55] (54 characters), which makes the card 80 characters: 11 ('OBJECT  = ' plus the opening quote) + 54 + 1 (closing quote) + 14 (' / object name'). add_key() (line 1270) formats with vsnprintf(buffer, 80, ...), which writes at most 79 characters and puts the NUL at index 79, and returns length 80.\n- FITS path: buffer[80] = ' ' lands on the next card, so the NUL at column 80 stays inside the header, which is an invalid FITS card.\n- TIFF path (raw_to_tiff, fits false): buffer[80] = '\\\\n' and the header advances past the NUL, so the TIFF keyword text is cut at the OBJECT line and every later key is lost.\nThis is reachable through the property: OBJECT_LENGTH 41 allows 40 characters, and any name with 14 or more quotes among them escapes to 54 or more (40 quotes escape to 80, cut to 54). Before this change the object was at most 40 characters, so the card was at most 66 and could not reach this.\nThe new test exercises exactly this boundary but checks only up to column 79 ('' / object nam'), so it misses the NUL.\nFix: use char object[54] at both sites (53 characters, card at most 79 with the closing quote intact), and have the test assert that card[79] is a space and that strlen of the header covers the card, or that no NUL appears before the END card.\n\nThe rest is correct:\n- fits_escape() never splits a doubled quote, always terminates the string, and respects size - 1.\n- The Barnard''s Star case would fail without the fix.\n- The two doc corrections match data_directory(), which returns false for @folder none, so DIR is untouched and BASE is unused. PROPERTIES.md does not claim otherwise.\n- Formatting follows the conventions.\nNote, not a defect: the test lives in test_rgb48.c under the suite title 'RGB48 endian conversion'; a CCD/FITS-named location would be clearer.",
+        "reviewer": "human/owner",
+        "commit": "ea5eef561d9e10c170aa74bf398d97a8197b211a",
+        "tree": "16de4a30e0b7e192cb0b9ae486910b902f2054d5",
+        "at": "2026-11-16T10:25:39.306451Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 on tree 84c2c41f59fe (commit 45ae46bbb). Since ea5eef561 only five files changed: indigo_ccd_driver.c, the new indigo_test/unit/test_ccd_fits_header.c, indigo_test/Makefile, project.pbxproj, and test_rgb48.c, which now has no diff against master. The worktree is clean.\n\nFix: both OBJECT sites (indigo_ccd_driver.c:1373 and 1955) now use char object[54]. That caps the escaped name at 53 characters, in doubled pairs, so a worst-case all-quote name gives 52 quotes and a 78-character card. The rest of the card is filled from the memset(header, ' ') at line 1888, so vsnprintf no longer puts a NUL inside the header, and the TIFF text is no longer cut.\n\nThe long-name test would have failed with object[55]: 54 quotes give an 80-character card with vsnprintf's NUL at index 79. Both card[79] == ' ' and header_is_complete() catch that. The odd quote count (pairs plus the closing quote) and the comment-prefix assertions are consistent with the fixed code. The Barnard''s Star case fails without escaping.\n\nThe new file has the INDIGO license header. Its Makefile wiring matches test_rgb48 (it is listed in UNIT_TESTS and has a rule with the same flags). In project.pbxproj the file reference ID 5C3E71A0D4B94F2A8E10B6C7 is unique, appearing only on the reference line and the group line. The file sits in the unit test group next to test_rgb48.c, with no target membership, like its neighbours. No .factory2 reference was added. Formatting follows the conventions.\n\nNo defects. The out-of-scope notes from round 1 still stand for the owner.",
+        "reviewer": "human/owner",
+        "commit": "45ae46bbb1ad0431e60fc2a6bcc71acc0a807aa5",
+        "tree": "84c2c41f59fef7d8f9fdfd2103b982d79651aeea",
+        "at": "2026-11-16T11:02:50.866503Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Review of tree 7c572357f9d7 (commit 9cfc64b18). The worktree is clean.\n\n- git diff 45ae46bbb HEAD touches only indigo_ccd_driver.c, test_ccd_fits_header.c, indigo_test/Makefile and project.pbxproj.\n- git diff 9189f551e HEAD on those four paths is empty, so they now equal the old master.\n- The remaining diff against 9189f551e is the 9 scheduler files already passed in rounds 1 to 3 (guide, PROPERTIES.md, SCHEDULER.md, scheduler .c, header .c and .h, indigo_names.h, integration and unit scheduler tests), unchanged since 45ae46bbb.\n- git merge-tree --write-tree 0d7fea497 HEAD exits 0 with no conflicts.\n- The scheduler docs and tests do not depend on the CCD fix. The Barnard's Star integration case checks SCHTASK quoting and the OBJECT value on the Imager Agent stand-in, not the CCD FITS card.\n\nNo defects.",
+        "reviewer": "human/owner",
+        "commit": "9cfc64b1806edb7459f4d52bc3eabaa2c3f2062f",
+        "tree": "7c572357f9d7ddf8855e32742f70db8c3208141e",
+        "at": "2026-11-16T11:34:18.368634Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-16T10:06:14.789310Z",
+        "actor": "human/owner",
+        "text": "E2E simulator stress run (non-interactive, real server + CCD Imager Simulator, FITS saved LOCAL): 4 cycles (FOLDER off; FOLDER on + original OBJECT; FOLDER on + DATA_DIR.BASE; FOLDER off + BASE + original OBJECT), 52 tasks, 268 scheduler frames and 24 manual frames read back from disk. Per cycle: plain, @repeat 3, two @folder Shared, quote-name task, @folder none, name with slash; then abort, stop/start, urgent preemption, failing task with @retry 1; manual frame after each. 3330 checks pass, 18 fail, 0 unexplained. Defects: (1) OBJECT card of a task with a quote in its name is written unescaped by indigo_ccd_driver.c:1938 (OBJECT = 'Barnard's Star'), invalid FITS; SCHTASK is correctly doubled; pre-existing CCD driver bug, not the scheduler. (2) @folder none with AGENT_SCHEDULER_DATA_DIR.BASE set saves in the original Imager Agent DIR, not BASE (data_directory() returns false); the guide says 'saves in the base folder': clarify the guide or change the code. Observations: SCHRUN stays 1 for a retry or a rerun after preemption (same as scheduler_task.run and history '#1'); SCHNIGHT equals %N of the file name; all restore checks after success/failure/abort/stop/preemption passed; server log clean; RSS 47 MB -> 82 MB after cycle 1, then flat (82-85 MB), threads 10 -> 12.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T10:16:50.530219Z",
+        "actor": "human/owner",
+        "text": "Owner decisions after the E2E simulator stress run (2026-11-16): (1) Scope extended: fix in this ticket the CCD driver writing OBJECT into FITS without doubling single quotes (indigo_libs/indigo_ccd_driver.c, both OBJECT add_key calls near lines 1358 and 1938), with a unit test; a task named Barnard's Star produced an invalid OBJECT card. (2) '@folder none' keeps the code behaviour (the scheduler leaves DIR untouched, as with FOLDER off; BASE only applies when a folder is used); correct INDIGO_SCHEDULER_GUIDE.md (and SCHEDULER.md/PROPERTIES.md if they say otherwise), which currently says it saves in the base folder.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T11:16:40.192363Z",
+        "actor": "human/owner",
+        "text": "E2E simulator rerun on final tree 84c2c41f59fe (libs, tools, agents, ccd simulator rebuilt): same 4 cycles and scenario plus tasks with 14 and 18 quotes in the name. 60 tasks, 292 scheduler frames, 24 manual frames, 3952 checks pass, 0 fail. OBJECT card valid FITS in all 36 quoted-name frames (exact name round trip, column 80 space, no NUL, ASCII only, END present, cards after OBJECT intact); the 18-quote name is capped at 53 escaped characters on a pair boundary. @folder none with BASE set saves in the original DIR as documented. Restores, labels, directories, ordering, abort/stop/preemption/retry all clean; server log clean; RSS flat after cycle 1 (84-86 MB), threads 12.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Second review asked for changes: the escaped OBJECT buffer (char object[55]) allows an 80-character card that add_key() truncates, leaving a NUL in the FITS header (and dropping later TIFF keys) for names with 14+ quotes. Proposed: use char object[54] at both sites and make the test assert column 80 is a space / no NUL before END. Continue with this fix? Also: keep the new test in test_rgb48.c or move it to a new CCD/FITS header test file?",
+        "at": "2026-11-16T10:25:59.359408Z",
+        "actor": "human/owner",
+        "answer": "Owner: continue. Apply the fix: cap the escaped OBJECT at 53 characters (char object[54]) at both sites and make the test assert column 80 is a space and that no NUL appears before END. Move the OBJECT test out of test_rgb48.c into a new indigo_test/unit test file for CCD FITS headers, added to indigo_test/Makefile and the Xcode project.",
+        "answered_at": "2026-11-16T10:55:56.042449Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "dc7946d21f6e54b119bd9b8a286f5f8f2e574161",
+      "tree": "7c572357f9d7ddf8855e32742f70db8c3208141e",
+      "base": "master",
+      "at": "2026-11-16T11:34:32.596437Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-16T08:14:23.584282Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T08:36:04.117499Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 4268423.866,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 8
+    }
+  },
+  "journal": {
+    "entries": 93,
+    "sha256": "ecc40a95254779c433b1339f6a6cce8196f7dfd3596ce6e56dc45786a51c5314"
+  }
+}
