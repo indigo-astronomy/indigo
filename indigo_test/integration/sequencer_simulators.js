@@ -237,6 +237,10 @@ seqtest.add("missing configuration fails", "load_config", function(s) { s.load_c
 seqtest.add("missing driver fails", "load_driver", function(s) { s.load_driver("indigo_missing_sequencer_driver"); }, null, "Alert");
 seqtest.add("load unused simulator", "load_driver", function(s) { s.load_driver("indigo_aux_simulator"); }, function() { seqtest.check(seqtest.value("Server", "DRIVERS", "indigo_aux_simulator") === true, "driver not loaded"); });
 seqtest.add("unload unused simulator", "unload_driver", function(s) { s.unload_driver("indigo_aux_simulator"); }, function() { seqtest.check(seqtest.value("Server", "DRIVERS", "indigo_aux_simulator") === false, "driver not unloaded"); });
+seqtest.add("save private configuration with extra driver", "load_driver evaluate wait", function(s) { s.load_driver("indigo_aux_simulator"); s.evaluate("indigo_change_text_property('Configuration Agent','AGENT_CONFIG_SAVE',{NAME:'Sequencer_Private_Driver_Test'})"); s.wait(1); }, function() { seqtest.check(seqtest.property("Configuration Agent", "AGENT_CONFIG_SAVE").state === "Ok" && seqtest.value("Server", "DRIVERS", "indigo_aux_simulator") === true, "configuration with extra driver save failed"); });
+seqtest.add("unload extra driver before private configuration restore", "unload_driver", function(s) { s.unload_driver("indigo_aux_simulator"); }, function() { seqtest.check(seqtest.value("Server", "DRIVERS", "indigo_aux_simulator") === false, "extra driver not unloaded"); });
+seqtest.add("restore private configuration loads driver on protected server", "load_config", function(s) { s.load_config("Sequencer_Private_Driver_Test"); }, function() { seqtest.check(seqtest.value("Server", "DRIVERS", "indigo_aux_simulator") === true, "restore did not load the saved driver"); }, "Ok", 60);
+seqtest.add("unload restored driver after private configuration restore", "unload_driver", function(s) { s.unload_driver("indigo_aux_simulator"); }, function() { seqtest.check(seqtest.value("Server", "DRIVERS", "indigo_aux_simulator") === false, "restored driver not unloaded"); });
 
 var seqtest_selectors = [
 	["select_imager_camera", "CCD Imager Simulator", "Imager Agent", "FILTER_CCD_LIST"],
@@ -284,6 +288,8 @@ seqtest.add("prepare finite image batches", "select_frame_type select_image_form
 	seqtest.add("capture stream named=" + named, "capture_stream set_file_template", function(s) { if (named) { s.capture_stream("stream_named_XXX", 3, 0.05); } else { s.set_file_template("stream_plain_XXX"); s.capture_stream(3, 0.05); } }, function() { seqtest.check(seqtest.property("Imager Agent", "AGENT_START_PROCESS").state === "Ok", "stream terminal state"); });
 });
 seqtest.add("FITS custom header present", "set_fits_header capture_batch", function(s) { s.set_fits_header("SEQTEST", "'present'"); s.capture_batch("header_present_XXX", 1, 0.05); });
+seqtest.add("estimate counts exposures, frames and waits", "estimate wait capture_batch", function(s) { var fresh = new Sequence().estimate(); seqtest.estimate_fresh = JSON.stringify(fresh); s.wait(0.2); s.wait(0.3); s.capture_batch("estimate_XXX", 2, 0.1); seqtest.estimate = s.estimate(); }, function() { seqtest.check(seqtest.estimate_fresh === JSON.stringify({ exposure: 0, frames: 0, operations: 0, waits: 0, unknown: false }), "empty sequence estimate " + seqtest.estimate_fresh); var e = seqtest.estimate; seqtest.check(Math.abs(e.exposure - 0.2) < 0.001, "estimate exposure " + e.exposure); seqtest.check(e.frames === 2, "estimate frames " + e.frames); seqtest.check(e.operations === 0, "estimate operations " + e.operations); seqtest.check(Math.abs(e.waits - 0.5) < 0.001, "estimate waits " + e.waits); seqtest.check(e.unknown === false, "estimate unknown " + e.unknown); seqtest.check(seqtest.value("Imager Agent", "AGENT_IMAGER_STATS", "FRAME") === 2, "estimated frames not captured"); });
+seqtest.add("estimate flags unknown duration", "estimate wait_until", function(s) { s.wait_until(1); seqtest.estimate = s.estimate(); }, function() { seqtest.check(seqtest.estimate.unknown === true, "estimate did not flag wait_until as unknown"); seqtest.check(seqtest.estimate.frames === 0 && seqtest.estimate.waits === 0, "estimate counted a wait_until"); });
 seqtest.add("FITS custom header removed", "remove_fits_header capture_batch", function(s) { s.remove_fits_header("SEQTEST"); s.capture_batch("header_removed_XXX", 1, 0.05); });
 seqtest.add("preview observes frames then stops", "start_preview stop_preview wait", function(s) { s.start_preview(0.1); s.wait(0.6); seqtest.checkpoint(s, "seqtest.property('Imager Agent','AGENT_START_PROCESS').state==='Busy' && seqtest.value('Imager Agent','AGENT_IMAGER_STATS','FRAME')>0"); s.stop_preview(); s.stop_preview(); }, function() { seqtest.check(seqtest.property("Imager Agent", "AGENT_START_PROCESS").state !== "Busy", "preview still running"); });
 seqtest.switchCase("set_manual_focuser_mode", [], "Imager Agent", "FOCUSER_MODE", "MANUAL");
@@ -431,7 +437,7 @@ indigo_event_handlers.seqtest_observer = { devices: ["Guider Agent", "Scripting 
 } };
 
 // This test-only transport relay signs real bus writes in the native client.
-// It isolates the documented native binding-token defect without changing Sequence.
+// It keeps Sequencer behavior independent of native binding token propagation without changing Sequence.
 if (seqtest_options.authenticated_relay) {
 	indigo_define_text_property("Scripting Agent", "X_SEQ_TEST_REQUEST", "Sequencer tests", "Authenticated write request", { JSON: "{}" }, { JSON: { label: "JSON" } }, "Ok", "RO");
 	indigo_change_text_property = function(device, property, items) { seqtest.relay("newTextVector", device, property, items); };

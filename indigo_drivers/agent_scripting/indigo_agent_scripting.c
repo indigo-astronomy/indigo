@@ -25,7 +25,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x03000011
+#define DRIVER_VERSION 0x03000012
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -389,6 +389,7 @@ static duk_ret_t enable_blob(duk_context *ctx) {
 
 static void change_property_handler(indigo_device *device, void *data) {
 	indigo_property *property = (indigo_property *)data;
+	property->access_token = indigo_get_device_or_master_token(property->device);
 	indigo_change_property(agent_client, property);
 	indigo_release_property(property);
 }

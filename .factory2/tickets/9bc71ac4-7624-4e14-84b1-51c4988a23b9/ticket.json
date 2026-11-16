@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "ticket_id": "9bc71ac4-7624-4e14-84b1-51c4988a23b9",
+  "revision": 2,
+  "title": "Imager Agent barrier leader may act on a stale barrier_resume state",
+  "description": "Suspected race in indigo_drivers/agent_imager/indigo_agent_imager.c, found by source reading during the review of ticket 3d564eb3-f502-552d-946d-f629ba8122ea; not reproduced at runtime.\n\nbarrier_resume is recomputed only in snoop_barrier_state() when a related Imager Agent publishes AGENT_PAUSE_PROCESS (true when every member's light is BUSY). When the barrier leader releases a barrier in check_breakpoint() it sends AGENT_PAUSE_PROCESS = false to the members and continues, but barrier_resume stays true until the members' updated AGENT_PAUSE_PROCESS states arrive back over the bus. In that window:\n- wait_for_barrier_members(), called from do_dither(), can return immediately although the members were just released and are no longer paused. With the Post-capture breakpoint the leader goes from the release straight to dithering, so the mount may move while followers continue to their next exposure, which is what the wait is meant to prevent.\n- the leader's next check_breakpoint() (for example Pre-delay right after Post-capture) can see the stale true value and release a barrier that the members have not reached yet.\nbarrier_resume is also a plain bool written on the client thread and read on the batch thread without synchronization.\n\nExpected: after releasing a barrier the leader treats the barrier as incomplete until every member has paused again.\n\nNext action: confirm or refute with a simulator test (leader in Barrier with Post-capture and dithering enabled, two CCD Imager Simulator followers), then fix the state handling if confirmed, e.g. clear barrier_resume and the member lights when the leader releases the barrier. Add a regression test under indigo_test/integration. No fix or reproduction is claimed.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T20:48:51.232324Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "5135545f-1cbd-403a-906b-09cd3007f611",
+      "event": "ticket/created",
+      "at": "2026-11-15T20:48:51.233089Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "4d14e365-80c6-4319-891f-8863a9b2dd3c",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T20:49:29.591045Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    }
+  ],
+  "closure": null,
+  "priority": "low",
+  "severity": "medium",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-15T20:48:51.232324Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T20:49:29.590679Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 2,
+    "sha256": "162c17739d17e48f58d74fc3ce4cd46f5f13232cbd8a249c0c5bdd1ec76d4a60"
+  }
+}

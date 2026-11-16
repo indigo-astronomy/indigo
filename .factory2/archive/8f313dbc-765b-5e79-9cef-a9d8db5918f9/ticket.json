@@ -1,0 +1,457 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8f313dbc-765b-5e79-9cef-a9d8db5918f9",
+  "revision": 22,
+  "title": "Configuration restore replays unauthenticated requests against protected Configuration Agent",
+  "description": "On a server with nonzero device/master ACLs, saving a private configuration succeeds but restoring it fails. The saved file contains new*Vector requests to Configuration Agent without tokens; load_configuration parses it through a CONFIG_READER client and the bus rejects those requests. Next: authorize trusted local configuration replay without allowing network ACL bypass, then rerun private configuration restoration. Owner explicitly requests tests/findings only; no production fix authorized.\n\nImported from .factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-005.json (category: functional, blocking: no).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.896571Z",
+  "status": "closed",
+  "branch": "ticket/8f313dbc-765b-5e79-9cef-a9d8db5918f9",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3bb1a9f1-953f-486d-8723-699db30ae379",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T18:19:24.158126Z",
+          "last_activity_at": "2026-11-15T18:33:53.483108Z",
+          "ended_at": "2026-11-15T18:33:53.483108Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 869324.982,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T18:19:24.158126Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/8f313dbc-765b-5e79-9cef-a9d8db5918f9"
+        },
+        {
+          "at": "2026-11-15T18:33:53.483108Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 869324.982,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "ebeda779-a7cf-4be4-9936-69764d04421b",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f90c2ac6-28ce-4174-9217-97d18a6ff56a",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T18:33:53.483456Z",
+          "last_activity_at": "2026-11-15T18:36:22.574426Z",
+          "ended_at": "2026-11-15T18:36:22.574426Z",
+          "outcome": {
+            "summary": "No defects found. indigo_drivers/agent_config/indigo_agent_config.c:195-199,288: load_configuration now replays the saved file through indigo_xml_parse_with_callback with a static dispatch that stamps indigo_get_device_or_master_token(property->device) before indigo_change_property, which is the same authorization config_restore_handler applies (indigo_libs/indigo_driver.c:659). Trust boundary: the dispatch is static and is passed only to the parse of a handle opened by indigo_open_config_file on a name taken from AGENT_CONFIG_LOAD items (scandir of the config folder); load_configuration is queued only from the AGENT_CONFIG_LOAD branch (line 681), which a network client reaches only after passing the unchanged bus ACL in indigo_change_property (indigo_libs/indigo_bus.c:1013). The TCP adapter still uses indigo_xml_parse with the default indigo_change_property (indigo_server_tcp.c:363), so no network path reaches the new dispatch; the saved file is written by the agent itself with escaped values and no tokens. No bus change, no client-name exemption. DRIVER_VERSION 0x0300001E -> 0x0300001F. Probe in run_sequencer_simulators.py:258-261 waits for a 'protected or locked' message from device 'Configuration Agent' and raises TimeoutError otherwise, so it fails if the tokenless AGENT_CONFIG_SAVE is not refused; it is a regression guard for the network ACL, while the fix itself is covered by the previously failing 'restore private configuration' case. sequencer_simulators.md sentence matches the launcher order (probes precede client.script). Formatting follows the file. Agree that the token-less Server.DRIVERS change in process_configuration_property (indigo_agent_config.c:350, copy of AGENT_CONFIG_DRIVERS_PROPERTY) is a separate issue.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 149090.97,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T18:33:53.483456Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T18:36:22.574426Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "No defects found. indigo_drivers/agent_config/indigo_agent_config.c:195-199,288: load_configuration now replays the saved file through indigo_xml_parse_with_callback with a static dispatch that stamps indigo_get_device_or_master_token(property->device) before indigo_change_property, which is the same authorization config_restore_handler applies (indigo_libs/indigo_driver.c:659). Trust boundary: the dispatch is static and is passed only to the parse of a handle opened by indigo_open_config_file on a name taken from AGENT_CONFIG_LOAD items (scandir of the config folder); load_configuration is queued only from the AGENT_CONFIG_LOAD branch (line 681), which a network client reaches only after passing the unchanged bus ACL in indigo_change_property (indigo_libs/indigo_bus.c:1013). The TCP adapter still uses indigo_xml_parse with the default indigo_change_property (indigo_server_tcp.c:363), so no network path reaches the new dispatch; the saved file is written by the agent itself with escaped values and no tokens. No bus change, no client-name exemption. DRIVER_VERSION 0x0300001E -> 0x0300001F. Probe in run_sequencer_simulators.py:258-261 waits for a 'protected or locked' message from device 'Configuration Agent' and raises TimeoutError otherwise, so it fails if the tokenless AGENT_CONFIG_SAVE is not refused; it is a regression guard for the network ACL, while the fix itself is covered by the previously failing 'restore private configuration' case. sequencer_simulators.md sentence matches the launcher order (probes precede client.script). Formatting follows the file. Agree that the token-less Server.DRIVERS change in process_configuration_property (indigo_agent_config.c:350, copy of AGENT_CONFIG_DRIVERS_PROPERTY) is a separate issue."
+        }
+      ],
+      "result": {
+        "summary": "No defects found. indigo_drivers/agent_config/indigo_agent_config.c:195-199,288: load_configuration now replays the saved file through indigo_xml_parse_with_callback with a static dispatch that stamps indigo_get_device_or_master_token(property->device) before indigo_change_property, which is the same authorization config_restore_handler applies (indigo_libs/indigo_driver.c:659). Trust boundary: the dispatch is static and is passed only to the parse of a handle opened by indigo_open_config_file on a name taken from AGENT_CONFIG_LOAD items (scandir of the config folder); load_configuration is queued only from the AGENT_CONFIG_LOAD branch (line 681), which a network client reaches only after passing the unchanged bus ACL in indigo_change_property (indigo_libs/indigo_bus.c:1013). The TCP adapter still uses indigo_xml_parse with the default indigo_change_property (indigo_server_tcp.c:363), so no network path reaches the new dispatch; the saved file is written by the agent itself with escaped values and no tokens. No bus change, no client-name exemption. DRIVER_VERSION 0x0300001E -> 0x0300001F. Probe in run_sequencer_simulators.py:258-261 waits for a 'protected or locked' message from device 'Configuration Agent' and raises TimeoutError otherwise, so it fails if the tokenless AGENT_CONFIG_SAVE is not refused; it is a regression guard for the network ACL, while the fix itself is covered by the previously failing 'restore private configuration' case. sequencer_simulators.md sentence matches the launcher order (probes precede client.script). Formatting follows the file. Agree that the token-less Server.DRIVERS change in process_configuration_property (indigo_agent_config.c:350, copy of AGENT_CONFIG_DRIVERS_PROPERTY) is a separate issue.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 149090.97,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c0ae381a-c0bf-468b-b7f9-52c46ed892d1",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.896587Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261105112837-9c3a-sequencer-simulator-suite-005.json",
+      "source": "3179c6fde712af4abfc0c3a98b107729f02a9c775eccc5275d16ce7c3b647ea9",
+      "priority": "low",
+      "severity": "medium"
+    },
+    {
+      "event_id": "f3f1cad1-0be2-4db3-a070-717b0e087906",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:20.060795Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "medium",
+      "previous_priority": null,
+      "priority": "medium"
+    },
+    {
+      "event_id": "a22a8d73-9290-4f80-9bca-6bcfb4874cb8",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:20.355336Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "high"
+    },
+    {
+      "event_id": "d77221ef-725f-42c3-8e30-ea21747f2fef",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T08:55:20.424778Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "medium",
+      "profile": "full",
+      "corrected": "profile",
+      "previous_profile": "simple"
+    },
+    {
+      "event_id": "9d49ad41-991e-4ccf-97a9-e7484f8a3c61",
+      "event": "ticket/note",
+      "at": "2026-11-15T15:02:54.906117Z",
+      "actor": "human/owner",
+      "text": "Reconfirmed 2026-11-15 after ticket 8ca68272 (commit 57762ed63): sequencer-suite case 'restore private configuration' still fails with 'Unexpected terminal sequence state' after six \"Device 'Configuration Agent' is protected or locked for exclusive access\" rejections and 'Configuration did not load properly'; it fails the same way with --native-bindings, so it is independent of the scripting binding token fix. It is the only failing test in the recorded agent_scripting run (3.0.0.18 mac arm64 simulator 239/238 Failed).",
+      "tokens": null
+    },
+    {
+      "event_id": "411b5a0e-4a26-49a0-8a25-aeb8907ed91c",
+      "event": "flow/profile_changed",
+      "at": "2026-11-15T18:19:18.636855Z",
+      "actor": "human/owner",
+      "previous": "full",
+      "profile": "simple"
+    },
+    {
+      "event_id": "c1835479-579d-467b-80d3-c7734e132e8a",
+      "event": "ticket/note",
+      "at": "2026-11-15T18:19:18.737401Z",
+      "actor": "human/owner",
+      "text": "Owner authorized the production fix on 2026-11-15 and switched the profile to simple. Agreed approach: in load_configuration of indigo_agent_config.c replace indigo_xml_parse with indigo_xml_parse_with_callback and a static dispatch that stamps each replayed request with indigo_get_device_or_master_token(property->device) before indigo_change_property, mirroring config_restore_handler in indigo_driver.c. No bus change, no client-name based exemption, no tokens written to the configuration file.",
+      "tokens": null
+    },
+    {
+      "event_id": "86b4f41c-cd61-4a95-b86f-c126c17bbb3d",
+      "event": "task/progress",
+      "at": "2026-11-15T18:19:24.158521Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Implementation started on branch ticket/8f313dbc-765b-5e79-9cef-a9d8db5918f9"
+    },
+    {
+      "event_id": "d8f4d69f-b615-4ccb-9f1b-c028e002de00",
+      "event": "ticket/started",
+      "at": "2026-11-15T18:19:24.160161Z",
+      "actor": "human/owner",
+      "branch": "ticket/8f313dbc-765b-5e79-9cef-a9d8db5918f9",
+      "base": "master"
+    },
+    {
+      "event_id": "dd781aaf-35be-4f55-aad8-bb4809f68c00",
+      "event": "task/progress",
+      "at": "2026-11-15T18:19:58.964145Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Implementer launched",
+      "attempt_id": "3bb1a9f1-953f-486d-8723-699db30ae379",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "4a705f97-26d5-4b23-aa66-7a787cd5ebab",
+      "event": "task/progress",
+      "at": "2026-11-15T18:21:08.671164Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Building library, server and suite drivers in the worktree for baseline reproduction"
+    },
+    {
+      "event_id": "84408252-387a-4e89-bfcf-79e8cb790368",
+      "event": "task/progress",
+      "at": "2026-11-15T18:22:36.024701Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Reproducing before fix: run_sequencer_simulators.py --case save/restore private configuration"
+    },
+    {
+      "event_id": "ddf188ea-f2dd-4dd9-8cdc-c948d4b231cf",
+      "event": "task/progress",
+      "at": "2026-11-15T18:26:09.927259Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Fix applied; rerunning save/restore private configuration cases"
+    },
+    {
+      "event_id": "fe3c5272-1a2e-47f3-b756-5e0079058d24",
+      "event": "task/progress",
+      "at": "2026-11-15T18:27:17.428749Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Running full sequencer simulator suite after fix (with solver indexes)"
+    },
+    {
+      "event_id": "0ea814dc-6342-4c81-9e26-23afa5933a5c",
+      "event": "task/progress",
+      "at": "2026-11-15T18:33:03.068795Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "31b14b94-e3e9-4a5b-822b-6307affa4a8b",
+      "event": "task/progress",
+      "at": "2026-11-15T18:33:03.092661Z",
+      "actor": "human/owner",
+      "task_id": "b0ed4779-a729-4c20-980e-0efd379689ca",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ca6ed1fb-21f5-4564-bcf3-ec776f88f259",
+      "event": "check/passed",
+      "at": "2026-11-15T18:33:03.094643Z",
+      "actor": "human/owner",
+      "commit": "1534dd32f10a9e97a5632d68557378e049b14e36",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "d2e70403-6c45-40e5-8a35-6693cdaa5c3d",
+      "event": "ticket/note",
+      "at": "2026-11-15T18:33:18.404856Z",
+      "actor": "human/owner",
+      "text": "Reproduction before fix (worktree build of 4284d05f2, macOS arm64, agent_config 3.0.0.30): run_sequencer_simulators.py --case 'private configuration' gave 1 passed, 1 failed; 'restore private configuration' failed with 'Unexpected terminal sequence state' after six \"Device 'Configuration Agent' is protected or locked for exclusive access\" messages and 'Configuration did not load properly'. Fix: load_configuration replays the saved file through indigo_xml_parse_with_callback with a static dispatch that stamps indigo_get_device_or_master_token(property->device) before indigo_change_property (mirrors config_restore_handler); DRIVER_VERSION 0x0300001E -> 0x0300001F. After fix: same filtered run 2 passed, 0 failed, no Configuration Agent rejection; full suite with --index-dir: 135/135 cases passed, 6/6 artifact checks passed. Added a launcher probe: a tokenless AGENT_CONFIG_SAVE to Configuration Agent must be refused (passed; unauthenticated_write_rejected = Configuration Agent, Scripting Agent, Server) and documented it in sequencer_simulators.md. Remaining, out of scope, not fixed: (1) during restore the DRIVERS change that process_configuration_property sends to Server with indigo_change_property(agent_client, copy) carries token 0 (copy of AGENT_CONFIG_DRIVERS, whose token is never set) and is rejected by the protected Server ('Device Server is protected...' logged during restore); the test passes only because the saved driver set equals the loaded one, so a restore that must load/unload drivers on a protected server would still report 'Driver selection failed'. The deselect/select steps use indigo_change_switch_property_1, which stamps the token, and were not rejected. (2) The launcher exits 1 even with all cases passing because Sequence.prototype.estimate() (added in bfa5651b3) has no runtime case in sequencer_simulators.js (missing: estimate). flow check (whitespace) passed. No recorded run via tools/run_driver_test.py was made; agent_config has no own suite, the ",
+      "tokens": null
+    },
+    {
+      "event_id": "a02a4b8c-b53a-48ef-b3da-eb18c07f327d",
+      "event": "task/progress",
+      "at": "2026-11-15T18:33:53.483546Z",
+      "actor": "human/owner",
+      "task_id": "ebeda779-a7cf-4be4-9936-69764d04421b",
+      "text": "Review started"
+    },
+    {
+      "event_id": "45efc16b-9841-4a40-a996-bef7dc1c9371",
+      "event": "review/started",
+      "at": "2026-11-15T18:33:53.485271Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "e2eb622e-4457-401c-8a55-dbc7c479b73c",
+      "event": "task/progress",
+      "at": "2026-11-15T18:34:11.966416Z",
+      "actor": "human/owner",
+      "task_id": "ebeda779-a7cf-4be4-9936-69764d04421b",
+      "text": "Reviewer launched",
+      "attempt_id": "f90c2ac6-28ce-4174-9217-97d18a6ff56a",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "bc56922b-f343-456e-8218-2d9666a067a3",
+      "event": "task/progress",
+      "at": "2026-11-15T18:36:22.574537Z",
+      "actor": "human/owner",
+      "task_id": "ebeda779-a7cf-4be4-9936-69764d04421b",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d9e5d73c-02fe-44ca-8704-ddee14aba93d",
+      "event": "review/passed",
+      "at": "2026-11-15T18:36:22.577292Z",
+      "actor": "human/owner",
+      "task_id": "ebeda779-a7cf-4be4-9936-69764d04421b",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "1534dd32f10a9e97a5632d68557378e049b14e36"
+    },
+    {
+      "event_id": "a4515544-60b2-4854-89ab-3df8ec064fa7",
+      "event": "ticket/closed",
+      "at": "2026-11-15T18:40:14.960601Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T18:40:14.960571Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "3c54c69fa28f392b112c06edbcee303f5f6cbbc8"
+  },
+  "severity": "medium",
+  "metrics": {
+    "duration_ms": 1018415.952,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 28,
+    "sha256": "b1e580c420dd7860e37f1e67cbde1c503f2aa18d61af33fd167050161c3189e1"
+  },
+  "priority": "medium",
+  "difficulty": "high",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "1534dd32f10a9e97a5632d68557378e049b14e36",
+        "tree": "087baf62eb33f6900b5000543015c7359774a8c6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T18:33:03.091862Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/8f313dbc-765b-5e79-9cef-a9d8db5918f9/087baf62eb33-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No defects found. indigo_drivers/agent_config/indigo_agent_config.c:195-199,288: load_configuration now replays the saved file through indigo_xml_parse_with_callback with a static dispatch that stamps indigo_get_device_or_master_token(property->device) before indigo_change_property, which is the same authorization config_restore_handler applies (indigo_libs/indigo_driver.c:659). Trust boundary: the dispatch is static and is passed only to the parse of a handle opened by indigo_open_config_file on a name taken from AGENT_CONFIG_LOAD items (scandir of the config folder); load_configuration is queued only from the AGENT_CONFIG_LOAD branch (line 681), which a network client reaches only after passing the unchanged bus ACL in indigo_change_property (indigo_libs/indigo_bus.c:1013). The TCP adapter still uses indigo_xml_parse with the default indigo_change_property (indigo_server_tcp.c:363), so no network path reaches the new dispatch; the saved file is written by the agent itself with escaped values and no tokens. No bus change, no client-name exemption. DRIVER_VERSION 0x0300001E -> 0x0300001F. Probe in run_sequencer_simulators.py:258-261 waits for a 'protected or locked' message from device 'Configuration Agent' and raises TimeoutError otherwise, so it fails if the tokenless AGENT_CONFIG_SAVE is not refused; it is a regression guard for the network ACL, while the fix itself is covered by the previously failing 'restore private configuration' case. sequencer_simulators.md sentence matches the launcher order (probes precede client.script). Formatting follows the file. Agree that the token-less Server.DRIVERS change in process_configuration_property (indigo_agent_config.c:350, copy of AGENT_CONFIG_DRIVERS_PROPERTY) is a separate issue.",
+        "reviewer": "human/owner",
+        "commit": "1534dd32f10a9e97a5632d68557378e049b14e36",
+        "tree": "087baf62eb33f6900b5000543015c7359774a8c6",
+        "at": "2026-11-15T18:36:22.574223Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T15:02:54.904457Z",
+        "actor": "human/owner",
+        "text": "Reconfirmed 2026-11-15 after ticket 8ca68272 (commit 57762ed63): sequencer-suite case 'restore private configuration' still fails with 'Unexpected terminal sequence state' after six \"Device 'Configuration Agent' is protected or locked for exclusive access\" rejections and 'Configuration did not load properly'; it fails the same way with --native-bindings, so it is independent of the scripting binding token fix. It is the only failing test in the recorded agent_scripting run (3.0.0.18 mac arm64 simulator 239/238 Failed).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T18:19:18.736010Z",
+        "actor": "human/owner",
+        "text": "Owner authorized the production fix on 2026-11-15 and switched the profile to simple. Agreed approach: in load_configuration of indigo_agent_config.c replace indigo_xml_parse with indigo_xml_parse_with_callback and a static dispatch that stamps each replayed request with indigo_get_device_or_master_token(property->device) before indigo_change_property, mirroring config_restore_handler in indigo_driver.c. No bus change, no client-name based exemption, no tokens written to the configuration file.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T18:33:18.403406Z",
+        "actor": "human/owner",
+        "text": "Reproduction before fix (worktree build of 4284d05f2, macOS arm64, agent_config 3.0.0.30): run_sequencer_simulators.py --case 'private configuration' gave 1 passed, 1 failed; 'restore private configuration' failed with 'Unexpected terminal sequence state' after six \"Device 'Configuration Agent' is protected or locked for exclusive access\" messages and 'Configuration did not load properly'. Fix: load_configuration replays the saved file through indigo_xml_parse_with_callback with a static dispatch that stamps indigo_get_device_or_master_token(property->device) before indigo_change_property (mirrors config_restore_handler); DRIVER_VERSION 0x0300001E -> 0x0300001F. After fix: same filtered run 2 passed, 0 failed, no Configuration Agent rejection; full suite with --index-dir: 135/135 cases passed, 6/6 artifact checks passed. Added a launcher probe: a tokenless AGENT_CONFIG_SAVE to Configuration Agent must be refused (passed; unauthenticated_write_rejected = Configuration Agent, Scripting Agent, Server) and documented it in sequencer_simulators.md. Remaining, out of scope, not fixed: (1) during restore the DRIVERS change that process_configuration_property sends to Server with indigo_change_property(agent_client, copy) carries token 0 (copy of AGENT_CONFIG_DRIVERS, whose token is never set) and is rejected by the protected Server ('Device Server is protected...' logged during restore); the test passes only because the saved driver set equals the loaded one, so a restore that must load/unload drivers on a protected server would still report 'Driver selection failed'. The deselect/select steps use indigo_change_switch_property_1, which stamps the token, and were not rejected. (2) The launcher exits 1 even with all cases passing because Sequence.prototype.estimate() (added in bfa5651b3) has no runtime case in sequencer_simulators.js (missing: estimate). flow check (whitespace) passed. No recorded run via tools/run_driver_test.py was made; agent_config has no own suite, the agent_scripting record would need a new run to reflect the fix.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "3c54c69fa28f392b112c06edbcee303f5f6cbbc8",
+      "tree": "087baf62eb33f6900b5000543015c7359774a8c6",
+      "base": "master",
+      "at": "2026-11-15T18:40:14.838212Z"
+    }
+  }
+}

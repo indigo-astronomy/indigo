@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "ticket_id": "970f2cdd-0bb8-5cea-88bc-5b7bcac78c54",
-  "revision": 3,
-  "title": "Mount Agent derived coordinates assume J2000 for non-J2000 mount inputs",
-  "description": "Source inspection shows Mount Agent forwards targets and mirrors mount coordinates without epoch conversion but unconditionally converts derived coordinates from J2000 to current epoch. The shared solver instead converts targets to the related mount's reported MOUNT_EPOCH. Non-J2000 mounts can therefore produce inconsistent derived geometry. Next action: assign a bounded Mount Agent epoch-contract fix and simulator regression; no runtime reproduction or risk acceptance is claimed.\n\nImported from .factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-001.json (category: functional, blocking: no).",
+  "revision": 4,
+  "title": "Shared solver treats MOUNT_EPOCH as the epoch of bus coordinates, which are J2000",
+  "description": "Source inspection shows that MOUNT_EQUATORIAL_COORDINATES on the INDIGO bus are J2000 and MOUNT_EPOCH is the equinox of the coordinates on the device side, converted by the driver: mount_lx200, mount_nexstar, mount_nexstaraux, mount_ioptron, mount_temma, mount_rainbow, mount_pmc8 and system_alpaca (stated in its header comment) convert with indigo_eq_to_j2k()/indigo_j2k_to_eq(MOUNT_EPOCH), and indigo_update_coordinates() in indigo_mount_driver.c applies indigo_j2k_to_jnow() unconditionally. Mount Agent follows this contract (targets forwarded unconverted, derived display coordinates computed from J2000), so the original finding against Mount Agent does not hold.\n\nThe shared solver (indigo_libs/indigo_platesolver.c, conversion introduced in commit acc4540b0) instead treats MOUNT_EPOCH of the related mount as the epoch of the bus coordinates: update_hints_from_mount(), pa_reference_target(), the precise GOTO target, the sync/centre targets and the recenter target convert through mount_epoch. For a mount with MOUNT_EPOCH other than 2000 this sends non-J2000 values where J2000 is expected and misreads the mount position.\n\nProposed fix:\n1. indigo_platesolver.c: stop using mount_epoch in conversions; treat mount coordinates and slew/sync targets as J2000, keep conversions only between hints epoch, WCS epoch and J2000; pa_reference_target() computes J2000 -> JNow -> J2000. Remove the mount_epoch field and the MOUNT_EPOCH client handler if nothing else needs them.\n2. Mount Agent: no change of computation; add a comment stating the contract and a regression test in indigo_test/integration/test_agent_mount.c with a mount whose MOUNT_EPOCH is 0 (mount_simulator has a read-only epoch of 2000, so use mount_lx200 with its serial simulator).\n3. indigo_docs/PROPERTIES.md: state in the MOUNT_EPOCH row that it is the device-side epoch and that bus coordinates are J2000.\n4. Solver tests: add a case with a non-J2000 mount.\n\nBefore implementation the owner confirms with the author of acc4540b0 (Rumen G. Bogdanovski) that the bus = J2000 contract holds and the solver change was not intentional. Established by source inspection only; no runtime reproduction is claimed.\n\nOriginally imported from .factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-001.json (category: functional, blocking: no) as 'Mount Agent derived coordinates assume J2000 for non-J2000 mount inputs'.",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.889222Z",
@@ -41,6 +41,22 @@
       "actor": "human/owner",
       "previous_difficulty": null,
       "difficulty": "medium"
+    },
+    {
+      "event_id": "db3e4f94-69fd-4554-afd0-3ec54004d3d4",
+      "event": "ticket/title_changed",
+      "at": "2026-11-15T20:29:14.576142Z",
+      "actor": "human/owner",
+      "previous_title": "Mount Agent derived coordinates assume J2000 for non-J2000 mount inputs",
+      "title": "Shared solver treats MOUNT_EPOCH as the epoch of bus coordinates, which are J2000"
+    },
+    {
+      "event_id": "64a77ec9-4024-4b95-886b-8a92e4de5401",
+      "event": "ticket/description_changed",
+      "at": "2026-11-15T20:29:14.576478Z",
+      "actor": "human/owner",
+      "previous_description": "Source inspection shows Mount Agent forwards targets and mirrors mount coordinates without epoch conversion but unconditionally converts derived coordinates from J2000 to current epoch. The shared solver instead converts targets to the related mount's reported MOUNT_EPOCH. Non-J2000 mounts can therefore produce inconsistent derived geometry. Next action: assign a bounded Mount Agent epoch-contract fix and simulator regression; no runtime reproduction or risk acceptance is claimed.\n\nImported from .factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-001.json (category: functional, blocking: no).",
+      "description": "Source inspection shows that MOUNT_EQUATORIAL_COORDINATES on the INDIGO bus are J2000 and MOUNT_EPOCH is the equinox of the coordinates on the device side, converted by the driver: mount_lx200, mount_nexstar, mount_nexstaraux, mount_ioptron, mount_temma, mount_rainbow, mount_pmc8 and system_alpaca (stated in its header comment) convert with indigo_eq_to_j2k()/indigo_j2k_to_eq(MOUNT_EPOCH), and indigo_update_coordinates() in indigo_mount_driver.c applies indigo_j2k_to_jnow() unconditionally. Mount Agent follows this contract (targets forwarded unconverted, derived display coordinates computed from J2000), so the original finding against Mount Agent does not hold.\n\nThe shared solver (indigo_libs/indigo_platesolver.c, conversion introduced in commit acc4540b0) instead treats MOUNT_EPOCH of the related mount as the epoch of the bus coordinates: update_hints_from_mount(), pa_reference_target(), the precise GOTO target, the sync/centre targets and the recenter target convert through mount_epoch. For a mount with MOUNT_EPOCH other than 2000 this sends non-J2000 values where J2000 is expected and misreads the mount position.\n\nProposed fix:\n1. indigo_platesolver.c: stop using mount_epoch in conversions; treat mount coordinates and slew/sync targets as J2000, keep conversions only between hints epoch, WCS epoch and J2000; pa_reference_target() computes J2000 -> JNow -> J2000. Remove the mount_epoch field and the MOUNT_EPOCH client handler if nothing else needs them.\n2. Mount Agent: no change of computation; add a comment stating the contract and a regression test in indigo_test/integration/test_agent_mount.c with a mount whose MOUNT_EPOCH is 0 (mount_simulator has a read-only epoch of 2000, so use mount_lx200 with its serial simulator).\n3. indigo_docs/PROPERTIES.md: state in the MOUNT_EPOCH row that it is the device-side epoch and that bus coordinates are J2000.\n4. Solver tests: add a case with a non-J2000 mount.\n\nBefore implementation the owner confirms with the author of acc4540b0 (Rumen G. Bogdanovski) that the bus = J2000 contract holds and the solver change was not intentional. Established by source inspection only; no runtime reproduction is claimed.\n\nOriginally imported from .factory/findings/active/FND-20261104203810-488c-mcp-agent-guides-001.json (category: functional, blocking: no) as 'Mount Agent derived coordinates assume J2000 for non-J2000 mount inputs'."
     }
   ],
   "closure": null,
@@ -63,8 +79,8 @@
     }
   },
   "journal": {
-    "entries": 3,
-    "sha256": "caeffee43d6d582172200147d399a14682b7632d235b6dc561d1491a8493093d"
+    "entries": 5,
+    "sha256": "53e97ce97ea3dc2b1ebacca932f985d090607e37d04f59d7b3e47b7efff75b6b"
   },
   "priority": "medium",
   "difficulty": "medium"

@@ -128,6 +128,8 @@ static uint32_t sent_d[4];static int sent;
 -(void)cmd:(uint8_t)cmd a:(uint8_t)a b:(uint8_t)b c:(uint8_t)c d:(uint32_t)d { sent_d[sent++] = d; }
 @end
 static item_t speed_item;static item_t beep_item,back_item;
+static struct { item_t *items; int state; } steps_property;
+#define FOCUSER_STEPS_PROPERTY (&steps_property)
 #define X_RAIL_EXECUTE_PROPERTY (&execute_property)
 #define X_RAIL_EXECUTE_LENGTH_ITEM (items+0)
 #define X_RAIL_EXECUTE_SETTLE_TIME_ITEM (items+1)
@@ -176,6 +178,74 @@ int main(void) { @autoreleasepool {
 		assert(items[i].number.value == (i == 4 ? 3 : 10 + i));
 		assert(items[i].number.target == 20 + i);
 	}
+	execute_property.state = 0;
+	steps_property.state = INDIGO_BUSY_STATE;
+	rejects = 0;
+	sent = 0;
+	assert(run(delegate, NULL) == 0);
+	assert(rejects == 1 && sent == 0 && execute_property.state == 0 && steps_property.state == INDIGO_BUSY_STATE);
+	for (int i = 0; i < 5; i++) {
+		assert(items[i].number.value == (i == 4 ? 3 : 10 + i));
+		assert(items[i].number.target == 20 + i);
+	}
+	steps_property.state = 0;
+	rejects = 0;
+	assert(run(delegate, NULL) == 0);
+	assert(rejects == 0 && sent == 2 && execute_property.state == INDIGO_BUSY_STATE);
+	} return 0; }
+""".replace('BODY',handler)
+		result=run_probe(source,'.m',('-framework','Foundation','-fobjc-arc'))
+		self.assertEqual(0,result.returncode,result.stdout+result.stderr)
+	def test_manual_move_and_batch_are_mutually_exclusive(self):
+		path='indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m'
+		handler=body(path,'indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)')
+		source=r"""
+#import <Foundation/Foundation.h>
+#include <assert.h>
+#include <stdbool.h>
+#include <stdint.h>
+typedef struct { struct { double value, target; } number; struct { bool value; } sw; } item_t;
+static item_t items[4];
+static struct { item_t *items; int state; } steps_property = { items, 0 };
+static struct { item_t *items; int state; } execute_property;
+static int sent;
+@interface ProbeDelegate:NSObject
+-(void)cmd:(uint8_t)cmd a:(uint8_t)a b:(uint8_t)b c:(uint8_t)c d:(uint32_t)d;
+@end
+@implementation ProbeDelegate
+-(void)cmd:(uint8_t)cmd a:(uint8_t)a b:(uint8_t)b c:(uint8_t)c d:(uint32_t)d { sent++; }
+@end
+static item_t inward_item, reverse_disabled_item;
+#define FOCUSER_STEPS_PROPERTY (&steps_property)
+#define FOCUSER_STEPS_ITEM (items+0)
+#define X_RAIL_EXECUTE_PROPERTY (&execute_property)
+#define X_RAIL_EXECUTE_COUNT_ITEM (items+1)
+#define FOCUSER_DIRECTION_MOVE_INWARD_ITEM (&inward_item)
+#define FOCUSER_REVERSE_MOTION_DISABLED_ITEM (&reverse_disabled_item)
+#define INDIGO_BUSY_STATE 2
+#define INDIGO_OK 0
+static int copies;
+#define indigo_property_copy_values(...) (copies++)
+#define indigo_update_property(...) ((void)0)
+static int rejects;
+#define INDIGO_REJECT_CHANGE_IF(c, p, f, ...) if (c) { rejects++; return INDIGO_OK; }
+static int run(ProbeDelegate *delegate, void *device, void *property) {
+	BODY
+	return -1;
+}
+int main(void) { @autoreleasepool {
+	ProbeDelegate *delegate=[ProbeDelegate new];
+	items[0].number.value = 100;
+	items[1].number.value = 7;
+	execute_property.state = INDIGO_BUSY_STATE;
+	assert(run(delegate, NULL, NULL) == 0);
+	assert(rejects == 1 && sent == 0 && copies == 0);
+	assert(steps_property.state == 0 && execute_property.state == INDIGO_BUSY_STATE);
+	assert(items[0].number.value == 100 && items[1].number.value == 7);
+	execute_property.state = 0;
+	rejects = 0;
+	assert(run(delegate, NULL, NULL) == 0);
+	assert(rejects == 0 && sent == 1 && steps_property.state == INDIGO_BUSY_STATE);
 	} return 0; }
 """.replace('BODY',handler)
 		result=run_probe(source,'.m',('-framework','Foundation','-fobjc-arc'))

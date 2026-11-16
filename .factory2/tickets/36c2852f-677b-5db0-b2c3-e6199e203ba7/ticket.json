@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "ticket_id": "36c2852f-677b-5db0-b2c3-e6199e203ba7",
-  "revision": 4,
-  "title": "Sequencer waits forever when the solver agent is unloaded during a solver step or flip centering",
-  "description": "Pre-existing. When a solver step (sync_center, precise_goto, set_solver_filter) or the meridian flip centering already waits for the solver's AGENT_START_PROCESS or another property and the solver agent is unloaded, the property deletion does not reach on_update, so the wait never ends and the sequence or flip hangs. This task only re-selects the solver at the start of each step or flip. Next: fail the waiting step when its device or property is deleted, or time out.\n\nImported from .factory/findings/active/FND-20261103001429-668f-solver-agent-at-use-003.json (category: functional, blocking: no).",
+  "revision": 5,
+  "title": "Sequencer and meridian flip wait forever when the agent they wait for is unloaded",
+  "description": "Pre-existing, established by source inspection; not reproduced at runtime. Originally reported for the solver agent only (a solver step sync_center, precise_goto, set_solver_filter or the meridian flip centering), but the cause is common to every agent.\n\nEvery sequencer step waits through the same mechanism in indigo_drivers/agent_scripting/library/Sequencer.js: it sets wait_for_device and wait_for_property and only on_update with the expected state advances it. The meridian flip (indigo_flipper) waits the same way through its waiting_for_* flags. Neither object handles deletion and no wait has a timeout, so when the Imager, Mount, Guider or Solver agent is unloaded while a step or the flip waits for one of its properties, no further update arrives and the sequence or flip hangs until the user aborts it.\n\nFailing the step on every deletion of the awaited property would be wrong: the sequencer can wait on properties that agents delete and define again in normal operation, e.g. FILTER_*_LIST when devices appear or disappear (indigo_libs/indigo_filter.c add_to_list/remove_from_list), AGENT_WHEEL_FILTER (indigo_agent_imager.c) and AGENT_PLATESOLVER_FILTER (indigo_libs/indigo_platesolver.c). No grace period is needed either: unloading an agent is distinguishable, because indigo_detach_device() first sends a deletion of the whole device (property with an empty name), which indigo_on_delete_property() in indigo_drivers/agent_scripting/boot.js handles in a separate branch (property_name == null). Handlers cannot see the difference today because boot.js calls the same per-property on_delete in both cases.\n\nProposed fix:\n1. boot.js: after a whole-device deletion call a new handler, e.g. on_delete_device(device_name), on the registered event handlers.\n2. Sequencer: when the deleted device is wait_for_device, fail the waiting step with a message naming the removed agent, so the configured failure handling (abort, continue, recover) applies.\n3. Flipper: when the agent it currently waits for is deleted, call the existing fail().\n4. Tests in indigo_test/integration/test_agent_scripting_sequencer.c: unload an agent during a wait for at least two different agents and during a flip, and verify that a redefinition of FILTER_CCD_LIST during a wait does not fail the step.\n\nOut of scope: an awaited property that disappears permanently while its agent stays loaded (e.g. the camera disconnects while a step waits for CCD_MODE) still hangs; that cannot be told apart from a redefinition without a grace period or timeout and is left for a separate ticket if wanted. A per-step timeout is not proposed because long steps (batches, waiting for target altitude) have no sensible upper bound.\n\nImported from .factory/findings/active/FND-20261103001429-668f-solver-agent-at-use-003.json (category: functional, blocking: no) as 'Sequencer waits forever when the solver agent is unloaded during a solver step or flip centering'.",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.879325Z",
@@ -50,6 +50,22 @@
       "actor": "human/owner",
       "previous_difficulty": null,
       "difficulty": "medium"
+    },
+    {
+      "event_id": "7b4e23e2-7f96-40c2-a778-83d278ff9cc2",
+      "event": "ticket/title_changed",
+      "at": "2026-11-15T21:06:54.676954Z",
+      "actor": "human/owner",
+      "previous_title": "Sequencer waits forever when the solver agent is unloaded during a solver step or flip centering",
+      "title": "Sequencer and meridian flip wait forever when the agent they wait for is unloaded"
+    },
+    {
+      "event_id": "6d2f3097-7835-4103-a526-365cbb045fbe",
+      "event": "ticket/description_changed",
+      "at": "2026-11-15T21:06:54.677244Z",
+      "actor": "human/owner",
+      "previous_description": "Pre-existing. When a solver step (sync_center, precise_goto, set_solver_filter) or the meridian flip centering already waits for the solver's AGENT_START_PROCESS or another property and the solver agent is unloaded, the property deletion does not reach on_update, so the wait never ends and the sequence or flip hangs. This task only re-selects the solver at the start of each step or flip. Next: fail the waiting step when its device or property is deleted, or time out.\n\nImported from .factory/findings/active/FND-20261103001429-668f-solver-agent-at-use-003.json (category: functional, blocking: no).",
+      "description": "Pre-existing, established by source inspection; not reproduced at runtime. Originally reported for the solver agent only (a solver step sync_center, precise_goto, set_solver_filter or the meridian flip centering), but the cause is common to every agent.\n\nEvery sequencer step waits through the same mechanism in indigo_drivers/agent_scripting/library/Sequencer.js: it sets wait_for_device and wait_for_property and only on_update with the expected state advances it. The meridian flip (indigo_flipper) waits the same way through its waiting_for_* flags. Neither object handles deletion and no wait has a timeout, so when the Imager, Mount, Guider or Solver agent is unloaded while a step or the flip waits for one of its properties, no further update arrives and the sequence or flip hangs until the user aborts it.\n\nFailing the step on every deletion of the awaited property would be wrong: the sequencer can wait on properties that agents delete and define again in normal operation, e.g. FILTER_*_LIST when devices appear or disappear (indigo_libs/indigo_filter.c add_to_list/remove_from_list), AGENT_WHEEL_FILTER (indigo_agent_imager.c) and AGENT_PLATESOLVER_FILTER (indigo_libs/indigo_platesolver.c). No grace period is needed either: unloading an agent is distinguishable, because indigo_detach_device() first sends a deletion of the whole device (property with an empty name), which indigo_on_delete_property() in indigo_drivers/agent_scripting/boot.js handles in a separate branch (property_name == null). Handlers cannot see the difference today because boot.js calls the same per-property on_delete in both cases.\n\nProposed fix:\n1. boot.js: after a whole-device deletion call a new handler, e.g. on_delete_device(device_name), on the registered event handlers.\n2. Sequencer: when the deleted device is wait_for_device, fail the waiting step with a message naming the removed agent, so the configured failure handling (abort, continue, recover) applies.\n3. Flipper: when the agent it currently waits for is deleted, call the existing fail().\n4. Tests in indigo_test/integration/test_agent_scripting_sequencer.c: unload an agent during a wait for at least two different agents and during a flip, and verify that a redefinition of FILTER_CCD_LIST during a wait does not fail the step.\n\nOut of scope: an awaited property that disappears permanently while its agent stays loaded (e.g. the camera disconnects while a step waits for CCD_MODE) still hangs; that cannot be told apart from a redefinition without a grace period or timeout and is left for a separate ticket if wanted. A per-step timeout is not proposed because long steps (batches, waiting for target altitude) have no sensible upper bound.\n\nImported from .factory/findings/active/FND-20261103001429-668f-solver-agent-at-use-003.json (category: functional, blocking: no) as 'Sequencer waits forever when the solver agent is unloaded during a solver step or flip centering'."
     }
   ],
   "closure": null,
@@ -72,8 +88,8 @@
     }
   },
   "journal": {
-    "entries": 4,
-    "sha256": "4ce175edf1aae793f0680b436deaede2ad63b815c3c8a406e41a5e9278158806"
+    "entries": 6,
+    "sha256": "511e3b5b03a1bc04f8e659015f327518789370fe30b6ba23b5188bd166d6d7f3"
   },
   "priority": "medium",
   "difficulty": "medium"

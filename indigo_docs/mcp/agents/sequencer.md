@@ -209,6 +209,7 @@ Flip handling coordinates the Imager transit pause, Mount flip requirement, opti
 | `SEQUENCE_STATE.STEP` | Current zero-based user step. Property state reports overall `Busy`, `Ok` or `Alert`. |
 | `SEQUENCE_STATE.PROGRESS`, `.PROGRESS_TOTAL` | Completed/planned internal microsteps; one builder can generate several. |
 | `SEQUENCE_STATE.EXPOSURE`, `.EXPOSURE_TOTAL` | Exposure progress/planned total in seconds; excludes overhead and other operation durations. |
+| `SEQUENCE_FAILURE.MESSAGE` | Read-only reason of the failure that ended the sequence `Alert`, published before that `SEQUENCE_STATE` update. Empty while running, after `Ok`, after an abort by `AGENT_ABORT_PROCESS` and after `SEQUENCE_RESET`; a failure tolerated by continue-on-failure or a recovery point leaves it empty. |
 | `SEQUENCE_STEP_STATE.<published-step-item>` | Per-step light state; discover dynamic numeric-string keys. Check for `Alert` even when continue-on-failure produces overall `Ok`. |
 | `LOOP_n.STEP`, `.COUNT` | Dynamic loop display: step and current zero-based iteration. Discover existing loop properties. |
 | `AGENT_PAUSE_PROCESS.PAUSE_WAIT` | Boolean pause/resume request. Pauses sequence advancement; during a capture batch forwards an Imager pause. It is not a universal instant stop of mount/dome/focus operations. |
@@ -218,7 +219,7 @@ Flip handling coordinates the Imager transit pause, Mount flip requirement, opti
 
 Explicit abort cancels pending sequence waits/timer generation and requests aborts on participating agents, including the solver. **Already-running Guider `GUIDING` is intentionally left running by this path.** To stop it, explicitly request the Guider abort/stop operation and verify completion. Abort does not imply parking, shutter closure or camera warming. A pause/abort with no active sequence can report `Alert`.
 
-After failure/abort: read sequence step states/messages; inspect owning agent processes and physical positions; stop any unwanted continuing activity through its agent; repair the failed prerequisite; reset display only after idle if useful; build a fresh plan for the remaining work. There is no automatic rollback, checkpoint restart, or public `Sequence.abort()` method. Do not call private singleton internals as though they were supported builder functions.
+After failure/abort: read `SEQUENCE_FAILURE.MESSAGE` (empty after an abort by `AGENT_ABORT_PROCESS`), sequence step states and messages; inspect owning agent processes and physical positions; stop any unwanted continuing activity through its agent; repair the failed prerequisite; reset display only after idle if useful; build a fresh plan for the remaining work. There is no automatic rollback, checkpoint restart, or public `Sequence.abort()` method. Do not call private singleton internals as though they were supported builder functions.
 
 ## Offline reference and verification limits
 

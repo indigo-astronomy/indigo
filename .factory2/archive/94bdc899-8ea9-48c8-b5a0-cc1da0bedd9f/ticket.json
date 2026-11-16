@@ -1,0 +1,409 @@
+{
+  "schema_version": 1,
+  "ticket_id": "94bdc899-8ea9-48c8-b5a0-cc1da0bedd9f",
+  "revision": 17,
+  "title": "Sequencer simulator launcher exits 1 with all cases passing because Sequence.prototype.estimate has no runtime case",
+  "description": "Reported by the implementer of ticket 8f313dbc; not rechecked independently. indigo_test/integration/run_sequencer_simulators.py exits with status 1 even when every case passes (135 of 135 cases and 6 of 6 artifact checks in that run), because its coverage check reports missing: [\"estimate\"]. Sequence.prototype.estimate() was added to Sequencer.js in commit bfa5651b3 (2026-11-13) without a runtime case in indigo_test/integration/sequencer_simulators.js. Acceptance: a runtime case exercises estimate() in sequencer_simulators.js, the coverage check reports nothing missing and the launcher exits 0 on a clean run.",
+  "type": "bug",
+  "discovered_at": "2026-11-15T18:40:00Z",
+  "created_at": "2026-11-15T18:42:42.674352Z",
+  "status": "closed",
+  "branch": "ticket/94bdc899-8ea9-48c8-b5a0-cc1da0bedd9f",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "ed013db1-e84b-40e6-bd59-1b3ecd701223",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T19:01:24.818088Z",
+          "last_activity_at": "2026-11-15T19:15:43.755571Z",
+          "ended_at": "2026-11-15T19:15:43.755571Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 858937.483,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T19:01:24.818088Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/94bdc899-8ea9-48c8-b5a0-cc1da0bedd9f"
+        },
+        {
+          "at": "2026-11-15T19:15:43.755571Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 858937.483,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "46942966-779e-4566-b2d1-230ba5cedc01",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "848f9058-ea1d-4c61-84f9-010ebd60dc53",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T19:15:43.755785Z",
+          "last_activity_at": "2026-11-15T19:17:38.776018Z",
+          "ended_at": "2026-11-15T19:17:38.776018Z",
+          "outcome": {
+            "summary": "No defects. Diff adds two cases to indigo_test/integration/sequencer_simulators.js (lines 291-292); launcher and its inventory/coverage logic unchanged. Assertions follow the real contract in indigo_drivers/agent_scripting/library/Sequencer.js: capture_batch adds exposure*count and count (lines 392-393), so 2 x 0.1 gives exposure 0.2 and frames 2, which also catches exposure-only or count-only accumulation; wait adds delay to waits (117), so 0.2+0.3 = 0.5; no operation builder is used, so operations 0; wait_until sets unknown_duration and adds nothing to waits/frames (122); the fresh-Sequence check pins the initial state and key order of estimate() (627). Build runs synchronously in seqtest.next() before start and verify runs in finish() after completion, so stashing on seqtest is sound; new Sequence() only constructs an object. FRAME === 2 is the same readback the capture batch cases use. wait_until(1) resolves to a past time: wait_until_time sends 'Target time has passed' and schedules a 0 s step timer (Sequencer.js 1457-1463), as the existing 'past numeric and UTC waits' case does. The estimate case writes estimate_*.fits, which the launcher's prefix-based artifact checks do not glob, and the SEQTEST header is still removed by the following case. sequencer_simulators.md describes coverage generically and needs no change. Verified by running --case 'select_imager_camera|prepare finite|FITS custom header|estimate': 8 passed, 0 failed, artifacts header_present/header_removed pass, estimate cases 1.04 s and 0.21 s. The full-suite 'missing []' result is the implementer's note, not rechecked here.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 115020.233,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T19:15:43.755785Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T19:17:38.776018Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "No defects. Diff adds two cases to indigo_test/integration/sequencer_simulators.js (lines 291-292); launcher and its inventory/coverage logic unchanged. Assertions follow the real contract in indigo_drivers/agent_scripting/library/Sequencer.js: capture_batch adds exposure*count and count (lines 392-393), so 2 x 0.1 gives exposure 0.2 and frames 2, which also catches exposure-only or count-only accumulation; wait adds delay to waits (117), so 0.2+0.3 = 0.5; no operation builder is used, so operations 0; wait_until sets unknown_duration and adds nothing to waits/frames (122); the fresh-Sequence check pins the initial state and key order of estimate() (627). Build runs synchronously in seqtest.next() before start and verify runs in finish() after completion, so stashing on seqtest is sound; new Sequence() only constructs an object. FRAME === 2 is the same readback the capture batch cases use. wait_until(1) resolves to a past time: wait_until_time sends 'Target time has passed' and schedules a 0 s step timer (Sequencer.js 1457-1463), as the existing 'past numeric and UTC waits' case does. The estimate case writes estimate_*.fits, which the launcher's prefix-based artifact checks do not glob, and the SEQTEST header is still removed by the following case. sequencer_simulators.md describes coverage generically and needs no change. Verified by running --case 'select_imager_camera|prepare finite|FITS custom header|estimate': 8 passed, 0 failed, artifacts header_present/header_removed pass, estimate cases 1.04 s and 0.21 s. The full-suite 'missing []' result is the implementer's note, not rechecked here."
+        }
+      ],
+      "result": {
+        "summary": "No defects. Diff adds two cases to indigo_test/integration/sequencer_simulators.js (lines 291-292); launcher and its inventory/coverage logic unchanged. Assertions follow the real contract in indigo_drivers/agent_scripting/library/Sequencer.js: capture_batch adds exposure*count and count (lines 392-393), so 2 x 0.1 gives exposure 0.2 and frames 2, which also catches exposure-only or count-only accumulation; wait adds delay to waits (117), so 0.2+0.3 = 0.5; no operation builder is used, so operations 0; wait_until sets unknown_duration and adds nothing to waits/frames (122); the fresh-Sequence check pins the initial state and key order of estimate() (627). Build runs synchronously in seqtest.next() before start and verify runs in finish() after completion, so stashing on seqtest is sound; new Sequence() only constructs an object. FRAME === 2 is the same readback the capture batch cases use. wait_until(1) resolves to a past time: wait_until_time sends 'Target time has passed' and schedules a 0 s step timer (Sequencer.js 1457-1463), as the existing 'past numeric and UTC waits' case does. The estimate case writes estimate_*.fits, which the launcher's prefix-based artifact checks do not glob, and the SEQTEST header is still removed by the following case. sequencer_simulators.md describes coverage generically and needs no change. Verified by running --case 'select_imager_camera|prepare finite|FITS custom header|estimate': 8 passed, 0 failed, artifacts header_present/header_removed pass, estimate cases 1.04 s and 0.21 s. The full-suite 'missing []' result is the implementer's note, not rechecked here.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 115020.233,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "05384a33-7ab6-474a-b8e2-954c2403c937",
+      "event": "ticket/created",
+      "at": "2026-11-15T18:42:42.675628Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "35369aaf-3cd2-4a2c-84c2-8c9cf5345bb0",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T18:44:19.981524Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b61fc05a-0f06-4a48-b202-c8e4c20a4483",
+      "event": "task/progress",
+      "at": "2026-11-15T19:01:24.818414Z",
+      "actor": "human/owner",
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "text": "Implementation started on branch ticket/94bdc899-8ea9-48c8-b5a0-cc1da0bedd9f"
+    },
+    {
+      "event_id": "7bd05cce-977a-4ca7-ab65-3de4b51c1694",
+      "event": "ticket/started",
+      "at": "2026-11-15T19:01:24.820079Z",
+      "actor": "human/owner",
+      "branch": "ticket/94bdc899-8ea9-48c8-b5a0-cc1da0bedd9f",
+      "base": "master"
+    },
+    {
+      "event_id": "8454320a-d6b3-402e-8d97-1b80ec8fe94c",
+      "event": "task/progress",
+      "at": "2026-11-15T19:01:44.309331Z",
+      "actor": "human/owner",
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "text": "Implementer launched",
+      "attempt_id": "ed013db1-e84b-40e6-bd59-1b3ecd701223",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "9813d5e1-1d00-4b02-81be-1f7b1917fc55",
+      "event": "task/progress",
+      "at": "2026-11-15T19:02:15.639526Z",
+      "actor": "human/owner",
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "text": "Added estimate cases; building to run suite"
+    },
+    {
+      "event_id": "c9e29fc1-6c92-4162-a008-3864b90220c6",
+      "event": "task/progress",
+      "at": "2026-11-15T19:04:29.725501Z",
+      "actor": "human/owner",
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "text": "Running baseline full suite (original test file)"
+    },
+    {
+      "event_id": "e311ef8f-7ffe-48b0-bb8c-d10503b0bb1e",
+      "event": "task/progress",
+      "at": "2026-11-15T19:09:56.264099Z",
+      "actor": "human/owner",
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "text": "Running full suite with estimate cases"
+    },
+    {
+      "event_id": "c89b8e7f-695c-4c24-a471-23d7da6c95b1",
+      "event": "task/progress",
+      "at": "2026-11-15T19:15:25.749394Z",
+      "actor": "human/owner",
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "788c8110-8aaa-471b-bd5d-98159ba41749",
+      "event": "task/progress",
+      "at": "2026-11-15T19:15:25.771796Z",
+      "actor": "human/owner",
+      "task_id": "8f79d34f-3d76-4977-b2d0-10e6f41938bb",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "911eb77e-f932-4da6-b308-9f7c84d1d06c",
+      "event": "check/passed",
+      "at": "2026-11-15T19:15:25.773495Z",
+      "actor": "human/owner",
+      "commit": "31de5cc100e204f963a80aef606a9f7e2ccf4c21",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "0fbf7429-4bbb-4892-b037-b776de666916",
+      "event": "ticket/note",
+      "at": "2026-11-15T19:15:29.244494Z",
+      "actor": "human/owner",
+      "text": "Before: full run_sequencer_simulators.py 139 passed, 0 failed, missing [estimate], exit 1. After adding two estimate cases: 141 passed, 0 failed, missing [], exit 0. flow check passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "a5f29f10-6a85-4c41-8471-8ee7554a83e2",
+      "event": "task/progress",
+      "at": "2026-11-15T19:15:43.755860Z",
+      "actor": "human/owner",
+      "task_id": "46942966-779e-4566-b2d1-230ba5cedc01",
+      "text": "Review started"
+    },
+    {
+      "event_id": "751feebf-5d7d-4177-a249-568ef1fe5aec",
+      "event": "review/started",
+      "at": "2026-11-15T19:15:43.757203Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "69b3f3f1-7694-4fe8-8835-bedcb2170314",
+      "event": "task/progress",
+      "at": "2026-11-15T19:16:02.320086Z",
+      "actor": "human/owner",
+      "task_id": "46942966-779e-4566-b2d1-230ba5cedc01",
+      "text": "Reviewer launched",
+      "attempt_id": "848f9058-ea1d-4c61-84f9-010ebd60dc53",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "abaf1ddf-925d-477d-a694-1845744086e1",
+      "event": "task/progress",
+      "at": "2026-11-15T19:17:08.279958Z",
+      "actor": "human/owner",
+      "task_id": "46942966-779e-4566-b2d1-230ba5cedc01",
+      "text": "Running sequencer simulator cases: estimate and FITS header neighbours"
+    },
+    {
+      "event_id": "7db6b948-ac59-4951-bccf-19f9ad374b01",
+      "event": "task/progress",
+      "at": "2026-11-15T19:17:38.776181Z",
+      "actor": "human/owner",
+      "task_id": "46942966-779e-4566-b2d1-230ba5cedc01",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "4e42d669-ef0c-4d86-b8f3-009f588882e5",
+      "event": "review/passed",
+      "at": "2026-11-15T19:17:38.777952Z",
+      "actor": "human/owner",
+      "task_id": "46942966-779e-4566-b2d1-230ba5cedc01",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "31de5cc100e204f963a80aef606a9f7e2ccf4c21"
+    },
+    {
+      "event_id": "05298a21-abca-484c-acad-0c891d30782f",
+      "event": "ticket/closed",
+      "at": "2026-11-15T19:30:57.475176Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T19:30:57.475149Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "ab1fb1487c2344b85f7b3037192a9f91ecddf2c1"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "31de5cc100e204f963a80aef606a9f7e2ccf4c21",
+        "tree": "ab6a56aa632a1a6665f979a62e53ebcb195447b6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T19:15:25.771064Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/94bdc899-8ea9-48c8-b5a0-cc1da0bedd9f/ab6a56aa632a-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "No defects. Diff adds two cases to indigo_test/integration/sequencer_simulators.js (lines 291-292); launcher and its inventory/coverage logic unchanged. Assertions follow the real contract in indigo_drivers/agent_scripting/library/Sequencer.js: capture_batch adds exposure*count and count (lines 392-393), so 2 x 0.1 gives exposure 0.2 and frames 2, which also catches exposure-only or count-only accumulation; wait adds delay to waits (117), so 0.2+0.3 = 0.5; no operation builder is used, so operations 0; wait_until sets unknown_duration and adds nothing to waits/frames (122); the fresh-Sequence check pins the initial state and key order of estimate() (627). Build runs synchronously in seqtest.next() before start and verify runs in finish() after completion, so stashing on seqtest is sound; new Sequence() only constructs an object. FRAME === 2 is the same readback the capture batch cases use. wait_until(1) resolves to a past time: wait_until_time sends 'Target time has passed' and schedules a 0 s step timer (Sequencer.js 1457-1463), as the existing 'past numeric and UTC waits' case does. The estimate case writes estimate_*.fits, which the launcher's prefix-based artifact checks do not glob, and the SEQTEST header is still removed by the following case. sequencer_simulators.md describes coverage generically and needs no change. Verified by running --case 'select_imager_camera|prepare finite|FITS custom header|estimate': 8 passed, 0 failed, artifacts header_present/header_removed pass, estimate cases 1.04 s and 0.21 s. The full-suite 'missing []' result is the implementer's note, not rechecked here.",
+        "reviewer": "human/owner",
+        "commit": "31de5cc100e204f963a80aef606a9f7e2ccf4c21",
+        "tree": "ab6a56aa632a1a6665f979a62e53ebcb195447b6",
+        "at": "2026-11-15T19:17:38.775740Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T19:15:29.243304Z",
+        "actor": "human/owner",
+        "text": "Before: full run_sequencer_simulators.py 139 passed, 0 failed, missing [estimate], exit 1. After adding two estimate cases: 141 passed, 0 failed, missing [], exit 0. flow check passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "ab1fb1487c2344b85f7b3037192a9f91ecddf2c1",
+      "tree": "ab6a56aa632a1a6665f979a62e53ebcb195447b6",
+      "base": "master",
+      "at": "2026-11-15T19:30:57.391986Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T18:42:42.674352Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T18:44:19.981244Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 973957.716,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 23,
+    "sha256": "8e3ca66245a141eb29726a08f427779743dafba6814f481a1ccb22b65a20127c"
+  }
+}

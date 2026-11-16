@@ -188,7 +188,7 @@ def main():
 	parser.add_argument("--timeout", type=float, default=1200)
 	parser.add_argument("--case", help="Run case names containing any pipe-separated text fragment")
 	parser.add_argument("--exclude", help="Exclude case names containing this text (recorded in results)")
-	parser.add_argument("--native-bindings", action="store_true", help="Diagnose native scripting token failures without the authenticated test relay")
+	parser.add_argument("--native-bindings", action="store_true", help="Use the native scripting change bindings instead of the authenticated test relay")
 	args = parser.parse_args()
 	repo = Path(__file__).resolve().parents[2]
 	output = args.output.resolve() if args.output else Path(tempfile.mkdtemp(prefix="indigo-sequencer-results-"))
@@ -255,6 +255,10 @@ def main():
 			client.wait(lambda: ("Scripting Agent", "AGENT_SCRIPTING_RUN_SCRIPT") in client.properties and ("Platesolver Agent", "AGENT_START_PROCESS") in client.properties, 20)
 			client.connection.sendall((json.dumps({"newTextVector": {"device": "Scripting Agent", "name": "AGENT_SCRIPTING_RUN_SCRIPT", "items": [{"name": "SCRIPT", "value": "indigo_send_message('Unauthorized probe executed')"}]}}) + "\n").encode())
 			client.wait(lambda: "Scripting Agent" in client.rejections, 5)
+			# Configuration replay authorizes itself inside the agent; a network client without a token must still be refused.
+			client.wait(lambda: ("Configuration Agent", "AGENT_CONFIG_SAVE") in client.properties, 20)
+			client.connection.sendall((json.dumps({"newTextVector": {"device": "Configuration Agent", "name": "AGENT_CONFIG_SAVE", "items": [{"name": "NAME", "value": "Unauthorized_Probe"}]}}) + "\n").encode())
+			client.wait(lambda: "Configuration Agent" in client.rejections, 5)
 			metadata["unauthenticated_write_rejected"] = sorted(client.rejections)
 			client.script((repo / "indigo_drivers/agent_scripting/library/Sequencer.js").read_text())
 			client.wait(lambda: ("Scripting Agent", "SEQUENCE_STATE") in client.properties, 20)

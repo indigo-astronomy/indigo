@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "ticket_id": "aced381d-d612-5859-9d0e-c8ea20aa182f",
-  "revision": 4,
+  "revision": 5,
   "title": "Documented macOS bootstrap executes unauthenticated HTTP sources",
   "description": "The documented bootstrap downloads GNU sources over plain HTTP without pinned authentication/integrity, executes configure/make and invokes sudo make install. A network intermediary can replace executable source. Use authenticated initial transport and verified artifact authenticity/integrity in a private workspace with fail-fast checks. Independently confirmed from source; no download or external probe, no risk acceptance. Next action: coordinator assigns a focused repair and relevant regression.\n\nImported from .factory/findings/active/FND-20261101215425-fa40-complete-full-repository-audit-005.json (category: security, blocking: no).",
   "type": "bug",
   "discovered_at": null,
   "created_at": "2026-11-15T07:52:30.849850Z",
-  "status": "open",
+  "status": "closed",
   "branch": null,
   "related_ticket_id": null,
   "config_overrides": {},
@@ -50,9 +50,24 @@
       "actor": "human/owner",
       "previous_difficulty": null,
       "difficulty": "medium"
+    },
+    {
+      "event_id": "1d74bff6-8623-4f37-90d7-a2871875cd15",
+      "event": "ticket/closed",
+      "at": "2026-11-15T20:49:49.370694Z",
+      "actor": "human/owner",
+      "reason": "Closed on the owner's instruction: the owner does not want to address this finding. No fix was made and nothing was verified; the documented macOS bootstrap is unchanged.",
+      "resolution": "unresolved"
     }
   ],
-  "closure": null,
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T20:49:49.370123Z",
+    "reason": "Closed on the owner's instruction: the owner does not want to address this finding. No fix was made and nothing was verified; the documented macOS bootstrap is unchanged.",
+    "resolution": "unresolved",
+    "mode": "manual",
+    "verification": "not_claimed"
+  },
   "severity": "high",
   "metrics": {
     "duration_ms": 0.0,
@@ -72,8 +87,8 @@
     }
   },
   "journal": {
-    "entries": 4,
-    "sha256": "5ebd5745f89a2afe7cc680a65d7824a962c0c5c72a0efd4d2d80bed8056e0c2c"
+    "entries": 5,
+    "sha256": "942542a43b76c8c1a6d1a677e920c008d4385ed5be273f5ce6adac3ab30691d9"
   },
   "priority": "medium",
   "difficulty": "medium"

@@ -1,0 +1,534 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3d564eb3-f502-552d-946d-f629ba8122ea",
+  "revision": 21,
+  "title": "Multicamera guide overstates the follower inter-frame delay bypass",
+  "description": "indigo_docs/INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md:126,160 claims controlled followers skip inter-frame delay/post-delay. indigo_agent_imager.c:1370-1394 gates only dithering; PRE_DELAY, delay and POST_DELAY1395-1425 remain unconditional. Users can configure timing/breakpoints expecting an absent bypass. Document current dithering-only bypass and actual delay behavior; specify any desired behavior change separately. Source-only comparison; no camera or driver run. Next: coordinator assigns scoped remediation and regression verification; full evidence/remedy in findings.md (ROOT-FOLLOWER). No fix or risk acceptance claimed.\n\nImported from .factory/findings/active/FND-20261024121920-3bd2-repository-audit-044.json (category: quality, blocking: no).",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T07:52:30.796121Z",
+  "status": "closed",
+  "branch": "ticket/3d564eb3-f502-552d-946d-f629ba8122ea",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "a0481de5-5400-4127-ac41-c3b80a06ed35",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T20:34:47.089145Z",
+          "last_activity_at": "2026-11-15T20:35:43.917299Z",
+          "ended_at": "2026-11-15T20:35:43.917299Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 56828.154,
+          "tokens": null
+        },
+        {
+          "attempt_id": "c3e96977-22c8-42b1-951f-bbd9d96bcd6d",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T20:37:36.182224Z",
+          "last_activity_at": "2026-11-15T20:38:26.481840Z",
+          "ended_at": "2026-11-15T20:38:26.481840Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 50299.616,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T20:34:47.089145Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/3d564eb3-f502-552d-946d-f629ba8122ea"
+        },
+        {
+          "at": "2026-11-15T20:35:43.917299Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T20:37:36.182224Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T20:38:26.481840Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 107127.77,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "c4da4c7e-ecd0-43fe-bffb-31cd9d69fc5c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T20:35:43.917553Z",
+          "last_activity_at": "2026-11-15T20:37:36.182128Z",
+          "ended_at": "2026-11-15T20:37:36.182128Z",
+          "outcome": {
+            "summary": "Checked against indigo_drivers/agent_imager/indigo_agent_imager.c in the worktree. These parts are correct: a controlled instance is one with BARRIER not selected (so TRIGGER) and at least one AGENT_IMAGER_BREAKPOINT item on (lines 1425-1434). The flag only gates dithering (line 1436). PRE_DELAY, the AGENT_IMAGER_BATCH.DELAY wait and POST_DELAY run for every agent (lines 1450-1483). The coordinator copies its breakpoints and forces TRIGGER on related Imager Agents (lines 3384-3417 and 3661-3678), so the new table rows for Pre-delay/Post-delay are accurate. AGENT_IMAGER_BATCH.DELAY is the real property and item name (indigo_names.h:1159,1162). Setting it to 0 on followers is sound advice. Two defects remain in INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md:161. (1) The new clause 'a follower with a non-zero delay adds that delay to the cycle time' is too broad. The follower's delay starts when its own exposure ends, at the same time as the coordinator's, so when the coordinator does not dither on that frame the cycle grows only by max(0, follower delay - coordinator delay), not by the whole follower delay. The full follower delay is added only when the coordinator dithers: do_dither -> wait_for_barrier_members (lines 1257-1274, 1282) waits until every member is paused, which a follower reaches only after its own delay. Suggested fix: say that a follower delay lengthens the cycle when it is longer than the coordinator's delay, and by its full length on frames where the coordinator dithers. Keep the advice to set it to 0. (2) The sentence the diff keeps, 'After each frame it immediately waits at the breakpoint', has no basis in the code and contradicts the new next sentence. A controlled instance runs the normal batch sequence and pauses only at enabled breakpoints. For example, with only PRE_CAPTURE enabled it first runs its own delay (lines 1450-1483) and pauses only at the next Pre-capture (line 1342). Suggested fix: say it pauses at each enabled breakpoint like any o",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 112264.575,
+          "tokens": null
+        },
+        {
+          "attempt_id": "3eb3fd63-adbc-4d96-b460-3ec3e7d708c0",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T20:38:26.482048Z",
+          "last_activity_at": "2026-11-15T20:38:58.556986Z",
+          "ended_at": "2026-11-15T20:38:58.556986Z",
+          "outcome": {
+            "summary": "Round 2, at ee3001306. Both round-1 defects are fixed. (1) The guide now says a controlled instance follows the normal batch sequence and pauses at each enabled breakpoint, which matches indigo_agent_imager.c lines 1331-1491: the breakpoints are checked unconditionally and the flag gates only dithering (line 1436). (2) The cycle-time claim is now: longer than the coordinator's delay lengthens the cycle, and on frames where the coordinator dithers it adds its full length because the coordinator waits for every member to pause. This matches lines 1454-1479 (each agent runs its own DELAY wait after its own exposure) and lines 1257-1274/1282 (wait_for_barrier_members before dithering). The caveat at line 223 is consistent with this. No new inaccuracy in the recipes or the guidance. One non-blocking imprecision: the dithering case adds the full follower delay only when the next breakpoint the follower has enabled comes after its delay (Pre-capture or Post-delay). If PRE_DELAY is enabled, the follower pauses at line 1450 before its delay, so the dither does not wait for that delay. The guide's recipes do not use Pre-delay and the advice to set DELAY to 0 is unaffected, so I do not count this as a defect. Documentation only; source reading, no run.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 32074.938,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T20:35:43.917553Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T20:37:36.182128Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Checked against indigo_drivers/agent_imager/indigo_agent_imager.c in the worktree. These parts are correct: a controlled instance is one with BARRIER not selected (so TRIGGER) and at least one AGENT_IMAGER_BREAKPOINT item on (lines 1425-1434). The flag only gates dithering (line 1436). PRE_DELAY, the AGENT_IMAGER_BATCH.DELAY wait and POST_DELAY run for every agent (lines 1450-1483). The coordinator copies its breakpoints and forces TRIGGER on related Imager Agents (lines 3384-3417 and 3661-3678), so the new table rows for Pre-delay/Post-delay are accurate. AGENT_IMAGER_BATCH.DELAY is the real property and item name (indigo_names.h:1159,1162). Setting it to 0 on followers is sound advice. Two defects remain in INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md:161. (1) The new clause 'a follower with a non-zero delay adds that delay to the cycle time' is too broad. The follower's delay starts when its own exposure ends, at the same time as the coordinator's, so when the coordinator does not dither on that frame the cycle grows only by max(0, follower delay - coordinator delay), not by the whole follower delay. The full follower delay is added only when the coordinator dithers: do_dither -> wait_for_barrier_members (lines 1257-1274, 1282) waits until every member is paused, which a follower reaches only after its own delay. Suggested fix: say that a follower delay lengthens the cycle when it is longer than the coordinator's delay, and by its full length on frames where the coordinator dithers. Keep the advice to set it to 0. (2) The sentence the diff keeps, 'After each frame it immediately waits at the breakpoint', has no basis in the code and contradicts the new next sentence. A controlled instance runs the normal batch sequence and pauses only at enabled breakpoints. For example, with only PRE_CAPTURE enabled it first runs its own delay (lines 1450-1483) and pauses only at the next Pre-capture (line 1342). Suggested fix: say it pauses at each enabled breakpoint like any o"
+        },
+        {
+          "at": "2026-11-15T20:38:26.482048Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T20:38:58.556986Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2, at ee3001306. Both round-1 defects are fixed. (1) The guide now says a controlled instance follows the normal batch sequence and pauses at each enabled breakpoint, which matches indigo_agent_imager.c lines 1331-1491: the breakpoints are checked unconditionally and the flag gates only dithering (line 1436). (2) The cycle-time claim is now: longer than the coordinator's delay lengthens the cycle, and on frames where the coordinator dithers it adds its full length because the coordinator waits for every member to pause. This matches lines 1454-1479 (each agent runs its own DELAY wait after its own exposure) and lines 1257-1274/1282 (wait_for_barrier_members before dithering). The caveat at line 223 is consistent with this. No new inaccuracy in the recipes or the guidance. One non-blocking imprecision: the dithering case adds the full follower delay only when the next breakpoint the follower has enabled comes after its delay (Pre-capture or Post-delay). If PRE_DELAY is enabled, the follower pauses at line 1450 before its delay, so the dither does not wait for that delay. The guide's recipes do not use Pre-delay and the advice to set DELAY to 0 is unaffected, so I do not count this as a defect. Documentation only; source reading, no run."
+        }
+      ],
+      "result": {
+        "summary": "Round 2, at ee3001306. Both round-1 defects are fixed. (1) The guide now says a controlled instance follows the normal batch sequence and pauses at each enabled breakpoint, which matches indigo_agent_imager.c lines 1331-1491: the breakpoints are checked unconditionally and the flag gates only dithering (line 1436). (2) The cycle-time claim is now: longer than the coordinator's delay lengthens the cycle, and on frames where the coordinator dithers it adds its full length because the coordinator waits for every member to pause. This matches lines 1454-1479 (each agent runs its own DELAY wait after its own exposure) and lines 1257-1274/1282 (wait_for_barrier_members before dithering). The caveat at line 223 is consistent with this. No new inaccuracy in the recipes or the guidance. One non-blocking imprecision: the dithering case adds the full follower delay only when the next breakpoint the follower has enabled comes after its delay (Pre-capture or Post-delay). If PRE_DELAY is enabled, the follower pauses at line 1450 before its delay, so the dither does not wait for that delay. The guide's recipes do not use Pre-delay and the advice to set DELAY to 0 is unaffected, so I do not count this as a defect. Documentation only; source reading, no run.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 144339.513,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9ac6f0ed-34c2-4e1a-9f00-29b962d55f16",
+      "event": "ticket/created",
+      "at": "2026-11-15T07:52:30.796137Z",
+      "actor": "upgrade/legacy",
+      "origin": ".factory/findings/active/FND-20261024121920-3bd2-repository-audit-044.json",
+      "source": "047980ee77381ca5dd352853da6509450703287dab9862535f67e423edfa0e19",
+      "priority": "low",
+      "severity": "low"
+    },
+    {
+      "event_id": "b304b3eb-b8d4-47b2-a4f6-bd85a23afb0f",
+      "event": "ticket/type_changed",
+      "at": "2026-11-15T08:55:14.376881Z",
+      "actor": "human/owner",
+      "previous_type": "bug",
+      "type": "change"
+    },
+    {
+      "event_id": "9a7d94f9-ff44-4f9a-b14c-0f172fb3dbc1",
+      "event": "ticket/priority_changed",
+      "at": "2026-11-15T08:55:14.513920Z",
+      "actor": "human/owner",
+      "field": "priority",
+      "previousOverride": null,
+      "newOverride": "low",
+      "previous_priority": null,
+      "priority": "low"
+    },
+    {
+      "event_id": "5c208938-e6ac-425b-8ecc-72fa2b52c76a",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-15T08:55:14.784694Z",
+      "actor": "human/owner",
+      "previous_difficulty": null,
+      "difficulty": "low"
+    },
+    {
+      "event_id": "b639221e-42b7-4629-af53-d681ad5c6783",
+      "event": "task/progress",
+      "at": "2026-11-15T20:34:47.089501Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Implementation started on branch ticket/3d564eb3-f502-552d-946d-f629ba8122ea"
+    },
+    {
+      "event_id": "cbc6ed06-d790-4a28-aad2-76fce161727a",
+      "event": "ticket/started",
+      "at": "2026-11-15T20:34:47.091009Z",
+      "actor": "human/owner",
+      "branch": "ticket/3d564eb3-f502-552d-946d-f629ba8122ea",
+      "base": "master"
+    },
+    {
+      "event_id": "deabfc08-70c3-49fc-9857-a49545d4f99c",
+      "event": "task/progress",
+      "at": "2026-11-15T20:35:12.928577Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Implementer launched: correcting the multicamera guide",
+      "attempt_id": "a0481de5-5400-4127-ac41-c3b80a06ed35",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "806d43aa-240c-42d0-9b28-9a270fa6804f",
+      "event": "task/progress",
+      "at": "2026-11-15T20:35:24.491435Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b384ae26-7c09-4491-8881-16a61c0fbfba",
+      "event": "task/progress",
+      "at": "2026-11-15T20:35:24.515174Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a54e78ee-5e4a-4d3c-bfee-de0da4a6890d",
+      "event": "check/passed",
+      "at": "2026-11-15T20:35:24.516698Z",
+      "actor": "human/owner",
+      "commit": "ea7abffbca27ac674bf6caab661f0e01dff99247",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7a7bcb83-c9a4-44cd-bb4f-7387485971c8",
+      "event": "task/progress",
+      "at": "2026-11-15T20:35:43.917635Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c5b57910-e712-4c11-a3b7-a163634b4aca",
+      "event": "review/started",
+      "at": "2026-11-15T20:35:43.919269Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "dc707bcd-0c0e-4e92-a1b5-23f1e7287bc8",
+      "event": "task/progress",
+      "at": "2026-11-15T20:36:05.107290Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "text": "Reviewer launched: checking the guide against the Imager Agent source",
+      "attempt_id": "c4da4c7e-ecd0-43fe-bffb-31cd9d69fc5c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0a72fa39-bbca-4ee5-8c0f-4d66491d2b39",
+      "event": "task/progress",
+      "at": "2026-11-15T20:37:36.182219Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "d4bf643c-b1be-4528-8bdf-7403d2d13b08",
+      "event": "task/progress",
+      "at": "2026-11-15T20:37:36.182244Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "3b4fabc2-b76c-4cf9-8ac1-1d3bcaa16284",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T20:37:36.183389Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "ea7abffbca27ac674bf6caab661f0e01dff99247"
+    },
+    {
+      "event_id": "380ad31f-6cdb-4885-9b39-a7038aaf578e",
+      "event": "task/progress",
+      "at": "2026-11-15T20:38:12.141007Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Rewording follower delay and breakpoint claims after review"
+    },
+    {
+      "event_id": "8b795d62-9020-4b87-a0fb-947c80aba372",
+      "event": "task/progress",
+      "at": "2026-11-15T20:38:12.387526Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bffc00e4-6390-4993-8372-581fcdbe91dc",
+      "event": "task/progress",
+      "at": "2026-11-15T20:38:12.410713Z",
+      "actor": "human/owner",
+      "task_id": "ef85df16-67b3-4bb8-99a3-98da54e5f594",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "464ba5d0-1071-43d5-92bb-56443bcaa5ed",
+      "event": "check/passed",
+      "at": "2026-11-15T20:38:12.412641Z",
+      "actor": "human/owner",
+      "commit": "ee30013061620fab40ae760d323207e0527f71b4",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "6a5050ab-343a-4bf9-bde0-c1c5d13464a2",
+      "event": "task/progress",
+      "at": "2026-11-15T20:38:26.482151Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "text": "Review started"
+    },
+    {
+      "event_id": "d9deefa4-b9dc-4ff4-87ba-1dca7816568b",
+      "event": "review/started",
+      "at": "2026-11-15T20:38:26.483468Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "e5aa6827-aec3-422d-a670-7274b6a4db11",
+      "event": "task/progress",
+      "at": "2026-11-15T20:38:39.930501Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "text": "Second review round: rechecking reworded paragraph and caveat against the source"
+    },
+    {
+      "event_id": "443884b6-a713-4ee4-930b-435608d74057",
+      "event": "task/progress",
+      "at": "2026-11-15T20:38:58.557074Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "a14ca6ae-cfb2-466a-b6a0-f8a57bffcdab",
+      "event": "review/passed",
+      "at": "2026-11-15T20:38:58.558293Z",
+      "actor": "human/owner",
+      "task_id": "393b286f-840c-4abe-8a52-33901ca49516",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "ee30013061620fab40ae760d323207e0527f71b4"
+    },
+    {
+      "event_id": "77db4b8b-07cf-4f48-959e-468a2aa27607",
+      "event": "ticket/closed",
+      "at": "2026-11-15T20:39:20.875747Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T20:39:20.875705Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "bd5f1f387e7a97ad4ff1ad98b3fb331c9a1b60f3"
+  },
+  "severity": "low",
+  "metrics": {
+    "duration_ms": 251467.283,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 34,
+    "sha256": "400a2cb3d98e2dbdf1aa44f4d9428e65aa5210ea780187fe967e80bbff7aea79"
+  },
+  "priority": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ea7abffbca27ac674bf6caab661f0e01dff99247",
+        "tree": "8bfaba1564c54e934d40e29724bf75600d046e05",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T20:35:24.514550Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/3d564eb3-f502-552d-946d-f629ba8122ea/8bfaba1564c5-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ee30013061620fab40ae760d323207e0527f71b4",
+        "tree": "54c5631a1eb0ef894add867a3b98855c9fea4712",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T20:38:12.409919Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/3d564eb3-f502-552d-946d-f629ba8122ea/54c5631a1eb0-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Checked against indigo_drivers/agent_imager/indigo_agent_imager.c in the worktree. These parts are correct: a controlled instance is one with BARRIER not selected (so TRIGGER) and at least one AGENT_IMAGER_BREAKPOINT item on (lines 1425-1434). The flag only gates dithering (line 1436). PRE_DELAY, the AGENT_IMAGER_BATCH.DELAY wait and POST_DELAY run for every agent (lines 1450-1483). The coordinator copies its breakpoints and forces TRIGGER on related Imager Agents (lines 3384-3417 and 3661-3678), so the new table rows for Pre-delay/Post-delay are accurate. AGENT_IMAGER_BATCH.DELAY is the real property and item name (indigo_names.h:1159,1162). Setting it to 0 on followers is sound advice. Two defects remain in INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md:161. (1) The new clause 'a follower with a non-zero delay adds that delay to the cycle time' is too broad. The follower's delay starts when its own exposure ends, at the same time as the coordinator's, so when the coordinator does not dither on that frame the cycle grows only by max(0, follower delay - coordinator delay), not by the whole follower delay. The full follower delay is added only when the coordinator dithers: do_dither -> wait_for_barrier_members (lines 1257-1274, 1282) waits until every member is paused, which a follower reaches only after its own delay. Suggested fix: say that a follower delay lengthens the cycle when it is longer than the coordinator's delay, and by its full length on frames where the coordinator dithers. Keep the advice to set it to 0. (2) The sentence the diff keeps, 'After each frame it immediately waits at the breakpoint', has no basis in the code and contradicts the new next sentence. A controlled instance runs the normal batch sequence and pauses only at enabled breakpoints. For example, with only PRE_CAPTURE enabled it first runs its own delay (lines 1450-1483) and pauses only at the next Pre-capture (line 1342). Suggested fix: say it pauses at each enabled breakpoint like any other agent. No other contradictions found in the guide. Documentation only; no build or run needed.",
+        "reviewer": "human/owner",
+        "commit": "ea7abffbca27ac674bf6caab661f0e01dff99247",
+        "tree": "8bfaba1564c54e934d40e29724bf75600d046e05",
+        "at": "2026-11-15T20:37:36.181955Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2, at ee3001306. Both round-1 defects are fixed. (1) The guide now says a controlled instance follows the normal batch sequence and pauses at each enabled breakpoint, which matches indigo_agent_imager.c lines 1331-1491: the breakpoints are checked unconditionally and the flag gates only dithering (line 1436). (2) The cycle-time claim is now: longer than the coordinator's delay lengthens the cycle, and on frames where the coordinator dithers it adds its full length because the coordinator waits for every member to pause. This matches lines 1454-1479 (each agent runs its own DELAY wait after its own exposure) and lines 1257-1274/1282 (wait_for_barrier_members before dithering). The caveat at line 223 is consistent with this. No new inaccuracy in the recipes or the guidance. One non-blocking imprecision: the dithering case adds the full follower delay only when the next breakpoint the follower has enabled comes after its delay (Pre-capture or Post-delay). If PRE_DELAY is enabled, the follower pauses at line 1450 before its delay, so the dither does not wait for that delay. The guide's recipes do not use Pre-delay and the advice to set DELAY to 0 is unaffected, so I do not count this as a defect. Documentation only; source reading, no run.",
+        "reviewer": "human/owner",
+        "commit": "ee30013061620fab40ae760d323207e0527f71b4",
+        "tree": "54c5631a1eb0ef894add867a3b98855c9fea4712",
+        "at": "2026-11-15T20:38:58.556805Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "bd5f1f387e7a97ad4ff1ad98b3fb331c9a1b60f3",
+      "tree": "54c5631a1eb0ef894add867a3b98855c9fea4712",
+      "base": "master",
+      "at": "2026-11-15T20:39:20.797467Z"
+    }
+  }
+}

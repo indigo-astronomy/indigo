@@ -446,7 +446,7 @@ class Tickets:
             return {"state": "working" if active else "idle", "in_progress": active}
         if operation == "ticket/list":
             archive = bool(arguments.get("archive"))
-            return [dict({key: doc.get(key) for key in ("ticket_id", "title", "type", "status", "revision", "created_at")},
+            return [dict({key: doc.get(key) for key in ("ticket_id", "title", "description", "type", "status", "revision", "created_at")},
                          **self.projection(doc),
                          duration_ms=(doc.get("metrics", {}).get("duration_ms")
                                       if any(a.get("status") != "running" and a.get("duration_ms") is not None

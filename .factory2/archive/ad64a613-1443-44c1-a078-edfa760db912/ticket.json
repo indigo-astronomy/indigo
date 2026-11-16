@@ -1,0 +1,817 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ad64a613-1443-44c1-a078-edfa760db912",
+  "revision": 48,
+  "title": "Sequencer.js does not publish the failure reason of a sequence in a form another agent can read",
+  "description": "Follow-up of ticket 776f039c (Scheduler loses the failure reason of a sequence that ends Alert), registered on the owner's decision of 2026-11-15.\n\nSequencer.js (indigo_drivers/agent_scripting/library/Sequencer.js) reports the reason of a failed step only as a plain Scripting Agent message sent before the SEQUENCE_STATE update to Alert, in the same stream as progress messages ('Sequence started', 'Suspended for 30s', 'Settling down...'). abort() ends the sequence Alert with no reason before the update and 'Sequence aborted' after it. Another agent therefore cannot tell a failure reason from a progress message except by its text.\n\nConsequence in the Scheduler Agent after 776f039c: the history reason of a failed run is the last Scripting Agent message received while the sequence was Busy. For a failed step that is the real reason; for a sequence aborted by hand (web UI, AGENT_ABORT_PROCESS from another client) it is an unrelated progress message, for example 'failed: Suspended for 30s'. This is documented in INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md as a limitation.\n\nProposed: make Sequencer.js publish the failure reason explicitly (for example an item or property set by failure() and cleared by start() and abort(), or a distinct result for an abort), regenerate the Sequencer.js.dat copies, and make the Scheduler Agent read it instead of the last message, so that a failed step keeps its reason and an abort by hand has none. Needs a decision on the property name (PROPERTIES.md) and tests in the sequencer and scheduler integration suites.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T13:17:31.298707Z",
+  "status": "closed",
+  "branch": "ticket/ad64a613-1443-44c1-a078-edfa760db912",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "21fbdb7f-d823-4e17-aeec-2d7854bf4e26",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T13:39:13.439728Z",
+          "last_activity_at": "2026-11-15T14:13:05.077491Z",
+          "ended_at": "2026-11-15T14:13:05.077491Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 2031637.763,
+          "tokens": null
+        },
+        {
+          "attempt_id": "051fc125-d9c7-4200-a546-3668314ee892",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T14:27:24.513775Z",
+          "last_activity_at": "2026-11-15T15:06:13.937476Z",
+          "ended_at": "2026-11-15T15:06:13.937476Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 2329423.701,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T13:39:13.439728Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/ad64a613-1443-44c1-a078-edfa760db912"
+        },
+        {
+          "at": "2026-11-15T14:13:05.077491Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T14:27:24.513775Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T15:06:13.937476Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "unknown",
+      "metrics": {
+        "duration_ms": 4361061.464,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "472b9680-75d6-493f-bb82-1e507b71a363",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T14:13:05.077669Z",
+          "last_activity_at": "2026-11-15T14:27:24.513672Z",
+          "ended_at": "2026-11-15T14:27:24.513672Z",
+          "outcome": {
+            "summary": "Verdict: changes. One defect against owner requirement (2), plus the document mismatch it causes. The rest checks out.\n\nD1 (defect): an older Sequencer.js loaded after a newer one makes every failed run lose its reason, and the scheduler does not fall back. Evidence: observe_property() sets failure_present on any define or update of SEQUENCE_FAILURE (indigo_agent_scheduler.c:2935-2940). Only a delete clears it (3037/3041). The Scripting Agent never deletes it, because an older library deletes only LOOP_*. Instead agent_enumerate_properties re-defines every cached script property on each enumerate (indigo_agent_scripting.c:1274-1276). The old library never updates the property, failure_message is cleared at task start (1258) and again at Busy (2929), and so at Busy->Alert (2933) finish_message is \"\" even for a failed step such as 'There is no CCD_GAIN on Imager Agent'. That is worse than the fallback the owner asked for (\"when the loaded Sequencer.js is an older version that does not define the property, the scheduler falls back\"). This is also the usual order, not a corner case: process_library() loads the scheduler's embedded (newer) library whenever no sequencer is present (1917-1933), and SCHEDULER.md:285 itself treats \"one loaded by a client\" as a real source of older libraries. The fallback as implemented works only when an old library was loaded and the new one never was.\nSuggested fix, small and deterministic: start() already publishes SEQUENCE_FAILURE (update_failure(\"\")) immediately before its Busy SEQUENCE_STATE update, on the same FIFO queue. In observe_property: set a flag on every SEQUENCE_FAILURE update. At the not-Busy->Busy edge, latch failure_live = flag. Clear the flag on every SEQUENCE_STATE update. At Busy->Alert, use failure_message only when failure_live, otherwise sequence_message. Then a stale, never-updated property falls back exactly like a missing one. Add a scheduler case that simulates the stale old library, for example by replacing indi",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 859436.003,
+          "tokens": null
+        },
+        {
+          "attempt_id": "372daad8-a4f2-4a65-b99b-3cc28b89915f",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-15T15:06:13.937654Z",
+          "last_activity_at": "2026-11-15T15:10:10.141287Z",
+          "ended_at": "2026-11-15T15:10:10.141287Z",
+          "outcome": {
+            "summary": "Round 2 verdict: pass. No defects. Under the owner's later decision (reason only from SEQUENCE_FAILURE.MESSAGE, no fallback, no older-library handling), round-1 D1 is resolved by removing the fallback, and D2 is fixed.\n\nChecked:\n(1) Scheduler code is minimal and correct.\n- The only observed field is failure_message. It is copied from SEQUENCE_FAILURE.MESSAGE under observed->mutex, cleared in start_task() (1254) and at the not-Busy->Busy edge (2924), and used only at Busy->Alert (2928).\n- Sequencer.js publishes on one FIFO handler queue, so no update from an earlier sequence can arrive after the new Busy edge.\n- Estimates do not start a sequence. Hooks take the task path. A hand-started sequence is excluded by the run baselines.\n- agent_send_message, sequence_message and failure_present are gone, and the client template's send_message slot is NULL as on the parent of 776f039c. grep finds no other use and no stale comment.\n- agent_delete_property, STOP_FAILURE, preempt, abort, delete paths and the fixed reason strings are unchanged versus master.\n(2) Sequencer.js, its sequencer test, indigo_agent_scripting.c and Sequencer.js.dat are byte-unchanged since f376607ff, and the .dat still decodes identical to Sequencer.js.\n(3) Tests.\n- failed_sequence_step_reports_its_reason and hand_aborted_sequence_has_no_reason exercise the property path. library_without_failure and the scripting_messages buffer are fully removed, with nothing left unused.\n- The new wait for SEQUENCE_STEP_STATE item '0' Busy is deterministic. The case runs in a fresh fork, and start() redefines the light property with Idle items before execute_next marks step 0 Busy, so the Busy value cannot be stale. Even an early abort would end Alert with an empty reason.\n(4) Documents agree with the code and with each other: SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, PROPERTIES.md, Sequencer.md and mcp/agents/sequencer.md. The only remaining older-library sentence is the intended estimate() one (SCHEDULER.md:285). The ",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 236203.633,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T14:13:05.077669Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T14:27:24.513672Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Verdict: changes. One defect against owner requirement (2), plus the document mismatch it causes. The rest checks out.\n\nD1 (defect): an older Sequencer.js loaded after a newer one makes every failed run lose its reason, and the scheduler does not fall back. Evidence: observe_property() sets failure_present on any define or update of SEQUENCE_FAILURE (indigo_agent_scheduler.c:2935-2940). Only a delete clears it (3037/3041). The Scripting Agent never deletes it, because an older library deletes only LOOP_*. Instead agent_enumerate_properties re-defines every cached script property on each enumerate (indigo_agent_scripting.c:1274-1276). The old library never updates the property, failure_message is cleared at task start (1258) and again at Busy (2929), and so at Busy->Alert (2933) finish_message is \"\" even for a failed step such as 'There is no CCD_GAIN on Imager Agent'. That is worse than the fallback the owner asked for (\"when the loaded Sequencer.js is an older version that does not define the property, the scheduler falls back\"). This is also the usual order, not a corner case: process_library() loads the scheduler's embedded (newer) library whenever no sequencer is present (1917-1933), and SCHEDULER.md:285 itself treats \"one loaded by a client\" as a real source of older libraries. The fallback as implemented works only when an old library was loaded and the new one never was.\nSuggested fix, small and deterministic: start() already publishes SEQUENCE_FAILURE (update_failure(\"\")) immediately before its Busy SEQUENCE_STATE update, on the same FIFO queue. In observe_property: set a flag on every SEQUENCE_FAILURE update. At the not-Busy->Busy edge, latch failure_live = flag. Clear the flag on every SEQUENCE_STATE update. At Busy->Alert, use failure_message only when failure_live, otherwise sequence_message. Then a stale, never-updated property falls back exactly like a missing one. Add a scheduler case that simulates the stale old library, for example by replacing indi"
+        },
+        {
+          "at": "2026-11-15T15:06:13.937654Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T15:10:10.141287Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2 verdict: pass. No defects. Under the owner's later decision (reason only from SEQUENCE_FAILURE.MESSAGE, no fallback, no older-library handling), round-1 D1 is resolved by removing the fallback, and D2 is fixed.\n\nChecked:\n(1) Scheduler code is minimal and correct.\n- The only observed field is failure_message. It is copied from SEQUENCE_FAILURE.MESSAGE under observed->mutex, cleared in start_task() (1254) and at the not-Busy->Busy edge (2924), and used only at Busy->Alert (2928).\n- Sequencer.js publishes on one FIFO handler queue, so no update from an earlier sequence can arrive after the new Busy edge.\n- Estimates do not start a sequence. Hooks take the task path. A hand-started sequence is excluded by the run baselines.\n- agent_send_message, sequence_message and failure_present are gone, and the client template's send_message slot is NULL as on the parent of 776f039c. grep finds no other use and no stale comment.\n- agent_delete_property, STOP_FAILURE, preempt, abort, delete paths and the fixed reason strings are unchanged versus master.\n(2) Sequencer.js, its sequencer test, indigo_agent_scripting.c and Sequencer.js.dat are byte-unchanged since f376607ff, and the .dat still decodes identical to Sequencer.js.\n(3) Tests.\n- failed_sequence_step_reports_its_reason and hand_aborted_sequence_has_no_reason exercise the property path. library_without_failure and the scripting_messages buffer are fully removed, with nothing left unused.\n- The new wait for SEQUENCE_STEP_STATE item '0' Busy is deterministic. The case runs in a fresh fork, and start() redefines the light property with Idle items before execute_next marks step 0 Busy, so the Busy value cannot be stale. Even an early abort would end Alert with an empty reason.\n(4) Documents agree with the code and with each other: SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, PROPERTIES.md, Sequencer.md and mcp/agents/sequencer.md. The only remaining older-library sentence is the intended estimate() one (SCHEDULER.md:285). The "
+        }
+      ],
+      "result": {
+        "summary": "Round 2 verdict: pass. No defects. Under the owner's later decision (reason only from SEQUENCE_FAILURE.MESSAGE, no fallback, no older-library handling), round-1 D1 is resolved by removing the fallback, and D2 is fixed.\n\nChecked:\n(1) Scheduler code is minimal and correct.\n- The only observed field is failure_message. It is copied from SEQUENCE_FAILURE.MESSAGE under observed->mutex, cleared in start_task() (1254) and at the not-Busy->Busy edge (2924), and used only at Busy->Alert (2928).\n- Sequencer.js publishes on one FIFO handler queue, so no update from an earlier sequence can arrive after the new Busy edge.\n- Estimates do not start a sequence. Hooks take the task path. A hand-started sequence is excluded by the run baselines.\n- agent_send_message, sequence_message and failure_present are gone, and the client template's send_message slot is NULL as on the parent of 776f039c. grep finds no other use and no stale comment.\n- agent_delete_property, STOP_FAILURE, preempt, abort, delete paths and the fixed reason strings are unchanged versus master.\n(2) Sequencer.js, its sequencer test, indigo_agent_scripting.c and Sequencer.js.dat are byte-unchanged since f376607ff, and the .dat still decodes identical to Sequencer.js.\n(3) Tests.\n- failed_sequence_step_reports_its_reason and hand_aborted_sequence_has_no_reason exercise the property path. library_without_failure and the scripting_messages buffer are fully removed, with nothing left unused.\n- The new wait for SEQUENCE_STEP_STATE item '0' Busy is deterministic. The case runs in a fresh fork, and start() redefines the light property with Idle items before execute_next marks step 0 Busy, so the Busy value cannot be stale. Even an early abort would end Alert with an empty reason.\n(4) Documents agree with the code and with each other: SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, PROPERTIES.md, Sequencer.md and mcp/agents/sequencer.md. The only remaining older-library sentence is the intended estimate() one (SCHEDULER.md:285). The ",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "unknown",
+      "metrics": {
+        "duration_ms": 1095639.636,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "fd0a8836-9603-4f67-afd4-ab995779f5c0",
+      "event": "ticket/created",
+      "at": "2026-11-15T13:17:31.299263Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "dd5c5234-4449-43e9-b761-4c91fe2a9503",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T13:30:43.257474Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "9cbf07d7-0967-4856-9548-bbf6bce32488",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:38:07.635106Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15: use a new read-only text property defined by Sequencer.js on the Scripting Agent next to the other SEQUENCE_* properties, proposed name SEQUENCE_FAILURE with one item MESSAGE (not an item on SEQUENCE_STATE, which is a number property, and not an item on SEQUENCE_NAME). failure() sets MESSAGE to the reason of the failed step; start() and abort() clear it. Requirements: (1) the reason is published before the SEQUENCE_STATE update that leaves Busy for Alert, so a client that sees the end already has the reason (the Scripting Agent's handler queue is FIFO); decide and state what recover-on-failure and continue-on-failure do with it; (2) the Scheduler Agent reads the reason from this property, so a failed step keeps its reason and a sequence aborted by hand has none; when the loaded Sequencer.js is an older version that does not define the property, the scheduler falls back to today's behaviour (last Scripting Agent message while Busy), as it does for a library without estimate(); (3) check the other readers of the sequencer properties (indigo_server/resource/indigo.js and script.html, indigo_docs/mcp/agents/sequencer.md, the sequencer and scheduler integration tests) and regenerate every Sequencer.js.dat copy; (4) document the property in Sequencer.md and PROPERTIES.md, update INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md where they describe the limitation, and replace the scheduler test that pins the hand-abort reason; (5) increment the versions of the drivers whose behaviour changes.",
+      "tokens": null
+    },
+    {
+      "event_id": "46df847a-65db-4db6-a9d1-6b6376e6f337",
+      "event": "task/progress",
+      "at": "2026-11-15T13:39:13.440066Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Implementation started on branch ticket/ad64a613-1443-44c1-a078-edfa760db912"
+    },
+    {
+      "event_id": "386ffc07-9ee2-48d6-8498-a90057e7bdea",
+      "event": "ticket/started",
+      "at": "2026-11-15T13:39:13.441709Z",
+      "actor": "human/owner",
+      "branch": "ticket/ad64a613-1443-44c1-a078-edfa760db912",
+      "base": "master"
+    },
+    {
+      "event_id": "aed3b347-ebf5-4ceb-ba8d-31a4cf307474",
+      "event": "task/progress",
+      "at": "2026-11-15T13:39:54.039786Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Implementer launched",
+      "attempt_id": "21fbdb7f-d823-4e17-aeec-2d7854bf4e26",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3ecdf2ef-aca8-46f0-b805-dd572d7c8618",
+      "event": "task/progress",
+      "at": "2026-11-15T13:45:24.714560Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Writing SEQUENCE_FAILURE tests in the sequencer and scheduler suites"
+    },
+    {
+      "event_id": "48bb3932-7363-4a73-a1b8-ea7c1026aa20",
+      "event": "task/progress",
+      "at": "2026-11-15T13:47:55.983424Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Building and running new tests against the unfixed code"
+    },
+    {
+      "event_id": "93229755-2513-49f3-984e-7d9e7b06bdbd",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:57:13.579274Z",
+      "actor": "human/owner",
+      "text": "Reproduction before the fix (tests written first, run on the unfixed Sequencer.js and Scheduler Agent in the ticket worktree): make -C indigo_test test-agent-scripting-sequencer -> 'Sequencer.js: 55/67 passed'; the 12 failures are exactly the new SEQUENCE_FAILURE assertions (property undefined: library inventory, schema, reload, abort/continue/recovery policies, recovery without point, start/abort/reset clearing, flip failure recovers/continues/aborts, flip failure keeps failed state). make -C indigo_test test-agent-scheduler -> 'Scheduler Agent: 76 run, 74 passed, 2 failed': hand_aborted_sequence_has_no_reason got 'Task 'Hand abort' failed: Suspended for 30s' (the defect), library_without_failure_uses_the_last_message failed because SEQUENCE_FAILURE is not defined by the unfixed library. failed_sequence_step_reports_its_reason passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "37712adf-6e43-44d4-80d6-b37e1b63b719",
+      "event": "task/progress",
+      "at": "2026-11-15T13:57:13.683619Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Implementing SEQUENCE_FAILURE in Sequencer.js and regenerating Sequencer.js.dat"
+    },
+    {
+      "event_id": "9486abf2-fee6-4c2f-acbe-4e6cbfff84e9",
+      "event": "task/progress",
+      "at": "2026-11-15T13:57:37.009358Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Running sequencer and scheduler integration tests after the fix"
+    },
+    {
+      "event_id": "a070a8a7-7ace-4caa-99b3-621b8a6665e9",
+      "event": "task/progress",
+      "at": "2026-11-15T14:02:57.276686Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e6b6d314-e886-4315-af80-f70c469f566b",
+      "event": "task/progress",
+      "at": "2026-11-15T14:02:57.321812Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check whitespace failed: exit code 2"
+    },
+    {
+      "event_id": "646a5053-b1db-4c22-97cf-a319512140bc",
+      "event": "check/failed",
+      "at": "2026-11-15T14:02:57.323915Z",
+      "actor": "human/owner",
+      "commit": "f376607ff57e8c15eb7f8585641beba81778d323",
+      "checks": "whitespace FAILED"
+    },
+    {
+      "event_id": "8a230850-46ca-4a73-a8a6-b74ac93fdffd",
+      "event": "task/progress",
+      "at": "2026-11-15T14:03:53.208859Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "05aa7861-24cf-4f44-8de1-f3dc2b0a0d2f",
+      "event": "task/progress",
+      "at": "2026-11-15T14:08:52.976176Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "94c4acd9-c80e-489f-a5a6-e3be424d3dc4",
+      "event": "check/passed",
+      "at": "2026-11-15T14:08:52.982236Z",
+      "actor": "human/owner",
+      "commit": "f376607ff57e8c15eb7f8585641beba81778d323",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "919d07d9-7da0-4057-82b3-be9b52e4bb0c",
+      "event": "task/progress",
+      "at": "2026-11-15T14:09:17.500372Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "4cec0329-3843-48ed-befb-d5eb593a7702",
+      "event": "task/progress",
+      "at": "2026-11-15T14:11:46.832692Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "4cc66ba0-741f-4930-b908-5a4dc60b9ac0",
+      "event": "check/passed",
+      "at": "2026-11-15T14:11:46.835776Z",
+      "actor": "human/owner",
+      "commit": "f376607ff57e8c15eb7f8585641beba81778d323",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "cfedea50-ebdf-491e-9880-8a02eca9a9d6",
+      "event": "ticket/note",
+      "at": "2026-11-15T14:12:21.311939Z",
+      "actor": "human/owner",
+      "text": "Result after the fix (tree eebb1af2, commit f376607f): flow check --command 'make -C indigo_test test-agent-scripting-sequencer' passed, 'Sequencer.js: 67/67 passed (including cleanup)'; flow check --command 'make -C indigo_test test-agent-scheduler' passed, 'Scheduler Agent: 76 run, 76 passed, 0 failed' (failed_sequence_step_reports_its_reason, hand_aborted_sequence_has_no_reason and library_without_failure_uses_the_last_message pass). One intermediate sequencer run failed 66/67 only because the test expected a wrong label of the solver filter stand-in ('Filter' instead of 'Solver filter'); the expectation was corrected. Sequencer.js.dat regenerated with the agent_scheduler Makefile.inc hexdump rule, decoded bytes equal Sequencer.js (91786 bytes). Plain flow check selects only 'whitespace' and fails: git diff --check reports trailing whitespace on line 1 of indigo_drivers/agent_scheduler/Sequencer.js.dat, which is intrinsic to the hexdump rule output ('0x%02x, ' ends with a space; boot.js.dat has the same). The generated file was left as the rule produces it; closing needs an owner decision (for example a .gitattributes '*.dat -whitespace' entry or a check exclusion).",
+      "tokens": null
+    },
+    {
+      "event_id": "1e05e909-9c60-46b5-a96e-ca09adf07c80",
+      "event": "task/progress",
+      "at": "2026-11-15T14:13:05.077733Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e5e8badc-b24c-4bdf-a10a-45e7443040c3",
+      "event": "review/started",
+      "at": "2026-11-15T14:13:05.079048Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "fedc2d9f-f7af-41cd-a39c-3b20113639f4",
+      "event": "task/progress",
+      "at": "2026-11-15T14:13:37.089109Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "text": "Reviewer launched",
+      "attempt_id": "472b9680-75d6-493f-bb82-1e507b71a363",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "e7c56761-6fa8-44da-aa21-b00fe39c1fde",
+      "event": "ticket/note",
+      "at": "2026-11-15T14:15:11.851840Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15: the whitespace check failure on the regenerated indigo_drivers/agent_scheduler/Sequencer.js.dat (the hexdump rule ends its single line with a space) is resolved by a new root .gitattributes with '*.dat -whitespace'; the generated file stays exactly as the rule produces it.",
+      "tokens": null
+    },
+    {
+      "event_id": "163a590e-fe56-4f0c-afdf-6522d6e2203b",
+      "event": "task/progress",
+      "at": "2026-11-15T14:18:38.563801Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "text": "Running test-agent-scripting-sequencer and test-agent-scheduler in the worktree"
+    },
+    {
+      "event_id": "80dfa154-0e05-46c4-a60b-bef8ccda26fe",
+      "event": "task/progress",
+      "at": "2026-11-15T14:27:24.513770Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "8caeb87c-9915-4690-88c6-2934f73bcd1d",
+      "event": "task/progress",
+      "at": "2026-11-15T14:27:24.513797Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "ff8d0de2-4a58-4fbb-bfd0-12abde55f6ba",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T14:27:24.515118Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "f376607ff57e8c15eb7f8585641beba81778d323"
+    },
+    {
+      "event_id": "3585d83b-a924-4f06-9997-f87f790e1624",
+      "event": "task/progress",
+      "at": "2026-11-15T14:28:40.714954Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Review changes: writing the stale SEQUENCE_FAILURE scheduler test (D1)"
+    },
+    {
+      "event_id": "7e67a368-4b72-4feb-9b84-4deb8ed5d990",
+      "event": "ticket/note",
+      "at": "2026-11-15T14:30:33.527630Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-15, replaces the fallback requirement of the earlier note: do not complicate it and do not assume that different versions of the sequencer are loaded. The Scheduler Agent takes the failure reason only from SEQUENCE_FAILURE.MESSAGE. No fallback to the last Scripting Agent message, no detection of an older library, no 'live property' tracking; the message callback and state added for the last-message behaviour are removed, with the tests and document statements about an older library.",
+      "tokens": null
+    },
+    {
+      "event_id": "9cacb62b-3677-4209-b9c8-e14f361d7f33",
+      "event": "task/progress",
+      "at": "2026-11-15T14:32:33.807108Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Fallback removed per owner decision; rebuilding and running both integration suites"
+    },
+    {
+      "event_id": "cb19678b-817f-466f-afae-cdaff7e64145",
+      "event": "task/progress",
+      "at": "2026-11-15T14:37:47.226632Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bf20af15-8b83-4c1d-b0a2-3d14c2cfc3d6",
+      "event": "task/progress",
+      "at": "2026-11-15T14:37:47.271316Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2ece3ee4-5912-452f-9b69-b1f5ed98d9e4",
+      "event": "check/passed",
+      "at": "2026-11-15T14:37:47.273428Z",
+      "actor": "human/owner",
+      "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "2bfd0f09-db37-4e97-9429-78ea7a5323a6",
+      "event": "task/progress",
+      "at": "2026-11-15T14:37:47.455472Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scripting-sequencer"
+    },
+    {
+      "event_id": "d021177f-2a72-472e-9c40-00cfcf82d1bc",
+      "event": "task/progress",
+      "at": "2026-11-15T14:42:46.147634Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "59ad6dfb-b3f2-486f-ad1a-d1412d5e6791",
+      "event": "check/passed",
+      "at": "2026-11-15T14:42:46.154218Z",
+      "actor": "human/owner",
+      "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "db403116-8d78-480b-bb2c-3537fe0774d8",
+      "event": "task/progress",
+      "at": "2026-11-15T14:42:46.505554Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "69f5aa09-c7c3-447b-8e7c-b64974036d61",
+      "event": "task/progress",
+      "at": "2026-11-15T14:52:48.413781Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 failed: exit code 2"
+    },
+    {
+      "event_id": "8a126d0e-70b4-496a-8607-3be9a47303a3",
+      "event": "check/failed",
+      "at": "2026-11-15T14:52:48.416382Z",
+      "actor": "human/owner",
+      "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "619b0784-ddd5-441f-8257-ae4d3c70ec71",
+      "event": "task/progress",
+      "at": "2026-11-15T15:02:35.127567Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Recorded scheduler run failed only the timing case repeat_interval_and_retry_delay (197 s, load 4.3); repeating"
+    },
+    {
+      "event_id": "bcccdc9d-a779-4ff1-a1ba-e0d92b12a70a",
+      "event": "task/progress",
+      "at": "2026-11-15T15:02:42.650149Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 started: make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "e914cd8e-c57f-4759-bc43-5290fcaeab6b",
+      "event": "task/progress",
+      "at": "2026-11-15T15:05:07.459149Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "db3f2d9b-c69f-4b76-a347-42cbb56447dd",
+      "event": "check/passed",
+      "at": "2026-11-15T15:05:07.462446Z",
+      "actor": "human/owner",
+      "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "d64d6bef-10a8-4677-bcd6-e9e1207b8102",
+      "event": "ticket/note",
+      "at": "2026-11-15T15:05:30.242851Z",
+      "actor": "human/owner",
+      "text": "Review round 1 (verdict changes) and owner decisions. D1 reproduction: a scheduler case that left SEQUENCE_FAILURE defined but never updated (indigo_sequencer.update_failure replaced by a no-op after a failed hand sequence) failed on candidate f376607f: 'Task 'Broken step' failed' with an empty reason instead of the fallback reason. Per the owner's later decision (no fallback, no older-library handling) that case was not kept: the scheduler now takes the reason only from SEQUENCE_FAILURE.MESSAGE (stored, cleared at task start and at the transition to Busy, used at Busy->Alert); agent_send_message, its client-template slot (back to NULL), sequence_message and the fallback delete handling were removed, as were library_without_failure_uses_the_last_message and the test's scripting_messages buffer; hand_aborted_sequence_has_no_reason now waits for SEQUENCE_STEP_STATE step 0 Busy before aborting. D2: older-library/fallback statements removed from SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md; 'after an abort by AGENT_ABORT_PROCESS' in PROPERTIES.md, Sequencer.md and mcp/agents/sequencer.md; indigo_agent_mcp_help.h regenerated, generate_help.py --check current. Root .gitattributes '*.dat -whitespace' added and referenced in indigo.xcodeproj next to .editorconfig (file reference and root group only). MIGRATION_STATUS counts: agent_scheduler 75, agent_scripting 67. Final tree 3f94eaf7: plain flow check passed (whitespace); flow check --command 'make -C indigo_test test-agent-scripting-sequencer' passed, 'Sequencer.js: 67/67 passed (including cleanup)'; flow check --command 'make -C indigo_test test-agent-scheduler' first recorded 'Scheduler Agent: 75 run, 74 passed, 1 failed' - only the timing case repeat_interval_and_retry_delay (paced restart outside 55-80 s, case took 197 s at load average 4.3; unrelated to this change, it passed in the unrecorded run on the same tree) - and the repeated recorded run on the same tree passed, 'Scheduler Agent: 75 run, 75 passe",
+      "tokens": null
+    },
+    {
+      "event_id": "1d8f0c5b-f197-4a86-8467-54d5a687646d",
+      "event": "task/progress",
+      "at": "2026-11-15T15:06:13.830002Z",
+      "actor": "human/owner",
+      "task_id": "7849e3ab-8da0-4662-8b10-11c1219f591e",
+      "text": "Re-reviewing the revised candidate"
+    },
+    {
+      "event_id": "dd89fd36-79fe-49b9-8dc9-b29b0e3f425d",
+      "event": "task/progress",
+      "at": "2026-11-15T15:06:13.937755Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "text": "Review started"
+    },
+    {
+      "event_id": "cb6256f5-e971-408b-8dc5-051c7f2408aa",
+      "event": "review/started",
+      "at": "2026-11-15T15:06:13.939201Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "afa1b124-fad2-43f2-8b8a-6206b1f72ed6",
+      "event": "task/progress",
+      "at": "2026-11-15T15:07:06.446958Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "text": "Running test-agent-scheduler on the revised tree"
+    },
+    {
+      "event_id": "efd2553b-549e-4181-9a5a-bded97b499a9",
+      "event": "task/progress",
+      "at": "2026-11-15T15:10:10.141371Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5ad22051-5e94-4f37-8496-70bd8076c2b0",
+      "event": "review/passed",
+      "at": "2026-11-15T15:10:10.142597Z",
+      "actor": "human/owner",
+      "task_id": "a2956859-0601-4cd9-a058-c4a799393e25",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692"
+    },
+    {
+      "event_id": "32e2b061-60aa-44be-bbf7-d77404131908",
+      "event": "ticket/closed",
+      "at": "2026-11-15T18:01:40.354793Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T18:01:40.354760Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "bb0b9687d3ed150bad76e67a00043317659cb53e"
+  },
+  "priority": "low",
+  "severity": "low",
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T13:17:31.298707Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T13:30:43.256971Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 5456701.1,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 61,
+    "sha256": "b4599dbd2a7f61f77f076073a1ab9a23de884f435369979262a516a5eba12462"
+  },
+  "flow": {
+    "profile": null,
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f376607ff57e8c15eb7f8585641beba81778d323",
+        "tree": "eebb1af20f99ccdc1427cf20f35d2220a77b7a6b",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-15T14:02:57.320917Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ad64a613-1443-44c1-a078-edfa760db912/eebb1af20f99-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scheduler",
+        "commit": "f376607ff57e8c15eb7f8585641beba81778d323",
+        "tree": "eebb1af20f99ccdc1427cf20f35d2220a77b7a6b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T14:11:46.831149Z",
+        "duration_s": 149.3,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ad64a613-1443-44c1-a078-edfa760db912/eebb1af20f99-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692",
+        "tree": "3f94eaf771baf220ccb2715baed0d2be2f44642b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T14:37:47.270373Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ad64a613-1443-44c1-a078-edfa760db912/3f94eaf771ba-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test test-agent-scheduler",
+        "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692",
+        "tree": "3f94eaf771baf220ccb2715baed0d2be2f44642b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T15:05:07.457564Z",
+        "duration_s": 144.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/ad64a613-1443-44c1-a078-edfa760db912/3f94eaf771ba-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Verdict: changes. One defect against owner requirement (2), plus the document mismatch it causes. The rest checks out.\n\nD1 (defect): an older Sequencer.js loaded after a newer one makes every failed run lose its reason, and the scheduler does not fall back. Evidence: observe_property() sets failure_present on any define or update of SEQUENCE_FAILURE (indigo_agent_scheduler.c:2935-2940). Only a delete clears it (3037/3041). The Scripting Agent never deletes it, because an older library deletes only LOOP_*. Instead agent_enumerate_properties re-defines every cached script property on each enumerate (indigo_agent_scripting.c:1274-1276). The old library never updates the property, failure_message is cleared at task start (1258) and again at Busy (2929), and so at Busy->Alert (2933) finish_message is \"\" even for a failed step such as 'There is no CCD_GAIN on Imager Agent'. That is worse than the fallback the owner asked for (\"when the loaded Sequencer.js is an older version that does not define the property, the scheduler falls back\"). This is also the usual order, not a corner case: process_library() loads the scheduler's embedded (newer) library whenever no sequencer is present (1917-1933), and SCHEDULER.md:285 itself treats \"one loaded by a client\" as a real source of older libraries. The fallback as implemented works only when an old library was loaded and the new one never was.\nSuggested fix, small and deterministic: start() already publishes SEQUENCE_FAILURE (update_failure(\"\")) immediately before its Busy SEQUENCE_STATE update, on the same FIFO queue. In observe_property: set a flag on every SEQUENCE_FAILURE update. At the not-Busy->Busy edge, latch failure_live = flag. Clear the flag on every SEQUENCE_STATE update. At Busy->Alert, use failure_message only when failure_live, otherwise sequence_message. Then a stale, never-updated property falls back exactly like a missing one. Add a scheduler case that simulates the stale old library, for example by replacing indigo_sequencer.update_failure with a no-op so the property stays defined but is never updated. Expect a failed step to report its message and a hand abort to report the last progress message.\n\nD2 (documents, follows from D1): the documents disagree on what an older library does. SCHEDULER.md:753 says that after old-after-new, \"failed runs then have no reason until the Scripting Agent is restarted\". INDIGO_SCHEDULER_GUIDE.md (results table row 'failed', troubleshooting rows at about 928-929) says an older library gives the last message, and it attributes \"A failed run in the history has no reason\" only to an abort by hand. In the old-after-new case that sends users looking for an abort that never happened. With D1 fixed, the guide becomes correct and the SCHEDULER.md limitation sentence should be removed. Minor wording point, same pass: PROPERTIES.md:725 and Sequencer.md (the table row and the 'Alert = failed or aborted' line) say MESSAGE is empty \"after an abort\". A meridian-flip failure under abort_on_failure() goes through abort(message): it sends 'Sequence aborted' and leaves MESSAGE non-empty, which is intended and is stated in Sequencer.md:168. Say \"after an abort by AGENT_ABORT_PROCESS\".\n\nVerified as correct:\n- Sequencer.js lifecycle. Defined on enumerate with this.failure_message. Cleared by start() before Busy and by SEQUENCE_RESET. Hand and internal abort() set \"\" before Alert. failure() under abort sets the reason before Alert. continue, ignore_failure and focus_ignore_failure leave it empty. Recover with a point clears recovery_failure. Recover without a point publishes the reason that started the skip before Alert; a later flip failure during the skip replaces it. Sequence end Ok leaves \"\". A reload that keeps a running sequencer keeps its object and value; a fresh load starts with \"\".\n- flip_failed -> abort(message): what clients see is unchanged (same messages, states and order). The only addition is the SEQUENCE_FAILURE update before Alert, and with no sequence running nothing is published.\n- Ordering: indigo_update_*_property and indigo_send_message all go through indigo_execute_handler_with_data(agent_device, ...), one FIFO, so the failure update reaches clients before the Alert update. Updates to an uncached (deleted) property are dropped (update_text_property only updates agent_cached_property), so the scheduler fallback test removes the property in a realistic way.\n- Scheduler. All accesses are under observed->mutex. The token and baselines prevent stale results from estimates, hooks or sequences started by hand. The STOP_FAILURE, preempt, abort and delete paths and the fixed reason strings are unchanged.\n- Sequencer.js.dat decodes byte-identical to library/Sequencer.js (91786 bytes) and equals the Makefile.inc hexdump rule output. The trailing ', ' with no newline is intrinsic to the rule, and master's .dat has the same.\n- indigo_agent_mcp_help.h: generate_help.py --check passes on HEAD and on a master snapshot, so the regeneration comes only from the changed Sequencer.md and mcp/agents/sequencer.md. The server copy resource/Sequencer.js.data is generated at build time and gitignored. No other checked-in copy exists. script.html and indigo.js read only SEQUENCE_STATE.\n- Tests are deterministic and use forked per-case isolation. The hand-abort replacement is correct.\n- Versions: Scheduler 0x0300000C->0x0300000D. The Scripting 0x03000011->0x03000012 bump matches precedent bfa5651b3 and 29cc71dac, which also bumped it for Sequencer.js-only changes and updated MIGRATION_STATUS counts.\n- MIGRATION_STATUS: the new counts 67 and 76 equal the suite case counts, the Comment column is untouched and earlier scheduler commits did the same. Harmless and in convention.\n- No README, .factory2, Xcode, generator or off-limits file changed. git diff --check is clean apart from the .dat.\n\nRan: make -C indigo_test test-agent-scripting-sequencer (67/67 passed) and make -C indigo_test test-agent-scheduler (76/76 passed). No D1 reproduction was run; D1 is derived from the code paths cited.",
+        "reviewer": "human/owner",
+        "commit": "f376607ff57e8c15eb7f8585641beba81778d323",
+        "tree": "eebb1af20f99ccdc1427cf20f35d2220a77b7a6b",
+        "at": "2026-11-15T14:27:24.513450Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 verdict: pass. No defects. Under the owner's later decision (reason only from SEQUENCE_FAILURE.MESSAGE, no fallback, no older-library handling), round-1 D1 is resolved by removing the fallback, and D2 is fixed.\n\nChecked:\n(1) Scheduler code is minimal and correct.\n- The only observed field is failure_message. It is copied from SEQUENCE_FAILURE.MESSAGE under observed->mutex, cleared in start_task() (1254) and at the not-Busy->Busy edge (2924), and used only at Busy->Alert (2928).\n- Sequencer.js publishes on one FIFO handler queue, so no update from an earlier sequence can arrive after the new Busy edge.\n- Estimates do not start a sequence. Hooks take the task path. A hand-started sequence is excluded by the run baselines.\n- agent_send_message, sequence_message and failure_present are gone, and the client template's send_message slot is NULL as on the parent of 776f039c. grep finds no other use and no stale comment.\n- agent_delete_property, STOP_FAILURE, preempt, abort, delete paths and the fixed reason strings are unchanged versus master.\n(2) Sequencer.js, its sequencer test, indigo_agent_scripting.c and Sequencer.js.dat are byte-unchanged since f376607ff, and the .dat still decodes identical to Sequencer.js.\n(3) Tests.\n- failed_sequence_step_reports_its_reason and hand_aborted_sequence_has_no_reason exercise the property path. library_without_failure and the scripting_messages buffer are fully removed, with nothing left unused.\n- The new wait for SEQUENCE_STEP_STATE item '0' Busy is deterministic. The case runs in a fresh fork, and start() redefines the light property with Idle items before execute_next marks step 0 Busy, so the Busy value cannot be stale. Even an early abort would end Alert with an empty reason.\n(4) Documents agree with the code and with each other: SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md, PROPERTIES.md, Sequencer.md and mcp/agents/sequencer.md. The only remaining older-library sentence is the intended estimate() one (SCHEDULER.md:285). The 'after an abort by AGENT_ABORT_PROCESS' wording is in place.\n(5) .gitattributes and Xcode.\n- .gitattributes is the single line '*.dat -whitespace'. git check-attr shows whitespace unset for the only two tracked .dat files. git diff --check master...HEAD is clean.\n- The pbxproj adds one PBXFileReference and one root-group child next to .editorconfig, with no build phase. The new ID 5996615A22CF55E800330652 occurs exactly twice. plutil -lint reports OK.\n(6) generate_help.py --check reports the bundle current (18 documents).\n(7) No README, .factory2, generator or off-limits files changed. MIGRATION_STATUS counts 75 and 67 match the suite case counts, with the Comment column untouched.\n\nThe repeat_interval_and_retry_delay flake is credible as unrelated. It asserts a wall-clock 55-80 s gap for 60 s repeat/retry intervals, and the diff touches none of that logic.\n\nRan: make -C indigo_test test-agent-scheduler on the revised tree, 'Scheduler Agent: 75 run, 75 passed, 0 failed' (including repeat_interval_and_retry_delay). The sequencer suite was not rerun because its inputs are unchanged since my round-1 run (67/67).",
+        "reviewer": "human/owner",
+        "commit": "3ff4cf33d235563f6c9a813876a812e9dbd63692",
+        "tree": "3f94eaf771baf220ccb2715baed0d2be2f44642b",
+        "at": "2026-11-15T15:10:10.141122Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T13:38:07.633205Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-15: use a new read-only text property defined by Sequencer.js on the Scripting Agent next to the other SEQUENCE_* properties, proposed name SEQUENCE_FAILURE with one item MESSAGE (not an item on SEQUENCE_STATE, which is a number property, and not an item on SEQUENCE_NAME). failure() sets MESSAGE to the reason of the failed step; start() and abort() clear it. Requirements: (1) the reason is published before the SEQUENCE_STATE update that leaves Busy for Alert, so a client that sees the end already has the reason (the Scripting Agent's handler queue is FIFO); decide and state what recover-on-failure and continue-on-failure do with it; (2) the Scheduler Agent reads the reason from this property, so a failed step keeps its reason and a sequence aborted by hand has none; when the loaded Sequencer.js is an older version that does not define the property, the scheduler falls back to today's behaviour (last Scripting Agent message while Busy), as it does for a library without estimate(); (3) check the other readers of the sequencer properties (indigo_server/resource/indigo.js and script.html, indigo_docs/mcp/agents/sequencer.md, the sequencer and scheduler integration tests) and regenerate every Sequencer.js.dat copy; (4) document the property in Sequencer.md and PROPERTIES.md, update INDIGO_SCHEDULER_GUIDE.md and SCHEDULER.md where they describe the limitation, and replace the scheduler test that pins the hand-abort reason; (5) increment the versions of the drivers whose behaviour changes.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T13:57:13.577473Z",
+        "actor": "human/owner",
+        "text": "Reproduction before the fix (tests written first, run on the unfixed Sequencer.js and Scheduler Agent in the ticket worktree): make -C indigo_test test-agent-scripting-sequencer -> 'Sequencer.js: 55/67 passed'; the 12 failures are exactly the new SEQUENCE_FAILURE assertions (property undefined: library inventory, schema, reload, abort/continue/recovery policies, recovery without point, start/abort/reset clearing, flip failure recovers/continues/aborts, flip failure keeps failed state). make -C indigo_test test-agent-scheduler -> 'Scheduler Agent: 76 run, 74 passed, 2 failed': hand_aborted_sequence_has_no_reason got 'Task 'Hand abort' failed: Suspended for 30s' (the defect), library_without_failure_uses_the_last_message failed because SEQUENCE_FAILURE is not defined by the unfixed library. failed_sequence_step_reports_its_reason passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T14:12:21.310489Z",
+        "actor": "human/owner",
+        "text": "Result after the fix (tree eebb1af2, commit f376607f): flow check --command 'make -C indigo_test test-agent-scripting-sequencer' passed, 'Sequencer.js: 67/67 passed (including cleanup)'; flow check --command 'make -C indigo_test test-agent-scheduler' passed, 'Scheduler Agent: 76 run, 76 passed, 0 failed' (failed_sequence_step_reports_its_reason, hand_aborted_sequence_has_no_reason and library_without_failure_uses_the_last_message pass). One intermediate sequencer run failed 66/67 only because the test expected a wrong label of the solver filter stand-in ('Filter' instead of 'Solver filter'); the expectation was corrected. Sequencer.js.dat regenerated with the agent_scheduler Makefile.inc hexdump rule, decoded bytes equal Sequencer.js (91786 bytes). Plain flow check selects only 'whitespace' and fails: git diff --check reports trailing whitespace on line 1 of indigo_drivers/agent_scheduler/Sequencer.js.dat, which is intrinsic to the hexdump rule output ('0x%02x, ' ends with a space; boot.js.dat has the same). The generated file was left as the rule produces it; closing needs an owner decision (for example a .gitattributes '*.dat -whitespace' entry or a check exclusion).",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T14:15:11.849581Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-15: the whitespace check failure on the regenerated indigo_drivers/agent_scheduler/Sequencer.js.dat (the hexdump rule ends its single line with a space) is resolved by a new root .gitattributes with '*.dat -whitespace'; the generated file stays exactly as the rule produces it.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T14:30:33.525753Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-15, replaces the fallback requirement of the earlier note: do not complicate it and do not assume that different versions of the sequencer are loaded. The Scheduler Agent takes the failure reason only from SEQUENCE_FAILURE.MESSAGE. No fallback to the last Scripting Agent message, no detection of an older library, no 'live property' tracking; the message callback and state added for the last-message behaviour are removed, with the tests and document statements about an older library.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T15:05:30.241253Z",
+        "actor": "human/owner",
+        "text": "Review round 1 (verdict changes) and owner decisions. D1 reproduction: a scheduler case that left SEQUENCE_FAILURE defined but never updated (indigo_sequencer.update_failure replaced by a no-op after a failed hand sequence) failed on candidate f376607f: 'Task 'Broken step' failed' with an empty reason instead of the fallback reason. Per the owner's later decision (no fallback, no older-library handling) that case was not kept: the scheduler now takes the reason only from SEQUENCE_FAILURE.MESSAGE (stored, cleared at task start and at the transition to Busy, used at Busy->Alert); agent_send_message, its client-template slot (back to NULL), sequence_message and the fallback delete handling were removed, as were library_without_failure_uses_the_last_message and the test's scripting_messages buffer; hand_aborted_sequence_has_no_reason now waits for SEQUENCE_STEP_STATE step 0 Busy before aborting. D2: older-library/fallback statements removed from SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md; 'after an abort by AGENT_ABORT_PROCESS' in PROPERTIES.md, Sequencer.md and mcp/agents/sequencer.md; indigo_agent_mcp_help.h regenerated, generate_help.py --check current. Root .gitattributes '*.dat -whitespace' added and referenced in indigo.xcodeproj next to .editorconfig (file reference and root group only). MIGRATION_STATUS counts: agent_scheduler 75, agent_scripting 67. Final tree 3f94eaf7: plain flow check passed (whitespace); flow check --command 'make -C indigo_test test-agent-scripting-sequencer' passed, 'Sequencer.js: 67/67 passed (including cleanup)'; flow check --command 'make -C indigo_test test-agent-scheduler' first recorded 'Scheduler Agent: 75 run, 74 passed, 1 failed' - only the timing case repeat_interval_and_retry_delay (paced restart outside 55-80 s, case took 197 s at load average 4.3; unrelated to this change, it passed in the unrecorded run on the same tree) - and the repeated recorded run on the same tree passed, 'Scheduler Agent: 75 run, 75 passed, 0 failed'.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "bb0b9687d3ed150bad76e67a00043317659cb53e",
+      "tree": "3f94eaf771baf220ccb2715baed0d2be2f44642b",
+      "base": "master",
+      "at": "2026-11-15T18:01:40.220551Z"
+    }
+  }
+}

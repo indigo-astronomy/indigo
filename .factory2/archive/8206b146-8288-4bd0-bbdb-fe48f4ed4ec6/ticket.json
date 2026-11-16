@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "ticket_id": "8206b146-8288-4bd0-bbdb-fe48f4ed4ec6",
+  "revision": 13,
+  "title": "WeMacro Bluetooth FOCUSER_STEPS stays BUSY after a disconnect during a move",
+  "description": "In indigo_mac_drivers/focuser_wemacro_bt/indigo_focuser_wemacro_bt.m the didDisconnectPeripheral callback (reached on Bluetooth link loss and on a CONNECTION disconnect) does not end a FOCUSER_STEPS move that is in INDIGO_BUSY_STATE. FOCUSER_STEPS is completed only by a 0xf5/0xf6 notification from the rail, which can no longer arrive, so the property stays BUSY across the disconnect and reconnect. The FOCUSER_STEPS change handler starts a move only when the state is not BUSY, so every later move request is silently ignored until FOCUSER_ABORT_MOTION sets ALERT. Expected: a disconnect while FOCUSER_STEPS is BUSY ends the move with INDIGO_ALERT_STATE (as was done for X_RAIL_EXECUTE in ticket a2513f61-8af8-4ff2-a950-7bf0658d19a0 and as the portable sibling indigo_drivers/focuser_wemacro does), and a move requested after reconnect is accepted. Add hardware-free regression coverage in indigo_test/unit/test_focuser_wemacro_bt.py and increment DRIVER_VERSION. Found by the reviewer of ticket a2513f61 as a pre-existing, out-of-scope issue; not measured on the physical rail.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-15T13:05:06.699873Z",
+  "status": "closed",
+  "branch": "ticket/8206b146-8288-4bd0-bbdb-fe48f4ed4ec6",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "9495b88b-45e0-4eb2-99f5-3b3cb625ae05",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "cancelled",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "15131e77-30f6-483d-a960-8e081dcdfa0d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "cancelled",
+          "started_at": "2026-11-15T13:34:49.398724Z",
+          "last_activity_at": "2026-11-15T13:42:27.383811Z",
+          "ended_at": "2026-11-15T13:42:27.383811Z",
+          "outcome": {
+            "summary": "Not a defect: indigo_focuser_change_property already resets FOCUSER_STEPS to OK and deletes it on disconnect, so it does not stay BUSY across a reconnect. Owner decided to discard the implemented ALERT notification.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 457985.087,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T13:34:49.398724Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/8206b146-8288-4bd0-bbdb-fe48f4ed4ec6"
+        },
+        {
+          "at": "2026-11-15T13:42:27.383811Z",
+          "status": "cancelled",
+          "actor": "human/owner",
+          "reason": "Not a defect: indigo_focuser_change_property already resets FOCUSER_STEPS to OK and deletes it on disconnect, so it does not stay BUSY across a reconnect. Owner decided to discard the implemented ALERT notification."
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 457985.087,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "c9798628-1b2e-4221-8d06-76648e8f2a18",
+      "event": "ticket/created",
+      "at": "2026-11-15T13:05:06.700487Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "b8ae8c81-9f9a-4d2f-a947-a85a266795fb",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T13:31:15.112290Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "99dab939-5a81-4564-8bb0-45f2bb8fe580",
+      "event": "task/progress",
+      "at": "2026-11-15T13:34:49.399247Z",
+      "actor": "human/owner",
+      "task_id": "9495b88b-45e0-4eb2-99f5-3b3cb625ae05",
+      "text": "Implementation started on branch ticket/8206b146-8288-4bd0-bbdb-fe48f4ed4ec6"
+    },
+    {
+      "event_id": "244cb403-764f-4143-99cf-63cca5bdf546",
+      "event": "ticket/started",
+      "at": "2026-11-15T13:34:49.400813Z",
+      "actor": "human/owner",
+      "branch": "ticket/8206b146-8288-4bd0-bbdb-fe48f4ed4ec6",
+      "base": "master"
+    },
+    {
+      "event_id": "1fef0130-41e3-4929-8234-5cddcf7640fa",
+      "event": "task/progress",
+      "at": "2026-11-15T13:35:20.245304Z",
+      "actor": "human/owner",
+      "task_id": "9495b88b-45e0-4eb2-99f5-3b3cb625ae05",
+      "text": "Implementer launched; reading driver and test",
+      "attempt_id": "15131e77-30f6-483d-a960-8e081dcdfa0d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "07803030-2a90-4c56-a983-cdc15059f755",
+      "event": "ticket/note",
+      "at": "2026-11-15T13:35:59.685552Z",
+      "actor": "human/owner",
+      "text": "Reproduced: new FOCUSER_STEPS assertions in test_focuser_wemacro_bt.py fail on the unmodified didDisconnectPeripheral (state stays BUSY, no update). After fix: test passes (3 tests OK). Fix publishes ALERT update before the base indigo_focuser_change_property call; note the base class itself resets FOCUSER_STEPS to OK on disconnect (indigo_focuser_driver.c:184) after that. Not measured on the physical rail.",
+      "tokens": null
+    },
+    {
+      "event_id": "841bfdb9-6022-4d8e-8719-33b464ac6f1f",
+      "event": "task/progress",
+      "at": "2026-11-15T13:35:59.972909Z",
+      "actor": "human/owner",
+      "task_id": "9495b88b-45e0-4eb2-99f5-3b3cb625ae05",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "997059d3-df8a-420c-b519-a37959315d42",
+      "event": "task/progress",
+      "at": "2026-11-15T13:35:59.996808Z",
+      "actor": "human/owner",
+      "task_id": "9495b88b-45e0-4eb2-99f5-3b3cb625ae05",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b65ed7d7-a60b-487e-a374-c43e0c56f6ae",
+      "event": "task/progress",
+      "at": "2026-11-15T13:35:59.998987Z",
+      "actor": "human/owner",
+      "task_id": "9495b88b-45e0-4eb2-99f5-3b3cb625ae05",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "8c57b604-68c8-483d-b168-08ebb3cbd338",
+      "event": "task/progress",
+      "at": "2026-11-15T13:38:20.760843Z",
+      "actor": "human/owner",
+      "task_id": "9495b88b-45e0-4eb2-99f5-3b3cb625ae05",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "64154ac1-a346-4c1d-844b-251a8620037f",
+      "event": "check/passed",
+      "at": "2026-11-15T13:38:20.763841Z",
+      "actor": "human/owner",
+      "commit": "dde9db6ba2af0aaf460fae0529c6332f61acdd01",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "10c776fa-13cb-47d3-805a-9a2d5e60e636",
+      "event": "question/asked",
+      "at": "2026-11-15T13:38:47.705003Z",
+      "actor": "human/owner",
+      "text": "The ticket's premise is wrong: indigo_focuser_change_property (indigo_libs/indigo_focuser_driver.c:184), called at the end of didDisconnectPeripheral, already sets FOCUSER_STEPS to OK and deletes it on disconnect, so it does not stay BUSY across a reconnect. The implemented change only publishes ALERT for a BUSY FOCUSER_STEPS just before the property is deleted (plus a test and DRIVER_VERSION 0x02000007). Owner decision: close the ticket unresolved as not a defect and discard the change, or keep the change as a client-visible ALERT notification and continue to review?"
+    },
+    {
+      "event_id": "3f0595bf-bdfe-4bbc-91d4-107f3785da0b",
+      "event": "question/answered",
+      "at": "2026-11-15T13:42:27.280409Z",
+      "actor": "human/owner",
+      "text": "Owner: close the ticket as unresolved (not a defect) and discard the change."
+    },
+    {
+      "event_id": "4ea4b351-577f-4589-95e7-86ab4ccee8f3",
+      "event": "ticket/closed",
+      "at": "2026-11-15T13:42:27.383995Z",
+      "actor": "human/owner",
+      "reason": "Not a defect: indigo_focuser_change_property already resets FOCUSER_STEPS to OK and deletes it on disconnect, so it does not stay BUSY across a reconnect. Owner decided to discard the implemented ALERT notification.",
+      "resolution": "unresolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-15T13:42:27.383970Z",
+    "reason": "Not a defect: indigo_focuser_change_property already resets FOCUSER_STEPS to OK and deletes it on disconnect, so it does not stay BUSY across a reconnect. Owner decided to discard the implemented ALERT notification.",
+    "resolution": "unresolved",
+    "mode": "flow",
+    "verification": "not_claimed"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dde9db6ba2af0aaf460fae0529c6332f61acdd01",
+        "tree": "868e807a4ca5d583be5c268f9a62ffe58f7926be",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:35:59.995972Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/8206b146-8288-4bd0-bbdb-fe48f4ed4ec6/868e807a4ca5-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "dde9db6ba2af0aaf460fae0529c6332f61acdd01",
+        "tree": "868e807a4ca5d583be5c268f9a62ffe58f7926be",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T13:38:20.759130Z",
+        "duration_s": 140.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/8206b146-8288-4bd0-bbdb-fe48f4ed4ec6/868e807a4ca5-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T13:35:59.683536Z",
+        "actor": "human/owner",
+        "text": "Reproduced: new FOCUSER_STEPS assertions in test_focuser_wemacro_bt.py fail on the unmodified didDisconnectPeripheral (state stays BUSY, no update). After fix: test passes (3 tests OK). Fix publishes ALERT update before the base indigo_focuser_change_property call; note the base class itself resets FOCUSER_STEPS to OK on disconnect (indigo_focuser_driver.c:184) after that. Not measured on the physical rail.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "The ticket's premise is wrong: indigo_focuser_change_property (indigo_libs/indigo_focuser_driver.c:184), called at the end of didDisconnectPeripheral, already sets FOCUSER_STEPS to OK and deletes it on disconnect, so it does not stay BUSY across a reconnect. The implemented change only publishes ALERT for a BUSY FOCUSER_STEPS just before the property is deleted (plus a test and DRIVER_VERSION 0x02000007). Owner decision: close the ticket unresolved as not a defect and discard the change, or keep the change as a client-visible ALERT notification and continue to review?",
+        "at": "2026-11-15T13:38:47.703052Z",
+        "actor": "human/owner",
+        "answer": "Owner: close the ticket as unresolved (not a defect) and discard the change.",
+        "answered_at": "2026-11-15T13:42:27.278631Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": []
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T13:05:06.699873Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T13:31:15.112021Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 457985.087,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 1
+    }
+  },
+  "journal": {
+    "entries": 16,
+    "sha256": "209e4d32fd2fc06497192b78ac948ec6945fc1145b31adf47d0ff346f8d90539"
+  }
+}

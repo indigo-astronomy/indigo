@@ -542,6 +542,137 @@ static void device_acl_requires_device_or_nonzero_master_token(void) {
 	}
 }
 
+// A remote-server adapter whose output goes to a file records exactly what would be sent to that server.
+static indigo_device *attach_remote_server(char *name, const char *path) {
+	indigo_uni_handle *handle = indigo_uni_create_file(path, INDIGO_LOG_NONE);
+	if (handle == NULL) {
+		return NULL;
+	}
+	indigo_device *adapter = indigo_xml_client_adapter(name, "", handle, handle);
+	adapter->version = INDIGO_VERSION_CURRENT;
+	adapter->is_remote = true;
+	if (indigo_attach_device(adapter) != INDIGO_OK) {
+		indigo_release_xml_client_adapter(adapter);
+		indigo_uni_close(&handle);
+		return NULL;
+	}
+	return adapter;
+}
+
+static void detach_remote_server(indigo_device *adapter, const char *path, char *output, size_t size) {
+	*output = 0;
+	ASSERT_TRUE(adapter != NULL);
+	indigo_uni_handle *handle = ((indigo_adapter_context *)adapter->device_context)->output;
+	indigo_detach_device(adapter);
+	indigo_release_xml_client_adapter(adapter);
+	indigo_uni_close(&handle);
+	FILE *file = fopen(path, "rb");
+	ASSERT_TRUE(file != NULL);
+	size_t bytes = fread(output, 1, size - 1, file);
+	output[bytes] = 0;
+	fclose(file);
+	remove(path);
+}
+
+static void assert_sent(const char *server, const char *output, const char *expected, bool sent) {
+	if ((strstr(output, expected) != NULL) != sent) {
+		fprintf(stderr, "Expected %s '%s' in output sent to remote server '@ %s':\n%s\n", sent ? "to find" : "not to find", expected, server, output);
+	}
+	ASSERT_TRUE((strstr(output, expected) != NULL) == sent);
+}
+
+static void local_request_not_forwarded_without_host_suffix(void) {
+	const char *path = "build/unit/protocol_security_remote.tmp";
+	char output[4096];
+	indigo_device *adapter = attach_remote_server("Remote", path);
+	indigo_set_master_token(0x5678);
+	indigo_add_device_token("Security", 0x1234);
+	changes = 0;
+	indigo_change_switch_property_1(NULL, "Security", "S", "ON", true);
+	indigo_remove_device_token("Security");
+	indigo_change_switch_property_1(NULL, "Security", "S", "ON", true);
+	indigo_set_master_token(0);
+	detach_remote_server(adapter, path, output, sizeof(output));
+	ASSERT_EQ_INT(2, changes);
+	assert_sent("Remote", output, "device='Security'", false);
+}
+
+// The local session device is also named "Server", like the server device of every remote server. Without host suffixes a request for
+// "Server" still goes to the remote servers, together with the token stamped for it locally (here the master token).
+static void server_request_forwarded_without_host_suffix(void) {
+	const char *path = "build/unit/protocol_security_remote.tmp";
+	char output[4096];
+	indigo_device *adapter = attach_remote_server("Remote", path);
+	indigo_set_master_token(0x5678);
+	indigo_change_switch_property_1(NULL, "Server", "S", "ON", true);
+	indigo_set_master_token(0);
+	detach_remote_server(adapter, path, output, sizeof(output));
+	assert_sent("Remote", output, "<newSwitchVector device='Server' name='S' token='5678'>", true);
+}
+
+static void unknown_request_forwarded_without_host_suffix(void) {
+	const char *path = "build/unit/protocol_security_remote.tmp";
+	char output[4096];
+	indigo_device *adapter = attach_remote_server("Remote", path);
+	indigo_set_master_token(0x5678);
+	changes = 0;
+	indigo_change_switch_property_1(NULL, "RemoteOnly", "S", "ON", true);
+	indigo_set_master_token(0);
+	detach_remote_server(adapter, path, output, sizeof(output));
+	ASSERT_EQ_INT(0, changes);
+	assert_sent("Remote", output, "<newSwitchVector device='RemoteOnly' name='S' token='5678'>", true);
+}
+
+static void remote_request_forwarded_only_to_its_server(void) {
+	char *servers[][2] = { { "host", "host:7625" }, { "indigo", "indigosky" } };
+	const char *paths[2] = { "build/unit/protocol_security_remote_0.tmp", "build/unit/protocol_security_remote_1.tmp" };
+	indigo_use_host_suffix = true;
+	for (size_t i = 0; i < ARRAY_SIZE(servers); i++) {
+		for (int target = 0; target < 2; target++) {
+			char device_name[INDIGO_NAME_SIZE], outputs[2][4096];
+			indigo_device *adapters[2];
+			snprintf(device_name, sizeof(device_name), "X @ %s", servers[i][target]);
+			for (int server = 0; server < 2; server++) {
+				adapters[server] = attach_remote_server(servers[i][server], paths[server]);
+			}
+			indigo_add_device_token(device_name, 0x4321);
+			indigo_change_switch_property_1(NULL, device_name, "S", "ON", true);
+			indigo_remove_device_token(device_name);
+			for (int server = 0; server < 2; server++) {
+				detach_remote_server(adapters[server], paths[server], outputs[server], sizeof(outputs[server]));
+			}
+			assert_sent(servers[i][target], outputs[target], "<newSwitchVector device='X' name='S' token='4321'>", true);
+			assert_sent(servers[i][1 - target], outputs[1 - target], "name='S'", false);
+		}
+	}
+	indigo_use_host_suffix = false;
+}
+
+static void network_client_token_relayed_to_remote_server(void) {
+	const char *path = "build/unit/protocol_security_remote.tmp";
+	const char *request = "<newSwitchVector device='X @ Remote' name='S' token='9abc'><oneSwitch name='ON'>On</oneSwitch></newSwitchVector>";
+	char output[4096];
+	FILE *file = tmpfile();
+	ASSERT_TRUE(file != NULL);
+	indigo_use_host_suffix = true;
+	indigo_set_master_token(0x5678);
+	indigo_device *remote = attach_remote_server("Remote", path);
+	fputs(request, file);
+	fflush(file);
+	rewind(file);
+	indigo_uni_handle *input = indigo_uni_create_file_handle(dup(fileno(file)), INDIGO_LOG_NONE);
+	indigo_client *client = indigo_xml_device_adapter(input, input);
+	client->is_remote = true;
+	indigo_xml_parse(NULL, client);
+	indigo_release_xml_device_adapter(client);
+	indigo_uni_close(&input);
+	fclose(file);
+	detach_remote_server(remote, path, output, sizeof(output));
+	indigo_set_master_token(0);
+	indigo_use_host_suffix = false;
+	assert_sent("Remote", output, "<newSwitchVector device='X' name='S' token='9abc'>", true);
+}
+
 int main(void) {
 	indigo_test_use_private_home();
 	indigo_autoenumerate = false;
@@ -552,6 +683,11 @@ int main(void) {
 	indigo_attach_client(&observer);
 	const indigo_test_case tests[] = {
 		{ "device ACL requires device or nonzero master token", device_acl_requires_device_or_nonzero_master_token },
+		{ "local request not forwarded without host suffix", local_request_not_forwarded_without_host_suffix },
+		{ "server request forwarded without host suffix", server_request_forwarded_without_host_suffix },
+		{ "unknown request forwarded without host suffix", unknown_request_forwarded_without_host_suffix },
+		{ "remote request forwarded only to its server", remote_request_forwarded_only_to_its_server },
+		{ "network client token relayed to remote server", network_client_token_relayed_to_remote_server },
 		{ "XML upload staging one shot", xml_upload_staging_is_one_shot },
 		{ "request item limits", request_item_limits },
 		{ "request text budgets and reset", request_text_budgets_and_reset },
