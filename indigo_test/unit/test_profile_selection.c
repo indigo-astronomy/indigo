@@ -149,6 +149,49 @@ static void physical_profile_names_remain_editable_and_persisted(void) {
 	ASSERT_TRUE(profile_visibility_contract(INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_AUX, "Synthetic Physical Profiles", false));
 }
 
+#define CONFIG_PATH_ITERATIONS 200000
+
+static int config_path_mismatches;
+
+static void *config_path_worker(void *context) {
+	bool own = context != NULL;
+	int mismatches = 0;
+	for (int i = 0; i < CONFIG_PATH_ITERATIONS; i++) {
+		if (own) {
+			if (!test_config_file("Config Path Own", 0, ".config")) {
+				mismatches++;
+			}
+		} else {
+			if (test_config_file("Config Path Missing", 0, ".config")) {
+				mismatches++;
+			}
+			indigo_uni_handle *handle = indigo_open_config_file("Config Path Missing", 0, false, ".config");
+			if (handle != NULL) {
+				indigo_uni_close(&handle);
+				mismatches++;
+			}
+		}
+	}
+	__sync_fetch_and_add(&config_path_mismatches, mismatches);
+	return NULL;
+}
+
+static void config_paths_are_not_shared_between_threads(void) {
+	char path[512];
+	indigo_uni_handle *handle = indigo_open_config_file("Config Path Own", 0, true, ".config");
+	ASSERT_TRUE(handle != NULL);
+	indigo_uni_close(&handle);
+	config_path_mismatches = 0;
+	pthread_t threads[2];
+	ASSERT_TRUE(pthread_create(threads, NULL, config_path_worker, (void *)1) == 0);
+	ASSERT_TRUE(pthread_create(threads + 1, NULL, config_path_worker, NULL) == 0);
+	pthread_join(threads[0], NULL);
+	pthread_join(threads[1], NULL);
+	make_config_file_name("Config Path Own", 0, ".config", path, sizeof(path));
+	remove(path);
+	ASSERT_EQ_INT(0, config_path_mismatches);
+}
+
 int main(void) {
 	if (!indigo_test_use_private_home()) {
 		return 1;
@@ -157,7 +200,8 @@ int main(void) {
 		{ "selection_tracks_saved_profile", selection_tracks_saved_profile },
 		{ "agent profile names are private", agent_profile_names_are_private },
 		{ "mixed agent profile names are private", mixed_agent_interface_profile_names_are_private },
-		{ "physical profile names remain editable", physical_profile_names_remain_editable_and_persisted }
+		{ "physical profile names remain editable", physical_profile_names_remain_editable_and_persisted },
+		{ "config paths are not shared between threads", config_paths_are_not_shared_between_threads }
 	};
 	int result = indigo_run_tests("Profile selection", tests, sizeof(tests) / sizeof(*tests));
 	indigo_test_remove_private_home();

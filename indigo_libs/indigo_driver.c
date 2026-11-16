@@ -448,7 +448,7 @@ static bool make_config_file_name(char *device_name, int profile, const char *su
 }
 
 bool test_config_file(char *device_name, int profile, char *suffix) {
-	static char path[512];
+	char path[512];
 	if (make_config_file_name(device_name, profile, suffix, path, sizeof(path))) {
 		return indigo_uni_is_readable(path);
 	}
@@ -456,7 +456,7 @@ bool test_config_file(char *device_name, int profile, char *suffix) {
 }
 
 indigo_uni_handle *indigo_open_config_file(char *device_name, int profile, bool create, const char *suffix) {
-	static char path[512];
+	char path[512];
 	if (make_config_file_name(device_name, profile, suffix, path, sizeof(path))) {
 		indigo_uni_handle *handle = create ? indigo_uni_create_file(path, INDIGO_LOG_TRACE) : indigo_uni_open_file(path, INDIGO_LOG_TRACE);
 		if (handle == NULL) {
@@ -925,7 +925,7 @@ indigo_result indigo_remove_properties(indigo_device *device) {
 				break;
 			}
 	}
-	static char path[512];
+	char path[512];
 	if (make_config_file_name(device->name, profile, ".config", path, sizeof(path))) {
 		if (indigo_uni_remove(path)) {
 			if (DEVICE_CONTEXT) {
