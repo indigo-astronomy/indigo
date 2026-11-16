@@ -194,6 +194,7 @@ static void test_rejected_headers(void) {
 	assert_rejected("// @task\n" BODY, "line 1: @task");
 	assert_rejected("// @task 12345678901234567890123456789012345678901\n" BODY, "line 1: @task");
 	assert_rejected("// @task A\x01\n" BODY, "line 1: @task");
+	assert_rejected("// @task A|B\n" BODY, "line 1: @task");
 }
 
 static void test_constraints_require_target(void) {

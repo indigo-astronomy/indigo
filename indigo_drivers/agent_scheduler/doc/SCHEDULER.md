@@ -171,7 +171,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 
 | Key | Syntax | Meaning | Default |
 |---|---|---|---|
-| `@task` | `name` | Display name, 1–40 bytes, no control characters, unique among stored and urgent tasks, compared case-insensitively | required |
+| `@task` | `name` | Display name, 1–40 bytes, no control characters and no `\|`, unique among stored and urgent tasks, compared case-insensitively | required |
 | `@priority` | `urgent` \| `high` \| `normal` \| `low` [`level`] | Priority class and level 0–100 within the class. The level is ignored for `urgent` | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal) and Dec in degrees (`±dd:mm:ss` or decimal) | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
@@ -348,7 +348,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_TASK_<n>` | text | `TASK` | One stored task, group "Tasks", label equal to the task name. Clients download a task by reading it and edit it by writing it |
 | `AGENT_SCHEDULER_DELETE_TASK` | text | `NAME` | Delete a stored or urgent task. A running task is aborted first, as with `ABORT` |
 | `AGENT_SCHEDULER_URGENT_TASK` | text | `TASK` | Submit a task as urgent, regardless of its `@priority` |
-| `AGENT_SCHEDULER_TASK_STATE` | light | one per task | Idle = QUEUED, WAITING, RETRY, REPEAT or DISABLED; Busy = RUNNING; Ok = DONE; Alert = FAILED or EXPIRED. A task with a script error is Alert, and otherwise a task named as a hook is Idle, also while the hook runs. The label shows the name, state, completed runs and retries left; urgent tasks are marked as urgent |
+| `AGENT_SCHEDULER_TASK_STATE` | light | one per task | Idle = QUEUED, WAITING, RETRY, REPEAT or DISABLED; Busy = RUNNING; Ok = DONE; Alert = FAILED or EXPIRED. A task with a script error is Alert, and otherwise a task named as a hook is Idle, also while the hook runs. The label has six columns joined by ` \| `: name, state, priority, runs, retries and duration, see [Label format](../../../indigo_docs/INDIGO_SCHEDULER_GUIDE.md#label-format) |
 | `AGENT_SCHEDULER_TASK_NAME` | text | `NAME` | Target of `AGENT_SCHEDULER_TASK_COMMAND` |
 | `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | The first five apply to the task named in `AGENT_SCHEDULER_TASK_NAME`; `RESET_ALL` and `DELETE_ALL` apply to all tasks, see [Commands for all tasks](#commands-for-all-tasks). List order breaks score ties |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Scheduler control, see [Scheduler control](#scheduler-control) |
@@ -383,7 +383,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 
 `AGENT_SCHEDULER_TASK_NAME` and `AGENT_SCHEDULER_TASK_COMMAND` form a two-step command, which is a common INDIGO idiom. Two clients that issue commands at the same moment can interfere. If both properties are changed in one client action, the command applies to the name sent with it.
 
-**Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit without splitting a UTF-8 character. These properties are defined and updated without a message; a full failure reason reaches the client in the agent's own message, such as `Task '<name>' failed: <reason>`. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
+**Labels and list properties.** INDIGO item labels are limited to 511 bytes, and clients show them in narrow lists. Task names are therefore limited to 40 bytes. The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are cut to fit without splitting a UTF-8 character; only the last column, the reason, is cut. These properties are defined and updated without a message; a full failure reason reaches the client in the agent's own message, such as `Task '<name>' failed: <reason>`. The item names are internal identifiers (`TASK_<n>`, `PLAN_<n>`, `RUN_<n>`), not task names.
 
 Changing the number of items of a list property requires deleting and defining it again, which clients see as the list being rebuilt. INDIGO cannot change an item label with an update either. The agent therefore redefines `AGENT_SCHEDULER_TASK_STATE` and `AGENT_SCHEDULER_PLAN` only when their items or labels change, and updates them in place when only the lights change. `AGENT_SCHEDULER_HISTORY` is redefined whenever it changes.
 
@@ -513,7 +513,7 @@ The grid and the task tables are rebuilt when the site coordinates change and ev
 
 The `STARTUP`, `SHUTDOWN` and `IDLE` hooks name stored tasks.
 
-- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK` or `IDLE HOOK`.
+- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night. The task list shows it with the state `HOOK` and a priority such as `hook startup`, `hook shutdown` or `hook idle`.
 - A task named as a hook is never selected as an ordinary task and does not count when deciding that all tasks have finished.
 - Hook runs appear in the run history, marked as hooks.
 - A hook that fails is reported by a message. A failed `STARTUP` hook stops the scheduler with Alert; a failed `SHUTDOWN` hook still stops it, with Alert.
@@ -637,9 +637,9 @@ The simulation works on a copy of the runtime status and never changes the real 
 
 **Items.** Each planned run is one item, in expected run order:
 
-- The label shows the expected UTC start and end, the task name and its priority, for example `20:15–23:15  M31 LRGB (normal 50)`. A task that repeats appears once per planned run, with the run number.
+- The label has six columns joined by ` | `: when (`YYYY-MM-DD HH:MM-HH:MM`, UTC), name, run, priority, state and reason, for example `2026-11-12 20:15-23:15 | M31 LRGB | run 1/1 | normal 50 | PLANNED | -`. A task that repeats appears once per planned run, with the run number. A night hook has `-` as the run and `hook night start` or `hook night end` as the priority.
 - The light is Busy for the running task and Idle for future runs.
-- Tasks that cannot run before the end of the night follow the planned runs as Alert items, with the reason, for example `M42 — target below the altitude limit`, `NGC 7000 — disabled`, `M45 — script error` or `M33 — no time left tonight`, the last for a task that could run but finds no room after the planned runs. DONE, FAILED and EXPIRED tasks are not listed.
+- Tasks that cannot run before the end of the night follow the planned runs as Alert items with `-` as the time, the state `NOT TONIGHT` and the reason, for example `- | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit`, with the reason `disabled`, `script error` or `no time left tonight`, the last for a task that could run but finds no room after the planned runs. DONE, FAILED and EXPIRED tasks are not listed.
 
 **Updates.** The plan is recomputed:
 
@@ -677,14 +677,16 @@ The Busy light is used for interrupted runs, so that they stand out from both su
 
 A run that does not stop within `STOP_TIMEOUT` keeps the result of what caused the stop: `preempted`, `aborted` or `failed`. The reason of a task run preempted or aborted by `ABORT` is then `did not stop in time`; a deleted task keeps `deleted` and a failed run its failure reason.
 
-The item label shows:
+The item label has six columns joined by ` | `, `-` for an empty one:
 
-- the UTC start and end times;
-- the task name, with the run number and a hook or urgent mark where it applies;
-- the result;
-- for a failure, the reason: for a sequence that ended Alert, `SEQUENCE_FAILURE.MESSAGE` of the Scripting Agent, which is the failure message of the step when a step failed and empty when the sequence was aborted by hand outside the scheduler, see [Running a task](#running-a-task); the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
+- the UTC start and end times, `YYYY-MM-DD HH:MM-HH:MM`;
+- the task name;
+- the run number, `run <n>`;
+- the kind, `task`, `urgent` or `hook`;
+- the result in capitals: `SUCCEEDED`, `FAILED`, `PREEMPTED` or `ABORTED`;
+- the reason, the last column; for a failure it is, for a sequence that ended Alert, `SEQUENCE_FAILURE.MESSAGE` of the Scripting Agent, which is the failure message of the step when a step failed and empty when the sequence was aborted by hand outside the scheduler, see [Running a task](#running-a-task); the script error message, for a failed start `the sequence was not started` or `no result from the Scripting Agent`, or `the Scripting Agent or Sequencer.js disappeared` when either disappears during the run.
 
-For example: `2026-11-12 20:15–21:02  M31 LRGB #1  preempted: by SN 2026abc`.
+For example: `2026-11-12 20:15-21:02 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc`.
 
 Entries are newest first. Expiry is not a run, so an expired task gets no entry; its state remains visible in `AGENT_SCHEDULER_TASK_STATE`.
 

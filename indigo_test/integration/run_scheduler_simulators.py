@@ -144,7 +144,7 @@ class Client:
 		if p:
 			for i in p["items"]:
 				label = i.get("label", "")
-				if label.startswith(name + " "):
+				if label.startswith(name + " | "):
 					return label
 		return ""
 
@@ -208,7 +208,7 @@ class Run:
 		self.client.change_switch(AGENT, "AGENT_SCHEDULER_CONTROL", {item: True})
 
 	def wait_task(self, name, state, timeout):
-		self.client.wait(lambda: (" - " + state) in self.client.task_label(name), timeout, "task " + name + " in " + state + " (label '" + self.client.task_label(name) + "')")
+		self.client.wait(lambda: (" | " + state + " | ") in self.client.task_label(name), timeout, "task " + name + " in " + state + " (label '" + self.client.task_label(name) + "')")
 
 	def frames(self, prefix):
 		return [p for p in self.images.glob(prefix + "*") if p.is_file() and p.stat().st_size > 2880]
@@ -451,7 +451,7 @@ def main():
 				body = devices_prologue() + "sequence.park();\nsequence.start();\n"
 				run.upload("// @task Park\n\n" + body)
 				client.change_text(AGENT, "AGENT_SCHEDULER_HOOKS", {"STARTUP": "", "SHUTDOWN": "Park", "IDLE": ""})
-				client.wait(lambda: "SHUTDOWN HOOK" in client.task_label("Park"), 10, "hook configured")
+				client.wait(lambda: "hook shutdown" in client.task_label("Park"), 10, "hook configured")
 				client.wait(lambda: client.state(AGENT, "AGENT_SCHEDULER_STATE") == "Busy", 10, "scheduler running")
 				run.control("STOP")
 				client.wait(lambda: client.message_count("Hook 'Park' completed") == 1, 120, "shutdown hook")
@@ -475,7 +475,7 @@ def main():
 				run.upload("// @task Later\n// @window " + later + " ..\n\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(1);\nsequence.start();\n")
 				run.upload("// @task Evening\n\n" + devices_prologue() + "sequence.enable_cooler(20);\nsequence.unpark();\nsequence.start();\n")
 				run.upload("// @task Morning\n\n" + devices_prologue() + "sequence.disable_cooler();\nsequence.park();\nsequence.start();\n")
-				client.wait(lambda: "NIGHT START HOOK" in client.task_label("Evening") and "NIGHT END HOOK" in client.task_label("Morning"), 10, "night hooks configured")
+				client.wait(lambda: "hook night start" in client.task_label("Evening") and "hook night end" in client.task_label("Morning"), 10, "night hooks configured")
 				# a night without work does not prepare the devices
 				client.wait(lambda: client.message_count("No task can run tonight, the night start hook is skipped") == 1, 30, "night without work")
 				assert client.message_count("Starting hook 'Evening'") == 0, "the night start hook ran without work"
@@ -573,7 +573,8 @@ def main():
 				run.upload("// @task West field\n// @priority high\n// @target " + west + "\n\n" + capture_prologue(images) + "sequence.capture_batch(\"west_XXX\", 1, 0.2);\nsequence.start();\n", False)
 				run.control("START")
 				run.wait_task("West field", "DONE", 180)
-				run.wait_task("East field", "DONE, run 2/2", 240)
+				run.wait_task("East field", "DONE", 240)
+				assert "run 2/2" in client.task_label("East field"), "the repeated task did not run twice: " + client.task_label("East field")
 				assert client.message_index("Starting task 'West field'") < client.message_index("Starting task 'East field'"), "the normal task ran before the high one"
 				west_frames = run.frames("west_")
 				east_frames = run.frames("east_")

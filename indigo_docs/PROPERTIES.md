@@ -691,7 +691,7 @@ Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 | AGENT_SCHEDULER_TASK_%d | text | no | TASK | Dynamic property created for each stored task, labelled with the task name; writing it edits the task. |
 | AGENT_SCHEDULER_DELETE_TASK | text | no | NAME | Delete a stored or urgent task, aborting it when it runs. |
 | AGENT_SCHEDULER_URGENT_TASK | text | no | TASK | Submit a task as urgent; it is not stored. |
-| AGENT_SCHEDULER_TASK_STATE | light | yes | TASK_%d | One item per task in list order; the label shows the name, state, runs and retries left. |
+| AGENT_SCHEDULER_TASK_STATE | light | yes | TASK_%d | One item per task in list order; the label has six columns joined by ` \| `: name, state, priority, runs, retries and duration. |
 | AGENT_SCHEDULER_TASK_NAME | text | no | NAME | Task addressed by `AGENT_SCHEDULER_TASK_COMMAND`. |
 | AGENT_SCHEDULER_TASK_COMMAND | switch | no | RESET, ENABLE, DISABLE, MOVE_UP, MOVE_DOWN, RESET_ALL, DELETE_ALL | Command for the named task; RESET_ALL and DELETE_ALL (scheduler stopped, hook tasks kept) apply to all tasks and carry `warn_on_set` hints. |
 | AGENT_SCHEDULER_CONTROL | switch | no | START, STOP, ABORT | Start scheduling, stop after the running task, or abort it. |
@@ -702,8 +702,8 @@ Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 | AGENT_SCHEDULER_DATA_DIR | text | no | BASE | Parent folder of the task folders; empty (default) is the Imager Agent `CCD_LOCAL_MODE.DIR` captured when the scheduler starts. |
 | AGENT_SCHEDULER_HOOKS | text | no | STARTUP, SHUTDOWN, IDLE, NIGHT_START, NIGHT_END, RESUME | Names of stored tasks run when the scheduler starts, when it stops, once per idle period, when a night with work starts, when that night ends, and before a task that starts after the idle or night end hook. |
 | AGENT_SCHEDULER_NIGHT | switch | no | CIVIL, NAUTICAL, ASTRONOMICAL | Sun altitude that bounds the scheduler's night for the night hooks: below −6°, −12° (default) or −18°. Tasks keep their own `@twilight`. |
-| AGENT_SCHEDULER_PLAN | light | yes | PLAN_%d | Forecast of the runs until the end of the night, assuming every run takes its duration and succeeds; each label shows the UTC start and end, the task, the run number of a repeated task and its priority, or the night hook. Busy = running, Idle = planned; Alert items follow for tasks without a run tonight, labelled with the reason, and for a day without night when night hooks are set. |
-| AGENT_SCHEDULER_HISTORY | light | yes | RUN_%u | Finished runs, newest first, at most 200; Ok = succeeded, Alert = failed, Busy = preempted or aborted. |
+| AGENT_SCHEDULER_PLAN | light | yes | PLAN_%d | Forecast of the runs until the end of the night, assuming every run takes its duration and succeeds; each label has six columns joined by ` \| `: when (UTC start and end), name, run, priority, state and reason. Busy = running, Idle = planned; Alert items with the state `NOT TONIGHT` follow for tasks without a run tonight, with the reason, and for a day without night when night hooks are set. |
+| AGENT_SCHEDULER_HISTORY | light | yes | RUN_%u | Finished runs, newest first, at most 200; each label has six columns joined by ` \| `: when, name, run, kind, result and reason; Ok = succeeded, Alert = failed, Busy = preempted or aborted. |
 | AGENT_SCHEDULER_CLEAR_HISTORY | switch | no | CLEAR | Remove all history entries. |
 | AGENT_SCHEDULER_RESTORE_HISTORY | text | no | ENTRIES | Used only to restore the history from the configuration; published empty, client changes are rejected. |
 

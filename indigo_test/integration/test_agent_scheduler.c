@@ -217,7 +217,7 @@ static bool task_label(const char *name, char *label, indigo_property_state *sta
 		snprintf(prefix, sizeof(prefix), "%s", name);
 		for (int i = 0; i < property->count; i++) {
 			const char *item_label = property->items[i].label;
-			if (!strncmp(item_label, prefix, strlen(prefix)) && (item_label[strlen(prefix)] == ' ')) {
+			if (!strncmp(item_label, prefix, strlen(prefix)) && !strncmp(item_label + strlen(prefix), " | ", 3)) {
 				strcpy(label, item_label);
 				if (state) {
 					*state = property->items[i].light.value;
@@ -426,14 +426,21 @@ static bool set_night_limit(const char *item) {
 	return wait_property_state(AGENT_SCHEDULER_NIGHT_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
 }
 
-// label of the newest history entry of a task, empty if none
+// label of the index-th history entry of a task given as "Name" or "Name #run", empty if none
 static bool history_label(const char *task, int index, char *label) {
+	char needle[INDIGO_VALUE_SIZE];
+	const char *run = strstr(task, " #");
+	if (run) {
+		snprintf(needle, sizeof(needle), " | %.*s | run %s | ", (int)(run - task), task, run + 2);
+	} else {
+		snprintf(needle, sizeof(needle), " | %s | ", task);
+	}
 	indigo_property *property = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
 	bool found = false;
 	int seen = 0;
 	if (property) {
 		for (int i = 0; i < property->count; i++) {
-			if (strstr(property->items[i].label, task) && seen++ == index) {
+			if (strstr(property->items[i].label, needle) && seen++ == index) {
 				strcpy(label, property->items[i].label);
 				found = true;
 				break;
@@ -690,15 +697,57 @@ static bool wait_plan_first(const char *text, indigo_property_state state, doubl
 	return false;
 }
 
-// start and end of a planned run in minutes of the day, the label begins with "HH:MM\u2013HH:MM"
+// start and end of a planned run in minutes of the day, the label begins with "YYYY-MM-DD HH:MM-HH:MM"
 static bool plan_times(const char *label, int *start, int *end) {
-	int start_hour, start_minute, end_hour, end_minute;
-	if (sscanf(label, "%d:%d", &start_hour, &start_minute) != 2 || strncmp(label + 5, "\xe2\x80\x93", 3) || sscanf(label + 8, "%d:%d", &end_hour, &end_minute) != 2) {
+	int year, month, day, start_hour, start_minute, end_hour, end_minute;
+	if (sscanf(label, "%d-%d-%d %d:%d-%d:%d", &year, &month, &day, &start_hour, &start_minute, &end_hour, &end_minute) != 7) {
 		return false;
 	}
 	*start = start_hour * 60 + start_minute;
 	*end = end_hour * 60 + end_minute;
 	return true;
+}
+
+// splits a label into exactly 6 columns on " | ", the last column takes the rest; returns false if a column is missing or empty
+static bool split_label(const char *label, char columns[6][INDIGO_VALUE_SIZE]) {
+	const char *rest = label;
+	for (int i = 0; i < 6; i++) {
+		const char *end = i < 5 ? strstr(rest, " | ") : NULL;
+		size_t length = end ? (size_t)(end - rest) : strlen(rest);
+		if ((i < 5 && end == NULL) || length == 0) {
+			return false;
+		}
+		memcpy(columns[i], rest, length);
+		columns[i][length] = 0;
+		rest += length + (end ? 3 : 0);
+	}
+	return true;
+}
+
+// every label of a light property has 6 non-empty columns and no byte above 0x7f (the tested names and reasons are ASCII); the count of items is returned or -1
+static int check_columns(const char *property_name) {
+	indigo_property *property = snapshot(property_name);
+	if (property == NULL) {
+		return -1;
+	}
+	int result = property->count;
+	for (int i = 0; i < property->count; i++) {
+		char columns[6][INDIGO_VALUE_SIZE];
+		if (!split_label(property->items[i].label, columns)) {
+			fprintf(stderr, "label '%s' of %s has no 6 columns\n", property->items[i].label, property_name);
+			result = -1;
+			break;
+		}
+		for (const unsigned char *c = (const unsigned char *)property->items[i].label; *c; c++) {
+			if (*c >= 0x80) {
+				fprintf(stderr, "label '%s' of %s is not ASCII\n", property->items[i].label, property_name);
+				result = -1;
+				break;
+			}
+		}
+	}
+	indigo_release_property(property);
+	return result;
 }
 
 static int minutes_between(int from, int to) {
@@ -1268,7 +1317,7 @@ static void failed_sequence_step_reports_its_reason(void) {
 	ASSERT_TRUE(wait_message("Task 'Broken step' failed: There is no CCD_GAIN on Imager Agent", 1, 15));
 	ASSERT_TRUE(wait_message("All tasks finished", 1, 15));
 	char label[INDIGO_VALUE_SIZE];
-	ASSERT_TRUE(history_label("Broken step #1", 0, label) && strstr(label, "failed: There is no CCD_GAIN on Imager Agent"));
+	ASSERT_TRUE(history_label("Broken step #1", 0, label) && strstr(label, "| FAILED | There is no CCD_GAIN on Imager Agent"));
 }
 
 // starts the task and aborts its sequence by hand, outside the scheduler, once its first step, wait(30), runs; that step sends 'Suspended for 30s' in the same script call
@@ -1302,7 +1351,7 @@ static void hand_aborted_sequence_has_no_reason(void) {
 	ASSERT_EQ_INT(0, count_messages("Task 'Hand abort' failed:"));
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(history_label("Hand abort #1", 0, label));
-	ASSERT_TRUE(strlen(label) > 8 && !strcmp(label + strlen(label) - 8, "  failed"));
+	ASSERT_TRUE(strlen(label) > 13 && !strcmp(label + strlen(label) - 13, " | FAILED | -"));
 }
 
 static void hand_started_sequence_blocks_all_but_urgent(void) {
@@ -1383,9 +1432,9 @@ static void hooks_run_at_start_idle_and_stop(void) {
 	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
 	REQUIRE(upload(text));
 	REQUIRE(set_hooks("Prepare", "Close", "Park"));
-	ASSERT_TRUE(wait_task_state("Prepare", "STARTUP HOOK", 5));
-	ASSERT_TRUE(wait_task_state("Close", "SHUTDOWN HOOK", 5));
-	ASSERT_TRUE(wait_task_state("Park", "IDLE HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Prepare", "HOOK | hook startup", 5));
+	ASSERT_TRUE(wait_task_state("Close", "HOOK | hook shutdown", 5));
+	ASSERT_TRUE(wait_task_state("Park", "HOOK | hook idle", 5));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 15));
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
@@ -1465,12 +1514,13 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	REQUIRE(set_hooks("", "", "Park"));
 	REQUIRE(set_night_hooks("Evening", "Morning", ""));
 	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
-	ASSERT_TRUE(wait_task_state("Evening", "NIGHT START HOOK", 5));
-	ASSERT_TRUE(wait_task_state("Morning", "NIGHT END HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Evening", "HOOK | hook night start", 5));
+	ASSERT_TRUE(wait_task_state("Morning", "HOOK | hook night end", 5));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	// the plan shows both night hooks of the coming night
-	ASSERT_TRUE(wait_plan_contains("Evening (night start hook)", true, 15));
-	ASSERT_TRUE(wait_plan_contains("Morning (night end hook)", true, 5));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | ", true, 15));
+	ASSERT_TRUE(wait_plan_contains(" | Morning | - | hook night end | ", true, 5));
+	ASSERT_TRUE(check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME) > 0);
 	// before the night the idle hook puts the equipment away
 	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
 	wait_until(dusk - 2);
@@ -1480,8 +1530,8 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	ASSERT_TRUE(message_position("Hook 'Evening' completed") < message_position("Starting task 'Work'"));
 	// the night start hook ended the standby, so the idle hook runs again after the task
 	ASSERT_TRUE(wait_message("Hook 'Park' completed", 2, 15));
-	ASSERT_TRUE(wait_plan_contains("Evening (night start hook)", false, 10));
-	ASSERT_TRUE(wait_plan_contains("Morning (night end hook)", true, 5));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | ", false, 10));
+	ASSERT_TRUE(wait_plan_contains(" | Morning | - | hook night end | ", true, 5));
 	// the night ends in a few seconds at a new longitude
 	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 5, true));
 	ASSERT_TRUE(wait_message("Hook 'Morning' completed", 1, 30));
@@ -1493,7 +1543,7 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(history_label("Morning", 0, label));
-	ASSERT_TRUE(strstr(label, "Morning (hook) #1  succeeded") != NULL);
+	ASSERT_TRUE(strstr(label, "| Morning | run 1 | hook | SUCCEEDED | -") != NULL);
 }
 
 static void night_without_work_skips_the_hooks(void) {
@@ -1508,8 +1558,8 @@ static void night_without_work_skips_the_hooks(void) {
 	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("No task can run tonight, the night start hook is skipped", 1, 40));
-	ASSERT_TRUE(wait_plan_contains("(night start hook)", false, 5));
-	ASSERT_TRUE(wait_plan_contains("(night end hook)", false, 5));
+	ASSERT_TRUE(wait_plan_contains("hook night start", false, 5));
+	ASSERT_TRUE(wait_plan_contains("hook night end", false, 5));
 	indigo_usleep(2000000);
 	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
 	ASSERT_EQ_INT(1, count_messages("No task can run tonight"));
@@ -1572,7 +1622,7 @@ static void resume_hook_after_idle(void) {
 	REQUIRE(upload(text));
 	REQUIRE(set_hooks("", "", "Park"));
 	REQUIRE(set_night_hooks("", "", "Prepare"));
-	ASSERT_TRUE(wait_task_state("Prepare", "RESUME HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Prepare", "HOOK | hook resume", 5));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
 	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
@@ -1653,7 +1703,7 @@ static void shared_hook_task_runs_once(void) {
 	REQUIRE(set_hooks("Prepare", "", ""));
 	REQUIRE(set_night_hooks("Prepare", "", ""));
 	// listed by its first hook
-	ASSERT_TRUE(wait_task_state("Prepare", "STARTUP HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Prepare", "HOOK | hook startup", 5));
 	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
@@ -1781,7 +1831,7 @@ static void plan_lasts_until_a_late_night_end(void) {
 			int count = plan_items(labels, states, 16);
 			for (int j = 0; j < count && j < 16; j++) {
 				int s, e;
-				if (strstr(labels[j], "Morning (night end hook)") && plan_times(labels[j], &s, &e) && (minutes_between(expected, s) <= 1 || minutes_between(s, expected) <= 1)) {
+				if (strstr(labels[j], " | Morning | - | hook night end | ") && plan_times(labels[j], &s, &e) && (minutes_between(expected, s) <= 1 || minutes_between(s, expected) <= 1)) {
 					start = s;
 					end = e;
 				}
@@ -1855,7 +1905,15 @@ static void no_night_is_reported(void) {
 	set_site(northern_summer ? 85 : -85, 17.11);
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("The Sun does not go below the night limit within a day, the night hooks do not run", 1, 15));
-	ASSERT_TRUE(wait_plan_contains("No night at the night limit", true, 10));
+	ASSERT_TRUE(wait_plan_contains("| NOT TONIGHT | no night at the night limit", true, 10));
+	ASSERT_TRUE(check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME) > 0);
+	char notice[6][INDIGO_VALUE_SIZE];
+	indigo_property *plan = snapshot(AGENT_SCHEDULER_PLAN_PROPERTY_NAME);
+	REQUIRE(plan != NULL);
+	ASSERT_TRUE(split_label(plan->items[plan->count - 1].label, notice));
+	ASSERT_STREQ("NOT TONIGHT", notice[4]);
+	ASSERT_STREQ("-", notice[0]);
+	indigo_release_property(plan);
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
 	ASSERT_EQ_INT(0, count_messages("Starting hook 'Evening'"));
 }
@@ -2090,8 +2148,8 @@ static void reset_all_runs_finished_work_again(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
-	ASSERT_TRUE(wait_task_state("Twice", "DONE, run 2/2", 5));
-	ASSERT_TRUE(wait_task_state("Broken", "FAILED, retries left 0", 5));
+	ASSERT_TRUE(wait_task_state("Twice", "DONE | normal 50 | run 2/2", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "FAILED | low 50 | run 0/1 | retries left 0", 5));
 	ASSERT_TRUE(wait_task_state("Syntax", "SCRIPT ERROR", 5));
 	ASSERT_EQ_INT(1, count_messages("Task 'Syntax' has a script error"));
 	// the task name is not used, an unknown one does not matter
@@ -2099,8 +2157,8 @@ static void reset_all_runs_finished_work_again(void) {
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_RESET_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
 	ASSERT_STREQ("Tasks reset: 4", message);
 	// the run and retry counters are cleared, the script is checked again, a disabled task stays disabled
-	ASSERT_TRUE(wait_task_state("Twice", "QUEUED, run 0/2", 5));
-	ASSERT_TRUE(wait_task_state("Broken", "QUEUED, retries left 1", 5));
+	ASSERT_TRUE(wait_task_state("Twice", "QUEUED | normal 50 | run 0/2", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "QUEUED | low 50 | run 0/1 | retries left 1", 5));
 	ASSERT_TRUE(wait_message("Task 'Syntax' has a script error", 2, 15));
 	ASSERT_TRUE(wait_task_state("Syntax", "SCRIPT ERROR", 5));
 	ASSERT_TRUE(wait_task_state("Off", "DISABLED", 5));
@@ -2109,8 +2167,8 @@ static void reset_all_runs_finished_work_again(void) {
 	// a new start runs the finished work again
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("All tasks finished", 2, 30));
-	ASSERT_TRUE(wait_task_state("Twice", "DONE, run 2/2", 5));
-	ASSERT_TRUE(wait_task_state("Broken", "FAILED, retries left 0", 5));
+	ASSERT_TRUE(wait_task_state("Twice", "DONE | normal 50 | run 2/2", 5));
+	ASSERT_TRUE(wait_task_state("Broken", "FAILED | low 50 | run 0/1 | retries left 0", 5));
 	ASSERT_EQ_INT(4, count_messages("Starting task 'Twice'"));
 	ASSERT_EQ_INT(4, count_messages("Starting task 'Broken'"));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Syntax'"));
@@ -2125,7 +2183,7 @@ static void delete_all_waits_for_the_shutdown_hook(void) {
 	REQUIRE(upload("// @task Long\n" BODY_WAIT(3)));
 	// a hook names its task regardless of case
 	REQUIRE(set_hooks("", "park", ""));
-	ASSERT_TRUE(wait_task_state("Park", "SHUTDOWN HOOK", 5));
+	ASSERT_TRUE(wait_task_state("Park", "HOOK | hook shutdown", 5));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
 	// a stop waits for the task, then runs the shutdown hook; the scheduler is not stopped before both end
@@ -2515,7 +2573,7 @@ static void repeat_interval_and_retry_delay(void) {
 	REQUIRE(paced_start > 0 && patient_start > 0);
 	ASSERT_TRUE(paced_start - paced_end >= 55 && paced_start - paced_end <= 80);
 	ASSERT_TRUE(patient_start - patient_end >= 55 && patient_start - patient_end <= 80);
-	ASSERT_TRUE(wait_task_state("Paced", "DONE, run 2/2", 15));
+	ASSERT_TRUE(wait_task_state("Paced", "DONE | normal 50 | run 2/2", 15));
 	ASSERT_TRUE(wait_task_state("Patient", "FAILED", 15));
 }
 
@@ -2540,22 +2598,22 @@ static void history_records_runs(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
 	char label[INDIGO_VALUE_SIZE];
-	ASSERT_TRUE(history_label("Good #1", 0, label) && strstr(label, "succeeded"));
-	ASSERT_TRUE(history_label("Bad #1", 0, label) && strstr(label, "failed: Error: broken"));
-	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "preempted: by Rush"));
-	ASSERT_TRUE(history_label("Rush (urgent) #1", 0, label) && strstr(label, "succeeded"));
-	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "aborted"));
+	ASSERT_TRUE(history_label("Good #1", 0, label) && strstr(label, "| SUCCEEDED | -"));
+	ASSERT_TRUE(history_label("Bad #1", 0, label) && strstr(label, "| FAILED | Error: broken"));
+	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "| PREEMPTED | by Rush"));
+	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1 | urgent | SUCCEEDED | -"));
+	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "| ABORTED | -"));
 	ASSERT_EQ_INT(5, history_count());
 	// newest first
 	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
 	REQUIRE(history != NULL);
-	ASSERT_TRUE(strstr(history->items[0].label, "Victim") && strstr(history->items[0].label, "aborted"));
+	ASSERT_TRUE(strstr(history->items[0].label, "Victim") && strstr(history->items[0].label, "| ABORTED |"));
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, history->items[history->count - 2].light.value);
 	indigo_release_property(history);
 	stop_scheduler();
 	REQUIRE(start_scheduler());
 	ASSERT_EQ_INT(5, history_count());
-	ASSERT_TRUE(history_label("Rush (urgent) #1", 0, label) && strstr(label, "succeeded"));
+	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1 | urgent | SUCCEEDED | -"));
 	unsigned before = revision(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME);
 	indigo_change_switch_property_1(&observer, AGENT, AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_CLEAR_HISTORY_CLEAR_ITEM_NAME, true);
 	ASSERT_TRUE(wait_property_state(AGENT_SCHEDULER_CLEAR_HISTORY_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL));
@@ -2564,6 +2622,76 @@ static void history_records_runs(void) {
 	char message[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(change_text(AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Fake\t1\t0\t0\tsucceeded\t \t\n", INDIGO_ALERT_STATE, message));
 	ASSERT_EQ_INT(0, history_count());
+}
+
+static void labels_have_uniform_columns(void) {
+	site_at_evening();
+	REQUIRE(set_hooks("", "Park", ""));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Good\n// @repeat 2\n// @retry 1\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Bad\n// @priority low\n// @duration 1\nif (!scheduler_task.estimate) { throw new Error(\"a | b \" + new Array(700).join(\"x\")); }\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Off\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	REQUIRE(upload("// @task South\n// @target 06:00:00 -89:00:00\n// @duration 1\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_plan(5, "Good", 10));
+	// the task list
+	char label[INDIGO_VALUE_SIZE], columns[6][INDIGO_VALUE_SIZE];
+	ASSERT_EQ_INT(5, check_columns(AGENT_SCHEDULER_TASK_STATE_PROPERTY_NAME));
+	ASSERT_TRUE(task_label("Good", label, NULL) && split_label(label, columns));
+	ASSERT_STREQ("Good", columns[0]);
+	ASSERT_STREQ("QUEUED", columns[1]);
+	ASSERT_STREQ("normal 50", columns[2]);
+	ASSERT_STREQ("run 0/2", columns[3]);
+	ASSERT_STREQ("retries left 1", columns[4]);
+	ASSERT_TRUE(!strncmp(columns[5], "0h01 ", 5));
+	ASSERT_TRUE(task_label("Park", label, NULL) && split_label(label, columns));
+	ASSERT_STREQ("HOOK", columns[1]);
+	ASSERT_STREQ("hook shutdown", columns[2]);
+	ASSERT_STREQ("-", columns[3]);
+	ASSERT_STREQ("-", columns[4]);
+	ASSERT_STREQ("-", columns[5]);
+	ASSERT_TRUE(task_label("Off", label, NULL) && split_label(label, columns));
+	ASSERT_STREQ("DISABLED", columns[1]);
+	// the night plan: planned runs and tasks that do not run tonight
+	ASSERT_EQ_INT(5, check_columns(AGENT_SCHEDULER_PLAN_PROPERTY_NAME));
+	char labels[16][INDIGO_VALUE_SIZE];
+	indigo_property_state states[16];
+	REQUIRE(plan_items(labels, states, 16) == 5);
+	int start, end;
+	ASSERT_TRUE(split_label(labels[0], columns) && plan_times(columns[0], &start, &end));
+	ASSERT_EQ_INT(22, (int)strlen(columns[0]));
+	ASSERT_STREQ("Good", columns[1]);
+	ASSERT_STREQ("run 1/2", columns[2]);
+	ASSERT_STREQ("normal 50", columns[3]);
+	ASSERT_STREQ("PLANNED", columns[4]);
+	ASSERT_STREQ("-", columns[5]);
+	ASSERT_TRUE(split_label(labels[3], columns));
+	ASSERT_STREQ("-", columns[0]);
+	ASSERT_STREQ("Off", columns[1]);
+	ASSERT_STREQ("run 0/1", columns[2]);
+	ASSERT_STREQ("NOT TONIGHT", columns[4]);
+	ASSERT_STREQ("disabled", columns[5]);
+	ASSERT_TRUE(split_label(labels[4], columns));
+	ASSERT_STREQ("South", columns[1]);
+	ASSERT_STREQ("target below the horizon", columns[5]);
+	// the history: a long reason with a separator is cut in the last column only
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Good' completed", 2, 30));
+	for (int i = 0; i < 500 && history_count() < 3; i++) {
+		indigo_usleep(20000);
+	}
+	ASSERT_EQ_INT(3, history_count());
+	ASSERT_EQ_INT(history_count(), check_columns(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME));
+	ASSERT_TRUE(history_label("Good #2", 0, label) && split_label(label, columns));
+	ASSERT_STREQ("Good", columns[1]);
+	ASSERT_STREQ("run 2", columns[2]);
+	ASSERT_STREQ("task", columns[3]);
+	ASSERT_STREQ("SUCCEEDED", columns[4]);
+	ASSERT_STREQ("-", columns[5]);
+	ASSERT_TRUE(history_label("Bad #1", 0, label) && split_label(label, columns));
+	ASSERT_STREQ("FAILED", columns[4]);
+	ASSERT_TRUE(!strncmp(columns[5], "Error: a | b xxx", 16));
+	ASSERT_TRUE(strlen(label) < INDIGO_VALUE_SIZE);
 }
 
 static void duration_estimated_measured_and_set(void) {
@@ -2616,7 +2744,7 @@ static void plan_lists_the_night(void) {
 	char labels[16][INDIGO_VALUE_SIZE];
 	indigo_property_state states[16];
 	REQUIRE(plan_items(labels, states, 16) == 7);
-	const char *expected[] = { "  High (high 0)", "  Normal (normal 10)", "  Low (low 90)", "  Twice #1 (low 0)", "  Twice #2 (low 0)", "Off \xe2\x80\x94 disabled", "South \xe2\x80\x94 target below the horizon" };
+	const char *expected[] = { " | High | run 1/1 | high 0 | PLANNED | -", " | Normal | run 1/1 | normal 10 | PLANNED | -", " | Low | run 1/1 | low 90 | PLANNED | -", " | Twice | run 1/2 | low 0 | PLANNED | -", " | Twice | run 2/2 | low 0 | PLANNED | -", "- | Off | run 0/1 | normal 50 | NOT TONIGHT | disabled", "- | South | run 0/1 | normal 50 | NOT TONIGHT | target below the horizon" };
 	const int durations[] = { 20, 5, 10, 1, 1 };
 	for (int i = 0; i < 7; i++) {
 		ASSERT_TRUE(strstr(labels[i], expected[i]) != NULL);
@@ -2640,14 +2768,14 @@ static void plan_lists_the_night(void) {
 	}
 	// an upload and an urgent submission change the plan at once
 	REQUIRE(upload("// @task Top\n// @priority high 50\n// @duration 1\n" BODY_WAIT(1)));
-	ASSERT_TRUE(wait_plan(8, "  Top (high 50)", 5));
+	ASSERT_TRUE(wait_plan(8, " | Top | run 1/1 | high 50 | ", 5));
 	REQUIRE(urgent("// @task Rush\n// @priority low\n// @duration 1\n" BODY_WAIT(1)));
-	ASSERT_TRUE(wait_plan(9, "  Rush (urgent)", 5));
+	ASSERT_TRUE(wait_plan(9, " | Rush | run 1/1 | urgent | ", 5));
 	REQUIRE(command("Off", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
-	ASSERT_TRUE(wait_plan_item(9, 8, "South \xe2\x80\x94", 5));
+	ASSERT_TRUE(wait_plan_item(9, 8, "- | South | run 0/1 | normal 50 | NOT TONIGHT | ", 5));
 	REQUIRE(plan_items(labels, states, 16) == 9);
-	ASSERT_TRUE(strstr(labels[0], "  Rush (urgent)") != NULL);
-	ASSERT_TRUE(strstr(labels[3], "  Off (normal 50)") != NULL);
+	ASSERT_TRUE(strstr(labels[0], " | Rush | run 1/1 | urgent | ") != NULL);
+	ASSERT_TRUE(strstr(labels[3], " | Off | run 1/1 | normal 50 | ") != NULL);
 	for (int i = 0; i < 8; i++) {
 		ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[i]);
 	}
@@ -2659,7 +2787,7 @@ static void plan_follows_the_run(void) {
 	REQUIRE(upload("// @task Second\n// @duration 3\n" BODY_WAIT(30)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("First", "RUNNING", 15));
-	ASSERT_TRUE(wait_plan_first("  First (high 50)", INDIGO_BUSY_STATE, 5));
+	ASSERT_TRUE(wait_plan_first(" | First | run 1/1 | high 50 | RUNNING | ", INDIGO_BUSY_STATE, 5));
 	char labels[16][INDIGO_VALUE_SIZE];
 	indigo_property_state states[16];
 	REQUIRE(plan_items(labels, states, 16) == 2);
@@ -2672,13 +2800,13 @@ static void plan_follows_the_run(void) {
 	ASSERT_EQ_INT(first_end, second_start);
 	// the first task ends early, the done task leaves the plan and the next one runs
 	ASSERT_TRUE(wait_task_state("Second", "RUNNING", 15));
-	ASSERT_TRUE(wait_plan_first("  Second (normal 50)", INDIGO_BUSY_STATE, 5));
+	ASSERT_TRUE(wait_plan_first(" | Second | run 1/1 | normal 50 | ", INDIGO_BUSY_STATE, 5));
 	REQUIRE(plan_items(labels, states, 16) == 1);
 	ASSERT_EQ_INT(INDIGO_BUSY_STATE, states[0]);
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 15));
 	// the aborted task is marked RETRY and stays in the plan, no longer running
-	ASSERT_TRUE(wait_plan_first("  Second (normal 50)", INDIGO_IDLE_STATE, 5));
+	ASSERT_TRUE(wait_plan_first(" | Second | run 1/1 | normal 50 | PLANNED | ", INDIGO_IDLE_STATE, 5));
 }
 
 static void plan_gives_the_reasons(void) {
@@ -2687,13 +2815,13 @@ static void plan_gives_the_reasons(void) {
 	// a run may start before the end of the night and last beyond it, a second one then finds no time
 	REQUIRE(upload("// @task Endless\n// @priority high\n// @duration 1380\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Later\n// @duration 1380\n" BODY_WAIT(1)));
-	ASSERT_TRUE(wait_plan_item(3, 1, "Thrown \xe2\x80\x94 script error", 15));
+	ASSERT_TRUE(wait_plan_item(3, 1, "- | Thrown | run 0/1 | normal 50 | NOT TONIGHT | script error", 15));
 	char labels[16][INDIGO_VALUE_SIZE];
 	indigo_property_state states[16];
 	REQUIRE(plan_items(labels, states, 16) == 3);
-	ASSERT_TRUE(strstr(labels[0], "  Endless (high 50)") != NULL);
+	ASSERT_TRUE(strstr(labels[0], " | Endless | run 1/1 | high 50 | ") != NULL);
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, states[0]);
-	ASSERT_TRUE(strstr(labels[2], "Later \xe2\x80\x94 no time left tonight") != NULL);
+	ASSERT_TRUE(strstr(labels[2], "- | Later | run 0/1 | normal 50 | NOT TONIGHT | no time left tonight") != NULL);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[1]);
 	ASSERT_EQ_INT(INDIGO_ALERT_STATE, states[2]);
 }
@@ -2747,7 +2875,7 @@ static void urgent_insertion(bool fail) {
 	ASSERT_TRUE(wait_sequence_state(INDIGO_BUSY_STATE, 15));
 	// a task uploaded during the run waits for it even with a higher priority
 	REQUIRE(upload("// @task Queued\n// @priority normal 60\n// @duration 1\n" BODY_WAIT(2)));
-	const char *before[] = { "  Long (normal 50)", "  Queued (normal 60)" };
+	const char *before[] = { " | Long | run 1/1 | normal 50 | ", " | Queued | run 1/1 | normal 60 | " };
 	const indigo_property_state before_states[] = { INDIGO_BUSY_STATE, INDIGO_IDLE_STATE };
 	ASSERT_TRUE(wait_plan_exactly(2, before, before_states, 5));
 	REQUIRE(urgent("// @task Flash\n// @priority low\n// @duration 1\n" BODY_WAIT(10)));
@@ -2755,7 +2883,7 @@ static void urgent_insertion(bool fail) {
 	ASSERT_TRUE(wait_task_state("Flash", "RUNNING", 10));
 	ASSERT_TRUE(message_position("Starting task 'Flash'") > message_position("Task 'Long' preempted"));
 	// the urgent task runs first; a retried task is planned again after the waiting one of higher priority, a failed one leaves the plan
-	const char *during[] = { "  Flash (urgent)", "  Queued (normal 60)", "  Long (normal 50)" };
+	const char *during[] = { " | Flash | run 1/1 | urgent | ", " | Queued | run 1/1 | normal 60 | ", " | Long | run 1/1 | normal 50 | " };
 	const indigo_property_state during_states[] = { INDIGO_BUSY_STATE, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE };
 	ASSERT_TRUE(wait_plan_exactly(fail ? 2 : 3, during, during_states, 5));
 	// without a retry delay the retried task is queued again at once
@@ -2764,8 +2892,8 @@ static void urgent_insertion(bool fail) {
 	ASSERT_TRUE(wait_task_state("Long", "retries left 1", 5));
 	ASSERT_TRUE(wait_message("Task 'Flash' completed", 1, 20));
 	char label[INDIGO_VALUE_SIZE];
-	ASSERT_TRUE(history_label("Long #1", 0, label) && strstr(label, "preempted: by Flash"));
-	ASSERT_TRUE(history_label("Flash (urgent) #1", 0, label) && strstr(label, "succeeded"));
+	ASSERT_TRUE(history_label("Long #1", 0, label) && strstr(label, "| PREEMPTED | by Flash"));
+	ASSERT_TRUE(history_label("Flash #1", 0, label) && strstr(label, "| Flash | run 1 | urgent | SUCCEEDED | -"));
 	ASSERT_TRUE(wait_message("Task 'Queued' completed", 1, 20));
 	ASSERT_TRUE(message_position("Starting task 'Queued'") > message_position("Task 'Flash' completed"));
 	if (fail) {
@@ -2778,7 +2906,7 @@ static void urgent_insertion(bool fail) {
 		ASSERT_TRUE(wait_message("Starting task 'Long'", 2, 15));
 		ASSERT_TRUE(message_position_last("Starting task 'Long'") > message_position("Task 'Queued' completed"));
 		ASSERT_TRUE(wait_task_state("Long", "retries left 1", 5));
-		ASSERT_TRUE(wait_plan_first("  Long (normal 50)", INDIGO_BUSY_STATE, 5));
+		ASSERT_TRUE(wait_plan_first(" | Long | run 1/1 | normal 50 | ", INDIGO_BUSY_STATE, 5));
 	}
 	ASSERT_TRUE(wait_task_removed("Flash", 5));
 	if (!fail) {
@@ -3307,6 +3435,7 @@ static const indigo_test_case cases[] = {
 	{ "abort_runs_the_shutdown_hook", abort_runs_the_shutdown_hook },
 	{ "start_during_shutdown_hook_continues", start_during_shutdown_hook_continues },
 	{ "history_records_runs", history_records_runs },
+	{ "labels_have_uniform_columns", labels_have_uniform_columns },
 	{ "duration_estimated_measured_and_set", duration_estimated_measured_and_set },
 	{ "library_without_estimate_uses_the_default", library_without_estimate_uses_the_default },
 	{ "plan_lists_the_night", plan_lists_the_night },

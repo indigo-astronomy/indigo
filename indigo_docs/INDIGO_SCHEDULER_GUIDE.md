@@ -108,7 +108,7 @@ This walkthrough needs only the Scheduler and Scripting Agents. The test task wa
 
    An accepted upload ends with `[OK]`. A rejected one ends with `[ALERT]` and a message that names the problem, for example `Scheduler Agent: Task rejected: line 2: @bogus: unknown key`.
 
-   The task appears in the task list `AGENT_SCHEDULER_TASK_STATE` as `Test - QUEUED, 0h01 set`, and as its own property `AGENT_SCHEDULER_TASK_0`.
+   The task appears in the task list `AGENT_SCHEDULER_TASK_STATE` as `Test | QUEUED | normal 50 | run 0/1 | retries left 0 | 0h01 set`, and as its own property `AGENT_SCHEDULER_TASK_0`.
 
 3. Start the scheduler:
 
@@ -175,7 +175,7 @@ Before the body runs, the scheduler defines a `scheduler_task` object from the h
 
 | Key | Syntax | Meaning | Default |
 |---|---|---|---|
-| `@task` | `name` | Name of the task, 1–40 bytes, unique (not case-sensitive) | required |
+| `@task` | `name` | Name of the task, 1–40 bytes, without `\|`, unique (not case-sensitive) | required |
 | `@priority` | `urgent`, `high`, `normal` or `low`, optionally followed by a level 0–100 | Importance, see [Priorities](#priorities) | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal), Dec in degrees (`±dd:mm:ss` or decimal). A task with a target also needs the target above the horizon | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
@@ -588,7 +588,7 @@ The night only times the night hooks. Each task keeps its own `@twilight`; a tas
 
 **Failures.** A failed `NIGHT_START` or `RESUME` leaves the equipment half prepared, so the scheduler runs `SHUTDOWN` and stops with Alert. A failed `NIGHT_END` or `IDLE` is only reported.
 
-**No night.** Near the poles the Sun may stay above the limit, or below it, for days. With a night hook set, the scheduler tells you `The Sun does not go below the night limit within a day, the night hooks do not run` or `The Sun does not rise above the night limit, the night does not end`, and the night plan shows `No night at the night limit within a day`.
+**No night.** Near the poles the Sun may stay above the limit, or below it, for days. With a night hook set, the scheduler tells you `The Sun does not go below the night limit within a day, the night hooks do not run` or `The Sun does not rise above the night limit, the night does not end`, and the night plan shows the item `no night at the night limit within a day, the night hooks do not run`.
 
 **Example.** An observatory that cools the camera and opens the dome half an hour before nautical dusk, parks while no task can run, and closes at dawn. Save the evening preparation as `evening.task`:
 
@@ -711,15 +711,34 @@ indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_STATE.DONE;FAILED;URGENT_D
 indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_CURRENT.CURRENT;NEXT;NEXT_START;REASON"
 ```
 
+### Label format
+
+The labels of `AGENT_SCHEDULER_TASK_STATE`, `AGENT_SCHEDULER_PLAN` and `AGENT_SCHEDULER_HISTORY` are meant to be parsed by clients. Every label has exactly six columns, always in the same order, joined by ` | ` (space, pipe, space):
+
+- an empty column is `-`;
+- the separators, placeholders, fixed words and times are ASCII, and the times are UTC; names and reasons are UTF-8 text;
+- a time range is `YYYY-MM-DD HH:MM-HH:MM`, dated by its start;
+- state and result are fixed words in capitals;
+- the only free text, a reason, is the last column. It may contain ` | `, so split a label at the first five separators only. A label is at most 511 bytes; when it is longer, only the last column is cut;
+- task names cannot contain `|`: a task with such a name in its `@task` line has a header error.
+
+| List | Columns |
+|---|---|
+| task list | name, state, priority, runs, retries, duration |
+| night plan | when, name, run, priority, state, reason |
+| history | when, name, run, kind, result, reason |
+
 ### The task list
 
-`AGENT_SCHEDULER_TASK_STATE` has one light item per task, in list order. The label shows the task's name, state, completed runs of a repeated task, retries left and duration, for example:
+`AGENT_SCHEDULER_TASK_STATE` has one light item per task, in list order. The columns are the name, state, priority, completed runs, retries left and duration, for example:
 
 ```
-M31 LRGB - REPEAT, run 1/2, retries left 1, 1h52 estimated
-SN 2026abc (urgent) - RUNNING, 0h30 set
-Park - SHUTDOWN HOOK
+M31 LRGB | REPEAT | normal 60 | run 1/2 | retries left 1 | 1h52 estimated
+SN 2026abc | RUNNING | urgent | run 0/1 | retries left 0 | 0h30 set
+Park | HOOK | hook shutdown | - | - | -
 ```
+
+The priority is `urgent`, the class and level of the task such as `normal 60`, or for a task that serves as a hook `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`. The runs are `run <done>/<repeat>` and the retries `retries left <n>`, always shown. The duration is the hours and minutes followed by its source (`set`, `measured`, `estimated` or `default`). A hook has `-` for the runs, retries and duration.
 
 | State | Light | Meaning |
 |---|---|---|
@@ -733,45 +752,45 @@ Park - SHUTDOWN HOOK
 | EXPIRED | Alert | The end of its `@window` passed before it completed |
 | DISABLED | Idle | `@enabled no`, or disabled by command |
 | SCRIPT ERROR | Alert | The body has an error; fix it with an edit |
+| HOOK | Idle | The task is named in `AGENT_SCHEDULER_HOOKS`; its state is not tracked |
 
 ### The night plan
 
-`AGENT_SCHEDULER_PLAN` shows what the scheduler expects to do for the rest of the night, one item per planned run, in order:
+`AGENT_SCHEDULER_PLAN` shows what the scheduler expects to do for the rest of the night, one item per planned run, in order. The columns are when, name, run, priority, state and reason:
 
 ```
-20:14–20:44  SN 2026abc (urgent)
-20:44–22:36  M31 LRGB #1 (normal 60)
-23:36–01:28  M31 LRGB #2 (normal 60)
-01:28–03:28  NGC 7000 Ha (normal 40)
-05:10–05:12  Morning (night end hook)
-M42 — target below the altitude limit
-NGC 891 — disabled
+2026-11-20 20:14-20:44 | SN 2026abc | run 1/1 | urgent | PLANNED | -
+2026-11-20 20:44-22:36 | M31 LRGB | run 1/2 | normal 60 | PLANNED | -
+2026-11-20 23:36-01:28 | M31 LRGB | run 2/2 | normal 60 | PLANNED | -
+2026-11-21 05:10-05:12 | Morning | - | hook night end | PLANNED | -
+- | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit
+- | NGC 891 | run 0/1 | normal 50 | NOT TONIGHT | disabled
 ```
 
-- Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority. The night hooks appear at their expected times, marked as hooks.
-- The running task has a Busy light, planned runs an Idle light.
-- After the runs come the tasks that will not run tonight, with an Alert light and the reason. Typical reasons are a constraint that never holds tonight (see [Reasons](#reasons)), `disabled`, `script error`, or `no time left tonight` for a task that could run but finds no room after the others.
+- Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority. The night hooks appear at their expected times with `-` as the run and `hook night start` or `hook night end` as the priority.
+- The state is `RUNNING` (Busy light) for the running task and `PLANNED` (Idle light) for planned runs.
+- After the runs come the tasks that will not run tonight, with an Alert light, `-` as the time, the state `NOT TONIGHT` and the reason. Typical reasons are a constraint that never holds tonight (see [Reasons](#reasons)), `disabled`, `script error`, or `no time left tonight` for a task that could run but finds no room after the others. A day without night, with night hooks set, adds the item `- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run`.
 - During the day the plan shows the coming night. When the night of the night hooks ends after sunrise, the plan lasts until it ends. It is shown also while the scheduler is stopped, as the plan that `START` would follow.
 
 The plan is a forecast. It assumes that every run succeeds and takes its expected duration, and it does not show where an urgent task will interrupt a run. The scheduler recomputes it whenever something changes and at least every `IDLE_CHECK_INTERVAL`.
 
 ### The history
 
-`AGENT_SCHEDULER_HISTORY` lists the finished runs, newest first, up to 200:
+`AGENT_SCHEDULER_HISTORY` lists the finished runs, newest first, up to 200. The columns are when, name, run, kind (`task`, `urgent` or `hook`), result and reason:
 
 ```
-2026-11-21 01:28–03:31  NGC 7000 Ha #1  succeeded
-2026-11-20 21:10–21:40  SN 2026abc (urgent) #1  succeeded
-2026-11-20 20:44–21:10  M31 LRGB #1  preempted: by SN 2026abc
-2026-11-20 20:02–20:04  Evening (hook) #1  succeeded
+2026-11-21 01:28-03:31 | NGC 7000 Ha | run 1 | task | SUCCEEDED | -
+2026-11-20 21:10-21:40 | SN 2026abc | run 1 | urgent | SUCCEEDED | -
+2026-11-20 20:44-21:10 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc
+2026-11-20 20:02-20:04 | Evening | run 1 | hook | SUCCEEDED | -
 ```
 
 | Result | Light | Meaning |
 |---|---|---|
-| `succeeded` | Ok | The sequence ended Ok |
-| `failed` | Alert | The sequence ended Alert, or the task could not start. A start failure or a JavaScript error is followed by its reason. For a failed step the reason is the failure message of the step, for example `There is no CCD_GAIN on Imager Agent`, which `Sequencer.js` publishes in `SEQUENCE_FAILURE` for the failure that ended the sequence. A sequence aborted by hand, outside the scheduler, has no reason |
-| `preempted` | Busy | An urgent task interrupted the run. The reason names the urgent task, or says `did not stop in time` when the sequence did not stop within `STOP_TIMEOUT` |
-| `aborted` | Busy | `ABORT` or a delete of the running task. A deleted task has the reason `deleted`; when a task run aborted by `ABORT` does not stop within `STOP_TIMEOUT`, the reason says `did not stop in time` |
+| `SUCCEEDED` | Ok | The sequence ended Ok |
+| `FAILED` | Alert | The sequence ended Alert, or the task could not start. A start failure or a JavaScript error is followed by its reason. For a failed step the reason is the failure message of the step, for example `There is no CCD_GAIN on Imager Agent`, which `Sequencer.js` publishes in `SEQUENCE_FAILURE` for the failure that ended the sequence. A sequence aborted by hand, outside the scheduler, has no reason |
+| `PREEMPTED` | Busy | An urgent task interrupted the run. The reason names the urgent task, or says `did not stop in time` when the sequence did not stop within `STOP_TIMEOUT` |
+| `ABORTED` | Busy | `ABORT` or a delete of the running task. A deleted task has the reason `deleted`; when a task run aborted by `ABORT` does not stop within `STOP_TIMEOUT`, the reason says `did not stop in time` |
 
 The history survives restarts. To clear it, together with the urgent counters of `AGENT_SCHEDULER_STATE`:
 

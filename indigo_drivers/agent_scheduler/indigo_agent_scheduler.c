@@ -20,14 +20,13 @@
 // 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 // TODO: add weather safety checks, and a way to abort a task if the weather becomes unsafe
-// TODO: make night plan light labels more parsable
 // TODO: revise if we reallyneed NEXT_TASK item
 
 /** INDIGO Scheduler agent
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300000E
+#define DRIVER_VERSION 0x0300000F
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -190,6 +189,8 @@ typedef enum {
 } run_result;
 
 static const char *run_result_names[] = { "succeeded", "failed", "preempted", "aborted" };
+
+static const char *run_result_labels[] = { "SUCCEEDED", "FAILED", "PREEMPTED", "ABORTED" };
 
 typedef struct {
 	char task[SCHEDULER_TASK_NAME_SIZE];
@@ -497,6 +498,29 @@ static void cut_label(const char *text, char *label, size_t size) {
 	label[length] = 0;
 }
 
+// light labels of the task list, the night plan and the history: columns joined by " | ", an empty column is "-", the last column is the only one cut
+static void join_label(char *label, size_t size, int count, const char **columns) {
+	char text[INDIGO_VALUE_SIZE * 2];
+	size_t length = 0;
+	text[0] = 0;
+	for (int i = 0; i < count; i++) {
+		const char *column = columns[i] != NULL && *columns[i] ? columns[i] : "-";
+		length += snprintf(text + length, sizeof(text) - length, "%s%s", i > 0 ? " | " : "", column);
+		if (length >= sizeof(text)) {
+			break;
+		}
+	}
+	cut_label(text, label, size);
+}
+
+// "YYYY-MM-DD HH:MM-HH:MM" in UTC, dated by the start
+static void time_range(time_t start_time, time_t end_time, char *text, size_t size) {
+	struct tm start, end;
+	indigo_gmtime(&start_time, &start);
+	indigo_gmtime(&end_time, &end);
+	snprintf(text, size, "%04d-%02d-%02d %02d:%02d-%02d:%02d", start.tm_year + 1900, start.tm_mon + 1, start.tm_mday, start.tm_hour, start.tm_min, end.tm_hour, end.tm_min);
+}
+
 // JSON string literal, the result is allocated
 static char *json_string(const char *text) {
 	size_t length = strlen(text);
@@ -643,12 +667,11 @@ static indigo_property_state history_light(run_result result) {
 }
 
 static void history_label(history_entry *entry, char *label, size_t size) {
-	struct tm start, end;
-	indigo_gmtime(&entry->start, &start);
-	indigo_gmtime(&entry->end, &end);
-	char text[INDIGO_VALUE_SIZE * 2];
-	snprintf(text, sizeof(text), "%04d-%02d-%02d %02d:%02d\xe2\x80\x93%02d:%02d  %s%s #%d  %s%s%s", start.tm_year + 1900, start.tm_mon + 1, start.tm_mday, start.tm_hour, start.tm_min, end.tm_hour, end.tm_min, entry->task, entry->mark == 'H' ? " (hook)" : entry->mark == 'U' ? " (urgent)" : "", entry->run, run_result_names[entry->result], *entry->reason ? ": " : "", entry->reason);
-	cut_label(text, label, size);
+	char when[48], run[32];
+	time_range(entry->start, entry->end, when, sizeof(when));
+	snprintf(run, sizeof(run), "run %d", entry->run);
+	const char *columns[] = { when, entry->task, run, entry->mark == 'H' ? "hook" : entry->mark == 'U' ? "urgent" : "task", run_result_labels[entry->result], entry->reason };
+	join_label(label, size, 6, columns);
 }
 
 // the history is a list of finished runs, newest first; its length changes, so it is defined again
@@ -821,31 +844,33 @@ static void define_task_property(indigo_device *device, int slot) {
 	indigo_define_property(device, property, NULL);
 }
 
-static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
-	static const char *hook_names[] = { "", "STARTUP HOOK", "SHUTDOWN HOOK", "IDLE HOOK", "NIGHT START HOOK", "NIGHT END HOOK", "RESUME HOOK" };
+static const char *task_priority_text(indigo_device *device, scheduler_task *task, char *text, size_t size) {
+	static const char *hook_names[] = { "", "hook startup", "hook shutdown", "hook idle", "hook night start", "hook night end", "hook resume" };
 	run_kind kind = hook_kind(device, task);
-	const char *state = kind != RUN_TASK ? hook_names[kind] : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
-	char runs[64];
-	if (task->header.repeat > 1) {
-		snprintf(runs, sizeof(runs), ", run %d/%d", task->runs, task->header.repeat);
-	} else {
-		runs[0] = 0;
+	if (kind != RUN_TASK) {
+		return hook_names[kind];
 	}
-	char retries[64];
-	if (task->header.retry > 0) {
-		snprintf(retries, sizeof(retries), ", retries left %d", task->header.retry - task->retries_used);
-	} else {
-		retries[0] = 0;
+	if (is_urgent(task)) {
+		return "urgent";
 	}
-	char duration[64] = "";
+	snprintf(text, size, "%s %d", indigo_scheduler_priority_name(task->header.priority_class), task->header.level);
+	return text;
+}
+
+static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
+	run_kind kind = hook_kind(device, task);
+	const char *state = kind != RUN_TASK ? "HOOK" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
+	char priority[48], runs[32] = "", retries[32] = "", duration[48] = "";
+	const char *priority_text = task_priority_text(device, task, priority, sizeof(priority));
 	if (kind == RUN_TASK) {
 		const char *source;
+		snprintf(runs, sizeof(runs), "run %d/%d", task->runs, task->header.repeat);
+		snprintf(retries, sizeof(retries), "retries left %d", task->header.retry - task->retries_used);
 		int minutes = (task_duration(task, &source) + 59) / 60;
-		snprintf(duration, sizeof(duration), ", %dh%02d %s", minutes / 60, minutes % 60, source);
+		snprintf(duration, sizeof(duration), "%dh%02d %s", minutes / 60, minutes % 60, source);
 	}
-	char text[INDIGO_VALUE_SIZE + 128];
-	snprintf(text, sizeof(text), "%s%s - %s%s%s%s", task->header.name, is_urgent(task) ? " (urgent)" : "", state, runs, retries, duration);
-	cut_label(text, label, size);
+	const char *columns[] = { task->header.name, state, priority_text, runs, retries, duration };
+	join_label(label, size, 6, columns);
 }
 
 static indigo_property_state task_light_state(indigo_device *device, scheduler_task *task) {
@@ -2108,12 +2133,11 @@ static const char *plan_hook_names[2];
 
 static void plan_hook_label(indigo_device *device, scheduler_plan_run *run, char *label, size_t size) {
 	scheduler_task *task = PRIVATE_DATA->tasks + plan_hook_slots[run->hook];
-	struct tm start, end;
-	indigo_gmtime(&run->start, &start);
-	indigo_gmtime(&run->end, &end);
-	char text[INDIGO_VALUE_SIZE * 2];
-	snprintf(text, sizeof(text), "%02d:%02d\xe2\x80\x93%02d:%02d  %s (%s hook)", start.tm_hour, start.tm_min, end.tm_hour, end.tm_min, task->header.name, plan_hook_names[run->hook]);
-	cut_label(text, label, size);
+	char when[48], priority[32];
+	time_range(run->start, run->end, when, sizeof(when));
+	snprintf(priority, sizeof(priority), "hook %s", plan_hook_names[run->hook]);
+	const char *columns[] = { when, task->header.name, "-", priority, run->running ? "RUNNING" : "PLANNED", "-" };
+	join_label(label, size, 6, columns);
 }
 
 // adds the expected run of a night hook when its item names a task
@@ -2135,22 +2159,11 @@ static void plan_run_label(indigo_device *device, scheduler_plan_run *run, char 
 		return;
 	}
 	scheduler_task *task = PRIVATE_DATA->tasks + plan_slots[run->task];
-	struct tm start, end;
-	indigo_gmtime(&run->start, &start);
-	indigo_gmtime(&run->end, &end);
-	char priority[32];
-	if (is_urgent(task)) {
-		strcpy(priority, "urgent");
-	} else {
-		snprintf(priority, sizeof(priority), "%s %d", indigo_scheduler_priority_name(task->header.priority_class), task->header.level);
-	}
-	char text[INDIGO_VALUE_SIZE * 2];
-	if (task->header.repeat > 1) {
-		snprintf(text, sizeof(text), "%02d:%02d\xe2\x80\x93%02d:%02d  %s #%d (%s)", start.tm_hour, start.tm_min, end.tm_hour, end.tm_min, task->header.name, run->run, priority);
-	} else {
-		snprintf(text, sizeof(text), "%02d:%02d\xe2\x80\x93%02d:%02d  %s (%s)", start.tm_hour, start.tm_min, end.tm_hour, end.tm_min, task->header.name, priority);
-	}
-	cut_label(text, label, size);
+	char when[48], runs[32], priority[48];
+	time_range(run->start, run->end, when, sizeof(when));
+	snprintf(runs, sizeof(runs), "run %d/%d", run->run, task->header.repeat);
+	const char *columns[] = { when, task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), run->running ? "RUNNING" : "PLANNED", "-" };
+	join_label(label, size, 6, columns);
 }
 
 static void publish_plan(indigo_device *device, char (*labels)[INDIGO_VALUE_SIZE], indigo_property_state *states, int count) {
@@ -2363,13 +2376,15 @@ static void update_plan(indigo_device *device, time_t now) {
 				reason = "no time left tonight";
 			}
 		}
-		char text[INDIGO_VALUE_SIZE * 2];
-		snprintf(text, sizeof(text), "%s \xe2\x80\x94 %s", task->header.name, reason);
-		cut_label(text, labels[items], INDIGO_VALUE_SIZE);
+		char runs[32], priority[48];
+		snprintf(runs, sizeof(runs), "run %d/%d", task->runs, task->header.repeat);
+		const char *columns[] = { "-", task->header.name, runs, task_priority_text(device, task, priority, sizeof(priority)), "NOT TONIGHT", reason };
+		join_label(labels[items], INDIGO_VALUE_SIZE, 6, columns);
 		states[items++] = INDIGO_ALERT_STATE;
 	}
 	if (PRIVATE_DATA->nights.valid && night == NULL && night_hooks_named(device) && items < MAX_PLAN_ITEMS) {
-		cut_label("No night at the night limit within a day \xe2\x80\x94 the night hooks do not run", labels[items], INDIGO_VALUE_SIZE);
+		const char *columns[] = { "-", "-", "-", "-", "NOT TONIGHT", "no night at the night limit within a day, the night hooks do not run" };
+		join_label(labels[items], INDIGO_VALUE_SIZE, 6, columns);
 		states[items++] = INDIGO_ALERT_STATE;
 	}
 	publish_plan(device, labels, states, items);

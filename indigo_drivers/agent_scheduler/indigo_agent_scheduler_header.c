@@ -291,13 +291,13 @@ static bool parse_value(int key, char *value, scheduler_header *header, const ch
 	char *s;
 	switch (key) {
 		case KEY_TASK: {
-			*expected = "a name of 1 to 40 characters";
+			*expected = "a name of 1 to 40 characters without '|'";
 			size_t length = strlen(value);
 			if (length == 0 || length >= SCHEDULER_TASK_NAME_SIZE) {
 				return false;
 			}
 			for (const char *c = value; *c; c++) {
-				if ((unsigned char)*c < 0x20 || *c == 0x7f) {
+				if ((unsigned char)*c < 0x20 || *c == 0x7f || *c == '|') {
 					return false;
 				}
 			}
