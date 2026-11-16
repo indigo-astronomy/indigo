@@ -20,6 +20,7 @@
 // 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 // TODO: add weather safety checks, and a way to abort a task if the weather becomes unsafe
+// TODO: make it filter agent and add related agents
 
 /** INDIGO Scheduler agent
  \file indigo_agent_scheduler.c
