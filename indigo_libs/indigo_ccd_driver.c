@@ -1284,6 +1284,21 @@ static void add_key(char **header, bool fits, char *format, ...) {
 	*header = buffer + length;
 }
 
+// a FITS string value has its single quotes doubled; the result is cut to size - 1 characters without splitting a doubled quote
+static void fits_escape(const char *text, char *buffer, size_t size) {
+	size_t length = 0;
+	for (; *text; text++) {
+		size_t needed = *text == '\'' ? 2 : 1;
+		if (length + needed > size - 1) {
+			break;
+		}
+		while (needed--) {
+			buffer[length++] = *text;
+		}
+	}
+	buffer[length] = 0;
+}
+
 static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, void **data_out, unsigned long *size_out, indigo_fits_keyword *keywords) {
 	indigo_tiff_memory_handle *memory_handle = indigo_safe_malloc(sizeof(indigo_tiff_memory_handle));
 	memory_handle->data = indigo_safe_malloc(memory_handle->size = 10240);
@@ -1355,7 +1370,9 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	add_key(&next_key, false, "DATE-OBS= '%s' / Observation start time, UT", date_time_start);
 	add_key(&next_key, false, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 	if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0') {
-		add_key(&next_key, false, "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
+		char object[54];
+		fits_escape(CCD_LOCAL_MODE_OBJECT_ITEM->text.value, object, sizeof(object));
+		add_key(&next_key, false, "OBJECT  = '%s' / object name", object);
 	}
 	add_key(&next_key, false, "ROWORDER= 'TOP-DOWN'           / Image row order");
 	add_key(&next_key, false, "SWCREATE= 'INDIGO %d.%d-%s'     / Capture software", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
@@ -1935,7 +1952,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		add_key(&header, true,  "DATE-OBS= '%s' / Observation start time, UT", date_time_start);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0') {
-			add_key(&header, true,  "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
+			char object[54];
+			fits_escape(CCD_LOCAL_MODE_OBJECT_ITEM->text.value, object, sizeof(object));
+			add_key(&header, true,  "OBJECT  = '%s' / object name", object);
 		}
 		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
 		add_key(&header, true,  "SWCREATE= 'INDIGO %d.%d-%s'     / Capture software", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);

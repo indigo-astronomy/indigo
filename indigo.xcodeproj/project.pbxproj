@@ -1261,6 +1261,7 @@
 		1FFB7311819711838181A2E5 /* template.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = template.md; sourceTree = "<group>"; };
 		275307178DD598D6193D6713 /* run_scheduler_simulators.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_scheduler_simulators.py; sourceTree = "<group>"; };
 		28279F7A850321D8E31D1F6D /* alto_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = alto_simulator.c; sourceTree = "<group>"; };
+		5C3E71A0D4B94F2A8E10B6C7 /* test_ccd_fits_header.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ccd_fits_header.c; sourceTree = "<group>"; };
 		2A58B98529C1E22A09B86319 /* test_rgb48.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rgb48.c; sourceTree = "<group>"; };
 		2A5F706316E5DA3C1E26FB0F /* indigo_aux_alto.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_alto.c; sourceTree = "<group>"; };
 		2AEAB20B507D0F2678B38991 /* giotto_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = giotto_simulator.c; sourceTree = "<group>"; };
@@ -14337,6 +14338,7 @@
 				F010E4E6B021CD2EDE6355FD /* test_image_math.c */,
 				6DBD06A878A01A39330B4378 /* test_service_discovery.c */,
 				2A58B98529C1E22A09B86319 /* test_rgb48.c */,
+				5C3E71A0D4B94F2A8E10B6C7 /* test_ccd_fits_header.c */,
 				88D0F4F26BC61310EC0BADD6 /* test_mount_alignment_load.c */,
 				A057AA8EDAB3B5A82CF2F1B6 /* test_profile_selection.c */,
 				C0DE20261101204146000002 /* test_agent_platesolver_core.c */,

@@ -38,6 +38,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_mount_alignment_load \
 	$(UNIT_BUILD)/test_profile_selection \
 	$(UNIT_BUILD)/test_rgb48 \
+	$(UNIT_BUILD)/test_ccd_fits_header \
 	$(UNIT_BUILD)/test_image_math \
 	$(UNIT_BUILD)/test_core_text_bounds \
 	$(UNIT_BUILD)/test_align_math \
@@ -3822,6 +3823,9 @@ $(INTEGRATION_BUILD)/test_agent_imager_numerics: integration/test_agent_imager_n
 	CC="$(CC)" python3 $< $@
 
 $(UNIT_BUILD)/test_rgb48: unit/test_rgb48.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
+	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
+
+$(UNIT_BUILD)/test_ccd_fits_header: unit/test_ccd_fits_header.c test_runner.h $(BUILD_LIB)/libindigo.a | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) $< -o $@ $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_mount_alignment_load: unit/test_mount_alignment_load.c test_runner.h ../indigo_libs/indigo_mount_driver.c | $(UNIT_BUILD)
