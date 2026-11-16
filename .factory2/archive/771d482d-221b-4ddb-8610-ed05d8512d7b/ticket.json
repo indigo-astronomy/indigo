@@ -1,0 +1,1954 @@
+{
+  "schema_version": 1,
+  "ticket_id": "771d482d-221b-4ddb-8610-ed05d8512d7b",
+  "revision": 93,
+  "title": "indigo_agent_scheduler: fix NEXT and NEXT_START naming the running task and its start time instead of the task or hook that follows it",
+  "description": "While a task runs, AGENT_SCHEDULER_CURRENT.NEXT names the running task itself and NEXT_START is the time that task started. Cause: select_task() in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c stores the selected task as next_task with next_start = now, start_task() then starts it, and while it runs only urgent tasks are checked, so the stale values stay until the run ends. SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md define NEXT as the task expected to run next. Expected: while a task or hook runs, NEXT/NEXT_START show what follows it, taken from the night plan (the first planned run after the current one), including a hook when a hook is next, for example the SHUTDOWN hook when the scheduler will stop after the running task (all tasks finished or STOP pending) or a night end hook; never the running task itself. Add an automated test that reproduces the stale NEXT and covers a hook (SHUTDOWN) being next. Test in an isolated server, never the owner's running server on port 7624. Bump the Scheduler Agent version.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-15T21:06:49.483662Z",
+  "status": "closed",
+  "branch": "ticket/771d482d-221b-4ddb-8610-ed05d8512d7b",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3ef9fe27-4ad7-4574-9cc6-fecb3cbf9034",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T21:07:57.296757Z",
+          "last_activity_at": "2026-11-15T21:18:38.488589Z",
+          "ended_at": "2026-11-15T21:18:38.488589Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 641191.832,
+          "tokens": null
+        },
+        {
+          "attempt_id": "5e83629b-b97e-435b-bcc9-0c8967f6898d",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T21:27:37.775379Z",
+          "last_activity_at": "2026-11-15T21:37:48.400413Z",
+          "ended_at": "2026-11-15T21:37:48.400413Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 610625.034,
+          "tokens": null
+        },
+        {
+          "attempt_id": "4ea19f90-408b-493d-b710-b977d03f7bfb",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T21:45:33.581323Z",
+          "last_activity_at": "2026-11-15T22:48:52.606157Z",
+          "ended_at": "2026-11-15T22:48:52.606157Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 3799024.834,
+          "tokens": null
+        },
+        {
+          "attempt_id": "53f2dd88-8caf-4bc0-8d4a-e613d5bccc6c",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T22:53:58.714620Z",
+          "last_activity_at": "2026-11-15T23:33:55.543874Z",
+          "ended_at": "2026-11-15T23:33:55.543874Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 2396829.254,
+          "tokens": null
+        },
+        {
+          "attempt_id": "d100abd3-fd19-4db8-86ff-324a43aa6524",
+          "number": 5,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-15T23:38:59.353952Z",
+          "last_activity_at": "2026-11-16T00:01:10.191992Z",
+          "ended_at": "2026-11-16T00:01:10.191992Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1330838.04,
+          "tokens": null
+        },
+        {
+          "attempt_id": "4ee166cf-a533-4ffc-bff0-5db65cde32c0",
+          "number": 6,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T00:06:31.023546Z",
+          "last_activity_at": "2026-11-16T00:16:31.819878Z",
+          "ended_at": "2026-11-16T00:16:31.819878Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 600796.332,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1a7c9d64-f039-4422-8280-56ca701c742b",
+          "number": 7,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T00:21:43.312990Z",
+          "last_activity_at": "2026-11-16T00:32:51.262111Z",
+          "ended_at": "2026-11-16T00:32:51.262111Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 667949.121,
+          "tokens": null
+        },
+        {
+          "attempt_id": "074dce7c-3612-4656-aa19-83a8abe92af2",
+          "number": 8,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T00:40:32.699453Z",
+          "last_activity_at": "2026-11-16T00:51:02.293938Z",
+          "ended_at": "2026-11-16T00:51:02.293938Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 629594.485,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T21:07:57.296757Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/771d482d-221b-4ddb-8610-ed05d8512d7b"
+        },
+        {
+          "at": "2026-11-15T21:18:38.488589Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T21:27:37.775379Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T21:37:48.400413Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T21:45:33.581323Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T22:48:52.606157Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T22:53:58.714620Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-15T23:33:55.543874Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-15T23:38:59.353952Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T00:01:10.191992Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T00:06:31.023546Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T00:16:31.819878Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T00:21:43.312990Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T00:32:51.262111Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T00:40:32.699453Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T00:51:02.293938Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 10676848.932,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 8
+        }
+      }
+    },
+    {
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3e2e1ead-fb07-499f-8d64-eede38bb571c",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-15T21:18:38.488627Z",
+          "last_activity_at": "2026-11-15T21:27:37.775294Z",
+          "ended_at": "2026-11-15T21:27:37.775294Z",
+          "outcome": {
+            "summary": "1) Regression outside a run: indigo_agent_scheduler.c update_following() (worktree ~line 2053-2061) returns early only for phase == RUN_IDLE. When a hand-started sequence occupies the Scripting Agent and an urgent task arrives, process_idle() calls select_task() (NEXT = urgent task, NEXT_START = now) and begin_stop(STOP_PREEMPT) with current = -1, so phase = RUN_STOPPING. In the same process() pass the urgent command has set plan_dirty, update_plan() -> update_following() sees phase != RUN_IDLE and current < 0, sets next_task = -1 and publishes an empty NEXT for the whole stop. Before the change NEXT showed the urgent task. No scheduler task or hook runs here, so the idle/waiting behaviour must stay unchanged. Correction: return early also when PRIVATE_DATA->current < 0 (e.g. if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->current < 0) return;). 2) Docs do not match the code for a pending stop: update_following() sets NEXT_START = now when stop_requested (and refreshes it to the new now on every plan update), but SCHEDULER.md (AGENT_SCHEDULER_CURRENT row: 'the SHUTDOWN hook at the expected end of the run when the scheduler stops after it (a stop is pending, or no other task is left to run)') and INDIGO_SCHEDULER_GUIDE.md (NEXT_START row: 'for the SHUTDOWN hook when the current run is expected to end') say the expected end of the run in both cases. Correction: either use the expected end of the run (end) for the STOP case too, or document that NEXT_START is the current time while a stop is pending. Everything else checks out: start_task clears the stale value; plan scan skips the running entry and handles hooks (STARTUP->NIGHT_START, NIGHT_START->task/NIGHT_END) and repeats; SHUTDOWN suppressed while the shutdown hook runs; same handler context as the existing update_plan/update_current calls, no new locking needed; version 0x0300000D; formatting OK. Tests assert the contract (CURRENT/NEXT pair, NEXT_START range) and pass: test_agent_scheduler 78/78 on my second",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 539286.667,
+          "tokens": null
+        },
+        {
+          "attempt_id": "951c4a62-281c-43b2-9f15-f4f5da6f5748",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-15T21:37:48.400433Z",
+          "last_activity_at": "2026-11-15T21:45:33.581237Z",
+          "ended_at": "2026-11-15T21:45:33.581237Z",
+          "outcome": {
+            "summary": "Round 1 fixes verified: (1) update_following() returns early when current < 0 (indigo_agent_scheduler.c:2055), so the urgent task chosen by select_task() stays NEXT during a preempting stop; the old out-of-bounds tasks[-1] access is gone. (2) With STOP pending, NEXT_START is the expected end of the run (end, :2063-2066), matching both docs and asserted in shutdown_hook_is_next_when_stop_is_pending. (3) test_agent_scheduler built from the worktree with a private HOME: two complete runs, 78/78 each. The new assertion in hand_started_sequence_blocks_all_but_urgent is not flaky: process() runs only on ticks (TICK_INTERVAL 0.5 s, :65) and on commands. begin_stop() happens in the upload pass, the stop finishes in a later pass, and stopped_now (:2222) blocks start_task() until the next tick, so CURRENT='' NEXT='Pushy' holds for at least about 0.5 s, against a 10 ms poll with 5 s to spare. DEFECT: a hook running is shown as its own NEXT when the SHUTDOWN hook names the same task. update_following() picks hook_slot(HOOKS_SHUTDOWN_ITEM) for stop_requested (:2064-2066) and for finishing_after_current() (:2077-2079) without checking that it differs from PRIVATE_DATA->current. SCHEDULER.md:568 documents exactly this setup (a Park task as SHUTDOWN, IDLE and NIGHT_END; 'NIGHT_END and SHUTDOWN when STOP arrives while the night end hook runs' runs the task once), and process_idle() skips the shutdown run through chain_slot/chain_ok (:1751, set at :1106). So during a NIGHT_END or IDLE hook with STOP pending, or during NIGHT_END after the last task, CURRENT=Park and NEXT=Park, with a NEXT_START for a run that will not happen. That breaks the ticket's 'never the running task itself' and the new doc text 'NEXT is the running task itself only when it repeats'. Fix: do not use the shutdown slot when it equals PRIVATE_DATA->current; leave NEXT empty, which matches the plan's success assumption. Add an assertion, for example STOP during a night end/idle hook that is also the SHUTDOWN hook, ",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 465180.804,
+          "tokens": null
+        },
+        {
+          "attempt_id": "9586c3fe-54f4-4de3-bcae-a3f9b9f49114",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-15T22:48:52.606175Z",
+          "last_activity_at": "2026-11-15T22:53:58.714537Z",
+          "ended_at": "2026-11-15T22:53:58.714537Z",
+          "outcome": {
+            "summary": "Round 3. Round 1/2 fixes verified: update_following() returns when current < 0 (preempted hand-started sequence keeps the urgent task as NEXT, asserted); STOP pending uses the expected run end; shutdown_after_current() returns -1 when the SHUTDOWN slot is the running task, in both branches. start_task() clears NEXT, idle select_task() unchanged, night start hook not self-listed (night_state.started set before the hook runs). Tests: test_agent_scheduler run twice with temp HOME, 79/79 and 79/79 passed. The 1.5 s sleep in shutdown_hook_running_is_not_next is sound: it skips the transient (Park, empty) published by refresh() before update_plan() at hook start, STOP is applied within one 0.5 s tick, and Park runs 6 s, leaving margin. DEFECT: finishing_after_current() (indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2030-2049) returns true when the list contains no non-hook task, while all_tasks_finished() (:1476) requires at least one (any). When a hook runs (kind != RUN_TASK) and the list holds only hook tasks, e.g. Park as IDLE hook and Close as SHUTDOWN hook with no other task, or a STARTUP hook in the same situation, update_following() (:2083) publishes NEXT=Close with NEXT_START at the hook's end, but the scheduler does not stop afterwards (all_tasks_finished() is false, it keeps waiting with no task), so NEXT names a SHUTDOWN that will not run. Impact: misleading NEXT in a reachable, if uncommon, configuration (hooks configured before tasks are added). Correction: in finishing_after_current() track a non-hook task like all_tasks_finished() does and return false when none exists (the running RUN_TASK counts as one); optionally add a case with only hook tasks asserting NEXT stays empty while the idle hook runs.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 306108.362,
+          "tokens": null
+        },
+        {
+          "attempt_id": "deeb5de2-77d4-4ac8-a547-3aa174fbdf7d",
+          "number": 4,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-15T23:33:55.543894Z",
+          "last_activity_at": "2026-11-15T23:38:59.353872Z",
+          "ended_at": "2026-11-15T23:38:59.353872Z",
+          "outcome": {
+            "summary": "Round 3 fix verified: finishing_after_current() (indigo_agent_scheduler.c:2030-2047) now mirrors all_tasks_finished() (requires a non-hook task); shutdown_hook_is_not_next_without_regular_tasks passes. Full test_agent_scheduler suite at efac30ad7: 80 run, 80 passed, 0 failed.\n\nDefect (in scope, same class as the round 2 finding): a task that serves as both STARTUP and NIGHT_START hook is shown as its own NEXT, with NEXT_START at roughly the time it started, while it runs as the startup hook. SCHEDULER.md:568 documents this exact setup ('STARTUP and NIGHT_START on START during the night' run once). Cause: during the startup hook, night_state.handled is still false, so update_plan() (indigo_agent_scheduler.c:2145-2161) adds the NIGHT_START hook at from=now. update_following() (2071-2080) sets after=true for a running hook (kind != RUN_TASK) and takes plan_runs[0], the NIGHT_START run, whose plan_hook_slots[] entry is the running slot. When the hook finishes, start_night_hook() (1674) skips that run through chain_slot, so the predicted run never happens. Reproduced with a scratch copy of the test (not committed): Prepare as STARTUP and NIGHT_START hook (wait 6 s), Work task, START during the night (as in shared_hook_task_runs_once). Two seconds into the hook: CURRENT='Prepare' NEXT='Prepare' NEXT_START=<now>. Impact: the requirement 'never the running task with its own start time' is broken for a documented configuration. Fix: in update_following(), skip a planned hook run whose slot is PRIVATE_DATA->current while a hook runs (the rule 'a task that serves as several hooks runs once', as shutdown_after_current() already does for SHUTDOWN), so the following run (Work) becomes NEXT. Add a test case for this configuration (for example extend shared_hook_task_runs_once or add one beside shutdown_hook_running_is_not_next) that fails without the fix.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 303809.978,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1d426652-4a08-46b0-bf5f-ac657f9e0141",
+          "number": 5,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-16T00:01:10.192010Z",
+          "last_activity_at": "2026-11-16T00:06:31.023421Z",
+          "ended_at": "2026-11-16T00:06:31.023421Z",
+          "outcome": {
+            "summary": "Round 5 review. One defect in the requested NEXT prediction.\n\nDefect: when the last regular task runs during a night whose NIGHT_START hook has run and a NIGHT_END hook is named, NEXT is the NIGHT_END hook at the night end, not the SHUTDOWN hook. Evidence: update_plan() always adds the night end hook for a started night (indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2153), and indigo_scheduler_plan_with_hooks() plans it even when no task is left (its final loop). update_following() takes the first planned run after the current one (indigo_agent_scheduler.c:2073-2086) and checks finishing_after_current() only when the plan gives no run (line 2087). The scheduler itself checks all_tasks_finished() in process_idle() (line 1795) before process_night(), so after the last task it stops and runs only SHUTDOWN. SCHEDULER.md:571 says the same ('the automatic stop run only the SHUTDOWN hook, also during the night; NIGHT_END does not run then'). Reproduced with a scratch copy of test_agent_scheduler plus one case: Evening as NIGHT_START, Morning as NIGHT_END, Close as SHUTDOWN, one task Work (duration 5 min), START in the night with the night end in 30 min. While Work runs, CURRENT=Work and NEXT=Morning with NEXT_START at the night end (+1792 s). Then Close ran right after Work and Morning never started (Morning starts=0, Close starts=1). Impact: in the documented night-hook setup (SCHEDULER.md:581: NIGHT_END = Morning, SHUTDOWN = Morning), during the last task of the night NEXT_START is the night end, possibly hours away, though shutdown follows the run. With different NIGHT_END and SHUTDOWN tasks the name is wrong as well. Correction: in update_following(), when stop_requested is false, check PRIVATE_DATA->started && finishing_after_current(device) before the plan loop. When it is true, set NEXT to shutdown_after_current() with NEXT_START = end, which leaves NEXT empty when the shutdown task is the running one, and do not fall back to the plan. Add a case like the ",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 320831.411,
+          "tokens": null
+        },
+        {
+          "attempt_id": "70eced9f-996a-4037-b89b-5f3ff80962f1",
+          "number": 6,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-16T00:16:31.819900Z",
+          "last_activity_at": "2026-11-16T00:21:43.312906Z",
+          "ended_at": "2026-11-16T00:21:43.312906Z",
+          "outcome": {
+            "summary": "Round 6 review. Previous fixes verified (urgent preemption keeps NEXT; STOP/auto-stop -> SHUTDOWN at the run end, checked before the plan; running SHUTDOWN hook not its own NEXT; chain_slot rule for shared hooks); docs consistent with code; version 0x0300000D. One remaining defect: finishing_after_current() (indigo_agent_scheduler.c:2030-2048) counts the running task as a regular task left in the list and applies its repeat count even when it is a one-off urgent task (task->stored == false). Such a task is removed by finish_task() (line 1152-1154) after its first run whatever the result, before process_idle() evaluates all_tasks_finished() (line 1476), which returns false for an empty list or a list holding only hooks. Reproduction (scratch case, not committed): SHUTDOWN = Close, no other task, START, then AGENT_SCHEDULER_URGENT_TASK 'Pushy' (@duration 5, waits 5 s). While Pushy runs CURRENT.NEXT = Close with NEXT_START at the expected end, but after Pushy completes the scheduler keeps running (empty list stays ready for urgent tasks, SCHEDULER.md) and Close never starts. Impact: NEXT predicts a SHUTDOWN that the scheduler does not perform, violating the ticket requirement and the SCHEDULER.md CURRENT row. The converse also follows from the same line: a one-off urgent task with @repeat > 1 running after all stored tasks finished returns false although the scheduler auto-stops after it. Correction: in finishing_after_current(), for the running RUN_TASK slot with !task->stored, skip it (continue before setting any = true and without the repeat check), mirroring that it leaves the list; add a regression case (urgent one-off as the only regular task with a SHUTDOWN hook: NEXT empty while it runs, Close not started). Tests: full test_agent_scheduler 83 run, 83 passed, 0 failed; probe case 1 run, 0 passed, 1 failed (demonstrates the defect).",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 311493.006,
+          "tokens": null
+        },
+        {
+          "attempt_id": "7574fccc-0ada-4db3-918f-f2aac997107d",
+          "number": 7,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-16T00:32:51.262129Z",
+          "last_activity_at": "2026-11-16T00:40:32.699370Z",
+          "ended_at": "2026-11-16T00:40:32.699370Z",
+          "outcome": {
+            "summary": "Round 7 review. Verified previous fixes (urgent preemption keeps NEXT; STOP pending / auto-stop -> SHUTDOWN at expected run end checked before the plan; finishing_after_current() one-off urgent skip; SHUTDOWN not its own NEXT; chain_slot-limited shared-hook skip). Full in-process suite on the candidate: 85 run, 85 passed, 0 failed.\n\nDefect (reproduced): while a hook runs, NEXT_START from the plan branch is the hook's own start time / now, not when NEXT is expected to start. indigo_drivers/agent_scheduler/indigo_agent_scheduler.c update_following(), plan branch: next_start = plan_runs[i].start. update_plan() marks only a RUN_TASK as running (plan_task->running requires kind == RUN_TASK), so while a STARTUP/NIGHT_START/IDLE/NIGHT_END/RESUME hook runs the plan starts at now and the first planned run gets start == now; the first update_plan after start_task() publishes NEXT_START == run_start of the hook, and every refresh moves it to the current time. This is the ticket's symptom (NEXT_START is the time the running run started) for the hook case the ticket explicitly covers ('while a task or hook runs'), contradicts INDIGO_SCHEDULER_GUIDE.md ('while a run is in progress, when NEXT is planned to start') and is inconsistent with the SHUTDOWN branch of the same function, which uses the expected end of the hook. Reproduction (scratch copy of the test, not committed): startup hook Prepare '@duration 5' BODY_WAIT(8), task Work, site_at_evening(), START; 2 s after 'Starting hook Prepare': CURRENT Prepare, NEXT Work, NEXT_START - now = 0 s (expected ~298 s). Same with night start hook Evening '@duration 5' in the night: 0 s. Both probe cases fail on the candidate. Correction: in the plan branch clamp to the expected end of the current run, e.g. next_start = plan_runs[i].start > end ? plan_runs[i].start : end; (no-op for a running task, whose planned successors already start after running_end >= end). With that one-line change both probe cases pass (NEXT_START - now = 298 s) an",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 461437.241,
+          "tokens": null
+        },
+        {
+          "attempt_id": "2049b0f6-9b64-4c72-8513-5056e5277ffd",
+          "number": 8,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T00:51:02.293957Z",
+          "last_activity_at": "2026-11-16T00:54:38.019236Z",
+          "ended_at": "2026-11-16T00:54:38.019236Z",
+          "outcome": {
+            "summary": "Round 8 review of master...HEAD (clean tree). update_following() (indigo_agent_scheduler.c, called at the end of update_plan) handles the cases in scope. It returns early when idle or when a preempting stop has current < 0, so the urgent task stays NEXT. A STOP request, or auto-stop through finishing_after_current(), is checked before the plan; finishing_after_current() counts only regular tasks and skips a running one-off urgent task. The SHUTDOWN hook is shown at the expected end of the run, and NEXT is empty when the shutdown hook is itself the running task. Otherwise NEXT is the first planned run after the running one. A running hook skips the same slot only when that run starts by the end of the current run. The round-8 clamp sets NEXT_START = max(planned start, expected run end). start_task() clears NEXT, and select_task() idle behaviour is unchanged. Version 0x0300000C -> 0x0300000D. SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe this behaviour accurately. Tests: rebuilt agent_scheduler and ran make -C indigo_test test-agent-scheduler with a temporary HOME: 86 run, 86 passed, 0 failed. No new defects within scope.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 215725.279,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-15T21:18:38.488627Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T21:27:37.775294Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "1) Regression outside a run: indigo_agent_scheduler.c update_following() (worktree ~line 2053-2061) returns early only for phase == RUN_IDLE. When a hand-started sequence occupies the Scripting Agent and an urgent task arrives, process_idle() calls select_task() (NEXT = urgent task, NEXT_START = now) and begin_stop(STOP_PREEMPT) with current = -1, so phase = RUN_STOPPING. In the same process() pass the urgent command has set plan_dirty, update_plan() -> update_following() sees phase != RUN_IDLE and current < 0, sets next_task = -1 and publishes an empty NEXT for the whole stop. Before the change NEXT showed the urgent task. No scheduler task or hook runs here, so the idle/waiting behaviour must stay unchanged. Correction: return early also when PRIVATE_DATA->current < 0 (e.g. if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->current < 0) return;). 2) Docs do not match the code for a pending stop: update_following() sets NEXT_START = now when stop_requested (and refreshes it to the new now on every plan update), but SCHEDULER.md (AGENT_SCHEDULER_CURRENT row: 'the SHUTDOWN hook at the expected end of the run when the scheduler stops after it (a stop is pending, or no other task is left to run)') and INDIGO_SCHEDULER_GUIDE.md (NEXT_START row: 'for the SHUTDOWN hook when the current run is expected to end') say the expected end of the run in both cases. Correction: either use the expected end of the run (end) for the STOP case too, or document that NEXT_START is the current time while a stop is pending. Everything else checks out: start_task clears the stale value; plan scan skips the running entry and handles hooks (STARTUP->NIGHT_START, NIGHT_START->task/NIGHT_END) and repeats; SHUTDOWN suppressed while the shutdown hook runs; same handler context as the existing update_plan/update_current calls, no new locking needed; version 0x0300000D; formatting OK. Tests assert the contract (CURRENT/NEXT pair, NEXT_START range) and pass: test_agent_scheduler 78/78 on my second"
+        },
+        {
+          "at": "2026-11-15T21:37:48.400433Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T21:45:33.581237Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 1 fixes verified: (1) update_following() returns early when current < 0 (indigo_agent_scheduler.c:2055), so the urgent task chosen by select_task() stays NEXT during a preempting stop; the old out-of-bounds tasks[-1] access is gone. (2) With STOP pending, NEXT_START is the expected end of the run (end, :2063-2066), matching both docs and asserted in shutdown_hook_is_next_when_stop_is_pending. (3) test_agent_scheduler built from the worktree with a private HOME: two complete runs, 78/78 each. The new assertion in hand_started_sequence_blocks_all_but_urgent is not flaky: process() runs only on ticks (TICK_INTERVAL 0.5 s, :65) and on commands. begin_stop() happens in the upload pass, the stop finishes in a later pass, and stopped_now (:2222) blocks start_task() until the next tick, so CURRENT='' NEXT='Pushy' holds for at least about 0.5 s, against a 10 ms poll with 5 s to spare. DEFECT: a hook running is shown as its own NEXT when the SHUTDOWN hook names the same task. update_following() picks hook_slot(HOOKS_SHUTDOWN_ITEM) for stop_requested (:2064-2066) and for finishing_after_current() (:2077-2079) without checking that it differs from PRIVATE_DATA->current. SCHEDULER.md:568 documents exactly this setup (a Park task as SHUTDOWN, IDLE and NIGHT_END; 'NIGHT_END and SHUTDOWN when STOP arrives while the night end hook runs' runs the task once), and process_idle() skips the shutdown run through chain_slot/chain_ok (:1751, set at :1106). So during a NIGHT_END or IDLE hook with STOP pending, or during NIGHT_END after the last task, CURRENT=Park and NEXT=Park, with a NEXT_START for a run that will not happen. That breaks the ticket's 'never the running task itself' and the new doc text 'NEXT is the running task itself only when it repeats'. Fix: do not use the shutdown slot when it equals PRIVATE_DATA->current; leave NEXT empty, which matches the plan's success assumption. Add an assertion, for example STOP during a night end/idle hook that is also the SHUTDOWN hook, "
+        },
+        {
+          "at": "2026-11-15T22:48:52.606175Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T22:53:58.714537Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 3. Round 1/2 fixes verified: update_following() returns when current < 0 (preempted hand-started sequence keeps the urgent task as NEXT, asserted); STOP pending uses the expected run end; shutdown_after_current() returns -1 when the SHUTDOWN slot is the running task, in both branches. start_task() clears NEXT, idle select_task() unchanged, night start hook not self-listed (night_state.started set before the hook runs). Tests: test_agent_scheduler run twice with temp HOME, 79/79 and 79/79 passed. The 1.5 s sleep in shutdown_hook_running_is_not_next is sound: it skips the transient (Park, empty) published by refresh() before update_plan() at hook start, STOP is applied within one 0.5 s tick, and Park runs 6 s, leaving margin. DEFECT: finishing_after_current() (indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2030-2049) returns true when the list contains no non-hook task, while all_tasks_finished() (:1476) requires at least one (any). When a hook runs (kind != RUN_TASK) and the list holds only hook tasks, e.g. Park as IDLE hook and Close as SHUTDOWN hook with no other task, or a STARTUP hook in the same situation, update_following() (:2083) publishes NEXT=Close with NEXT_START at the hook's end, but the scheduler does not stop afterwards (all_tasks_finished() is false, it keeps waiting with no task), so NEXT names a SHUTDOWN that will not run. Impact: misleading NEXT in a reachable, if uncommon, configuration (hooks configured before tasks are added). Correction: in finishing_after_current() track a non-hook task like all_tasks_finished() does and return false when none exists (the running RUN_TASK counts as one); optionally add a case with only hook tasks asserting NEXT stays empty while the idle hook runs."
+        },
+        {
+          "at": "2026-11-15T23:33:55.543894Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-15T23:38:59.353872Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 3 fix verified: finishing_after_current() (indigo_agent_scheduler.c:2030-2047) now mirrors all_tasks_finished() (requires a non-hook task); shutdown_hook_is_not_next_without_regular_tasks passes. Full test_agent_scheduler suite at efac30ad7: 80 run, 80 passed, 0 failed.\n\nDefect (in scope, same class as the round 2 finding): a task that serves as both STARTUP and NIGHT_START hook is shown as its own NEXT, with NEXT_START at roughly the time it started, while it runs as the startup hook. SCHEDULER.md:568 documents this exact setup ('STARTUP and NIGHT_START on START during the night' run once). Cause: during the startup hook, night_state.handled is still false, so update_plan() (indigo_agent_scheduler.c:2145-2161) adds the NIGHT_START hook at from=now. update_following() (2071-2080) sets after=true for a running hook (kind != RUN_TASK) and takes plan_runs[0], the NIGHT_START run, whose plan_hook_slots[] entry is the running slot. When the hook finishes, start_night_hook() (1674) skips that run through chain_slot, so the predicted run never happens. Reproduced with a scratch copy of the test (not committed): Prepare as STARTUP and NIGHT_START hook (wait 6 s), Work task, START during the night (as in shared_hook_task_runs_once). Two seconds into the hook: CURRENT='Prepare' NEXT='Prepare' NEXT_START=<now>. Impact: the requirement 'never the running task with its own start time' is broken for a documented configuration. Fix: in update_following(), skip a planned hook run whose slot is PRIVATE_DATA->current while a hook runs (the rule 'a task that serves as several hooks runs once', as shutdown_after_current() already does for SHUTDOWN), so the following run (Work) becomes NEXT. Add a test case for this configuration (for example extend shared_hook_task_runs_once or add one beside shutdown_hook_running_is_not_next) that fails without the fix."
+        },
+        {
+          "at": "2026-11-16T00:01:10.192010Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T00:06:31.023421Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 5 review. One defect in the requested NEXT prediction.\n\nDefect: when the last regular task runs during a night whose NIGHT_START hook has run and a NIGHT_END hook is named, NEXT is the NIGHT_END hook at the night end, not the SHUTDOWN hook. Evidence: update_plan() always adds the night end hook for a started night (indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2153), and indigo_scheduler_plan_with_hooks() plans it even when no task is left (its final loop). update_following() takes the first planned run after the current one (indigo_agent_scheduler.c:2073-2086) and checks finishing_after_current() only when the plan gives no run (line 2087). The scheduler itself checks all_tasks_finished() in process_idle() (line 1795) before process_night(), so after the last task it stops and runs only SHUTDOWN. SCHEDULER.md:571 says the same ('the automatic stop run only the SHUTDOWN hook, also during the night; NIGHT_END does not run then'). Reproduced with a scratch copy of test_agent_scheduler plus one case: Evening as NIGHT_START, Morning as NIGHT_END, Close as SHUTDOWN, one task Work (duration 5 min), START in the night with the night end in 30 min. While Work runs, CURRENT=Work and NEXT=Morning with NEXT_START at the night end (+1792 s). Then Close ran right after Work and Morning never started (Morning starts=0, Close starts=1). Impact: in the documented night-hook setup (SCHEDULER.md:581: NIGHT_END = Morning, SHUTDOWN = Morning), during the last task of the night NEXT_START is the night end, possibly hours away, though shutdown follows the run. With different NIGHT_END and SHUTDOWN tasks the name is wrong as well. Correction: in update_following(), when stop_requested is false, check PRIVATE_DATA->started && finishing_after_current(device) before the plan loop. When it is true, set NEXT to shutdown_after_current() with NEXT_START = end, which leaves NEXT empty when the shutdown task is the running one, and do not fall back to the plan. Add a case like the "
+        },
+        {
+          "at": "2026-11-16T00:16:31.819900Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T00:21:43.312906Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 6 review. Previous fixes verified (urgent preemption keeps NEXT; STOP/auto-stop -> SHUTDOWN at the run end, checked before the plan; running SHUTDOWN hook not its own NEXT; chain_slot rule for shared hooks); docs consistent with code; version 0x0300000D. One remaining defect: finishing_after_current() (indigo_agent_scheduler.c:2030-2048) counts the running task as a regular task left in the list and applies its repeat count even when it is a one-off urgent task (task->stored == false). Such a task is removed by finish_task() (line 1152-1154) after its first run whatever the result, before process_idle() evaluates all_tasks_finished() (line 1476), which returns false for an empty list or a list holding only hooks. Reproduction (scratch case, not committed): SHUTDOWN = Close, no other task, START, then AGENT_SCHEDULER_URGENT_TASK 'Pushy' (@duration 5, waits 5 s). While Pushy runs CURRENT.NEXT = Close with NEXT_START at the expected end, but after Pushy completes the scheduler keeps running (empty list stays ready for urgent tasks, SCHEDULER.md) and Close never starts. Impact: NEXT predicts a SHUTDOWN that the scheduler does not perform, violating the ticket requirement and the SCHEDULER.md CURRENT row. The converse also follows from the same line: a one-off urgent task with @repeat > 1 running after all stored tasks finished returns false although the scheduler auto-stops after it. Correction: in finishing_after_current(), for the running RUN_TASK slot with !task->stored, skip it (continue before setting any = true and without the repeat check), mirroring that it leaves the list; add a regression case (urgent one-off as the only regular task with a SHUTDOWN hook: NEXT empty while it runs, Close not started). Tests: full test_agent_scheduler 83 run, 83 passed, 0 failed; probe case 1 run, 0 passed, 1 failed (demonstrates the defect)."
+        },
+        {
+          "at": "2026-11-16T00:32:51.262129Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T00:40:32.699370Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 7 review. Verified previous fixes (urgent preemption keeps NEXT; STOP pending / auto-stop -> SHUTDOWN at expected run end checked before the plan; finishing_after_current() one-off urgent skip; SHUTDOWN not its own NEXT; chain_slot-limited shared-hook skip). Full in-process suite on the candidate: 85 run, 85 passed, 0 failed.\n\nDefect (reproduced): while a hook runs, NEXT_START from the plan branch is the hook's own start time / now, not when NEXT is expected to start. indigo_drivers/agent_scheduler/indigo_agent_scheduler.c update_following(), plan branch: next_start = plan_runs[i].start. update_plan() marks only a RUN_TASK as running (plan_task->running requires kind == RUN_TASK), so while a STARTUP/NIGHT_START/IDLE/NIGHT_END/RESUME hook runs the plan starts at now and the first planned run gets start == now; the first update_plan after start_task() publishes NEXT_START == run_start of the hook, and every refresh moves it to the current time. This is the ticket's symptom (NEXT_START is the time the running run started) for the hook case the ticket explicitly covers ('while a task or hook runs'), contradicts INDIGO_SCHEDULER_GUIDE.md ('while a run is in progress, when NEXT is planned to start') and is inconsistent with the SHUTDOWN branch of the same function, which uses the expected end of the hook. Reproduction (scratch copy of the test, not committed): startup hook Prepare '@duration 5' BODY_WAIT(8), task Work, site_at_evening(), START; 2 s after 'Starting hook Prepare': CURRENT Prepare, NEXT Work, NEXT_START - now = 0 s (expected ~298 s). Same with night start hook Evening '@duration 5' in the night: 0 s. Both probe cases fail on the candidate. Correction: in the plan branch clamp to the expected end of the current run, e.g. next_start = plan_runs[i].start > end ? plan_runs[i].start : end; (no-op for a running task, whose planned successors already start after running_end >= end). With that one-line change both probe cases pass (NEXT_START - now = 298 s) an"
+        },
+        {
+          "at": "2026-11-16T00:51:02.293957Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T00:54:38.019236Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 8 review of master...HEAD (clean tree). update_following() (indigo_agent_scheduler.c, called at the end of update_plan) handles the cases in scope. It returns early when idle or when a preempting stop has current < 0, so the urgent task stays NEXT. A STOP request, or auto-stop through finishing_after_current(), is checked before the plan; finishing_after_current() counts only regular tasks and skips a running one-off urgent task. The SHUTDOWN hook is shown at the expected end of the run, and NEXT is empty when the shutdown hook is itself the running task. Otherwise NEXT is the first planned run after the running one. A running hook skips the same slot only when that run starts by the end of the current run. The round-8 clamp sets NEXT_START = max(planned start, expected run end). start_task() clears NEXT, and select_task() idle behaviour is unchanged. Version 0x0300000C -> 0x0300000D. SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe this behaviour accurately. Tests: rebuilt agent_scheduler and ran make -C indigo_test test-agent-scheduler with a temporary HOME: 86 run, 86 passed, 0 failed. No new defects within scope."
+        }
+      ],
+      "result": {
+        "summary": "Round 8 review of master...HEAD (clean tree). update_following() (indigo_agent_scheduler.c, called at the end of update_plan) handles the cases in scope. It returns early when idle or when a preempting stop has current < 0, so the urgent task stays NEXT. A STOP request, or auto-stop through finishing_after_current(), is checked before the plan; finishing_after_current() counts only regular tasks and skips a running one-off urgent task. The SHUTDOWN hook is shown at the expected end of the run, and NEXT is empty when the shutdown hook is itself the running task. Otherwise NEXT is the first planned run after the running one. A running hook skips the same slot only when that run starts by the end of the current run. The round-8 clamp sets NEXT_START = max(planned start, expected run end). start_task() clears NEXT, and select_task() idle behaviour is unchanged. Version 0x0300000C -> 0x0300000D. SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe this behaviour accurately. Tests: rebuilt agent_scheduler and ran make -C indigo_test test-agent-scheduler with a temporary HOME: 86 run, 86 passed, 0 failed. No new defects within scope.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 2923872.748,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 8
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "89013b70-1465-4eac-bce0-f48602d753c7",
+      "event": "ticket/created",
+      "at": "2026-11-15T21:06:49.484435Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "eb0422b2-4c6a-4242-b669-db173de68f09",
+      "event": "ticket/confirmed",
+      "at": "2026-11-15T21:07:48.196498Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "58cb8b35-9123-4f86-8a89-4ee5a4cd8205",
+      "event": "task/progress",
+      "at": "2026-11-15T21:07:57.296865Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation started on branch ticket/771d482d-221b-4ddb-8610-ed05d8512d7b"
+    },
+    {
+      "event_id": "26ecf399-3752-4a18-9181-e32df2346e45",
+      "event": "ticket/started",
+      "at": "2026-11-15T21:07:57.297496Z",
+      "actor": "human/owner",
+      "branch": "ticket/771d482d-221b-4ddb-8610-ed05d8512d7b",
+      "base": "master"
+    },
+    {
+      "event_id": "d45e3e54-53dd-4048-bf84-c3ad4bb27b3a",
+      "event": "task/progress",
+      "at": "2026-11-15T21:08:29.133638Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementer started",
+      "attempt_id": "3ef9fe27-4ad7-4574-9cc6-fecb3cbf9034",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "5266ff09-7014-4355-b18a-de9041f4f437",
+      "event": "ticket/note",
+      "at": "2026-11-15T21:11:48.984769Z",
+      "actor": "human/owner",
+      "text": "Reproduction on unfixed code: new cases next_follows_the_running_task, shutdown_hook_is_next_after_the_last_task, shutdown_hook_is_next_when_stop_is_pending all FAIL (3 run, 0 passed, 3 failed) - CURRENT.NEXT stays the running task.",
+      "tokens": null
+    },
+    {
+      "event_id": "28018acd-7797-4a58-800f-e6dd58f6b8d6",
+      "event": "ticket/note",
+      "at": "2026-11-15T21:15:26.171192Z",
+      "actor": "human/owner",
+      "text": "Design: update_plan() ends with update_following(), which (only while a run is in progress) sets next_task/next_start from the plan: first plan_runs entry after the running one (hook runs included, via plan_hook_slots), else, if the scheduler is started and finishing_after_current() (no other enabled non-terminal task, running task has no further repeat), the SHUTDOWN hook with NEXT_START at run_start+duration; if stop_requested, the SHUTDOWN hook with NEXT_START=now; none while the shutdown hook itself runs. start_task() clears next so the stale value is never published; idle behaviour of select_task() unchanged. Fix proof: the 3 new cases pass (78/78 scheduler integration cases pass). Version 0x0300000D. Docs updated in SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md. Limitations: NEXT is refreshed with the plan (on change and every IDLE_CHECK_INTERVAL); the auto-stop prediction assumes the run succeeds.",
+      "tokens": null
+    },
+    {
+      "event_id": "951f6b03-9190-45e1-9548-cfeaf85be5b7",
+      "event": "task/progress",
+      "at": "2026-11-15T21:15:26.385502Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "404ff4b2-7aa0-4476-a654-ad3185115a9f",
+      "event": "task/progress",
+      "at": "2026-11-15T21:15:26.407428Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f7bc1c3e-b657-4697-8bf7-2e1382666190",
+      "event": "check/passed",
+      "at": "2026-11-15T21:15:26.412967Z",
+      "actor": "human/owner",
+      "commit": "e7d4a71d31e4e19e2095949fd1fcb414f2d1679a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "fe2b3f40-dad2-425c-939b-48ea68f0daa6",
+      "event": "task/progress",
+      "at": "2026-11-15T21:15:30.341209Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check command-1 started: cd indigo_test && make build/integration/test_agent_scheduler >/dev/null 2>&1; ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "1b1d5911-fca0-4a64-aa07-490fcb8c872b",
+      "event": "task/progress",
+      "at": "2026-11-15T21:18:21.081674Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "6c5390c3-de8d-471e-8c39-8cdc95aa1bb6",
+      "event": "check/passed",
+      "at": "2026-11-15T21:18:21.087521Z",
+      "actor": "human/owner",
+      "commit": "e7d4a71d31e4e19e2095949fd1fcb414f2d1679a",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "212b3c2b-6834-4e89-8573-919c85c4d8bb",
+      "event": "task/progress",
+      "at": "2026-11-15T21:18:38.488694Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e65c4600-fe5b-457a-bf7f-561d089acca2",
+      "event": "review/started",
+      "at": "2026-11-15T21:18:38.489264Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "52f3ffb4-d1de-46d0-8544-0dc4d0fb42f1",
+      "event": "task/progress",
+      "at": "2026-11-15T21:18:55.306207Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Reviewer started",
+      "attempt_id": "3e2e1ead-fb07-499f-8d64-eede38bb571c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "80e82d9d-1bb5-4a70-b52d-d5a0c7280267",
+      "event": "task/progress",
+      "at": "2026-11-15T21:20:43.416097Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Running scheduler integration test: test_agent_scheduler"
+    },
+    {
+      "event_id": "150e5e8b-eeaa-4048-a616-9def8cc9abd9",
+      "event": "task/progress",
+      "at": "2026-11-15T21:27:37.775371Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "5f6caecc-9730-47bd-a06a-6d177f6c4a2e",
+      "event": "task/progress",
+      "at": "2026-11-15T21:27:37.775407Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "01bb2939-2509-4534-a878-e5fc1e863161",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T21:27:37.776033Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "e7d4a71d31e4e19e2095949fd1fcb414f2d1679a"
+    },
+    {
+      "event_id": "aa39a20a-ff8d-47c1-a501-27c450aecee9",
+      "event": "ticket/note",
+      "at": "2026-11-15T21:37:22.641622Z",
+      "actor": "human/owner",
+      "text": "Review fixes: update_following() also returns when current < 0 (hooks set current via start_task, so they are unaffected; the preempting stop keeps the urgent task as NEXT, covered by an added assertion in hand_started_sequence_blocks_all_but_urgent); STOP pending now uses the expected run end for NEXT_START, asserted in shutdown_hook_is_next_when_stop_is_pending; SCHEDULER.md notes the urgent preemption case. Full scheduler suite run 3 times: see results in report.",
+      "tokens": null
+    },
+    {
+      "event_id": "106f3e18-db79-4ef4-875f-b41a647b0098",
+      "event": "task/progress",
+      "at": "2026-11-15T21:37:22.868359Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "165765fb-a73e-4ec5-b7e2-aa7fb6ada1c6",
+      "event": "task/progress",
+      "at": "2026-11-15T21:37:22.890013Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "97c54c97-82de-494f-9644-2610f4379869",
+      "event": "check/passed",
+      "at": "2026-11-15T21:37:22.895643Z",
+      "actor": "human/owner",
+      "commit": "dc436427de6e8b570967121d0f0e5741bd96949a",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a977d395-f044-42b6-a635-3c5267659cac",
+      "event": "task/progress",
+      "at": "2026-11-15T21:37:48.276491Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Reviewer (round 2) started",
+      "attempt_id": "5e83629b-b97e-435b-bcc9-0c8967f6898d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "6505e0ff-f98d-41c6-b266-c79f1fb9e69a",
+      "event": "task/progress",
+      "at": "2026-11-15T21:37:48.400512Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "824f7711-21d2-4bd7-a5f0-ab92795a8ccb",
+      "event": "review/started",
+      "at": "2026-11-15T21:37:48.401141Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "9edeedbe-3731-4d1a-938f-b354ea2d59f6",
+      "event": "task/progress",
+      "at": "2026-11-15T21:38:59.293583Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Building and running test_agent_scheduler in isolation"
+    },
+    {
+      "event_id": "a0441c98-b18c-4ee6-b25d-1563d35fae41",
+      "event": "task/progress",
+      "at": "2026-11-15T21:45:33.581314Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "fcdc361c-a586-4ec0-8f4b-11b7e3a1c758",
+      "event": "task/progress",
+      "at": "2026-11-15T21:45:33.581352Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "a3989042-0b54-44a6-b69b-fcd1a45d03c8",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T21:45:33.582042Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "dc436427de6e8b570967121d0f0e5741bd96949a"
+    },
+    {
+      "event_id": "3a348d29-3ba2-4428-863a-6be6eceffdf3",
+      "event": "question/asked",
+      "at": "2026-11-15T21:46:12.601660Z",
+      "actor": "human/owner",
+      "text": "Round 2 review asked for changes: when one task serves as SHUTDOWN and IDLE/NIGHT_END hook (e.g. Park), STOP pressed while that hook runs (or NIGHT_END after the last task) shows the running hook as its own NEXT. Proposed: leave NEXT empty when the SHUTDOWN hook is the running task, add a test, one more review. Continue with this fix, or close as is?"
+    },
+    {
+      "event_id": "a258b9bc-2823-488f-beb2-0e14e76ce886",
+      "event": "question/answered",
+      "at": "2026-11-15T22:39:22.656675Z",
+      "actor": "human/owner",
+      "text": "Owner: fix it - leave NEXT empty when the SHUTDOWN hook is the task already running, add a test, then one more independent review."
+    },
+    {
+      "event_id": "ef14f917-7abe-4a8b-bf07-ce9e404451e5",
+      "event": "ticket/note",
+      "at": "2026-11-15T22:48:25.462736Z",
+      "actor": "human/owner",
+      "text": "Round 2 fix: shutdown_after_current() returns -1 when the SHUTDOWN hook task is the running one (used by the STOP-pending and finishing branches), so a task serving as IDLE and SHUTDOWN hook is not its own NEXT. New case shutdown_hook_running_is_not_next (Park as IDLE+SHUTDOWN hook, STOP while it runs, CURRENT Park, NEXT empty, one run): FAILS without the guard, passes with it. Full scheduler suite twice: 79/79 and 79/79 passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "31916c4c-9b39-4c97-929f-f43a24f14e38",
+      "event": "task/progress",
+      "at": "2026-11-15T22:48:25.715348Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "40f4a6dc-0bee-4f40-ab06-a39a26576606",
+      "event": "task/progress",
+      "at": "2026-11-15T22:48:25.738406Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4a8ef6b1-56ea-476e-9c08-07bb55fa8677",
+      "event": "check/passed",
+      "at": "2026-11-15T22:48:25.745551Z",
+      "actor": "human/owner",
+      "commit": "b7ca105082ba8f13825a4fdf52bef753bdd3ff68",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "49e00a70-0db5-424b-a051-0e6a5914903e",
+      "event": "task/progress",
+      "at": "2026-11-15T22:48:52.485777Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Reviewer (round 3) started",
+      "attempt_id": "4ea19f90-408b-493d-b710-b977d03f7bfb",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a9608d84-cde2-4e1a-91cb-4dabf73e8850",
+      "event": "task/progress",
+      "at": "2026-11-15T22:48:52.606244Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7c7577e5-3d15-4da0-aa59-ec1cad247ebf",
+      "event": "review/started",
+      "at": "2026-11-15T22:48:52.606932Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "fb36d429-1699-4bf7-9d6b-492c9ad921e8",
+      "event": "task/progress",
+      "at": "2026-11-15T22:50:18.874194Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Building and running test_agent_scheduler (temp HOME)"
+    },
+    {
+      "event_id": "7823edfa-4bd3-4490-b16a-f54ae94f5517",
+      "event": "task/progress",
+      "at": "2026-11-15T22:53:58.714612Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "8c7cbba7-0e71-4351-8cd1-ba8cb31613ab",
+      "event": "task/progress",
+      "at": "2026-11-15T22:53:58.714649Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "52c9d3ef-918e-4b49-9e92-a4aadd3cc8b7",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T22:53:58.715367Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "b7ca105082ba8f13825a4fdf52bef753bdd3ff68"
+    },
+    {
+      "event_id": "a8a92942-5e28-4440-8079-497721763a33",
+      "event": "question/asked",
+      "at": "2026-11-15T22:54:24.016765Z",
+      "actor": "human/owner",
+      "text": "Round 3 review asked for changes: finishing_after_current() returns true when the list holds only hook tasks, unlike all_tasks_finished(), so while a STARTUP/IDLE hook runs with no regular tasks NEXT shows the SHUTDOWN hook although the scheduler will not stop. Proposed: count regular tasks like all_tasks_finished() (false when none), add a test, one more review. Continue with this fix, or close as is?"
+    },
+    {
+      "event_id": "debd0823-c2c7-4a99-a634-adfecc0872bc",
+      "event": "question/answered",
+      "at": "2026-11-15T23:27:03.082444Z",
+      "actor": "human/owner",
+      "text": "Owner: fix it - finishing_after_current() counts regular tasks like all_tasks_finished() (no regular task means not finishing), add a test, then one more independent review."
+    },
+    {
+      "event_id": "5fc806e4-a23a-41f9-b356-415fbb73347c",
+      "event": "ticket/note",
+      "at": "2026-11-15T23:33:24.359198Z",
+      "actor": "human/owner",
+      "text": "Round 3 fix: finishing_after_current() now counts non-hook tasks like all_tasks_finished() (any flag, returns any), so a list with only hooks never predicts the SHUTDOWN hook as NEXT. New case shutdown_hook_is_not_next_without_regular_tasks (Prepare startup hook running 6 s, Close shutdown hook, no regular tasks): FAILS without the fix, passes with it. Full scheduler suite twice: 80/80 and 80/80 passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "9d3b57fd-7af6-4726-92b7-7a4774442279",
+      "event": "task/progress",
+      "at": "2026-11-15T23:33:24.586601Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5d50fc50-93d4-4e11-9c5c-b26cc68877c3",
+      "event": "task/progress",
+      "at": "2026-11-15T23:33:24.609216Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e589a857-a95a-4174-aa80-68ce4e5f4f02",
+      "event": "check/passed",
+      "at": "2026-11-15T23:33:24.616198Z",
+      "actor": "human/owner",
+      "commit": "efac30ad7a9df4e383f3ee362850032e43ef1fd0",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "ea4f8ee7-0846-4107-ab24-035df19433d5",
+      "event": "task/progress",
+      "at": "2026-11-15T23:33:55.410105Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Reviewer (round 4) started",
+      "attempt_id": "53f2dd88-8caf-4bc0-8d4a-e613d5bccc6c",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "baeb72eb-224e-409f-bc2c-e6ef504cc742",
+      "event": "task/progress",
+      "at": "2026-11-15T23:33:55.543968Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c1e276a8-e12c-4fcf-b2ac-732796aba1e0",
+      "event": "review/started",
+      "at": "2026-11-15T23:33:55.544726Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "e7dfdc46-5772-4422-bb3d-5b43539fd7e3",
+      "event": "task/progress",
+      "at": "2026-11-15T23:34:58.122716Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Building test_agent_scheduler and probing STARTUP+NIGHT_START shared hook NEXT"
+    },
+    {
+      "event_id": "e4d5cab6-4253-4f4f-a1ae-cf7562b12e78",
+      "event": "task/progress",
+      "at": "2026-11-15T23:35:51.425571Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Running full test_agent_scheduler suite with a temporary HOME"
+    },
+    {
+      "event_id": "954db9cf-c5ac-430e-89a9-0b3b5d36e215",
+      "event": "task/progress",
+      "at": "2026-11-15T23:38:59.353944Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "c0d3bda9-4c82-4334-b1ef-9fdf1e33e3aa",
+      "event": "task/progress",
+      "at": "2026-11-15T23:38:59.353981Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "2cc8c008-44f1-4c2c-847b-501cd544f18f",
+      "event": "review/changes_requested",
+      "at": "2026-11-15T23:38:59.354774Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "efac30ad7a9df4e383f3ee362850032e43ef1fd0"
+    },
+    {
+      "event_id": "015f94f5-eeb6-4d18-993e-993ed0e894ea",
+      "event": "question/asked",
+      "at": "2026-11-15T23:39:18.170750Z",
+      "actor": "human/owner",
+      "text": "Round 4 review asked for changes: a task used as both STARTUP and NIGHT_START hook shows itself as NEXT (NEXT_START about now) while it runs as the startup hook, because the plan lists the NIGHT_START run that the chain then skips. Proposed: while a hook runs, skip every planned hook run whose task is the running one (general form of the round 2 SHUTDOWN rule), add a test, one more review. Continue with this fix, or close as is?"
+    },
+    {
+      "event_id": "afb721c6-71a8-46f3-b62f-a58b17184abc",
+      "event": "question/answered",
+      "at": "2026-11-15T23:45:35.274408Z",
+      "actor": "human/owner",
+      "text": "Owner: fix it - while a hook runs, skip every planned hook run whose task is the running one (general shared-hook rule), add a test, then one more independent review."
+    },
+    {
+      "event_id": "c410e519-3abb-4780-bb95-58244f9419b1",
+      "event": "ticket/note",
+      "at": "2026-11-15T23:52:22.593308Z",
+      "actor": "human/owner",
+      "text": "Round 4 fix: while a hook runs, update_following() skips planned runs whose slot is the running task (one task serving several hooks runs once). New case shared_startup_and_night_start_hook_is_not_next (Prepare as STARTUP and NIGHT_START, Work task, START in the night: CURRENT Prepare, NEXT Work, one hook run): fails with the guard disabled, passes with it. Full scheduler suite twice: 81/81 and 81/81 passed. No git stash used.",
+      "tokens": null
+    },
+    {
+      "event_id": "1bd2e96a-4c90-4981-a870-f0bc58b65b05",
+      "event": "task/progress",
+      "at": "2026-11-15T23:52:22.819332Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "139ba3df-6023-4c59-add5-cc576e1a36f2",
+      "event": "task/progress",
+      "at": "2026-11-15T23:52:22.842592Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5afe7e9a-b565-4ca1-8a19-c76277520c03",
+      "event": "check/passed",
+      "at": "2026-11-15T23:52:22.850106Z",
+      "actor": "human/owner",
+      "commit": "72d7708df934e42add778cd6f03d77f9cba389d6",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "6ec5be89-1f5c-4084-8edc-2b605947fb9f",
+      "event": "ticket/note",
+      "at": "2026-11-16T00:00:26.224099Z",
+      "actor": "human/owner",
+      "text": "Round 5 refinement: the shared-hook skip in update_following() now applies only when the planned run starts at or before the expected end of the current run (plan_runs[i].start <= end). New case shared_hook_later_in_the_night_is_next (Park as IDLE and NIGHT_END hook, Evening night start hook and Work run first, idle Park runs mid-night: CURRENT Park, NEXT Park with NEXT_START at the night end +-120 s): fails with the previous unconditional guard, passes now; shared_startup_and_night_start_hook_is_not_next still passes. Full scheduler suite twice: 82/82 and 82/82. No git stash used.",
+      "tokens": null
+    },
+    {
+      "event_id": "fe68d334-fd70-4db0-b0fa-6f3aa85301a0",
+      "event": "task/progress",
+      "at": "2026-11-16T00:00:26.451866Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1eaf8fef-c970-40a9-9e73-4b9f0222ab8c",
+      "event": "task/progress",
+      "at": "2026-11-16T00:00:26.475685Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "eafbff25-30bf-4e11-9b46-c6923e17d174",
+      "event": "check/passed",
+      "at": "2026-11-16T00:00:26.483434Z",
+      "actor": "human/owner",
+      "commit": "a93963d69c6b8d1445043260588708e6ccc690dc",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "985d260e-4512-42cf-b748-bf394f07bda3",
+      "event": "task/progress",
+      "at": "2026-11-16T00:01:10.069919Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Reviewer (round 5) started",
+      "attempt_id": "d100abd3-fd19-4db8-86ff-324a43aa6524",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "0ce049e4-8ef4-4822-8ecd-85a9910b4d07",
+      "event": "task/progress",
+      "at": "2026-11-16T00:01:10.192078Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "15ea3231-6987-4983-ad02-729400cac34d",
+      "event": "review/started",
+      "at": "2026-11-16T00:01:10.192896Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "5f17b39e-b1c4-4b65-a402-7ea4c151ad4b",
+      "event": "task/progress",
+      "at": "2026-11-16T00:02:18.272609Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Running in-process test_agent_scheduler from the worktree"
+    },
+    {
+      "event_id": "6631f21f-9c06-4005-906c-9c2ae6a75af4",
+      "event": "task/progress",
+      "at": "2026-11-16T00:06:31.023524Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "0d2e1f61-ba9f-4642-bb3f-34d635a045e0",
+      "event": "task/progress",
+      "at": "2026-11-16T00:06:31.023575Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "e1362f52-7e3c-4125-8a65-8b628bedf3ad",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T00:06:31.024422Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "a93963d69c6b8d1445043260588708e6ccc690dc"
+    },
+    {
+      "event_id": "1f60a444-ee7a-49fb-b5eb-fedee6334261",
+      "event": "question/asked",
+      "at": "2026-11-16T00:07:01.296674Z",
+      "actor": "human/owner",
+      "text": "Round 5 review asked for changes: during the last task of a started night, NEXT shows the NIGHT_END hook (NEXT_START = night end, possibly hours away), but after the last task the scheduler auto-stops and runs only SHUTDOWN (all_tasks_finished() is checked before process_night()). Proposed: check finishing_after_current() before the plan loop, so SHUTDOWN (NEXT_START = end of the run) wins over planned night hooks; add a test; one more review. Continue with this fix, or close as is?"
+    },
+    {
+      "event_id": "3635d674-bc10-4caf-99cb-45836655e1d4",
+      "event": "question/answered",
+      "at": "2026-11-16T00:09:03.847640Z",
+      "actor": "human/owner",
+      "text": "Owner: fix it - when the scheduler will auto-stop after the running run (finishing_after_current), NEXT is the SHUTDOWN hook (NEXT_START = expected end of the run) before the plan is consulted; add a test, then one more independent review."
+    },
+    {
+      "event_id": "cb7b63a9-a634-4dd3-a21b-54cf103eabec",
+      "event": "ticket/note",
+      "at": "2026-11-16T00:16:01.518331Z",
+      "actor": "human/owner",
+      "text": "Round 6 fix: update_following() now checks stop_requested || (started && finishing_after_current()) before the plan, so the last regular task is followed by the SHUTDOWN hook (NEXT empty if it is the running task) and the plan's night end hook is not shown. New case shutdown_hook_is_next_before_the_night_end_hook (Evening/Morning night hooks, Close shutdown, one 6 s task in the night: NEXT Close near the task end, Morning never starts): fails without the fix, passes with it. Docs reworded (SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md). Full scheduler suite twice: 83/83 and 83/83. No git stash used.",
+      "tokens": null
+    },
+    {
+      "event_id": "5fb69d10-13b6-48b3-8180-7817047598a6",
+      "event": "task/progress",
+      "at": "2026-11-16T00:16:01.748223Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "21068652-fd55-4adc-a935-7b2a2fe2e701",
+      "event": "task/progress",
+      "at": "2026-11-16T00:16:01.772289Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "5e511fa2-7a55-4dae-a33c-c35fd5192e7a",
+      "event": "check/passed",
+      "at": "2026-11-16T00:16:01.780243Z",
+      "actor": "human/owner",
+      "commit": "de5ab7986376cb94f434f6646942b35a7d954ccf",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "698a4c77-beef-4766-8275-b1687bd3960d",
+      "event": "task/progress",
+      "at": "2026-11-16T00:16:31.685757Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Reviewer (round 6) started",
+      "attempt_id": "4ee166cf-a533-4ffc-bff0-5db65cde32c0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "fed0111a-3443-49cd-acfb-cf5bc638018b",
+      "event": "task/progress",
+      "at": "2026-11-16T00:16:31.819978Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "7ba287c6-7ad8-4437-9c5b-97e0e7e84997",
+      "event": "review/started",
+      "at": "2026-11-16T00:16:31.820909Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "246327e8-179a-41c0-b4eb-e417f5b5b939",
+      "event": "task/progress",
+      "at": "2026-11-16T00:17:28.166063Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Building test_agent_scheduler and probing urgent-only SHUTDOWN prediction"
+    },
+    {
+      "event_id": "aac100bf-9c72-4047-b988-72f2e69a1bbe",
+      "event": "task/progress",
+      "at": "2026-11-16T00:18:17.988922Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Running full test_agent_scheduler suite (temporary HOME)"
+    },
+    {
+      "event_id": "309c9721-3948-4848-8269-fe02bc833818",
+      "event": "task/progress",
+      "at": "2026-11-16T00:21:43.312981Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "f4022595-9f1e-410e-80ec-2574da9ccbf9",
+      "event": "task/progress",
+      "at": "2026-11-16T00:21:43.313019Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "2467d343-47d2-4255-9149-576097c512f8",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T00:21:43.313942Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "de5ab7986376cb94f434f6646942b35a7d954ccf"
+    },
+    {
+      "event_id": "8f8c97ae-408d-44e0-85f1-83b1f13e852f",
+      "event": "question/asked",
+      "at": "2026-11-16T00:22:07.137294Z",
+      "actor": "human/owner",
+      "text": "Round 6 review asked for changes: finishing_after_current() counts a running one-off urgent task (not stored, removed after its run) as a regular task, so with only hooks besides it NEXT predicts SHUTDOWN that never happens (and with @repeat it predicts the opposite). Proposed: skip the running non-stored task in finishing_after_current(), add a test, one more review. Continue with this fix, or close as is?"
+    },
+    {
+      "event_id": "104bac73-dfcf-495f-87a7-9fafe8af6656",
+      "event": "question/answered",
+      "at": "2026-11-16T00:24:58.087775Z",
+      "actor": "human/owner",
+      "text": "Owner: fix it - finishing_after_current() ignores the running one-off urgent (non-stored) task, add a test, then one more independent review."
+    },
+    {
+      "event_id": "b70ee28f-3540-402a-868c-b026ac2c1807",
+      "event": "ticket/note",
+      "at": "2026-11-16T00:32:20.889660Z",
+      "actor": "human/owner",
+      "text": "Round 7 fix: finishing_after_current() skips the running one-off (non-stored) urgent task before counting and before the repeat check, since it leaves the list after its run. New cases one_off_urgent_task_is_not_followed_by_the_shutdown_hook (NEXT empty while it runs, Close never starts, scheduler stays BUSY) and repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook (@repeat 2 after stored tasks DONE: NEXT Close, Close runs): both fail with the skip disabled (2 run, 0 passed), pass with it. Full scheduler suite twice: 85/85 and 85/85. No git stash used; scratch copies removed.",
+      "tokens": null
+    },
+    {
+      "event_id": "6d691a54-de87-4382-822e-2118afab055d",
+      "event": "task/progress",
+      "at": "2026-11-16T00:32:21.116977Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3a1ec1d6-7dd8-4d04-9d45-a57168015d36",
+      "event": "task/progress",
+      "at": "2026-11-16T00:32:21.142265Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "f8c7a765-8c6f-4816-8711-e3f88cc0448c",
+      "event": "check/passed",
+      "at": "2026-11-16T00:32:21.151942Z",
+      "actor": "human/owner",
+      "commit": "d94bb873148cbbcc93c7fee05a91c878ddecd524",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "7bce5c7b-1c6c-47f0-880d-284ed89b1796",
+      "event": "task/progress",
+      "at": "2026-11-16T00:32:51.142801Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Reviewer (round 7) started",
+      "attempt_id": "1a7c9d64-f039-4422-8280-56ca701c742b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "7ea98843-1941-421c-b400-d52dc9902c3b",
+      "event": "task/progress",
+      "at": "2026-11-16T00:32:51.262197Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "46c43a96-cf75-4cd1-9aa0-bb1857317a30",
+      "event": "review/started",
+      "at": "2026-11-16T00:32:51.263131Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "5445fd7d-3686-473c-9bba-d51a334eed5c",
+      "event": "task/progress",
+      "at": "2026-11-16T00:33:50.056439Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Building and running test_agent_scheduler in the worktree with a temporary HOME"
+    },
+    {
+      "event_id": "bdbc388f-d73b-4632-a952-e39b087ba20b",
+      "event": "task/progress",
+      "at": "2026-11-16T00:40:32.699444Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "9cfa0759-6fc4-49de-b35f-a145cd62d839",
+      "event": "task/progress",
+      "at": "2026-11-16T00:40:32.699486Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "282afa80-8d27-4ca2-8a01-0080d6eb529c",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T00:40:32.700458Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "d94bb873148cbbcc93c7fee05a91c878ddecd524"
+    },
+    {
+      "event_id": "0a1d6649-7fb4-45ef-b1ee-91507196dc8e",
+      "event": "question/asked",
+      "at": "2026-11-16T00:40:55.102400Z",
+      "actor": "human/owner",
+      "text": "Round 7 review asked for changes: while a hook runs, the plan starts at now (only a running task is marked running), so NEXT_START shows the hook's own start time / now instead of after the hook. Proposed one-line fix: clamp next_start to the expected end of the current run, plus a test assertion, then one more review. Continue with this fix, or close as is?"
+    },
+    {
+      "event_id": "d8db5e23-2302-4a7b-8e87-df7d3cd41780",
+      "event": "question/answered",
+      "at": "2026-11-16T00:42:36.232984Z",
+      "actor": "human/owner",
+      "text": "Owner: fix it - clamp NEXT_START from the plan to the expected end of the current run, add a test assertion, then one more independent review."
+    },
+    {
+      "event_id": "1a944546-ea29-4917-bdea-6a1214ceec6e",
+      "event": "ticket/note",
+      "at": "2026-11-16T00:50:30.489487Z",
+      "actor": "human/owner",
+      "text": "Round 8 fix: in the plan branch of update_following(), next_start = max(planned start, expected end of the current run), because the plan of a running hook starts at now. New case next_start_follows_the_end_of_the_running_hook (STARTUP hook Prepare @duration 5, task Work: NEXT Work, NEXT_START about 5 min ahead): fails without the clamp, passes with it. The shared_startup_and_night_start_hook_is_not_next case also asserts NEXT_START (it passes without the clamp too, since the plan holds the shared hook run). Docs unchanged and still accurate. Full scheduler suite twice: 86/86 and 86/86 (a concurrent duplicate loop was killed first and the counts come from a clean sequence). No git stash used; scratch files removed.",
+      "tokens": null
+    },
+    {
+      "event_id": "4db1d2d1-882a-4377-82ba-604c1e41b90c",
+      "event": "task/progress",
+      "at": "2026-11-16T00:50:30.716824Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b0878357-8ca3-4fc7-bfca-54bd11573d74",
+      "event": "task/progress",
+      "at": "2026-11-16T00:50:30.741682Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0a1ae684-3f88-4ad3-91b7-b358714b74e4",
+      "event": "check/passed",
+      "at": "2026-11-16T00:50:30.750206Z",
+      "actor": "human/owner",
+      "commit": "5ebb5cffc586490f7cd0645d4ebb922ba8418d81",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "3dd6cf98-b38e-47e3-a234-0930e552c8b9",
+      "event": "task/progress",
+      "at": "2026-11-16T00:51:02.170029Z",
+      "actor": "human/owner",
+      "task_id": "2ebb11dd-6b81-4216-b7e9-eb406305c406",
+      "text": "Reviewer (round 8) started",
+      "attempt_id": "074dce7c-3612-4656-aa19-83a8abe92af2",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "391f24cc-3a19-4fa4-aa5f-cb5b6f82de98",
+      "event": "task/progress",
+      "at": "2026-11-16T00:51:02.294025Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review started"
+    },
+    {
+      "event_id": "f6d3414e-9e0b-4228-a26d-0423ee786f0f",
+      "event": "review/started",
+      "at": "2026-11-16T00:51:02.295049Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "63319e49-6c91-4ef0-83c6-a30c2eee638d",
+      "event": "task/progress",
+      "at": "2026-11-16T00:51:26.375283Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Running test_agent_scheduler in worktree with temporary HOME"
+    },
+    {
+      "event_id": "cf560889-b6fc-47c2-9706-1cb2909e57ba",
+      "event": "task/progress",
+      "at": "2026-11-16T00:54:38.019313Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "d8b94a2b-7915-412c-8364-c0f1776c49d1",
+      "event": "review/passed",
+      "at": "2026-11-16T00:54:38.020382Z",
+      "actor": "human/owner",
+      "task_id": "9f51ec3a-6e15-4850-b36a-bdb29473a0f2",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5ebb5cffc586490f7cd0645d4ebb922ba8418d81"
+    },
+    {
+      "event_id": "6692a7ba-1858-4968-9e6f-34a4e3cfcc40",
+      "event": "ticket/title_changed",
+      "at": "2026-11-16T01:03:10.787268Z",
+      "actor": "human/owner",
+      "previous_title": "Scheduler Agent shows the running task as NEXT with its own start time as NEXT_START",
+      "title": "indigo_agent_scheduler: fix NEXT and NEXT_START naming the running task and its start time instead of the task or hook that follows it"
+    },
+    {
+      "event_id": "60e5b693-a44a-4cf7-811f-25dc04e73ddc",
+      "event": "ticket/closed",
+      "at": "2026-11-16T01:03:16.949000Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-16T01:03:16.948927Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "af5aeb77a0a64a01a4b2336d77c8a0ba5da2cac8"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e7d4a71d31e4e19e2095949fd1fcb414f2d1679a",
+        "tree": "e9790f19d9081bba69eca272ec5fedf7f9035b7f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T21:15:26.406583Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/e9790f19d908-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "cd indigo_test && make build/integration/test_agent_scheduler >/dev/null 2>&1; ./build/integration/test_agent_scheduler",
+        "commit": "e7d4a71d31e4e19e2095949fd1fcb414f2d1679a",
+        "tree": "e9790f19d9081bba69eca272ec5fedf7f9035b7f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T21:18:21.079000Z",
+        "duration_s": 170.7,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/e9790f19d908-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "dc436427de6e8b570967121d0f0e5741bd96949a",
+        "tree": "67e2e4ac72238eda251c13575af6ea929070bf4e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T21:37:22.889128Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/67e2e4ac7223-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "b7ca105082ba8f13825a4fdf52bef753bdd3ff68",
+        "tree": "4fa3b7f47d43e94547bf8ffe0e1a9ce7c17bf0f1",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T22:48:25.737076Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/4fa3b7f47d43-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "efac30ad7a9df4e383f3ee362850032e43ef1fd0",
+        "tree": "efed8e0f31e221431c35c13509a51e72e453a7a0",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T23:33:24.607991Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/efed8e0f31e2-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "72d7708df934e42add778cd6f03d77f9cba389d6",
+        "tree": "acecb4ebaf2f41c0c4464d65cb43e9505a19eb9f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-15T23:52:22.841153Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/acecb4ebaf2f-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a93963d69c6b8d1445043260588708e6ccc690dc",
+        "tree": "fb8f37b4b94ba19923438eb570f37138b1640082",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T00:00:26.474040Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/fb8f37b4b94b-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "de5ab7986376cb94f434f6646942b35a7d954ccf",
+        "tree": "1862b5a63a16ca6e0bddd68a3720918fd2cc77e5",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T00:16:01.770644Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/1862b5a63a16-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d94bb873148cbbcc93c7fee05a91c878ddecd524",
+        "tree": "11edd596410a6412b3f3444e2520dd1ae224ab99",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T00:32:21.140074Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/11edd596410a-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5ebb5cffc586490f7cd0645d4ebb922ba8418d81",
+        "tree": "e476a254672d32b7de791921666ba8c18402f3c1",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T00:50:30.739852Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/771d482d-221b-4ddb-8610-ed05d8512d7b/e476a254672d-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "1) Regression outside a run: indigo_agent_scheduler.c update_following() (worktree ~line 2053-2061) returns early only for phase == RUN_IDLE. When a hand-started sequence occupies the Scripting Agent and an urgent task arrives, process_idle() calls select_task() (NEXT = urgent task, NEXT_START = now) and begin_stop(STOP_PREEMPT) with current = -1, so phase = RUN_STOPPING. In the same process() pass the urgent command has set plan_dirty, update_plan() -> update_following() sees phase != RUN_IDLE and current < 0, sets next_task = -1 and publishes an empty NEXT for the whole stop. Before the change NEXT showed the urgent task. No scheduler task or hook runs here, so the idle/waiting behaviour must stay unchanged. Correction: return early also when PRIVATE_DATA->current < 0 (e.g. if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->current < 0) return;). 2) Docs do not match the code for a pending stop: update_following() sets NEXT_START = now when stop_requested (and refreshes it to the new now on every plan update), but SCHEDULER.md (AGENT_SCHEDULER_CURRENT row: 'the SHUTDOWN hook at the expected end of the run when the scheduler stops after it (a stop is pending, or no other task is left to run)') and INDIGO_SCHEDULER_GUIDE.md (NEXT_START row: 'for the SHUTDOWN hook when the current run is expected to end') say the expected end of the run in both cases. Correction: either use the expected end of the run (end) for the STOP case too, or document that NEXT_START is the current time while a stop is pending. Everything else checks out: start_task clears the stale value; plan scan skips the running entry and handles hooks (STARTUP->NIGHT_START, NIGHT_START->task/NIGHT_END) and repeats; SHUTDOWN suppressed while the shutdown hook runs; same handler context as the existing update_plan/update_current calls, no new locking needed; version 0x0300000D; formatting OK. Tests assert the contract (CURRENT/NEXT pair, NEXT_START range) and pass: test_agent_scheduler 78/78 on my second run. My first run reported 77/78 with one failure whose name I lost because the output was truncated, so a flaky case cannot be ruled out. Minor (not blocking): after a STOP_TIMEOUT stop or 'shutdown hook could not run', NEXT keeps the predicted SHUTDOWN hook while stopped (the old code was also stale here).",
+        "reviewer": "human/owner",
+        "commit": "e7d4a71d31e4e19e2095949fd1fcb414f2d1679a",
+        "tree": "e9790f19d9081bba69eca272ec5fedf7f9035b7f",
+        "at": "2026-11-15T21:27:37.775269Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 1 fixes verified: (1) update_following() returns early when current < 0 (indigo_agent_scheduler.c:2055), so the urgent task chosen by select_task() stays NEXT during a preempting stop; the old out-of-bounds tasks[-1] access is gone. (2) With STOP pending, NEXT_START is the expected end of the run (end, :2063-2066), matching both docs and asserted in shutdown_hook_is_next_when_stop_is_pending. (3) test_agent_scheduler built from the worktree with a private HOME: two complete runs, 78/78 each. The new assertion in hand_started_sequence_blocks_all_but_urgent is not flaky: process() runs only on ticks (TICK_INTERVAL 0.5 s, :65) and on commands. begin_stop() happens in the upload pass, the stop finishes in a later pass, and stopped_now (:2222) blocks start_task() until the next tick, so CURRENT='' NEXT='Pushy' holds for at least about 0.5 s, against a 10 ms poll with 5 s to spare. DEFECT: a hook running is shown as its own NEXT when the SHUTDOWN hook names the same task. update_following() picks hook_slot(HOOKS_SHUTDOWN_ITEM) for stop_requested (:2064-2066) and for finishing_after_current() (:2077-2079) without checking that it differs from PRIVATE_DATA->current. SCHEDULER.md:568 documents exactly this setup (a Park task as SHUTDOWN, IDLE and NIGHT_END; 'NIGHT_END and SHUTDOWN when STOP arrives while the night end hook runs' runs the task once), and process_idle() skips the shutdown run through chain_slot/chain_ok (:1751, set at :1106). So during a NIGHT_END or IDLE hook with STOP pending, or during NIGHT_END after the last task, CURRENT=Park and NEXT=Park, with a NEXT_START for a run that will not happen. That breaks the ticket's 'never the running task itself' and the new doc text 'NEXT is the running task itself only when it repeats'. Fix: do not use the shutdown slot when it equals PRIVATE_DATA->current; leave NEXT empty, which matches the plan's success assumption. Add an assertion, for example STOP during a night end/idle hook that is also the SHUTDOWN hook, or extend the stop-pending case with a hook run.",
+        "reviewer": "human/owner",
+        "commit": "dc436427de6e8b570967121d0f0e5741bd96949a",
+        "tree": "67e2e4ac72238eda251c13575af6ea929070bf4e",
+        "at": "2026-11-15T21:45:33.581211Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 3. Round 1/2 fixes verified: update_following() returns when current < 0 (preempted hand-started sequence keeps the urgent task as NEXT, asserted); STOP pending uses the expected run end; shutdown_after_current() returns -1 when the SHUTDOWN slot is the running task, in both branches. start_task() clears NEXT, idle select_task() unchanged, night start hook not self-listed (night_state.started set before the hook runs). Tests: test_agent_scheduler run twice with temp HOME, 79/79 and 79/79 passed. The 1.5 s sleep in shutdown_hook_running_is_not_next is sound: it skips the transient (Park, empty) published by refresh() before update_plan() at hook start, STOP is applied within one 0.5 s tick, and Park runs 6 s, leaving margin. DEFECT: finishing_after_current() (indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2030-2049) returns true when the list contains no non-hook task, while all_tasks_finished() (:1476) requires at least one (any). When a hook runs (kind != RUN_TASK) and the list holds only hook tasks, e.g. Park as IDLE hook and Close as SHUTDOWN hook with no other task, or a STARTUP hook in the same situation, update_following() (:2083) publishes NEXT=Close with NEXT_START at the hook's end, but the scheduler does not stop afterwards (all_tasks_finished() is false, it keeps waiting with no task), so NEXT names a SHUTDOWN that will not run. Impact: misleading NEXT in a reachable, if uncommon, configuration (hooks configured before tasks are added). Correction: in finishing_after_current() track a non-hook task like all_tasks_finished() does and return false when none exists (the running RUN_TASK counts as one); optionally add a case with only hook tasks asserting NEXT stays empty while the idle hook runs.",
+        "reviewer": "human/owner",
+        "commit": "b7ca105082ba8f13825a4fdf52bef753bdd3ff68",
+        "tree": "4fa3b7f47d43e94547bf8ffe0e1a9ce7c17bf0f1",
+        "at": "2026-11-15T22:53:58.714499Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 3 fix verified: finishing_after_current() (indigo_agent_scheduler.c:2030-2047) now mirrors all_tasks_finished() (requires a non-hook task); shutdown_hook_is_not_next_without_regular_tasks passes. Full test_agent_scheduler suite at efac30ad7: 80 run, 80 passed, 0 failed.\n\nDefect (in scope, same class as the round 2 finding): a task that serves as both STARTUP and NIGHT_START hook is shown as its own NEXT, with NEXT_START at roughly the time it started, while it runs as the startup hook. SCHEDULER.md:568 documents this exact setup ('STARTUP and NIGHT_START on START during the night' run once). Cause: during the startup hook, night_state.handled is still false, so update_plan() (indigo_agent_scheduler.c:2145-2161) adds the NIGHT_START hook at from=now. update_following() (2071-2080) sets after=true for a running hook (kind != RUN_TASK) and takes plan_runs[0], the NIGHT_START run, whose plan_hook_slots[] entry is the running slot. When the hook finishes, start_night_hook() (1674) skips that run through chain_slot, so the predicted run never happens. Reproduced with a scratch copy of the test (not committed): Prepare as STARTUP and NIGHT_START hook (wait 6 s), Work task, START during the night (as in shared_hook_task_runs_once). Two seconds into the hook: CURRENT='Prepare' NEXT='Prepare' NEXT_START=<now>. Impact: the requirement 'never the running task with its own start time' is broken for a documented configuration. Fix: in update_following(), skip a planned hook run whose slot is PRIVATE_DATA->current while a hook runs (the rule 'a task that serves as several hooks runs once', as shutdown_after_current() already does for SHUTDOWN), so the following run (Work) becomes NEXT. Add a test case for this configuration (for example extend shared_hook_task_runs_once or add one beside shutdown_hook_running_is_not_next) that fails without the fix.",
+        "reviewer": "human/owner",
+        "commit": "efac30ad7a9df4e383f3ee362850032e43ef1fd0",
+        "tree": "efed8e0f31e221431c35c13509a51e72e453a7a0",
+        "at": "2026-11-15T23:38:59.353847Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 5 review. One defect in the requested NEXT prediction.\n\nDefect: when the last regular task runs during a night whose NIGHT_START hook has run and a NIGHT_END hook is named, NEXT is the NIGHT_END hook at the night end, not the SHUTDOWN hook. Evidence: update_plan() always adds the night end hook for a started night (indigo_drivers/agent_scheduler/indigo_agent_scheduler.c:2153), and indigo_scheduler_plan_with_hooks() plans it even when no task is left (its final loop). update_following() takes the first planned run after the current one (indigo_agent_scheduler.c:2073-2086) and checks finishing_after_current() only when the plan gives no run (line 2087). The scheduler itself checks all_tasks_finished() in process_idle() (line 1795) before process_night(), so after the last task it stops and runs only SHUTDOWN. SCHEDULER.md:571 says the same ('the automatic stop run only the SHUTDOWN hook, also during the night; NIGHT_END does not run then'). Reproduced with a scratch copy of test_agent_scheduler plus one case: Evening as NIGHT_START, Morning as NIGHT_END, Close as SHUTDOWN, one task Work (duration 5 min), START in the night with the night end in 30 min. While Work runs, CURRENT=Work and NEXT=Morning with NEXT_START at the night end (+1792 s). Then Close ran right after Work and Morning never started (Morning starts=0, Close starts=1). Impact: in the documented night-hook setup (SCHEDULER.md:581: NIGHT_END = Morning, SHUTDOWN = Morning), during the last task of the night NEXT_START is the night end, possibly hours away, though shutdown follows the run. With different NIGHT_END and SHUTDOWN tasks the name is wrong as well. Correction: in update_following(), when stop_requested is false, check PRIVATE_DATA->started && finishing_after_current(device) before the plan loop. When it is true, set NEXT to shutdown_after_current() with NEXT_START = end, which leaves NEXT empty when the shutdown task is the running one, and do not fall back to the plan. Add a case like the reproduction above (NEXT is the SHUTDOWN task, the NIGHT_END task never starts).\n\nChecked and correct: start_task() clears next; the preempting stop keeps the urgent task as NEXT (current < 0 return); STOP pending gives SHUTDOWN at the expected run end; SHUTDOWN is not NEXT when it is the running task; finishing_after_current() needs at least one regular task; the shared-hook skip (start <= end) matches start_night_hook()'s chain_slot rule and the chain_slot reset in process_idle(); waiting and idle select_task() behaviour is unchanged; version 0x0300000C -> 0x0300000D; docs are consistent with the code apart from the case above.\n\nTests: worktree make -C indigo_test test-agent-scheduler (temporary HOME, in-process, no TCP server): 82 run, 82 passed, 0 failed. Reproduction case (scratch copy, not in the repo): 1 run, 0 passed, 1 failed.",
+        "reviewer": "human/owner",
+        "commit": "a93963d69c6b8d1445043260588708e6ccc690dc",
+        "tree": "fb8f37b4b94ba19923438eb570f37138b1640082",
+        "at": "2026-11-16T00:06:31.023395Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 6 review. Previous fixes verified (urgent preemption keeps NEXT; STOP/auto-stop -> SHUTDOWN at the run end, checked before the plan; running SHUTDOWN hook not its own NEXT; chain_slot rule for shared hooks); docs consistent with code; version 0x0300000D. One remaining defect: finishing_after_current() (indigo_agent_scheduler.c:2030-2048) counts the running task as a regular task left in the list and applies its repeat count even when it is a one-off urgent task (task->stored == false). Such a task is removed by finish_task() (line 1152-1154) after its first run whatever the result, before process_idle() evaluates all_tasks_finished() (line 1476), which returns false for an empty list or a list holding only hooks. Reproduction (scratch case, not committed): SHUTDOWN = Close, no other task, START, then AGENT_SCHEDULER_URGENT_TASK 'Pushy' (@duration 5, waits 5 s). While Pushy runs CURRENT.NEXT = Close with NEXT_START at the expected end, but after Pushy completes the scheduler keeps running (empty list stays ready for urgent tasks, SCHEDULER.md) and Close never starts. Impact: NEXT predicts a SHUTDOWN that the scheduler does not perform, violating the ticket requirement and the SCHEDULER.md CURRENT row. The converse also follows from the same line: a one-off urgent task with @repeat > 1 running after all stored tasks finished returns false although the scheduler auto-stops after it. Correction: in finishing_after_current(), for the running RUN_TASK slot with !task->stored, skip it (continue before setting any = true and without the repeat check), mirroring that it leaves the list; add a regression case (urgent one-off as the only regular task with a SHUTDOWN hook: NEXT empty while it runs, Close not started). Tests: full test_agent_scheduler 83 run, 83 passed, 0 failed; probe case 1 run, 0 passed, 1 failed (demonstrates the defect).",
+        "reviewer": "human/owner",
+        "commit": "de5ab7986376cb94f434f6646942b35a7d954ccf",
+        "tree": "1862b5a63a16ca6e0bddd68a3720918fd2cc77e5",
+        "at": "2026-11-16T00:21:43.312880Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 7 review. Verified previous fixes (urgent preemption keeps NEXT; STOP pending / auto-stop -> SHUTDOWN at expected run end checked before the plan; finishing_after_current() one-off urgent skip; SHUTDOWN not its own NEXT; chain_slot-limited shared-hook skip). Full in-process suite on the candidate: 85 run, 85 passed, 0 failed.\n\nDefect (reproduced): while a hook runs, NEXT_START from the plan branch is the hook's own start time / now, not when NEXT is expected to start. indigo_drivers/agent_scheduler/indigo_agent_scheduler.c update_following(), plan branch: next_start = plan_runs[i].start. update_plan() marks only a RUN_TASK as running (plan_task->running requires kind == RUN_TASK), so while a STARTUP/NIGHT_START/IDLE/NIGHT_END/RESUME hook runs the plan starts at now and the first planned run gets start == now; the first update_plan after start_task() publishes NEXT_START == run_start of the hook, and every refresh moves it to the current time. This is the ticket's symptom (NEXT_START is the time the running run started) for the hook case the ticket explicitly covers ('while a task or hook runs'), contradicts INDIGO_SCHEDULER_GUIDE.md ('while a run is in progress, when NEXT is planned to start') and is inconsistent with the SHUTDOWN branch of the same function, which uses the expected end of the hook. Reproduction (scratch copy of the test, not committed): startup hook Prepare '@duration 5' BODY_WAIT(8), task Work, site_at_evening(), START; 2 s after 'Starting hook Prepare': CURRENT Prepare, NEXT Work, NEXT_START - now = 0 s (expected ~298 s). Same with night start hook Evening '@duration 5' in the night: 0 s. Both probe cases fail on the candidate. Correction: in the plan branch clamp to the expected end of the current run, e.g. next_start = plan_runs[i].start > end ? plan_runs[i].start : end; (no-op for a running task, whose planned successors already start after running_end >= end). With that one-line change both probe cases pass (NEXT_START - now = 298 s) and the full scheduler suite still passes 85/85. Add a regression assertion (e.g. a NEXT_START bound in shared_startup_and_night_start_hook_is_not_next with a @duration on Prepare, or a new case) and mention it in the docs only if wording changes are needed.",
+        "reviewer": "human/owner",
+        "commit": "d94bb873148cbbcc93c7fee05a91c878ddecd524",
+        "tree": "11edd596410a6412b3f3444e2520dd1ae224ab99",
+        "at": "2026-11-16T00:40:32.699345Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 8 review of master...HEAD (clean tree). update_following() (indigo_agent_scheduler.c, called at the end of update_plan) handles the cases in scope. It returns early when idle or when a preempting stop has current < 0, so the urgent task stays NEXT. A STOP request, or auto-stop through finishing_after_current(), is checked before the plan; finishing_after_current() counts only regular tasks and skips a running one-off urgent task. The SHUTDOWN hook is shown at the expected end of the run, and NEXT is empty when the shutdown hook is itself the running task. Otherwise NEXT is the first planned run after the running one. A running hook skips the same slot only when that run starts by the end of the current run. The round-8 clamp sets NEXT_START = max(planned start, expected run end). start_task() clears NEXT, and select_task() idle behaviour is unchanged. Version 0x0300000C -> 0x0300000D. SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md describe this behaviour accurately. Tests: rebuilt agent_scheduler and ran make -C indigo_test test-agent-scheduler with a temporary HOME: 86 run, 86 passed, 0 failed. No new defects within scope.",
+        "reviewer": "human/owner",
+        "commit": "5ebb5cffc586490f7cd0645d4ebb922ba8418d81",
+        "tree": "e476a254672d32b7de791921666ba8c18402f3c1",
+        "at": "2026-11-16T00:54:38.019211Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-15T21:11:48.984220Z",
+        "actor": "human/owner",
+        "text": "Reproduction on unfixed code: new cases next_follows_the_running_task, shutdown_hook_is_next_after_the_last_task, shutdown_hook_is_next_when_stop_is_pending all FAIL (3 run, 0 passed, 3 failed) - CURRENT.NEXT stays the running task.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T21:15:26.170683Z",
+        "actor": "human/owner",
+        "text": "Design: update_plan() ends with update_following(), which (only while a run is in progress) sets next_task/next_start from the plan: first plan_runs entry after the running one (hook runs included, via plan_hook_slots), else, if the scheduler is started and finishing_after_current() (no other enabled non-terminal task, running task has no further repeat), the SHUTDOWN hook with NEXT_START at run_start+duration; if stop_requested, the SHUTDOWN hook with NEXT_START=now; none while the shutdown hook itself runs. start_task() clears next so the stale value is never published; idle behaviour of select_task() unchanged. Fix proof: the 3 new cases pass (78/78 scheduler integration cases pass). Version 0x0300000D. Docs updated in SCHEDULER.md and INDIGO_SCHEDULER_GUIDE.md. Limitations: NEXT is refreshed with the plan (on change and every IDLE_CHECK_INTERVAL); the auto-stop prediction assumes the run succeeds.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T21:37:22.641000Z",
+        "actor": "human/owner",
+        "text": "Review fixes: update_following() also returns when current < 0 (hooks set current via start_task, so they are unaffected; the preempting stop keeps the urgent task as NEXT, covered by an added assertion in hand_started_sequence_blocks_all_but_urgent); STOP pending now uses the expected run end for NEXT_START, asserted in shutdown_hook_is_next_when_stop_is_pending; SCHEDULER.md notes the urgent preemption case. Full scheduler suite run 3 times: see results in report.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T22:48:25.462073Z",
+        "actor": "human/owner",
+        "text": "Round 2 fix: shutdown_after_current() returns -1 when the SHUTDOWN hook task is the running one (used by the STOP-pending and finishing branches), so a task serving as IDLE and SHUTDOWN hook is not its own NEXT. New case shutdown_hook_running_is_not_next (Park as IDLE+SHUTDOWN hook, STOP while it runs, CURRENT Park, NEXT empty, one run): FAILS without the guard, passes with it. Full scheduler suite twice: 79/79 and 79/79 passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T23:33:24.358481Z",
+        "actor": "human/owner",
+        "text": "Round 3 fix: finishing_after_current() now counts non-hook tasks like all_tasks_finished() (any flag, returns any), so a list with only hooks never predicts the SHUTDOWN hook as NEXT. New case shutdown_hook_is_not_next_without_regular_tasks (Prepare startup hook running 6 s, Close shutdown hook, no regular tasks): FAILS without the fix, passes with it. Full scheduler suite twice: 80/80 and 80/80 passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-15T23:52:22.592520Z",
+        "actor": "human/owner",
+        "text": "Round 4 fix: while a hook runs, update_following() skips planned runs whose slot is the running task (one task serving several hooks runs once). New case shared_startup_and_night_start_hook_is_not_next (Prepare as STARTUP and NIGHT_START, Work task, START in the night: CURRENT Prepare, NEXT Work, one hook run): fails with the guard disabled, passes with it. Full scheduler suite twice: 81/81 and 81/81 passed. No git stash used.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T00:00:26.223268Z",
+        "actor": "human/owner",
+        "text": "Round 5 refinement: the shared-hook skip in update_following() now applies only when the planned run starts at or before the expected end of the current run (plan_runs[i].start <= end). New case shared_hook_later_in_the_night_is_next (Park as IDLE and NIGHT_END hook, Evening night start hook and Work run first, idle Park runs mid-night: CURRENT Park, NEXT Park with NEXT_START at the night end +-120 s): fails with the previous unconditional guard, passes now; shared_startup_and_night_start_hook_is_not_next still passes. Full scheduler suite twice: 82/82 and 82/82. No git stash used.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T00:16:01.517473Z",
+        "actor": "human/owner",
+        "text": "Round 6 fix: update_following() now checks stop_requested || (started && finishing_after_current()) before the plan, so the last regular task is followed by the SHUTDOWN hook (NEXT empty if it is the running task) and the plan's night end hook is not shown. New case shutdown_hook_is_next_before_the_night_end_hook (Evening/Morning night hooks, Close shutdown, one 6 s task in the night: NEXT Close near the task end, Morning never starts): fails without the fix, passes with it. Docs reworded (SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md). Full scheduler suite twice: 83/83 and 83/83. No git stash used.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T00:32:20.888755Z",
+        "actor": "human/owner",
+        "text": "Round 7 fix: finishing_after_current() skips the running one-off (non-stored) urgent task before counting and before the repeat check, since it leaves the list after its run. New cases one_off_urgent_task_is_not_followed_by_the_shutdown_hook (NEXT empty while it runs, Close never starts, scheduler stays BUSY) and repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook (@repeat 2 after stored tasks DONE: NEXT Close, Close runs): both fail with the skip disabled (2 run, 0 passed), pass with it. Full scheduler suite twice: 85/85 and 85/85. No git stash used; scratch copies removed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T00:50:30.488516Z",
+        "actor": "human/owner",
+        "text": "Round 8 fix: in the plan branch of update_following(), next_start = max(planned start, expected end of the current run), because the plan of a running hook starts at now. New case next_start_follows_the_end_of_the_running_hook (STARTUP hook Prepare @duration 5, task Work: NEXT Work, NEXT_START about 5 min ahead): fails without the clamp, passes with it. The shared_startup_and_night_start_hook_is_not_next case also asserts NEXT_START (it passes without the clamp too, since the plan holds the shared hook run). Docs unchanged and still accurate. Full scheduler suite twice: 86/86 and 86/86 (a concurrent duplicate loop was killed first and the counts come from a clean sequence). No git stash used; scratch files removed.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Round 2 review asked for changes: when one task serves as SHUTDOWN and IDLE/NIGHT_END hook (e.g. Park), STOP pressed while that hook runs (or NIGHT_END after the last task) shows the running hook as its own NEXT. Proposed: leave NEXT empty when the SHUTDOWN hook is the running task, add a test, one more review. Continue with this fix, or close as is?",
+        "at": "2026-11-15T21:46:12.600984Z",
+        "actor": "human/owner",
+        "answer": "Owner: fix it - leave NEXT empty when the SHUTDOWN hook is the task already running, add a test, then one more independent review.",
+        "answered_at": "2026-11-15T22:39:22.655966Z",
+        "answered_by": "human/owner"
+      },
+      {
+        "text": "Round 3 review asked for changes: finishing_after_current() returns true when the list holds only hook tasks, unlike all_tasks_finished(), so while a STARTUP/IDLE hook runs with no regular tasks NEXT shows the SHUTDOWN hook although the scheduler will not stop. Proposed: count regular tasks like all_tasks_finished() (false when none), add a test, one more review. Continue with this fix, or close as is?",
+        "at": "2026-11-15T22:54:24.016028Z",
+        "actor": "human/owner",
+        "answer": "Owner: fix it - finishing_after_current() counts regular tasks like all_tasks_finished() (no regular task means not finishing), add a test, then one more independent review.",
+        "answered_at": "2026-11-15T23:27:03.081517Z",
+        "answered_by": "human/owner"
+      },
+      {
+        "text": "Round 4 review asked for changes: a task used as both STARTUP and NIGHT_START hook shows itself as NEXT (NEXT_START about now) while it runs as the startup hook, because the plan lists the NIGHT_START run that the chain then skips. Proposed: while a hook runs, skip every planned hook run whose task is the running one (general form of the round 2 SHUTDOWN rule), add a test, one more review. Continue with this fix, or close as is?",
+        "at": "2026-11-15T23:39:18.169426Z",
+        "actor": "human/owner",
+        "answer": "Owner: fix it - while a hook runs, skip every planned hook run whose task is the running one (general shared-hook rule), add a test, then one more independent review.",
+        "answered_at": "2026-11-15T23:45:35.273588Z",
+        "answered_by": "human/owner"
+      },
+      {
+        "text": "Round 5 review asked for changes: during the last task of a started night, NEXT shows the NIGHT_END hook (NEXT_START = night end, possibly hours away), but after the last task the scheduler auto-stops and runs only SHUTDOWN (all_tasks_finished() is checked before process_night()). Proposed: check finishing_after_current() before the plan loop, so SHUTDOWN (NEXT_START = end of the run) wins over planned night hooks; add a test; one more review. Continue with this fix, or close as is?",
+        "at": "2026-11-16T00:07:01.295737Z",
+        "actor": "human/owner",
+        "answer": "Owner: fix it - when the scheduler will auto-stop after the running run (finishing_after_current), NEXT is the SHUTDOWN hook (NEXT_START = expected end of the run) before the plan is consulted; add a test, then one more independent review.",
+        "answered_at": "2026-11-16T00:09:03.846682Z",
+        "answered_by": "human/owner"
+      },
+      {
+        "text": "Round 6 review asked for changes: finishing_after_current() counts a running one-off urgent task (not stored, removed after its run) as a regular task, so with only hooks besides it NEXT predicts SHUTDOWN that never happens (and with @repeat it predicts the opposite). Proposed: skip the running non-stored task in finishing_after_current(), add a test, one more review. Continue with this fix, or close as is?",
+        "at": "2026-11-16T00:22:07.136339Z",
+        "actor": "human/owner",
+        "answer": "Owner: fix it - finishing_after_current() ignores the running one-off urgent (non-stored) task, add a test, then one more independent review.",
+        "answered_at": "2026-11-16T00:24:58.086135Z",
+        "answered_by": "human/owner"
+      },
+      {
+        "text": "Round 7 review asked for changes: while a hook runs, the plan starts at now (only a running task is marked running), so NEXT_START shows the hook's own start time / now instead of after the hook. Proposed one-line fix: clamp next_start to the expected end of the current run, plus a test assertion, then one more review. Continue with this fix, or close as is?",
+        "at": "2026-11-16T00:40:55.100634Z",
+        "actor": "human/owner",
+        "answer": "Owner: fix it - clamp NEXT_START from the plan to the expected end of the current run, add a test assertion, then one more independent review.",
+        "answered_at": "2026-11-16T00:42:36.231923Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "af5aeb77a0a64a01a4b2336d77c8a0ba5da2cac8",
+      "tree": "e476a254672d32b7de791921666ba8c18402f3c1",
+      "base": "master",
+      "at": "2026-11-16T01:03:16.744622Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-15T21:06:49.483662Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-15T21:07:48.196455Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 13600721.68,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 16
+    }
+  },
+  "journal": {
+    "entries": 148,
+    "sha256": "2e7b2e2affd4d1112f7a55c678ad9e39bde43e7d00aaf6e40ede88c17bdaa06c"
+  }
+}
