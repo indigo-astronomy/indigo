@@ -1,0 +1,395 @@
+{
+  "schema_version": 1,
+  "ticket_id": "78027aa7-68af-46ec-9ea2-a232e3ab97a0",
+  "revision": 14,
+  "title": "indigo_libs: fix single quotes in the FITS OBJECT card",
+  "description": "Split out of ticket 03fe5330-50d9-4314-920b-7ee900ce4253 on the owner's request (2026-11-16) so that the fix lands as its own commit, before the scheduler change. indigo_libs/indigo_ccd_driver.c wrote CCD_LOCAL_MODE.OBJECT into the FITS OBJECT card (and the TIFF/XISF text header) as '%s' without doubling single quotes, so an object named \"Barnard's Star\" produced OBJECT  = 'Barnard's Star', which FITS readers parse as 'Barnard'. Fix: a static fits_escape() helper doubles quotes and truncates without splitting a pair; both OBJECT add_key() sites use a 54-byte buffer (escaped value max 53 chars) so the card stays within 79 characters and add_key() never leaves a NUL in the header. Tests: new indigo_test/unit/test_ccd_fits_header.c (Barnard's Star round trip; 64-quote name keeps column 80 a space and no NUL before END), wired into indigo_test/Makefile and the Xcode project. Implementation, unit checks, three review rounds and an end-to-end simulator stress run (316 FITS files, 0 failures) were done in ticket 03fe5330; this ticket carries the same diff for those four files only.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-16T11:27:07.907904Z",
+  "status": "closed",
+  "branch": "ticket/78027aa7-68af-46ec-9ea2-a232e3ab97a0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "90abbdc5-fc3c-4e7d-9cf8-cc8fb22bdba6",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d215db5a-454a-4ee5-82f9-03f542e78300",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T11:28:03.910943Z",
+          "last_activity_at": "2026-11-16T11:30:26.129452Z",
+          "ended_at": "2026-11-16T11:30:26.129452Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 142218.509,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T11:28:03.910943Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/78027aa7-68af-46ec-9ea2-a232e3ab97a0"
+        },
+        {
+          "at": "2026-11-16T11:30:26.129452Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 142218.509,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "5aae8227-5e39-46aa-9be2-28681889c54e",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "5361fc3b-7115-4fe3-8a4a-069c2bd58a21",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T11:30:26.129515Z",
+          "last_activity_at": "2026-11-16T11:30:37.297753Z",
+          "ended_at": "2026-11-16T11:30:37.297753Z",
+          "outcome": {
+            "summary": "Review of tree d6444f43fe87 (commit 8f79594a5 on master 9189f551e). The worktree is clean. The diff against master contains exactly four files: indigo_libs/indigo_ccd_driver.c, indigo_test/unit/test_ccd_fits_header.c, indigo_test/Makefile and indigo.xcodeproj/project.pbxproj. git diff 45ae46bbb on those paths is empty, so they are byte-identical to the content reviewed and passed in round 3 of ticket 03fe5330.\n\nThe change stands on its own:\n- fits_escape() and both OBJECT sites use char object[54]. The escaped value is at most 53 characters with no doubled quote split, the card stays within 79 characters and add_key() leaves no NUL in the header.\n- The test depends only on libindigo and the CCD base driver, with no scheduler code. Its Makefile rule links libindigo.a as test_rgb48 does.\n- The pbxproj file ID is unique and the file sits in the unit test group with no target membership, as its neighbours do. Nothing refers to .factory2. The new file has the license header.\n- The recorded whitespace and unit checks (CCD FITS header 2/2) build and run it on master's base.\n\nNo defects.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 11168.238,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T11:30:26.129515Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T11:30:37.297753Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Review of tree d6444f43fe87 (commit 8f79594a5 on master 9189f551e). The worktree is clean. The diff against master contains exactly four files: indigo_libs/indigo_ccd_driver.c, indigo_test/unit/test_ccd_fits_header.c, indigo_test/Makefile and indigo.xcodeproj/project.pbxproj. git diff 45ae46bbb on those paths is empty, so they are byte-identical to the content reviewed and passed in round 3 of ticket 03fe5330.\n\nThe change stands on its own:\n- fits_escape() and both OBJECT sites use char object[54]. The escaped value is at most 53 characters with no doubled quote split, the card stays within 79 characters and add_key() leaves no NUL in the header.\n- The test depends only on libindigo and the CCD base driver, with no scheduler code. Its Makefile rule links libindigo.a as test_rgb48 does.\n- The pbxproj file ID is unique and the file sits in the unit test group with no target membership, as its neighbours do. Nothing refers to .factory2. The new file has the license header.\n- The recorded whitespace and unit checks (CCD FITS header 2/2) build and run it on master's base.\n\nNo defects."
+        }
+      ],
+      "result": {
+        "summary": "Review of tree d6444f43fe87 (commit 8f79594a5 on master 9189f551e). The worktree is clean. The diff against master contains exactly four files: indigo_libs/indigo_ccd_driver.c, indigo_test/unit/test_ccd_fits_header.c, indigo_test/Makefile and indigo.xcodeproj/project.pbxproj. git diff 45ae46bbb on those paths is empty, so they are byte-identical to the content reviewed and passed in round 3 of ticket 03fe5330.\n\nThe change stands on its own:\n- fits_escape() and both OBJECT sites use char object[54]. The escaped value is at most 53 characters with no doubled quote split, the card stays within 79 characters and add_key() leaves no NUL in the header.\n- The test depends only on libindigo and the CCD base driver, with no scheduler code. Its Makefile rule links libindigo.a as test_rgb48 does.\n- The pbxproj file ID is unique and the file sits in the unit test group with no target membership, as its neighbours do. Nothing refers to .factory2. The new file has the license header.\n- The recorded whitespace and unit checks (CCD FITS header 2/2) build and run it on master's base.\n\nNo defects.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 11168.238,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "d7568a54-f301-4afd-b284-1b1eb4f25be6",
+      "event": "ticket/created",
+      "at": "2026-11-16T11:27:07.908232Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "f54cf291-88ba-4c14-99a0-9b22286f3900",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T11:27:46.179512Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "501d8f37-7e07-4836-8edd-56693e937b71",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:03.912169Z",
+      "actor": "human/owner",
+      "task_id": "90abbdc5-fc3c-4e7d-9cf8-cc8fb22bdba6",
+      "text": "Implementation started on branch ticket/78027aa7-68af-46ec-9ea2-a232e3ab97a0"
+    },
+    {
+      "event_id": "705294e8-d969-4cf9-89f2-9cc7ab5c5cbe",
+      "event": "ticket/started",
+      "at": "2026-11-16T11:28:03.915373Z",
+      "actor": "human/owner",
+      "branch": "ticket/78027aa7-68af-46ec-9ea2-a232e3ab97a0",
+      "base": "master"
+    },
+    {
+      "event_id": "6cfd4d74-2569-4618-9f94-fbfef18eaa1c",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:16.474015Z",
+      "actor": "human/owner",
+      "task_id": "90abbdc5-fc3c-4e7d-9cf8-cc8fb22bdba6",
+      "text": "Coordinator moves the reviewed CCD OBJECT fix files from ticket 03fe5330 unchanged",
+      "attempt_id": "d215db5a-454a-4ee5-82f9-03f542e78300",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "66644d6d-3ba6-4b90-806f-be5703140aec",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:26.071286Z",
+      "actor": "human/owner",
+      "task_id": "90abbdc5-fc3c-4e7d-9cf8-cc8fb22bdba6",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2c046b58-d588-4506-a6a1-510cddf0e64a",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:26.112307Z",
+      "actor": "human/owner",
+      "task_id": "90abbdc5-fc3c-4e7d-9cf8-cc8fb22bdba6",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "015f2519-ec4e-49a1-8a8a-ef3f5750ba8a",
+      "event": "task/progress",
+      "at": "2026-11-16T11:28:26.117947Z",
+      "actor": "human/owner",
+      "task_id": "90abbdc5-fc3c-4e7d-9cf8-cc8fb22bdba6",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "5f126afa-c842-43b7-a4f1-4d58cee6e1e1",
+      "event": "task/progress",
+      "at": "2026-11-16T11:30:08.211316Z",
+      "actor": "human/owner",
+      "task_id": "90abbdc5-fc3c-4e7d-9cf8-cc8fb22bdba6",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "4f522b65-b003-4c6a-96fb-f607579f0bb4",
+      "event": "check/passed",
+      "at": "2026-11-16T11:30:08.219136Z",
+      "actor": "human/owner",
+      "commit": "8f79594a5cf76e0f5ec487270b0f4d6bd0529c21",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "61f9bf7a-cfe4-4d32-9acb-177972bc3a20",
+      "event": "task/progress",
+      "at": "2026-11-16T11:30:26.129561Z",
+      "actor": "human/owner",
+      "task_id": "5aae8227-5e39-46aa-9be2-28681889c54e",
+      "text": "Review started"
+    },
+    {
+      "event_id": "89bf9896-73a1-4ea9-bae7-48160362dc2c",
+      "event": "review/started",
+      "at": "2026-11-16T11:30:26.129867Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "8b5c0af1-3f7e-4cd8-85ea-bcb7fe76896a",
+      "event": "task/progress",
+      "at": "2026-11-16T11:30:26.206993Z",
+      "actor": "human/owner",
+      "task_id": "5aae8227-5e39-46aa-9be2-28681889c54e",
+      "text": "Reviewer started",
+      "attempt_id": "5361fc3b-7115-4fe3-8a4a-069c2bd58a21",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5f08120f-7cd4-49b2-9de7-83ad749e0f3a",
+      "event": "task/progress",
+      "at": "2026-11-16T11:30:37.297829Z",
+      "actor": "human/owner",
+      "task_id": "5aae8227-5e39-46aa-9be2-28681889c54e",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "b4d7f51b-e986-4ec2-a80c-1535b5bf10e7",
+      "event": "review/passed",
+      "at": "2026-11-16T11:30:37.298310Z",
+      "actor": "human/owner",
+      "task_id": "5aae8227-5e39-46aa-9be2-28681889c54e",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8f79594a5cf76e0f5ec487270b0f4d6bd0529c21"
+    },
+    {
+      "event_id": "4a726126-efdd-4767-a742-a7c1aee59f29",
+      "event": "ticket/closed",
+      "at": "2026-11-16T11:30:57.934299Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-16T11:30:57.934277Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "8d7fb50ffe16356e13cabc0fbd33c19a5039a66c"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8f79594a5cf76e0f5ec487270b0f4d6bd0529c21",
+        "tree": "d6444f43fe87932e6f3b0831ac6c803bd14dc87f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T11:28:26.111916Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/78027aa7-68af-46ec-9ea2-a232e3ab97a0/d6444f43fe87-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "8f79594a5cf76e0f5ec487270b0f4d6bd0529c21",
+        "tree": "d6444f43fe87932e6f3b0831ac6c803bd14dc87f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T11:30:08.202823Z",
+        "duration_s": 102.1,
+        "log": "/tmp/factory-flow/78027aa7-68af-46ec-9ea2-a232e3ab97a0/d6444f43fe87-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Review of tree d6444f43fe87 (commit 8f79594a5 on master 9189f551e). The worktree is clean. The diff against master contains exactly four files: indigo_libs/indigo_ccd_driver.c, indigo_test/unit/test_ccd_fits_header.c, indigo_test/Makefile and indigo.xcodeproj/project.pbxproj. git diff 45ae46bbb on those paths is empty, so they are byte-identical to the content reviewed and passed in round 3 of ticket 03fe5330.\n\nThe change stands on its own:\n- fits_escape() and both OBJECT sites use char object[54]. The escaped value is at most 53 characters with no doubled quote split, the card stays within 79 characters and add_key() leaves no NUL in the header.\n- The test depends only on libindigo and the CCD base driver, with no scheduler code. Its Makefile rule links libindigo.a as test_rgb48 does.\n- The pbxproj file ID is unique and the file sits in the unit test group with no target membership, as its neighbours do. Nothing refers to .factory2. The new file has the license header.\n- The recorded whitespace and unit checks (CCD FITS header 2/2) build and run it on master's base.\n\nNo defects.",
+        "reviewer": "human/owner",
+        "commit": "8f79594a5cf76e0f5ec487270b0f4d6bd0529c21",
+        "tree": "d6444f43fe87932e6f3b0831ac6c803bd14dc87f",
+        "at": "2026-11-16T11:30:37.297678Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "8d7fb50ffe16356e13cabc0fbd33c19a5039a66c",
+      "tree": "d6444f43fe87932e6f3b0831ac6c803bd14dc87f",
+      "base": "master",
+      "at": "2026-11-16T11:30:57.771847Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-16T11:27:07.907904Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T11:27:46.179450Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 153386.747,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 20,
+    "sha256": "e62ca8fb5734af98583b79f3e722a4d688ae673562576936fba35f50b3cf6069"
+  }
+}
