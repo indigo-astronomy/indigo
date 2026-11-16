@@ -1,0 +1,646 @@
+{
+  "schema_version": 1,
+  "ticket_id": "ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0",
+  "revision": 30,
+  "title": "indigo_agent_scheduler: remove NEXT and NEXT_START from AGENT_SCHEDULER_CURRENT",
+  "description": "Owner decision 2026-11-16: remove the items NEXT and NEXT_START of AGENT_SCHEDULER_CURRENT. They duplicate the night plan (AGENT_SCHEDULER_PLAN), are computed by two separate paths that can contradict the plan while idle (NIGHT_START hook first in the plan, simultaneous eligibility ordered differently), and needed a recent fix (af5aeb77a). The owner accepts losing: the SHUTDOWN hook shown as next during the last run, a next start beyond the plan horizon, a single-item next for simple clients, and compatibility for external clients reading these items.\n\nRemove in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c: update_following() and its call in update_plan(); finishing_after_current() and shutdown_after_current() (used only by update_following); the 'nothing eligible now, find the task that becomes eligible first' search in select_task (keep the REASON computation and behaviour unchanged); the next_task/next_start private fields and all their assignments/resets; the NEXT/NEXT_START parts of update_current(); the two item inits and defines. AGENT_SCHEDULER_CURRENT keeps CURRENT and REASON (property count 2, REASON becomes item 1; clients use item names). Verify that nothing else (stop logic, shutdown hook, plan, idle hook, REASON) depends on the removed code and that behaviour other than the two items is unchanged. Remove AGENT_SCHEDULER_CURRENT_NEXT_ITEM_NAME and AGENT_SCHEDULER_CURRENT_NEXT_START_ITEM_NAME from indigo_libs/indigo/indigo_names.h after checking the whole repository (excluding .factory2/archive) for other users. Bump DRIVER_VERSION.\n\nTests (indigo_test/integration/test_agent_scheduler.c): remove the wait_current_next helper and the tests that only check NEXT/NEXT_START (next_follows_the_running_task, shutdown_hook_is_next_after_the_last_task, shutdown_hook_is_next_when_stop_is_pending, shutdown_hook_running_is_not_next, shutdown_hook_is_not_next_without_regular_tasks, shared_startup_and_night_start_hook_is_not_next, shared_hook_later_in_the_night_is_next, shutdown_hook_is_next_before_the_night_end_hook, one_off_urgent_task_is_not_followed_by_the_shutdown_hook, repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook, next_start_follows_the_end_of_the_running_hook — verify each only tests NEXT; if one also covers other behaviour, keep that part with another observable such as CURRENT, the plan or the history). Adapt window_wait_and_expiry and hand_started_sequence_blocks_all_but_urgent to not use NEXT/NEXT_START while keeping their real coverage. Add an assertion that AGENT_SCHEDULER_CURRENT has exactly the items CURRENT and REASON. Update tools/scheduler_sandbox.py (prints the items) and indigo_test/integration/run_scheduler_simulators.py if they use them.\n\nDocs: remove NEXT/NEXT_START from INDIGO_SCHEDULER_GUIDE.md (AGENT_SCHEDULER_CURRENT table, prop_tool example, other mentions; point readers to the night plan for what comes next), indigo_drivers/agent_scheduler/doc/SCHEDULER.md and indigo_docs/PROPERTIES.md.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-16T13:55:06.349920Z",
+  "status": "closed",
+  "branch": "ticket/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0c1e780f-c0fb-4e4c-826f-399ce3ffdb1d",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T14:02:51.709275Z",
+          "last_activity_at": "2026-11-16T14:12:35.900543Z",
+          "ended_at": "2026-11-16T14:12:35.900543Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 584191.268,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T14:02:51.709275Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0"
+        },
+        {
+          "at": "2026-11-16T14:12:35.900543Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 584191.268,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "618e6dc0-261d-4f56-96a8-5ed66ed10385",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "04bad69d-3873-41f0-b942-b52bf5ef77eb",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T14:12:35.900582Z",
+          "last_activity_at": "2026-11-16T14:13:40.026887Z",
+          "ended_at": "2026-11-16T14:13:40.026887Z",
+          "outcome": {
+            "summary": "Reviewed master...HEAD (tree 9026d0e71a90). Driver: update_following/finishing_after_current/shutdown_after_current, the select_task next-eligibility search, next_task/next_start fields and all assignments removed; REASON computation in select_task unchanged (the removed loop only set next_*; its local reason was unused). update_plan only lost the trailing update_following call; process() still calls refresh() (update_current) every pass, so CURRENT/REASON publishing, plan_due/next_check cadence, stop/shutdown hook, idle hook and night plan are unaffected; next_start was never used for timers. CURRENT_REASON_ITEM = items+1, property count 2, items init in order; DRIVER_VERSION 0x0300000F -> 0x03000010; stale TODO removed. indigo_names.h defines removed; git grep (excluding .factory2/archive) finds no remaining NEXT/NEXT_START/next_task/wait_current_next users (only unrelated mount-test locals and the unit test of indigo_scheduler_points_next, which remains used by the plan). Tests: removed tests asserted only NEXT/NEXT_START; renamed tests keep their hook/stop/once assertions; shutdown-after-last-task still covered by shutdown_hook_runs_instead_of_the_night_end_hook and repeating_one_off_urgent_task_triggers_the_shutdown_hook; window_wait_and_expiry keeps REASON window + start at open and now asserts exactly CURRENT,REASON; hand_started_sequence_blocks_all_but_urgent keeps preemption ordering. Docs (guide, SCHEDULER.md, PROPERTIES.md) consistent, tables intact, readers pointed to AGENT_SCHEDULER_PLAN; scheduler_sandbox.py updated; run_scheduler_simulators.py did not use the items. git diff --check clean. No defects.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 64126.305,
+          "tokens": null
+        },
+        {
+          "attempt_id": "950bfa50-725a-4617-a337-ef10cfe5b10c",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T14:24:40.473972Z",
+          "last_activity_at": "2026-11-16T14:24:40.473994Z",
+          "ended_at": "2026-11-16T14:24:40.473994Z",
+          "outcome": {
+            "summary": "Re-review of tree 4dba91fe03cb (diff e872d04e7..HEAD, 2 files, nothing else changed). (1) update_plan() calls update_current(device) after publish_plan(), exactly where update_following() called it; update_current only publishes on change, so the original CURRENT/REASON timing (incl. the mid-pass update_plan in process_night) is restored with no extra updates. (2) wait_current(name, timeout) is correct (snapshot, release, 10 ms poll, timeout message). In hand_started_sequence_blocks_all_but_urgent, ASSERT_TRUE(wait_current(\"\", 5)) is effectively trivial: the hand-started sequence is not a scheduler task, so CURRENT is already empty and stays empty during the preempting stop (current -1). That matches the CURRENT half of the removed wait_current_next(\"\", \"Pushy\"); its real content was NEXT=Pushy, which is out of scope now. A non-trivial alternative would be wait_reason(\"stopping the running sequence\") (set by begin_stop), but that state may be too short-lived to poll reliably and the preemption is already proven by the message order assertions; not required. Checks whitespace, unit and command-1 (integration) all passed on 4dba91fe03cb. No defects.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.022,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T14:12:35.900582Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T14:13:40.026887Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Reviewed master...HEAD (tree 9026d0e71a90). Driver: update_following/finishing_after_current/shutdown_after_current, the select_task next-eligibility search, next_task/next_start fields and all assignments removed; REASON computation in select_task unchanged (the removed loop only set next_*; its local reason was unused). update_plan only lost the trailing update_following call; process() still calls refresh() (update_current) every pass, so CURRENT/REASON publishing, plan_due/next_check cadence, stop/shutdown hook, idle hook and night plan are unaffected; next_start was never used for timers. CURRENT_REASON_ITEM = items+1, property count 2, items init in order; DRIVER_VERSION 0x0300000F -> 0x03000010; stale TODO removed. indigo_names.h defines removed; git grep (excluding .factory2/archive) finds no remaining NEXT/NEXT_START/next_task/wait_current_next users (only unrelated mount-test locals and the unit test of indigo_scheduler_points_next, which remains used by the plan). Tests: removed tests asserted only NEXT/NEXT_START; renamed tests keep their hook/stop/once assertions; shutdown-after-last-task still covered by shutdown_hook_runs_instead_of_the_night_end_hook and repeating_one_off_urgent_task_triggers_the_shutdown_hook; window_wait_and_expiry keeps REASON window + start at open and now asserts exactly CURRENT,REASON; hand_started_sequence_blocks_all_but_urgent keeps preemption ordering. Docs (guide, SCHEDULER.md, PROPERTIES.md) consistent, tables intact, readers pointed to AGENT_SCHEDULER_PLAN; scheduler_sandbox.py updated; run_scheduler_simulators.py did not use the items. git diff --check clean. No defects."
+        },
+        {
+          "at": "2026-11-16T14:24:40.473972Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T14:24:40.473994Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review of tree 4dba91fe03cb (diff e872d04e7..HEAD, 2 files, nothing else changed). (1) update_plan() calls update_current(device) after publish_plan(), exactly where update_following() called it; update_current only publishes on change, so the original CURRENT/REASON timing (incl. the mid-pass update_plan in process_night) is restored with no extra updates. (2) wait_current(name, timeout) is correct (snapshot, release, 10 ms poll, timeout message). In hand_started_sequence_blocks_all_but_urgent, ASSERT_TRUE(wait_current(\"\", 5)) is effectively trivial: the hand-started sequence is not a scheduler task, so CURRENT is already empty and stays empty during the preempting stop (current -1). That matches the CURRENT half of the removed wait_current_next(\"\", \"Pushy\"); its real content was NEXT=Pushy, which is out of scope now. A non-trivial alternative would be wait_reason(\"stopping the running sequence\") (set by begin_stop), but that state may be too short-lived to poll reliably and the preemption is already proven by the message order assertions; not required. Checks whitespace, unit and command-1 (integration) all passed on 4dba91fe03cb. No defects."
+        }
+      ],
+      "result": {
+        "summary": "Re-review of tree 4dba91fe03cb (diff e872d04e7..HEAD, 2 files, nothing else changed). (1) update_plan() calls update_current(device) after publish_plan(), exactly where update_following() called it; update_current only publishes on change, so the original CURRENT/REASON timing (incl. the mid-pass update_plan in process_night) is restored with no extra updates. (2) wait_current(name, timeout) is correct (snapshot, release, 10 ms poll, timeout message). In hand_started_sequence_blocks_all_but_urgent, ASSERT_TRUE(wait_current(\"\", 5)) is effectively trivial: the hand-started sequence is not a scheduler task, so CURRENT is already empty and stays empty during the preempting stop (current -1). That matches the CURRENT half of the removed wait_current_next(\"\", \"Pushy\"); its real content was NEXT=Pushy, which is out of scope now. A non-trivial alternative would be wait_reason(\"stopping the running sequence\") (set by begin_stop), but that state may be too short-lived to poll reliably and the preemption is already proven by the message order assertions; not required. Checks whitespace, unit and command-1 (integration) all passed on 4dba91fe03cb. No defects.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 64126.327,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "8194a2a8-41d2-4cc8-89a4-2d7585b9ddb9",
+      "event": "ticket/created",
+      "at": "2026-11-16T13:55:06.350316Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "7cc30eb3-a090-4e7d-9078-cfd6cc94cee9",
+      "event": "ticket/title_changed",
+      "at": "2026-11-16T14:02:17.731546Z",
+      "actor": "human/owner",
+      "previous_title": "indigo_agent_scheduler: derive NEXT and NEXT_START from the night plan",
+      "title": "indigo_agent_scheduler: remove NEXT and NEXT_START from AGENT_SCHEDULER_CURRENT"
+    },
+    {
+      "event_id": "b49208d3-4537-4f1c-9c54-d94c431314f9",
+      "event": "ticket/description_changed",
+      "at": "2026-11-16T14:02:17.731638Z",
+      "actor": "human/owner",
+      "previous_description": "Owner decision 2026-11-16 (option 3 of the analysis in the session): keep AGENT_SCHEDULER_CURRENT.NEXT and NEXT_START (documented public items, useful for simple clients, scripts using NEXT_START as a wake-up time, long waits beyond the plan horizon and the SHUTDOWN hook), but compute them from a single source so they never contradict AGENT_SCHEDULER_PLAN.\n\nToday they are computed two ways: while idle, select_task (indigo_agent_scheduler.c ~1627-1654) sets NEXT to the eligible-now task (NEXT_START = now) or to the task that becomes eligible first (unbounded indigo_scheduler_points_next search, ignoring priorities and night hooks); while a run is in progress, update_following (~2238-2275) takes the first plan run after the running one or the SHUTDOWN hook when the scheduler stops after the run. Known mismatches with the plan while idle: the plan puts the NIGHT_START hook first but NEXT names the task; with simultaneous eligibility the plan orders by score while NEXT takes list order.\n\nNew behaviour:\n1. NEXT/NEXT_START = the first non-running run of the night plan, hooks included (NEXT_START = its planned start), both while idle and while a run is in progress; an eligible-now task that the plan starts now gives NEXT_START = now as today.\n2. Keep the SHUTDOWN-hook rule while a run is in progress (stop pending, or nothing else left): NEXT = SHUTDOWN hook, NEXT_START = expected end of the run.\n3. Keep the rule that a preempting urgent task is NEXT while it stops the running sequence, and that NEXT is the running task itself only when it repeats (its next planned run).\n4. When the plan has no run (nothing tonight), fall back to the existing unbounded eligibility search so a start beyond the plan horizon (e.g. a window next week) is still published.\n5. REASON and CURRENT are unchanged.\n\nRemove the duplicated logic where the plan now provides the answer; keep the change minimal. Update INDIGO_SCHEDULER_GUIDE.md (AGENT_SCHEDULER_CURRENT table), indigo_drivers/agent_scheduler/doc/SCHEDULER.md and PROPERTIES.md if they describe the computation; bump DRIVER_VERSION. Tests in indigo_test/integration/test_agent_scheduler.c: NEXT equals the first non-running plan entry while idle and while running, the NIGHT_START hook case, simultaneous eligibility ordered as in the plan, the fallback beyond the plan horizon, the SHUTDOWN hook rule, the preempting urgent task, and a repeating task; existing NEXT/NEXT_START tests keep passing or are updated with justification.",
+      "description": "Owner decision 2026-11-16: remove the items NEXT and NEXT_START of AGENT_SCHEDULER_CURRENT. They duplicate the night plan (AGENT_SCHEDULER_PLAN), are computed by two separate paths that can contradict the plan while idle (NIGHT_START hook first in the plan, simultaneous eligibility ordered differently), and needed a recent fix (af5aeb77a). The owner accepts losing: the SHUTDOWN hook shown as next during the last run, a next start beyond the plan horizon, a single-item next for simple clients, and compatibility for external clients reading these items.\n\nRemove in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c: update_following() and its call in update_plan(); finishing_after_current() and shutdown_after_current() (used only by update_following); the 'nothing eligible now, find the task that becomes eligible first' search in select_task (keep the REASON computation and behaviour unchanged); the next_task/next_start private fields and all their assignments/resets; the NEXT/NEXT_START parts of update_current(); the two item inits and defines. AGENT_SCHEDULER_CURRENT keeps CURRENT and REASON (property count 2, REASON becomes item 1; clients use item names). Verify that nothing else (stop logic, shutdown hook, plan, idle hook, REASON) depends on the removed code and that behaviour other than the two items is unchanged. Remove AGENT_SCHEDULER_CURRENT_NEXT_ITEM_NAME and AGENT_SCHEDULER_CURRENT_NEXT_START_ITEM_NAME from indigo_libs/indigo/indigo_names.h after checking the whole repository (excluding .factory2/archive) for other users. Bump DRIVER_VERSION.\n\nTests (indigo_test/integration/test_agent_scheduler.c): remove the wait_current_next helper and the tests that only check NEXT/NEXT_START (next_follows_the_running_task, shutdown_hook_is_next_after_the_last_task, shutdown_hook_is_next_when_stop_is_pending, shutdown_hook_running_is_not_next, shutdown_hook_is_not_next_without_regular_tasks, shared_startup_and_night_start_hook_is_not_next, shared_hook_later_in_the_night_is_next, shutdown_hook_is_next_before_the_night_end_hook, one_off_urgent_task_is_not_followed_by_the_shutdown_hook, repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook, next_start_follows_the_end_of_the_running_hook — verify each only tests NEXT; if one also covers other behaviour, keep that part with another observable such as CURRENT, the plan or the history). Adapt window_wait_and_expiry and hand_started_sequence_blocks_all_but_urgent to not use NEXT/NEXT_START while keeping their real coverage. Add an assertion that AGENT_SCHEDULER_CURRENT has exactly the items CURRENT and REASON. Update tools/scheduler_sandbox.py (prints the items) and indigo_test/integration/run_scheduler_simulators.py if they use them.\n\nDocs: remove NEXT/NEXT_START from INDIGO_SCHEDULER_GUIDE.md (AGENT_SCHEDULER_CURRENT table, prop_tool example, other mentions; point readers to the night plan for what comes next), indigo_drivers/agent_scheduler/doc/SCHEDULER.md and indigo_docs/PROPERTIES.md."
+    },
+    {
+      "event_id": "119f347b-c43f-4abc-842f-a25b188e2c7f",
+      "event": "ticket/difficulty_changed",
+      "at": "2026-11-16T14:02:17.731644Z",
+      "actor": "human/owner",
+      "previous_difficulty": "medium",
+      "difficulty": "low"
+    },
+    {
+      "event_id": "0196bbab-e80e-4010-a070-3525e5bc71f5",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T14:02:34.872733Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "54f37d6e-1aab-4a00-9261-bf062e4e7b07",
+      "event": "task/progress",
+      "at": "2026-11-16T14:02:51.711039Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Implementation started on branch ticket/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0"
+    },
+    {
+      "event_id": "f6775d24-f80c-48ee-b787-97027817d769",
+      "event": "ticket/started",
+      "at": "2026-11-16T14:02:51.716421Z",
+      "actor": "human/owner",
+      "branch": "ticket/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0",
+      "base": "master"
+    },
+    {
+      "event_id": "e297ed2d-5f9c-488d-8ff5-c348fdeeaed2",
+      "event": "task/progress",
+      "at": "2026-11-16T14:03:16.476137Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Implementer started",
+      "attempt_id": "0c1e780f-c0fb-4e4c-826f-399ce3ffdb1d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "d861d34e-6a22-4d5e-98b8-208c9984561e",
+      "event": "task/progress",
+      "at": "2026-11-16T14:05:19.475141Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Edits done, running checks"
+    },
+    {
+      "event_id": "103fd92f-80c3-4d3b-8d10-7321a22cf5d8",
+      "event": "task/progress",
+      "at": "2026-11-16T14:05:24.256331Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "79f95ae1-360a-4442-acf4-da4c0f4215e5",
+      "event": "task/progress",
+      "at": "2026-11-16T14:05:24.284116Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b26ca8e6-3120-4d56-b4f4-d36e2a487acb",
+      "event": "task/progress",
+      "at": "2026-11-16T14:05:24.289635Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "ac564e91-8cf4-4d79-8860-df65453966d4",
+      "event": "task/progress",
+      "at": "2026-11-16T14:07:04.830049Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "179ad0c0-09dc-4a5f-bbcf-fc03724b7193",
+      "event": "check/passed",
+      "at": "2026-11-16T14:07:04.837720Z",
+      "actor": "human/owner",
+      "commit": "e872d04e77bdea0040bb84f187a4081ee9f47289",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "376d3983-4f6b-4838-876a-6936837b3cc2",
+      "event": "task/progress",
+      "at": "2026-11-16T14:07:14.697054Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test &"
+    },
+    {
+      "event_id": "2397dc01-5f7f-47f6-9f05-ced97917ad3d",
+      "event": "task/progress",
+      "at": "2026-11-16T14:11:48.379910Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "b46ec2a5-82a6-4f87-8d7d-4307cf7ed466",
+      "event": "check/passed",
+      "at": "2026-11-16T14:11:48.405133Z",
+      "actor": "human/owner",
+      "commit": "e872d04e77bdea0040bb84f187a4081ee9f47289",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "89a77790-f4bb-4df1-93d2-b2857075ee80",
+      "event": "task/progress",
+      "at": "2026-11-16T14:12:35.822873Z",
+      "actor": "human/owner",
+      "task_id": "44af88a0-b652-435c-b221-cf3d1cfb1e18",
+      "text": "Reviewer started",
+      "attempt_id": "0c1e780f-c0fb-4e4c-826f-399ce3ffdb1d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8cfca680-6389-44ca-a0b1-894d29dfcb08",
+      "event": "task/progress",
+      "at": "2026-11-16T14:12:35.900633Z",
+      "actor": "human/owner",
+      "task_id": "618e6dc0-261d-4f56-96a8-5ed66ed10385",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b52fde84-fe57-4099-990d-3d717ef6e36d",
+      "event": "review/started",
+      "at": "2026-11-16T14:12:35.901045Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "3ee161f8-7302-4184-8201-0e924188f9be",
+      "event": "task/progress",
+      "at": "2026-11-16T14:13:40.026972Z",
+      "actor": "human/owner",
+      "task_id": "618e6dc0-261d-4f56-96a8-5ed66ed10385",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "a866dae3-4f69-42ac-bd3f-aba2310674f3",
+      "event": "review/passed",
+      "at": "2026-11-16T14:13:40.027439Z",
+      "actor": "human/owner",
+      "task_id": "618e6dc0-261d-4f56-96a8-5ed66ed10385",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "e872d04e77bdea0040bb84f187a4081ee9f47289"
+    },
+    {
+      "event_id": "b2518c6a-f6b4-40d7-bd22-d687cc12ca49",
+      "event": "ticket/note",
+      "at": "2026-11-16T14:18:50.897935Z",
+      "actor": "human/owner",
+      "text": "Owner request after review (2026-11-16): (1) keep the original publication timing of AGENT_SCHEDULER_CURRENT: where update_plan() used to call update_following() (which ended with update_current()), call update_current() so CURRENT/REASON are published in the same place as before; (2) restore the coverage lost in hand_started_sequence_blocks_all_but_urgent: assert that CURRENT is empty while the urgent task preempts the hand-started sequence, as the removed NEXT=Pushy wait did, without using NEXT.",
+      "tokens": null
+    },
+    {
+      "event_id": "ce6a94a9-8399-4d90-bfcf-70cd5354a62f",
+      "event": "task/progress",
+      "at": "2026-11-16T14:18:56.553002Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Restoring update_current in update_plan, CURRENT check in test"
+    },
+    {
+      "event_id": "551f6c37-4e06-4ae1-919e-621688af0d78",
+      "event": "task/progress",
+      "at": "2026-11-16T14:19:05.582920Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "151a56f9-03ea-4268-a7f3-18e0b1ffd3d3",
+      "event": "task/progress",
+      "at": "2026-11-16T14:19:05.599592Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "57023930-5df4-417d-8cbf-a43c8ee22661",
+      "event": "task/progress",
+      "at": "2026-11-16T14:19:05.604579Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "de27cf5b-cf15-4aa2-9f6f-8a08bb998f6d",
+      "event": "task/progress",
+      "at": "2026-11-16T14:19:55.288490Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "f5587c41-e5e1-41ec-a330-34c321a7c5b7",
+      "event": "check/passed",
+      "at": "2026-11-16T14:19:55.297803Z",
+      "actor": "human/owner",
+      "commit": "5541a86c398915b6d97e6bba907e1d338d92d0b0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "3012538b-714a-4c9e-8815-020f95184751",
+      "event": "task/progress",
+      "at": "2026-11-16T14:19:55.469717Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test &"
+    },
+    {
+      "event_id": "6ffe3e7d-9177-4545-b945-a5ffd4eb357c",
+      "event": "task/progress",
+      "at": "2026-11-16T14:24:03.440152Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "bbcc41bd-29c6-47eb-b7a1-6bd9532b8bae",
+      "event": "check/passed",
+      "at": "2026-11-16T14:24:03.454172Z",
+      "actor": "human/owner",
+      "commit": "5541a86c398915b6d97e6bba907e1d338d92d0b0",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "520c2a1c-8c95-405e-85c4-59d86db11783",
+      "event": "task/progress",
+      "at": "2026-11-16T14:24:40.474059Z",
+      "actor": "human/owner",
+      "task_id": "618e6dc0-261d-4f56-96a8-5ed66ed10385",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "51560d93-7ef2-4052-8b27-ff7448c80185",
+      "event": "review/passed",
+      "at": "2026-11-16T14:24:40.474500Z",
+      "actor": "human/owner",
+      "task_id": "618e6dc0-261d-4f56-96a8-5ed66ed10385",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "5541a86c398915b6d97e6bba907e1d338d92d0b0"
+    },
+    {
+      "event_id": "2f3fe96e-8329-42ef-8d43-bec23175f247",
+      "event": "ticket/closed",
+      "at": "2026-11-16T14:28:00.519633Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-16T14:28:00.519610Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "b510bffda093b1cb3e7cceb2f402cded1cc4ea7f"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "e872d04e77bdea0040bb84f187a4081ee9f47289",
+        "tree": "9026d0e71a9016606fdabf18e75a10481f0ec47a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T14:05:24.283566Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0/9026d0e71a90-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "e872d04e77bdea0040bb84f187a4081ee9f47289",
+        "tree": "9026d0e71a9016606fdabf18e75a10481f0ec47a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T14:07:04.827697Z",
+        "duration_s": 100.5,
+        "log": "/tmp/factory-flow/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0/9026d0e71a90-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "e872d04e77bdea0040bb84f187a4081ee9f47289",
+        "tree": "9026d0e71a9016606fdabf18e75a10481f0ec47a",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T14:11:48.369326Z",
+        "duration_s": 273.7,
+        "log": "/tmp/factory-flow/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0/9026d0e71a90-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "5541a86c398915b6d97e6bba907e1d338d92d0b0",
+        "tree": "4dba91fe03cb5dd8c1b103666971cdeda4502272",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T14:19:05.599135Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0/4dba91fe03cb-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "5541a86c398915b6d97e6bba907e1d338d92d0b0",
+        "tree": "4dba91fe03cb5dd8c1b103666971cdeda4502272",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T14:19:55.280329Z",
+        "duration_s": 49.7,
+        "log": "/tmp/factory-flow/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0/4dba91fe03cb-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "5541a86c398915b6d97e6bba907e1d338d92d0b0",
+        "tree": "4dba91fe03cb5dd8c1b103666971cdeda4502272",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T14:24:03.426309Z",
+        "duration_s": 248.0,
+        "log": "/tmp/factory-flow/ed405ebf-c9dd-4c54-9e81-2eb3eef1b6d0/4dba91fe03cb-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed master...HEAD (tree 9026d0e71a90). Driver: update_following/finishing_after_current/shutdown_after_current, the select_task next-eligibility search, next_task/next_start fields and all assignments removed; REASON computation in select_task unchanged (the removed loop only set next_*; its local reason was unused). update_plan only lost the trailing update_following call; process() still calls refresh() (update_current) every pass, so CURRENT/REASON publishing, plan_due/next_check cadence, stop/shutdown hook, idle hook and night plan are unaffected; next_start was never used for timers. CURRENT_REASON_ITEM = items+1, property count 2, items init in order; DRIVER_VERSION 0x0300000F -> 0x03000010; stale TODO removed. indigo_names.h defines removed; git grep (excluding .factory2/archive) finds no remaining NEXT/NEXT_START/next_task/wait_current_next users (only unrelated mount-test locals and the unit test of indigo_scheduler_points_next, which remains used by the plan). Tests: removed tests asserted only NEXT/NEXT_START; renamed tests keep their hook/stop/once assertions; shutdown-after-last-task still covered by shutdown_hook_runs_instead_of_the_night_end_hook and repeating_one_off_urgent_task_triggers_the_shutdown_hook; window_wait_and_expiry keeps REASON window + start at open and now asserts exactly CURRENT,REASON; hand_started_sequence_blocks_all_but_urgent keeps preemption ordering. Docs (guide, SCHEDULER.md, PROPERTIES.md) consistent, tables intact, readers pointed to AGENT_SCHEDULER_PLAN; scheduler_sandbox.py updated; run_scheduler_simulators.py did not use the items. git diff --check clean. No defects.",
+        "reviewer": "human/owner",
+        "commit": "e872d04e77bdea0040bb84f187a4081ee9f47289",
+        "tree": "9026d0e71a9016606fdabf18e75a10481f0ec47a",
+        "at": "2026-11-16T14:13:40.026142Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review of tree 4dba91fe03cb (diff e872d04e7..HEAD, 2 files, nothing else changed). (1) update_plan() calls update_current(device) after publish_plan(), exactly where update_following() called it; update_current only publishes on change, so the original CURRENT/REASON timing (incl. the mid-pass update_plan in process_night) is restored with no extra updates. (2) wait_current(name, timeout) is correct (snapshot, release, 10 ms poll, timeout message). In hand_started_sequence_blocks_all_but_urgent, ASSERT_TRUE(wait_current(\"\", 5)) is effectively trivial: the hand-started sequence is not a scheduler task, so CURRENT is already empty and stays empty during the preempting stop (current -1). That matches the CURRENT half of the removed wait_current_next(\"\", \"Pushy\"); its real content was NEXT=Pushy, which is out of scope now. A non-trivial alternative would be wait_reason(\"stopping the running sequence\") (set by begin_stop), but that state may be too short-lived to poll reliably and the preemption is already proven by the message order assertions; not required. Checks whitespace, unit and command-1 (integration) all passed on 4dba91fe03cb. No defects.",
+        "reviewer": "human/owner",
+        "commit": "5541a86c398915b6d97e6bba907e1d338d92d0b0",
+        "tree": "4dba91fe03cb5dd8c1b103666971cdeda4502272",
+        "at": "2026-11-16T14:24:40.473916Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-16T14:18:50.897163Z",
+        "actor": "human/owner",
+        "text": "Owner request after review (2026-11-16): (1) keep the original publication timing of AGENT_SCHEDULER_CURRENT: where update_plan() used to call update_following() (which ended with update_current()), call update_current() so CURRENT/REASON are published in the same place as before; (2) restore the coverage lost in hand_started_sequence_blocks_all_but_urgent: assert that CURRENT is empty while the urgent task preempts the hand-started sequence, as the removed NEXT=Pushy wait did, without using NEXT.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "b510bffda093b1cb3e7cceb2f402cded1cc4ea7f",
+      "tree": "4dba91fe03cb5dd8c1b103666971cdeda4502272",
+      "base": "master",
+      "at": "2026-11-16T14:28:00.422069Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-16T13:55:06.349920Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T14:02:34.872651Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 648317.595,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 40,
+    "sha256": "7f789e7cf8c3893064d36b96289484ccd9581d9bd913b099b47771c7cbd2f1da"
+  }
+}
