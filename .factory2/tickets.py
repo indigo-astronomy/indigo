@@ -448,6 +448,7 @@ class Tickets:
             archive = bool(arguments.get("archive"))
             return [dict({key: doc.get(key) for key in ("ticket_id", "title", "description", "type", "status", "revision", "created_at")},
                          **self.projection(doc),
+                         closed_at=(doc.get("closure") or {}).get("at"),
                          duration_ms=(doc.get("metrics", {}).get("duration_ms")
                                       if any(a.get("status") != "running" and a.get("duration_ms") is not None
                                              for t in doc.get("tasks", []) for a in t.get("attempts", [])) else None),
