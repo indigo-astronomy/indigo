@@ -1972,6 +1972,8 @@ static void urgent_tasks_are_counted(void) {
 	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_DONE_ITEM_NAME, 1, 5));
 	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, 2, 5));
 	// the stored urgent task is counted with the task list
+	// the counters follow the removal of the deleted task with the next refresh
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 2, 5));
 	ASSERT_EQ_INT(1, state_counter(AGENT_SCHEDULER_STATE_DONE_ITEM_NAME));
 	ASSERT_EQ_INT(0, state_counter(AGENT_SCHEDULER_STATE_FAILED_ITEM_NAME));
 	ASSERT_EQ_INT(2, state_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME));
@@ -2102,7 +2104,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(urgent("// @task Pending\n" BODY_WAIT(1)));
 	REQUIRE(set_hooks("Prepare", "Park", ""));
 	REQUIRE(set_night_hooks("", "Morning", ""));
-	ASSERT_EQ_INT(6, state_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME));
+	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 6, 5));
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
 	ASSERT_STREQ("Tasks deleted: 3, tasks named as hooks kept: 3", message);
 	char label[INDIGO_VALUE_SIZE];
