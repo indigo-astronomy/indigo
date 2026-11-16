@@ -19,6 +19,11 @@
 // version history
 // 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
+// TODO: add weather safety checks, and a way to abort a task if the weather becomes unsafe
+// TODO: make night plan light labels more parsable
+// TODO: revise if we reallyneed NEXT_TASK item
+// TODO: make obesrvation data related to the obtaining task
+
 /** INDIGO Scheduler agent
  \file indigo_agent_scheduler.c
  */
