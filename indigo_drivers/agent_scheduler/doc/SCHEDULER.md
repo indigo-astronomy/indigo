@@ -57,7 +57,7 @@ It deliberately leaves out continuous greedy preemption, anti-thrashing settings
 - **A preempted task is failed or re-queued.** The task's header chooses which. A re-queued task reruns its sequence from the beginning.
 - **A task is one human-readable text.** It consists of a header with the scheduling fields followed by an ordinary `Sequencer.js` body.
 - **The agent stores tasks like the Scripting Agent stores scripts.** Tasks live in agent properties and in the agent's INDIGO configuration. The agent never reads or writes task files; clients load, save and edit files and transfer them through properties.
-- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic. It requires three small additions to `Sequencer.js`: a load that does not replace a running sequence, see [Running a task](#running-a-task), the `estimate()` method, see [Task duration](#task-duration), and the `SEQUENCE_FAILURE` property, which gives the reason of a failed run, see [Running a task](#running-a-task). The only device actions the scheduler performs itself are aborts.
+- **Device control stays in `Sequencer.js`.** The scheduler does not duplicate any device logic. It requires three small additions to `Sequencer.js`: a load that does not replace a running sequence, see [Running a task](#running-a-task), the `estimate()` method, see [Task duration](#task-duration), and the `SEQUENCE_FAILURE` property, which gives the reason of a failed run, see [Running a task](#running-a-task). The only device actions the scheduler performs itself are aborts and the labelling of the saved data, see [Observation data](#observation-data).
 
 ## Architecture
 
@@ -186,6 +186,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | `@retry` | `count` [`after minutes`] | Number of reruns after a failure, 0–100, with an optional delay of 0–100000 minutes | `0` |
 | `@preempted` | `retry` \| `fail` | What happens to the task when an urgent task preempts it | `retry` |
 | `@enabled` | `yes` \| `no` | A disabled task is kept but never selected | `yes` |
+| `@folder` | `name` \| `none` | The folder under the data base folder where the frames of the task are saved, 1-40 bytes: `name` forces it, also when `FOLDER` of `AGENT_SCHEDULER_DATA` is off, and lets several tasks share it; `none` disables the folder of the task, which leaves `DIR` of the Imager Agent untouched, see [Observation data](#observation-data) | by `FOLDER` |
 
 The constraints `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` require `@target`. A header that uses them without `@target` is invalid. A task with `@target` also requires the target above the horizon, with or without `@altitude`.
 
@@ -358,6 +359,8 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
 | `AGENT_SCHEDULER_RESTORE_HISTORY` | text | `ENTRIES` | Used only to restore the run history from the configuration; published with an empty value, and changes from clients are rejected |
 | `AGENT_SCHEDULER_SETTINGS` | number | see below | Scheduler settings |
+| `AGENT_SCHEDULER_DATA` | switch | `OBJECT`, `FITS`, `FOLDER` | What the agent sets on the Imager Agent for a run, any of many, see [Observation data](#observation-data) |
+| `AGENT_SCHEDULER_DATA_DIR` | text | `BASE` | Parent folder of the task folders, empty for the folder the Imager Agent had when the scheduler started |
 | `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME` | Names of stored tasks used as hooks, see [Hooks](#hooks) and [Night hooks](#night-hooks) |
 | `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The Sun altitude that bounds the scheduler's night for the night hooks |
 
@@ -457,7 +460,7 @@ Changes that come in quick succession are written once, two seconds after the la
 1. one `AGENT_SCHEDULER_ADD_TASK` change per stored task, in list order. The agent saves a temporary copy of the property with two items:
    - `TASK`, the task text;
    - `STATUS`, the runtime status in a compact form, for example `state=DONE runs=2 retries=0 disabled=0 measured=3540`.
-2. `AGENT_SCHEDULER_SETTINGS`, `AGENT_SCHEDULER_HOOKS` and `AGENT_SCHEDULER_NIGHT`;
+2. `AGENT_SCHEDULER_SETTINGS`, `AGENT_SCHEDULER_DATA`, `AGENT_SCHEDULER_DATA_DIR`, `AGENT_SCHEDULER_HOOKS` and `AGENT_SCHEDULER_NIGHT`;
 3. one `AGENT_SCHEDULER_RESTORE_HISTORY` change. The agent saves a temporary copy whose `ENTRIES` item holds all history entries, one line per entry, oldest first, preceded by a line `#urgent`, `URGENT_DONE`, `URGENT_FAILED` when either counter is not zero; it has too few fields to be read as an entry by a version without the counters. Each line holds the task name, run number, start, end, result, a mark (`H` for a hook, `U` for an urgent task, `-` for neither) and the reason, separated by tabs. The configuration reader trims trailing whitespace, so no field is saved as a space, and entries whose trailing empty fields were trimmed are still restored.
 
 With a task text of at most 16 KiB and 128 tasks, the file stays below about 2 MiB.
@@ -696,7 +699,7 @@ Entries are newest first. Expiry is not a run, so an expired task gets no entry;
 
 The scheduler does not reset the agents between tasks. Settings made by one task body persist into the next one. Examples are the meridian flip, which stays enabled after a sequence ends, HA limits, filter offsets and the solver filter.
 
-Each task body must therefore set up the state it relies on. In particular, every task should call `enable_meridian_flip()` or `disable_meridian_flip()` explicitly, so that a flip enabled by a preempted task does not fire during an urgent task.
+The exceptions are the object name, the folder and the FITS keywords that the agent labels a run with, see [Observation data](#observation-data). Each task body must therefore set up the state it relies on. In particular, every task should call `enable_meridian_flip()` or `disable_meridian_flip()` explicitly, so that a flip enabled by a preempted task does not fire during an urgent task.
 
 ## Urgent preemption
 
@@ -726,6 +729,17 @@ Preemption, `ABORT` and deleting a running task all stop the sequence the same w
    - `SEQUENCE_STATE` is no longer Busy;
    - the `AGENT_START_PROCESS` property of the related Imager, Mount, Guider and solver agents is no longer Busy.
 4. If the sequence or an agent is still Busy after `STOP_TIMEOUT`, the agent sends an alert message. It does not start another task: the Scripting Agent refuses a new sequence while the old one runs. The scheduler stops, and its state becomes Alert.
+
+### Observation data
+
+The agent relates the frames to the task that produced them by changing `CCD_LOCAL_MODE` and the FITS headers of the "Imager Agent", the same properties `set_object_name()`, `set_directory()` and `set_fits_header()` of `Sequencer.js` change. It does so itself, not in the wrapper script, because `Sequence.start()` returns immediately: nothing in the script could restore the state after a failure or an abort, while the agent observes the bus and knows when a run ends.
+
+- The agent observes `DIR` and `OBJECT` of `CCD_LOCAL_MODE` of the Imager Agent. When the scheduler starts, it keeps them as the original. The base of the task folders is `AGENT_SCHEDULER_DATA_DIR.BASE`, or the original `DIR` when it is empty, so folders never nest.
+- Before a task or a hook is sent to the Scripting Agent, in this order and on the same client connection: `OBJECT` is set to the task name (`OBJECT` item on), `DIR` to `<base>/<name>/` (`FOLDER` item on, or `@folder`; `@folder none` suppresses it and leaves `DIR` untouched; the base applies only when a folder is used), and the FITS headers `SCHTASK` (task name), `SCHRUN` (run number) and `SCHNIGHT` (date of the session night, as `%N` of the file name template) are set (`FITS` item on). The name of the folder is the `@folder` value or the task name, with the characters that the CCD driver does not allow in a file name replaced by `_`. String values carry the FITS quotes, a quote in the name is doubled.
+- Steps of the script (`set_object_name()`, `set_directory()`, `set_fits_header()`) run later and win.
+- After every run, whatever its outcome (succeeded, failed, preempted or aborted), including a stop that aborts it, `DIR` and `OBJECT` return to the original and the three keywords are removed with `CCD_REMOVE_FITS_HEADER`. A directory set by a script therefore does not outlive the run.
+- Nothing is set or restored when the Imager Agent or its `CCD_LOCAL_MODE` is not known. The duration estimate never sets anything. A script that works with another imager agent gets no labels, as for the busy check on the "Imager Agent".
+- `AGENT_SCHEDULER_DATA` and `AGENT_SCHEDULER_DATA_DIR` are saved with the other settings.
 
 ## Running a task
 

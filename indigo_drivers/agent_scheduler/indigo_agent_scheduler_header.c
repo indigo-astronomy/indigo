@@ -50,6 +50,7 @@
 #define KEY_RETRY					0x1000
 #define KEY_PREEMPTED			0x2000
 #define KEY_ENABLED				0x4000
+#define KEY_FOLDER				0x8000
 
 typedef struct {
 	const char *name;
@@ -72,6 +73,7 @@ static const key_definition keys[] = {
 	{ "retry", KEY_RETRY },
 	{ "preempted", KEY_PREEMPTED },
 	{ "enabled", KEY_ENABLED },
+	{ "folder", KEY_FOLDER },
 	{ NULL, 0 }
 };
 
@@ -431,6 +433,24 @@ static bool parse_value(int key, char *value, scheduler_header *header, const ch
 				return false;
 			}
 			header->enabled = answer == 1;
+			return true;
+		}
+		case KEY_FOLDER: {
+			*expected = "a folder name of 1 to 40 characters or 'none'";
+			size_t length = strlen(value);
+			if (length == 0 || length >= SCHEDULER_TASK_NAME_SIZE) {
+				return false;
+			}
+			for (const char *c = value; *c; c++) {
+				if ((unsigned char)*c < 0x20 || *c == 0x7f) {
+					return false;
+				}
+			}
+			if (!strcasecmp(value, "none")) {
+				header->folder_none = true;
+			} else {
+				strcpy(header->folder, value);
+			}
 			return true;
 		}
 	}

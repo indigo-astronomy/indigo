@@ -190,6 +190,7 @@ Before the body runs, the scheduler defines a `scheduler_task` object from the h
 | `@retry` | `count`, optionally `after minutes` | Number of reruns after failures, 0–100, with an optional delay of 0–100000 minutes | `0` |
 | `@preempted` | `retry` or `fail` | What happens to this task when an urgent task interrupts it | `retry` |
 | `@enabled` | `yes` or `no` | A disabled task is kept but never selected | `yes` |
+| `@folder` | `name` or `none` | Save the frames of this task in the folder `name`, which several tasks may share, or in no folder of their own (the folder of the Imager Agent is left alone), 1–40 bytes, see [Where the data goes](#where-the-data-goes) | set by `FOLDER` |
 
 `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` need `@target`. The comparison signs are required: write `> 30`, not `30`. `>=` and `<=` are accepted and mean the same as `>` and `<`.
 
@@ -313,9 +314,42 @@ Checkpoints act only where the sequence reaches them: an exposure, a slew or a f
 ### Rules for the body
 
 - **Build, then start.** The body runs once on every upload and edit to estimate the duration. Up to `sequence.start()`, it must only build the sequence: it must not change properties, start timers or send messages itself. Everything that acts on the equipment belongs in sequence steps.
-- **Set up everything you rely on.** The scheduler does not reset the agents between tasks, so settings made by one task stay for the next one. Set the filter, the binning and other options in every task, and call `enable_meridian_flip()` or `disable_meridian_flip()` explicitly.
+- **Set up everything you rely on.** The scheduler does not reset the agents between tasks, so settings made by one task stay for the next one. The exceptions are the object name, the folder and the FITS keywords that the scheduler sets itself, see [Where the data goes](#where-the-data-goes). Set the filter, the binning and other options in every task, and call `enable_meridian_flip()` or `disable_meridian_flip()` explicitly.
 - **End the sequence in the right state.** A sequence that ends Ok counts as a success, and one that ends Alert as a failure. Use the sequencer's own steps to stop early, such as `break_if_target_altitude_below()` and `break_at()`.
 - **Name the sequence after the task** with `new Sequence(scheduler_task.name)`.
+
+### Where the data goes
+
+By default the frames of all tasks are saved by the Imager Agent into the same folder, with the object name and the FITS headers it holds at that moment. The scheduler can tell the frames which task made them. Before every run of a task or a hook, and before the body starts, it sets on the Imager Agent:
+
+- the **object name** (`CCD_LOCAL_MODE.OBJECT`) to the task name, so `%o` in the file name prefix stands for the task;
+- the FITS keywords `SCHTASK` (the task name, in quotes), `SCHRUN` (the run number, as `scheduler_task.run`) and `SCHNIGHT` (the date of the session night, the same as `%N` in the file name prefix, for example `'2026-11-16'`). Use `SCHNIGHT` to match flats and darks with the lights of the same night;
+- the **folder** (`CCD_LOCAL_MODE.DIR`) to a folder of its own, if you ask for it.
+
+`AGENT_SCHEDULER_DATA` switches the three on and off:
+
+| Item | Default | Meaning |
+|---|---|---|
+| `OBJECT` | on | Set the object name to the task name |
+| `FITS` | on | Set `SCHTASK`, `SCHRUN` and `SCHNIGHT` |
+| `FOLDER` | off | Save every task in a subfolder named after it |
+
+The folder is `<base>/<name>/`. The base is `AGENT_SCHEDULER_DATA_DIR.BASE`; when it is empty, the base is the folder the Imager Agent had when the scheduler was started. The name is the task name, or the `@folder` of the task, with every character that the CCD driver does not allow in a file name replaced by `_`. The key decides for one task, with `FOLDER` on or off:
+
+```
+// @task Flats L
+// @folder M31
+```
+
+`@folder M31` saves the task in `<base>/M31/` also when `FOLDER` is off, so several tasks, for example the lights and the flats of a target, share a folder. `@folder none` keeps the task out of a folder of its own: the scheduler leaves the folder of the Imager Agent alone, as with `FOLDER` off, so the task saves wherever the Imager Agent saves, and `BASE` applies only to tasks that use a folder.
+
+After every run, whatever its outcome (succeeded, failed, preempted or aborted), the scheduler puts the folder and the object name back as it found them and removes the three keywords. A task that has to change them for a part of its run still can: `sequence.set_object_name()`, `sequence.set_directory()` and `sequence.set_fits_header()` run after the scheduler has set its values and win, but only until the end of that run. In particular, a `set_directory()` of a task no longer stays for the next task.
+
+Notes:
+
+- Nothing is set or restored when the Imager Agent is not loaded or has no `CCD_LOCAL_MODE`.
+- Only the agent named "Imager Agent" is labelled. A script that works with another imager agent gets no labels.
+- Changes of the settings take effect at the next run. The duration estimate of a task never sets anything.
 
 ### More examples
 
@@ -635,7 +669,7 @@ A night then runs like this:
 indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_SETTINGS.IDLE_CHECK_INTERVAL=10;IDLE_PARK_AFTER=20"
 ```
 
-The tasks, their states and counters, the settings, the hooks, the night limit and the history are saved in the scheduler's configuration and restored when the server starts.
+The tasks, their states and counters, the settings, the data settings, the hooks, the night limit and the history are saved in the scheduler's configuration and restored when the server starts.
 
 ## Watching the scheduler
 
@@ -865,7 +899,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_DELETE_TASK.NAME=M31 LRGB"
 
 ## What happens when the server restarts
 
-- Stored tasks, with their states and counters, the settings, the hooks, the night limit and the history are restored.
+- Stored tasks, with their states and counters, the settings, the data settings, the hooks, the night limit and the history are restored.
 - Finished work is not repeated: DONE, FAILED and EXPIRED tasks keep their state.
 - A task that was running when the server stopped is restored as RETRY, without using a retry.
 - Repeat and retry delays are not kept: a task waiting in REPEAT or RETRY can run as soon as the scheduler starts.
@@ -949,6 +983,8 @@ All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIE
 | `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The run history |
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Clear the history |
 | `AGENT_SCHEDULER_SETTINGS` | number | see [Settings](#settings) | Settings |
+| `AGENT_SCHEDULER_DATA` | switch | `OBJECT`, `FITS`, `FOLDER` | What the scheduler sets on the Imager Agent for a run, see [Where the data goes](#where-the-data-goes) |
+| `AGENT_SCHEDULER_DATA_DIR` | text | `BASE` | Parent folder of the task folders, empty for the folder of the Imager Agent |
 | `AGENT_SCHEDULER_HOOKS` | text | `STARTUP`, `SHUTDOWN`, `IDLE`, `NIGHT_START`, `NIGHT_END`, `RESUME` | Hook task names |
 | `AGENT_SCHEDULER_NIGHT` | switch | `CIVIL`, `NAUTICAL`, `ASTRONOMICAL` | The night limit of the night hooks |
 

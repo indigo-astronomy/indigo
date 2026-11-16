@@ -1556,6 +1556,14 @@ enum {
 #define AGENT_SCHEDULER_NIGHT_NAUTICAL_ITEM_NAME																								"NAUTICAL"
 #define AGENT_SCHEDULER_NIGHT_ASTRONOMICAL_ITEM_NAME																						"ASTRONOMICAL"
 
+#define AGENT_SCHEDULER_DATA_PROPERTY_NAME																										"AGENT_SCHEDULER_DATA"
+#define AGENT_SCHEDULER_DATA_OBJECT_ITEM_NAME																										"OBJECT"
+#define AGENT_SCHEDULER_DATA_FITS_ITEM_NAME																										"FITS"
+#define AGENT_SCHEDULER_DATA_FOLDER_ITEM_NAME																										"FOLDER"
+
+#define AGENT_SCHEDULER_DATA_DIR_PROPERTY_NAME																										"AGENT_SCHEDULER_DATA_DIR"
+#define AGENT_SCHEDULER_DATA_DIR_BASE_ITEM_NAME																										"BASE"
+
 #define AGENT_SCHEDULER_HISTORY_PROPERTY_NAME																										"AGENT_SCHEDULER_HISTORY"
 #define AGENT_SCHEDULER_HISTORY_ITEM_NAME																												"RUN_%u"
 

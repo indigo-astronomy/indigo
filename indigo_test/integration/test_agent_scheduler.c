@@ -54,6 +54,11 @@
 #define REQUIRE(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return; } } while (0)
 #define CHECK(c) do { if (!(c)) { fprintf(stderr, "%s:%d: %s\n", __FILE__, __LINE__, #c); indigo_test_failures++; return false; } } while (0)
 
+// what the Imager Agent stand-in holds before the scheduler touches it, and what a run leaves behind
+#define IMAGER_DIR				"/data/"
+#define IMAGER_OBJECT			"Original"
+#define IMAGER_RESTORED		"LOCAL DIR=" IMAGER_DIR " OBJECT=" IMAGER_OBJECT
+
 #define BODY_WAIT(seconds) "var sequence = new Sequence(scheduler_task.name);\nsequence.wait(" #seconds ");\nsequence.start();\n"
 
 typedef struct {
@@ -69,11 +74,15 @@ static observation cache[512];
 static pthread_mutex_t cache_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char messages[262144];
 static indigo_client observer;
-static bool scheduler_running, scripting_running, mount_attached, guider_attached;
+static bool scheduler_running, scripting_running, mount_attached, guider_attached, imager_attached;
 static char fixture_dir[256];
 static atomic_int guider_aborts;
 static atomic_bool guider_stubborn;
 static indigo_property *site_property, *guider_process_property, *guider_abort_property;
+static indigo_property *imager_local_mode_property, *imager_set_fits_property, *imager_remove_fits_property;
+// the changes the Imager Agent stand-in received, one event per line, each line preceded by a newline
+static char imager_log[65536] = "";
+static pthread_mutex_t imager_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // -------------------------------------------------------------------------------- Observer
 
@@ -483,6 +492,120 @@ static indigo_result guider_change(indigo_device *device, indigo_client *client,
 static indigo_device mount_standin = INDIGO_DEVICE_INITIALIZER("Mount Agent", NULL, mount_enumerate, NULL, NULL, NULL);
 static indigo_device guider_standin = INDIGO_DEVICE_INITIALIZER("Guider Agent", NULL, guider_enumerate, guider_change, NULL, NULL);
 
+static indigo_result imager_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(imager_local_mode_property, property)) {
+		indigo_define_property(device, imager_local_mode_property, NULL);
+	}
+	if (indigo_property_match(imager_set_fits_property, property)) {
+		indigo_define_property(device, imager_set_fits_property, NULL);
+	}
+	if (indigo_property_match(imager_remove_fits_property, property)) {
+		indigo_define_property(device, imager_remove_fits_property, NULL);
+	}
+	return INDIGO_OK;
+}
+
+static void imager_record(const char *event) {
+	pthread_mutex_lock(&imager_mutex);
+	if (strlen(imager_log) + strlen(event) + 2 < sizeof(imager_log)) {
+		strcat(imager_log, "\n");
+		strcat(imager_log, event);
+	}
+	pthread_mutex_unlock(&imager_mutex);
+}
+
+// logs the change as LOCAL NAME=value ..., SET KEYWORD=VALUE or REMOVE KEYWORD and acknowledges it like the Imager Agent
+static indigo_result imager_change(indigo_device *device, indigo_client *client, indigo_property *property) {
+	indigo_property *target = NULL;
+	char event[1024] = "";
+	if (indigo_property_match_changeable(imager_local_mode_property, property)) {
+		target = imager_local_mode_property;
+		strcpy(event, "LOCAL");
+		for (int i = 0; i < property->count; i++) {
+			snprintf(event + strlen(event), sizeof(event) - strlen(event), " %s=%s", property->items[i].name, property->items[i].text.value);
+		}
+	} else if (indigo_property_match_changeable(imager_set_fits_property, property)) {
+		target = imager_set_fits_property;
+		snprintf(event, sizeof(event), "SET %s=%s", indigo_get_text_item_value(indigo_get_item(property, CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME)), indigo_get_text_item_value(indigo_get_item(property, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME)));
+	} else if (indigo_property_match_changeable(imager_remove_fits_property, property)) {
+		target = imager_remove_fits_property;
+		snprintf(event, sizeof(event), "REMOVE %s", indigo_get_text_item_value(indigo_get_item(property, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME)));
+	}
+	if (target) {
+		imager_record(event);
+		indigo_property_copy_values(target, property, false);
+		target->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, target, NULL);
+		target->state = INDIGO_OK_STATE;
+		indigo_update_property(device, target, NULL);
+	}
+	return INDIGO_OK;
+}
+
+static indigo_device imager_standin = INDIGO_DEVICE_INITIALIZER("Imager Agent", NULL, imager_enumerate, imager_change, NULL, NULL);
+
+// position of the event, a whole line of the log, at or after the offset; -1 if there is none
+static long imager_position(const char *event, long after) {
+	char line[1100];
+	snprintf(line, sizeof(line), "\n%s\n", event);
+	pthread_mutex_lock(&imager_mutex);
+	// the last line has no newline yet when it is the end of the log
+	char *log = indigo_safe_malloc(strlen(imager_log) + 2);
+	sprintf(log, "%s\n", imager_log);
+	pthread_mutex_unlock(&imager_mutex);
+	const char *found = strstr(log + (after > 0 ? after : 0), line);
+	long result = found ? (long)(found - log) : -1;
+	free(log);
+	return result;
+}
+
+// waits for the event after the offset and returns its position, -1 after the timeout
+static long wait_imager_event(const char *event, long after, double timeout) {
+	for (double t = 0; t < timeout; t += 0.01) {
+		long position = imager_position(event, after);
+		if (position >= 0) {
+			return position;
+		}
+		indigo_usleep(10000);
+	}
+	pthread_mutex_lock(&imager_mutex);
+	fprintf(stderr, "Timeout waiting for the Imager Agent event '%s' after %ld, log:%s\n", event, after, imager_log);
+	pthread_mutex_unlock(&imager_mutex);
+	return -1;
+}
+
+static int imager_events(const char *prefix) {
+	char line[1100];
+	snprintf(line, sizeof(line), "\n%s", prefix);
+	pthread_mutex_lock(&imager_mutex);
+	int count = 0;
+	for (const char *s = imager_log; (s = strstr(s, line)) != NULL; s += strlen(line)) {
+		count++;
+	}
+	pthread_mutex_unlock(&imager_mutex);
+	return count;
+}
+
+// the session night of the FITS keyword SCHNIGHT: the local date, the day before until noon
+static void night_event(char *event, time_t t) {
+	struct tm local;
+	t -= 12 * 3600;
+	localtime_r(&t, &local);
+	sprintf(event, "SET SCHNIGHT='%04d-%02d-%02d'", local.tm_year + 1900, local.tm_mon + 1, local.tm_mday);
+}
+
+static bool set_data(bool object, bool fits, bool folder) {
+	unsigned before = revision(AGENT_SCHEDULER_DATA_PROPERTY_NAME);
+	const char *items[] = { AGENT_SCHEDULER_DATA_OBJECT_ITEM_NAME, AGENT_SCHEDULER_DATA_FITS_ITEM_NAME, AGENT_SCHEDULER_DATA_FOLDER_ITEM_NAME };
+	bool values[] = { object, fits, folder };
+	indigo_change_switch_property(&observer, AGENT, AGENT_SCHEDULER_DATA_PROPERTY_NAME, 3, items, values);
+	return wait_property_state(AGENT_SCHEDULER_DATA_PROPERTY_NAME, before, INDIGO_OK_STATE, NULL);
+}
+
+static bool set_data_base(const char *base) {
+	return change_text(AGENT_SCHEDULER_DATA_DIR_PROPERTY_NAME, AGENT_SCHEDULER_DATA_DIR_BASE_ITEM_NAME, base, INDIGO_OK_STATE, NULL);
+}
+
 // the plan labels and states, the count or -1 when the property is missing; a redefine at a minute boundary deletes it for a moment
 static int plan_items(char labels[][INDIGO_VALUE_SIZE], indigo_property_state *states, int max) {
 	indigo_property *property = snapshot(AGENT_SCHEDULER_PLAN_PROPERTY_NAME);
@@ -688,6 +811,17 @@ static bool setup(void) {
 	mount_attached = true;
 	CHECK(indigo_attach_device(&guider_standin) == INDIGO_OK);
 	guider_attached = true;
+	imager_local_mode_property = indigo_init_text_property(NULL, imager_standin.name, CCD_LOCAL_MODE_PROPERTY_NAME, "Imager", "Local mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+	indigo_init_text_item(imager_local_mode_property->items + 0, CCD_LOCAL_MODE_DIR_ITEM_NAME, "Directory", IMAGER_DIR);
+	indigo_init_text_item(imager_local_mode_property->items + 1, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, "Prefix", "IMG_");
+	indigo_init_text_item(imager_local_mode_property->items + 2, CCD_LOCAL_MODE_OBJECT_ITEM_NAME, "Object", IMAGER_OBJECT);
+	imager_set_fits_property = indigo_init_text_property(NULL, imager_standin.name, CCD_SET_FITS_HEADER_PROPERTY_NAME, "Imager", "Set FITS header", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	indigo_init_text_item(imager_set_fits_property->items + 0, CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
+	indigo_init_text_item(imager_set_fits_property->items + 1, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME, "Value", "");
+	imager_remove_fits_property = indigo_init_text_property(NULL, imager_standin.name, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, "Imager", "Remove FITS header", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	indigo_init_text_item(imager_remove_fits_property->items + 0, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
+	CHECK(indigo_attach_device(&imager_standin) == INDIGO_OK);
+	imager_attached = true;
 	CHECK(indigo_agent_scripting(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
 	scripting_running = true;
 	return start_scheduler();
@@ -697,6 +831,10 @@ static void cleanup(void) {
 	stop_scheduler();
 	if (scripting_running) {
 		indigo_agent_scripting(INDIGO_DRIVER_SHUTDOWN, NULL);
+	}
+	if (imager_attached) {
+		indigo_detach_device(&imager_standin);
+		imager_attached = false;
 	}
 	if (guider_attached) {
 		indigo_detach_device(&guider_standin);
@@ -712,6 +850,9 @@ static void cleanup(void) {
 	indigo_release_property(site_property);
 	indigo_release_property(guider_process_property);
 	indigo_release_property(guider_abort_property);
+	indigo_release_property(imager_local_mode_property);
+	indigo_release_property(imager_set_fits_property);
+	indigo_release_property(imager_remove_fits_property);
 }
 
 // -------------------------------------------------------------------------------- Cases
@@ -2874,6 +3015,266 @@ static void next_start_follows_the_end_of_the_running_hook(void) {
 	ASSERT_TRUE(next_start > now + 60 && next_start <= now + 5 * 60 + 5);
 }
 
+static void data_is_labelled_before_the_first_step(void) {
+	REQUIRE(upload("// @task Alpha\nvar sequence = new Sequence(scheduler_task.name);\nsequence.set_object_name(\"Script\");\nsequence.wait(1);\nsequence.start();\n"));
+	time_t before = time(NULL);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Alpha", "DONE", 20));
+	time_t after = time(NULL);
+	// the object name and the keywords are set before the first step of the script, which sets its own object name
+	long object = wait_imager_event("LOCAL OBJECT=Alpha", 0, 5);
+	long task = wait_imager_event("SET SCHTASK='Alpha'", 0, 5);
+	long run = wait_imager_event("SET SCHRUN=1", 0, 5);
+	char event[64];
+	night_event(event, before);
+	long night = wait_imager_event(event, 0, 5);
+	if (night < 0) {
+		night_event(event, after);
+		night = wait_imager_event(event, 0, 5);
+	}
+	long script = wait_imager_event("LOCAL OBJECT=Script", 0, 10);
+	ASSERT_TRUE(object >= 0 && task > object && run > task && night > run && script > night);
+	// the folder is not set by default
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Alpha DIR="));
+	// the script's value does not survive the run, everything is put back
+	long restored = wait_imager_event(IMAGER_RESTORED, script, 5);
+	ASSERT_TRUE(restored > script);
+	long removed = wait_imager_event("REMOVE SCHTASK", restored, 5);
+	ASSERT_TRUE(removed > restored);
+	ASSERT_TRUE(wait_imager_event("REMOVE SCHRUN", removed, 5) > removed);
+	ASSERT_TRUE(wait_imager_event("REMOVE SCHNIGHT", removed, 5) > removed);
+	ASSERT_EQ_INT(1, imager_events("LOCAL DIR="));
+}
+
+static void script_keywords_and_directory_win(void) {
+	REQUIRE(set_data(true, true, true));
+	REQUIRE(upload("// @task Beta\nvar sequence = new Sequence(scheduler_task.name);\nsequence.set_directory(\"/mine/\");\nsequence.set_fits_header(\"SCHTASK\", \"'Mine'\");\nsequence.wait(1);\nsequence.start();\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Beta", "DONE", 20));
+	long folder = wait_imager_event("LOCAL OBJECT=Beta DIR=" IMAGER_DIR "Beta/", 0, 5);
+	long task = wait_imager_event("SET SCHTASK='Beta'", 0, 5);
+	long directory = wait_imager_event("LOCAL DIR=/mine/", 0, 10);
+	long keyword = wait_imager_event("SET SCHTASK='Mine'", 0, 10);
+	ASSERT_TRUE(folder >= 0 && task > folder && directory > task && keyword > directory);
+	ASSERT_TRUE(wait_imager_event(IMAGER_RESTORED, keyword, 5) > keyword);
+}
+
+static void data_settings_off_label_nothing(void) {
+	REQUIRE(set_data(false, false, false));
+	REQUIRE(upload("// @task Quiet\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Quiet", "DONE", 20));
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(0, imager_events(""));
+	// a script's own change is not undone, the scheduler has set nothing
+	REQUIRE(set_data(true, false, false));
+	REQUIRE(upload("// @task Loud\n// @priority low\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Loud", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Loud", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event(IMAGER_RESTORED, 0, 5) >= 0);
+	ASSERT_EQ_INT(0, imager_events("SET "));
+	ASSERT_EQ_INT(0, imager_events("REMOVE "));
+}
+
+static void folder_per_task_uses_a_safe_name(void) {
+	REQUIRE(set_data(true, false, true));
+	REQUIRE(upload("// @task M31/Ha: 1\n// @priority high\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Plain\n// @priority normal\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task ..\n// @priority low\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Elsewhere\n// @priority low 10\n// @folder none\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 40));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=M31/Ha: 1 DIR=" IMAGER_DIR "M31_Ha_ 1/", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Plain DIR=" IMAGER_DIR "Plain/", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=.. DIR=" IMAGER_DIR "_/", 0, 5) >= 0);
+	// @folder none keeps the task out of a folder
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Elsewhere", 0, 5) >= 0);
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Elsewhere DIR="));
+}
+
+static void folder_key_names_the_folder_of_several_tasks(void) {
+	REQUIRE(upload("// @task First\n// @priority high\n// @folder Shared\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Second\n// @priority normal\n// @folder Shared\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Third\n// @priority low\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Fourth\n// @priority low 10\n// @folder none\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 40));
+	// the setting is off, the key decides
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=First DIR=" IMAGER_DIR "Shared/", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Second DIR=" IMAGER_DIR "Shared/", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Third", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Fourth", 0, 5) >= 0);
+	ASSERT_EQ_INT(2, imager_events("LOCAL OBJECT=First DIR=") + imager_events("LOCAL OBJECT=Second DIR="));
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Third DIR="));
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Fourth DIR="));
+}
+
+static void base_folder_replaces_the_imager_folder(void) {
+	REQUIRE(set_data(true, false, true));
+	REQUIRE(set_data_base("/archive/obs"));
+	REQUIRE(upload("// @task Inside\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Inside", "DONE", 20));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Inside DIR=/archive/obs/Inside/", 0, 5) >= 0);
+	// the runs come back to the folder of the Imager Agent, not to the base
+	ASSERT_TRUE(wait_imager_event(IMAGER_RESTORED, 0, 5) >= 0);
+	REQUIRE(set_data_base("/archive/"));
+	REQUIRE(upload("// @task Slash\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Slash", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Slash DIR=/archive/Slash/", 0, 5) >= 0);
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Slash DIR=/archive/obs/"));
+}
+
+static void run_number_follows_the_repeat(void) {
+	REQUIRE(set_data(false, true, false));
+	REQUIRE(upload("// @task Again\n// @repeat 2 every 0\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Again", "DONE", 30));
+	long first = wait_imager_event("SET SCHRUN=1", 0, 5);
+	long second = wait_imager_event("SET SCHRUN=2", 0, 5);
+	ASSERT_TRUE(first >= 0 && second > first);
+	// the keywords of the first run are removed before the second run sets its own
+	long removed = wait_imager_event("REMOVE SCHRUN", first, 5);
+	ASSERT_TRUE(removed > first && removed < second);
+	ASSERT_TRUE(wait_imager_event("REMOVE SCHRUN", second, 5) > second);
+}
+
+static void data_is_restored_after_a_failure(void) {
+	REQUIRE(upload("// @task Broken\nvar sequence = new Sequence(scheduler_task.name);\nsequence.wait(30);\nsequence.start();\nif (!scheduler_task.estimate) { throw new Error(\"after start\"); }\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Broken", "FAILED", 20));
+	long object = wait_imager_event("LOCAL OBJECT=Broken", 0, 5);
+	ASSERT_TRUE(object >= 0);
+	long restored = wait_imager_event(IMAGER_RESTORED, object, 5);
+	ASSERT_TRUE(restored > object);
+	ASSERT_TRUE(wait_imager_event("REMOVE SCHNIGHT", restored, 5) > restored);
+}
+
+static void data_is_restored_after_an_abort(void) {
+	REQUIRE(upload("// @task Long\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RUNNING", 15));
+	long object = wait_imager_event("LOCAL OBJECT=Long", 0, 5);
+	ASSERT_TRUE(object >= 0);
+	ASSERT_EQ_INT(0, imager_events("LOCAL DIR="));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Long", "RETRY", 10));
+	long restored = wait_imager_event(IMAGER_RESTORED, object, 5);
+	ASSERT_TRUE(restored > object);
+	ASSERT_TRUE(wait_imager_event("REMOVE SCHTASK", restored, 5) > restored);
+}
+
+static void data_is_restored_after_a_preemption(void) {
+	REQUIRE(upload("// @task Slow\n// @retry 1\n" BODY_WAIT(30)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Slow", "RUNNING", 15));
+	set_guiding(true);
+	indigo_usleep(1500000);
+	REQUIRE(urgent("// @task Rush\n// @priority low\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_message("Task 'Slow' preempted by an urgent task, it will be retried", 1, 10));
+	// the preempted task is put back before the urgent one is labelled
+	long slow = wait_imager_event("LOCAL OBJECT=Slow", 0, 5);
+	long restored = wait_imager_event(IMAGER_RESTORED, slow, 5);
+	long rush = wait_imager_event("LOCAL OBJECT=Rush", 0, 10);
+	ASSERT_TRUE(slow >= 0 && restored > slow && rush > restored);
+	ASSERT_TRUE(wait_message("Task 'Rush' completed", 1, 10));
+	ASSERT_TRUE(wait_imager_event(IMAGER_RESTORED, rush, 5) > rush);
+}
+
+static void data_is_restored_when_the_scheduler_stops(void) {
+	REQUIRE(upload("// @task Finishing\n" BODY_WAIT(3)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Finishing", "RUNNING", 15));
+	long object = wait_imager_event("LOCAL OBJECT=Finishing", 0, 5);
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Finishing", "DONE", 15));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_TRUE(wait_imager_event(IMAGER_RESTORED, object, 5) > object);
+	// START takes the Imager Agent as it is then, the user's change is the new original
+	indigo_set_text_item_value(imager_local_mode_property->items + 0, "/other/");
+	indigo_update_property(&imager_standin, imager_local_mode_property, NULL);
+	indigo_usleep(300000);
+	REQUIRE(upload("// @task Next\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Next", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("LOCAL DIR=/other/ OBJECT=" IMAGER_OBJECT, object, 5) > object);
+}
+
+static void hooks_are_labelled_like_tasks(void) {
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Work", "DONE", 30));
+	long hook = wait_imager_event("LOCAL OBJECT=Prepare", 0, 5);
+	long hook_run = wait_imager_event("SET SCHRUN=1", 0, 5);
+	long restored = wait_imager_event(IMAGER_RESTORED, hook, 5);
+	long work = wait_imager_event("LOCAL OBJECT=Work", restored, 10);
+	ASSERT_TRUE(hook >= 0 && hook_run > hook && restored > hook_run && work > restored);
+	ASSERT_TRUE(wait_imager_event("SET SCHTASK='Prepare'", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("SET SCHTASK='Work'", restored, 5) > restored);
+}
+
+static void data_quote_in_the_task_name_is_doubled(void) {
+	REQUIRE(upload("// @task Barnard's Star\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Barnard's Star", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("SET SCHTASK='Barnard''s Star'", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Barnard's Star", 0, 5) >= 0);
+}
+
+static void data_without_an_imager_agent_runs_unlabelled(void) {
+	indigo_detach_device(&imager_standin);
+	imager_attached = false;
+	indigo_usleep(500000);
+	REQUIRE(upload("// @task Blind\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Blind", "DONE", 20));
+	ASSERT_EQ_INT(0, imager_events(""));
+	ASSERT_EQ_INT(0, count_messages("failed"));
+}
+
+static void estimates_label_nothing(void) {
+	REQUIRE(upload("// @task Estimated\nvar sequence = new Sequence(scheduler_task.name);\nsequence.set_object_name(\"Script\");\nsequence.capture_batch(2, 30);\nsequence.start();\n"));
+	ASSERT_TRUE(wait_task_state("Estimated", "estimated", 15));
+	indigo_usleep(500000);
+	ASSERT_EQ_INT(0, imager_events(""));
+}
+
+static void data_settings_persist(void) {
+	REQUIRE(set_data(false, false, true));
+	REQUIRE(set_data_base("/archive"));
+	stop_scheduler();
+	REQUIRE(start_scheduler());
+	indigo_property *data = snapshot(AGENT_SCHEDULER_DATA_PROPERTY_NAME);
+	REQUIRE(data != NULL);
+	ASSERT_FALSE(indigo_get_item(data, AGENT_SCHEDULER_DATA_OBJECT_ITEM_NAME)->sw.value);
+	ASSERT_FALSE(indigo_get_item(data, AGENT_SCHEDULER_DATA_FITS_ITEM_NAME)->sw.value);
+	ASSERT_TRUE(indigo_get_item(data, AGENT_SCHEDULER_DATA_FOLDER_ITEM_NAME)->sw.value);
+	indigo_release_property(data);
+	indigo_property *base = snapshot(AGENT_SCHEDULER_DATA_DIR_PROPERTY_NAME);
+	REQUIRE(base != NULL);
+	ASSERT_STREQ("/archive", indigo_get_text_item_value(indigo_get_item(base, AGENT_SCHEDULER_DATA_DIR_BASE_ITEM_NAME)));
+	indigo_release_property(base);
+}
+
+static void data_defaults(void) {
+	indigo_property *data = snapshot(AGENT_SCHEDULER_DATA_PROPERTY_NAME);
+	REQUIRE(data != NULL);
+	ASSERT_EQ_INT(INDIGO_ANY_OF_MANY_RULE, data->rule);
+	ASSERT_TRUE(indigo_get_item(data, AGENT_SCHEDULER_DATA_OBJECT_ITEM_NAME)->sw.value);
+	ASSERT_TRUE(indigo_get_item(data, AGENT_SCHEDULER_DATA_FITS_ITEM_NAME)->sw.value);
+	ASSERT_FALSE(indigo_get_item(data, AGENT_SCHEDULER_DATA_FOLDER_ITEM_NAME)->sw.value);
+	indigo_release_property(data);
+	indigo_property *base = snapshot(AGENT_SCHEDULER_DATA_DIR_PROPERTY_NAME);
+	REQUIRE(base != NULL);
+	ASSERT_STREQ("", indigo_get_text_item_value(indigo_get_item(base, AGENT_SCHEDULER_DATA_DIR_BASE_ITEM_NAME)));
+	indigo_release_property(base);
+}
+
 static const indigo_test_case cases[] = {
 	{ "store_edit_and_delete", store_edit_and_delete },
 	{ "commands_and_order", commands_and_order },
@@ -2961,6 +3362,23 @@ static const indigo_test_case cases[] = {
 	{ "shutdown_hook_is_next_before_the_night_end_hook", shutdown_hook_is_next_before_the_night_end_hook },
 	{ "one_off_urgent_task_is_not_followed_by_the_shutdown_hook", one_off_urgent_task_is_not_followed_by_the_shutdown_hook },
 	{ "repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook", repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook },
+	{ "data_defaults", data_defaults },
+	{ "data_settings_persist", data_settings_persist },
+	{ "data_is_labelled_before_the_first_step", data_is_labelled_before_the_first_step },
+	{ "script_keywords_and_directory_win", script_keywords_and_directory_win },
+	{ "data_settings_off_label_nothing", data_settings_off_label_nothing },
+	{ "folder_per_task_uses_a_safe_name", folder_per_task_uses_a_safe_name },
+	{ "folder_key_names_the_folder_of_several_tasks", folder_key_names_the_folder_of_several_tasks },
+	{ "base_folder_replaces_the_imager_folder", base_folder_replaces_the_imager_folder },
+	{ "run_number_follows_the_repeat", run_number_follows_the_repeat },
+	{ "data_is_restored_after_a_failure", data_is_restored_after_a_failure },
+	{ "data_is_restored_after_an_abort", data_is_restored_after_an_abort },
+	{ "data_is_restored_after_a_preemption", data_is_restored_after_a_preemption },
+	{ "data_is_restored_when_the_scheduler_stops", data_is_restored_when_the_scheduler_stops },
+	{ "hooks_are_labelled_like_tasks", hooks_are_labelled_like_tasks },
+	{ "data_quote_in_the_task_name_is_doubled", data_quote_in_the_task_name_is_doubled },
+	{ "data_without_an_imager_agent_runs_unlabelled", data_without_an_imager_agent_runs_unlabelled },
+	{ "estimates_label_nothing", estimates_label_nothing },
 };
 
 static const char *case_filter = NULL;

@@ -88,6 +88,9 @@ typedef struct {
 	int retry_after;
 	bool preempted_fail;
 	bool enabled;
+	// @folder: a name forces the data folder of the task, none disables it, both unset leave it to the settings
+	bool folder_none;
+	char folder[SCHEDULER_TASK_NAME_SIZE];
 } scheduler_header;
 
 /** Parse and validate the header of a task text. On success fills header, stores the offset of the body and returns true. On failure writes a message naming the line to error and returns false.

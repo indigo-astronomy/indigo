@@ -213,6 +213,23 @@ static void test_empty_body_and_size_limit(void) {
 	assert_rejected(large, "longer than");
 }
 
+static void test_folder_key(void) {
+	ASSERT_TRUE(parse("// @task A\n" BODY));
+	ASSERT_FALSE(header.folder_none);
+	ASSERT_STREQ("", header.folder);
+	ASSERT_TRUE(parse("// @task A\n// @folder Night 1\n" BODY));
+	ASSERT_FALSE(header.folder_none);
+	ASSERT_STREQ("Night 1", header.folder);
+	ASSERT_TRUE(parse("// @task A\n// @FOLDER NONE\n" BODY));
+	ASSERT_TRUE(header.folder_none);
+	ASSERT_STREQ("", header.folder);
+	ASSERT_TRUE(parse("// @task A\n// @folder 1234567890123456789012345678901234567890\n" BODY));
+	assert_rejected("// @task A\n// @folder\n" BODY, "line 2: @folder");
+	assert_rejected("// @task A\n// @folder 12345678901234567890123456789012345678901\n" BODY, "line 2: @folder");
+	assert_rejected("// @task A\n// @folder A\x01\n" BODY, "line 2: @folder");
+	assert_rejected("// @task A\n// @folder A\n// @folder B\n" BODY, "repeated key");
+}
+
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "minimal_task_defaults", test_minimal_task_defaults },
@@ -224,6 +241,7 @@ int main(void) {
 		{ "rejected_headers", test_rejected_headers },
 		{ "constraints_require_target", test_constraints_require_target },
 		{ "empty_body_and_size_limit", test_empty_body_and_size_limit },
+		{ "folder_key", test_folder_key },
 	};
 	return indigo_run_tests("test_agent_scheduler_header", cases, sizeof(cases) / sizeof(cases[0]));
 }

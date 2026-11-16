@@ -22,13 +22,12 @@
 // TODO: add weather safety checks, and a way to abort a task if the weather becomes unsafe
 // TODO: make night plan light labels more parsable
 // TODO: revise if we reallyneed NEXT_TASK item
-// TODO: make obesrvation data related to the obtaining task
 
 /** INDIGO Scheduler agent
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300000D
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -39,6 +38,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <time.h>
+#include <ctype.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_uni_io.h>
@@ -121,6 +121,12 @@
 #define SETTINGS_OPERATION_OVERHEAD_ITEM	(SETTINGS_PROPERTY->items + 7)
 #define SETTINGS_NIGHT_START_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 8)
 #define SETTINGS_NIGHT_END_OFFSET_ITEM	(SETTINGS_PROPERTY->items + 9)
+#define DATA_PROPERTY							(PRIVATE_DATA->data_property)
+#define DATA_OBJECT_ITEM					(DATA_PROPERTY->items + 0)
+#define DATA_FITS_ITEM						(DATA_PROPERTY->items + 1)
+#define DATA_FOLDER_ITEM					(DATA_PROPERTY->items + 2)
+#define DATA_DIR_PROPERTY					(PRIVATE_DATA->data_dir_property)
+#define DATA_DIR_BASE_ITEM				(DATA_DIR_PROPERTY->items + 0)
 #define HOOKS_PROPERTY						(PRIVATE_DATA->hooks_property)
 #define HOOKS_STARTUP_ITEM				(HOOKS_PROPERTY->items + 0)
 #define HOOKS_SHUTDOWN_ITEM				(HOOKS_PROPERTY->items + 1)
@@ -250,6 +256,10 @@ typedef struct {
 	bool site_known;
 	double latitude, longitude, elevation;
 	unsigned agents_busy;
+	// CCD_LOCAL_MODE of the Imager Agent
+	bool imager_known;
+	char imager_dir[INDIGO_VALUE_SIZE];
+	char imager_object[INDIGO_VALUE_SIZE];
 } scheduler_observed;
 
 typedef struct {
@@ -263,6 +273,8 @@ typedef struct {
 	indigo_property *state_property;
 	indigo_property *current_property;
 	indigo_property *settings_property;
+	indigo_property *data_property;
+	indigo_property *data_dir_property;
 	indigo_property *hooks_property;
 	indigo_property *history_property;
 	indigo_property *clear_history_property;
@@ -275,6 +287,13 @@ typedef struct {
 	bool plan_dirty;
 	double plan_due;
 	scheduler_observed observed;
+	// the directory and the object name of the Imager Agent before the first run, restored after every run
+	bool original_valid;
+	char original_dir[INDIGO_VALUE_SIZE];
+	char original_object[INDIGO_VALUE_SIZE];
+	// what the running task or hook has set on the Imager Agent
+	bool context_applied;
+	bool context_fits;
 	history_entry history[MAX_HISTORY];
 	int history_count;
 	// finished one-off urgent tasks, which leave the task list; saved and cleared with the history
@@ -768,6 +787,8 @@ static void save_config(indigo_device *device) {
 		indigo_release_property(property);
 	}
 	indigo_save_property(device, NULL, SETTINGS_PROPERTY);
+	indigo_save_property(device, NULL, DATA_PROPERTY);
+	indigo_save_property(device, NULL, DATA_DIR_PROPERTY);
 	indigo_save_property(device, NULL, HOOKS_PROPERTY);
 	indigo_save_property(device, NULL, NIGHT_PROPERTY);
 	char *entries = history_text(device);
@@ -1053,8 +1074,143 @@ static void request_stop(indigo_device *device, indigo_property_state state, con
 	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 }
 
+// -------------------------------------------------------------------------------- Observation data
+
+// the Imager Agent as it is before the scheduler labels a run, so that all folders hang off the same base
+static void capture_original(indigo_device *device) {
+	scheduler_observed *observed = &PRIVATE_DATA->observed;
+	pthread_mutex_lock(&observed->mutex);
+	PRIVATE_DATA->original_valid = observed->imager_known;
+	INDIGO_COPY_VALUE(PRIVATE_DATA->original_dir, observed->imager_dir);
+	INDIGO_COPY_VALUE(PRIVATE_DATA->original_object, observed->imager_object);
+	pthread_mutex_unlock(&observed->mutex);
+}
+
+// the characters the CCD driver keeps in a file name, anything else becomes an underscore
+static void sanitize_folder(const char *name, char *folder, size_t size) {
+	size_t length = 0;
+	for (; *name && length < size - 1; name++) {
+		unsigned char c = (unsigned char)*name;
+		folder[length++] = isalnum(c) || strchr("-_. ()[]{}+=@#$%&!~^", c) ? (char)c : '_';
+	}
+	folder[length] = 0;
+	if (!strcmp(folder, ".") || !strcmp(folder, "..")) {
+		strcpy(folder, "_");
+	}
+}
+
+// the folder of the task: the @folder key decides, the FOLDER setting gives every task its own folder named after it
+static bool data_directory(indigo_device *device, scheduler_task *task, char *directory, size_t size) {
+	const char *name = task->header.name;
+	if (task->header.folder_none) {
+		return false;
+	} else if (*task->header.folder) {
+		name = task->header.folder;
+	} else if (!DATA_FOLDER_ITEM->sw.value) {
+		return false;
+	}
+	const char *base = indigo_get_text_item_value(DATA_DIR_BASE_ITEM);
+	if (*base == 0) {
+		base = PRIVATE_DATA->original_dir;
+	}
+	char folder[SCHEDULER_TASK_NAME_SIZE];
+	sanitize_folder(name, folder, sizeof(folder));
+	size_t length = strlen(base);
+	bool terminated = length == 0 || base[length - 1] == '/' || base[length - 1] == INDIGO_PATH_SEPATATOR;
+	snprintf(directory, size, "%s%s%s%c", base, terminated ? "" : (char[]){ INDIGO_PATH_SEPATATOR, 0 }, folder, INDIGO_PATH_SEPATATOR);
+	return true;
+}
+
+// a FITS string value is quoted, a quote inside it is doubled, the whole value is at most 58 characters long
+static void fits_string(const char *text, char *value, size_t size) {
+	size_t length = 0;
+	value[length++] = '\'';
+	for (; *text; text++) {
+		size_t needed = *text == '\'' ? 2 : 1;
+		if (length + needed > 57 || length + needed + 2 > size) {
+			break;
+		}
+		while (needed--) {
+			value[length++] = *text;
+		}
+	}
+	value[length++] = '\'';
+	value[length] = 0;
+}
+
+static void set_fits_header(const char *keyword, const char *value) {
+	const char *items[] = { CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME };
+	const char *values[] = { keyword, value };
+	indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_SET_FITS_HEADER_PROPERTY_NAME, 2, items, values);
+}
+
+// labels the data of a run with its task, before the script runs; nothing is applied when the Imager Agent is not known
+static void apply_context(indigo_device *device, scheduler_task *task, int run_number) {
+	PRIVATE_DATA->context_applied = PRIVATE_DATA->context_fits = false;
+	if (!PRIVATE_DATA->original_valid) {
+		capture_original(device);
+	}
+	if (!PRIVATE_DATA->original_valid) {
+		return;
+	}
+	const char *items[2];
+	const char *values[2];
+	int count = 0;
+	char directory[INDIGO_VALUE_SIZE];
+	if (DATA_OBJECT_ITEM->sw.value) {
+		items[count] = CCD_LOCAL_MODE_OBJECT_ITEM_NAME;
+		values[count++] = task->header.name;
+	}
+	if (data_directory(device, task, directory, sizeof(directory))) {
+		items[count] = CCD_LOCAL_MODE_DIR_ITEM_NAME;
+		values[count++] = directory;
+	}
+	if (count > 0) {
+		indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_LOCAL_MODE_PROPERTY_NAME, count, items, values);
+		PRIVATE_DATA->context_applied = true;
+	}
+	if (DATA_FITS_ITEM->sw.value) {
+		char value[INDIGO_VALUE_SIZE];
+		char night[32];
+		fits_string(task->header.name, value, sizeof(value));
+		set_fits_header("SCHTASK", value);
+		snprintf(value, sizeof(value), "%d", run_number);
+		set_fits_header("SCHRUN", value);
+		indigo_timetoisolocal(time(NULL) - 12 * 3600, night, sizeof(night));
+		night[10] = 0;
+		fits_string(night, value, sizeof(value));
+		set_fits_header("SCHNIGHT", value);
+		PRIVATE_DATA->context_applied = PRIVATE_DATA->context_fits = true;
+	}
+}
+
+// puts the Imager Agent back as it was found, after a run of any outcome
+static void restore_context(indigo_device *device) {
+	if (!PRIVATE_DATA->context_applied) {
+		return;
+	}
+	PRIVATE_DATA->context_applied = false;
+	const char *items[] = { CCD_LOCAL_MODE_DIR_ITEM_NAME, CCD_LOCAL_MODE_OBJECT_ITEM_NAME };
+	const char *values[] = { PRIVATE_DATA->original_dir, PRIVATE_DATA->original_object };
+	indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_LOCAL_MODE_PROPERTY_NAME, 2, items, values);
+	if (PRIVATE_DATA->context_fits) {
+		static const char *keywords[] = { "SCHTASK", "SCHRUN", "SCHNIGHT" };
+		for (int i = 0; i < 3; i++) {
+			indigo_change_text_property_1(agent_client, IMAGER_AGENT, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "%s", keywords[i]);
+		}
+		PRIVATE_DATA->context_fits = false;
+	}
+	// a stopped scheduler takes the Imager Agent as it is the next time
+	if (!PRIVATE_DATA->started) {
+		PRIVATE_DATA->original_valid = false;
+	}
+}
+
 static void stop_scheduler(indigo_device *device, indigo_property_state state, const char *message) {
 	PRIVATE_DATA->started = false;
+	if (!PRIVATE_DATA->context_applied) {
+		PRIVATE_DATA->original_valid = false;
+	}
 	PRIVATE_DATA->stop_requested = false;
 	PRIVATE_DATA->startup_pending = false;
 	PRIVATE_DATA->shutdown_ran = false;
@@ -1066,6 +1222,7 @@ static void finish_hook(indigo_device *device, run_result result, const char *me
 	int slot = PRIVATE_DATA->current;
 	scheduler_task *task = PRIVATE_DATA->tasks + slot;
 	run_kind kind = PRIVATE_DATA->kind;
+	restore_context(device);
 	add_history(device, task, result, message);
 	PRIVATE_DATA->phase = RUN_IDLE;
 	PRIVATE_DATA->current = -1;
@@ -1133,6 +1290,7 @@ static void finish_task(indigo_device *device, bool success, const char *message
 	int slot = PRIVATE_DATA->current;
 	scheduler_task *task = PRIVATE_DATA->tasks + slot;
 	time_t now = time(NULL);
+	restore_context(device);
 	add_history(device, task, success ? RESULT_SUCCEEDED : RESULT_FAILED, message);
 	if (success) {
 		task->runs++;
@@ -1188,6 +1346,7 @@ static void finish_stop(indigo_device *device) {
 		}
 		return;
 	}
+	restore_context(device);
 	PRIVATE_DATA->phase = RUN_IDLE;
 	PRIVATE_DATA->current = -1;
 	PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
@@ -1265,6 +1424,7 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 	PRIVATE_DATA->kind = kind;
 	PRIVATE_DATA->run_start = time(NULL);
 	PRIVATE_DATA->run_number = kind == RUN_TASK ? task->runs + 1 : 1;
+	apply_context(device, task, PRIVATE_DATA->run_number);
 	PRIVATE_DATA->phase = RUN_STARTING;
 	PRIVATE_DATA->deadline = indigo_monotonic_time() + SETTINGS_START_TIMEOUT_ITEM->number.value;
 	PRIVATE_DATA->plan_dirty = true;
@@ -2523,6 +2683,10 @@ static void control(indigo_device *device, indigo_property *request) {
 			PRIVATE_DATA->standby = false;
 			PRIVATE_DATA->chain_slot = -1;
 			PRIVATE_DATA->notice = NIGHT_NOTICE_NONE;
+			// the Imager Agent as it is now is where the runs come back to
+			if (PRIVATE_DATA->phase == RUN_IDLE) {
+				capture_original(device);
+			}
 		}
 		PRIVATE_DATA->started = true;
 		PRIVATE_DATA->stop_requested = false;
@@ -2642,6 +2806,20 @@ static void command_handler(indigo_device *device, void *data) {
 			schedule_save(device);
 		}
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
+	} else if (indigo_property_match_changeable(DATA_PROPERTY, request)) {
+		indigo_property_copy_values(DATA_PROPERTY, request, false);
+		DATA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DATA_PROPERTY, NULL);
+		if (!command->config_reader) {
+			schedule_save(device);
+		}
+	} else if (indigo_property_match_changeable(DATA_DIR_PROPERTY, request)) {
+		indigo_property_copy_values(DATA_DIR_PROPERTY, request, false);
+		DATA_DIR_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DATA_DIR_PROPERTY, NULL);
+		if (!command->config_reader) {
+			schedule_save(device);
+		}
 	} else {
 		for (int i = 0; i < MAX_TASKS; i++) {
 			scheduler_task *task = PRIVATE_DATA->tasks + i;
@@ -2751,6 +2929,20 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(SETTINGS_OPERATION_OVERHEAD_ITEM, AGENT_SCHEDULER_SETTINGS_OPERATION_OVERHEAD_ITEM_NAME, "Estimate overhead per operation (s)", 0, 3600, 1, 120);
 		indigo_init_number_item(SETTINGS_NIGHT_START_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_START_OFFSET_ITEM_NAME, "Night start offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
 		indigo_init_number_item(SETTINGS_NIGHT_END_OFFSET_ITEM, AGENT_SCHEDULER_SETTINGS_NIGHT_END_OFFSET_ITEM_NAME, "Night end offset (min)", -SCHEDULER_NIGHT_OFFSET_LIMIT, SCHEDULER_NIGHT_OFFSET_LIMIT, 1, 0);
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_DATA
+		DATA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCHEDULER_DATA_PROPERTY_NAME, SCHEDULER_GROUP, "Observation data", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
+		if (DATA_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(DATA_OBJECT_ITEM, AGENT_SCHEDULER_DATA_OBJECT_ITEM_NAME, "Task name as object", true);
+		indigo_init_switch_item(DATA_FITS_ITEM, AGENT_SCHEDULER_DATA_FITS_ITEM_NAME, "Task FITS keywords", true);
+		indigo_init_switch_item(DATA_FOLDER_ITEM, AGENT_SCHEDULER_DATA_FOLDER_ITEM_NAME, "Folder per task", false);
+		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_DATA_DIR
+		DATA_DIR_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_DATA_DIR_PROPERTY_NAME, SCHEDULER_GROUP, "Observation data folder", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (DATA_DIR_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_text_item(DATA_DIR_BASE_ITEM, AGENT_SCHEDULER_DATA_DIR_BASE_ITEM_NAME, "Base folder (empty = Imager Agent folder)", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_HOOKS
 		HOOKS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_HOOKS_PROPERTY_NAME, SCHEDULER_GROUP, "Hooks", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
 		if (HOOKS_PROPERTY == NULL) {
@@ -2830,6 +3022,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_define_property(device, STATE_PROPERTY, NULL);
 		indigo_define_property(device, CURRENT_PROPERTY, NULL);
 		indigo_define_property(device, SETTINGS_PROPERTY, NULL);
+		indigo_define_property(device, DATA_PROPERTY, NULL);
+		indigo_define_property(device, DATA_DIR_PROPERTY, NULL);
 		indigo_define_property(device, HOOKS_PROPERTY, NULL);
 		indigo_define_property(device, NIGHT_PROPERTY, NULL);
 		indigo_define_property(device, HISTORY_PROPERTY, NULL);
@@ -2870,6 +3064,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	define_copy(device, client, STATE_PROPERTY, property);
 	define_copy(device, client, CURRENT_PROPERTY, property);
 	define_copy(device, client, SETTINGS_PROPERTY, property);
+	define_copy(device, client, DATA_PROPERTY, property);
+	define_copy(device, client, DATA_DIR_PROPERTY, property);
 	define_copy(device, client, HOOKS_PROPERTY, property);
 	define_copy(device, client, NIGHT_PROPERTY, property);
 	define_copy(device, client, HISTORY_PROPERTY, property);
@@ -2887,7 +3083,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 
 // returns the property of the agent the request changes, NULL for other properties
 static indigo_property *own_property(indigo_device *device, indigo_property *property) {
-	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY };
+	indigo_property *properties[] = { ADD_TASK_PROPERTY, DELETE_TASK_PROPERTY, URGENT_TASK_PROPERTY, TASK_NAME_PROPERTY, TASK_COMMAND_PROPERTY, CONTROL_PROPERTY, SETTINGS_PROPERTY, DATA_PROPERTY, DATA_DIR_PROPERTY, HOOKS_PROPERTY, NIGHT_PROPERTY, CLEAR_HISTORY_PROPERTY, RESTORE_HISTORY_PROPERTY };
 	for (int i = 0; i < (int)(sizeof(properties) / sizeof(properties[0])); i++) {
 		if (indigo_property_match_changeable(properties[i], property)) {
 			return properties[i];
@@ -2947,6 +3143,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(STATE_PROPERTY);
 	indigo_release_property(CURRENT_PROPERTY);
 	indigo_release_property(SETTINGS_PROPERTY);
+	indigo_release_property(DATA_PROPERTY);
+	indigo_release_property(DATA_DIR_PROPERTY);
 	indigo_release_property(HOOKS_PROPERTY);
 	indigo_release_property(NIGHT_PROPERTY);
 	indigo_release_property(HISTORY_PROPERTY);
@@ -3053,6 +3251,15 @@ static void observe_property(indigo_property *property) {
 			observed->site_known = true;
 		}
 	}
+	if (!strcmp(property->device, IMAGER_AGENT) && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
+		indigo_item *dir = indigo_get_item(property, CCD_LOCAL_MODE_DIR_ITEM_NAME);
+		indigo_item *object = indigo_get_item(property, CCD_LOCAL_MODE_OBJECT_ITEM_NAME);
+		if (dir && object) {
+			INDIGO_COPY_VALUE(observed->imager_dir, indigo_get_text_item_value(dir));
+			INDIGO_COPY_VALUE(observed->imager_object, indigo_get_text_item_value(object));
+			observed->imager_known = true;
+		}
+	}
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 		unsigned bit = agent_busy_bit(property->device);
 		if (property->state == INDIGO_BUSY_STATE) {
@@ -3098,6 +3305,9 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 		}
 	} else if (!strcmp(property->device, MOUNT_AGENT) && (*property->name == 0 || !strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME))) {
 		observed->site_known = false;
+	}
+	if (!strcmp(property->device, IMAGER_AGENT) && (*property->name == 0 || !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME))) {
+		observed->imager_known = false;
 	}
 	if (*property->name == 0 || !strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 		observed->agents_busy &= ~agent_busy_bit(property->device);
