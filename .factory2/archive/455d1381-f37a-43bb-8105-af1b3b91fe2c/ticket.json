@@ -1,0 +1,831 @@
+{
+  "schema_version": 1,
+  "ticket_id": "455d1381-f37a-43bb-8105-af1b3b91fe2c",
+  "revision": 39,
+  "title": "Device configuration file can hold another device's settings and restoring it changes that device",
+  "description": "Observed in INDIGO A1 (embedded server, trace log of 2026-11-16 20:59:05): with Imager Agent ADDITIONAL_INSTANCES set to 2 and CCD Imager Simulator selected in Imager Agent, selecting CCD Guider Simulator in Imager Agent #2 sets ADDITIONAL_INSTANCES of Imager Agent to 0 and the additional instances disappear.\n\nTrace: Imager Agent #2 sends CONFIG.LOAD to CCD Guider Simulator; the file .indigo/CCD_Guider_Simulator.config is opened and contains no simulator settings but properties with device='Imager Agent' (AGENT_IMAGER_BATCH, AGENT_IMAGER_FOCUS, AGENT_IMAGER_FOCUS_FAILURE, AGENT_IMAGER_FOCUS_ESTIMATOR, ADDITIONAL_INSTANCES COUNT=0, AGENT_PROCESS_FEATURES, AGENT_IMAGER_SELECTION), exactly the content and order written by save_config() of indigo_agent_imager.c. CONFIG_READER then enumerates and changes 'Imager Agent'.ADDITIONAL_INSTANCES. Not reproducible on a server whose simulator config file is intact.\n\nTwo defects in indigo_libs/indigo_driver.c:\n1. Configuration restore does not check the device. config_restore_collect() queues every property found in the file and config_restore_handler() dispatches it with the device name from the file, so a config file of device A can change device B. Seen directly in the code and in the trace.\n2. A device's settings were written into another device's config file. How is not visible in the trace (it happened earlier). Hypothesis, not verified: indigo_open_config_file() and test_config_file() build the path in a function-level 'static char path[512]', so two threads working with configuration at the same time (an agent saving its config while a selected device connects and tests or opens its own) can open the path computed by the other thread.\n\nExpected: restoring the configuration of a device changes only that device (entries for other devices are ignored, and reported in the log), and a property is always saved to the config file of its own device, also under concurrent saves and loads.\n\nReproduce first: a test that restores a config file containing an entry for another device and shows that device changed; for defect 2, verify or refute the static-buffer hypothesis (for example concurrent save and open for two devices) before changing the code.",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-16T20:02:00.200613Z",
+  "status": "closed",
+  "branch": "ticket/455d1381-f37a-43bb-8105-af1b3b91fe2c",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3daee2f3-d608-4281-8836-07d68cba2ced",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T20:03:30.331263Z",
+          "last_activity_at": "2026-11-16T20:08:35.395128Z",
+          "ended_at": "2026-11-16T20:08:35.395128Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 305063.865,
+          "tokens": null
+        },
+        {
+          "attempt_id": "e5f3aa28-d237-4fc5-bd3b-7bfce884fac4",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T20:11:19.005747Z",
+          "last_activity_at": "2026-11-16T20:16:41.867029Z",
+          "ended_at": "2026-11-16T20:16:41.867029Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 322861.282,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T20:03:30.331263Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/455d1381-f37a-43bb-8105-af1b3b91fe2c"
+        },
+        {
+          "at": "2026-11-16T20:08:35.395128Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T20:11:19.005747Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T20:16:41.867029Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 627925.147,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "95a3d23b-7216-46a8-9208-18a36ec64390",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-16T20:08:35.395410Z",
+          "last_activity_at": "2026-11-16T20:11:19.005610Z",
+          "ended_at": "2026-11-16T20:11:19.005610Z",
+          "outcome": {
+            "summary": "Reviewed diff master...HEAD (371663c71, clean worktree): indigo_libs/indigo_driver.c, indigo_test/unit/test_profile_selection.c, indigo_docs/DRIVER_DEVELOPMENT_BASICS.md.\n\nDEFECT (acceptance 'restoring the configuration of a device changes only that device' not met): the device filter is applied only in config_restore_collect() (indigo_driver.c:604), i.e. the CONFIG.LOAD path. The other restore path, indigo_load_properties() -> load_properties(device, ..., NULL, NULL) (indigo_driver.c:527-528), still passes dispatch=NULL, so indigo_xml_parse_with_callback() uses indigo_change_property (indigo_xml.c:1433) and every entry in the file is routed to whatever device it names. This path restores configuration on attach for agent_imager (indigo_agent_imager.c:2903), agent_guider (:2793), agent_mount (:2227), agent_astrometry (:1188), agent_platesolver (:564), agent_alpaca (:1226) and the server device (indigo_server.c:1209). Agent attach also runs for additional instances (e.g. 'Imager Agent #2'), so a corrupted Imager_Agent_#2.config holding 'Imager Agent'.ADDITIONAL_INSTANCES COUNT=0 (the same corruption defect 2 produced) would still set the base agent's ADDITIONAL_INSTANCES to 0 on instance attach - the reported symptom. Correction: apply the same device-name check (skip + log) inside load_properties() for both dispatch modes, e.g. a filtering dispatch wrapper used when reader == NULL, and extend the restore test to cover indigo_load_properties(). The docs sentence (DRIVER_DEVELOPMENT_BASICS.md:572) is accurate for CONFIG.LOAD only; once both paths filter it can say so, otherwise it should not imply the synchronous helper is covered.\n\nVerified OK: static path[512] -> local in test_config_file, indigo_open_config_file, indigo_remove_properties removes the shared-buffer race; no other function-level static path buffers remain in the config save/load path (make_config_file_name writes into caller buffers; indigo_xml_escape_b buffers are INDIGO_THREAD_LOCAL). restore->devic",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 163610.2,
+          "tokens": null
+        },
+        {
+          "attempt_id": "59a199f2-264a-4a33-b9d1-f4dcc0aee5eb",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T20:16:41.867176Z",
+          "last_activity_at": "2026-11-16T20:17:23.905742Z",
+          "ended_at": "2026-11-16T20:17:23.905742Z",
+          "outcome": {
+            "summary": "Round 2, reviewed diff master...HEAD at ccb697be1 (tree 9d5407672, no uncommitted changes); whitespace and unit checks recorded as passed on this tree (flow status).\n\nRound 1 finding resolved: load_properties() with reader == NULL now allocates config_load_context (indigo_adapter_context first, so the cast and the parser's use of client_context as indigo_adapter_context are valid), copies device->name, and parses with config_load_dispatch, which logs and skips entries whose device differs and otherwise calls indigo_change_property exactly like the previous default (indigo_xml.c:1433). Allocation/free: both .common and .config blocks malloc sizeof(config_load_context) and free the same pointer after parsing; no early return between them, the parser returns void, and the close/free sequence is unchanged, so no leak on parse failure. CONFIG.LOAD path unaffected: reader != NULL keeps reader->client_context and the passed dispatch (config_restore_collect), which keeps its own device filter. The only callers are indigo_load_properties (NULL, NULL) and start_config_restore (reader, collect), so ignoring 'dispatch' when reader == NULL changes no caller.\n\nTest: 'restore ignores entries of other devices' now resets both devices' PROFILE_NAME, calls indigo_load_properties(&owner, false) on the same file (foreign entry first, own second), waits for the owner's 'Own profile' and then asserts the other device still has 'Untouched profile' after a further 200 ms; this exercises the synchronous path, and the ticket note records it failing with the filter removed. Docs sentence (DRIVER_DEVELOPMENT_BASICS.md:572) now accurately covers CONFIG and indigo_load_properties(). Formatting follows AGENTS.md (tabs, braces, single-line calls, no blank lines in function bodies).\n\nNon-blocking nits: the test assigns 'device = &other;' twice in a row and performs an unexplained indigo_enumerate_properties(&client, &filter) for the other device; neither affects the result. Not covered: I did not r",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 42038.566,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1bdf9021-af9a-44e6-84c0-490eec8de9ff",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T20:19:41.939207Z",
+          "last_activity_at": "2026-11-16T20:20:35.947317Z",
+          "ended_at": "2026-11-16T20:20:35.947317Z",
+          "outcome": {
+            "summary": "Round 3 (reworked scope), reviewed HEAD 0cf5324d0, tree b2f84ddad, clean worktree. Supersedes my earlier pass, which was recorded on this tree without review.\n\nScope: diff master...HEAD is 2 files. indigo_libs/indigo_driver.c changes only the three function-level 'static char path[512]' -> locals in test_config_file (:451), indigo_open_config_file (:459) and indigo_remove_properties (:928); the read-side filter (config_restore device_name, config_restore_collect check, config_load_context/dispatch) is gone and those parts are identical to master. indigo_docs/DRIVER_DEVELOPMENT_BASICS.md is identical to master. test_profile_selection.c adds only 'config paths are not shared between threads'.\n\nCorrectness: the shared static path buffer was the cross-thread state that let one thread open (O_TRUNC on create) a path computed for another device; with locals, make_config_file_name writes only to the caller's buffer. Independent write-path audit found no other shared mutable state: indigo_uni_create_file/open_file/mkdir/is_readable/remove use only locals (indigo_uni_io.c:492-530, 2585-2655), handle index via next_handle_index, indigo_xml_escape_b buffers are INDIGO_THREAD_LOCAL, property_save_file_handle and config_mutex are per device. The only remaining shared statics on the path are the lazily filled indigo_uni_config_folder()/home_folder() buffers (same content for every caller; partial-read only on a racing first call) - observation, not this defect.\n\nTest: deterministic after the fix (any mismatch is a real cross-thread path mix-up, 0 expected), isolated (private home, own synthetic names, file removed), and per the ticket notes fails on master with ~399000/600000 mismatches - adequate reproduction-first evidence of the root cause. Dropping the end-to-end indigo_save_property race test is acceptable: an ineffective (never failing) test would add no evidence. Formatting matches AGENTS.md. whitespace and unit checks passed on tree b2f84ddad (flow status).\n\nObservations ",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 54008.11,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T20:08:35.395410Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T20:11:19.005610Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Reviewed diff master...HEAD (371663c71, clean worktree): indigo_libs/indigo_driver.c, indigo_test/unit/test_profile_selection.c, indigo_docs/DRIVER_DEVELOPMENT_BASICS.md.\n\nDEFECT (acceptance 'restoring the configuration of a device changes only that device' not met): the device filter is applied only in config_restore_collect() (indigo_driver.c:604), i.e. the CONFIG.LOAD path. The other restore path, indigo_load_properties() -> load_properties(device, ..., NULL, NULL) (indigo_driver.c:527-528), still passes dispatch=NULL, so indigo_xml_parse_with_callback() uses indigo_change_property (indigo_xml.c:1433) and every entry in the file is routed to whatever device it names. This path restores configuration on attach for agent_imager (indigo_agent_imager.c:2903), agent_guider (:2793), agent_mount (:2227), agent_astrometry (:1188), agent_platesolver (:564), agent_alpaca (:1226) and the server device (indigo_server.c:1209). Agent attach also runs for additional instances (e.g. 'Imager Agent #2'), so a corrupted Imager_Agent_#2.config holding 'Imager Agent'.ADDITIONAL_INSTANCES COUNT=0 (the same corruption defect 2 produced) would still set the base agent's ADDITIONAL_INSTANCES to 0 on instance attach - the reported symptom. Correction: apply the same device-name check (skip + log) inside load_properties() for both dispatch modes, e.g. a filtering dispatch wrapper used when reader == NULL, and extend the restore test to cover indigo_load_properties(). The docs sentence (DRIVER_DEVELOPMENT_BASICS.md:572) is accurate for CONFIG.LOAD only; once both paths filter it can say so, otherwise it should not imply the synchronous helper is covered.\n\nVerified OK: static path[512] -> local in test_config_file, indigo_open_config_file, indigo_remove_properties removes the shared-buffer race; no other function-level static path buffers remain in the config save/load path (make_config_file_name writes into caller buffers; indigo_xml_escape_b buffers are INDIGO_THREAD_LOCAL). restore->devic"
+        },
+        {
+          "at": "2026-11-16T20:16:41.867176Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T20:17:23.905742Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2, reviewed diff master...HEAD at ccb697be1 (tree 9d5407672, no uncommitted changes); whitespace and unit checks recorded as passed on this tree (flow status).\n\nRound 1 finding resolved: load_properties() with reader == NULL now allocates config_load_context (indigo_adapter_context first, so the cast and the parser's use of client_context as indigo_adapter_context are valid), copies device->name, and parses with config_load_dispatch, which logs and skips entries whose device differs and otherwise calls indigo_change_property exactly like the previous default (indigo_xml.c:1433). Allocation/free: both .common and .config blocks malloc sizeof(config_load_context) and free the same pointer after parsing; no early return between them, the parser returns void, and the close/free sequence is unchanged, so no leak on parse failure. CONFIG.LOAD path unaffected: reader != NULL keeps reader->client_context and the passed dispatch (config_restore_collect), which keeps its own device filter. The only callers are indigo_load_properties (NULL, NULL) and start_config_restore (reader, collect), so ignoring 'dispatch' when reader == NULL changes no caller.\n\nTest: 'restore ignores entries of other devices' now resets both devices' PROFILE_NAME, calls indigo_load_properties(&owner, false) on the same file (foreign entry first, own second), waits for the owner's 'Own profile' and then asserts the other device still has 'Untouched profile' after a further 200 ms; this exercises the synchronous path, and the ticket note records it failing with the filter removed. Docs sentence (DRIVER_DEVELOPMENT_BASICS.md:572) now accurately covers CONFIG and indigo_load_properties(). Formatting follows AGENTS.md (tabs, braces, single-line calls, no blank lines in function bodies).\n\nNon-blocking nits: the test assigns 'device = &other;' twice in a row and performs an unexplained indigo_enumerate_properties(&client, &filter) for the other device; neither affects the result. Not covered: I did not r"
+        },
+        {
+          "at": "2026-11-16T20:19:41.939207Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T20:20:35.947317Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 3 (reworked scope), reviewed HEAD 0cf5324d0, tree b2f84ddad, clean worktree. Supersedes my earlier pass, which was recorded on this tree without review.\n\nScope: diff master...HEAD is 2 files. indigo_libs/indigo_driver.c changes only the three function-level 'static char path[512]' -> locals in test_config_file (:451), indigo_open_config_file (:459) and indigo_remove_properties (:928); the read-side filter (config_restore device_name, config_restore_collect check, config_load_context/dispatch) is gone and those parts are identical to master. indigo_docs/DRIVER_DEVELOPMENT_BASICS.md is identical to master. test_profile_selection.c adds only 'config paths are not shared between threads'.\n\nCorrectness: the shared static path buffer was the cross-thread state that let one thread open (O_TRUNC on create) a path computed for another device; with locals, make_config_file_name writes only to the caller's buffer. Independent write-path audit found no other shared mutable state: indigo_uni_create_file/open_file/mkdir/is_readable/remove use only locals (indigo_uni_io.c:492-530, 2585-2655), handle index via next_handle_index, indigo_xml_escape_b buffers are INDIGO_THREAD_LOCAL, property_save_file_handle and config_mutex are per device. The only remaining shared statics on the path are the lazily filled indigo_uni_config_folder()/home_folder() buffers (same content for every caller; partial-read only on a racing first call) - observation, not this defect.\n\nTest: deterministic after the fix (any mismatch is a real cross-thread path mix-up, 0 expected), isolated (private home, own synthetic names, file removed), and per the ticket notes fails on master with ~399000/600000 mismatches - adequate reproduction-first evidence of the root cause. Dropping the end-to-end indigo_save_property race test is acceptable: an ineffective (never failing) test would add no evidence. Formatting matches AGENTS.md. whitespace and unit checks passed on tree b2f84ddad (flow status).\n\nObservations "
+        }
+      ],
+      "result": {
+        "summary": "Round 3 (reworked scope), reviewed HEAD 0cf5324d0, tree b2f84ddad, clean worktree. Supersedes my earlier pass, which was recorded on this tree without review.\n\nScope: diff master...HEAD is 2 files. indigo_libs/indigo_driver.c changes only the three function-level 'static char path[512]' -> locals in test_config_file (:451), indigo_open_config_file (:459) and indigo_remove_properties (:928); the read-side filter (config_restore device_name, config_restore_collect check, config_load_context/dispatch) is gone and those parts are identical to master. indigo_docs/DRIVER_DEVELOPMENT_BASICS.md is identical to master. test_profile_selection.c adds only 'config paths are not shared between threads'.\n\nCorrectness: the shared static path buffer was the cross-thread state that let one thread open (O_TRUNC on create) a path computed for another device; with locals, make_config_file_name writes only to the caller's buffer. Independent write-path audit found no other shared mutable state: indigo_uni_create_file/open_file/mkdir/is_readable/remove use only locals (indigo_uni_io.c:492-530, 2585-2655), handle index via next_handle_index, indigo_xml_escape_b buffers are INDIGO_THREAD_LOCAL, property_save_file_handle and config_mutex are per device. The only remaining shared statics on the path are the lazily filled indigo_uni_config_folder()/home_folder() buffers (same content for every caller; partial-read only on a racing first call) - observation, not this defect.\n\nTest: deterministic after the fix (any mismatch is a real cross-thread path mix-up, 0 expected), isolated (private home, own synthetic names, file removed), and per the ticket notes fails on master with ~399000/600000 mismatches - adequate reproduction-first evidence of the root cause. Dropping the end-to-end indigo_save_property race test is acceptable: an ineffective (never failing) test would add no evidence. Formatting matches AGENTS.md. whitespace and unit checks passed on tree b2f84ddad (flow status).\n\nObservations ",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 259656.876,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "51568d15-6003-4e56-ac91-39aa60f43ab2",
+      "event": "ticket/created",
+      "at": "2026-11-16T20:02:00.202117Z",
+      "actor": "human/owner",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple"
+    },
+    {
+      "event_id": "27ead945-bd81-43f4-8928-95d027430eb7",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T20:02:34.894623Z",
+      "actor": "human/owner",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "c7e1bf89-8a99-4fbc-a713-a12220fc21a3",
+      "event": "task/progress",
+      "at": "2026-11-16T20:03:30.331676Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Implementation started on branch ticket/455d1381-f37a-43bb-8105-af1b3b91fe2c"
+    },
+    {
+      "event_id": "5a6fbf4e-b883-47ec-97b1-b3acd60b8ea4",
+      "event": "ticket/started",
+      "at": "2026-11-16T20:03:30.333260Z",
+      "actor": "human/owner",
+      "branch": "ticket/455d1381-f37a-43bb-8105-af1b3b91fe2c",
+      "base": "master"
+    },
+    {
+      "event_id": "82bd3ff7-2a91-4deb-bd95-3cd779b1fef4",
+      "event": "task/progress",
+      "at": "2026-11-16T20:03:50.906377Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Implementer launched",
+      "attempt_id": "3daee2f3-d608-4281-8836-07d68cba2ced",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "659c3c50-dd4f-49b2-a31c-e6fc52453380",
+      "event": "task/progress",
+      "at": "2026-11-16T20:05:08.175951Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Writing reproduction tests in test_profile_selection.c"
+    },
+    {
+      "event_id": "988514bf-76da-4585-a879-c8316fe148c8",
+      "event": "ticket/note",
+      "at": "2026-11-16T20:06:47.328516Z",
+      "actor": "human/owner",
+      "text": "Before fix (test_profile_selection, 2 new cases): 'restore ignores entries of other devices' FAILED (foreign device PROFILE_NAME changed by owner's CONFIG.LOAD); 'config paths are not shared between threads' FAILED with ~399000 of 600000 path mismatches (2 threads, test_config_file/indigo_open_config_file), so the static path[512] hypothesis is VERIFIED. Fix: static path buffers -> local in test_config_file, indigo_open_config_file, indigo_remove_properties; config_restore_collect skips and logs entries with a different device name. After fix: both cases pass (3 repeated runs). Docs: one sentence added in DRIVER_DEVELOPMENT_BASICS.md.",
+      "tokens": null
+    },
+    {
+      "event_id": "151e8ed7-11ea-4d26-973e-340453768818",
+      "event": "task/progress",
+      "at": "2026-11-16T20:06:47.417029Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Running flow check"
+    },
+    {
+      "event_id": "92de3e7f-585e-415a-80f2-faf9d537ad1e",
+      "event": "task/progress",
+      "at": "2026-11-16T20:06:50.369824Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "59eda86f-a378-41bc-afae-ee1925baca1e",
+      "event": "task/progress",
+      "at": "2026-11-16T20:06:50.393195Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ce677ed9-eeb8-48a1-ba0a-e4a42eea845c",
+      "event": "task/progress",
+      "at": "2026-11-16T20:06:50.394841Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "d5aeecae-9815-4062-a7b7-c335b389d8bb",
+      "event": "task/progress",
+      "at": "2026-11-16T20:08:21.419056Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "daf19cd3-c1d0-43bf-b7f0-d043262ee20c",
+      "event": "check/passed",
+      "at": "2026-11-16T20:08:21.421354Z",
+      "actor": "human/owner",
+      "commit": "371663c71dc0765ce14f70d4e07104a35ce92b93",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "d8e6c781-57f8-43dd-b19a-408dca36d574",
+      "event": "task/progress",
+      "at": "2026-11-16T20:08:35.395516Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b4fc85e9-6528-485b-9031-40522111c1cb",
+      "event": "review/started",
+      "at": "2026-11-16T20:08:35.397190Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "6e07231f-223a-4752-90ef-47bf4f7b305f",
+      "event": "task/progress",
+      "at": "2026-11-16T20:08:51.543764Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Reviewer launched",
+      "attempt_id": "95a3d23b-7216-46a8-9208-18a36ec64390",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "a2719c61-d17d-4aa7-9ab5-7c3579c87154",
+      "event": "task/progress",
+      "at": "2026-11-16T20:08:59.915270Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Reading config save/load path in indigo_driver.c"
+    },
+    {
+      "event_id": "de838c4f-20b4-487f-ba52-fbd8f2bafee0",
+      "event": "task/progress",
+      "at": "2026-11-16T20:11:19.005742Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "2f8d51be-f8ea-418b-8ebf-82853c97332d",
+      "event": "task/progress",
+      "at": "2026-11-16T20:11:19.005768Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "24ae2db2-6fe9-42ed-b73f-4ddb842e04bb",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T20:11:19.007183Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "371663c71dc0765ce14f70d4e07104a35ce92b93"
+    },
+    {
+      "event_id": "f7920f01-d07d-445b-85bf-1a60558b9344",
+      "event": "task/progress",
+      "at": "2026-11-16T20:12:18.846766Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Adding indigo_load_properties filter and test"
+    },
+    {
+      "event_id": "7814d15a-892b-4cc2-a82c-c3346af855e0",
+      "event": "ticket/note",
+      "at": "2026-11-16T20:15:25.322640Z",
+      "actor": "human/owner",
+      "text": "Review round 1: indigo_load_properties() (reader==NULL) now uses config_load_dispatch, which skips and logs entries of other devices. Test 'restore ignores entries of other devices' extended: after resetting both devices' PROFILE_NAME, indigo_load_properties(owner) with a foreign entry. Before (filter removed): FAIL at the new assertion (foreign device changed); after: PASS in 3 runs. Docs sentence broadened to cover both paths.",
+      "tokens": null
+    },
+    {
+      "event_id": "03147928-049b-4787-bebb-711dc0e2c281",
+      "event": "task/progress",
+      "at": "2026-11-16T20:15:25.692952Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "f693402c-1ea2-4721-b5d9-a8b09d615d90",
+      "event": "task/progress",
+      "at": "2026-11-16T20:15:25.716656Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "26c47007-57bc-4d4f-bb0e-64ac8cdf196a",
+      "event": "task/progress",
+      "at": "2026-11-16T20:15:25.718785Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "4978045d-7476-46a4-9002-5ec605728b6b",
+      "event": "task/progress",
+      "at": "2026-11-16T20:16:28.365454Z",
+      "actor": "human/owner",
+      "task_id": "31af4c84-51c9-448c-b97b-33a6afb40f8b",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "d99cbe91-5ab1-4858-bf6e-d404ca16b666",
+      "event": "check/passed",
+      "at": "2026-11-16T20:16:28.367503Z",
+      "actor": "human/owner",
+      "commit": "ccb697be1cc1523b85c8b2124b30a8d8197730ea",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "0d5555ce-50c7-4d51-a549-d83485b806ba",
+      "event": "task/progress",
+      "at": "2026-11-16T20:16:41.867267Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Review started"
+    },
+    {
+      "event_id": "bb70eab4-3d33-4e69-a1a0-11b2d75a9801",
+      "event": "review/started",
+      "at": "2026-11-16T20:16:41.868649Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "5ba2071c-e95f-4029-891c-9509df1b85c6",
+      "event": "task/progress",
+      "at": "2026-11-16T20:16:51.654141Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Re-reviewing round 2 candidate"
+    },
+    {
+      "event_id": "a2c2f3d1-841e-4d5e-9bfc-05f23d2715f5",
+      "event": "ticket/note",
+      "at": "2026-11-16T20:17:12.912361Z",
+      "actor": "human/owner",
+      "text": "Owner scope change (2026-11-16): do not solve how to prevent reading a damaged config file; solve how not to produce it. The read-side device filter (CONFIG.LOAD and indigo_load_properties paths), its tests and its documentation sentence are out of scope and are to be removed from the change. In scope: a property is always written to its own device's config file, also under concurrent saves and loads (defect 2), with reproduction-first evidence.",
+      "tokens": null
+    },
+    {
+      "event_id": "d15af3d6-6a02-48dc-a48d-0fd02f960755",
+      "event": "task/progress",
+      "at": "2026-11-16T20:17:18.900477Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Reverting read-side filter, auditing write path"
+    },
+    {
+      "event_id": "5099322d-e022-4e32-866d-a0960041e069",
+      "event": "task/progress",
+      "at": "2026-11-16T20:17:23.905847Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "58e335f8-96c4-44a4-bce5-527e9402d285",
+      "event": "review/passed",
+      "at": "2026-11-16T20:17:23.907268Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0cf5324d007f5948541ba27ec45638a25b07ed8b"
+    },
+    {
+      "event_id": "0c0bd18d-bb1b-4471-9e25-1c5eb99528c9",
+      "event": "ticket/note",
+      "at": "2026-11-16T20:18:20.300173Z",
+      "actor": "human/owner",
+      "text": "Scope rework: read-side filter removed (indigo_load_properties/config_restore/docs/restore test identical to master). Write-side audit: static path[512] in test_config_file/indigo_open_config_file/indigo_remove_properties is the only shared mutable state found on the write path (verified: escape buffers are thread-local, handle index is mutex-protected, property_save_file_handle and config_mutex are per device, make_config_file_name writes only to the caller buffer). Deterministic test 'config paths are not shared between threads' fails on master (~399000 mismatches) and passes after. An end-to-end test of two threads saving via indigo_save_property into their own files (5000 and 60000 iterations each) did NOT fail on master's static buffer: the window between building the path and open() is too small to hit with file I/O, so that test was dropped as ineffective. Unverified suspicion: indigo_save_property() picks the file from property->device and caches the handle per device, so a caller passing a foreign-device property writes into that device's file (by design, no concurrency needed).",
+      "tokens": null
+    },
+    {
+      "event_id": "b12d2c60-c8a0-4254-9cbb-bf7f8375a7b9",
+      "event": "task/progress",
+      "at": "2026-11-16T20:18:20.508239Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b6be6eec-6fc5-4eb7-9e34-c1e2a8ebc197",
+      "event": "task/progress",
+      "at": "2026-11-16T20:18:20.532778Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2bf3ca11-64ec-4e5c-add5-da5d89fd8dd3",
+      "event": "task/progress",
+      "at": "2026-11-16T20:18:20.535490Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "3b1e525d-635a-44d0-ab34-c1363eb4e7b0",
+      "event": "task/progress",
+      "at": "2026-11-16T20:19:25.385853Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "44718e11-9e43-4b63-a7e2-b7e8f095a22f",
+      "event": "check/passed",
+      "at": "2026-11-16T20:19:25.388773Z",
+      "actor": "human/owner",
+      "commit": "0cf5324d007f5948541ba27ec45638a25b07ed8b",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "fc5bad9a-0fdc-4600-b1b4-ecf8d4a294ee",
+      "event": "task/progress",
+      "at": "2026-11-16T20:19:41.939636Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Review started"
+    },
+    {
+      "event_id": "30bacd9e-5a81-4d7f-9aa4-1a7947385c4a",
+      "event": "review/started",
+      "at": "2026-11-16T20:19:41.941378Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "e54eddc4-5e31-4a8a-b4fd-863e7d690c8a",
+      "event": "task/progress",
+      "at": "2026-11-16T20:19:53.868085Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Reviewing reworked candidate (write-side fix only)"
+    },
+    {
+      "event_id": "21f6629c-8920-49e7-97c7-1f2af85ef7c9",
+      "event": "task/progress",
+      "at": "2026-11-16T20:20:35.947426Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "19d24037-c3da-4dae-95b4-ae54acc514c9",
+      "event": "review/passed",
+      "at": "2026-11-16T20:20:35.948853Z",
+      "actor": "human/owner",
+      "task_id": "a96fdba5-e963-4021-b415-ac4280a470c6",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "0cf5324d007f5948541ba27ec45638a25b07ed8b"
+    },
+    {
+      "event_id": "17e67bd7-9ab9-4591-8686-59b894596393",
+      "event": "ticket/closed",
+      "at": "2026-11-16T20:20:55.384991Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-16T20:20:55.384955Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "be95066ca11746d627f811272f6160016d0e9978"
+  },
+  "priority": "high",
+  "severity": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "371663c71dc0765ce14f70d4e07104a35ce92b93",
+        "tree": "11f7d28271fa18c1102199be673b06b55c3e7b7d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T20:06:50.392513Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/455d1381-f37a-43bb-8105-af1b3b91fe2c/11f7d28271fa-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "371663c71dc0765ce14f70d4e07104a35ce92b93",
+        "tree": "11f7d28271fa18c1102199be673b06b55c3e7b7d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T20:08:21.417883Z",
+        "duration_s": 91.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/455d1381-f37a-43bb-8105-af1b3b91fe2c/11f7d28271fa-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "ccb697be1cc1523b85c8b2124b30a8d8197730ea",
+        "tree": "9d540767276243027d947905bc5ec1dce496211b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T20:15:25.715767Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/455d1381-f37a-43bb-8105-af1b3b91fe2c/9d5407672762-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "ccb697be1cc1523b85c8b2124b30a8d8197730ea",
+        "tree": "9d540767276243027d947905bc5ec1dce496211b",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T20:16:28.364399Z",
+        "duration_s": 62.6,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/455d1381-f37a-43bb-8105-af1b3b91fe2c/9d5407672762-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "0cf5324d007f5948541ba27ec45638a25b07ed8b",
+        "tree": "b2f84ddad255b0b4e6de600ce4b03c5eda618e19",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T20:18:20.531442Z",
+        "duration_s": 0.0,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/455d1381-f37a-43bb-8105-af1b3b91fe2c/b2f84ddad255-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "0cf5324d007f5948541ba27ec45638a25b07ed8b",
+        "tree": "b2f84ddad255b0b4e6de600ce4b03c5eda618e19",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T20:19:25.384389Z",
+        "duration_s": 64.8,
+        "log": "/var/folders/t0/tyrwlgx15fb1z5cq_lv6ddgr0000gn/T/factory-flow/455d1381-f37a-43bb-8105-af1b3b91fe2c/b2f84ddad255-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Reviewed diff master...HEAD (371663c71, clean worktree): indigo_libs/indigo_driver.c, indigo_test/unit/test_profile_selection.c, indigo_docs/DRIVER_DEVELOPMENT_BASICS.md.\n\nDEFECT (acceptance 'restoring the configuration of a device changes only that device' not met): the device filter is applied only in config_restore_collect() (indigo_driver.c:604), i.e. the CONFIG.LOAD path. The other restore path, indigo_load_properties() -> load_properties(device, ..., NULL, NULL) (indigo_driver.c:527-528), still passes dispatch=NULL, so indigo_xml_parse_with_callback() uses indigo_change_property (indigo_xml.c:1433) and every entry in the file is routed to whatever device it names. This path restores configuration on attach for agent_imager (indigo_agent_imager.c:2903), agent_guider (:2793), agent_mount (:2227), agent_astrometry (:1188), agent_platesolver (:564), agent_alpaca (:1226) and the server device (indigo_server.c:1209). Agent attach also runs for additional instances (e.g. 'Imager Agent #2'), so a corrupted Imager_Agent_#2.config holding 'Imager Agent'.ADDITIONAL_INSTANCES COUNT=0 (the same corruption defect 2 produced) would still set the base agent's ADDITIONAL_INSTANCES to 0 on instance attach - the reported symptom. Correction: apply the same device-name check (skip + log) inside load_properties() for both dispatch modes, e.g. a filtering dispatch wrapper used when reader == NULL, and extend the restore test to cover indigo_load_properties(). The docs sentence (DRIVER_DEVELOPMENT_BASICS.md:572) is accurate for CONFIG.LOAD only; once both paths filter it can say so, otherwise it should not imply the synchronous helper is covered.\n\nVerified OK: static path[512] -> local in test_config_file, indigo_open_config_file, indigo_remove_properties removes the shared-buffer race; no other function-level static path buffers remain in the config save/load path (make_config_file_name writes into caller buffers; indigo_xml_escape_b buffers are INDIGO_THREAD_LOCAL). restore->device_name is set in start_config_restore before load_properties and read only synchronously from config_restore_collect on the same thread; the restore struct lives in DEVICE_CONTEXT until release_config_restore, so lifetime is fine. Filter does not break legitimate cases I could find: indigo_save_property writes property->device and per-device files; slave logical devices get their own CONFIG/context; device names are XML-escaped on save and unescaped on parse; agent_config uses its own parser, not config_restore_collect. Tests: 'restore ignores entries of other devices' places the foreign entry before the owner's entry and waits for the owner's later entry, so file-order processing makes it deterministic; 'config paths are not shared between threads' is deterministic after the fix (0 mismatches) and the ticket note records the before-fix failures. Formatting matches AGENTS.md. Checks whitespace/unit passed at this tree.\n\nNot covered: no tests run by me; the log message itself is not asserted by the test; Windows not checked.\n\nOut of scope (owner): indigo_uni_config_folder()/indigo_uni_home_folder() lazily fill a static buffer without synchronization; a concurrent first call could read a partially written folder path (indigo_uni_io.c:2520-2560).",
+        "reviewer": "human/owner",
+        "commit": "371663c71dc0765ce14f70d4e07104a35ce92b93",
+        "tree": "11f7d28271fa18c1102199be673b06b55c3e7b7d",
+        "at": "2026-11-16T20:11:19.005362Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2, reviewed diff master...HEAD at ccb697be1 (tree 9d5407672, no uncommitted changes); whitespace and unit checks recorded as passed on this tree (flow status).\n\nRound 1 finding resolved: load_properties() with reader == NULL now allocates config_load_context (indigo_adapter_context first, so the cast and the parser's use of client_context as indigo_adapter_context are valid), copies device->name, and parses with config_load_dispatch, which logs and skips entries whose device differs and otherwise calls indigo_change_property exactly like the previous default (indigo_xml.c:1433). Allocation/free: both .common and .config blocks malloc sizeof(config_load_context) and free the same pointer after parsing; no early return between them, the parser returns void, and the close/free sequence is unchanged, so no leak on parse failure. CONFIG.LOAD path unaffected: reader != NULL keeps reader->client_context and the passed dispatch (config_restore_collect), which keeps its own device filter. The only callers are indigo_load_properties (NULL, NULL) and start_config_restore (reader, collect), so ignoring 'dispatch' when reader == NULL changes no caller.\n\nTest: 'restore ignores entries of other devices' now resets both devices' PROFILE_NAME, calls indigo_load_properties(&owner, false) on the same file (foreign entry first, own second), waits for the owner's 'Own profile' and then asserts the other device still has 'Untouched profile' after a further 200 ms; this exercises the synchronous path, and the ticket note records it failing with the filter removed. Docs sentence (DRIVER_DEVELOPMENT_BASICS.md:572) now accurately covers CONFIG and indigo_load_properties(). Formatting follows AGENTS.md (tabs, braces, single-line calls, no blank lines in function bodies).\n\nNon-blocking nits: the test assigns 'device = &other;' twice in a row and performs an unexplained indigo_enumerate_properties(&client, &filter) for the other device; neither affects the result. Not covered: I did not run tests myself (relied on recorded checks for this tree); log output is not asserted; Windows not checked. Out of scope (owner): unsynchronized lazy init of the static buffers in indigo_uni_config_folder()/indigo_uni_home_folder() (indigo_uni_io.c:2520-2560).",
+        "reviewer": "human/owner",
+        "commit": "0cf5324d007f5948541ba27ec45638a25b07ed8b",
+        "tree": "b2f84ddad255b0b4e6de600ce4b03c5eda618e19",
+        "at": "2026-11-16T20:17:23.905570Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 (reworked scope), reviewed HEAD 0cf5324d0, tree b2f84ddad, clean worktree. Supersedes my earlier pass, which was recorded on this tree without review.\n\nScope: diff master...HEAD is 2 files. indigo_libs/indigo_driver.c changes only the three function-level 'static char path[512]' -> locals in test_config_file (:451), indigo_open_config_file (:459) and indigo_remove_properties (:928); the read-side filter (config_restore device_name, config_restore_collect check, config_load_context/dispatch) is gone and those parts are identical to master. indigo_docs/DRIVER_DEVELOPMENT_BASICS.md is identical to master. test_profile_selection.c adds only 'config paths are not shared between threads'.\n\nCorrectness: the shared static path buffer was the cross-thread state that let one thread open (O_TRUNC on create) a path computed for another device; with locals, make_config_file_name writes only to the caller's buffer. Independent write-path audit found no other shared mutable state: indigo_uni_create_file/open_file/mkdir/is_readable/remove use only locals (indigo_uni_io.c:492-530, 2585-2655), handle index via next_handle_index, indigo_xml_escape_b buffers are INDIGO_THREAD_LOCAL, property_save_file_handle and config_mutex are per device. The only remaining shared statics on the path are the lazily filled indigo_uni_config_folder()/home_folder() buffers (same content for every caller; partial-read only on a racing first call) - observation, not this defect.\n\nTest: deterministic after the fix (any mismatch is a real cross-thread path mix-up, 0 expected), isolated (private home, own synthetic names, file removed), and per the ticket notes fails on master with ~399000/600000 mismatches - adequate reproduction-first evidence of the root cause. Dropping the end-to-end indigo_save_property race test is acceptable: an ineffective (never failing) test would add no evidence. Formatting matches AGENTS.md. whitespace and unit checks passed on tree b2f84ddad (flow status).\n\nObservations for the owner (not in-scope defects): (1) indigo_save_property() names the file from property->device and caches the handle per device (indigo_driver.c:779): the file is the property's own device's, so the criterion holds; only a caller mixing devices on one handle would misplace entries, which is non-concurrent pre-existing API behavior and I found no such caller in the agent save_config paths. (2) indigo_save_property_items() with a NULL handle and no cached handle opens/truncates a new file stored only in a local and never closed (indigo_driver.c:848-866); current callers (agent_imager:482, agent_guider:398) always call it after indigo_save_property opened the handle, so latent only.\n\nNot covered: no tests run by me (relied on checks recorded for this tree); Windows not checked.",
+        "reviewer": "human/owner",
+        "commit": "0cf5324d007f5948541ba27ec45638a25b07ed8b",
+        "tree": "b2f84ddad255b0b4e6de600ce4b03c5eda618e19",
+        "at": "2026-11-16T20:20:35.947127Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-16T20:06:47.326995Z",
+        "actor": "human/owner",
+        "text": "Before fix (test_profile_selection, 2 new cases): 'restore ignores entries of other devices' FAILED (foreign device PROFILE_NAME changed by owner's CONFIG.LOAD); 'config paths are not shared between threads' FAILED with ~399000 of 600000 path mismatches (2 threads, test_config_file/indigo_open_config_file), so the static path[512] hypothesis is VERIFIED. Fix: static path buffers -> local in test_config_file, indigo_open_config_file, indigo_remove_properties; config_restore_collect skips and logs entries with a different device name. After fix: both cases pass (3 repeated runs). Docs: one sentence added in DRIVER_DEVELOPMENT_BASICS.md.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T20:15:25.320983Z",
+        "actor": "human/owner",
+        "text": "Review round 1: indigo_load_properties() (reader==NULL) now uses config_load_dispatch, which skips and logs entries of other devices. Test 'restore ignores entries of other devices' extended: after resetting both devices' PROFILE_NAME, indigo_load_properties(owner) with a foreign entry. Before (filter removed): FAIL at the new assertion (foreign device changed); after: PASS in 3 runs. Docs sentence broadened to cover both paths.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T20:17:12.910895Z",
+        "actor": "human/owner",
+        "text": "Owner scope change (2026-11-16): do not solve how to prevent reading a damaged config file; solve how not to produce it. The read-side device filter (CONFIG.LOAD and indigo_load_properties paths), its tests and its documentation sentence are out of scope and are to be removed from the change. In scope: a property is always written to its own device's config file, also under concurrent saves and loads (defect 2), with reproduction-first evidence.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T20:18:20.298765Z",
+        "actor": "human/owner",
+        "text": "Scope rework: read-side filter removed (indigo_load_properties/config_restore/docs/restore test identical to master). Write-side audit: static path[512] in test_config_file/indigo_open_config_file/indigo_remove_properties is the only shared mutable state found on the write path (verified: escape buffers are thread-local, handle index is mutex-protected, property_save_file_handle and config_mutex are per device, make_config_file_name writes only to the caller buffer). Deterministic test 'config paths are not shared between threads' fails on master (~399000 mismatches) and passes after. An end-to-end test of two threads saving via indigo_save_property into their own files (5000 and 60000 iterations each) did NOT fail on master's static buffer: the window between building the path and open() is too small to hit with file I/O, so that test was dropped as ineffective. Unverified suspicion: indigo_save_property() picks the file from property->device and caches the handle per device, so a caller passing a foreign-device property writes into that device's file (by design, no concurrency needed).",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "be95066ca11746d627f811272f6160016d0e9978",
+      "tree": "b2f84ddad255b0b4e6de600ce4b03c5eda618e19",
+      "base": "master",
+      "at": "2026-11-16T20:20:55.257460Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "high",
+    "profile": "simple",
+    "at": "2026-11-16T20:02:00.200613Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T20:02:34.894396Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 887582.023,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 56,
+    "sha256": "5c1934c6ae9ffb7636487490cecef26610d95c128f80d99c17715d95ebb76175"
+  }
+}
