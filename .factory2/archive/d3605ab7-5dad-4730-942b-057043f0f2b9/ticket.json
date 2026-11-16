@@ -1,0 +1,697 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d3605ab7-5dad-4730-942b-057043f0f2b9",
+  "revision": 34,
+  "title": "indigo_agent_scheduler: @observer, @pi and @project task header keys set OBSERVER, PI_NAME and PROPID FITS headers",
+  "description": "Owner request of 2026-11-17: frames taken for a particular group or project must be identifiable from their FITS headers.\n\nAdd three optional task header keys to the Scheduler Agent (indigo_drivers/agent_scheduler):\n- @observer <text>  -> FITS keyword OBSERVER (standard FITS 4.0 keyword)\n- @pi <text>        -> FITS keyword PI_NAME (as the owner asked; used by JWST and others)\n- @project <text>   -> FITS keyword PROPID (proposal/project id, NOAO convention, widely recognised)\n\nParsing in indigo_agent_scheduler_header.c/.h: text value of 1-68 bytes (fits a FITS string value), no control characters; a repeated key follows the parser's existing duplicate rule. Applying in apply_context() of indigo_agent_scheduler.c: written through CCD_SET_FITS_HEADER of the Imager Agent with the existing fits_string() quoting, only when the task sets the key and the FITS item of AGENT_SCHEDULER_DATA is on, and removed in restore_context() together with SCHTASK/SCHRUN/SCHNIGHT; hooks follow the same path as tasks.\n\nTests: header parser unit tests (indigo_test/unit/test_agent_scheduler_header.c: valid values, quoting, empty, too long, control characters) and integration tests in indigo_test/integration/test_agent_scheduler.c (headers set before the run, absent when the key is not given or FITS is off, removed after the run, value with a quote).\n\nDocumentation: indigo_drivers/agent_scheduler/doc/SCHEDULER.md (header key table, Observation data section) and indigo_docs/INDIGO_SCHEDULER_GUIDE.md. Bump the scheduler agent driver version.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-16T22:48:08.036623Z",
+  "status": "closed",
+  "branch": "ticket/d3605ab7-5dad-4730-942b-057043f0f2b9",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f2c9c6fd-76c9-4198-8fb0-7806d4b1cb18",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T22:51:41.852450Z",
+          "last_activity_at": "2026-11-16T23:18:38.395527Z",
+          "ended_at": "2026-11-16T23:18:38.395527Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1616543.077,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T22:51:41.852450Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/d3605ab7-5dad-4730-942b-057043f0f2b9"
+        },
+        {
+          "at": "2026-11-16T23:18:38.395527Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1616543.077,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "3f0ca48e-856f-4068-8c0b-345a011ffe22",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T23:18:38.395561Z",
+          "last_activity_at": "2026-11-16T23:22:52.469672Z",
+          "ended_at": "2026-11-16T23:22:52.469672Z",
+          "outcome": {
+            "summary": "Pass. Parser (indigo_agent_scheduler_header.c:295-308, 478-486) accepts 1-56 bytes after quote doubling, rejects control characters including 0x7f, and repeated keys via the existing rule; CR and trailing blanks are trimmed before. apply_context (indigo_agent_scheduler.c:1207-1214) sets OBSERVER, PI_NAME and PROPID only for keys present and with FITS on, via fits_string(); restore_context (1233-1238) removes exactly the ones set; hooks use the same path. Limit verified: indigo_ccd_driver.c:851 rejects values over 58 bytes including quotes and fits_string truncates content at 56, so 56 is the correct cap. Version bumped 0x03000010 to 0x03000011. Unit check passed on 89aa7cc197; I ran the test_agent_scheduler integration binary: 105/105 passed including the 5 new cases. Notes for the owner, not blocking: (1) the ticket text says 1-68 bytes; the implementation uses 56 (a quote counts as two) because of the CCD driver limit. This is a correct narrowing but deviates from the written criterion and is not recorded in a ticket note; the owner should confirm. (2) SCHEDULER.md:745 still says \"the three keywords are removed\" while the preceding bullet now says the data headers are removed too; wording only. (3) Docs say \"characters\" but the count is bytes; non-ASCII UTF-8 is accepted and written into FITS, which requires printable ASCII; same as the existing task-name path, out of scope.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 254074.111,
+          "tokens": null
+        },
+        {
+          "attempt_id": "ca681a32-0bef-4c7a-9bde-ba9a901cb585",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T23:28:09.387882Z",
+          "last_activity_at": "2026-11-16T23:28:34.332647Z",
+          "ended_at": "2026-11-16T23:28:34.332647Z",
+          "outcome": {
+            "summary": "Re-review after the SCHEDULER.md edit. Only change since 89aa7cc197 is SCHEDULER.md:745 (git diff 89aa7cc197 HEAD). The new sentence matches restore_context() (indigo_agent_scheduler.c:1220-1250): with context_fits set it always removes SCHTASK/SCHRUN/SCHNIGHT and removes OBSERVER/PI_NAME/PROPID only for bits in context_headers, i.e. only the headers apply_context() set from @observer/@pi/@project; DIR/OBJECT are restored. Consistent with SCHEDULER.md:743 ('removes exactly the headers it set') and INDIGO_SCHEDULER_GUIDE.md after-run paragraph. CCD_REMOVE_FITS_HEADER is the correct property name (indigo_names.h:245). Unit and whitespace checks passed at 365e997c77. No defects found.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 24944.765,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T23:18:38.395561Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T23:22:52.469672Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Pass. Parser (indigo_agent_scheduler_header.c:295-308, 478-486) accepts 1-56 bytes after quote doubling, rejects control characters including 0x7f, and repeated keys via the existing rule; CR and trailing blanks are trimmed before. apply_context (indigo_agent_scheduler.c:1207-1214) sets OBSERVER, PI_NAME and PROPID only for keys present and with FITS on, via fits_string(); restore_context (1233-1238) removes exactly the ones set; hooks use the same path. Limit verified: indigo_ccd_driver.c:851 rejects values over 58 bytes including quotes and fits_string truncates content at 56, so 56 is the correct cap. Version bumped 0x03000010 to 0x03000011. Unit check passed on 89aa7cc197; I ran the test_agent_scheduler integration binary: 105/105 passed including the 5 new cases. Notes for the owner, not blocking: (1) the ticket text says 1-68 bytes; the implementation uses 56 (a quote counts as two) because of the CCD driver limit. This is a correct narrowing but deviates from the written criterion and is not recorded in a ticket note; the owner should confirm. (2) SCHEDULER.md:745 still says \"the three keywords are removed\" while the preceding bullet now says the data headers are removed too; wording only. (3) Docs say \"characters\" but the count is bytes; non-ASCII UTF-8 is accepted and written into FITS, which requires printable ASCII; same as the existing task-name path, out of scope."
+        },
+        {
+          "at": "2026-11-16T23:28:09.387882Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T23:28:34.332647Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Re-review after the SCHEDULER.md edit. Only change since 89aa7cc197 is SCHEDULER.md:745 (git diff 89aa7cc197 HEAD). The new sentence matches restore_context() (indigo_agent_scheduler.c:1220-1250): with context_fits set it always removes SCHTASK/SCHRUN/SCHNIGHT and removes OBSERVER/PI_NAME/PROPID only for bits in context_headers, i.e. only the headers apply_context() set from @observer/@pi/@project; DIR/OBJECT are restored. Consistent with SCHEDULER.md:743 ('removes exactly the headers it set') and INDIGO_SCHEDULER_GUIDE.md after-run paragraph. CCD_REMOVE_FITS_HEADER is the correct property name (indigo_names.h:245). Unit and whitespace checks passed at 365e997c77. No defects found."
+        }
+      ],
+      "result": {
+        "summary": "Re-review after the SCHEDULER.md edit. Only change since 89aa7cc197 is SCHEDULER.md:745 (git diff 89aa7cc197 HEAD). The new sentence matches restore_context() (indigo_agent_scheduler.c:1220-1250): with context_fits set it always removes SCHTASK/SCHRUN/SCHNIGHT and removes OBSERVER/PI_NAME/PROPID only for bits in context_headers, i.e. only the headers apply_context() set from @observer/@pi/@project; DIR/OBJECT are restored. Consistent with SCHEDULER.md:743 ('removes exactly the headers it set') and INDIGO_SCHEDULER_GUIDE.md after-run paragraph. CCD_REMOVE_FITS_HEADER is the correct property name (indigo_names.h:245). Unit and whitespace checks passed at 365e997c77. No defects found.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 279018.876,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "b68e04b4-bc12-46e8-b47e-2ccd4d34d15b",
+      "event": "ticket/created",
+      "at": "2026-11-16T22:48:08.037227Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "e5fe2c3f-69cf-4fb8-ae2a-49ca4864391e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T22:51:33.037319Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "b875e373-705c-4e90-b014-be32aba86a22",
+      "event": "ticket/note",
+      "at": "2026-11-16T22:51:33.158455Z",
+      "actor": "human/owner",
+      "text": "Owner decisions 2026-11-17: key names @observer, @pi, @project (-> OBSERVER, PI_NAME, PROPID). After a run the scheduler always removes the keywords that the task set (same as SCHTASK); a keyword the task did not set is not touched.",
+      "tokens": null
+    },
+    {
+      "event_id": "a7b440f7-0ba7-4a42-9c10-b0c6c828cd45",
+      "event": "task/progress",
+      "at": "2026-11-16T22:51:41.852568Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Implementation started on branch ticket/d3605ab7-5dad-4730-942b-057043f0f2b9"
+    },
+    {
+      "event_id": "cbf3a9c8-d7d9-44b9-ae74-4444d0eac51f",
+      "event": "ticket/started",
+      "at": "2026-11-16T22:51:41.853221Z",
+      "actor": "human/owner",
+      "branch": "ticket/d3605ab7-5dad-4730-942b-057043f0f2b9",
+      "base": "master"
+    },
+    {
+      "event_id": "a9d26055-0baf-4899-a0af-9b4b42e789fb",
+      "event": "task/progress",
+      "at": "2026-11-16T22:52:09.349936Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Implementer launched",
+      "attempt_id": "f2c9c6fd-76c9-4198-8fb0-7806d4b1cb18",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "0fad6e29-724c-47db-bd63-c0fce8fabf80",
+      "event": "task/progress",
+      "at": "2026-11-16T22:53:43.467287Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Implementation done, running flow check"
+    },
+    {
+      "event_id": "6514ad8d-6ca7-45f0-a3ce-ee71bef403df",
+      "event": "task/progress",
+      "at": "2026-11-16T22:53:44.303684Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "91760da2-9cdb-4985-a6de-1463a91b3a75",
+      "event": "task/progress",
+      "at": "2026-11-16T22:53:44.325457Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "d1a04936-4545-4028-a33f-3d960e8262e0",
+      "event": "task/progress",
+      "at": "2026-11-16T22:53:44.330745Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a365d0f0-4651-453e-a759-f2f751e6c282",
+      "event": "task/progress",
+      "at": "2026-11-16T22:54:43.825921Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check unit failed: exit code 2"
+    },
+    {
+      "event_id": "f688412f-00bb-4141-97b2-8231d05be001",
+      "event": "check/failed",
+      "at": "2026-11-16T22:54:43.832125Z",
+      "actor": "human/owner",
+      "commit": "971f4d7ac3940b5caf3f799a6dc60e3d74fd699d",
+      "checks": "whitespace passed, unit FAILED"
+    },
+    {
+      "event_id": "ace8f1e8-9525-4ef3-9448-10773b8cebee",
+      "event": "task/progress",
+      "at": "2026-11-16T22:54:53.385048Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "30ba4b45-0e80-42fa-b952-7061eab757fe",
+      "event": "task/progress",
+      "at": "2026-11-16T22:54:53.407128Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ae93df1d-3677-4116-a860-58d2a0843700",
+      "event": "task/progress",
+      "at": "2026-11-16T22:54:53.412220Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "b3f88e92-727e-4292-8a50-bebc11ff40a6",
+      "event": "task/progress",
+      "at": "2026-11-16T22:56:38.536681Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "4255c125-0e13-4f42-8f35-279db6b3f3ad",
+      "event": "check/passed",
+      "at": "2026-11-16T22:56:38.542673Z",
+      "actor": "human/owner",
+      "commit": "89aa7cc197d98196f4687ddd771c43722736d65a",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "225708c7-7c87-4f5d-b3a2-f770142d037e",
+      "event": "task/progress",
+      "at": "2026-11-16T22:56:42.939301Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Running scheduler integration test"
+    },
+    {
+      "event_id": "beb61463-f5a2-4c2c-9b9e-f6a1696583be",
+      "event": "task/progress",
+      "at": "2026-11-16T23:15:19.625341Z",
+      "actor": "human/owner",
+      "task_id": "3041c07a-89f9-45ad-beda-b1aef7a98601",
+      "text": "Running scheduler integration test binary"
+    },
+    {
+      "event_id": "06495ba0-bef3-4dae-a8c8-b8b64b7d82c5",
+      "event": "task/progress",
+      "at": "2026-11-16T23:18:38.395625Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b75c2f19-212f-4b93-b386-578d392332a7",
+      "event": "review/started",
+      "at": "2026-11-16T23:18:38.396201Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "e685ce8b-01db-4bcd-ac7c-087af22b9783",
+      "event": "task/progress",
+      "at": "2026-11-16T23:18:51.260193Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "text": "Reviewer started: reading the diff",
+      "attempt_id": "3f0ca48e-856f-4068-8c0b-345a011ffe22",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3d36bc89-c19f-4fee-a821-f1b441226464",
+      "event": "task/progress",
+      "at": "2026-11-16T23:19:24.672637Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "text": "Running integration test: test_agent_scheduler"
+    },
+    {
+      "event_id": "22a48a4b-84a2-4047-b291-6286b77c5a44",
+      "event": "task/progress",
+      "at": "2026-11-16T23:22:52.469745Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "99727997-1ec1-4c32-8700-30d6d3153f37",
+      "event": "review/passed",
+      "at": "2026-11-16T23:22:52.470369Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "89aa7cc197d98196f4687ddd771c43722736d65a"
+    },
+    {
+      "event_id": "7b30229b-2bd1-4d7e-9aa9-dc0dcb5b811e",
+      "event": "ticket/note",
+      "at": "2026-11-16T23:26:37.685358Z",
+      "actor": "human/owner",
+      "text": "Owner accepted 2026-11-17: value limit is 1-56 characters (a quote counts as two) instead of 1-68, because the CCD driver rejects CCD_SET_FITS_HEADER values over 58 characters including quotes. SCHEDULER.md removal sentence updated after review.",
+      "tokens": null
+    },
+    {
+      "event_id": "24f9fab9-a10d-4c05-88b7-c2b53dbd38b1",
+      "event": "ticket/title_changed",
+      "at": "2026-11-16T23:26:37.938858Z",
+      "actor": "human/owner",
+      "previous_title": "Scheduler task header keys @observer, @pi and @project written as OBSERVER, PI_NAME and PROPID FITS headers",
+      "title": "indigo_agent_scheduler: @observer, @pi and @project task header keys set OBSERVER, PI_NAME and PROPID FITS headers"
+    },
+    {
+      "event_id": "780fec97-148d-4010-9f8f-86aed5fb911a",
+      "event": "task/progress",
+      "at": "2026-11-16T23:26:38.180117Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b74831b0-3b5f-4488-8202-d163d2fd13fb",
+      "event": "task/progress",
+      "at": "2026-11-16T23:26:38.202188Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4ddfddd8-b70f-4deb-9eb1-40f788bef874",
+      "event": "task/progress",
+      "at": "2026-11-16T23:26:38.208003Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "fc35e222-c67e-4fef-8dee-8b2bd47c98c9",
+      "event": "task/progress",
+      "at": "2026-11-16T23:28:04.241249Z",
+      "actor": "human/owner",
+      "task_id": null,
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "390ab55d-e80a-4e63-847a-be5e71954560",
+      "event": "check/passed",
+      "at": "2026-11-16T23:28:04.247981Z",
+      "actor": "human/owner",
+      "commit": "365e997c77502c4496f629609d66a71eae0443d4",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "979463fa-8045-491d-96fd-9d3f0b6c01d2",
+      "event": "task/progress",
+      "at": "2026-11-16T23:28:09.387962Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "text": "Review started"
+    },
+    {
+      "event_id": "07c8ee66-fafb-4984-a947-7ae6db422150",
+      "event": "review/started",
+      "at": "2026-11-16T23:28:09.388641Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "460be550-7417-49e1-a5f8-712cbec61059",
+      "event": "task/progress",
+      "at": "2026-11-16T23:28:23.500460Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "text": "Reviewer 2: checking SCHEDULER.md removal sentence against restore_context()",
+      "attempt_id": "ca681a32-0bef-4c7a-9bde-ba9a901cb585",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "87dacf4e-29f6-43ac-aff9-56c76127d462",
+      "event": "task/progress",
+      "at": "2026-11-16T23:28:34.332720Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "2fef527f-e5c8-4e29-8c96-32f155d9cbfe",
+      "event": "review/passed",
+      "at": "2026-11-16T23:28:34.333407Z",
+      "actor": "human/owner",
+      "task_id": "127331d1-ec6b-4f74-877f-c43fabbb24ff",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "365e997c77502c4496f629609d66a71eae0443d4"
+    },
+    {
+      "event_id": "415380f3-ead8-491d-8c39-58b1108a105a",
+      "event": "ticket/closed",
+      "at": "2026-11-16T23:28:49.552331Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-16T23:28:49.552303Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "8270290325a2083358414c3c9f22a269df924fea"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "971f4d7ac3940b5caf3f799a6dc60e3d74fd699d",
+        "tree": "dbbd197820f532a1dc39bd1d2c22caa6d3f16e2f",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T22:53:44.324682Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d3605ab7-5dad-4730-942b-057043f0f2b9/dbbd197820f5-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "971f4d7ac3940b5caf3f799a6dc60e3d74fd699d",
+        "tree": "dbbd197820f532a1dc39bd1d2c22caa6d3f16e2f",
+        "exit_code": 2,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-16T22:54:43.825209Z",
+        "duration_s": 59.5,
+        "log": "/tmp/factory-flow/d3605ab7-5dad-4730-942b-057043f0f2b9/dbbd197820f5-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "89aa7cc197d98196f4687ddd771c43722736d65a",
+        "tree": "0f3729f95856e1fc139e681720014dacbbfc3995",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T22:54:53.406356Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d3605ab7-5dad-4730-942b-057043f0f2b9/0f3729f95856-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "89aa7cc197d98196f4687ddd771c43722736d65a",
+        "tree": "0f3729f95856e1fc139e681720014dacbbfc3995",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T22:56:38.535841Z",
+        "duration_s": 105.1,
+        "log": "/tmp/factory-flow/d3605ab7-5dad-4730-942b-057043f0f2b9/0f3729f95856-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "365e997c77502c4496f629609d66a71eae0443d4",
+        "tree": "939fe76810c4d122264a40eda92791e4ee962ed2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T23:26:38.201227Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d3605ab7-5dad-4730-942b-057043f0f2b9/939fe76810c4-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "365e997c77502c4496f629609d66a71eae0443d4",
+        "tree": "939fe76810c4d122264a40eda92791e4ee962ed2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T23:28:04.240208Z",
+        "duration_s": 86.0,
+        "log": "/tmp/factory-flow/d3605ab7-5dad-4730-942b-057043f0f2b9/939fe76810c4-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. Parser (indigo_agent_scheduler_header.c:295-308, 478-486) accepts 1-56 bytes after quote doubling, rejects control characters including 0x7f, and repeated keys via the existing rule; CR and trailing blanks are trimmed before. apply_context (indigo_agent_scheduler.c:1207-1214) sets OBSERVER, PI_NAME and PROPID only for keys present and with FITS on, via fits_string(); restore_context (1233-1238) removes exactly the ones set; hooks use the same path. Limit verified: indigo_ccd_driver.c:851 rejects values over 58 bytes including quotes and fits_string truncates content at 56, so 56 is the correct cap. Version bumped 0x03000010 to 0x03000011. Unit check passed on 89aa7cc197; I ran the test_agent_scheduler integration binary: 105/105 passed including the 5 new cases. Notes for the owner, not blocking: (1) the ticket text says 1-68 bytes; the implementation uses 56 (a quote counts as two) because of the CCD driver limit. This is a correct narrowing but deviates from the written criterion and is not recorded in a ticket note; the owner should confirm. (2) SCHEDULER.md:745 still says \"the three keywords are removed\" while the preceding bullet now says the data headers are removed too; wording only. (3) Docs say \"characters\" but the count is bytes; non-ASCII UTF-8 is accepted and written into FITS, which requires printable ASCII; same as the existing task-name path, out of scope.",
+        "reviewer": "human/owner",
+        "commit": "89aa7cc197d98196f4687ddd771c43722736d65a",
+        "tree": "0f3729f95856e1fc139e681720014dacbbfc3995",
+        "at": "2026-11-16T23:22:52.469648Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Re-review after the SCHEDULER.md edit. Only change since 89aa7cc197 is SCHEDULER.md:745 (git diff 89aa7cc197 HEAD). The new sentence matches restore_context() (indigo_agent_scheduler.c:1220-1250): with context_fits set it always removes SCHTASK/SCHRUN/SCHNIGHT and removes OBSERVER/PI_NAME/PROPID only for bits in context_headers, i.e. only the headers apply_context() set from @observer/@pi/@project; DIR/OBJECT are restored. Consistent with SCHEDULER.md:743 ('removes exactly the headers it set') and INDIGO_SCHEDULER_GUIDE.md after-run paragraph. CCD_REMOVE_FITS_HEADER is the correct property name (indigo_names.h:245). Unit and whitespace checks passed at 365e997c77. No defects found.",
+        "reviewer": "human/owner",
+        "commit": "365e997c77502c4496f629609d66a71eae0443d4",
+        "tree": "939fe76810c4d122264a40eda92791e4ee962ed2",
+        "at": "2026-11-16T23:28:34.332622Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-16T22:51:33.157934Z",
+        "actor": "human/owner",
+        "text": "Owner decisions 2026-11-17: key names @observer, @pi, @project (-> OBSERVER, PI_NAME, PROPID). After a run the scheduler always removes the keywords that the task set (same as SCHTASK); a keyword the task did not set is not touched.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-16T23:26:37.684707Z",
+        "actor": "human/owner",
+        "text": "Owner accepted 2026-11-17: value limit is 1-56 characters (a quote counts as two) instead of 1-68, because the CCD driver rejects CCD_SET_FITS_HEADER values over 58 characters including quotes. SCHEDULER.md removal sentence updated after review.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "8270290325a2083358414c3c9f22a269df924fea",
+      "tree": "939fe76810c4d122264a40eda92791e4ee962ed2",
+      "base": "master",
+      "at": "2026-11-16T23:28:49.392602Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-16T22:48:08.036623Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T22:51:33.037291Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 1895561.953,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 3
+    }
+  },
+  "journal": {
+    "entries": 44,
+    "sha256": "cbfe83c1e0d4e778eab3acef3fc6013e88f3c97016c13425fa31eb04df960dcd"
+  }
+}
