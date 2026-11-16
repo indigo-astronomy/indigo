@@ -3250,6 +3250,68 @@ static void data_quote_in_the_task_name_is_doubled(void) {
 	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Barnard's Star", 0, 5) >= 0);
 }
 
+static void data_headers_identify_the_observation(void) {
+	REQUIRE(upload("// @task Group\n// @observer Jane Doe\n// @pi Prof. Smith\n// @project SURVEY-7\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Group", "DONE", 20));
+	long task = wait_imager_event("SET SCHTASK='Group'", 0, 5);
+	long observer = wait_imager_event("SET OBSERVER='Jane Doe'", task, 5);
+	long pi = wait_imager_event("SET PI_NAME='Prof. Smith'", task, 5);
+	long project = wait_imager_event("SET PROPID='SURVEY-7'", task, 5);
+	ASSERT_TRUE(task >= 0 && observer > task && pi > observer && project > pi);
+	// everything the task set is removed after the run
+	long restored = wait_imager_event(IMAGER_RESTORED, project, 5);
+	ASSERT_TRUE(restored > project);
+	ASSERT_TRUE(wait_imager_event("REMOVE OBSERVER", restored, 5) > restored);
+	ASSERT_TRUE(wait_imager_event("REMOVE PI_NAME", restored, 5) > restored);
+	ASSERT_TRUE(wait_imager_event("REMOVE PROPID", restored, 5) > restored);
+}
+
+static void data_headers_are_set_only_when_the_task_gives_them(void) {
+	REQUIRE(upload("// @task Partial\n// @pi Prof. Smith\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Partial", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("SET PI_NAME='Prof. Smith'", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("REMOVE PI_NAME", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("REMOVE SCHNIGHT", 0, 5) >= 0);
+	ASSERT_EQ_INT(0, imager_events("SET OBSERVER"));
+	ASSERT_EQ_INT(0, imager_events("SET PROPID"));
+	ASSERT_EQ_INT(0, imager_events("REMOVE OBSERVER"));
+	ASSERT_EQ_INT(0, imager_events("REMOVE PROPID"));
+}
+
+static void data_headers_are_absent_without_the_keys(void) {
+	REQUIRE(upload("// @task Plain\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Plain", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("REMOVE SCHNIGHT", 0, 5) >= 0);
+	ASSERT_EQ_INT(0, imager_events("SET OBSERVER"));
+	ASSERT_EQ_INT(0, imager_events("SET PI_NAME"));
+	ASSERT_EQ_INT(0, imager_events("SET PROPID"));
+	ASSERT_EQ_INT(0, imager_events("REMOVE OBSERVER"));
+	ASSERT_EQ_INT(0, imager_events("REMOVE PI_NAME"));
+	ASSERT_EQ_INT(0, imager_events("REMOVE PROPID"));
+}
+
+static void data_headers_are_absent_when_fits_is_off(void) {
+	REQUIRE(set_data(true, false, false));
+	REQUIRE(upload("// @task NoFits\n// @observer Jane Doe\n// @pi Prof. Smith\n// @project SURVEY-7\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("NoFits", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=NoFits", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event(IMAGER_RESTORED, 0, 5) >= 0);
+	ASSERT_EQ_INT(0, imager_events("SET "));
+	ASSERT_EQ_INT(0, imager_events("REMOVE "));
+}
+
+static void data_headers_double_a_quote(void) {
+	REQUIRE(upload("// @task Quoted\n// @observer Jane O'Hara\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Quoted", "DONE", 20));
+	ASSERT_TRUE(wait_imager_event("SET OBSERVER='Jane O''Hara'", 0, 5) >= 0);
+	ASSERT_TRUE(wait_imager_event("REMOVE OBSERVER", 0, 5) >= 0);
+}
+
 static void data_without_an_imager_agent_runs_unlabelled(void) {
 	indigo_detach_device(&imager_standin);
 	imager_attached = false;
@@ -3398,6 +3460,11 @@ static const indigo_test_case cases[] = {
 	{ "data_is_restored_when_the_scheduler_stops", data_is_restored_when_the_scheduler_stops },
 	{ "hooks_are_labelled_like_tasks", hooks_are_labelled_like_tasks },
 	{ "data_quote_in_the_task_name_is_doubled", data_quote_in_the_task_name_is_doubled },
+	{ "data_headers_identify_the_observation", data_headers_identify_the_observation },
+	{ "data_headers_are_set_only_when_the_task_gives_them", data_headers_are_set_only_when_the_task_gives_them },
+	{ "data_headers_are_absent_without_the_keys", data_headers_are_absent_without_the_keys },
+	{ "data_headers_are_absent_when_fits_is_off", data_headers_are_absent_when_fits_is_off },
+	{ "data_headers_double_a_quote", data_headers_double_a_quote },
 	{ "data_without_an_imager_agent_runs_unlabelled", data_without_an_imager_agent_runs_unlabelled },
 	{ "estimates_label_nothing", estimates_label_nothing },
 };

@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000010
+#define DRIVER_VERSION 0x03000011
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -293,6 +293,8 @@ typedef struct {
 	// what the running task or hook has set on the Imager Agent
 	bool context_applied;
 	bool context_fits;
+	// bit i set when the data header i of data_headers was set for the run
+	int context_headers;
 	history_entry history[MAX_HISTORY];
 	int history_count;
 	// finished one-off urgent tasks, which leave the task list; saved and cleared with the history
@@ -1155,9 +1157,20 @@ static void set_fits_header(const char *keyword, const char *value) {
 	indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_SET_FITS_HEADER_PROPERTY_NAME, 2, items, values);
 }
 
+// the data headers a task can set, the bit of each one is its index
+static const struct {
+	const char *keyword;
+	size_t offset;
+} data_headers[] = {
+	{ "OBSERVER", offsetof(scheduler_header, observer) },
+	{ "PI_NAME", offsetof(scheduler_header, pi) },
+	{ "PROPID", offsetof(scheduler_header, project) }
+};
+
 // labels the data of a run with its task, before the script runs; nothing is applied when the Imager Agent is not known
 static void apply_context(indigo_device *device, scheduler_task *task, int run_number) {
 	PRIVATE_DATA->context_applied = PRIVATE_DATA->context_fits = false;
+	PRIVATE_DATA->context_headers = 0;
 	if (!PRIVATE_DATA->original_valid) {
 		capture_original(device);
 	}
@@ -1191,6 +1204,14 @@ static void apply_context(indigo_device *device, scheduler_task *task, int run_n
 		night[10] = 0;
 		fits_string(night, value, sizeof(value));
 		set_fits_header("SCHNIGHT", value);
+		for (int i = 0; i < 3; i++) {
+			const char *text = (const char *)&task->header + data_headers[i].offset;
+			if (*text) {
+				fits_string(text, value, sizeof(value));
+				set_fits_header(data_headers[i].keyword, value);
+				PRIVATE_DATA->context_headers |= 1 << i;
+			}
+		}
 		PRIVATE_DATA->context_applied = PRIVATE_DATA->context_fits = true;
 	}
 }
@@ -1209,6 +1230,12 @@ static void restore_context(indigo_device *device) {
 		for (int i = 0; i < 3; i++) {
 			indigo_change_text_property_1(agent_client, IMAGER_AGENT, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "%s", keywords[i]);
 		}
+		for (int i = 0; i < 3; i++) {
+			if (PRIVATE_DATA->context_headers & (1 << i)) {
+				indigo_change_text_property_1(agent_client, IMAGER_AGENT, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "%s", data_headers[i].keyword);
+			}
+		}
+		PRIVATE_DATA->context_headers = 0;
 		PRIVATE_DATA->context_fits = false;
 	}
 	// a stopped scheduler takes the Imager Agent as it is the next time

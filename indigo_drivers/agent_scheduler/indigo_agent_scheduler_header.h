@@ -35,6 +35,7 @@ extern "C" {
 #endif
 
 #define SCHEDULER_TASK_NAME_SIZE	41
+#define SCHEDULER_FITS_TEXT_SIZE	57
 #define SCHEDULER_TASK_TEXT_LIMIT	16384
 #define SCHEDULER_DEFAULT_DURATION	60
 
@@ -91,6 +92,10 @@ typedef struct {
 	// @folder: a name forces the data folder of the task, none disables it, both unset leave it to the settings
 	bool folder_none;
 	char folder[SCHEDULER_TASK_NAME_SIZE];
+	// @observer, @pi and @project: the values of the OBSERVER, PI_NAME and PROPID FITS headers, empty when the task does not set them
+	char observer[SCHEDULER_FITS_TEXT_SIZE];
+	char pi[SCHEDULER_FITS_TEXT_SIZE];
+	char project[SCHEDULER_FITS_TEXT_SIZE];
 } scheduler_header;
 
 /** Parse and validate the header of a task text. On success fills header, stores the offset of the body and returns true. On failure writes a message naming the line to error and returns false.

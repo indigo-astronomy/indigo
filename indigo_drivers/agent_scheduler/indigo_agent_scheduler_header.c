@@ -51,6 +51,9 @@
 #define KEY_PREEMPTED			0x2000
 #define KEY_ENABLED				0x4000
 #define KEY_FOLDER				0x8000
+#define KEY_OBSERVER			0x10000
+#define KEY_PI						0x20000
+#define KEY_PROJECT				0x40000
 
 typedef struct {
 	const char *name;
@@ -74,6 +77,9 @@ static const key_definition keys[] = {
 	{ "preempted", KEY_PREEMPTED },
 	{ "enabled", KEY_ENABLED },
 	{ "folder", KEY_FOLDER },
+	{ "observer", KEY_OBSERVER },
+	{ "pi", KEY_PI },
+	{ "project", KEY_PROJECT },
 	{ NULL, 0 }
 };
 
@@ -285,6 +291,22 @@ static bool parse_keyword(const char *token, const char **words, int count, int 
 	return false;
 }
 
+// a FITS string value of the data headers: no control characters, at most SCHEDULER_FITS_TEXT_SIZE - 1 characters once the quotes inside it are doubled
+static bool parse_fits_text(const char *value, char *text) {
+	size_t length = 0;
+	for (const char *c = value; *c; c++) {
+		if ((unsigned char)*c < 0x20 || *c == 0x7f) {
+			return false;
+		}
+		length += *c == '\'' ? 2 : 1;
+	}
+	if (length == 0 || length >= SCHEDULER_FITS_TEXT_SIZE) {
+		return false;
+	}
+	strcpy(text, value);
+	return true;
+}
+
 static bool parse_value(int key, char *value, scheduler_header *header, const char **expected) {
 	char *tokens[5];
 	int count;
@@ -453,6 +475,15 @@ static bool parse_value(int key, char *value, scheduler_header *header, const ch
 			}
 			return true;
 		}
+		case KEY_OBSERVER:
+			*expected = "a text of 1 to 56 characters, a quote counting as two";
+			return parse_fits_text(value, header->observer);
+		case KEY_PI:
+			*expected = "a text of 1 to 56 characters, a quote counting as two";
+			return parse_fits_text(value, header->pi);
+		case KEY_PROJECT:
+			*expected = "a text of 1 to 56 characters, a quote counting as two";
+			return parse_fits_text(value, header->project);
 	}
 	return false;
 }

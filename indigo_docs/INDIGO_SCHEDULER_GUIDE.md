@@ -191,6 +191,9 @@ Before the body runs, the scheduler defines a `scheduler_task` object from the h
 | `@preempted` | `retry` or `fail` | What happens to this task when an urgent task interrupts it | `retry` |
 | `@enabled` | `yes` or `no` | A disabled task is kept but never selected | `yes` |
 | `@folder` | `name` or `none` | Save the frames of this task in the folder `name`, which several tasks may share, or in no folder of their own (the folder of the Imager Agent is left alone), 1–40 bytes, see [Where the data goes](#where-the-data-goes) | set by `FOLDER` |
+| `@observer` | text | The observer, written as the FITS header `OBSERVER` of the frames of the task, 1–56 characters (a quote counts as two), see [Where the data goes](#where-the-data-goes) | no header |
+| `@pi` | text | The principal investigator, written as the FITS header `PI_NAME`, same rules as `@observer` | no header |
+| `@project` | text | The project or proposal identifier, written as the FITS header `PROPID`, same rules as `@observer` | no header |
 
 `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` need `@target`. The comparison signs are required: write `> 30`, not `30`. `>=` and `<=` are accepted and mean the same as `>` and `<`.
 
@@ -324,6 +327,7 @@ By default the frames of all tasks are saved by the Imager Agent into the same f
 
 - the **object name** (`CCD_LOCAL_MODE.OBJECT`) to the task name, so `%o` in the file name prefix stands for the task;
 - the FITS keywords `SCHTASK` (the task name, in quotes), `SCHRUN` (the run number, as `scheduler_task.run`) and `SCHNIGHT` (the date of the session night, the same as `%N` in the file name prefix, for example `'2026-11-16'`). Use `SCHNIGHT` to match flats and darks with the lights of the same night;
+- the FITS keywords `OBSERVER`, `PI_NAME` and `PROPID` from the task header keys `@observer`, `@pi` and `@project`, only for the keys the task gives, so that the frames of a group or a project can be told apart;
 - the **folder** (`CCD_LOCAL_MODE.DIR`) to a folder of its own, if you ask for it.
 
 `AGENT_SCHEDULER_DATA` switches the three on and off:
@@ -331,7 +335,7 @@ By default the frames of all tasks are saved by the Imager Agent into the same f
 | Item | Default | Meaning |
 |---|---|---|
 | `OBJECT` | on | Set the object name to the task name |
-| `FITS` | on | Set `SCHTASK`, `SCHRUN` and `SCHNIGHT` |
+| `FITS` | on | Set `SCHTASK`, `SCHRUN` and `SCHNIGHT`, and `OBSERVER`, `PI_NAME` and `PROPID` for the tasks that have the keys |
 | `FOLDER` | off | Save every task in a subfolder named after it |
 
 The folder is `<base>/<name>/`. The base is `AGENT_SCHEDULER_DATA_DIR.BASE`; when it is empty, the base is the folder the Imager Agent had when the scheduler was started. The name is the task name, or the `@folder` of the task, with every character that the CCD driver does not allow in a file name replaced by `_`. The key decides for one task, with `FOLDER` on or off:
@@ -343,7 +347,18 @@ The folder is `<base>/<name>/`. The base is `AGENT_SCHEDULER_DATA_DIR.BASE`; whe
 
 `@folder M31` saves the task in `<base>/M31/` also when `FOLDER` is off, so several tasks, for example the lights and the flats of a target, share a folder. `@folder none` keeps the task out of a folder of its own: the scheduler leaves the folder of the Imager Agent alone, as with `FOLDER` off, so the task saves wherever the Imager Agent saves, and `BASE` applies only to tasks that use a folder.
 
-After every run, whatever its outcome (succeeded, failed, preempted or aborted), the scheduler puts the folder and the object name back as it found them and removes the three keywords. A task that has to change them for a part of its run still can: `sequence.set_object_name()`, `sequence.set_directory()` and `sequence.set_fits_header()` run after the scheduler has set its values and win, but only until the end of that run. In particular, a `set_directory()` of a task no longer stays for the next task.
+To identify the frames of a group or a project, give the task the observer, the principal investigator and the project:
+
+```javascript
+// @task Lights M31
+// @observer Jane Doe
+// @pi Prof. Smith
+// @project SURVEY-7
+```
+
+The frames then carry `OBSERVER = 'Jane Doe'`, `PI_NAME = 'Prof. Smith'` and `PROPID = 'SURVEY-7'` (with `FITS` on). Each key is optional and sets only its own header.
+
+After every run, whatever its outcome (succeeded, failed, preempted or aborted), the scheduler puts the folder and the object name back as it found them and removes the keywords it set (`SCHTASK`, `SCHRUN`, `SCHNIGHT` and the ones from `@observer`, `@pi` and `@project`). A task that has to change them for a part of its run still can: `sequence.set_object_name()`, `sequence.set_directory()` and `sequence.set_fits_header()` run after the scheduler has set its values and win, but only until the end of that run. In particular, a `set_directory()` of a task no longer stays for the next task.
 
 Notes:
 

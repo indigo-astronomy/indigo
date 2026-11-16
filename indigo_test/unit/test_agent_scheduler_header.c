@@ -231,6 +231,31 @@ static void test_folder_key(void) {
 	assert_rejected("// @task A\n// @folder A\n// @folder B\n" BODY, "repeated key");
 }
 
+static void test_data_header_keys(void) {
+	ASSERT_TRUE(parse("// @task A\n" BODY));
+	ASSERT_STREQ("", header.observer);
+	ASSERT_STREQ("", header.pi);
+	ASSERT_STREQ("", header.project);
+	ASSERT_TRUE(parse("// @task A\n// @observer Jane Doe\n// @PI Prof. Smith\n// @Project SURVEY-7  \n" BODY));
+	ASSERT_STREQ("Jane Doe", header.observer);
+	ASSERT_STREQ("Prof. Smith", header.pi);
+	ASSERT_STREQ("SURVEY-7", header.project);
+	// a quote is kept as written, it is doubled when the FITS header is written
+	ASSERT_TRUE(parse("// @task A\n// @observer Jane O'Hara\n" BODY));
+	ASSERT_STREQ("Jane O'Hara", header.observer);
+	// 56 characters, a quote counts as two
+	ASSERT_TRUE(parse("// @task A\n// @pi 12345678901234567890123456789012345678901234567890123456\n" BODY));
+	ASSERT_FALSE(parse("// @task A\n// @pi '1234567890123456789012345678901234567890123456789012345\n" BODY));
+	ASSERT_TRUE(parse("// @task A\n// @pi '123456789012345678901234567890123456789012345678901234\n" BODY));
+	assert_rejected("// @task A\n// @pi 123456789012345678901234567890123456789012345678901234567\n" BODY, "line 2: @pi");
+	assert_rejected("// @task A\n// @observer\n" BODY, "line 2: @observer");
+	assert_rejected("// @task A\n// @project A\x01\n" BODY, "line 2: @project");
+	assert_rejected("// @task A\n// @project A\x7f\n" BODY, "line 2: @project");
+	assert_rejected("// @task A\n// @observer A\n// @observer B\n" BODY, "repeated key");
+	assert_rejected("// @task A\n// @pi A\n// @pi B\n" BODY, "repeated key");
+	assert_rejected("// @task A\n// @project A\n// @project B\n" BODY, "repeated key");
+}
+
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "minimal_task_defaults", test_minimal_task_defaults },
@@ -243,6 +268,7 @@ int main(void) {
 		{ "constraints_require_target", test_constraints_require_target },
 		{ "empty_body_and_size_limit", test_empty_body_and_size_limit },
 		{ "folder_key", test_folder_key },
+		{ "data_header_keys", test_data_header_keys },
 	};
 	return indigo_run_tests("test_agent_scheduler_header", cases, sizeof(cases) / sizeof(cases[0]));
 }
