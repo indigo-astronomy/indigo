@@ -20,13 +20,12 @@
 // 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 // TODO: add weather safety checks, and a way to abort a task if the weather becomes unsafe
-// TODO: revise if we reallyneed NEXT_TASK item
 
 /** INDIGO Scheduler agent
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x0300000F
+#define DRIVER_VERSION 0x03000010
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -106,9 +105,7 @@
 #define STATE_TOTAL_ITEM					(STATE_PROPERTY->items + 4)
 #define CURRENT_PROPERTY					(PRIVATE_DATA->current_property)
 #define CURRENT_CURRENT_ITEM			(CURRENT_PROPERTY->items + 0)
-#define CURRENT_NEXT_ITEM					(CURRENT_PROPERTY->items + 1)
-#define CURRENT_NEXT_START_ITEM		(CURRENT_PROPERTY->items + 2)
-#define CURRENT_REASON_ITEM				(CURRENT_PROPERTY->items + 3)
+#define CURRENT_REASON_ITEM				(CURRENT_PROPERTY->items + 1)
 #define SETTINGS_PROPERTY					(PRIVATE_DATA->settings_property)
 #define SETTINGS_IDLE_CHECK_ITEM	(SETTINGS_PROPERTY->items + 0)
 #define SETTINGS_STOP_TIMEOUT_ITEM	(SETTINGS_PROPERTY->items + 1)
@@ -357,8 +354,6 @@ typedef struct {
 	double save_due;
 	scheduler_sky_grid sky;
 	char reason[INDIGO_VALUE_SIZE];
-	time_t next_start;
-	int next_task;
 } scheduler_private_data;
 
 typedef struct scheduler_command {
@@ -962,15 +957,8 @@ static void set_scheduler_state(indigo_device *device, indigo_property_state sta
 
 static void update_current(indigo_device *device) {
 	const char *current = PRIVATE_DATA->current >= 0 && PRIVATE_DATA->phase != RUN_IDLE ? PRIVATE_DATA->tasks[PRIVATE_DATA->current].header.name : "";
-	const char *next = PRIVATE_DATA->next_task >= 0 && PRIVATE_DATA->tasks[PRIVATE_DATA->next_task].used ? PRIVATE_DATA->tasks[PRIVATE_DATA->next_task].header.name : "";
-	char next_start[64] = "";
-	if (PRIVATE_DATA->next_start > 0) {
-		indigo_timetoisogm(PRIVATE_DATA->next_start, next_start, sizeof(next_start));
-	}
-	if (strcmp(indigo_get_text_item_value(CURRENT_CURRENT_ITEM), current) || strcmp(indigo_get_text_item_value(CURRENT_NEXT_ITEM), next) || strcmp(indigo_get_text_item_value(CURRENT_NEXT_START_ITEM), next_start) || strcmp(indigo_get_text_item_value(CURRENT_REASON_ITEM), PRIVATE_DATA->reason)) {
+	if (strcmp(indigo_get_text_item_value(CURRENT_CURRENT_ITEM), current) || strcmp(indigo_get_text_item_value(CURRENT_REASON_ITEM), PRIVATE_DATA->reason)) {
 		indigo_set_text_item_value(CURRENT_CURRENT_ITEM, current);
-		indigo_set_text_item_value(CURRENT_NEXT_ITEM, next);
-		indigo_set_text_item_value(CURRENT_NEXT_START_ITEM, next_start);
 		indigo_set_text_item_value(CURRENT_REASON_ITEM, PRIVATE_DATA->reason);
 		indigo_update_property(device, CURRENT_PROPERTY, NULL);
 	}
@@ -1039,9 +1027,6 @@ static void remove_task(indigo_device *device, int slot) {
 	if (index >= 0) {
 		memmove(PRIVATE_DATA->order + index, PRIVATE_DATA->order + index + 1, (PRIVATE_DATA->order_count - index - 1) * sizeof(int));
 		PRIVATE_DATA->order_count--;
-	}
-	if (PRIVATE_DATA->next_task == slot) {
-		PRIVATE_DATA->next_task = -1;
 	}
 	if (PRIVATE_DATA->estimate_slot == slot) {
 		PRIVATE_DATA->estimate_slot = -1;
@@ -1453,9 +1438,6 @@ static void start_task(indigo_device *device, int slot, run_kind kind) {
 	PRIVATE_DATA->phase = RUN_STARTING;
 	PRIVATE_DATA->deadline = indigo_monotonic_time() + SETTINGS_START_TIMEOUT_ITEM->number.value;
 	PRIVATE_DATA->plan_dirty = true;
-	// what follows this run comes from the next plan
-	PRIVATE_DATA->next_task = -1;
-	PRIVATE_DATA->next_start = 0;
 	set_reason(device, "");
 	if (kind == RUN_TASK) {
 		task->state = TASK_RUNNING;
@@ -1581,7 +1563,7 @@ static int select_urgent(indigo_device *device, time_t now) {
 	return best;
 }
 
-// selects the task to run now, -1 if none; publishes why nothing can run and when the next task can
+// selects the task to run now, -1 if none; publishes why nothing can run
 static int select_task(indigo_device *device, time_t now) {
 	int best = select_urgent(device, now);
 	double best_score = 0;
@@ -1624,34 +1606,10 @@ static int select_task(indigo_device *device, time_t now) {
 		best = -1;
 		first_reason = "estimating the task duration";
 	}
-	PRIVATE_DATA->next_task = best;
-	PRIVATE_DATA->next_start = best >= 0 ? now : 0;
 	if (best >= 0) {
 		set_reason(device, "");
 		return best;
 	}
-	// nothing eligible now, find the task that becomes eligible first
-	time_t next_start = 0;
-	int next_task = -1;
-	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
-		int slot = PRIVATE_DATA->order[i];
-		scheduler_task *task = PRIVATE_DATA->tasks + slot;
-		if (!is_enabled(task) || is_terminal_state(task->state) || task->state == TASK_RUNNING || task->script_error || is_hook(device, task)) {
-			continue;
-		}
-		time_t from = now;
-		if ((task->state == TASK_RETRY || task->state == TASK_REPEAT) && task->delay_until > now) {
-			from = task->delay_until;
-		}
-		const char *reason;
-		time_t start = indigo_scheduler_points_next(&PRIVATE_DATA->sky, &task->points, &task->header, from, task_duration(task, NULL), 0, &reason);
-		if (start > 0 && (next_start == 0 || start < next_start)) {
-			next_start = start;
-			next_task = slot;
-		}
-	}
-	PRIVATE_DATA->next_task = next_task;
-	PRIVATE_DATA->next_start = next_start;
 	if (PRIVATE_DATA->order_count == 0) {
 		set_reason(device, "no tasks");
 	} else if (first_reason) {
@@ -1983,8 +1941,6 @@ static void process_idle(indigo_device *device, time_t now) {
 		indigo_send_message(device, NULL, "The startup hook '%s' names no task", indigo_get_text_item_value(HOOKS_STARTUP_ITEM));
 	}
 	if (all_tasks_finished(device)) {
-		PRIVATE_DATA->next_task = -1;
-		PRIVATE_DATA->next_start = 0;
 		set_reason(device, "all tasks finished");
 		request_stop(device, INDIGO_OK_STATE, "All tasks finished, the scheduler stopped");
 		PRIVATE_DATA->automatic_stop = true;
@@ -2204,77 +2160,6 @@ static void publish_plan(indigo_device *device, char (*labels)[INDIGO_VALUE_SIZE
 	}
 }
 
-// true when the scheduler stops after the running run: nothing else is left to run
-static bool finishing_after_current(indigo_device *device) {
-	bool any = false;
-	for (int i = 0; i < PRIVATE_DATA->order_count; i++) {
-		int slot = PRIVATE_DATA->order[i];
-		scheduler_task *task = PRIVATE_DATA->tasks + slot;
-		if (is_hook(device, task)) {
-			continue;
-		}
-		// a one-off urgent task leaves the list after its run, whatever the result
-		if (slot == PRIVATE_DATA->current && PRIVATE_DATA->kind == RUN_TASK && !task->stored) {
-			continue;
-		}
-		any = true;
-		if (slot == PRIVATE_DATA->current && PRIVATE_DATA->kind == RUN_TASK) {
-			if (task->header.repeat - task->runs > 1) {
-				return false;
-			}
-		} else if (is_enabled(task) && !is_terminal_state(task->state) && !task->script_error) {
-			return false;
-		}
-	}
-	return any;
-}
-
-// the shutdown hook task, -1 when none is named or it is the task that runs now, because a task that serves as several hooks runs once
-static int shutdown_after_current(indigo_device *device) {
-	int slot = hook_slot(device, HOOKS_SHUTDOWN_ITEM);
-	return slot == PRIVATE_DATA->current ? -1 : slot;
-}
-
-// while a run is in progress, NEXT and NEXT_START show what follows it: the first planned run after it or the shutdown hook when the scheduler stops
-static void update_following(indigo_device *device, time_t now, int runs) {
-	// a preempting stop has no current run, NEXT keeps the urgent task selected for it
-	if (PRIVATE_DATA->phase == RUN_IDLE || PRIVATE_DATA->current < 0) {
-		return;
-	}
-	int next = -1;
-	time_t next_start = 0;
-	if (PRIVATE_DATA->kind != RUN_SHUTDOWN_HOOK) {
-		time_t end = PRIVATE_DATA->run_start + task_duration(PRIVATE_DATA->tasks + PRIVATE_DATA->current, NULL);
-		if (end < now) {
-			end = now;
-		}
-		// the scheduler stops after the run: the shutdown hook follows and the plan, which still holds the night end hook, is not used
-		if (PRIVATE_DATA->stop_requested || (PRIVATE_DATA->started && finishing_after_current(device))) {
-			next = shutdown_after_current(device);
-			next_start = end;
-		} else {
-			bool after = PRIVATE_DATA->kind != RUN_TASK;
-			for (int i = 0; i < runs && next < 0; i++) {
-				if (plan_runs[i].running) {
-					after = true;
-				} else if (after) {
-					int slot = plan_runs[i].task >= 0 ? plan_slots[plan_runs[i].task] : plan_hook_slots[plan_runs[i].hook];
-					// a task that serves as several hooks runs once when they follow each other
-					if (PRIVATE_DATA->kind != RUN_TASK && slot == PRIVATE_DATA->current && plan_runs[i].start <= end) {
-						continue;
-					}
-					next = slot;
-					// the plan of a running hook starts at now, the next run cannot start before the hook ends
-					next_start = plan_runs[i].start > end ? plan_runs[i].start : end;
-				}
-			}
-		}
-	}
-	PRIVATE_DATA->next_task = next;
-	PRIVATE_DATA->next_start = next >= 0 ? next_start : 0;
-	update_current(device);
-}
-
 // the forecast of the rest of the night: the runs the scheduler would make if every run took its duration and succeeded
 static void update_plan(indigo_device *device, time_t now) {
 	static char labels[MAX_PLAN_ITEMS][INDIGO_VALUE_SIZE];
@@ -2388,7 +2273,7 @@ static void update_plan(indigo_device *device, time_t now) {
 		states[items++] = INDIGO_ALERT_STATE;
 	}
 	publish_plan(device, labels, states, items);
-	update_following(device, now, runs);
+	update_current(device);
 }
 
 static void process(indigo_device *device) {
@@ -2921,13 +2806,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(STATE_URGENT_FAILED_ITEM, AGENT_SCHEDULER_STATE_URGENT_FAILED_ITEM_NAME, "Urgent failed or expired", 0, MAX_URGENT_COUNT, 1, 0);
 		indigo_init_number_item(STATE_TOTAL_ITEM, AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, "Total", 0, MAX_TASKS, 1, 0);
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_CURRENT
-		CURRENT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_CURRENT_PROPERTY_NAME, SCHEDULER_GROUP, "Current task", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
+		CURRENT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCHEDULER_CURRENT_PROPERTY_NAME, SCHEDULER_GROUP, "Current task", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (CURRENT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_text_item(CURRENT_CURRENT_ITEM, AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME, "Running task", "");
-		indigo_init_text_item(CURRENT_NEXT_ITEM, AGENT_SCHEDULER_CURRENT_NEXT_ITEM_NAME, "Next task", "");
-		indigo_init_text_item(CURRENT_NEXT_START_ITEM, AGENT_SCHEDULER_CURRENT_NEXT_START_ITEM_NAME, "Next start (UTC)", "");
 		indigo_init_text_item(CURRENT_REASON_ITEM, AGENT_SCHEDULER_CURRENT_REASON_ITEM_NAME, "Waiting because", "");
 		// -------------------------------------------------------------------------------- AGENT_SCHEDULER_SETTINGS
 		SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_SCHEDULER_SETTINGS_PROPERTY_NAME, SCHEDULER_GROUP, "Scheduler settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
@@ -3023,7 +2906,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		PRIVATE_DATA->token = (int)(time(NULL) % 100000) * 1000;
 		PRIVATE_DATA->current = -1;
 		PRIVATE_DATA->estimate_slot = -1;
-		PRIVATE_DATA->next_task = -1;
 		PRIVATE_DATA->chain_slot = -1;
 		PRIVATE_DATA->dirty = PRIVATE_DATA->plan_dirty = true;
 		// the live properties are defined here, before any handler can change them

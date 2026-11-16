@@ -68,7 +68,7 @@ indigo_prop_tool set "Server.LOAD.DRIVER=indigo_agent_scheduler"
 
 Add `indigo_agent_imager`, `indigo_agent_guider` and a plate solver agent for tasks that capture, guide or solve.
 
-**Times are UTC.** Every time the scheduler accepts or shows (`@window`, the night plan, the run history, `NEXT_START`) is in UTC.
+**Times are UTC.** Every time the scheduler accepts or shows (`@window`, the night plan, the run history) is in UTC.
 
 ## How to talk to the scheduler
 
@@ -119,7 +119,7 @@ This walkthrough needs only the Scheduler and Scripting Agents. The test task wa
 4. Follow it:
 
    ```
-   indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_CURRENT.CURRENT;NEXT;NEXT_START;REASON"
+   indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_CURRENT.CURRENT;REASON"
    ```
 
    While the task runs, `CURRENT` is `Test`. Ten seconds later the task is `DONE`, the history `AGENT_SCHEDULER_HISTORY` shows `... Test #1  succeeded`, and, because nothing is left to do, the scheduler stops by itself with the message `All tasks finished, the scheduler stopped`.
@@ -696,19 +696,17 @@ Its items count the tasks:
 
 A one-off urgent task leaves the task list when it ends, so it is counted in `URGENT_DONE` or `URGENT_FAILED` instead. A deleted or aborted one is not counted. The urgent counters survive restarts and are reset together with the history.
 
-`AGENT_SCHEDULER_CURRENT` says what the scheduler does now:
+`AGENT_SCHEDULER_CURRENT` says what the scheduler does now; what comes next is in the night plan (`AGENT_SCHEDULER_PLAN`):
 
 | Item | Meaning |
 |---|---|
 | `CURRENT` | The running task or hook, empty when none runs |
-| `NEXT` | The task or hook the scheduler expects to run next. While a task or hook runs, it is the `SHUTDOWN` hook when the scheduler stops after the current run because a stop is pending or no other task is left (the `NIGHT_END` hook then does not run), otherwise the first run of the night plan after the current one (a hook, such as `NIGHT_END`, when the plan puts it next). It is the running task only when that task repeats |
-| `NEXT_START` | When `NEXT` can start, in UTC (`YYYY-MM-DDTHH:MM:SS`); while a run is in progress, when `NEXT` is planned to start, for the `SHUTDOWN` hook when the current run is expected to end |
 | `REASON` | Why nothing runs now: the reason of the first waiting task in the list, see [Reasons](#reasons) |
 
 ```
 indigo_prop_tool get_state "Scheduler Agent.AGENT_SCHEDULER_STATE"
 indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_STATE.DONE;FAILED;URGENT_DONE;URGENT_FAILED;TOTAL"
-indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_CURRENT.CURRENT;NEXT;NEXT_START;REASON"
+indigo_prop_tool get "Scheduler Agent.AGENT_SCHEDULER_CURRENT.CURRENT;REASON"
 ```
 
 ### Label format
@@ -743,7 +741,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 | State | Light | Meaning |
 |---|---|---|
 | QUEUED | Idle | Ready to run |
-| WAITING | Idle | Its constraints do not hold now; `NEXT_START` and the night plan show when they will |
+| WAITING | Idle | Its constraints do not hold now; the night plan shows when they will |
 | RUNNING | Busy | Its sequence is executing |
 | RETRY | Idle | Failed or interrupted, will run again after the retry delay |
 | REPEAT | Idle | Completed a run, more runs to go after the repeat interval |
@@ -996,7 +994,7 @@ All properties belong to the device "Scheduler Agent". [PROPERTIES.md](PROPERTIE
 | `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | Task commands; the last two apply to all tasks and ask for a confirmation |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Run the scheduler |
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Scheduler state and task counters |
-| `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `NEXT`, `NEXT_START`, `REASON` | What runs now and next |
+| `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `REASON` | What runs now and why nothing runs |
 | `AGENT_SCHEDULER_TASK_STATE` | light | one per task | The task list |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The night plan |
 | `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The run history |

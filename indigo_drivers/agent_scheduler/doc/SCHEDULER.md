@@ -353,7 +353,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | The first five apply to the task named in `AGENT_SCHEDULER_TASK_NAME`; `RESET_ALL` and `DELETE_ALL` apply to all tasks, see [Commands for all tasks](#commands-for-all-tasks). List order breaks score ties |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Scheduler control, see [Scheduler control](#scheduler-control) |
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Task counters: `DONE` and `FAILED` (failed or expired) count the tasks of the list; `URGENT_DONE` and `URGENT_FAILED` count the one-off urgent tasks, which leave the list when they end; a deleted or aborted one-off task is not counted. The urgent counters are saved with the history and reset with it. `TOTAL` counts the tasks of the list. The property state is Idle before the first `START`, Busy while scheduling, Ok after `STOP` and the automatic stop, and Alert after `ABORT` (also while stopped), a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a `STOP_TIMEOUT` stop |
-| `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `NEXT`, `NEXT_START`, `REASON` | The running task or hook, the task or hook expected next, the UTC time it becomes eligible or is expected to start (`YYYY-MM-DDTHH:MM:SS`), and why nothing is eligible when the scheduler waits. While a task or hook runs, `NEXT` and `NEXT_START` come from the [night plan](#night-plan-preview): the `SHUTDOWN` hook at the expected end of the run when the scheduler stops after it (a stop is pending, or no other task is left to run, so the night end hook does not run), otherwise the first planned run after the running one, a hook included; a preempting urgent task is `NEXT` while it stops the running sequence. `NEXT` is the running task itself only when it repeats, with the planned start of its next run |
+| `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `REASON` | The running task or hook, and why nothing is eligible when the scheduler waits. What comes next is in the [night plan](#night-plan-preview) |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The forecast of the rest of the night in expected run order, see [Night plan preview](#night-plan-preview) |
 | `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, newest first, see [Run history](#run-history) |
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
@@ -497,7 +497,7 @@ The constraint engine therefore works on a grid:
 - The Sun and Moon positions themselves are computed once per hour and interpolated linearly between. The Moon moves about half a degree per hour, so the interpolation error is far below any limit, while the grid builds in less than 0.1 s.
 - For each task with `@target`, it computes the target's altitude, airmass and hour angle on the same grid. These values only change when the task is edited, apart from the precession to the date, which is negligible within a night.
 - For each task, it also records for every grid point the first point at or after it where a sky constraint fails, with the reason. An interval check is then a single lookup, and the search for the next start skips over a failing stretch in one step instead of testing every start time. The time windows are checked separately, because a nightly window does not depend on the grid.
-- Eligibility, `NEXT_START`, the setting-soonest term and the night plan are lookups in these tables.
+- Eligibility, the setting-soonest term and the night plan are lookups in these tables.
 
 The grid and the task tables are rebuilt when the site coordinates change and every hour. A task's tables are also rebuilt when it is edited.
 
@@ -601,7 +601,7 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 
 1. **Delays.** RETRY and REPEAT tasks whose delay has elapsed return to QUEUED.
 2. **Expiry.** Tasks whose absolute `@window` end has passed become EXPIRED, also when some of their `@repeat` runs completed. The task list and the run history show how many runs succeeded.
-3. **Eligibility.** A QUEUED or WAITING task is eligible when all its constraints hold over the whole interval from now to now + `@duration`. The interval is sampled every five minutes and at its end. A task that is not eligible becomes WAITING, and the agent computes when it would become eligible for `NEXT_START`.
+3. **Eligibility.** A QUEUED or WAITING task is eligible when all its constraints hold over the whole interval from now to now + `@duration`. The interval is sampled every five minutes and at its end. A task that is not eligible becomes WAITING.
 4. **Urgent tasks first.** Eligible urgent tasks run in the order they were submitted.
 5. **Score.** Other eligible tasks are ranked by:
 
@@ -618,11 +618,11 @@ While a task is running, the agent checks every `IDLE_CHECK_INTERVAL` only wheth
 6. **Run.** The agent starts the best task and waits until it ends.
    - Success: the run counter increases. The task becomes DONE or REPEAT.
    - Failure: the task becomes RETRY while retries remain, otherwise FAILED.
-7. **Nothing eligible.** The agent publishes `NEXT_START` and `REASON`. After `IDLE_PARK_AFTER` minutes it runs the `IDLE` hook, for example to park the mount and close the dome, unless the equipment is already in [standby](#night-hooks).
+7. **Nothing eligible.** The agent publishes `REASON`. After `IDLE_PARK_AFTER` minutes it runs the `IDLE` hook, for example to park the mount and close the dome, unless the equipment is already in [standby](#night-hooks).
 
 ### Night plan preview
 
-`AGENT_SCHEDULER_TASK_STATE` lists the tasks in list order, which only breaks score ties. `AGENT_SCHEDULER_CURRENT` shows only the running and the next task. To show the user the expected order of the whole night, the agent publishes a forecast in `AGENT_SCHEDULER_PLAN`.
+`AGENT_SCHEDULER_TASK_STATE` lists the tasks in list order, which only breaks score ties. `AGENT_SCHEDULER_CURRENT` shows only the running task. To show the user the expected order of the whole night, the agent publishes a forecast in `AGENT_SCHEDULER_PLAN`.
 
 **Computation.** The agent simulates scheduling from now until the end of the night:
 

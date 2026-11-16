@@ -299,23 +299,20 @@ static bool current_reason(char *reason) {
 	return true;
 }
 
-// waits until the current and next items of CURRENT have the given values and returns the next start
-static bool wait_current_next(const char *current_name, const char *next_name, double timeout, time_t *next_start) {
+// waits until the CURRENT item of AGENT_SCHEDULER_CURRENT has the given value
+static bool wait_current(const char *name, double timeout) {
 	for (double t = 0; t < timeout; t += 0.01) {
 		indigo_property *property = snapshot(AGENT_SCHEDULER_CURRENT_PROPERTY_NAME);
 		if (property) {
-			bool match = !strcmp(current_name, indigo_get_text_item_value(indigo_get_item(property, AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME))) && !strcmp(next_name, indigo_get_text_item_value(indigo_get_item(property, AGENT_SCHEDULER_CURRENT_NEXT_ITEM_NAME)));
-			char text[64];
-			strcpy(text, indigo_get_text_item_value(indigo_get_item(property, AGENT_SCHEDULER_CURRENT_NEXT_START_ITEM_NAME)));
+			bool match = !strcmp(name, indigo_get_text_item_value(indigo_get_item(property, AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME)));
 			indigo_release_property(property);
 			if (match) {
-				*next_start = *text ? indigo_isogmtotime(text) : 0;
 				return true;
 			}
 		}
 		indigo_usleep(10000);
 	}
-	fprintf(stderr, "Timeout waiting for CURRENT %s, NEXT %s\n", current_name, next_name);
+	fprintf(stderr, "Timeout waiting for CURRENT '%s'\n", name);
 	return false;
 }
 
@@ -1009,10 +1006,9 @@ static void window_wait_and_expiry(void) {
 	ASSERT_TRUE(wait_reason("window", 5));
 	indigo_property *current = snapshot(AGENT_SCHEDULER_CURRENT_PROPERTY_NAME);
 	REQUIRE(current != NULL);
-	char expected[64];
-	indigo_timetoisogm(open, expected, sizeof(expected));
-	ASSERT_STREQ(expected, indigo_get_text_item_value(indigo_get_item(current, AGENT_SCHEDULER_CURRENT_NEXT_START_ITEM_NAME)));
-	ASSERT_STREQ("Window", indigo_get_text_item_value(indigo_get_item(current, AGENT_SCHEDULER_CURRENT_NEXT_ITEM_NAME)));
+	ASSERT_EQ_INT(2, current->count);
+	ASSERT_STREQ(AGENT_SCHEDULER_CURRENT_CURRENT_ITEM_NAME, current->items[0].name);
+	ASSERT_STREQ(AGENT_SCHEDULER_CURRENT_REASON_ITEM_NAME, current->items[1].name);
 	indigo_release_property(current);
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Window'"));
 	ASSERT_TRUE(wait_message("Starting task 'Window'", 1, (double)(open - time(NULL)) + 5));
@@ -1366,9 +1362,7 @@ static void hand_started_sequence_blocks_all_but_urgent(void) {
 	ASSERT_TRUE(wait_reason("another sequence is running", 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Polite'"));
 	REQUIRE(urgent("// @task Pushy\n" BODY_WAIT(1)));
-	// while the urgent task stops the hand-started sequence, it is the next one
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("", "Pushy", 5, &next_start));
+	ASSERT_TRUE(wait_current("", 5));
 	ASSERT_TRUE(wait_message("Task 'Pushy' completed", 1, 15));
 	ASSERT_TRUE(wait_task_state("Polite", "DONE", 15));
 	ASSERT_TRUE(message_position("Starting task 'Polite'") > message_position("Task 'Pushy' completed"));
@@ -2946,37 +2940,7 @@ static void commands_queued_at_shutdown_are_released(void) {
 	ASSERT_TRUE(task_label("Kept", label, NULL));
 }
 
-static void next_follows_the_running_task(void) {
-	site_at_evening();
-	REQUIRE(upload("// @task First\n// @priority high\n// @duration 5\n" BODY_WAIT(5)));
-	REQUIRE(upload("// @task Second\n// @duration 3\n" BODY_WAIT(30)));
-	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_task_state("First", "RUNNING", 15));
-	time_t next_start = 0;
-	// the running task is never its own next, the following planned task starts when the running one is expected to end
-	ASSERT_TRUE(wait_current_next("First", "Second", 5, &next_start));
-	time_t now = time(NULL);
-	ASSERT_TRUE(next_start > now + 60);
-	ASSERT_TRUE(next_start <= now + 5 * 60 + 5);
-}
-
-static void shutdown_hook_is_next_after_the_last_task(void) {
-	site_at_evening();
-	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
-	REQUIRE(upload("// @task Last\n// @duration 5\n" BODY_WAIT(5)));
-	REQUIRE(set_hooks("", "Close", ""));
-	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_task_state("Last", "RUNNING", 15));
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Last", "Close", 5, &next_start));
-	time_t now = time(NULL);
-	ASSERT_TRUE(next_start > now + 60);
-	ASSERT_TRUE(next_start <= now + 5 * 60 + 5);
-	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 20));
-	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
-}
-
-static void shutdown_hook_is_next_when_stop_is_pending(void) {
+static void shutdown_hook_runs_when_stop_is_pending(void) {
 	site_at_evening();
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Running\n// @duration 5\n" BODY_WAIT(5)));
@@ -2984,18 +2948,12 @@ static void shutdown_hook_is_next_when_stop_is_pending(void) {
 	REQUIRE(set_hooks("", "Close", ""));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Running", "RUNNING", 15));
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Running", "Other", 5, &next_start));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
-	ASSERT_TRUE(wait_current_next("Running", "Close", 5, &next_start));
-	time_t now = time(NULL);
-	ASSERT_TRUE(next_start > now + 60);
-	ASSERT_TRUE(next_start <= now + 5 * 60 + 5);
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 20));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Other'"));
 }
 
-static void shutdown_hook_running_is_not_next(void) {
+static void shared_idle_and_shutdown_hook_runs_once(void) {
 	char future[32];
 	time_t now = time(NULL);
 	utc(now - now % 60 + 7200, future);
@@ -3011,15 +2969,12 @@ static void shutdown_hook_running_is_not_next(void) {
 	ASSERT_TRUE(wait_message("Starting hook 'Park'", 1, 20));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_STOP_ITEM_NAME));
 	indigo_usleep(1500000);
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Park", "", 1, &next_start));
-	ASSERT_EQ_INT(0, (int)next_start);
 	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 20));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
 	ASSERT_EQ_INT(1, count_messages("Starting hook 'Park'"));
 }
 
-static void shutdown_hook_is_not_next_without_regular_tasks(void) {
+static void shutdown_hook_does_not_run_without_regular_tasks(void) {
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(6)));
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
@@ -3027,15 +2982,11 @@ static void shutdown_hook_is_not_next_without_regular_tasks(void) {
 	REQUIRE(set_hooks("Prepare", "Close", ""));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 20));
-	indigo_usleep(1500000);
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Prepare", "", 1, &next_start));
-	ASSERT_EQ_INT(0, (int)next_start);
 	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 20));
 	ASSERT_EQ_INT(0, count_messages("Starting hook 'Close'"));
 }
 
-static void shared_startup_and_night_start_hook_is_not_next(void) {
+static void shared_startup_and_night_start_hook_runs_once(void) {
 	REQUIRE(upload("// @task Prepare\n// @duration 5\n" BODY_WAIT(6)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	REQUIRE(set_hooks("Prepare", "", ""));
@@ -3043,41 +2994,11 @@ static void shared_startup_and_night_start_hook_is_not_next(void) {
 	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 20));
-	indigo_usleep(1500000);
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Prepare", "Work", 1, &next_start));
-	// the next run cannot start before the expected end of the hook
-	time_t now = time(NULL);
-	ASSERT_TRUE(next_start > now + 60);
 	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 20));
 	ASSERT_EQ_INT(1, count_messages("Starting hook 'Prepare'"));
 }
 
-static void shared_hook_later_in_the_night_is_next(void) {
-	char future[32], text[256];
-	time_t night_end = time(NULL) + 1800;
-	utc(time(NULL) + 2 * 86400, future);
-	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
-	REQUIRE(upload("// @task Park\n" BODY_WAIT(6)));
-	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
-	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
-	// a task of a later night keeps the scheduler running
-	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
-	REQUIRE(upload(text));
-	REQUIRE(set_hooks("", "", "Park"));
-	REQUIRE(set_night_hooks("Evening", "Park", ""));
-	set_site(NIGHT_LATITUDE, night_longitude(night_end, true));
-	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 20));
-	ASSERT_TRUE(wait_message("Starting hook 'Park'", 1, 20));
-	indigo_usleep(1500000);
-	// the idle hook does not chain into the night end hook hours later, which runs as well
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Park", "Park", 1, &next_start));
-	ASSERT_TRUE(next_start >= night_end - 120 && next_start <= night_end + 120);
-}
-
-static void shutdown_hook_is_next_before_the_night_end_hook(void) {
+static void shutdown_hook_runs_instead_of_the_night_end_hook(void) {
 	time_t night_end = time(NULL) + 1800;
 	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
@@ -3088,34 +3009,25 @@ static void shutdown_hook_is_next_before_the_night_end_hook(void) {
 	set_site(NIGHT_LATITUDE, night_longitude(night_end, true));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_message("Starting task 'Work'", 1, 20));
-	indigo_usleep(1500000);
 	// the last task is followed by the shutdown hook, the night end hook does not run
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Work", "Close", 1, &next_start));
-	time_t now = time(NULL);
-	ASSERT_TRUE(next_start > now + 60 && next_start <= now + 5 * 60 + 5);
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 30));
 	ASSERT_EQ_INT(0, count_messages("Starting hook 'Morning'"));
 }
 
-static void one_off_urgent_task_is_not_followed_by_the_shutdown_hook(void) {
+static void one_off_urgent_task_does_not_trigger_the_shutdown_hook(void) {
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
 	REQUIRE(set_hooks("", "Close", ""));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	REQUIRE(urgent("// @task Pushy\n// @duration 5\n" BODY_WAIT(5)));
 	ASSERT_TRUE(wait_message("Starting task 'Pushy'", 1, 20));
-	indigo_usleep(1500000);
 	// the one-off task leaves the list and an empty list keeps the scheduler running
-	time_t next_start = 1;
-	ASSERT_TRUE(wait_current_next("Pushy", "", 1, &next_start));
-	ASSERT_EQ_INT(0, (int)next_start);
 	ASSERT_TRUE(wait_message("Task 'Pushy' completed", 1, 20));
 	indigo_usleep(3000000);
 	ASSERT_EQ_INT(0, count_messages("Starting hook 'Close'"));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_BUSY_STATE, 2));
 }
 
-static void repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook(void) {
+static void repeating_one_off_urgent_task_triggers_the_shutdown_hook(void) {
 	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
 	REQUIRE(set_hooks("", "Close", ""));
@@ -3123,26 +3035,8 @@ static void repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook(void)
 	ASSERT_TRUE(wait_task_state("Work", "DONE", 20));
 	REQUIRE(urgent("// @task Pushy\n// @repeat 2\n// @duration 5\n" BODY_WAIT(5)));
 	ASSERT_TRUE(wait_message("Starting task 'Pushy'", 1, 20));
-	indigo_usleep(1500000);
 	// the one-off task leaves the list after one run, so the scheduler stops after it
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Pushy", "Close", 1, &next_start));
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 30));
-}
-
-static void next_start_follows_the_end_of_the_running_hook(void) {
-	site_at_evening();
-	REQUIRE(upload("// @task Prepare\n// @duration 5\n" BODY_WAIT(8)));
-	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
-	REQUIRE(set_hooks("Prepare", "", ""));
-	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
-	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 20));
-	indigo_usleep(2000000);
-	// the plan of a running hook starts now, Work cannot start before the hook is expected to end
-	time_t next_start = 0;
-	ASSERT_TRUE(wait_current_next("Prepare", "Work", 1, &next_start));
-	time_t now = time(NULL);
-	ASSERT_TRUE(next_start > now + 60 && next_start <= now + 5 * 60 + 5);
 }
 
 static void data_is_labelled_before_the_first_step(void) {
@@ -3482,17 +3376,13 @@ static const indigo_test_case cases[] = {
 	{ "failed_night_end_is_reported", failed_night_end_is_reported },
 	{ "resume_before_an_urgent_task", resume_before_an_urgent_task },
 	{ "plan_lasts_until_a_late_night_end", plan_lasts_until_a_late_night_end },
-	{ "next_follows_the_running_task", next_follows_the_running_task },
-	{ "shutdown_hook_is_next_after_the_last_task", shutdown_hook_is_next_after_the_last_task },
-	{ "shutdown_hook_is_next_when_stop_is_pending", shutdown_hook_is_next_when_stop_is_pending },
-	{ "shutdown_hook_running_is_not_next", shutdown_hook_running_is_not_next },
-	{ "shutdown_hook_is_not_next_without_regular_tasks", shutdown_hook_is_not_next_without_regular_tasks },
-	{ "shared_startup_and_night_start_hook_is_not_next", shared_startup_and_night_start_hook_is_not_next },
-	{ "next_start_follows_the_end_of_the_running_hook", next_start_follows_the_end_of_the_running_hook },
-	{ "shared_hook_later_in_the_night_is_next", shared_hook_later_in_the_night_is_next },
-	{ "shutdown_hook_is_next_before_the_night_end_hook", shutdown_hook_is_next_before_the_night_end_hook },
-	{ "one_off_urgent_task_is_not_followed_by_the_shutdown_hook", one_off_urgent_task_is_not_followed_by_the_shutdown_hook },
-	{ "repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook", repeating_one_off_urgent_task_is_followed_by_the_shutdown_hook },
+	{ "shutdown_hook_runs_when_stop_is_pending", shutdown_hook_runs_when_stop_is_pending },
+	{ "shared_idle_and_shutdown_hook_runs_once", shared_idle_and_shutdown_hook_runs_once },
+	{ "shutdown_hook_does_not_run_without_regular_tasks", shutdown_hook_does_not_run_without_regular_tasks },
+	{ "shared_startup_and_night_start_hook_runs_once", shared_startup_and_night_start_hook_runs_once },
+	{ "shutdown_hook_runs_instead_of_the_night_end_hook", shutdown_hook_runs_instead_of_the_night_end_hook },
+	{ "one_off_urgent_task_does_not_trigger_the_shutdown_hook", one_off_urgent_task_does_not_trigger_the_shutdown_hook },
+	{ "repeating_one_off_urgent_task_triggers_the_shutdown_hook", repeating_one_off_urgent_task_triggers_the_shutdown_hook },
 	{ "data_defaults", data_defaults },
 	{ "data_settings_persist", data_settings_persist },
 	{ "data_is_labelled_before_the_first_step", data_is_labelled_before_the_first_step },
