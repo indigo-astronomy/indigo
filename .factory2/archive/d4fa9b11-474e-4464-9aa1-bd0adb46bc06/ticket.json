@@ -1,0 +1,1140 @@
+{
+  "schema_version": 1,
+  "ticket_id": "d4fa9b11-474e-4464-9aa1-bd0adb46bc06",
+  "revision": 64,
+  "title": "indigo_agent_scheduler: uniform, parsable labels for the task list, night plan and history",
+  "description": "Make the light labels of AGENT_SCHEDULER_TASK_STATE, AGENT_SCHEDULER_PLAN and AGENT_SCHEDULER_HISTORY easy to read and to parse (TODO \"make night plan light labels more parsable\" in indigo_agent_scheduler.c). Design agreed with the owner on 2026-11-16.\n\nToday the shapes vary: optional parts (runs, retries, duration) appear only sometimes, hooks put their hook kind where the state should be, the plan mixes two shapes (\"20:44–22:36  M31 LRGB #1 (normal 60)\" and \"M42 — reason\") without a date, and the history glues name, marks, result and reason with double spaces and colons.\n\nFormat rules (all three lists):\n1. Columns joined by \" | \" (space, pipe, space), always in the same order, always all present.\n2. An empty column is \"-\".\n3. Free text (the reason) only in the last column; when a label hits the 511-byte limit only that column is cut (UTF-8 safe).\n4. ASCII only. Times UTC (as now). A time range is \"YYYY-MM-DD HH:MM-HH:MM\", dated by its start.\n5. Fixed vocabulary in capitals for state/result.\n6. Task names must not contain '|': the header parser rejects '@task' names containing '|' with a clear error naming the line (owner decision; a stored task with '|' gets a header error after the upgrade).\n7. Night plan and history share the same columns.\n\nTask list (AGENT_SCHEDULER_TASK_STATE): name | state | priority | runs | retries | duration\n- state: QUEUED, WAITING, RUNNING, RETRY, REPEAT, DONE, FAILED, EXPIRED, DISABLED, SCRIPT ERROR, or HOOK for a task that serves as a hook.\n- priority: \"urgent\", \"<class> <level>\" (e.g. \"normal 60\"), or for hooks \"hook startup|shutdown|idle|night start|night end|resume\".\n- runs: \"run <done>/<repeat>\" always (e.g. \"run 0/1\"); retries: \"retries left <n>\" always; duration: \"<h>h<mm> <estimated|measured|set>\". Hooks: runs, retries and duration \"-\".\nExample: \"M31 LRGB | REPEAT | normal 60 | run 1/2 | retries left 1 | 1h52 estimated\", \"Park | HOOK | hook shutdown | - | - | -\".\n\nNight plan (AGENT_SCHEDULER_PLAN): when | name | run | priority | state | reason\n- planned/running runs: when = time range, run = \"run <n>/<repeat>\" (hooks \"-\"), priority as above (hooks \"hook night start\"/\"hook night end\"), state RUNNING or PLANNED, reason \"-\".\n- tasks not running tonight: when \"-\", state \"NOT TONIGHT\", reason = current reason text (constraint, \"disabled\", \"script error\", \"no time left tonight\").\n- the no-night notice: \"- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run\".\nExample: \"2026-11-20 20:44-22:36 | M31 LRGB | run 1/2 | normal 60 | PLANNED | -\", \"- | M42 | run 0/1 | normal 50 | NOT TONIGHT | target below the altitude limit\".\n\nHistory (AGENT_SCHEDULER_HISTORY): when | name | run | kind | result | reason\n- run \"run <n>\"; kind \"task\", \"urgent\" or \"hook\" (from the stored mark, no change to saved history data); result SUCCEEDED, FAILED, PREEMPTED, ABORTED; reason or \"-\".\nExample: \"2026-11-20 20:44-21:10 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc\".\n\nUnchanged: item names (TASK_%d, PLAN_%d, RUN_%u), light states, order, recomputation, the persisted history fields (labels are rebuilt, so restored history shows the new format).\n\nWork: one column-joining helper (placeholder, last-column cut) used by build_task_state_label, plan_run_label, plan_hook_label, the not-tonight entries in update_plan and history_label; header parser rejects '|' in @task; update INDIGO_SCHEDULER_GUIDE.md (\"Watching the scheduler\" examples and a short format reference for client authors), indigo_drivers/agent_scheduler/doc/SCHEDULER.md and PROPERTIES.md where labels are described; update the label assertions in indigo_test/integration/test_agent_scheduler.c and the task_label helpers/assertions in indigo_test/integration/run_scheduler_simulators.py; add tests that split every label of all three lists and check column count and values (including hooks, not-tonight entries, the no-night notice, reasons with '|' or long text cut only in the last column), and a header unit test for '|' in a task name; bump DRIVER_VERSION; remove the TODO. README.md files are not changed.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-16T11:55:13.476005Z",
+  "status": "closed",
+  "branch": "ticket/d4fa9b11-474e-4464-9aa1-bd0adb46bc06",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "390b29a0-951b-4b24-90e1-8a1b6f5fa796",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T11:56:10.211294Z",
+          "last_activity_at": "2026-11-16T12:26:59.721985Z",
+          "ended_at": "2026-11-16T12:26:59.721985Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1849510.691,
+          "tokens": null
+        },
+        {
+          "attempt_id": "a61ca821-7243-4205-bbaf-775647cbdea4",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T12:28:52.741474Z",
+          "last_activity_at": "2026-11-16T12:35:31.622339Z",
+          "ended_at": "2026-11-16T12:35:31.622339Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 398880.865,
+          "tokens": null
+        },
+        {
+          "attempt_id": "2f0aefd3-dd58-4d88-a0a5-26de14b66969",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T12:35:31.622422Z",
+          "last_activity_at": "2026-11-16T12:50:35.977807Z",
+          "ended_at": "2026-11-16T12:50:35.977807Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 904355.385,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T11:56:10.211294Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/d4fa9b11-474e-4464-9aa1-bd0adb46bc06"
+        },
+        {
+          "at": "2026-11-16T12:26:59.721985Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T12:28:52.741474Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T12:35:31.622339Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-16T12:35:31.622422Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-16T12:50:35.977807Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 3152746.941,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "fb846c54-1bc7-4d03-bf34-f678b3399c49",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-16T12:26:59.722063Z",
+          "last_activity_at": "2026-11-16T12:28:52.741387Z",
+          "ended_at": "2026-11-16T12:28:52.741387Z",
+          "outcome": {
+            "summary": "Code conforms to the design: join_label/time_range give six ' | ' columns with '-' placeholders, capitals vocabulary, ASCII separators, UTC 'YYYY-MM-DD HH:MM-HH:MM' dated by start (midnight crossing correct by construction); hooks, not-tonight rows and the no-night notice match; only the last column can exceed 511 bytes (name <=40, other columns short, 1024-byte buffer, UTF-8-safe cut_label); history labels rebuilt from unchanged persisted entries; add/edit/urgent/config-restore all use indigo_scheduler_parse_header, so the '|' check covers them; version bumped, TODO removed; Python runner updates consistent. Keeping duration source 'default' is correct (task_duration really falls back to SCHEDULER_DEFAULT_DURATION; any of the 3 design words would misreport) and it is documented in the guide. Defects: (1) indigo_docs/PROPERTIES.md:694,705,706 and indigo_drivers/agent_scheduler/doc/SCHEDULER.md:351: an unescaped '|' inside backticks in a Markdown table cell splits the cell in GFM, so these rows render with extra cells and the description is cut. SCHEDULER.md already escapes such pipes (line 175 '\\|'). Fix: write the separator as ` \\| ` in table cells. (2) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:719 says 'the text is ASCII', but the @task parser accepts non-ASCII UTF-8 names and reasons (JS error texts, SEQUENCE_FAILURE.MESSAGE) pass through unchanged, so labels can contain UTF-8. Client authors would get a false guarantee. Fix: say the fixed parts (separators, times, words) are ASCII and that names and reasons are UTF-8 text. Same area: SCHEDULER.md:174 (@task row: 'no control characters') does not mention the new '|' restriction; add it. The comment at indigo_test/integration/test_agent_scheduler.c:727 ('only ASCII before the last column') does not match the code, which checks the whole label. (3) Test effectiveness: the old assertions history_label('Rush (urgent) #1') checked the urgent mark; the replacements at test_agent_scheduler.c:2604, 2616, 2896 only check SUCC",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 113019.324,
+          "tokens": null
+        },
+        {
+          "attempt_id": "f7f2b957-b2bc-4343-8314-980ee695ea92",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "failed",
+          "started_at": "2026-11-16T12:35:31.622346Z",
+          "last_activity_at": "2026-11-16T12:35:31.622365Z",
+          "ended_at": "2026-11-16T12:35:31.622365Z",
+          "outcome": {
+            "summary": "Round 2 on tree 5ea38d4b92a3. The diff since 9bdc2b9ff touches only docs and test assertions, with no change to code behaviour. Verified fixes: the table cells in PROPERTIES.md:694,705,706 and SCHEDULER.md:351 are now escaped; the guide's ASCII sentence is accurate; the @task rows in the guide (178) and SCHEDULER.md (174) mention '|'; the check_columns comment matches the code; history asserts '| Rush | run 1 | urgent | SUCCEEDED | -' (twice) and '| Flash | run 1 | urgent | SUCCEEDED | -'; wait_plan_first checks '| RUNNING |' and '| PLANNED |'. New defect: indigo_drivers/agent_scheduler/doc/SCHEDULER.md:640 and :680 are a list item and a paragraph, not table rows, yet the separator was changed to ' \\| ' there too. Outside a table a backslash in a code span is literal in CommonMark/GFM, so these two lines now render the separator as '\\|', which is wrong and contradicts the example on the same line 640 (' | ' unescaped). Fix: revert these two lines to an unescaped ' | ' and keep '\\|' only in the table rows.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.019,
+          "tokens": null
+        },
+        {
+          "attempt_id": "8bab357a-86ff-461b-bc03-eabbbaaaadc9",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-16T12:50:35.977817Z",
+          "last_activity_at": "2026-11-16T12:50:35.977838Z",
+          "ended_at": "2026-11-16T12:50:35.977838Z",
+          "outcome": {
+            "summary": "Final round on tree 98ba5d309479. The diff since the round-2 commit 93d0fa2aa changes only SCHEDULER.md:640 and :680, back to a plain ' | ' outside tables. The table rows SCHEDULER.md:351 and PROPERTIES.md:694,705,706 keep '\\|', and none of SCHEDULER.md, PROPERTIES.md or INDIGO_SCHEDULER_GUIDE.md has an escaped pipe outside a table row. All earlier findings are resolved; code is unchanged since round 1, where it conformed to the design. Checks recorded on this tree: whitespace, unit, integration 104/0. Notes: the urgent_tasks_are_counted flake is unrelated (pre-existing race: TOTAL is read without waiting); history persisted before the upgrade with a '|' in a task name renders with extra columns, accepted by the owner decision.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 0.021,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T12:26:59.722063Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T12:28:52.741387Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Code conforms to the design: join_label/time_range give six ' | ' columns with '-' placeholders, capitals vocabulary, ASCII separators, UTC 'YYYY-MM-DD HH:MM-HH:MM' dated by start (midnight crossing correct by construction); hooks, not-tonight rows and the no-night notice match; only the last column can exceed 511 bytes (name <=40, other columns short, 1024-byte buffer, UTF-8-safe cut_label); history labels rebuilt from unchanged persisted entries; add/edit/urgent/config-restore all use indigo_scheduler_parse_header, so the '|' check covers them; version bumped, TODO removed; Python runner updates consistent. Keeping duration source 'default' is correct (task_duration really falls back to SCHEDULER_DEFAULT_DURATION; any of the 3 design words would misreport) and it is documented in the guide. Defects: (1) indigo_docs/PROPERTIES.md:694,705,706 and indigo_drivers/agent_scheduler/doc/SCHEDULER.md:351: an unescaped '|' inside backticks in a Markdown table cell splits the cell in GFM, so these rows render with extra cells and the description is cut. SCHEDULER.md already escapes such pipes (line 175 '\\|'). Fix: write the separator as ` \\| ` in table cells. (2) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:719 says 'the text is ASCII', but the @task parser accepts non-ASCII UTF-8 names and reasons (JS error texts, SEQUENCE_FAILURE.MESSAGE) pass through unchanged, so labels can contain UTF-8. Client authors would get a false guarantee. Fix: say the fixed parts (separators, times, words) are ASCII and that names and reasons are UTF-8 text. Same area: SCHEDULER.md:174 (@task row: 'no control characters') does not mention the new '|' restriction; add it. The comment at indigo_test/integration/test_agent_scheduler.c:727 ('only ASCII before the last column') does not match the code, which checks the whole label. (3) Test effectiveness: the old assertions history_label('Rush (urgent) #1') checked the urgent mark; the replacements at test_agent_scheduler.c:2604, 2616, 2896 only check SUCC"
+        },
+        {
+          "at": "2026-11-16T12:35:31.622346Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T12:35:31.622365Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 2 on tree 5ea38d4b92a3. The diff since 9bdc2b9ff touches only docs and test assertions, with no change to code behaviour. Verified fixes: the table cells in PROPERTIES.md:694,705,706 and SCHEDULER.md:351 are now escaped; the guide's ASCII sentence is accurate; the @task rows in the guide (178) and SCHEDULER.md (174) mention '|'; the check_columns comment matches the code; history asserts '| Rush | run 1 | urgent | SUCCEEDED | -' (twice) and '| Flash | run 1 | urgent | SUCCEEDED | -'; wait_plan_first checks '| RUNNING |' and '| PLANNED |'. New defect: indigo_drivers/agent_scheduler/doc/SCHEDULER.md:640 and :680 are a list item and a paragraph, not table rows, yet the separator was changed to ' \\| ' there too. Outside a table a backslash in a code span is literal in CommonMark/GFM, so these two lines now render the separator as '\\|', which is wrong and contradicts the example on the same line 640 (' | ' unescaped). Fix: revert these two lines to an unescaped ' | ' and keep '\\|' only in the table rows."
+        },
+        {
+          "at": "2026-11-16T12:50:35.977817Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-16T12:50:35.977838Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Final round on tree 98ba5d309479. The diff since the round-2 commit 93d0fa2aa changes only SCHEDULER.md:640 and :680, back to a plain ' | ' outside tables. The table rows SCHEDULER.md:351 and PROPERTIES.md:694,705,706 keep '\\|', and none of SCHEDULER.md, PROPERTIES.md or INDIGO_SCHEDULER_GUIDE.md has an escaped pipe outside a table row. All earlier findings are resolved; code is unchanged since round 1, where it conformed to the design. Checks recorded on this tree: whitespace, unit, integration 104/0. Notes: the urgent_tasks_are_counted flake is unrelated (pre-existing race: TOTAL is read without waiting); history persisted before the upgrade with a '|' in a task name renders with extra columns, accepted by the owner decision."
+        }
+      ],
+      "result": {
+        "summary": "Final round on tree 98ba5d309479. The diff since the round-2 commit 93d0fa2aa changes only SCHEDULER.md:640 and :680, back to a plain ' | ' outside tables. The table rows SCHEDULER.md:351 and PROPERTIES.md:694,705,706 keep '\\|', and none of SCHEDULER.md, PROPERTIES.md or INDIGO_SCHEDULER_GUIDE.md has an escaped pipe outside a table row. All earlier findings are resolved; code is unchanged since round 1, where it conformed to the design. Checks recorded on this tree: whitespace, unit, integration 104/0. Notes: the urgent_tasks_are_counted flake is unrelated (pre-existing race: TOTAL is read without waiting); history persisted before the upgrade with a '|' in a task name renders with extra columns, accepted by the owner decision.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 113019.364,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "970b66e8-16cc-4fdc-a263-8db54e2a79de",
+      "event": "ticket/created",
+      "at": "2026-11-16T11:55:13.477460Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "1b4e2f65-553d-4dd1-81e9-fc0dcd0135a9",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T11:55:40.157761Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "f577c575-57df-49da-acca-4af10f9df5db",
+      "event": "task/progress",
+      "at": "2026-11-16T11:56:10.216958Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Implementation started on branch ticket/d4fa9b11-474e-4464-9aa1-bd0adb46bc06"
+    },
+    {
+      "event_id": "34501af6-14c7-4358-add4-76c981e569fd",
+      "event": "ticket/started",
+      "at": "2026-11-16T11:56:10.228343Z",
+      "actor": "human/owner",
+      "branch": "ticket/d4fa9b11-474e-4464-9aa1-bd0adb46bc06",
+      "base": "master"
+    },
+    {
+      "event_id": "9a7d641e-7778-4974-bd1f-e8d6d0fcf665",
+      "event": "task/progress",
+      "at": "2026-11-16T11:56:32.604561Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Implementer started",
+      "attempt_id": "390b29a0-951b-4b24-90e1-8a1b6f5fa796",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "d51a0810-e981-4d1e-8d79-161839874166",
+      "event": "task/progress",
+      "at": "2026-11-16T11:59:21.761014Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Driver, header, unit and integration tests edited; building"
+    },
+    {
+      "event_id": "e4ca9762-7b1b-409c-a3a7-dd93e912ad2d",
+      "event": "task/progress",
+      "at": "2026-11-16T11:59:22.072713Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "576c7200-b07c-4702-abc0-e8b0c921c922",
+      "event": "task/progress",
+      "at": "2026-11-16T11:59:22.097467Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 failed: exit code 2"
+    },
+    {
+      "event_id": "1124e871-4b6f-4697-97d9-9b96d2c78f94",
+      "event": "check/failed",
+      "at": "2026-11-16T11:59:22.102601Z",
+      "actor": "human/owner",
+      "commit": "f39acf4e512c44b0012709cdddb3b4b3ff401921",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "5a6cf882-146c-4d60-8db4-4d796dc09df3",
+      "event": "task/progress",
+      "at": "2026-11-16T11:59:25.408740Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "5db9c893-0213-4e45-b3ab-4ae8d9928add",
+      "event": "task/progress",
+      "at": "2026-11-16T11:59:25.422984Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2a32d87e-81e3-47b3-84a2-8a6594b60701",
+      "event": "task/progress",
+      "at": "2026-11-16T11:59:25.430690Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "7496681b-f1ce-4212-9add-04d6bc741847",
+      "event": "task/progress",
+      "at": "2026-11-16T12:01:01.944135Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "8796650e-ee7c-4fbd-aa8a-9cc89f109e22",
+      "event": "check/passed",
+      "at": "2026-11-16T12:01:01.954839Z",
+      "actor": "human/owner",
+      "commit": "f39acf4e512c44b0012709cdddb3b4b3ff401921",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "d89d32fb-3818-4ced-9321-07bfc3759351",
+      "event": "task/progress",
+      "at": "2026-11-16T12:01:05.802694Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "37554b68-3b81-44a1-a92d-fe905cce92db",
+      "event": "task/progress",
+      "at": "2026-11-16T12:01:05.824789Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 failed: exit code 2"
+    },
+    {
+      "event_id": "7f7dd5cf-122e-489e-b9f9-6c452a9b4420",
+      "event": "check/failed",
+      "at": "2026-11-16T12:01:05.829332Z",
+      "actor": "human/owner",
+      "commit": "f39acf4e512c44b0012709cdddb3b4b3ff401921",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "3038d6f5-0f4c-4f21-9c5a-fc96fb7c7bf1",
+      "event": "task/progress",
+      "at": "2026-11-16T12:01:21.753139Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test &"
+    },
+    {
+      "event_id": "87cf243b-170b-44e1-b32b-97c9b9b49016",
+      "event": "task/progress",
+      "at": "2026-11-16T12:06:11.729743Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 failed: exit code 1"
+    },
+    {
+      "event_id": "b1df29fc-a946-4913-8e55-19cdcd188925",
+      "event": "check/failed",
+      "at": "2026-11-16T12:06:11.744172Z",
+      "actor": "human/owner",
+      "commit": "f39acf4e512c44b0012709cdddb3b4b3ff401921",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "379effc0-33b4-4d20-a9dd-176fa381720c",
+      "event": "task/progress",
+      "at": "2026-11-16T12:06:44.963059Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Rerunning integration test after fixing assertions; then docs"
+    },
+    {
+      "event_id": "d8a0c762-d780-4dd2-b4a5-bccb8f216cd6",
+      "event": "task/progress",
+      "at": "2026-11-16T12:06:45.169051Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "eacd60f9-490b-49ce-8e92-0358d545ce35",
+      "event": "task/progress",
+      "at": "2026-11-16T12:11:12.029199Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 failed: exit code 1"
+    },
+    {
+      "event_id": "cbac55ed-7cf9-49a2-857d-7bb5a047b58c",
+      "event": "check/failed",
+      "at": "2026-11-16T12:11:12.048339Z",
+      "actor": "human/owner",
+      "commit": "d57409f4ba1598c7bc47dd2d6c5b65037a3504d8",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "79b10a48-3ca4-4837-b139-9b15705f32b1",
+      "event": "task/progress",
+      "at": "2026-11-16T12:11:36.253336Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "2b20f906-d505-44c4-a956-91bf1298a0e7",
+      "event": "task/progress",
+      "at": "2026-11-16T12:16:09.526946Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 failed: exit code 1"
+    },
+    {
+      "event_id": "de5a94d5-67b9-4c80-8149-851316683e28",
+      "event": "check/failed",
+      "at": "2026-11-16T12:16:09.548795Z",
+      "actor": "human/owner",
+      "commit": "14789fc46de42147ce3e87c5e15f538e6ddde039",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "8f03ceb6-0304-4b33-a94d-fec389cf25be",
+      "event": "task/progress",
+      "at": "2026-11-16T12:16:32.812933Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "8a45d6c7-8771-4eb5-aee6-5086eaebdcd3",
+      "event": "task/progress",
+      "at": "2026-11-16T12:20:52.929661Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 failed: exit code 1"
+    },
+    {
+      "event_id": "f6dd69cc-68cc-4452-82b3-ab280980a888",
+      "event": "check/failed",
+      "at": "2026-11-16T12:20:52.940353Z",
+      "actor": "human/owner",
+      "commit": "9bdc2b9ff7f4179673514959a643a990981be597",
+      "checks": "command-1 FAILED"
+    },
+    {
+      "event_id": "c7ec837f-0682-49af-a5d3-c54257c560ce",
+      "event": "task/progress",
+      "at": "2026-11-16T12:21:05.435529Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "07ef06bb-9f75-4b48-9dd5-dabe8f2b51a6",
+      "event": "task/progress",
+      "at": "2026-11-16T12:25:23.597003Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "43be7ed6-f986-4031-91bf-1d0bb057c7c3",
+      "event": "check/passed",
+      "at": "2026-11-16T12:25:23.606010Z",
+      "actor": "human/owner",
+      "commit": "9bdc2b9ff7f4179673514959a643a990981be597",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "a139106b-9502-492d-9c9a-6f19a0edfd50",
+      "event": "task/progress",
+      "at": "2026-11-16T12:25:32.569588Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "2be706c1-723f-42a7-803e-340b5a0b4e1d",
+      "event": "task/progress",
+      "at": "2026-11-16T12:25:32.591703Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "b4c11ae0-966e-4237-90e1-723dc2a5a5ba",
+      "event": "task/progress",
+      "at": "2026-11-16T12:25:32.598252Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "b104e531-d57e-4b70-91e1-5a700159a208",
+      "event": "task/progress",
+      "at": "2026-11-16T12:26:20.874811Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3f207e84-4dd7-4430-a49e-37081383b0ff",
+      "event": "check/passed",
+      "at": "2026-11-16T12:26:20.890316Z",
+      "actor": "human/owner",
+      "commit": "9bdc2b9ff7f4179673514959a643a990981be597",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "ca5d7882-8029-4bda-a2f2-96572be8441c",
+      "event": "task/progress",
+      "at": "2026-11-16T12:26:59.722171Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "text": "Review started"
+    },
+    {
+      "event_id": "281abd22-8c53-42c2-b6bb-5c71eb80f2df",
+      "event": "review/started",
+      "at": "2026-11-16T12:26:59.722478Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "e2174d03-fa1c-441a-91a1-e26780bc37b3",
+      "event": "task/progress",
+      "at": "2026-11-16T12:26:59.792537Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "text": "Reviewer started",
+      "attempt_id": "fb846c54-1bc7-4d03-bf34-f678b3399c49",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "116be309-353f-4f09-96ca-7416516a9108",
+      "event": "task/progress",
+      "at": "2026-11-16T12:28:52.741469Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "5b7602b5-e52b-470c-947a-ed05dfe5890d",
+      "event": "task/progress",
+      "at": "2026-11-16T12:28:52.741488Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "c089c9a0-f311-4452-9efa-b26f90681040",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T12:28:52.741907Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "9bdc2b9ff7f4179673514959a643a990981be597"
+    },
+    {
+      "event_id": "457fa07e-2e98-4890-86a0-079bc55a28f6",
+      "event": "task/progress",
+      "at": "2026-11-16T12:29:19.711771Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Review round 1 fixes: table pipes, doc wording, test coverage"
+    },
+    {
+      "event_id": "f9bd2733-fc23-4e1a-a1c4-05c9d6118edc",
+      "event": "task/progress",
+      "at": "2026-11-16T12:29:37.346160Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "a2cc3830-b76b-44fb-851e-ebc2733ec7ca",
+      "event": "task/progress",
+      "at": "2026-11-16T12:29:37.371791Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7c5ce881-fe6f-4a83-ae0a-ce90d6aabdd7",
+      "event": "task/progress",
+      "at": "2026-11-16T12:29:37.377611Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "fd3e2d46-27f3-46d3-83d3-9ecd4d56a25c",
+      "event": "task/progress",
+      "at": "2026-11-16T12:30:25.207323Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "f80e7eb7-27c0-4b87-ab29-9d1540ecca03",
+      "event": "check/passed",
+      "at": "2026-11-16T12:30:25.220150Z",
+      "actor": "human/owner",
+      "commit": "93d0fa2aa4788d2879f970757cef3db8f573ccc3",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "9ff3993a-a71f-4295-b803-13deb74d4883",
+      "event": "task/progress",
+      "at": "2026-11-16T12:30:25.392675Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "39f56d42-c16b-4ccc-b5ac-841bd7c9edf7",
+      "event": "task/progress",
+      "at": "2026-11-16T12:34:56.711841Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "c1284620-9472-4213-80e9-98b4c5dd86cf",
+      "event": "check/passed",
+      "at": "2026-11-16T12:34:56.732864Z",
+      "actor": "human/owner",
+      "commit": "93d0fa2aa4788d2879f970757cef3db8f573ccc3",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "490ca1cf-5a47-45a0-9020-79ffca7450b8",
+      "event": "task/progress",
+      "at": "2026-11-16T12:35:31.622419Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "1ba9452b-40bd-490a-86ef-1fda98cafaa2",
+      "event": "task/progress",
+      "at": "2026-11-16T12:35:31.622432Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "591d5266-24f6-4d66-ae92-5130ca36ed5c",
+      "event": "review/changes_requested",
+      "at": "2026-11-16T12:35:31.622891Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "93d0fa2aa4788d2879f970757cef3db8f573ccc3"
+    },
+    {
+      "event_id": "7bb6a482-1aaa-451a-9fdd-5696e41b7763",
+      "event": "question/asked",
+      "at": "2026-11-16T12:35:46.309071Z",
+      "actor": "human/owner",
+      "text": "Second review asked for changes: SCHEDULER.md lines 640 and 680 (a list item and a paragraph, not table rows) now show the separator as \\| because the round-1 escaping was applied outside tables too. Proposed: restore the plain ' | ' on those two lines only, rerun checks and a final review. Continue?"
+    },
+    {
+      "event_id": "79b496f7-12f3-4315-88e1-ff8616f3eb40",
+      "event": "question/answered",
+      "at": "2026-11-16T12:44:35.052379Z",
+      "actor": "human/owner",
+      "text": "Owner: continue. Restore the plain ' | ' on SCHEDULER.md lines 640 and 680 (outside tables), keep \\| only in table rows, then checks and final review."
+    },
+    {
+      "event_id": "a595ce8c-1a9f-45ea-9d85-0bca555866d7",
+      "event": "task/progress",
+      "at": "2026-11-16T12:44:44.961299Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Review round 2: restore plain pipes outside tables"
+    },
+    {
+      "event_id": "358cd503-a0a5-4189-b755-318e2de6e141",
+      "event": "task/progress",
+      "at": "2026-11-16T12:44:49.192981Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d70f6688-654f-4373-ab22-afbcc1beaf1f",
+      "event": "task/progress",
+      "at": "2026-11-16T12:44:49.219783Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e0957cdc-ba40-4b62-bc79-c5f98c91853e",
+      "event": "task/progress",
+      "at": "2026-11-16T12:44:49.224415Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "5ae1503e-a7fe-4818-ba70-e12cf1950ea0",
+      "event": "task/progress",
+      "at": "2026-11-16T12:45:37.730546Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "527651d0-42b5-4f0d-9976-8a85cc241bd7",
+      "event": "check/passed",
+      "at": "2026-11-16T12:45:37.756473Z",
+      "actor": "human/owner",
+      "commit": "a0ea69a29bbd719ad0703bbfcc11c520ed1117e0",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "5c1d7d98-43a6-4294-9785-f5eeccfd8aa7",
+      "event": "task/progress",
+      "at": "2026-11-16T12:45:37.976232Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 started: make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler"
+    },
+    {
+      "event_id": "6bed2ad1-f4a2-4cf0-8893-57c83a22d296",
+      "event": "task/progress",
+      "at": "2026-11-16T12:50:08.632435Z",
+      "actor": "human/owner",
+      "task_id": "61c03300-9e22-4e0e-aa48-b74b9d615555",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "7c25b33a-3b0c-4583-8389-b992a619c6e7",
+      "event": "check/passed",
+      "at": "2026-11-16T12:50:08.648765Z",
+      "actor": "human/owner",
+      "commit": "a0ea69a29bbd719ad0703bbfcc11c520ed1117e0",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "da91cda2-a22d-48b5-9dcf-6aa91474a4ef",
+      "event": "task/progress",
+      "at": "2026-11-16T12:50:35.977966Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "83efff2c-5c9a-4678-b6e6-e324d5b7c093",
+      "event": "review/passed",
+      "at": "2026-11-16T12:50:35.978594Z",
+      "actor": "human/owner",
+      "task_id": "44b9ddd0-2346-44ba-b895-09f999b62a02",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "a0ea69a29bbd719ad0703bbfcc11c520ed1117e0"
+    },
+    {
+      "event_id": "700b49c3-ec54-4658-8598-bd14b56fc22c",
+      "event": "ticket/closed",
+      "at": "2026-11-16T12:58:10.349374Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-16T12:58:10.349352Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "65f11340fe129cc6e752e897d14d3558a8a36b8b"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f39acf4e512c44b0012709cdddb3b4b3ff401921",
+        "tree": "c6e3e983bf1e42cc66f5911a91639d17fda23d28",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T11:59:25.422464Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/c6e3e983bf1e-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "f39acf4e512c44b0012709cdddb3b4b3ff401921",
+        "tree": "c6e3e983bf1e42cc66f5911a91639d17fda23d28",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:01:01.941767Z",
+        "duration_s": 96.5,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/c6e3e983bf1e-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "f39acf4e512c44b0012709cdddb3b4b3ff401921",
+        "tree": "c6e3e983bf1e42cc66f5911a91639d17fda23d28",
+        "exit_code": 1,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-16T12:06:11.726563Z",
+        "duration_s": 290.0,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/c6e3e983bf1e-command-1.log"
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "d57409f4ba1598c7bc47dd2d6c5b65037a3504d8",
+        "tree": "90ef292e3a371a3086e170fe769d5e75ec8b1f59",
+        "exit_code": 1,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-16T12:11:12.022400Z",
+        "duration_s": 266.9,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/90ef292e3a37-command-1.log"
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "14789fc46de42147ce3e87c5e15f538e6ddde039",
+        "tree": "e4807bbf8be3b9b3601f90f1a31cb5f9246d5f46",
+        "exit_code": 1,
+        "counts": null,
+        "passed": false,
+        "at": "2026-11-16T12:16:09.521113Z",
+        "duration_s": 273.3,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/e4807bbf8be3-command-1.log"
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "9bdc2b9ff7f4179673514959a643a990981be597",
+        "tree": "e1a2cc816da7ced9cfc8da40a03d5aaa237846dd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:25:23.595151Z",
+        "duration_s": 258.2,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/e1a2cc816da7-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "9bdc2b9ff7f4179673514959a643a990981be597",
+        "tree": "e1a2cc816da7ced9cfc8da40a03d5aaa237846dd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:25:32.591267Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/e1a2cc816da7-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "9bdc2b9ff7f4179673514959a643a990981be597",
+        "tree": "e1a2cc816da7ced9cfc8da40a03d5aaa237846dd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:26:20.872247Z",
+        "duration_s": 48.3,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/e1a2cc816da7-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "93d0fa2aa4788d2879f970757cef3db8f573ccc3",
+        "tree": "5ea38d4b92a3e32a140d30c9a6f6cb941d3c3dd6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:29:37.371208Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/5ea38d4b92a3-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "93d0fa2aa4788d2879f970757cef3db8f573ccc3",
+        "tree": "5ea38d4b92a3e32a140d30c9a6f6cb941d3c3dd6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:30:25.202945Z",
+        "duration_s": 47.8,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/5ea38d4b92a3-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "93d0fa2aa4788d2879f970757cef3db8f573ccc3",
+        "tree": "5ea38d4b92a3e32a140d30c9a6f6cb941d3c3dd6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:34:56.705170Z",
+        "duration_s": 271.3,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/5ea38d4b92a3-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a0ea69a29bbd719ad0703bbfcc11c520ed1117e0",
+        "tree": "98ba5d309479e2870d616a0d180e86726ec05a22",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:44:49.219167Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/98ba5d309479-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "a0ea69a29bbd719ad0703bbfcc11c520ed1117e0",
+        "tree": "98ba5d309479e2870d616a0d180e86726ec05a22",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:45:37.723169Z",
+        "duration_s": 48.5,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/98ba5d309479-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -C indigo_test build/integration/test_agent_scheduler && cd indigo_test && ./build/integration/test_agent_scheduler",
+        "commit": "a0ea69a29bbd719ad0703bbfcc11c520ed1117e0",
+        "tree": "98ba5d309479e2870d616a0d180e86726ec05a22",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-16T12:50:08.619147Z",
+        "duration_s": 270.6,
+        "log": "/tmp/factory-flow/d4fa9b11-474e-4464-9aa1-bd0adb46bc06/98ba5d309479-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Code conforms to the design: join_label/time_range give six ' | ' columns with '-' placeholders, capitals vocabulary, ASCII separators, UTC 'YYYY-MM-DD HH:MM-HH:MM' dated by start (midnight crossing correct by construction); hooks, not-tonight rows and the no-night notice match; only the last column can exceed 511 bytes (name <=40, other columns short, 1024-byte buffer, UTF-8-safe cut_label); history labels rebuilt from unchanged persisted entries; add/edit/urgent/config-restore all use indigo_scheduler_parse_header, so the '|' check covers them; version bumped, TODO removed; Python runner updates consistent. Keeping duration source 'default' is correct (task_duration really falls back to SCHEDULER_DEFAULT_DURATION; any of the 3 design words would misreport) and it is documented in the guide. Defects: (1) indigo_docs/PROPERTIES.md:694,705,706 and indigo_drivers/agent_scheduler/doc/SCHEDULER.md:351: an unescaped '|' inside backticks in a Markdown table cell splits the cell in GFM, so these rows render with extra cells and the description is cut. SCHEDULER.md already escapes such pipes (line 175 '\\|'). Fix: write the separator as ` \\| ` in table cells. (2) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:719 says 'the text is ASCII', but the @task parser accepts non-ASCII UTF-8 names and reasons (JS error texts, SEQUENCE_FAILURE.MESSAGE) pass through unchanged, so labels can contain UTF-8. Client authors would get a false guarantee. Fix: say the fixed parts (separators, times, words) are ASCII and that names and reasons are UTF-8 text. Same area: SCHEDULER.md:174 (@task row: 'no control characters') does not mention the new '|' restriction; add it. The comment at indigo_test/integration/test_agent_scheduler.c:727 ('only ASCII before the last column') does not match the code, which checks the whole label. (3) Test effectiveness: the old assertions history_label('Rush (urgent) #1') checked the urgent mark; the replacements at test_agent_scheduler.c:2604, 2616, 2896 only check SUCCEEDED, so the history kind 'urgent' is not asserted anywhere: emitting 'task' for urgent runs would pass all tests. The plan state 'RUNNING' is also never asserted as text (wait_plan_first checks only the Busy light). Fix: assert '| Rush | run 1 | urgent | SUCCEEDED | -' (and likewise Flash) and include '| RUNNING |' in one wait_plan_first pattern. Notes (not defects): the urgent_tasks_are_counted flake (expected 2 got 3) is unrelated to labels: the counters/TOTAL logic is untouched and the test reads TOTAL with ASSERT_EQ_INT without waiting, a pre-existing timing race. History entries persisted before the upgrade with a '|' in the task name would render with extra columns; acceptable per the owner decision.",
+        "reviewer": "human/owner",
+        "commit": "9bdc2b9ff7f4179673514959a643a990981be597",
+        "tree": "e1a2cc816da7ced9cfc8da40a03d5aaa237846dd",
+        "at": "2026-11-16T12:28:52.741309Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 2 on tree 5ea38d4b92a3. The diff since 9bdc2b9ff touches only docs and test assertions, with no change to code behaviour. Verified fixes: the table cells in PROPERTIES.md:694,705,706 and SCHEDULER.md:351 are now escaped; the guide's ASCII sentence is accurate; the @task rows in the guide (178) and SCHEDULER.md (174) mention '|'; the check_columns comment matches the code; history asserts '| Rush | run 1 | urgent | SUCCEEDED | -' (twice) and '| Flash | run 1 | urgent | SUCCEEDED | -'; wait_plan_first checks '| RUNNING |' and '| PLANNED |'. New defect: indigo_drivers/agent_scheduler/doc/SCHEDULER.md:640 and :680 are a list item and a paragraph, not table rows, yet the separator was changed to ' \\| ' there too. Outside a table a backslash in a code span is literal in CommonMark/GFM, so these two lines now render the separator as '\\|', which is wrong and contradicts the example on the same line 640 (' | ' unescaped). Fix: revert these two lines to an unescaped ' | ' and keep '\\|' only in the table rows.",
+        "reviewer": "human/owner",
+        "commit": "93d0fa2aa4788d2879f970757cef3db8f573ccc3",
+        "tree": "5ea38d4b92a3e32a140d30c9a6f6cb941d3c3dd6",
+        "at": "2026-11-16T12:35:31.622285Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Final round on tree 98ba5d309479. The diff since the round-2 commit 93d0fa2aa changes only SCHEDULER.md:640 and :680, back to a plain ' | ' outside tables. The table rows SCHEDULER.md:351 and PROPERTIES.md:694,705,706 keep '\\|', and none of SCHEDULER.md, PROPERTIES.md or INDIGO_SCHEDULER_GUIDE.md has an escaped pipe outside a table row. All earlier findings are resolved; code is unchanged since round 1, where it conformed to the design. Checks recorded on this tree: whitespace, unit, integration 104/0. Notes: the urgent_tasks_are_counted flake is unrelated (pre-existing race: TOTAL is read without waiting); history persisted before the upgrade with a '|' in a task name renders with extra columns, accepted by the owner decision.",
+        "reviewer": "human/owner",
+        "commit": "a0ea69a29bbd719ad0703bbfcc11c520ed1117e0",
+        "tree": "98ba5d309479e2870d616a0d180e86726ec05a22",
+        "at": "2026-11-16T12:50:35.977678Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [
+      {
+        "text": "Second review asked for changes: SCHEDULER.md lines 640 and 680 (a list item and a paragraph, not table rows) now show the separator as \\| because the round-1 escaping was applied outside tables too. Proposed: restore the plain ' | ' on those two lines only, rerun checks and a final review. Continue?",
+        "at": "2026-11-16T12:35:46.308620Z",
+        "actor": "human/owner",
+        "answer": "Owner: continue. Restore the plain ' | ' on SCHEDULER.md lines 640 and 680 (outside tables), keep \\| only in table rows, then checks and final review.",
+        "answered_at": "2026-11-16T12:44:35.051984Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "65f11340fe129cc6e752e897d14d3558a8a36b8b",
+      "tree": "98ba5d309479e2870d616a0d180e86726ec05a22",
+      "base": "master",
+      "at": "2026-11-16T12:58:10.242284Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-16T11:55:13.476005Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T11:55:40.157664Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 3265766.305,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 6
+    }
+  },
+  "journal": {
+    "entries": 79,
+    "sha256": "5fdb8f4adfb02301ea111947a0d79abb5d209e57c38ebf160187826d120157c9"
+  }
+}
