@@ -1,0 +1,582 @@
+{
+  "schema_version": 1,
+  "ticket_id": "7be03fc0-44cf-4cd3-83f3-cf0b647ad303",
+  "revision": 24,
+  "title": "indigo_agent_scheduler: list AGENT_SCHEDULER_HISTORY oldest first",
+  "description": "AGENT_SCHEDULER_HISTORY lists the finished runs newest first, while AGENT_SCHEDULER_PLAN lists the coming runs in time order. The owner finds oldest first more logical for the history, so the property reads chronologically like the plan.\n\nChange: update_history_property() in indigo_drivers/agent_scheduler/indigo_agent_scheduler.c emits the items oldest first, newest last. Each entry keeps its item name RUN_<serial>. When the history is full (200), the oldest entry drops off the top. The internal array order, the saved/restored history text (AGENT_SCHEDULER_RESTORE_HISTORY) and CLEAR behaviour stay as they are.\n\nUpdate the tests in indigo_test/integration/test_agent_scheduler.c that index history items by position, add a test that checks the order (oldest first) including the case when the history is full, and update the docs that say \"newest first\": indigo_drivers/agent_scheduler/doc/SCHEDULER.md (lines 361 and 694), indigo_docs/INDIGO_SCHEDULER_GUIDE.md (line 793), indigo_docs/PROPERTIES.md (AGENT_SCHEDULER_HISTORY row) and the comment at indigo_agent_scheduler.c:675. Bump DRIVER_VERSION.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-17T20:29:14.905181Z",
+  "status": "closed",
+  "branch": "ticket/7be03fc0-44cf-4cd3-83f3-cf0b647ad303",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "e0d92f35-edc9-4da9-9a8d-47e469c93a04",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-17T20:30:26.635378Z",
+          "last_activity_at": "2026-11-17T20:37:29.572055Z",
+          "ended_at": "2026-11-17T20:37:29.572055Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 422936.677,
+          "tokens": null
+        },
+        {
+          "attempt_id": "dedfc4f4-643a-420b-af67-a7b34a7c74c1",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-17T20:42:35.702797Z",
+          "last_activity_at": "2026-11-17T20:43:10.747646Z",
+          "ended_at": "2026-11-17T20:43:10.747646Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 35044.849,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-17T20:30:26.635378Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/7be03fc0-44cf-4cd3-83f3-cf0b647ad303"
+        },
+        {
+          "at": "2026-11-17T20:37:29.572055Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-17T20:42:35.702797Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-17T20:43:10.747646Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 457981.526,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d34adc3a-9980-41f4-9a87-e766cc009ac7",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-17T20:37:29.572098Z",
+          "last_activity_at": "2026-11-17T20:42:35.702713Z",
+          "ended_at": "2026-11-17T20:42:35.702713Z",
+          "outcome": {
+            "summary": "Code, version bump (0x03000012 -> 0x03000013), PROPERTIES.md, SCHEDULER.md and comment are correct; item names RUN_<serial> preserved, saved text and CLEAR unchanged. New test history_lists_oldest_first covers order, names, lights and the full-history drop-off; full test_agent_scheduler suite 112/112 passed locally. Defects: (1) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:796-799 - the example block directly under the changed sentence still lists the runs newest first (2026-11-21 01:28 first, 2026-11-20 20:02 Evening hook last); reverse the four lines so the example matches 'oldest first, newest last'. (2) tools/scheduler_sandbox.py:463 - 'history [N]' prints items[:count], which used to be the N most recent runs and now prints the N oldest of up to 200; use items[-count:] (or state the changed meaning). Item 2 is a consumer of the changed order outside the file list of the ticket; if the owner considers it out of scope, register it separately instead.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 306130.615,
+          "tokens": null
+        },
+        {
+          "attempt_id": "0b601a03-db47-4777-b227-5db9b9a74068",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-17T20:43:10.747668Z",
+          "last_activity_at": "2026-11-17T20:51:29.023849Z",
+          "ended_at": "2026-11-17T20:51:29.023849Z",
+          "outcome": {
+            "summary": "Round 2: both round-1 findings fixed. INDIGO_SCHEDULER_GUIDE.md:796-799 example now oldest first; tools/scheduler_sandbox.py:463-464 'history [N]' prints the N most recent runs (items[max(len-count,0):]). update_history_property() reverses only the published order; item names RUN_<serial> and lights stay with their entries; array, history_text/restore_history and CLEAR unchanged. DRIVER_VERSION 0x03000012 -> 0x03000013. Docs consistent: SCHEDULER.md:361,694, GUIDE:793, PROPERTIES.md:706, source comment at :675; no other repo consumer depends on the order (git grep for AGENT_SCHEDULER_HISTORY: only the sandbox). Tests: history_records_runs indices updated correctly; new history_lists_oldest_first checks order, names, lights for 205 restored entries (cap 200) and appending past the cap. Ran test_agent_scheduler: history_* 5x 2/2 pass; full suite 112/112 on the second run, the first run had 1 unidentified failure (output filtered), not reproduced, history cases stable.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 498276.181,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-17T20:37:29.572098Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T20:42:35.702713Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Code, version bump (0x03000012 -> 0x03000013), PROPERTIES.md, SCHEDULER.md and comment are correct; item names RUN_<serial> preserved, saved text and CLEAR unchanged. New test history_lists_oldest_first covers order, names, lights and the full-history drop-off; full test_agent_scheduler suite 112/112 passed locally. Defects: (1) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:796-799 - the example block directly under the changed sentence still lists the runs newest first (2026-11-21 01:28 first, 2026-11-20 20:02 Evening hook last); reverse the four lines so the example matches 'oldest first, newest last'. (2) tools/scheduler_sandbox.py:463 - 'history [N]' prints items[:count], which used to be the N most recent runs and now prints the N oldest of up to 200; use items[-count:] (or state the changed meaning). Item 2 is a consumer of the changed order outside the file list of the ticket; if the owner considers it out of scope, register it separately instead."
+        },
+        {
+          "at": "2026-11-17T20:43:10.747668Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T20:51:29.023849Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2: both round-1 findings fixed. INDIGO_SCHEDULER_GUIDE.md:796-799 example now oldest first; tools/scheduler_sandbox.py:463-464 'history [N]' prints the N most recent runs (items[max(len-count,0):]). update_history_property() reverses only the published order; item names RUN_<serial> and lights stay with their entries; array, history_text/restore_history and CLEAR unchanged. DRIVER_VERSION 0x03000012 -> 0x03000013. Docs consistent: SCHEDULER.md:361,694, GUIDE:793, PROPERTIES.md:706, source comment at :675; no other repo consumer depends on the order (git grep for AGENT_SCHEDULER_HISTORY: only the sandbox). Tests: history_records_runs indices updated correctly; new history_lists_oldest_first checks order, names, lights for 205 restored entries (cap 200) and appending past the cap. Ran test_agent_scheduler: history_* 5x 2/2 pass; full suite 112/112 on the second run, the first run had 1 unidentified failure (output filtered), not reproduced, history cases stable."
+        }
+      ],
+      "result": {
+        "summary": "Round 2: both round-1 findings fixed. INDIGO_SCHEDULER_GUIDE.md:796-799 example now oldest first; tools/scheduler_sandbox.py:463-464 'history [N]' prints the N most recent runs (items[max(len-count,0):]). update_history_property() reverses only the published order; item names RUN_<serial> and lights stay with their entries; array, history_text/restore_history and CLEAR unchanged. DRIVER_VERSION 0x03000012 -> 0x03000013. Docs consistent: SCHEDULER.md:361,694, GUIDE:793, PROPERTIES.md:706, source comment at :675; no other repo consumer depends on the order (git grep for AGENT_SCHEDULER_HISTORY: only the sandbox). Tests: history_records_runs indices updated correctly; new history_lists_oldest_first checks order, names, lights for 205 restored entries (cap 200) and appending past the cap. Ran test_agent_scheduler: history_* 5x 2/2 pass; full suite 112/112 on the second run, the first run had 1 unidentified failure (output filtered), not reproduced, history cases stable.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 804406.796,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9ea2cc21-d7ee-49bb-a1f1-fa5638a42807",
+      "event": "ticket/created",
+      "at": "2026-11-17T20:29:14.905811Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "e7b579fa-d94f-4b32-8462-03c4567005b4",
+      "event": "ticket/confirmed",
+      "at": "2026-11-17T20:30:17.876678Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "cde985bc-fe8d-4da7-a415-ac1b26590161",
+      "event": "task/progress",
+      "at": "2026-11-17T20:30:26.635490Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Implementation started on branch ticket/7be03fc0-44cf-4cd3-83f3-cf0b647ad303"
+    },
+    {
+      "event_id": "efe29f19-042b-4d46-9ea3-01c421e85e40",
+      "event": "ticket/started",
+      "at": "2026-11-17T20:30:26.636093Z",
+      "actor": "human/owner",
+      "branch": "ticket/7be03fc0-44cf-4cd3-83f3-cf0b647ad303",
+      "base": "master"
+    },
+    {
+      "event_id": "3f1e5245-61a4-4566-b319-c7523236a723",
+      "event": "task/progress",
+      "at": "2026-11-17T20:30:37.169466Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Implementer launched",
+      "attempt_id": "e0d92f35-edc9-4da9-9a8d-47e469c93a04",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "a890e52c-23b2-4868-9425-27f97491cb5d",
+      "event": "task/progress",
+      "at": "2026-11-17T20:31:23.112288Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Building libs and scheduler driver for tests"
+    },
+    {
+      "event_id": "e13e7405-6f2f-4500-9237-e43edb3385f3",
+      "event": "task/progress",
+      "at": "2026-11-17T20:37:09.380595Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "3188f37e-104e-4627-9419-a9c1c0ab7b6b",
+      "event": "task/progress",
+      "at": "2026-11-17T20:37:09.402343Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "34f80667-5f73-4866-9264-82e8ef671494",
+      "event": "check/passed",
+      "at": "2026-11-17T20:37:09.407623Z",
+      "actor": "human/owner",
+      "commit": "d720a60eb02cf5dd074af80e7c1c9083724ab8b9",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "64d089e8-4a2a-4692-a627-ff869f6c3af5",
+      "event": "task/progress",
+      "at": "2026-11-17T20:37:12.433695Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Running scheduler header and plan unit tests"
+    },
+    {
+      "event_id": "7e647230-fd6a-48db-a953-31e5d326b12d",
+      "event": "task/progress",
+      "at": "2026-11-17T20:37:29.572166Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "64180753-a22a-4512-afc8-f49c67088cad",
+      "event": "review/started",
+      "at": "2026-11-17T20:37:29.572752Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "20fd833d-c470-444c-96b8-b0b59641ed8d",
+      "event": "task/progress",
+      "at": "2026-11-17T20:37:38.034782Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Reviewer launched",
+      "attempt_id": "d34adc3a-9980-41f4-9a87-e766cc009ac7",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3a95173b-1ef5-4a9e-bcfb-c1eb5f0aef80",
+      "event": "task/progress",
+      "at": "2026-11-17T20:38:14.562271Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Running test_agent_scheduler history cases in the worktree"
+    },
+    {
+      "event_id": "09fc09e2-74ed-431c-9c23-4b0e25ed66a0",
+      "event": "task/progress",
+      "at": "2026-11-17T20:42:35.702788Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "ecd26069-a36f-45b7-af37-a6cab572fee4",
+      "event": "task/progress",
+      "at": "2026-11-17T20:42:35.702825Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "2b2d83bf-1832-4c84-998e-87b1d6125d49",
+      "event": "review/changes_requested",
+      "at": "2026-11-17T20:42:35.703443Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "d720a60eb02cf5dd074af80e7c1c9083724ab8b9"
+    },
+    {
+      "event_id": "db577646-5939-4c30-8f6b-6f543e9cf02d",
+      "event": "ticket/note",
+      "at": "2026-11-17T20:42:50.738540Z",
+      "actor": "human/owner",
+      "text": "Review round 1: reverse the example block in INDIGO_SCHEDULER_GUIDE.md:796-799 to oldest first; tools/scheduler_sandbox.py:463 'history [N]' must show the N most recent runs (items[-count:]) - in scope because the new order breaks it.",
+      "tokens": null
+    },
+    {
+      "event_id": "fef6ce0d-6d60-4d76-8aa3-5a27d7f24290",
+      "event": "task/progress",
+      "at": "2026-11-17T20:42:53.695801Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Fixing review: guide example order and sandbox history"
+    },
+    {
+      "event_id": "2a35c13e-cdea-45fa-919d-2e671260919f",
+      "event": "task/progress",
+      "at": "2026-11-17T20:42:59.013570Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d8dbf295-6fc4-4e1b-8298-c7ab409bf841",
+      "event": "task/progress",
+      "at": "2026-11-17T20:42:59.035188Z",
+      "actor": "human/owner",
+      "task_id": "c0413fd1-b3f7-45e5-9ea6-2af443aaa114",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "ce778208-d168-4723-ae27-b93338b4831f",
+      "event": "check/passed",
+      "at": "2026-11-17T20:42:59.039956Z",
+      "actor": "human/owner",
+      "commit": "8ae9ab7232f684bc0dd5d18b0f27da5535f53777",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "a2766a10-aba5-42ff-912b-be9731c97bc9",
+      "event": "task/progress",
+      "at": "2026-11-17T20:43:10.747747Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "2db520be-6fd0-4eda-b4ad-dc456c0ba807",
+      "event": "review/started",
+      "at": "2026-11-17T20:43:10.748396Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "f8dbe319-4f8c-4fe8-92fe-10506ee254f6",
+      "event": "task/progress",
+      "at": "2026-11-17T20:43:13.530624Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Reviewer launched (round 2)",
+      "attempt_id": "0b601a03-db47-4777-b227-5db9b9a74068",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "d277b9f2-4d1d-48d0-8667-c623e73222fe",
+      "event": "task/progress",
+      "at": "2026-11-17T20:43:51.284662Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Running integration test test_agent_scheduler for history cases"
+    },
+    {
+      "event_id": "4138f23a-26ab-4587-a6d1-60bb08e934a8",
+      "event": "task/progress",
+      "at": "2026-11-17T20:51:29.023938Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "a9010f32-f636-4d35-9ad9-46cee5e7e695",
+      "event": "review/passed",
+      "at": "2026-11-17T20:51:29.024648Z",
+      "actor": "human/owner",
+      "task_id": "94fe4775-b365-4688-9f96-e3609ba2e11a",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "8ae9ab7232f684bc0dd5d18b0f27da5535f53777"
+    },
+    {
+      "event_id": "33cf0cae-fe11-4f35-997b-84e4be2b6302",
+      "event": "ticket/closed",
+      "at": "2026-11-17T20:57:04.539201Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-17T20:57:04.539176Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "03c9fe558562f11949ec98182857e45782cfe547"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d720a60eb02cf5dd074af80e7c1c9083724ab8b9",
+        "tree": "17573b0ac72f51511aabaa406db039a51b594396",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T20:37:09.401637Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7be03fc0-44cf-4cd3-83f3-cf0b647ad303/17573b0ac72f-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "8ae9ab7232f684bc0dd5d18b0f27da5535f53777",
+        "tree": "89ebfc88b014056ee53d86ea153624e7ef6e27ed",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T20:42:59.034305Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/7be03fc0-44cf-4cd3-83f3-cf0b647ad303/89ebfc88b014-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Code, version bump (0x03000012 -> 0x03000013), PROPERTIES.md, SCHEDULER.md and comment are correct; item names RUN_<serial> preserved, saved text and CLEAR unchanged. New test history_lists_oldest_first covers order, names, lights and the full-history drop-off; full test_agent_scheduler suite 112/112 passed locally. Defects: (1) indigo_docs/INDIGO_SCHEDULER_GUIDE.md:796-799 - the example block directly under the changed sentence still lists the runs newest first (2026-11-21 01:28 first, 2026-11-20 20:02 Evening hook last); reverse the four lines so the example matches 'oldest first, newest last'. (2) tools/scheduler_sandbox.py:463 - 'history [N]' prints items[:count], which used to be the N most recent runs and now prints the N oldest of up to 200; use items[-count:] (or state the changed meaning). Item 2 is a consumer of the changed order outside the file list of the ticket; if the owner considers it out of scope, register it separately instead.",
+        "reviewer": "human/owner",
+        "commit": "d720a60eb02cf5dd074af80e7c1c9083724ab8b9",
+        "tree": "17573b0ac72f51511aabaa406db039a51b594396",
+        "at": "2026-11-17T20:42:35.702689Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: both round-1 findings fixed. INDIGO_SCHEDULER_GUIDE.md:796-799 example now oldest first; tools/scheduler_sandbox.py:463-464 'history [N]' prints the N most recent runs (items[max(len-count,0):]). update_history_property() reverses only the published order; item names RUN_<serial> and lights stay with their entries; array, history_text/restore_history and CLEAR unchanged. DRIVER_VERSION 0x03000012 -> 0x03000013. Docs consistent: SCHEDULER.md:361,694, GUIDE:793, PROPERTIES.md:706, source comment at :675; no other repo consumer depends on the order (git grep for AGENT_SCHEDULER_HISTORY: only the sandbox). Tests: history_records_runs indices updated correctly; new history_lists_oldest_first checks order, names, lights for 205 restored entries (cap 200) and appending past the cap. Ran test_agent_scheduler: history_* 5x 2/2 pass; full suite 112/112 on the second run, the first run had 1 unidentified failure (output filtered), not reproduced, history cases stable.",
+        "reviewer": "human/owner",
+        "commit": "8ae9ab7232f684bc0dd5d18b0f27da5535f53777",
+        "tree": "89ebfc88b014056ee53d86ea153624e7ef6e27ed",
+        "at": "2026-11-17T20:51:29.023817Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-17T20:42:50.737893Z",
+        "actor": "human/owner",
+        "text": "Review round 1: reverse the example block in INDIGO_SCHEDULER_GUIDE.md:796-799 to oldest first; tools/scheduler_sandbox.py:463 'history [N]' must show the N most recent runs (items[-count:]) - in scope because the new order breaks it.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "03c9fe558562f11949ec98182857e45782cfe547",
+      "tree": "89ebfc88b014056ee53d86ea153624e7ef6e27ed",
+      "base": "master",
+      "at": "2026-11-17T20:57:04.454717Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-17T20:29:14.905181Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-17T20:30:17.876650Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 1262388.322,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 37,
+    "sha256": "6e0af38951d1da1bc05c13c4c024e33e7ab06162ba94262c93a1b0240f4ec1d5"
+  }
+}
