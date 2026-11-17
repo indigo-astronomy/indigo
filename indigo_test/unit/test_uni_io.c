@@ -32,6 +32,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <zlib.h>
+#include <sys/stat.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <errno.h>
 #endif
@@ -751,6 +752,48 @@ static void legacy_printf_sends_short_output_unchanged(void) {
 	ASSERT_EQ_INT(12, (int)count);
 	ASSERT_STREQ(":GR007#plain", buffer);
 }
+
+static void is_creatable_accepts_folders_below_a_writable_ancestor(void) {
+	char base[] = "/tmp/indigo_creatable_XXXXXX";
+	ASSERT_TRUE(mkdtemp(base) != NULL);
+	char path[PATH_MAX];
+	char below_file[2 * PATH_MAX];
+	char below_read_only[2 * PATH_MAX];
+	char read_only[PATH_MAX];
+	snprintf(path, sizeof(path), "%s/", base);
+	bool existing = indigo_uni_is_creatable(path);
+	snprintf(path, sizeof(path), "%s/a/b/c/", base);
+	bool nested = indigo_uni_is_creatable(path);
+	bool nested_created = access(path, F_OK) == 0;
+	snprintf(path, sizeof(path), "%s/a/b", base);
+	bool without_separator = indigo_uni_is_creatable(path);
+	snprintf(path, sizeof(path), "%s/file", base);
+	FILE *file = fopen(path, "w");
+	ASSERT_TRUE(file != NULL);
+	fclose(file);
+	snprintf(below_file, sizeof(below_file), "%s/file/sub/", base);
+	bool regular_file = indigo_uni_is_creatable(path);
+	bool below_regular_file = indigo_uni_is_creatable(below_file);
+	snprintf(read_only, sizeof(read_only), "%s/read_only", base);
+	ASSERT_EQ_INT(0, mkdir(read_only, 0555));
+	snprintf(below_read_only, sizeof(below_read_only), "%s/read_only/sub/dir/", base);
+	bool read_only_ancestor = indigo_uni_is_creatable(below_read_only);
+	bool is_root = geteuid() == 0;
+	bool relative = indigo_uni_is_creatable("indigo_creatable_does_not_exist/sub/");
+	bool root = indigo_uni_is_creatable("/");
+	chmod(read_only, 0755);
+	snprintf(path, sizeof(path), "rm -rf '%s'", base);
+	ASSERT_EQ_INT(0, system(path));
+	ASSERT_TRUE(existing);
+	ASSERT_TRUE(nested);
+	ASSERT_FALSE(nested_created);
+	ASSERT_TRUE(without_separator);
+	ASSERT_FALSE(regular_file);
+	ASSERT_FALSE(below_regular_file);
+	ASSERT_TRUE(is_root || !read_only_ancestor);
+	ASSERT_TRUE(relative || access(".", W_OK) != 0);
+	ASSERT_TRUE(is_root || !root);
+}
 #endif
 
 int main(void) {
@@ -771,6 +814,7 @@ int main(void) {
 		{ "hid_close_leaves_aliased_descriptor_open", hid_close_leaves_aliased_descriptor_open },
 		{ "legacy_printf_sends_output_longer_than_its_buffer", legacy_printf_sends_output_longer_than_its_buffer },
 		{ "legacy_printf_sends_short_output_unchanged", legacy_printf_sends_short_output_unchanged },
+		{ "is_creatable_accepts_folders_below_a_writable_ancestor", is_creatable_accepts_folders_below_a_writable_ancestor },
 #endif
 		{ "wait_for_data_continues_after_signal", wait_for_data_continues_after_signal },
 		{ "wait_for_data_keeps_timeout_after_signal", wait_for_data_keeps_timeout_after_signal },

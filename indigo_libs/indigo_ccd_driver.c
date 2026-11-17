@@ -832,7 +832,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				CCD_LOCAL_MODE_DIR_ITEM->text.value[len + 1] = 0;
 			}
 		}
-		if (indigo_uni_is_writable(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
+		// the folder is created by the first saved image, so it is enough that it can be created (not on sandboxed platforms, where it is never created)
+		if (indigo_is_sandboxed ? indigo_uni_is_writable(CCD_LOCAL_MODE_DIR_ITEM->text.value) : indigo_uni_is_creatable(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
 			CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Folder \"%s\" is not writtable", CCD_LOCAL_MODE_DIR_ITEM->text.value);

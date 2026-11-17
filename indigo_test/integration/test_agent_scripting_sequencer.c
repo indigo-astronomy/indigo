@@ -796,6 +796,19 @@ static void simulator_imaging(void) {
 	ASSERT_TRUE(wait_message("Sequence finished", 5));
 }
 
+// a task folder that does not exist yet: CCD_LOCAL_MODE accepts it, the first saved image creates it
+static void simulator_imaging_in_a_folder_that_does_not_exist(void) {
+	char script[2048], folder[512];
+	snprintf(folder, sizeof(folder), "%s/Rosette Nebula/", test_root);
+	snprintf(script, sizeof(script), "var s=new Sequence('new folder'); s.select_imager_camera('CCD Imager Simulator'); s.select_image_format('RAW'); s.set_directory('%s'); s.set_object_name('Rosette Nebula'); s.capture_batch(1,0.05); s.start();", folder);
+	struct stat st;
+	ASSERT_TRUE(stat(folder, &st) != 0);
+	ASSERT_TRUE(run_js(script));
+	ASSERT_TRUE(wait_sequence(INDIGO_OK_STATE, 40));
+	ASSERT_TRUE(wait_message("Sequence finished", 5));
+	ASSERT_TRUE(stat(folder, &st) == 0 && S_ISDIR(st.st_mode));
+}
+
 static void simulator_preview_and_stream(void) {
 	char script[2048];
 	snprintf(script, sizeof(script), "var s=new Sequence('preview'); s.select_imager_camera('CCD Imager Simulator'); s.select_image_format('RAW'); s.set_directory('%s'); s.start_preview(0.2); s.wait(0.5); s.stop_preview(); s.start();", test_root);
@@ -1514,6 +1527,7 @@ static const indigo_test_case tests[] = {
 	{ "pause resume abort reset", pause_resume_abort_reset },
 	{ "past waits and breaks", past_waits_and_breaks },
 	{ "simulator imaging", simulator_imaging },
+	{ "simulator imaging in a folder that does not exist", simulator_imaging_in_a_folder_that_does_not_exist },
 	{ "simulator preview", simulator_preview_and_stream },
 	{ "simulator stream", simulator_stream },
 	{ "simulator mount dome GPS rotator", simulator_mount_dome_gps_rotator },

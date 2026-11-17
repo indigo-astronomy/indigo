@@ -79,6 +79,8 @@ static char fixture_dir[256];
 static atomic_int guider_aborts;
 static atomic_bool guider_stubborn;
 static indigo_property *site_property, *guider_process_property, *guider_abort_property;
+// the stand-in judges CCD_LOCAL_MODE.DIR like indigo_ccd_change_property() does, by indigo_uni_is_creatable()
+static atomic_bool imager_checks_folder;
 static indigo_property *imager_local_mode_property, *imager_set_fits_property, *imager_remove_fits_property;
 // the changes the Imager Agent stand-in received, one event per line, each line preceded by a newline
 static char imager_log[65536] = "";
@@ -540,7 +542,7 @@ static indigo_result imager_change(indigo_device *device, indigo_client *client,
 		indigo_property_copy_values(target, property, false);
 		target->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, target, NULL);
-		target->state = INDIGO_OK_STATE;
+		target->state = target == imager_local_mode_property && atomic_load(&imager_checks_folder) && !indigo_uni_is_creatable(indigo_get_text_item_value(indigo_get_item(target, CCD_LOCAL_MODE_DIR_ITEM_NAME))) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 		indigo_update_property(device, target, NULL);
 	}
 	return INDIGO_OK;
@@ -3152,6 +3154,30 @@ static void base_folder_replaces_the_imager_folder(void) {
 	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Slash DIR=/archive/obs/"));
 }
 
+// the folder of the task does not exist yet and the Sequencer.js steps that change CCD_LOCAL_MODE succeed; the first saved image creates it
+static void task_folder_that_does_not_exist_yet_runs(void) {
+	char base[] = "/tmp/indigo_scheduler_folder_XXXXXX";
+	char folder[512];
+	REQUIRE(mkdtemp(base) != NULL);
+	snprintf(folder, sizeof(folder), "%s/Rosette Nebula/", base);
+	atomic_store(&imager_checks_folder, true);
+	REQUIRE(set_data(true, false, true));
+	REQUIRE(set_data_base(base));
+	REQUIRE(upload("// @task Rosette Nebula\nvar sequence = new Sequence(scheduler_task.name);\nsequence.set_object_name('Rosette');\nsequence.set_file_template('rosette_XXX');\nsequence.wait(1);\nsequence.start();\n"));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	bool done = wait_task_state("Rosette Nebula", "DONE", 20);
+	char event[1100];
+	snprintf(event, sizeof(event), "LOCAL OBJECT=Rosette Nebula DIR=%s", folder);
+	bool folder_set = wait_imager_event(event, 0, 5) >= 0;
+	struct stat st;
+	bool created = stat(folder, &st) == 0;
+	atomic_store(&imager_checks_folder, false);
+	indigo_test_remove_tree(base);
+	ASSERT_TRUE(done);
+	ASSERT_TRUE(folder_set);
+	ASSERT_FALSE(created);
+}
+
 static void run_number_follows_the_repeat(void) {
 	REQUIRE(set_data(false, true, false));
 	REQUIRE(upload("// @task Again\n// @repeat 2 every 0\n" BODY_WAIT(1)));
@@ -3453,6 +3479,7 @@ static const indigo_test_case cases[] = {
 	{ "folder_per_task_uses_a_safe_name", folder_per_task_uses_a_safe_name },
 	{ "folder_key_names_the_folder_of_several_tasks", folder_key_names_the_folder_of_several_tasks },
 	{ "base_folder_replaces_the_imager_folder", base_folder_replaces_the_imager_folder },
+	{ "task_folder_that_does_not_exist_yet_runs", task_folder_that_does_not_exist_yet_runs },
 	{ "run_number_follows_the_repeat", run_number_follows_the_repeat },
 	{ "data_is_restored_after_a_failure", data_is_restored_after_a_failure },
 	{ "data_is_restored_after_an_abort", data_is_restored_after_an_abort },

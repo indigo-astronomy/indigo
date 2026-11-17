@@ -2670,6 +2670,62 @@ bool indigo_uni_is_writable(const char *path) {
 	return false;
 }
 
+static bool uni_path_exists(const char *path, bool *is_directory) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	struct stat st;
+	if (stat(path, &st) != 0) {
+		return false;
+	}
+	*is_directory = S_ISDIR(st.st_mode);
+	return true;
+#elif defined(INDIGO_WINDOWS)
+	DWORD attributes = GetFileAttributesA(path);
+	if (attributes == INVALID_FILE_ATTRIBUTES) {
+		return false;
+	}
+	*is_directory = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+	return true;
+#else
+#pragma message ("TODO: indigo_uni_is_creatable()")
+	return false;
+#endif
+}
+
+bool indigo_uni_is_creatable(const char *path) {
+	char temp[PATH_MAX];
+	snprintf(temp, sizeof(temp), "%s", path);
+	size_t root = 0;
+#if defined(INDIGO_WINDOWS)
+	if (temp[0] != '\0' && temp[1] == ':') {
+		root = 2;
+	}
+#endif
+	if (temp[root] == INDIGO_PATH_SEPATATOR || temp[root] == '/') {
+		root++;
+	}
+	size_t length = strlen(temp);
+	while (true) {
+		// the part of the path above the root is stripped of trailing separators
+		while (length > root && (temp[length - 1] == INDIGO_PATH_SEPATATOR || temp[length - 1] == '/')) {
+			temp[--length] = '\0';
+		}
+		if (length == 0) {
+			// a relative path with nothing left is relative to the current folder
+			return indigo_uni_is_writable(".");
+		}
+		bool is_directory = false;
+		if (uni_path_exists(temp, &is_directory)) {
+			return is_directory && indigo_uni_is_writable(temp);
+		}
+		if (length <= root) {
+			return false;
+		}
+		while (length > root && temp[length - 1] != INDIGO_PATH_SEPATATOR && temp[length - 1] != '/') {
+			temp[--length] = '\0';
+		}
+	}
+}
+
 const void *indigo_uni_map_file(const char *path, size_t *size) {
 	*size = 0;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)

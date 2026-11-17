@@ -395,6 +395,11 @@ INDIGO_EXTERN bool indigo_uni_is_readable(const char *path);
  */
 INDIGO_EXTERN bool indigo_uni_is_writable(const char *path);
 
+/** Check if the folder is writable or can be created later: it exists and is writable, or its nearest existing ancestor is
+ a writable folder. Nothing is created.
+ */
+INDIGO_EXTERN bool indigo_uni_is_creatable(const char *path);
+
 /** Map the whole file read only into memory; returns its address and size, NULL if it can't be mapped. The pages are
  read from the file when they are first touched and belong to the page cache of the system.
  */

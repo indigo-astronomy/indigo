@@ -26,6 +26,7 @@
 #include "simulator_test_common.h"
 #include "ccd_test_noise.h"
 #include <stdatomic.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 static const char *ccd_imager_connected_properties[] = {
@@ -556,7 +557,7 @@ bool sim_test_reschedule_timer(indigo_device *device, double delay, indigo_timer
 // Extra scenarios observe the production simulator, never its built-in image arrays.
 static atomic_int sim_frames, sim_bad_frames;
 static atomic_int sim_countdown_ticks;
-static const char *sim_properties[] = { "BAHTINOV_SETTINGS", "CCD_ABORT_EXPOSURE", "CCD_BIN", "CCD_COOLER", "CCD_EXPOSURE", "CCD_FRAME", "CCD_IMAGE_FORMAT", "CCD_STREAMING", "CCD_TEMPERATURE", "CCD_UPLOAD_MODE", "CONNECTION", "DSLR_APERTURE", "DSLR_ISO", "DSLR_PROGRAM", "DSLR_SHUTTER", "GUIDER_MODE", "SIMULATION_SETUP" };
+static const char *sim_properties[] = { "BAHTINOV_SETTINGS", "CCD_ABORT_EXPOSURE", "CCD_BIN", "CCD_COOLER", "CCD_EXPOSURE", "CCD_FRAME", "CCD_IMAGE_FORMAT", "CCD_LOCAL_MODE", "CCD_STREAMING", "CCD_TEMPERATURE", "CCD_UPLOAD_MODE", "CONNECTION", "DSLR_APERTURE", "DSLR_ISO", "DSLR_PROGRAM", "DSLR_SHUTTER", "GUIDER_MODE", "SIMULATION_SETUP" };
 static atomic_int sim_revisions[ARRAY_SIZE(sim_properties)];
 
 static int sim_property_index(const char *name) {
@@ -651,6 +652,71 @@ static void sim_end(const simulator_driver_case *driver) {
 	stop_connected_simulator(driver);
 	sim_fast_temperature = false;
 	simulator_test_client.update_property = simulator_client_update_property;
+}
+
+static bool sim_local_mode_dir(const char *dir, indigo_property_state state) {
+	int before = atomic_load(&sim_revisions[sim_property_index("CCD_LOCAL_MODE")]);
+	return indigo_change_text_property_1(&simulator_test_client, context.driver_case->device_name, "CCD_LOCAL_MODE", "DIR", dir) == INDIGO_OK && sim_wait_revision("CCD_LOCAL_MODE", state, before);
+}
+
+static bool sim_is_directory(const char *path) {
+	struct stat st;
+	return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+static bool sim_exists(const char *path) {
+	struct stat st;
+	return stat(path, &st) == 0;
+}
+
+// CCD_LOCAL_MODE.DIR accepts a folder that does not exist yet when it can be created: the check does not create it, the
+// first saved image does; a folder below a regular file or below a read only folder is rejected
+static void simulator_local_mode_accepts_a_folder_that_can_be_created(void) {
+	char base[] = "/tmp/indigo_local_mode_XXXXXX";
+	char path[PATH_MAX], nested[PATH_MAX], blocked[PATH_MAX], read_only[PATH_MAX];
+	bool created = mkdtemp(base) != NULL;
+	if (!created) {
+		perror("mkdtemp");
+		indigo_test_failures++;
+		return;
+	}
+	snprintf(path, sizeof(path), "%s/Rosette Nebula", base);
+	snprintf(nested, sizeof(nested), "%s/a/b/c/", base);
+	snprintf(blocked, sizeof(blocked), "%s/file", base);
+	snprintf(read_only, sizeof(read_only), "%s/read_only", base);
+	sim_begin(&ccd_imager_simulator);
+	// a folder below a writable one, no trailing separator
+	SIM_CHECK(sim_local_mode_dir(path, INDIGO_OK_STATE));
+	SIM_CHECK(!sim_exists(path));
+	// several levels that do not exist
+	SIM_CHECK(sim_local_mode_dir(nested, INDIGO_OK_STATE));
+	SIM_CHECK(!sim_exists(blocked) && !sim_exists(nested));
+	// the folder is created by the first saved image
+	SIM_CHECK(sim_switch("CCD_UPLOAD_MODE", "BOTH", INDIGO_OK_STATE));
+	SIM_CHECK(sim_expose());
+	SIM_CHECK(sim_is_directory(nested));
+	// below a regular file
+	FILE *file = fopen(blocked, "w");
+	SIM_CHECK(file != NULL);
+	fclose(file);
+	char below_file[2 * PATH_MAX];
+	snprintf(below_file, sizeof(below_file), "%s/sub/dir", blocked);
+	SIM_CHECK(sim_local_mode_dir(below_file, INDIGO_ALERT_STATE));
+	SIM_CHECK(!sim_exists(below_file));
+	// below a read only folder (root can write anywhere)
+	SIM_CHECK(mkdir(read_only, 0555) == 0);
+	if (geteuid() != 0) {
+		char below_read_only[2 * PATH_MAX];
+		snprintf(below_read_only, sizeof(below_read_only), "%s/sub/dir", read_only);
+		SIM_CHECK(sim_local_mode_dir(below_read_only, INDIGO_ALERT_STATE));
+		SIM_CHECK(!sim_exists(below_read_only));
+	}
+	// an existing writable folder is still accepted
+	SIM_CHECK(sim_local_mode_dir(base, INDIGO_OK_STATE));
+cleanup:
+	sim_end(&ccd_imager_simulator);
+	chmod(read_only, 0755);
+	indigo_test_remove_tree(base);
 }
 
 static void simulator_raw_geometry_and_bins(void) {
@@ -1667,6 +1733,7 @@ int main(int argc, char **argv) {
 		{ "simulator_countdown_progress_abort_and_restart", simulator_countdown_progress_abort_and_restart },
 		{ "simulator_fractional_exposure_and_finite_stream_timing", simulator_fractional_exposure_and_finite_stream_timing },
 		{ "simulator_guider_replacement_and_simultaneous_axes", simulator_guider_replacement_and_simultaneous_axes },
+		{ "simulator_local_mode_accepts_a_folder_that_can_be_created", simulator_local_mode_accepts_a_folder_that_can_be_created },
 		{ "simulator_raw_geometry_and_bins", simulator_raw_geometry_and_bins },
 		{ "simulator_hot_pixels_respect_subframe_edges", simulator_hot_pixels_respect_subframe_edges },
 		{ "simulator_imager_binning_averages_the_bin_block", simulator_imager_binning_averages_the_bin_block },

@@ -153,11 +153,9 @@ static bool indigo_test_set_private_home(const char *path) {
 		perror("setenv");
 		return false;
 	}
-	// indigo_ccd_attach() points CCD_LOCAL_MODE at $HOME/indigo_image_cache/ and the framework
-	// only checks that the folder is writable, it never creates it. An empty private home
-	// therefore makes every CCD driver publish CCD_LOCAL_MODE in ALERT, and a CONFIG LOAD that
-	// restores it never settles, which is what failed the ccd_svb config roundtrip. A real home
-	// has the folder, so a private one gets it too.
+	// indigo_ccd_attach() points CCD_LOCAL_MODE at $HOME/indigo_image_cache/. A missing folder below
+	// a writable home is accepted (the first saved image creates it), but a real home has the
+	// folder, so the private one gets it too and tests that save images behave as on a real host.
 	char image_cache[PATH_MAX];
 	snprintf(image_cache, sizeof(image_cache), "%s/indigo_image_cache", path);
 	if (mkdir(image_cache, 0755) != 0 && errno != EEXIST) {
