@@ -781,7 +781,8 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 ```
 
 - Each run shows its expected UTC start and end, the task, the run number of a repeated task and the priority. The night hooks appear at their expected times with `-` as the run and `hook night start` or `hook night end` as the priority.
-- The state is `RUNNING` (Busy light) for the running task and `PLANNED` (Idle light) for planned runs.
+- The state is `RUNNING` (Busy light) for the running task or hook and `PLANNED` (Idle light) for planned runs.
+- While a hook runs, whatever its kind (`hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`), it is the first item, for example `2026-11-20 19:58-20:03 | Evening | - | hook night start | RUNNING | -`. Its end is its start plus its duration, but not earlier than a minute from now, and the planned runs follow from that end. A running night hook replaces its planned item, and the item disappears when the hook ends. Only the night hooks are forecast; `STARTUP`, `SHUTDOWN`, `IDLE` and `RESUME` show up only while they run.
 - After the runs come the tasks that will not run tonight, with an Alert light, `-` as the time, the state `NOT TONIGHT` and the reason. Typical reasons are a constraint that never holds tonight (see [Reasons](#reasons)), `disabled`, `script error`, or `no time left tonight` for a task that could run but finds no room after the others. A day without night, with night hooks set, adds the item `- | - | - | - | NOT TONIGHT | no night at the night limit within a day, the night hooks do not run`.
 - During the day the plan shows the coming night. When the night of the night hooks ends after sunrise, the plan lasts until it ends. It is shown also while the scheduler is stopped, as the plan that `START` would follow.
 

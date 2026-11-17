@@ -70,6 +70,24 @@ int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const schedu
 	}
 	int stored = 0;
 	time_t t = now;
+	int next_hook = 0;
+	// a running hook comes first and the simulation continues from its end
+	while (next_hook < hook_count && hooks[next_hook].running && stored < max_runs) {
+		runs[stored].task = -1;
+		runs[stored].hook = next_hook;
+		runs[stored].run = 1;
+		runs[stored].start = hooks[next_hook].time;
+		runs[stored].end = hooks[next_hook].time + hooks[next_hook].duration;
+		if (runs[stored].end < now + 60) {
+			runs[stored].end = now + 60;
+		}
+		runs[stored].running = true;
+		if (runs[stored].end > t) {
+			t = runs[stored].end;
+		}
+		stored++;
+		next_hook++;
+	}
 	for (int i = 0; i < count && stored < max_runs; i++) {
 		if (tasks[i].running) {
 			const scheduler_header *header = tasks[i].header;
@@ -90,7 +108,6 @@ int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const schedu
 			}
 		}
 	}
-	int next_hook = 0;
 	while (t < end && stored < max_runs) {
 		// a hook never interrupts a run, it runs when the run ends
 		if (next_hook < hook_count && hooks[next_hook].time <= t) {

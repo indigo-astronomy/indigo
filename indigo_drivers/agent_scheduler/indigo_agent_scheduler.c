@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000011
+#define DRIVER_VERSION 0x03000012
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -2111,9 +2111,29 @@ static void process_library(indigo_device *device) {
 static scheduler_plan_task plan_tasks[MAX_TASKS];
 static int plan_slots[MAX_TASKS];
 static scheduler_plan_run plan_runs[MAX_PLAN_RUNS];
-static scheduler_plan_hook plan_hooks[2];
-static int plan_hook_slots[2];
-static const char *plan_hook_names[2];
+static scheduler_plan_hook plan_hooks[3];
+static int plan_hook_slots[3];
+static const char *plan_hook_names[3];
+
+// the plan column of a hook kind
+static const char *plan_hook_name(run_kind kind) {
+	switch (kind) {
+		case RUN_STARTUP_HOOK:
+			return "startup";
+		case RUN_SHUTDOWN_HOOK:
+			return "shutdown";
+		case RUN_IDLE_HOOK:
+			return "idle";
+		case RUN_NIGHT_START_HOOK:
+			return "night start";
+		case RUN_NIGHT_END_HOOK:
+			return "night end";
+		case RUN_RESUME_HOOK:
+			return "resume";
+		default:
+			return "";
+	}
+}
 
 static void plan_hook_label(indigo_device *device, scheduler_plan_run *run, char *label, size_t size) {
 	scheduler_task *task = PRIVATE_DATA->tasks + plan_hook_slots[run->hook];
@@ -2125,13 +2145,24 @@ static void plan_hook_label(indigo_device *device, scheduler_plan_run *run, char
 }
 
 // adds the expected run of a night hook when its item names a task
-static int add_plan_hook(indigo_device *device, int count, indigo_item *item, const char *name, time_t time) {
+static int add_plan_hook(indigo_device *device, int count, indigo_item *item, const char *name, time_t time, time_t now) {
 	int slot = hook_slot(device, item);
 	if (slot < 0) {
 		return count;
 	}
+	// a hook of the running hook's task that is due when it ends does not run again, as in start_night_hook()
+	if (PRIVATE_DATA->phase != RUN_IDLE && PRIVATE_DATA->kind != RUN_TASK && PRIVATE_DATA->current == slot) {
+		time_t expected_end = PRIVATE_DATA->run_start + task_duration(PRIVATE_DATA->tasks + slot, NULL);
+		if (expected_end < now + 60) {
+			expected_end = now + 60;
+		}
+		if (time <= expected_end) {
+			return count;
+		}
+	}
 	plan_hooks[count].time = time;
 	plan_hooks[count].duration = task_duration(PRIVATE_DATA->tasks + slot, NULL);
+	plan_hooks[count].running = false;
 	plan_hook_slots[count] = slot;
 	plan_hook_names[count] = name;
 	return count + 1;
@@ -2228,7 +2259,18 @@ static void update_plan(indigo_device *device, time_t now) {
 		end = night->end;
 	}
 	double setting_weight = SETTINGS_SETTING_WEIGHT_ITEM->number.value, altitude_weight = SETTINGS_ALTITUDE_WEIGHT_ITEM->number.value;
-	int runs = indigo_scheduler_plan(&PRIVATE_DATA->sky, plan_tasks, count, now, end, setting_weight, altitude_weight, plan_runs, MAX_PLAN_RUNS);
+	// a running hook starts the plan, the runs after it are simulated from its end
+	int hook_count = 0;
+	if (PRIVATE_DATA->phase != RUN_IDLE && PRIVATE_DATA->kind != RUN_TASK && PRIVATE_DATA->current >= 0) {
+		plan_hooks[0].time = PRIVATE_DATA->run_start;
+		plan_hooks[0].duration = task_duration(PRIVATE_DATA->tasks + PRIVATE_DATA->current, NULL);
+		plan_hooks[0].running = true;
+		plan_hook_slots[0] = PRIVATE_DATA->current;
+		plan_hook_names[0] = plan_hook_name(PRIVATE_DATA->kind);
+		hook_count = 1;
+	}
+	int running_hooks = hook_count;
+	int runs = indigo_scheduler_plan_with_hooks(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, setting_weight, altitude_weight, plan_runs, MAX_PLAN_RUNS);
 	PRIVATE_DATA->plan_first_run = 0;
 	for (int i = 0; i < runs; i++) {
 		if (!plan_runs[i].running) {
@@ -2237,13 +2279,12 @@ static void update_plan(indigo_device *device, time_t now) {
 		}
 	}
 	// the night hooks: the end of a night whose start hook ran, or both for a night that has work
-	int hook_count = 0;
 	if (night != NULL) {
 		scheduler_night_state *state = &PRIVATE_DATA->night_state;
 		bool night_started = PRIVATE_DATA->started && state->handled && state->started && night->start < state->night.end && state->night.start < night->end;
 		if (night_started) {
 			if (night->end_known) {
-				hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_END_ITEM, "night end", night->end);
+				hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_END_ITEM, "night end", night->end, now);
 			}
 		} else {
 			time_t from = night->start > now ? night->start : now;
@@ -2252,14 +2293,14 @@ static void update_plan(indigo_device *device, time_t now) {
 				work = !plan_runs[i].running && plan_runs[i].start >= from && plan_runs[i].start < night->end;
 			}
 			if (work) {
-				hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_START_ITEM, "night start", from);
+				hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_START_ITEM, "night start", from, now);
 				if (night->end_known) {
-					hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_END_ITEM, "night end", night->end);
+					hook_count = add_plan_hook(device, hook_count, HOOKS_NIGHT_END_ITEM, "night end", night->end, now);
 				}
 			}
 		}
 	}
-	if (hook_count > 0) {
+	if (hook_count > running_hooks) {
 		runs = indigo_scheduler_plan_with_hooks(&PRIVATE_DATA->sky, plan_tasks, count, plan_hooks, hook_count, now, end, setting_weight, altitude_weight, plan_runs, MAX_PLAN_RUNS);
 	}
 	bool planned[MAX_TASKS] = { false };

@@ -51,11 +51,12 @@ typedef struct {
 	time_t running_start, running_end;
 } scheduler_plan_task;
 
-/** A hook run expected at a time, for example at the start of the night.
+/** A hook run expected at a time, for example at the start of the night. A running hook (it has to precede the other hooks) started at time; it ends at time + duration, but not earlier than a minute from now.
  */
 typedef struct {
 	time_t time;
 	int duration;
+	bool running;
 } scheduler_plan_hook;
 
 /** One planned run: of a task, or of a hook when hook is not -1 (task is -1 then).
@@ -76,7 +77,7 @@ extern double indigo_scheduler_score(const scheduler_sky_grid *sky, const schedu
  */
 extern int indigo_scheduler_plan(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs);
 
-/** Same as indigo_scheduler_plan(), with hook runs sorted by time. A hook runs at its time or, when a run is in progress then, after it; it takes its duration. Hooks due at end are still planned.
+/** Same as indigo_scheduler_plan(), with hook runs sorted by time. A hook runs at its time or, when a run is in progress then, after it; it takes its duration. The runs after a running hook are simulated from its end. Hooks due at end are still planned.
  */
 extern int indigo_scheduler_plan_with_hooks(const scheduler_sky_grid *sky, const scheduler_plan_task *tasks, int count, const scheduler_plan_hook *hooks, int hook_count, time_t now, time_t end, double setting_weight, double altitude_weight, scheduler_plan_run *runs, int max_runs);
 

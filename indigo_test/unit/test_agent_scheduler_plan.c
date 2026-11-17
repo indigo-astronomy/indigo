@@ -401,6 +401,34 @@ static void test_hooks_reserve_time(void) {
 	ASSERT_EQ_INT((int)(dark + 30 * 60), (int)runs[0].start);
 }
 
+static void test_running_hook_first(void) {
+	indigo_scheduler_sky_build(&sky, T_NOVEMBER_NOON, LATITUDE, LONGITUDE, 140);
+	time_t dark = dark_from(T_NOVEMBER_NOON);
+	time_t end = indigo_scheduler_night_end(&sky, T_NOVEMBER_NOON);
+	add_task(0, "first", SCHEDULER_PRIORITY_NORMAL, 50, 60);
+	build_task(0);
+	// a running hook is the first run, the task follows from its end, a planned night end hook stays
+	scheduler_plan_hook hooks[] = { { dark - 300, 600, true }, { end, 900, false } };
+	int count = indigo_scheduler_plan_with_hooks(&sky, tasks, 1, hooks, 2, dark, end, 0, 0, runs, 512);
+	ASSERT_EQ_INT(3, count);
+	ASSERT_EQ_INT(0, runs[0].hook);
+	ASSERT_EQ_INT(-1, runs[0].task);
+	ASSERT_TRUE(runs[0].running);
+	ASSERT_EQ_INT((int)(dark - 300), (int)runs[0].start);
+	ASSERT_EQ_INT((int)(dark + 300), (int)runs[0].end);
+	ASSERT_EQ_INT(0, runs[1].task);
+	ASSERT_FALSE(runs[1].running);
+	ASSERT_EQ_INT((int)(dark + 300), (int)runs[1].start);
+	ASSERT_EQ_INT(1, runs[2].hook);
+	ASSERT_FALSE(runs[2].running);
+	// a hook that overruns its duration ends a minute from now
+	hooks[0].time = dark - 3600;
+	count = indigo_scheduler_plan_with_hooks(&sky, tasks, 1, hooks, 1, dark, end, 0, 0, runs, 512);
+	ASSERT_EQ_INT(2, count);
+	ASSERT_EQ_INT((int)(dark + 60), (int)runs[0].end);
+	ASSERT_EQ_INT((int)(dark + 60), (int)runs[1].start);
+}
+
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "score", test_score },
@@ -418,6 +446,7 @@ int main(void) {
 		{ "performance", test_performance },
 		{ "next_start_search_cost", test_next_start_search_cost },
 		{ "hooks_reserve_time", test_hooks_reserve_time },
+		{ "running_hook_first", test_running_hook_first },
 	};
 	return indigo_run_tests("test_agent_scheduler_plan", cases, sizeof(cases) / sizeof(cases[0]));
 }

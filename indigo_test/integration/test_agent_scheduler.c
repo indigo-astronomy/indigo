@@ -1542,6 +1542,153 @@ static void night_hooks_run_at_dusk_and_dawn(void) {
 	ASSERT_TRUE(strstr(label, "| Morning | run 1 | hook | SUCCEEDED | -") != NULL);
 }
 
+// the first plan item containing text, its start and end in minutes of the day and its state
+static bool find_plan_item(const char *text, int *start, int *end, indigo_property_state *state) {
+	char labels[32][INDIGO_VALUE_SIZE];
+	indigo_property_state states[32];
+	int count = plan_items(labels, states, 32);
+	for (int i = 0; i < count && i < 32; i++) {
+		if (strstr(labels[i], text) && plan_times(labels[i], start, end)) {
+			*state = states[i];
+			return true;
+		}
+	}
+	return false;
+}
+
+static int count_plan_items(const char *text) {
+	char labels[32][INDIGO_VALUE_SIZE];
+	indigo_property_state states[32];
+	int count = plan_items(labels, states, 32);
+	int found = 0;
+	for (int i = 0; i < count && i < 32; i++) {
+		if (strstr(labels[i], text)) {
+			found++;
+		}
+	}
+	return found;
+}
+
+static void running_startup_hook_is_in_the_plan(void) {
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(5)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Prepare", "HOOK | hook startup", 5));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 15));
+	// the running hook is the first and Busy item, not earlier than a minute from now
+	ASSERT_TRUE(wait_plan_first(" | Prepare | - | hook startup | RUNNING | ", INDIGO_BUSY_STATE, 5));
+	ASSERT_EQ_INT(1, count_plan_items("hook startup"));
+	int hook_start, hook_end, work_start, work_end;
+	indigo_property_state state;
+	ASSERT_TRUE(find_plan_item(" | Prepare | ", &hook_start, &hook_end, &state));
+	ASSERT_TRUE(minutes_between(hook_start, hook_end) >= 1);
+	// the following run is simulated from the end of the hook
+	ASSERT_TRUE(find_plan_item(" | Work | run 1/1 | ", &work_start, &work_end, &state));
+	ASSERT_EQ_INT(hook_end, work_start);
+	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 15));
+	ASSERT_TRUE(wait_plan_contains("hook startup", false, 5));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+}
+
+static void running_night_start_hook_replaces_its_planned_item(void) {
+	char start[32], future[32], text[256];
+	time_t dusk = minute_ahead(30);
+	utc(dusk, start);
+	utc(dusk + 2 * 86400, future);
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(6)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Work\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_night_hooks("Evening", "Morning", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | PLANNED | ", true, 15));
+	ASSERT_TRUE(wait_message("Starting hook 'Evening'", 1, 90));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | RUNNING | ", true, 5));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | PLANNED | ", false, 5));
+	ASSERT_EQ_INT(1, count_plan_items("hook night start"));
+	int hook_start, hook_end, work_start, work_end;
+	indigo_property_state state;
+	ASSERT_TRUE(find_plan_item(" | Evening | ", &hook_start, &hook_end, &state));
+	ASSERT_EQ_INT(INDIGO_BUSY_STATE, state);
+	ASSERT_TRUE(find_plan_item(" | Work | run 1/1 | ", &work_start, &work_end, &state));
+	ASSERT_EQ_INT(hook_end, work_start);
+	ASSERT_TRUE(wait_message("Hook 'Evening' completed", 1, 20));
+	ASSERT_TRUE(wait_plan_contains("hook night start", false, 5));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+}
+
+static void running_hook_keeps_the_planned_night_hook_of_a_shared_task(void) {
+	char start[32], text[256];
+	time_t dusk = minute_ahead(1800);
+	utc(dusk, start);
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(6)));
+	snprintf(text, sizeof(text), "// @task Work\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_night_hooks("Prepare", "", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 20));
+	// the startup hook runs and tonight's night start hook of the same task is still planned
+	ASSERT_TRUE(wait_plan_first(" | Prepare | - | hook startup | RUNNING | ", INDIGO_BUSY_STATE, 5));
+	ASSERT_TRUE(wait_plan_contains(" | Prepare | - | hook night start | PLANNED | ", true, 5));
+	ASSERT_EQ_INT(1, count_plan_items("hook startup"));
+	ASSERT_EQ_INT(1, count_plan_items("hook night start"));
+	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 20));
+	ASSERT_TRUE(wait_plan_contains("hook startup", false, 5));
+	ASSERT_TRUE(wait_plan_contains(" | Prepare | - | hook night start | PLANNED | ", true, 5));
+}
+
+static void running_night_end_hook_has_no_planned_duplicate(void) {
+	char start[32], future[32], text[256];
+	time_t dusk = time(NULL) - 3600;
+	utc(dusk, start);
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(6)));
+	snprintf(text, sizeof(text), "// @task Work\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	// a task of a later night keeps the scheduler running
+	utc(dusk + 2 * 86400, future);
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_night_hooks("Evening", "Morning", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 30));
+	// the night ends in a few seconds at a new longitude
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) + 5, true));
+	ASSERT_TRUE(wait_message("Starting hook 'Morning'", 1, 30));
+	ASSERT_TRUE(wait_plan_contains(" | Morning | - | hook night end | RUNNING | ", true, 5));
+	ASSERT_EQ_INT(1, count_plan_items("hook night end"));
+	ASSERT_TRUE(wait_message("Hook 'Morning' completed", 1, 20));
+	ASSERT_TRUE(wait_plan_contains("RUNNING", false, 5));
+}
+
+static void running_startup_hook_of_a_shared_task_is_listed_once_at_night(void) {
+	REQUIRE(upload("// @task Prepare\n// @duration 5\n" BODY_WAIT(8)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_night_hooks("Prepare", "", ""));
+	set_site(NIGHT_LATITUDE, night_longitude(time(NULL) - 3600, false));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Starting hook 'Prepare'", 1, 20));
+	// the night start hook of the same task does not run again, so the plan does not list it
+	ASSERT_TRUE(wait_plan_first(" | Prepare | - | hook startup | RUNNING | ", INDIGO_BUSY_STATE, 5));
+	ASSERT_EQ_INT(1, count_plan_items(" | Prepare | "));
+	int hook_start, hook_end, work_start, work_end;
+	indigo_property_state state;
+	ASSERT_TRUE(find_plan_item(" | Prepare | ", &hook_start, &hook_end, &state));
+	ASSERT_TRUE(find_plan_item(" | Work | run 1/1 | ", &work_start, &work_end, &state));
+	ASSERT_EQ_INT(hook_end, work_start);
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 30));
+	ASSERT_EQ_INT(1, count_messages("Starting hook 'Prepare'"));
+}
+
 static void night_without_work_skips_the_hooks(void) {
 	char future[32], text[256];
 	time_t dusk = time(NULL) + 15;
@@ -3429,6 +3576,11 @@ static const indigo_test_case cases[] = {
 	{ "urgent_insertion_fails_the_preempted_task", urgent_insertion_fails_the_preempted_task },
 	{ "commands_queued_at_shutdown_are_released", commands_queued_at_shutdown_are_released },
 	{ "night_hooks_run_at_dusk_and_dawn", night_hooks_run_at_dusk_and_dawn },
+	{ "running_startup_hook_is_in_the_plan", running_startup_hook_is_in_the_plan },
+	{ "running_night_start_hook_replaces_its_planned_item", running_night_start_hook_replaces_its_planned_item },
+	{ "running_hook_keeps_the_planned_night_hook_of_a_shared_task", running_hook_keeps_the_planned_night_hook_of_a_shared_task },
+	{ "running_night_end_hook_has_no_planned_duplicate", running_night_end_hook_has_no_planned_duplicate },
+	{ "running_startup_hook_of_a_shared_task_is_listed_once_at_night", running_startup_hook_of_a_shared_task_is_listed_once_at_night },
 	{ "night_without_work_skips_the_hooks", night_without_work_skips_the_hooks },
 	{ "night_without_work_and_without_hooks_ends_quietly", night_without_work_and_without_hooks_ends_quietly },
 	{ "hooks_named_during_a_night_without_work", hooks_named_during_a_night_without_work },
