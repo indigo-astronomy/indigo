@@ -1,0 +1,975 @@
+{
+  "schema_version": 1,
+  "ticket_id": "3002bd75-a576-4119-8756-c829f455b126",
+  "revision": 49,
+  "title": "indigo_agent_scheduler: show a running hook as the first Busy item of AGENT_SCHEDULER_PLAN and plan the following runs after it",
+  "description": "Owner report 2026-11-17: while the startup hook runs, the night plan shows nothing Busy; the same is expected for the other hooks.\n\nCause (source inspection, indigo_drivers/agent_scheduler/indigo_agent_scheduler.c): update_plan() skips every hook task (is_hook) and marks a run as running only for PRIVATE_DATA->kind == RUN_TASK. STARTUP, SHUTDOWN, IDLE and RESUME hooks never appear in AGENT_SCHEDULER_PLAN. NIGHT_START and NIGHT_END appear only as planned hook items from add_plan_hook(); indigo_scheduler_plan_with_hooks() (indigo_agent_scheduler_plan.c) always stores them with running = false, so a running night start hook still shows PLANNED (Idle). The simulation also starts the tasks at now, ignoring the time the running hook occupies. AGENT_SCHEDULER_CURRENT does show the running hook.\n\nProposed fix: when a hook runs (phase != RUN_IDLE, kind != RUN_TASK), the plan starts with an item for it: \"<when> | <task name> | - | hook <kind> | RUNNING | -\", Busy light, kinds startup, shutdown, idle, resume, night start, night end; its time range is run start .. run start + duration, but not earlier than now + 1 minute (the rule used for a running task), and the simulation of the following runs starts at that end. A running night hook replaces its planned item (no duplicate PLANNED item for the same hook). Recompute the plan when a hook starts and ends (check that this already happens).\n\nFirst reproduce with a test showing the missing Busy item. Tests: integration tests in indigo_test/integration/test_agent_scheduler.c for a running startup hook and a running night start hook (Busy item with the hook label, no duplicate, item gone after the hook ends), and a check that a planned task after a running hook starts no earlier than the hook's expected end; unit test in indigo_test/unit/test_agent_scheduler_plan.c if the plan library changes. Docs: indigo_drivers/agent_scheduler/doc/SCHEDULER.md (Night plan preview: Items, Computation; the Night hooks note that RESUME is not shown) and indigo_docs/INDIGO_SCHEDULER_GUIDE.md (night plan section). Bump DRIVER_VERSION.",
+  "type": "bug",
+  "discovered_at": "2026-11-17T12:00:00Z",
+  "created_at": "2026-11-17T01:11:00.754123Z",
+  "status": "closed",
+  "branch": "ticket/3002bd75-a576-4119-8756-c829f455b126",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "0d3f8a69-e12e-41db-a4f9-15a1f5b4eab8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-17T01:13:33.230896Z",
+          "last_activity_at": "2026-11-17T01:26:54.821766Z",
+          "ended_at": "2026-11-17T01:26:54.821766Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 801590.87,
+          "tokens": null
+        },
+        {
+          "attempt_id": "41310ebe-e6fd-4914-88d0-53486c69dcd2",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-17T01:35:44.634584Z",
+          "last_activity_at": "2026-11-17T01:43:38.592020Z",
+          "ended_at": "2026-11-17T01:43:38.592020Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 473957.436,
+          "tokens": null
+        },
+        {
+          "attempt_id": "b4bd6f9e-3da3-40c9-8003-f17e22a1228b",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-17T01:49:08.892523Z",
+          "last_activity_at": "2026-11-17T01:57:12.474988Z",
+          "ended_at": "2026-11-17T01:57:12.474988Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 483582.465,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-17T01:13:33.230896Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/3002bd75-a576-4119-8756-c829f455b126"
+        },
+        {
+          "at": "2026-11-17T01:26:54.821766Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-17T01:35:44.634584Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-17T01:43:38.592020Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-17T01:49:08.892523Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-17T01:57:12.474988Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1759130.771,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    },
+    {
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "b0eab082-0f11-4e23-af8b-9adabc2995b8",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-17T01:26:54.821831Z",
+          "last_activity_at": "2026-11-17T01:35:44.634501Z",
+          "ended_at": "2026-11-17T01:35:44.634501Z",
+          "outcome": {
+            "summary": "Defect: add_plan_hook() (indigo_agent_scheduler.c:2150-2151) drops a planned night hook item whenever ANY running hook (startup, shutdown, idle, resume, night start/end) runs the same task slot, not only when that night hook itself runs. Supported configurations share tasks between hooks (STARTUP and NIGHT_START naming one task, see shared_startup_and_night_start_hook_runs_once; IDLE or SHUTDOWN and NIGHT_END naming one park/close task). Example: START during the day with STARTUP=NIGHT_START=Prepare: while Prepare runs as the startup hook, the 'hook night start' item for tonight's dusk disappears from the plan although NIGHT_START will run at dusk (the chain skip at :1850 applies only to back-to-back hooks); likewise a running IDLE hook hides tonight's NIGHT_END item. This contradicts the ticket ('a running night hook replaces its planned item') and the docs. Moreover the slot check is not what removes the duplicate for a running night start hook: indigo_scheduler_night_decide() sets state->started before the hook starts (indigo_agent_scheduler_night.c:211-213), so night_started (:2275) is already true and only the night end item is added; the integration test passes for that reason. Fix: pass the run_kind to add_plan_hook() and skip only when PRIVATE_DATA->kind equals that kind (RUN_NIGHT_START_HOOK / RUN_NIGHT_END_HOOK), or drop the check if shown unnecessary. Everything else verified: plan_hooks[3] bound is sufficient (1 running + at most night start + night end; night_started branch adds only one); indigo_scheduler_plan() is with_hooks(NULL,0) so the no-hook path is unchanged; RUN_TASK path unchanged; stopped scheduler (phase RUN_IDLE) unchanged; now+60 clamp and following runs from the hook end correct; plan recomputed at hook start (start_task) and end (finish_hook). Unit test running_hook_first effective. Full test_agent_scheduler run in the worktree: 108 run, 108 passed (both new cases pass). Docs SCHEDULER.md/INDIGO_SCHEDULER_GUIDE.md accurate for the inten",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 529812.67,
+          "tokens": null
+        },
+        {
+          "attempt_id": "186e0d9d-58a2-41f4-810b-26beeb98b870",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-17T01:43:38.592040Z",
+          "last_activity_at": "2026-11-17T01:49:08.892440Z",
+          "ended_at": "2026-11-17T01:49:08.892440Z",
+          "outcome": {
+            "summary": "Round 2. Defect: removing the same-slot skip in add_plan_hook() (indigo_agent_scheduler.c:2147-2159, called from update_plan ~2281) makes the plan show a phantom run when STARTUP and NIGHT_START name one task and START comes during the night (the documented 'STARTUP and NIGHT_START naming one task that runs once', test shared_startup_and_night_start_hook_runs_once). START resets night_state (2641), so while the startup hook runs night_started is false and update_plan adds a planned night start of the same task at from=now; plan_with_hooks puts it right after the running startup item and delays every run by another full duration. In reality start_night_hook() (1850) sees slot == chain_slot and skips it, Work starts right after the startup hook. Reproduced in a scratch copy (Prepare @duration 300, night 1 h old): plan = 'Prepare | hook startup | RUNNING', 'Prepare | hook night start | PLANNED' 06:48-11:48, 'Work' 11:48; Prepare started once and Work ran immediately. On master the same case showed one Prepare item and Work at about the right time, so this is a regression of the forecast and a duplicate of the same run. Correction: skip a planned night hook only when it shares the running hook's slot AND would be due by the running hook's expected end (planned time <= max(run_start + duration, now + 60)), mirroring the chain rule; the 30-minute-ahead shared-task test keeps passing, and add an integration case for the night-time START (plan has one Prepare item, Work follows the startup hook). Verified otherwise: night start running -> state->started set by night_decide so only night end planned; night end running -> started/handled cleared so only next night items (not duplicates); a night start overrunning the night end plans next night's items only; RESUME not planned; the shared-task test would have failed with the round-1 slot check (planned night start skipped during the startup run). Arrays [3] suffice (1 running + at most 2 night hooks); labels, now+60 clamp and ",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 330300.4,
+          "tokens": null
+        },
+        {
+          "attempt_id": "1f184bb1-a6da-460c-9157-d0acdada9970",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-17T01:57:12.475015Z",
+          "last_activity_at": "2026-11-17T02:06:42.384405Z",
+          "ended_at": "2026-11-17T02:06:42.384405Z",
+          "outcome": {
+            "summary": "Round 3 independent review (claude-opus-5-5): pass. add_plan_hook() skip (indigo_agent_scheduler.c ~2153-2162) matches the runtime chain rule: finish_hook() sets chain_slot regardless of result (~1306), start_night_hook() skips a same-slot night hook unconditionally (~1850, chain_ok only affects standby), and the chain survives only to the next decision, i.e. a night hook due by the hook's end; the plan's expected end equals the running item's end (max(start+duration, now+60)), so failed/overrunning hooks and RESUME/IDLE/NIGHT_END sharing tasks with night hooks are consistent; planned hooks due later stay listed. plan_hooks[3] covers running + night start + night end; without a running hook update_plan behaves as before (indigo_scheduler_plan == with_hooks(NULL,0)). Docs (SCHEDULER.md Night plan note, Computation, Items, Updates, test list; INDIGO_SCHEDULER_GUIDE.md) accurate; DRIVER_VERSION 0x03000011->0x03000012; diff --check clean. Ran in worktree: unit test_agent_scheduler_plan all passed; integration running_* filter twice (5 new cases pass); full test_agent_scheduler 111 run, 111 passed. Minor, non-blocking: running_hook_keeps_the_planned_night_hook_of_a_shared_task depends on Prepare's estimate (< 30 min) being in place when the plan is read; if the estimate were still pending, the 60 min default would hide the night start item.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 569909.39,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-17T01:26:54.821831Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T01:35:44.634501Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Defect: add_plan_hook() (indigo_agent_scheduler.c:2150-2151) drops a planned night hook item whenever ANY running hook (startup, shutdown, idle, resume, night start/end) runs the same task slot, not only when that night hook itself runs. Supported configurations share tasks between hooks (STARTUP and NIGHT_START naming one task, see shared_startup_and_night_start_hook_runs_once; IDLE or SHUTDOWN and NIGHT_END naming one park/close task). Example: START during the day with STARTUP=NIGHT_START=Prepare: while Prepare runs as the startup hook, the 'hook night start' item for tonight's dusk disappears from the plan although NIGHT_START will run at dusk (the chain skip at :1850 applies only to back-to-back hooks); likewise a running IDLE hook hides tonight's NIGHT_END item. This contradicts the ticket ('a running night hook replaces its planned item') and the docs. Moreover the slot check is not what removes the duplicate for a running night start hook: indigo_scheduler_night_decide() sets state->started before the hook starts (indigo_agent_scheduler_night.c:211-213), so night_started (:2275) is already true and only the night end item is added; the integration test passes for that reason. Fix: pass the run_kind to add_plan_hook() and skip only when PRIVATE_DATA->kind equals that kind (RUN_NIGHT_START_HOOK / RUN_NIGHT_END_HOOK), or drop the check if shown unnecessary. Everything else verified: plan_hooks[3] bound is sufficient (1 running + at most night start + night end; night_started branch adds only one); indigo_scheduler_plan() is with_hooks(NULL,0) so the no-hook path is unchanged; RUN_TASK path unchanged; stopped scheduler (phase RUN_IDLE) unchanged; now+60 clamp and following runs from the hook end correct; plan recomputed at hook start (start_task) and end (finish_hook). Unit test running_hook_first effective. Full test_agent_scheduler run in the worktree: 108 run, 108 passed (both new cases pass). Docs SCHEDULER.md/INDIGO_SCHEDULER_GUIDE.md accurate for the inten"
+        },
+        {
+          "at": "2026-11-17T01:43:38.592040Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T01:49:08.892440Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Round 2. Defect: removing the same-slot skip in add_plan_hook() (indigo_agent_scheduler.c:2147-2159, called from update_plan ~2281) makes the plan show a phantom run when STARTUP and NIGHT_START name one task and START comes during the night (the documented 'STARTUP and NIGHT_START naming one task that runs once', test shared_startup_and_night_start_hook_runs_once). START resets night_state (2641), so while the startup hook runs night_started is false and update_plan adds a planned night start of the same task at from=now; plan_with_hooks puts it right after the running startup item and delays every run by another full duration. In reality start_night_hook() (1850) sees slot == chain_slot and skips it, Work starts right after the startup hook. Reproduced in a scratch copy (Prepare @duration 300, night 1 h old): plan = 'Prepare | hook startup | RUNNING', 'Prepare | hook night start | PLANNED' 06:48-11:48, 'Work' 11:48; Prepare started once and Work ran immediately. On master the same case showed one Prepare item and Work at about the right time, so this is a regression of the forecast and a duplicate of the same run. Correction: skip a planned night hook only when it shares the running hook's slot AND would be due by the running hook's expected end (planned time <= max(run_start + duration, now + 60)), mirroring the chain rule; the 30-minute-ahead shared-task test keeps passing, and add an integration case for the night-time START (plan has one Prepare item, Work follows the startup hook). Verified otherwise: night start running -> state->started set by night_decide so only night end planned; night end running -> started/handled cleared so only next night items (not duplicates); a night start overrunning the night end plans next night's items only; RESUME not planned; the shared-task test would have failed with the round-1 slot check (planned night start skipped during the startup run). Arrays [3] suffice (1 running + at most 2 night hooks); labels, now+60 clamp and "
+        },
+        {
+          "at": "2026-11-17T01:57:12.475015Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T02:06:42.384405Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 3 independent review (claude-opus-5-5): pass. add_plan_hook() skip (indigo_agent_scheduler.c ~2153-2162) matches the runtime chain rule: finish_hook() sets chain_slot regardless of result (~1306), start_night_hook() skips a same-slot night hook unconditionally (~1850, chain_ok only affects standby), and the chain survives only to the next decision, i.e. a night hook due by the hook's end; the plan's expected end equals the running item's end (max(start+duration, now+60)), so failed/overrunning hooks and RESUME/IDLE/NIGHT_END sharing tasks with night hooks are consistent; planned hooks due later stay listed. plan_hooks[3] covers running + night start + night end; without a running hook update_plan behaves as before (indigo_scheduler_plan == with_hooks(NULL,0)). Docs (SCHEDULER.md Night plan note, Computation, Items, Updates, test list; INDIGO_SCHEDULER_GUIDE.md) accurate; DRIVER_VERSION 0x03000011->0x03000012; diff --check clean. Ran in worktree: unit test_agent_scheduler_plan all passed; integration running_* filter twice (5 new cases pass); full test_agent_scheduler 111 run, 111 passed. Minor, non-blocking: running_hook_keeps_the_planned_night_hook_of_a_shared_task depends on Prepare's estimate (< 30 min) being in place when the plan is read; if the estimate were still pending, the 60 min default would hide the night start item."
+        }
+      ],
+      "result": {
+        "summary": "Round 3 independent review (claude-opus-5-5): pass. add_plan_hook() skip (indigo_agent_scheduler.c ~2153-2162) matches the runtime chain rule: finish_hook() sets chain_slot regardless of result (~1306), start_night_hook() skips a same-slot night hook unconditionally (~1850, chain_ok only affects standby), and the chain survives only to the next decision, i.e. a night hook due by the hook's end; the plan's expected end equals the running item's end (max(start+duration, now+60)), so failed/overrunning hooks and RESUME/IDLE/NIGHT_END sharing tasks with night hooks are consistent; planned hooks due later stay listed. plan_hooks[3] covers running + night start + night end; without a running hook update_plan behaves as before (indigo_scheduler_plan == with_hooks(NULL,0)). Docs (SCHEDULER.md Night plan note, Computation, Items, Updates, test list; INDIGO_SCHEDULER_GUIDE.md) accurate; DRIVER_VERSION 0x03000011->0x03000012; diff --check clean. Ran in worktree: unit test_agent_scheduler_plan all passed; integration running_* filter twice (5 new cases pass); full test_agent_scheduler 111 run, 111 passed. Minor, non-blocking: running_hook_keeps_the_planned_night_hook_of_a_shared_task depends on Prepare's estimate (< 30 min) being in place when the plan is read; if the estimate were still pending, the 60 min default would hide the night start item.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 1430022.46,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "8af16f6e-0358-473d-a886-15a8c7a5d3e4",
+      "event": "ticket/created",
+      "at": "2026-11-17T01:11:00.754832Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "8ca003d8-c739-458c-af6c-c4184c7da045",
+      "event": "ticket/confirmed",
+      "at": "2026-11-17T01:13:24.678663Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "5b6d4270-c923-45ac-acc5-f04b1b548405",
+      "event": "task/progress",
+      "at": "2026-11-17T01:13:33.231021Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Implementation started on branch ticket/3002bd75-a576-4119-8756-c829f455b126"
+    },
+    {
+      "event_id": "78c1a6f8-5d58-4da0-bbcb-d852e40eed21",
+      "event": "ticket/started",
+      "at": "2026-11-17T01:13:33.231612Z",
+      "actor": "human/owner",
+      "branch": "ticket/3002bd75-a576-4119-8756-c829f455b126",
+      "base": "master"
+    },
+    {
+      "event_id": "c7619ad8-7187-4b9c-b494-cd843d0c5379",
+      "event": "task/progress",
+      "at": "2026-11-17T01:13:52.841315Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Implementer started: reading scheduler plan code",
+      "attempt_id": "0d3f8a69-e12e-41db-a4f9-15a1f5b4eab8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "21f58f5d-7741-45b4-9b00-2074b5ef43a7",
+      "event": "task/progress",
+      "at": "2026-11-17T01:15:07.272522Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Building library and scheduler/scripting agents to reproduce with new tests"
+    },
+    {
+      "event_id": "39afaf23-e966-49d6-aa12-ac08da1f3cdf",
+      "event": "ticket/note",
+      "at": "2026-11-17T01:19:11.466017Z",
+      "actor": "human/owner",
+      "text": "Reproduction before the fix (new integration tests running_startup_hook_is_in_the_plan, running_night_start_hook_replaces_its_planned_item): while hook Prepare runs, AGENT_SCHEDULER_PLAN holds only '... | Work | run 1/1 | normal 50 | PLANNED' (no Busy hook item, Work starts at now); while hook Evening (night start) runs, the plan holds Work PLANNED, Morning night end PLANNED, Later NOT TONIGHT and no night start item at all. Both tests fail on the wait for the RUNNING hook item.",
+      "tokens": null
+    },
+    {
+      "event_id": "239ec36c-7b12-4c92-9f3f-9cbab6c0687a",
+      "event": "task/progress",
+      "at": "2026-11-17T01:19:54.698551Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Rebuilding and running new unit and integration tests"
+    },
+    {
+      "event_id": "a259ff8a-4dc1-4aa1-91ca-8e4c22efb7ab",
+      "event": "task/progress",
+      "at": "2026-11-17T01:21:38.823930Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Running plain flow check"
+    },
+    {
+      "event_id": "5a6286f8-f894-4b9b-843c-54eb7720eb59",
+      "event": "task/progress",
+      "at": "2026-11-17T01:21:39.041477Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "52d70822-2171-429d-b446-8a6d621469d2",
+      "event": "task/progress",
+      "at": "2026-11-17T01:21:39.065359Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e678007f-2abd-4e3f-bba7-f65f9d7497d3",
+      "event": "task/progress",
+      "at": "2026-11-17T01:21:39.070945Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a6740ed6-d328-4414-9dbd-40179f1fc08a",
+      "event": "task/progress",
+      "at": "2026-11-17T01:23:23.898649Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3a592aad-ea16-464b-a149-527800d1cd7a",
+      "event": "check/passed",
+      "at": "2026-11-17T01:23:23.904066Z",
+      "actor": "human/owner",
+      "commit": "15f3bea2a4232a59cc463b185c2cc20c24d9afa4",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "991a7706-e1a6-4d12-b486-b5fa2546b076",
+      "event": "task/progress",
+      "at": "2026-11-17T01:23:28.974888Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Running the full scheduler integration binary"
+    },
+    {
+      "event_id": "2cbbdeb7-b8b2-4479-aa9d-f62d1e7c25f9",
+      "event": "ticket/note",
+      "at": "2026-11-17T01:26:36.764510Z",
+      "actor": "human/owner",
+      "text": "After the fix: library scheduler_plan_hook gained a running flag (running hooks first, end = max(start + duration, now + 1 min), following runs simulated from it); update_plan() passes the running hook and skips the planned night item of the running hook. New unit test running_hook_first and integration tests running_startup_hook_is_in_the_plan, running_night_start_hook_replaces_its_planned_item pass; plain flow check (whitespace, unit) passed; full test_agent_scheduler binary run, see report. DRIVER_VERSION 0x03000011 -> 0x03000012.",
+      "tokens": null
+    },
+    {
+      "event_id": "35eb7319-973c-4afe-9b7a-76ee5ca8091a",
+      "event": "task/progress",
+      "at": "2026-11-17T01:26:54.821921Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Review started"
+    },
+    {
+      "event_id": "3b80f4b8-5d76-4e54-ad6a-f6747ac8bb5d",
+      "event": "review/started",
+      "at": "2026-11-17T01:26:54.822695Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "2aee0def-cc1f-46a8-8a0b-f561c0508c8f",
+      "event": "task/progress",
+      "at": "2026-11-17T01:27:11.408400Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Reviewing running-hook plan diff",
+      "attempt_id": "b0eab082-0f11-4e23-af8b-9adabc2995b8",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "9b0f8b3b-fc51-4670-81a9-0a48b612e508",
+      "event": "task/progress",
+      "at": "2026-11-17T01:28:20.311618Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Running scheduler integration tests: running_*hook* and night hook cases"
+    },
+    {
+      "event_id": "a4880ba4-0fec-4b84-903e-d503e9bc1721",
+      "event": "task/progress",
+      "at": "2026-11-17T01:35:44.634575Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "15746972-1fb7-4909-8d8a-d9277c3950c6",
+      "event": "task/progress",
+      "at": "2026-11-17T01:35:44.634611Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "ea208d81-e502-42b0-b7da-7b38976fb8a5",
+      "event": "review/changes_requested",
+      "at": "2026-11-17T01:35:44.635230Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "15f3bea2a4232a59cc463b185c2cc20c24d9afa4"
+    },
+    {
+      "event_id": "aaedee94-f224-481d-a4e9-e144510e28fe",
+      "event": "task/progress",
+      "at": "2026-11-17T01:36:29.086958Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Review fix: dropped slot check, testing shared-task and night end cases"
+    },
+    {
+      "event_id": "4779a7f9-6b87-447e-bfcc-ca0df0dbf6da",
+      "event": "task/progress",
+      "at": "2026-11-17T01:38:27.944062Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Running plain flow check after review fix"
+    },
+    {
+      "event_id": "0499a201-51e9-4525-bcbb-6d2081711458",
+      "event": "task/progress",
+      "at": "2026-11-17T01:38:28.167128Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "b602077c-84db-4cea-b250-7b85a61d4204",
+      "event": "task/progress",
+      "at": "2026-11-17T01:38:28.189172Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "0a6389dc-2783-43e5-9148-e5e1641c0a38",
+      "event": "task/progress",
+      "at": "2026-11-17T01:38:28.195023Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "6fa9c7fe-ed9f-4e84-b2ed-567806cccbd3",
+      "event": "task/progress",
+      "at": "2026-11-17T01:39:52.517937Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "3d8caa1e-8962-4aa4-819d-39ac89831308",
+      "event": "check/passed",
+      "at": "2026-11-17T01:39:52.524205Z",
+      "actor": "human/owner",
+      "commit": "451c94e357cb71f9005c6261b94de73685d0d548",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "8efa0d85-4d3b-4ced-8c6d-94b6df5be450",
+      "event": "task/progress",
+      "at": "2026-11-17T01:39:56.034621Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Running the full scheduler integration binary after review fix"
+    },
+    {
+      "event_id": "db6a6871-a381-499b-a239-a34760d820f1",
+      "event": "ticket/note",
+      "at": "2026-11-17T01:43:28.224914Z",
+      "actor": "human/owner",
+      "text": "Review fix: removed the same-slot skip in add_plan_hook(). A running night start hook is not duplicated because night_decide() sets state->started before it runs (only the night end item is added); a running night end hook is not duplicated because night_decide() clears the started flag before it runs, so the plan holds only the next night's items. New tests running_hook_keeps_the_planned_night_hook_of_a_shared_task and running_night_end_hook_has_no_planned_duplicate pass; plain flow check passed; full test_agent_scheduler: 110 run, 110 passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "cc077ce0-48b0-4cf5-91e7-ad1b1a8f9fa0",
+      "event": "task/progress",
+      "at": "2026-11-17T01:43:38.592114Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Review started"
+    },
+    {
+      "event_id": "88c769c2-a016-413e-b6b6-a9d3979e9602",
+      "event": "review/started",
+      "at": "2026-11-17T01:43:38.592764Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "e57ee286-30fc-4739-96fe-bf5834e55d5d",
+      "event": "task/progress",
+      "at": "2026-11-17T01:43:55.101112Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Review round 2: reading diff and night logic",
+      "attempt_id": "186e0d9d-58a2-41f4-810b-26beeb98b870",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "3c1ab22f-de30-4df9-a156-f70976e05bbd",
+      "event": "task/progress",
+      "at": "2026-11-17T01:44:59.893644Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Building and running the new integration and unit tests"
+    },
+    {
+      "event_id": "3cf08818-526d-483e-aeb4-3b6845b65de7",
+      "event": "task/progress",
+      "at": "2026-11-17T01:49:08.892514Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "9fdd0936-e87e-43be-ae5b-4400a70226f8",
+      "event": "task/progress",
+      "at": "2026-11-17T01:49:08.892551Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "fa3f92e1-08cb-43c3-a290-8046562b3734",
+      "event": "review/changes_requested",
+      "at": "2026-11-17T01:49:08.893245Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "451c94e357cb71f9005c6261b94de73685d0d548"
+    },
+    {
+      "event_id": "673893fb-0606-493a-a6f5-f99e9b9d5eda",
+      "event": "question/asked",
+      "at": "2026-11-17T01:49:31.176226Z",
+      "actor": "human/owner",
+      "text": "Second review asked for changes: with STARTUP = NIGHT_START = same task and START during the night, the plan lists the task twice (running startup + planned night start) and delays later runs, although the chain rule runs it once. Proposed: skip a planned night hook only when it uses the running hook's task and is due by the running hook's expected end (matches the chain rule), add an integration test for START at night, list the new tests in SCHEDULER.md, then a third review. Continue this way?"
+    },
+    {
+      "event_id": "2db81e40-2b59-423d-8c98-b3417766acf5",
+      "event": "question/answered",
+      "at": "2026-11-17T01:51:14.360637Z",
+      "actor": "human/owner",
+      "text": "Owner 2026-11-17: fix and review again. Skip a planned night hook only when it uses the running hook's task and is due by the running hook's expected end (max(run start + duration, now + 60)), matching the chain rule; add an integration test for START at night with STARTUP = NIGHT_START (one item, Work follows the startup hook); list the new tests in SCHEDULER.md; then a third review."
+    },
+    {
+      "event_id": "1fe46ce0-07b0-4c48-8d8e-bd76cdeacedf",
+      "event": "task/progress",
+      "at": "2026-11-17T01:51:28.690330Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Round 2: reproducing the shared-task duplicate at night"
+    },
+    {
+      "event_id": "fdfcb853-95f1-4a6a-b353-240ce97207f8",
+      "event": "task/progress",
+      "at": "2026-11-17T01:52:19.818986Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Round 2: plain flow check then full integration binary"
+    },
+    {
+      "event_id": "a2d30663-5725-45fa-8905-ee60910649d1",
+      "event": "task/progress",
+      "at": "2026-11-17T01:52:20.044235Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "e85b9f3c-2a7d-4317-8195-38cc2918aa82",
+      "event": "task/progress",
+      "at": "2026-11-17T01:52:20.066701Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4fbcf11f-68d0-41cb-bf37-9498fe7efc14",
+      "event": "task/progress",
+      "at": "2026-11-17T01:52:20.072666Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "a7061df9-25a0-4e0b-9f93-a7b754fe338e",
+      "event": "task/progress",
+      "at": "2026-11-17T01:53:44.594685Z",
+      "actor": "human/owner",
+      "task_id": "52c4d1a6-6db8-4f6c-a68d-242abea26346",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "40e454d3-fe03-4ad1-8ac0-554ba415fe85",
+      "event": "check/passed",
+      "at": "2026-11-17T01:53:44.601339Z",
+      "actor": "human/owner",
+      "commit": "eadaf13ff398e980810b247105fce00541e16ac4",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "4f044640-f97c-45f9-bd2e-e720d38af8f0",
+      "event": "ticket/note",
+      "at": "2026-11-17T01:57:03.299409Z",
+      "actor": "human/owner",
+      "text": "Round 2: reproduced with new test running_startup_hook_of_a_shared_task_is_listed_once_at_night (START at night, STARTUP = NIGHT_START = Prepare) with the new condition disabled: two Prepare items (RUNNING startup plus PLANNED night start), test failed 'expected 1, got 2'. Fix: add_plan_hook() skips a night hook only when it uses the running hook's slot and its time <= max(run_start + duration, now + 60). With it the test, running_hook_keeps_the_planned_night_hook_of_a_shared_task and shared_startup_and_night_start_hook_runs_once pass; plain flow check passed; full test_agent_scheduler 111 run, 111 passed. SCHEDULER.md test list and Night plan hook note updated.",
+      "tokens": null
+    },
+    {
+      "event_id": "3ac6005c-1447-48bc-ae00-12ac6f850084",
+      "event": "task/progress",
+      "at": "2026-11-17T01:57:12.475092Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Review started"
+    },
+    {
+      "event_id": "c78f5849-d973-417b-b373-cffcb425b1cb",
+      "event": "review/started",
+      "at": "2026-11-17T01:57:12.475842Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "f1870d5d-d0e9-440b-98df-bf43cfe0d9d2",
+      "event": "task/progress",
+      "at": "2026-11-17T01:57:27.352163Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Reviewer (round 3) launched",
+      "attempt_id": "1f184bb1-a6da-460c-9157-d0acdada9970",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1781dcef-6245-4290-8214-2ac8060af6df",
+      "event": "task/progress",
+      "at": "2026-11-17T01:58:46.221659Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Building worktree and running scheduler unit and integration tests"
+    },
+    {
+      "event_id": "e8fc24e9-fd37-4811-9944-74d2c78e04ff",
+      "event": "task/progress",
+      "at": "2026-11-17T02:06:42.384480Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "0d442e64-a859-477a-885d-570ebf5f5dd4",
+      "event": "review/passed",
+      "at": "2026-11-17T02:06:42.385351Z",
+      "actor": "human/owner",
+      "task_id": "5cc977ad-8ff9-4fa8-8d87-1fa42dda13c5",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "eadaf13ff398e980810b247105fce00541e16ac4"
+    },
+    {
+      "event_id": "75458bc8-655d-4534-97bd-b241727fca9d",
+      "event": "ticket/title_changed",
+      "at": "2026-11-17T02:09:05.468103Z",
+      "actor": "human/owner",
+      "previous_title": "indigo_agent_scheduler: a running hook is not shown as running in AGENT_SCHEDULER_PLAN",
+      "title": "indigo_agent_scheduler: show a running hook as the first Busy item of AGENT_SCHEDULER_PLAN and plan the following runs after it"
+    },
+    {
+      "event_id": "2b542ed7-edbd-49fa-bdc5-34056d53487a",
+      "event": "ticket/closed",
+      "at": "2026-11-17T02:09:05.769234Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-17T02:09:05.769209Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "1b037d5342b98ac782c8edf8269b4ebbf37f986e"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "15f3bea2a4232a59cc463b185c2cc20c24d9afa4",
+        "tree": "59b3f29402b101076122e7aba5f16efa7e27040c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T01:21:39.064451Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/3002bd75-a576-4119-8756-c829f455b126/59b3f29402b1-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "15f3bea2a4232a59cc463b185c2cc20c24d9afa4",
+        "tree": "59b3f29402b101076122e7aba5f16efa7e27040c",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T01:23:23.897758Z",
+        "duration_s": 104.8,
+        "log": "/tmp/factory-flow/3002bd75-a576-4119-8756-c829f455b126/59b3f29402b1-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "451c94e357cb71f9005c6261b94de73685d0d548",
+        "tree": "d299a188a1126b5f3c9f45b29f7076b3c2570592",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T01:38:28.188197Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/3002bd75-a576-4119-8756-c829f455b126/d299a188a112-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "451c94e357cb71f9005c6261b94de73685d0d548",
+        "tree": "d299a188a1126b5f3c9f45b29f7076b3c2570592",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T01:39:52.516980Z",
+        "duration_s": 84.3,
+        "log": "/tmp/factory-flow/3002bd75-a576-4119-8756-c829f455b126/d299a188a112-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "eadaf13ff398e980810b247105fce00541e16ac4",
+        "tree": "bd307d1a0bcbafb1b299cdc20d25813377433391",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T01:52:20.065631Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/3002bd75-a576-4119-8756-c829f455b126/bd307d1a0bcb-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "eadaf13ff398e980810b247105fce00541e16ac4",
+        "tree": "bd307d1a0bcbafb1b299cdc20d25813377433391",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T01:53:44.593587Z",
+        "duration_s": 84.5,
+        "log": "/tmp/factory-flow/3002bd75-a576-4119-8756-c829f455b126/bd307d1a0bcb-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Defect: add_plan_hook() (indigo_agent_scheduler.c:2150-2151) drops a planned night hook item whenever ANY running hook (startup, shutdown, idle, resume, night start/end) runs the same task slot, not only when that night hook itself runs. Supported configurations share tasks between hooks (STARTUP and NIGHT_START naming one task, see shared_startup_and_night_start_hook_runs_once; IDLE or SHUTDOWN and NIGHT_END naming one park/close task). Example: START during the day with STARTUP=NIGHT_START=Prepare: while Prepare runs as the startup hook, the 'hook night start' item for tonight's dusk disappears from the plan although NIGHT_START will run at dusk (the chain skip at :1850 applies only to back-to-back hooks); likewise a running IDLE hook hides tonight's NIGHT_END item. This contradicts the ticket ('a running night hook replaces its planned item') and the docs. Moreover the slot check is not what removes the duplicate for a running night start hook: indigo_scheduler_night_decide() sets state->started before the hook starts (indigo_agent_scheduler_night.c:211-213), so night_started (:2275) is already true and only the night end item is added; the integration test passes for that reason. Fix: pass the run_kind to add_plan_hook() and skip only when PRIVATE_DATA->kind equals that kind (RUN_NIGHT_START_HOOK / RUN_NIGHT_END_HOOK), or drop the check if shown unnecessary. Everything else verified: plan_hooks[3] bound is sufficient (1 running + at most night start + night end; night_started branch adds only one); indigo_scheduler_plan() is with_hooks(NULL,0) so the no-hook path is unchanged; RUN_TASK path unchanged; stopped scheduler (phase RUN_IDLE) unchanged; now+60 clamp and following runs from the hook end correct; plan recomputed at hook start (start_task) and end (finish_hook). Unit test running_hook_first effective. Full test_agent_scheduler run in the worktree: 108 run, 108 passed (both new cases pass). Docs SCHEDULER.md/INDIGO_SCHEDULER_GUIDE.md accurate for the intended behaviour; DRIVER_VERSION 0x03000011->0x03000012.",
+        "reviewer": "human/owner",
+        "commit": "15f3bea2a4232a59cc463b185c2cc20c24d9afa4",
+        "tree": "59b3f29402b101076122e7aba5f16efa7e27040c",
+        "at": "2026-11-17T01:35:44.634476Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Round 2. Defect: removing the same-slot skip in add_plan_hook() (indigo_agent_scheduler.c:2147-2159, called from update_plan ~2281) makes the plan show a phantom run when STARTUP and NIGHT_START name one task and START comes during the night (the documented 'STARTUP and NIGHT_START naming one task that runs once', test shared_startup_and_night_start_hook_runs_once). START resets night_state (2641), so while the startup hook runs night_started is false and update_plan adds a planned night start of the same task at from=now; plan_with_hooks puts it right after the running startup item and delays every run by another full duration. In reality start_night_hook() (1850) sees slot == chain_slot and skips it, Work starts right after the startup hook. Reproduced in a scratch copy (Prepare @duration 300, night 1 h old): plan = 'Prepare | hook startup | RUNNING', 'Prepare | hook night start | PLANNED' 06:48-11:48, 'Work' 11:48; Prepare started once and Work ran immediately. On master the same case showed one Prepare item and Work at about the right time, so this is a regression of the forecast and a duplicate of the same run. Correction: skip a planned night hook only when it shares the running hook's slot AND would be due by the running hook's expected end (planned time <= max(run_start + duration, now + 60)), mirroring the chain rule; the 30-minute-ahead shared-task test keeps passing, and add an integration case for the night-time START (plan has one Prepare item, Work follows the startup hook). Verified otherwise: night start running -> state->started set by night_decide so only night end planned; night end running -> started/handled cleared so only next night items (not duplicates); a night start overrunning the night end plans next night's items only; RESUME not planned; the shared-task test would have failed with the round-1 slot check (planned night start skipped during the startup run). Arrays [3] suffice (1 running + at most 2 night hooks); labels, now+60 clamp and no-running-hook path unchanged; DRIVER_VERSION 0x03000011 -> 0x03000012; git diff --check clean. Ran the 4 new running_* cases plus night_hooks_run_at_dusk_and_dawn, night_without_work_skips_the_hooks and shared_startup_and_night_start_hook_runs_once: all PASS. Minor: SCHEDULER.md test list (line ~818) does not mention the two new round-2 tests.",
+        "reviewer": "human/owner",
+        "commit": "451c94e357cb71f9005c6261b94de73685d0d548",
+        "tree": "d299a188a1126b5f3c9f45b29f7076b3c2570592",
+        "at": "2026-11-17T01:49:08.892415Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 3 independent review (claude-opus-5-5): pass. add_plan_hook() skip (indigo_agent_scheduler.c ~2153-2162) matches the runtime chain rule: finish_hook() sets chain_slot regardless of result (~1306), start_night_hook() skips a same-slot night hook unconditionally (~1850, chain_ok only affects standby), and the chain survives only to the next decision, i.e. a night hook due by the hook's end; the plan's expected end equals the running item's end (max(start+duration, now+60)), so failed/overrunning hooks and RESUME/IDLE/NIGHT_END sharing tasks with night hooks are consistent; planned hooks due later stay listed. plan_hooks[3] covers running + night start + night end; without a running hook update_plan behaves as before (indigo_scheduler_plan == with_hooks(NULL,0)). Docs (SCHEDULER.md Night plan note, Computation, Items, Updates, test list; INDIGO_SCHEDULER_GUIDE.md) accurate; DRIVER_VERSION 0x03000011->0x03000012; diff --check clean. Ran in worktree: unit test_agent_scheduler_plan all passed; integration running_* filter twice (5 new cases pass); full test_agent_scheduler 111 run, 111 passed. Minor, non-blocking: running_hook_keeps_the_planned_night_hook_of_a_shared_task depends on Prepare's estimate (< 30 min) being in place when the plan is read; if the estimate were still pending, the 60 min default would hide the night start item.",
+        "reviewer": "human/owner",
+        "commit": "eadaf13ff398e980810b247105fce00541e16ac4",
+        "tree": "bd307d1a0bcbafb1b299cdc20d25813377433391",
+        "at": "2026-11-17T02:06:42.384381Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-17T01:19:11.465508Z",
+        "actor": "human/owner",
+        "text": "Reproduction before the fix (new integration tests running_startup_hook_is_in_the_plan, running_night_start_hook_replaces_its_planned_item): while hook Prepare runs, AGENT_SCHEDULER_PLAN holds only '... | Work | run 1/1 | normal 50 | PLANNED' (no Busy hook item, Work starts at now); while hook Evening (night start) runs, the plan holds Work PLANNED, Morning night end PLANNED, Later NOT TONIGHT and no night start item at all. Both tests fail on the wait for the RUNNING hook item.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-17T01:26:36.763937Z",
+        "actor": "human/owner",
+        "text": "After the fix: library scheduler_plan_hook gained a running flag (running hooks first, end = max(start + duration, now + 1 min), following runs simulated from it); update_plan() passes the running hook and skips the planned night item of the running hook. New unit test running_hook_first and integration tests running_startup_hook_is_in_the_plan, running_night_start_hook_replaces_its_planned_item pass; plain flow check (whitespace, unit) passed; full test_agent_scheduler binary run, see report. DRIVER_VERSION 0x03000011 -> 0x03000012.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-17T01:43:28.224283Z",
+        "actor": "human/owner",
+        "text": "Review fix: removed the same-slot skip in add_plan_hook(). A running night start hook is not duplicated because night_decide() sets state->started before it runs (only the night end item is added); a running night end hook is not duplicated because night_decide() clears the started flag before it runs, so the plan holds only the next night's items. New tests running_hook_keeps_the_planned_night_hook_of_a_shared_task and running_night_end_hook_has_no_planned_duplicate pass; plain flow check passed; full test_agent_scheduler: 110 run, 110 passed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-17T01:57:03.298648Z",
+        "actor": "human/owner",
+        "text": "Round 2: reproduced with new test running_startup_hook_of_a_shared_task_is_listed_once_at_night (START at night, STARTUP = NIGHT_START = Prepare) with the new condition disabled: two Prepare items (RUNNING startup plus PLANNED night start), test failed 'expected 1, got 2'. Fix: add_plan_hook() skips a night hook only when it uses the running hook's slot and its time <= max(run_start + duration, now + 60). With it the test, running_hook_keeps_the_planned_night_hook_of_a_shared_task and shared_startup_and_night_start_hook_runs_once pass; plain flow check passed; full test_agent_scheduler 111 run, 111 passed. SCHEDULER.md test list and Night plan hook note updated.",
+        "tokens": null
+      }
+    ],
+    "questions": [
+      {
+        "text": "Second review asked for changes: with STARTUP = NIGHT_START = same task and START during the night, the plan lists the task twice (running startup + planned night start) and delays later runs, although the chain rule runs it once. Proposed: skip a planned night hook only when it uses the running hook's task and is due by the running hook's expected end (matches the chain rule), add an integration test for START at night, list the new tests in SCHEDULER.md, then a third review. Continue this way?",
+        "at": "2026-11-17T01:49:31.175471Z",
+        "actor": "human/owner",
+        "answer": "Owner 2026-11-17: fix and review again. Skip a planned night hook only when it uses the running hook's task and is due by the running hook's expected end (max(run start + duration, now + 60)), matching the chain rule; add an integration test for START at night with STARTUP = NIGHT_START (one item, Work follows the startup hook); list the new tests in SCHEDULER.md; then a third review.",
+        "answered_at": "2026-11-17T01:51:14.359472Z",
+        "answered_by": "human/owner"
+      }
+    ],
+    "presented": [],
+    "landing": {
+      "commit": "1b037d5342b98ac782c8edf8269b4ebbf37f986e",
+      "tree": "bd307d1a0bcbafb1b299cdc20d25813377433391",
+      "base": "master",
+      "at": "2026-11-17T02:09:05.655592Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-17T01:11:00.754123Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-17T01:13:24.678622Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 3189153.231,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 6
+    }
+  },
+  "journal": {
+    "entries": 69,
+    "sha256": "921033b07d0360ff7f7917899969ce2ab15e37bc10394a8a10153ad44874cc07"
+  }
+}
