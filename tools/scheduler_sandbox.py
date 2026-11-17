@@ -71,7 +71,7 @@ Tasks (the body only waits, so no equipment is needed):
   delete NAME
   reset | enable | disable | up | down NAME
   reset_all                       reset every task but a running one
-  delete_all                      delete every task not named as a hook; the scheduler must be
+  delete_all                      delete every task that is not a hook task; the scheduler must be
                                   stopped, and this prompt does not ask for a confirmation
 Scheduler:
   start | stop | abort

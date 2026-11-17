@@ -89,6 +89,8 @@ typedef struct {
 	int retry_after;
 	bool preempted_fail;
 	bool enabled;
+	// @hook: the task is a hook only, it is never selected as an ordinary task
+	bool hook;
 	// @folder: a name forces the data folder of the task, none disables it, both unset leave it to the settings
 	bool folder_none;
 	char folder[SCHEDULER_TASK_NAME_SIZE];

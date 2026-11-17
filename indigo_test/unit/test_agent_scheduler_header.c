@@ -256,6 +256,18 @@ static void test_data_header_keys(void) {
 	assert_rejected("// @task A\n// @project A\n// @project B\n" BODY, "repeated key");
 }
 
+static void test_hook_key(void) {
+	ASSERT_TRUE(parse("// @task A\n" BODY));
+	ASSERT_FALSE(header.hook);
+	ASSERT_TRUE(parse("// @task A\n// @hook\n// @priority low 10\n" BODY));
+	ASSERT_TRUE(header.hook);
+	ASSERT_EQ_INT(SCHEDULER_PRIORITY_LOW, header.priority_class);
+	ASSERT_TRUE(parse("// @task A\n// @HOOK   \n" BODY));
+	ASSERT_TRUE(header.hook);
+	assert_rejected("// @task A\n// @hook yes\n" BODY, "line 2: @hook: expected no value");
+	assert_rejected("// @task A\n// @hook\n// @hook\n" BODY, "line 3: @hook: repeated key");
+}
+
 int main(void) {
 	indigo_test_case cases[] = {
 		{ "minimal_task_defaults", test_minimal_task_defaults },
@@ -269,6 +281,7 @@ int main(void) {
 		{ "empty_body_and_size_limit", test_empty_body_and_size_limit },
 		{ "folder_key", test_folder_key },
 		{ "data_header_keys", test_data_header_keys },
+		{ "hook_key", test_hook_key },
 	};
 	return indigo_run_tests("test_agent_scheduler_header", cases, sizeof(cases) / sizeof(cases[0]));
 }

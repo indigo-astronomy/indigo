@@ -54,6 +54,7 @@
 #define KEY_OBSERVER			0x10000
 #define KEY_PI						0x20000
 #define KEY_PROJECT				0x40000
+#define KEY_HOOK					0x80000
 
 typedef struct {
 	const char *name;
@@ -80,6 +81,7 @@ static const key_definition keys[] = {
 	{ "observer", KEY_OBSERVER },
 	{ "pi", KEY_PI },
 	{ "project", KEY_PROJECT },
+	{ "hook", KEY_HOOK },
 	{ NULL, 0 }
 };
 
@@ -576,7 +578,13 @@ bool indigo_scheduler_parse_header(const char *text, scheduler_header *header, s
 		char value[LINE_SIZE];
 		strcpy(value, skip_blanks(c));
 		const char *expected = "a valid value";
-		if (*value == 0 || !parse_value(mask, value, header, &expected)) {
+		if (mask == KEY_HOOK) {
+			if (*value != 0) {
+				snprintf(error, error_size, "line %d: @%s: expected no value", line_number, key);
+				return false;
+			}
+			header->hook = true;
+		} else if (*value == 0 || !parse_value(mask, value, header, &expected)) {
 			snprintf(error, error_size, "line %d: @%s: expected %s", line_number, key, expected);
 			return false;
 		}

@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000013
+#define DRIVER_VERSION 0x03000014
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -418,8 +418,9 @@ static run_kind hook_kind(indigo_device *device, scheduler_task *task) {
 	return RUN_TASK;
 }
 
+// a task named in AGENT_SCHEDULER_HOOKS or marked @hook, neither is ever selected as an ordinary task
 static bool is_hook(indigo_device *device, scheduler_task *task) {
-	return hook_kind(device, task) != RUN_TASK;
+	return task->header.hook || hook_kind(device, task) != RUN_TASK;
 }
 
 // effective duration in seconds: @duration, the measured duration, the estimate, or the default
@@ -849,6 +850,9 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 	if (kind != RUN_TASK) {
 		return hook_names[kind];
 	}
+	if (task->header.hook) {
+		return "hook";
+	}
 	if (is_urgent(task)) {
 		return "urgent";
 	}
@@ -857,11 +861,10 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 }
 
 static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
-	run_kind kind = hook_kind(device, task);
-	const char *state = kind != RUN_TASK ? "HOOK" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
+	const char *state = is_hook(device, task) ? "HOOK" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
 	char priority[48], runs[32] = "", retries[32] = "", duration[48] = "";
 	const char *priority_text = task_priority_text(device, task, priority, sizeof(priority));
-	if (kind == RUN_TASK) {
+	if (!is_hook(device, task)) {
 		const char *source;
 		snprintf(runs, sizeof(runs), "run %d/%d", task->runs, task->header.repeat);
 		snprintf(retries, sizeof(retries), "retries left %d", task->header.retry - task->retries_used);
@@ -2509,6 +2512,10 @@ static void urgent_task(indigo_device *device, indigo_property *request) {
 		reject(device, URGENT_TASK_PROPERTY, "Urgent task rejected: a task named '%s' already exists", header.name);
 		return;
 	}
+	if (header.hook) {
+		reject(device, URGENT_TASK_PROPERTY, "Urgent task rejected: an urgent task cannot be a hook");
+		return;
+	}
 	header.priority_class = SCHEDULER_PRIORITY_URGENT;
 	int slot = create_task(device, text, &header, false);
 	if (slot < 0) {
@@ -2559,7 +2566,7 @@ static void reset_all_tasks(indigo_device *device) {
 	}
 }
 
-// every stored and urgent task but the tasks named as hooks, only while the scheduler is stopped
+// every stored and urgent task but the hook tasks (named as hooks or marked @hook), only while the scheduler is stopped
 static void delete_all_tasks(indigo_device *device) {
 	if (PRIVATE_DATA->started || PRIVATE_DATA->phase != RUN_IDLE) {
 		reject(device, TASK_COMMAND_PROPERTY, "Tasks can be deleted all at once only while the scheduler is stopped");
@@ -2580,7 +2587,7 @@ static void delete_all_tasks(indigo_device *device) {
 	}
 	TASK_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
 	if (kept) {
-		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d, tasks named as hooks kept: %d", count, kept);
+		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d, hook tasks kept: %d", count, kept);
 	} else {
 		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d", count);
 	}

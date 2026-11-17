@@ -691,9 +691,9 @@ Source: `indigo_drivers/agent_platesolver/indigo_agent_platesolver.c`.
 | AGENT_SCHEDULER_TASK_%d | text | no | TASK | Dynamic property created for each stored task, labelled with the task name; writing it edits the task. |
 | AGENT_SCHEDULER_DELETE_TASK | text | no | NAME | Delete a stored or urgent task, aborting it when it runs. |
 | AGENT_SCHEDULER_URGENT_TASK | text | no | TASK | Submit a task as urgent; it is not stored. |
-| AGENT_SCHEDULER_TASK_STATE | light | yes | TASK_%d | One item per task in list order; the label has six columns joined by ` \| `: name, state, priority, runs, retries and duration. |
+| AGENT_SCHEDULER_TASK_STATE | light | yes | TASK_%d | One item per task in list order; the label has six columns joined by ` \| `: name, state, priority, runs, retries and duration; a task named as a hook or marked `@hook` has the state `HOOK`, an Idle light and the priority `hook startup` etc., or `hook` when no hook names it. |
 | AGENT_SCHEDULER_TASK_NAME | text | no | NAME | Task addressed by `AGENT_SCHEDULER_TASK_COMMAND`. |
-| AGENT_SCHEDULER_TASK_COMMAND | switch | no | RESET, ENABLE, DISABLE, MOVE_UP, MOVE_DOWN, RESET_ALL, DELETE_ALL | Command for the named task; RESET_ALL and DELETE_ALL (scheduler stopped, hook tasks kept) apply to all tasks and carry `warn_on_set` hints. |
+| AGENT_SCHEDULER_TASK_COMMAND | switch | no | RESET, ENABLE, DISABLE, MOVE_UP, MOVE_DOWN, RESET_ALL, DELETE_ALL | Command for the named task; RESET_ALL and DELETE_ALL (scheduler stopped, hook tasks and `@hook` tasks kept) apply to all tasks and carry `warn_on_set` hints. |
 | AGENT_SCHEDULER_CONTROL | switch | no | START, STOP, ABORT | Start scheduling, stop after the running task, or abort it. |
 | AGENT_SCHEDULER_STATE | number | yes | DONE, FAILED, URGENT_DONE, URGENT_FAILED, TOTAL | Task counters: DONE and FAILED count the tasks of the list, URGENT_DONE and URGENT_FAILED the one-off urgent tasks that finished and left it (kept with the history and reset by AGENT_SCHEDULER_CLEAR_HISTORY), TOTAL the tasks of the list; the state is Idle before the first start, Busy while scheduling, Ok after the scheduler stopped and Alert after an abort (also while stopped), a failed startup, night start, resume or shutdown hook, or a stop timeout. |
 | AGENT_SCHEDULER_CURRENT | text | yes | CURRENT, REASON | Running task and why nothing runs. |

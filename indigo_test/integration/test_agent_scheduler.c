@@ -2249,6 +2249,61 @@ static void reset_all_keeps_running_task_and_urgent_order(void) {
 	ASSERT_TRUE(wait_task_state("Broken", "QUEUED", 5));
 }
 
+static void hook_header_key_keeps_a_task_from_running(void) {
+	char label[INDIGO_VALUE_SIZE];
+	indigo_property_state light;
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// uploaded to a running idle scheduler, the task is not started as an ordinary one
+	REQUIRE(upload("// @task Park\n// @hook\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_task_state("Park", "| HOOK | hook | ", 5));
+	ASSERT_TRUE(task_label("Park", label, &light));
+	ASSERT_STREQ("Park | HOOK | hook | - | - | -", label);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Park'"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Park'"));
+	// named as a hook, it runs
+	REQUIRE(set_hooks("", "", "Park"));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Park'"));
+	ASSERT_TRUE(task_label("Park", label, &light));
+	ASSERT_TRUE(strstr(label, "Park | HOOK | hook idle | ") != NULL);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
+}
+
+static void hook_header_key_task_is_not_planned_or_counted(void) {
+	char message[INDIGO_VALUE_SIZE];
+	char label[INDIGO_VALUE_SIZE];
+	site_at_evening();
+	REQUIRE(upload("// @task Work\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Hook only\n// @hook\n// @duration 1\n" BODY_WAIT(1)));
+	// neither planned nor listed as NOT TONIGHT
+	ASSERT_TRUE(wait_plan(1, "Work", 10));
+	ASSERT_TRUE(wait_plan_contains("Hook only", false, 2));
+	// the automatic stop does not wait for it
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Hook only'"));
+	ASSERT_TRUE(wait_task_state("Hook only", "HOOK | hook", 5));
+	// DELETE_ALL keeps it
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks deleted: 1, hook tasks kept: 1", message);
+	ASSERT_FALSE(task_label("Work", label, NULL));
+	ASSERT_TRUE(task_label("Hook only", label, NULL));
+	ASSERT_EQ_INT(1, task_count());
+}
+
+static void urgent_task_cannot_be_a_hook(void) {
+	char message[INDIGO_VALUE_SIZE];
+	char label[INDIGO_VALUE_SIZE];
+	REQUIRE(change_text(AGENT_SCHEDULER_URGENT_TASK_PROPERTY_NAME, AGENT_SCHEDULER_URGENT_TASK_TASK_ITEM_NAME, "// @task Urgent hook\n// @hook\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "an urgent task cannot be a hook") != NULL);
+	ASSERT_FALSE(task_label("Urgent hook", label, NULL));
+	ASSERT_EQ_INT(0, task_count());
+}
+
 static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(upload("// @task Long\n" BODY_WAIT(30)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
@@ -2261,7 +2316,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Long", "RETRY", 10));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
-	// the tasks named as hooks are kept, stored and urgent tasks are deleted
+	// the hook tasks are kept, stored and urgent tasks are deleted
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
@@ -2271,7 +2326,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(set_night_hooks("", "Morning", ""));
 	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 6, 5));
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
-	ASSERT_STREQ("Tasks deleted: 3, tasks named as hooks kept: 3", message);
+	ASSERT_STREQ("Tasks deleted: 3, hook tasks kept: 3", message);
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_FALSE(task_label("Long", label, NULL));
 	ASSERT_FALSE(task_label("Other", label, NULL));
@@ -2283,7 +2338,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 3, 5));
 	// a list of hooks only, nothing more to delete
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
-	ASSERT_STREQ("Tasks deleted: 0, tasks named as hooks kept: 3", message);
+	ASSERT_STREQ("Tasks deleted: 0, hook tasks kept: 3", message);
 	// the deletion is saved and the hooks still name their tasks
 	stop_scheduler();
 	REQUIRE(start_scheduler());
@@ -2368,7 +2423,7 @@ static void delete_all_waits_for_the_shutdown_hook(void) {
 	ASSERT_STREQ("Long", task->label);
 	indigo_release_property(task);
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
-	ASSERT_STREQ("Tasks deleted: 1, tasks named as hooks kept: 1", message);
+	ASSERT_STREQ("Tasks deleted: 1, hook tasks kept: 1", message);
 	// the property of the deleted task goes, the history stays as it was
 	ASSERT_TRUE(snapshot("AGENT_SCHEDULER_TASK_1") == NULL);
 	task = snapshot("AGENT_SCHEDULER_TASK_0");
@@ -3625,6 +3680,9 @@ static const indigo_test_case cases[] = {
 	{ "pending_rename_reserves_the_name", pending_rename_reserves_the_name },
 	{ "library_reload_keeps_scheduled_task", library_reload_keeps_scheduled_task },
 	{ "hooks_run_at_start_idle_and_stop", hooks_run_at_start_idle_and_stop },
+	{ "hook_header_key_keeps_a_task_from_running", hook_header_key_keeps_a_task_from_running },
+	{ "hook_header_key_task_is_not_planned_or_counted", hook_header_key_task_is_not_planned_or_counted },
+	{ "urgent_task_cannot_be_a_hook", urgent_task_cannot_be_a_hook },
 	{ "failed_startup_hook_stops_the_scheduler", failed_startup_hook_stops_the_scheduler },
 	{ "abort_runs_the_shutdown_hook", abort_runs_the_shutdown_hook },
 	{ "start_during_shutdown_hook_continues", start_during_shutdown_hook_continues },

@@ -194,6 +194,7 @@ Before the body runs, the scheduler defines a `scheduler_task` object from the h
 | `@observer` | text | The observer, written as the FITS header `OBSERVER` of the frames of the task, 1–56 characters (a quote counts as two), see [Where the data goes](#where-the-data-goes) | no header |
 | `@pi` | text | The principal investigator, written as the FITS header `PI_NAME`, same rules as `@observer` | no header |
 | `@project` | text | The project or proposal identifier, written as the FITS header `PROPID`, same rules as `@observer` | no header |
+| `@hook` | no value | Marks a hook-only task: it is never scheduled as an ordinary task, even before or without being named in `AGENT_SCHEDULER_HOOKS`, and runs only as a hook. A value or a repeated key is a script error. An urgent task cannot have it | ordinary task |
 
 `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` need `@target`. The comparison signs are required: write `> 30`, not `30`. `>=` and `<=` are accepted and mean the same as `>` and `<`.
 
@@ -576,7 +577,8 @@ The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFT
 - A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK`, `IDLE HOOK`, `NIGHT START HOOK`, `NIGHT END HOOK` or `RESUME HOOK`.
 - One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
 - Hook runs appear in the history, marked `(hook)`.
-- To remove a hook, set its item to an empty value, for example `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task again and is scheduled like the others.
+- A task with the header key `@hook` is a hook only: it is never scheduled as an ordinary task, also while no hook names it. Upload the task with `@hook` first, so that it does not run at once on a running scheduler, then name it in `AGENT_SCHEDULER_HOOKS`. It has no priority and is not in the night plan.
+- To remove a hook, set its item to an empty value, for example `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task again and is scheduled like the others, unless it has `@hook`.
 
 ### Several nights
 
@@ -751,7 +753,7 @@ SN 2026abc | RUNNING | urgent | run 0/1 | retries left 0 | 0h30 set
 Park | HOOK | hook shutdown | - | - | -
 ```
 
-The priority is `urgent`, the class and level of the task such as `normal 60`, or for a task that serves as a hook `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`. The runs are `run <done>/<repeat>` and the retries `retries left <n>`, always shown. The duration is the hours and minutes followed by its source (`set`, `measured`, `estimated` or `default`). A hook has `-` for the runs, retries and duration.
+The priority is `urgent`, the class and level of the task such as `normal 60`, or for a task that serves as a hook `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, and `hook` for a task with `@hook` that no hook names. The runs are `run <done>/<repeat>` and the retries `retries left <n>`, always shown. The duration is the hours and minutes followed by its source (`set`, `measured`, `estimated` or `default`). A hook has `-` for the runs, retries and duration.
 
 | State | Light | Meaning |
 |---|---|---|
@@ -765,7 +767,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 | EXPIRED | Alert | The end of its `@window` passed before it completed |
 | DISABLED | Idle | `@enabled no`, or disabled by command |
 | SCRIPT ERROR | Alert | The body has an error; fix it with an edit |
-| HOOK | Idle | The task is named in `AGENT_SCHEDULER_HOOKS`; its state is not tracked |
+| HOOK | Idle | The task is named in `AGENT_SCHEDULER_HOOKS` or has `@hook`; its state is not tracked |
 
 ### The night plan
 
@@ -880,7 +882,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_TASK_COMMAND.DISABLE=ON"
 | `ENABLE` | Undoes `DISABLE`. A task with `@enabled no` in its header stays disabled until you edit the header |
 | `MOVE_UP`, `MOVE_DOWN` | Moves the task in the list. The list order decides only between otherwise equal tasks |
 | `RESET_ALL` | Resets every task as `RESET` does. A running task is left alone, and the message says so. Pending urgent tasks keep their order |
-| `DELETE_ALL` | Deletes every stored and urgent task except the tasks named as hooks, so the preparation and the parking at the end of the night stay. It is accepted only while the scheduler is stopped. To delete a hook task, use `AGENT_SCHEDULER_DELETE_TASK` |
+| `DELETE_ALL` | Deletes every stored and urgent task except the tasks named as hooks and the tasks with `@hook`, so the preparation and the parking at the end of the night stay. It is accepted only while the scheduler is stopped. To delete a hook task, use `AGENT_SCHEDULER_DELETE_TASK` |
 
 `RESET_ALL` and `DELETE_ALL` do not use the task name. They carry a `warn_on_set` hint, so clients that follow INDIGO hints ask for a confirmation first. Command-line tools and scripts do not ask:
 
@@ -961,7 +963,7 @@ It puts the site on the equator and moves its longitude to choose the time of da
 | `hooks idle=Park resume=` | Set or clear hook items |
 | `limit nautical`, `set NIGHT_START_OFFSET=-30` | The night limit and the settings |
 | `start`, `stop`, `abort`, `reset NAME`, `delete NAME` | Control the scheduler and the tasks |
-| `reset_all`, `delete_all` | Reset every task, or delete every task not named as a hook; the sandbox prompt does not ask for a confirmation |
+| `reset_all`, `delete_all` | Reset every task, or delete every task that is not a hook task; the sandbox prompt does not ask for a confirmation |
 | `status`, `plan`, `history` | The task list, the night plan and the history |
 | `wait 10`, `until TEXT 60` | Wait while new scheduler messages are printed, or until one contains `TEXT` |
 

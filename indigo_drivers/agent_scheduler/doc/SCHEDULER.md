@@ -190,6 +190,7 @@ String values are JSON-encoded, so that quotes or backslashes in a task name can
 | `@observer` | text | Observer name, written as the FITS header `OBSERVER` of the frames of the task when `FITS` of `AGENT_SCHEDULER_DATA` is on, 1-56 characters without control characters, a quote counts as two (it is doubled in the FITS value), see [Observation data](#observation-data) | no header |
 | `@pi` | text | Principal investigator, written as the FITS header `PI_NAME` under the same rules as `@observer` | no header |
 | `@project` | text | Project or proposal identifier, written as the FITS header `PROPID` under the same rules as `@observer` | no header |
+| `@hook` | no value | Marks a hook-only task: it is never selected as an ordinary task, whether or not `AGENT_SCHEDULER_HOOKS` names it, and runs only as a hook. A value or a repeated key is a script error, and an urgent submission with it is rejected | ordinary task |
 
 The constraints `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` require `@target`. A header that uses them without `@target` is invalid. A task with `@target` also requires the target above the horizon, with or without `@altitude`.
 
@@ -351,7 +352,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_TASK_<n>` | text | `TASK` | One stored task, group "Tasks", label equal to the task name. Clients download a task by reading it and edit it by writing it |
 | `AGENT_SCHEDULER_DELETE_TASK` | text | `NAME` | Delete a stored or urgent task. A running task is aborted first, as with `ABORT` |
 | `AGENT_SCHEDULER_URGENT_TASK` | text | `TASK` | Submit a task as urgent, regardless of its `@priority` |
-| `AGENT_SCHEDULER_TASK_STATE` | light | one per task | Idle = QUEUED, WAITING, RETRY, REPEAT or DISABLED; Busy = RUNNING; Ok = DONE; Alert = FAILED or EXPIRED. A task with a script error is Alert, and otherwise a task named as a hook is Idle, also while the hook runs. The label has six columns joined by ` \| `: name, state, priority, runs, retries and duration, see [Label format](../../../indigo_docs/INDIGO_SCHEDULER_GUIDE.md#label-format) |
+| `AGENT_SCHEDULER_TASK_STATE` | light | one per task | Idle = QUEUED, WAITING, RETRY, REPEAT or DISABLED; Busy = RUNNING; Ok = DONE; Alert = FAILED or EXPIRED. A task with a script error is Alert, and otherwise a task named as a hook or marked `@hook` is Idle, also while the hook runs. The label has six columns joined by ` \| `: name, state, priority, runs, retries and duration, see [Label format](../../../indigo_docs/INDIGO_SCHEDULER_GUIDE.md#label-format) |
 | `AGENT_SCHEDULER_TASK_NAME` | text | `NAME` | Target of `AGENT_SCHEDULER_TASK_COMMAND` |
 | `AGENT_SCHEDULER_TASK_COMMAND` | switch | `RESET`, `ENABLE`, `DISABLE`, `MOVE_UP`, `MOVE_DOWN`, `RESET_ALL`, `DELETE_ALL` | The first five apply to the task named in `AGENT_SCHEDULER_TASK_NAME`; `RESET_ALL` and `DELETE_ALL` apply to all tasks, see [Commands for all tasks](#commands-for-all-tasks). List order breaks score ties |
 | `AGENT_SCHEDULER_CONTROL` | switch | `START`, `STOP`, `ABORT` | Scheduler control, see [Scheduler control](#scheduler-control) |
@@ -403,7 +404,7 @@ Changing the number of items of a list property requires deleting and defining i
 `RESET_ALL` and `DELETE_ALL` in `AGENT_SCHEDULER_TASK_COMMAND` ignore `AGENT_SCHEDULER_TASK_NAME`. Both items carry a `warn_on_set` hint, so clients that follow the hints ask for a confirmation before sending them. The hint is advisory; the agent does not wait for a confirmation.
 
 - `RESET_ALL` resets every task, stored or urgent, hooks included, as `RESET` does: state QUEUED, run and retry counters cleared, script errors cleared. A running task is left alone, and the update message gives the number of reset tasks and the name of the running one. Unlike `RESET`, it keeps the relative order of pending urgent tasks. The disabled flag is kept.
-- `DELETE_ALL` deletes every stored and urgent task except the tasks named in `AGENT_SCHEDULER_HOOKS`, so that the preparation and the shutdown of the equipment stay configured. It is rejected with Alert unless the scheduler is stopped and no task or hook runs. Deleted tasks get no history entry. The update message gives the number of deleted and kept tasks.
+- `DELETE_ALL` deletes every stored and urgent task except the tasks named in `AGENT_SCHEDULER_HOOKS` and the tasks with `@hook`, so that the preparation and the shutdown of the equipment stay configured. It is rejected with Alert unless the scheduler is stopped and no task or hook runs. Deleted tasks get no history entry. The update message gives the number of deleted and kept tasks.
 
 The other schedulers keep start and end actions apart from targets (SGP sequence events, N.I.N.A. Target Scheduler instructions, ACP startup and shutdown scripts) and also offer resetting all targets at once.
 
@@ -516,8 +517,8 @@ The grid and the task tables are rebuilt when the site coordinates change and ev
 
 The `STARTUP`, `SHUTDOWN` and `IDLE` hooks name stored tasks.
 
-- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night. The task list shows it with the state `HOOK` and a priority such as `hook startup`, `hook shutdown` or `hook idle`.
-- A task named as a hook is never selected as an ordinary task and does not count when deciding that all tasks have finished.
+- A hook task runs outside the state machine. Its constraints, state and counters are not evaluated or changed, so it can run every night. The task list shows it with the state `HOOK` and a priority such as `hook startup`, `hook shutdown` or `hook idle`; a task with `@hook` that no hook names shows the priority `hook`.
+- A task named as a hook, or marked with the header key `@hook`, is never selected as an ordinary task and does not count when deciding that all tasks have finished. It is not planned in the night plan, not even as `NOT TONIGHT`, and `DELETE_ALL` keeps it. A task uploaded for use as a hook therefore does not run at once as an ordinary task before it is named in `AGENT_SCHEDULER_HOOKS`; with `@hook` it also stays hook-only when it is removed from the hooks. `@priority` is ignored for it. An urgent submission with `@hook` is rejected with Alert.
 - Hook runs appear in the run history, marked as hooks.
 - A hook that fails is reported by a message. A failed `STARTUP` hook stops the scheduler with Alert; a failed `SHUTDOWN` hook still stops it, with Alert.
 - The `SHUTDOWN` hook runs once for every stop: `STOP` after the running task, `ABORT` after the running task or startup hook was aborted, and the automatic stop when all tasks finished. It does not run after a `STOP_TIMEOUT`, because the old sequence still occupies the Scripting Agent. When it cannot run because a sequence started by hand occupies the Scripting Agent or `Sequencer.js` is missing, the agent says so in a message and stops without it.
@@ -839,7 +840,7 @@ Phases 1, 2, 3 and 5 are implemented. Phases 4, 6 and 7 are planned.
   - labels cut to 511 bytes, and list properties redefined only when their items or labels change;
   - a body that fails only when it runs, and a body without `start()`, counting as failures;
   - a `STOP_TIMEOUT` expiry stopping the scheduler without starting another task;
-  - `RESET_ALL` and `DELETE_ALL`: their hints, the item order, a running task left alone, the order of pending urgent tasks kept, `DELETE_ALL` rejected while the scheduler runs, the tasks named as hooks kept, and both results across a restart;
+  - `RESET_ALL` and `DELETE_ALL`: their hints, the item order, a running task left alone, the order of pending urgent tasks kept, `DELETE_ALL` rejected while the scheduler runs, the hook tasks kept, and both results across a restart;
   - `RESET_ALL` on finished work: repeat and retry counters cleared, a script error checked again, a disabled task kept disabled, the task name ignored, an empty list, and the work run again after `START`;
   - `DELETE_ALL` rejected while a stop waits for the running task and while the shutdown hook runs, a hook name in a different case protecting its task, the deleted task's property removed, the history unchanged, and the name and slot free again;
   - eligibility end to end, each constraint with a task that waits with its reason and one that runs, and the waiting task starting by itself when the stand-in site is moved: `@altitude` and `@airmass` with targets placed at a computed altitude, `@ha` including a range wrapped across 12h, `@twilight` at noon and midnight, `@moon` with and without `width` and `@illumination` with the site under the moon, both ignored with the moon below the horizon, nightly windows outside, too short and across midnight, a `@duration` that does not fit before the target sets, an unknown site blocking only tasks with sky constraints, and `@enabled no` not overridden by `ENABLE`;
