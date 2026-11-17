@@ -1,0 +1,718 @@
+{
+  "schema_version": 1,
+  "ticket_id": "10cdacd2-62bd-4a16-a222-884a5ef0483c",
+  "revision": 36,
+  "title": "indigo_ccd_driver: accept a CCD_LOCAL_MODE.DIR folder that does not exist yet when its parent is writable, the first saved frame creates it",
+  "description": "Owner report 2026-11-17: with the Scheduler Agent's per-task folder (FOLDER item of AGENT_SCHEDULER_DATA or @folder), a task whose folder does not exist yet fails with 'CCD Imager Simulator @ vega: Folder \"/home/rumen/indigo_image_cache/Rosette Nebula/\" is not writtable'.\n\nCause (source inspection): the CCD_LOCAL_MODE handler in indigo_libs/indigo_ccd_driver.c (~line 835) checks indigo_uni_is_writable() on DIR and sets CCD_LOCAL_MODE to ALERT when the folder does not exist. Saving a frame already creates the folder with indigo_uni_mkdir() (lines ~2265, 2412, 2498, guarded by indigo_is_sandboxed), so only the early check rejects it.\n\nProposed fix: in the CCD_LOCAL_MODE handler, create the folder with indigo_uni_mkdir() (same indigo_is_sandboxed guard as the save path) before the writability check; keep the alert when the folder cannot be created or is not writable. Creating the folder in the Scheduler Agent instead is not suitable: the scheduler may run on a different host than the CCD driver.\n\nAlso: reproduce first (scheduler task with a folder that does not exist on ccd_simulator), find exactly which component turns the CCD_LOCAL_MODE alert into the task failure, and confirm the task runs after the fix. Tests: CCD driver test for setting DIR to a non-existent nested folder (created, state OK) and to an uncreatable path (ALERT); scheduler integration test with a per-task folder that does not exist yet. Document the behaviour in indigo_docs/PROPERTIES.md (CCD_LOCAL_MODE row) if it describes the check.",
+  "type": "bug",
+  "discovered_at": "2026-11-16T23:37:20Z",
+  "created_at": "2026-11-16T23:43:34.355326Z",
+  "status": "closed",
+  "branch": "ticket/10cdacd2-62bd-4a16-a222-884a5ef0483c",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "188a80fc-b342-43ca-aab0-30531124aaa0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-16T23:52:59.098223Z",
+          "last_activity_at": "2026-11-17T00:25:30.982334Z",
+          "ended_at": "2026-11-17T00:25:30.982334Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 1951884.111,
+          "tokens": null
+        },
+        {
+          "attempt_id": "eccde6f7-61c7-45f5-b0a9-e7883b8cb9bc",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-17T00:36:33.993065Z",
+          "last_activity_at": "2026-11-17T00:38:59.718334Z",
+          "ended_at": "2026-11-17T00:38:59.718334Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 145725.269,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-16T23:52:59.098223Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/10cdacd2-62bd-4a16-a222-884a5ef0483c"
+        },
+        {
+          "at": "2026-11-17T00:25:30.982334Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-17T00:36:33.993065Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-17T00:38:59.718334Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 2097609.38,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "21515675-eeb4-4b37-bbd9-359f18bfdabd",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-17T00:25:30.982379Z",
+          "last_activity_at": "2026-11-17T00:36:33.992977Z",
+          "ended_at": "2026-11-17T00:36:33.992977Z",
+          "outcome": {
+            "summary": "Code is correct and matches the owner decision; tests effective and pass (test_uni_io all; test_ccd_simulator new case; sequencer 'simulator imaging*' 2/2; test_agent_scheduler full suite 106/106 twice). Requested changes: (1) indigo_test/test_runner.h:156-160 comment is now false: it says the framework rejects a missing $HOME/indigo_image_cache and that an empty private home makes every CCD driver publish CCD_LOCAL_MODE in ALERT; with indigo_uni_is_creatable() a missing folder under a writable home is accepted. Reword it (the mkdir may stay, e.g. so saved frames have their folder / to keep the fixture like a real home) or drop the mkdir with the comment. (2) bugfixes rule and ticket description: no ticket note records the reproduction before the fix, the component that turns the CCD_LOCAL_MODE alert into the task failure, and the result after the fix; add it with flow note before close. Notes, no change required: indigo_ccd_driver.c:836 sandbox branch is consistent with the save paths (2266/2413/2499 skip mkdir when sandboxed); PROPERTIES.md CCD_LOCAL_MODE row does not describe the check, no update needed; no driver version bump applies (framework change). edit_of_running_task_is_deferred runs in its own forked child, never sets imager_checks_folder and does not touch CCD_LOCAL_MODE; its failure is pre-existing timing sensitivity (2 s task can end between the RUNNING observation and the edit under parallel load), not caused by this change. Minor/out of scope: test_agent_scheduler.c new case ASSERT_FALSE(created) only checks the stand-in, which never creates folders; Windows UNC path to a missing share walks up to '\\\\' (current drive root) and may be accepted, the save then reports the error; unit test returns without removing its temp dir if an early ASSERT fails.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 663010.598,
+          "tokens": null
+        },
+        {
+          "attempt_id": "cd037c6b-f902-4069-8616-f80e9ce0cb75",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-17T00:38:59.718361Z",
+          "last_activity_at": "2026-11-17T00:50:27.893990Z",
+          "ended_at": "2026-11-17T00:50:27.893990Z",
+          "outcome": {
+            "summary": "Round 2: both round-1 requests done (test_runner.h:156-158 comment reworded; owner-visible reproduction note naming Sequencer.js on_update, results and limitations). Re-verified independently: indigo_uni_is_creatable (indigo_uni_io.c:2673-2727) walks to nearest existing ancestor, accepts only a writable directory, creates nothing; CCD_LOCAL_MODE handler (indigo_ccd_driver.c:835-836) uses it except when sandboxed, matching the save path guards at 2266/2413/2499; existing-folder behaviour unchanged. Tests cover non-existent nested folder OK + not created, creation on first save, ALERT below regular file and read-only folder, sequencer real Sequencer.js+ccd_simulator, scheduler stand-in. PROPERTIES.md does not describe the check, no change needed. Reviewer runs on rebuilt worktree lib: test_uni_io pass, test_ccd_simulator all pass, test_agent_scripting_sequencer 68/68, test_agent_scheduler 106/106. Non-blocking: in test_agent_scheduler task_folder_that_does_not_exist_yet_runs a failing REQUIRE leaves imager_checks_folder true and the temp dir behind (failure path only); Windows branch unbuilt (documented).",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 688175.629,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-17T00:25:30.982379Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T00:36:33.992977Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "Code is correct and matches the owner decision; tests effective and pass (test_uni_io all; test_ccd_simulator new case; sequencer 'simulator imaging*' 2/2; test_agent_scheduler full suite 106/106 twice). Requested changes: (1) indigo_test/test_runner.h:156-160 comment is now false: it says the framework rejects a missing $HOME/indigo_image_cache and that an empty private home makes every CCD driver publish CCD_LOCAL_MODE in ALERT; with indigo_uni_is_creatable() a missing folder under a writable home is accepted. Reword it (the mkdir may stay, e.g. so saved frames have their folder / to keep the fixture like a real home) or drop the mkdir with the comment. (2) bugfixes rule and ticket description: no ticket note records the reproduction before the fix, the component that turns the CCD_LOCAL_MODE alert into the task failure, and the result after the fix; add it with flow note before close. Notes, no change required: indigo_ccd_driver.c:836 sandbox branch is consistent with the save paths (2266/2413/2499 skip mkdir when sandboxed); PROPERTIES.md CCD_LOCAL_MODE row does not describe the check, no update needed; no driver version bump applies (framework change). edit_of_running_task_is_deferred runs in its own forked child, never sets imager_checks_folder and does not touch CCD_LOCAL_MODE; its failure is pre-existing timing sensitivity (2 s task can end between the RUNNING observation and the edit under parallel load), not caused by this change. Minor/out of scope: test_agent_scheduler.c new case ASSERT_FALSE(created) only checks the stand-in, which never creates folders; Windows UNC path to a missing share walks up to '\\\\' (current drive root) and may be accepted, the save then reports the error; unit test returns without removing its temp dir if an early ASSERT fails."
+        },
+        {
+          "at": "2026-11-17T00:38:59.718361Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T00:50:27.893990Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2: both round-1 requests done (test_runner.h:156-158 comment reworded; owner-visible reproduction note naming Sequencer.js on_update, results and limitations). Re-verified independently: indigo_uni_is_creatable (indigo_uni_io.c:2673-2727) walks to nearest existing ancestor, accepts only a writable directory, creates nothing; CCD_LOCAL_MODE handler (indigo_ccd_driver.c:835-836) uses it except when sandboxed, matching the save path guards at 2266/2413/2499; existing-folder behaviour unchanged. Tests cover non-existent nested folder OK + not created, creation on first save, ALERT below regular file and read-only folder, sequencer real Sequencer.js+ccd_simulator, scheduler stand-in. PROPERTIES.md does not describe the check, no change needed. Reviewer runs on rebuilt worktree lib: test_uni_io pass, test_ccd_simulator all pass, test_agent_scripting_sequencer 68/68, test_agent_scheduler 106/106. Non-blocking: in test_agent_scheduler task_folder_that_does_not_exist_yet_runs a failing REQUIRE leaves imager_checks_folder true and the temp dir behind (failure path only); Windows branch unbuilt (documented)."
+        }
+      ],
+      "result": {
+        "summary": "Round 2: both round-1 requests done (test_runner.h:156-158 comment reworded; owner-visible reproduction note naming Sequencer.js on_update, results and limitations). Re-verified independently: indigo_uni_is_creatable (indigo_uni_io.c:2673-2727) walks to nearest existing ancestor, accepts only a writable directory, creates nothing; CCD_LOCAL_MODE handler (indigo_ccd_driver.c:835-836) uses it except when sandboxed, matching the save path guards at 2266/2413/2499; existing-folder behaviour unchanged. Tests cover non-existent nested folder OK + not created, creation on first save, ALERT below regular file and read-only folder, sequencer real Sequencer.js+ccd_simulator, scheduler stand-in. PROPERTIES.md does not describe the check, no change needed. Reviewer runs on rebuilt worktree lib: test_uni_io pass, test_ccd_simulator all pass, test_agent_scripting_sequencer 68/68, test_agent_scheduler 106/106. Non-blocking: in test_agent_scheduler task_folder_that_does_not_exist_yet_runs a failing REQUIRE leaves imager_checks_folder true and the temp dir behind (failure path only); Windows branch unbuilt (documented).",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 1351186.227,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "0df3be5c-c851-4a49-a86e-a5ca7df1089a",
+      "event": "ticket/created",
+      "at": "2026-11-16T23:43:34.355955Z",
+      "actor": "human/owner",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "348b1f8b-1b5e-43a9-98e9-cd98c773ed31",
+      "event": "ticket/confirmed",
+      "at": "2026-11-16T23:52:50.104837Z",
+      "actor": "human/owner",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "66108599-0df2-48e4-bbbc-9894b480e3f7",
+      "event": "ticket/note",
+      "at": "2026-11-16T23:52:50.218988Z",
+      "actor": "human/owner",
+      "text": "Owner decision 2026-11-17 (replaces the proposed fix): do NOT create the folder when CCD_LOCAL_MODE.DIR is set and never remove folders. In the CCD_LOCAL_MODE handler: if DIR exists, keep the indigo_uni_is_writable() check; if it does not exist, walk up to the nearest existing ancestor and accept DIR (state OK) when that ancestor is a writable directory, otherwise ALERT with the existing message. The folder is created at the first save by the existing indigo_uni_mkdir() calls. Keep the indigo_is_sandboxed behaviour consistent with the save path. If a portable helper is needed (e.g. an exists/is-directory check), use or add it in indigo_uni_io (indigo_libs), not platform code in the CCD driver. Tests: DIR set to a non-existent nested folder under a writable dir -> OK and no folder created; first saved frame creates it; DIR under a non-writable or non-directory ancestor -> ALERT; scheduler integration test with a per-task folder that does not exist yet runs the task. Update indigo_docs/PROPERTIES.md CCD_LOCAL_MODE description if it describes the check.",
+      "tokens": null
+    },
+    {
+      "event_id": "a79c26a6-e4d3-460a-870d-f2db90ef7e0d",
+      "event": "task/progress",
+      "at": "2026-11-16T23:52:59.098312Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Implementation started on branch ticket/10cdacd2-62bd-4a16-a222-884a5ef0483c"
+    },
+    {
+      "event_id": "4a86c7f3-7a97-4446-884d-ab297be1f2a2",
+      "event": "ticket/started",
+      "at": "2026-11-16T23:52:59.098862Z",
+      "actor": "human/owner",
+      "branch": "ticket/10cdacd2-62bd-4a16-a222-884a5ef0483c",
+      "base": "master"
+    },
+    {
+      "event_id": "8bfbb144-69ec-4b1c-afc2-f738f689a5ee",
+      "event": "task/progress",
+      "at": "2026-11-16T23:53:20.533552Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Implementer started: reading CCD_LOCAL_MODE handler",
+      "attempt_id": "188a80fc-b342-43ca-aab0-30531124aaa0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "a543032d-b636-4f81-be0a-000aea9d37bb",
+      "event": "task/progress",
+      "at": "2026-11-16T23:55:51.752194Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Building libs and running unit and ccd simulator tests"
+    },
+    {
+      "event_id": "5eca8dca-892a-44ef-a451-8ab74259ceb7",
+      "event": "task/progress",
+      "at": "2026-11-17T00:04:21.942924Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Building and running test_agent_scheduler"
+    },
+    {
+      "event_id": "5e555b73-c5cd-4ca7-b935-3c02cb8af79f",
+      "event": "task/progress",
+      "at": "2026-11-17T00:05:24.883808Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "91510f55-b271-430b-b12c-18a551995559",
+      "event": "task/progress",
+      "at": "2026-11-17T00:05:24.905783Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7568cb30-7379-4086-a23c-464f3e0d4da7",
+      "event": "task/progress",
+      "at": "2026-11-17T00:05:24.911307Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "e35b11c6-2d2c-48a4-a751-f2462e581bb0",
+      "event": "task/progress",
+      "at": "2026-11-17T00:07:10.131630Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "8cf719e0-c4d9-48d2-ad2e-3233cbdab5cd",
+      "event": "check/passed",
+      "at": "2026-11-17T00:07:10.137095Z",
+      "actor": "human/owner",
+      "commit": "60d7109012a18c7ea96d6412e19a48382abb58e6",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "7b6da3d3-a2e1-496c-87c9-07fec4afaf62",
+      "event": "task/progress",
+      "at": "2026-11-17T00:07:27.244587Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Running full ccd_simulator, sequencer and scheduler integration tests"
+    },
+    {
+      "event_id": "821ef87e-b4be-4997-86c1-778ee024c065",
+      "event": "task/progress",
+      "at": "2026-11-17T00:23:41.578204Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "bb5ebd96-3a31-4482-be80-b665cd1db31c",
+      "event": "task/progress",
+      "at": "2026-11-17T00:23:41.600172Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "7e9d0b9e-064e-4a63-a848-d4e1a3e96aa3",
+      "event": "task/progress",
+      "at": "2026-11-17T00:23:41.605360Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "0ff896f9-2623-41bb-b10a-deb099720de4",
+      "event": "task/progress",
+      "at": "2026-11-17T00:25:04.271576Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "a1c5faad-824a-4df1-8ce0-c8f0ee9fe65a",
+      "event": "check/passed",
+      "at": "2026-11-17T00:25:04.277121Z",
+      "actor": "human/owner",
+      "commit": "60d7109012a18c7ea96d6412e19a48382abb58e6",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "530c67cc-4a75-465c-8a4f-1119c19323cb",
+      "event": "task/progress",
+      "at": "2026-11-17T00:25:30.982451Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e1cd3182-2cd8-4e5a-9990-d8520928bc43",
+      "event": "review/started",
+      "at": "2026-11-17T00:25:30.983079Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "7c8892ac-0119-467d-8c29-52d1554e289c",
+      "event": "task/progress",
+      "at": "2026-11-17T00:25:44.754169Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Reviewer launched (round 3)",
+      "attempt_id": "21515675-eeb4-4b37-bbd9-359f18bfdabd",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "b4f9a9aa-5ad2-4417-890d-6394a54c0d9d",
+      "event": "task/progress",
+      "at": "2026-11-17T00:26:35.172383Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Running uni_io unit, ccd_simulator, sequencer and scheduler tests in worktree"
+    },
+    {
+      "event_id": "30634986-3d2b-4971-bc37-50d992bdd107",
+      "event": "task/progress",
+      "at": "2026-11-17T00:36:33.993057Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "80fe46ae-d318-4dba-b056-182840ad1dca",
+      "event": "task/progress",
+      "at": "2026-11-17T00:36:33.993092Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "12909d4a-4f34-4c17-ad2c-096edc19762b",
+      "event": "review/changes_requested",
+      "at": "2026-11-17T00:36:33.993707Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "60d7109012a18c7ea96d6412e19a48382abb58e6"
+    },
+    {
+      "event_id": "4b2e4edc-940c-4b4a-b3d3-22ff129e0464",
+      "event": "task/progress",
+      "at": "2026-11-17T00:36:56.556868Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Review round 1 changes sent back to implementer: stale test_runner.h comment, reproduction note"
+    },
+    {
+      "event_id": "df5f4373-4ab7-4a80-be1a-320322dc7132",
+      "event": "ticket/note",
+      "at": "2026-11-17T00:37:07.137575Z",
+      "actor": "human/owner",
+      "text": "Reproduction before the fix (old CCD code): test_agent_scripting_sequencer \"simulator imaging in a folder that does not exist\" (real Sequencer.js, Imager Agent, ccd_simulator) failed with 'Folder \".../Rosette Nebula/\" is not writtable', 'CCD_LOCAL_MODE reports alert', 'Sequence failed'. test_ccd_simulator simulator_local_mode_accepts_a_folder_that_can_be_created failed with 'Simulator timeout: CCD_LOCAL_MODE state 1'. Component that turned the alert into the task failure: Sequencer.js on_update, which waits for CCD_LOCAL_MODE on the Imager Agent after set_directory/set_object_name/set_file_template steps and fails the sequence with 'CCD_LOCAL_MODE reports alert'. The Scheduler Agent sets DIR fire-and-forget and ignores the state; the Imager Agent only mirrors it. After the fix: flow check passed; test_ccd_simulator 30/30, test_agent_scripting_sequencer 68/68, test_agent_scheduler 106/106 (one earlier full run had a flaky edit_of_running_task_is_deferred that passed alone 3/3 and in the next full run), test_uni_io passed. Limitation: the scheduler integration test uses a stand-in imager whose CCD_LOCAL_MODE check calls the production indigo_uni_is_creatable (flag-enabled only for that test); it fails the task with the old strict indigo_uni_is_writable check. Real Scheduler + Imager Agent + CCD together are not run in one test. The Windows branch of indigo_uni_is_creatable (GetFileAttributesA) was not built or run.",
+      "tokens": null
+    },
+    {
+      "event_id": "1a05597c-da21-4115-8343-9791fa8f34d3",
+      "event": "task/progress",
+      "at": "2026-11-17T00:37:07.350499Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "8bd305ff-8110-4576-bde4-af4006094998",
+      "event": "task/progress",
+      "at": "2026-11-17T00:37:07.372272Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "49058a68-20b3-44f8-9c38-2e2f6896505a",
+      "event": "task/progress",
+      "at": "2026-11-17T00:37:07.377915Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "56ed02c0-8da0-425a-93cf-79b8fcb7b926",
+      "event": "task/progress",
+      "at": "2026-11-17T00:38:48.629610Z",
+      "actor": "human/owner",
+      "task_id": "8b70b789-c54b-4c26-b66e-b68f66bba107",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "c6ed644f-604a-42d0-86c9-215acdb8143d",
+      "event": "check/passed",
+      "at": "2026-11-17T00:38:48.635451Z",
+      "actor": "human/owner",
+      "commit": "551d3da39da4d81356230ed6645035d23f23b79a",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "574e2299-9023-4c23-ad61-e7e0f9336762",
+      "event": "task/progress",
+      "at": "2026-11-17T00:38:59.718448Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Review started"
+    },
+    {
+      "event_id": "80f04886-8150-40af-8253-11e6c8db80cc",
+      "event": "review/started",
+      "at": "2026-11-17T00:38:59.719234Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "baabacce-5eff-41db-af74-94a4beac4dc3",
+      "event": "task/progress",
+      "at": "2026-11-17T00:39:14.529377Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Round 2 review: reading diff and notes",
+      "attempt_id": "cd037c6b-f902-4069-8616-f80e9ce0cb75",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f6576e15-c25b-464a-b94b-49f0b30f2bac",
+      "event": "task/progress",
+      "at": "2026-11-17T00:39:44.067611Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Building worktree lib and running uni_io, ccd_simulator, sequencer, scheduler tests"
+    },
+    {
+      "event_id": "06c1191a-d561-435f-9ede-f9dd0e2262fe",
+      "event": "task/progress",
+      "at": "2026-11-17T00:50:27.894069Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "f3fb5000-48af-4e90-95fa-0609f43cd4d4",
+      "event": "review/passed",
+      "at": "2026-11-17T00:50:27.894760Z",
+      "actor": "human/owner",
+      "task_id": "53aeef8d-1d55-43a0-988a-c3a3106eecdc",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "551d3da39da4d81356230ed6645035d23f23b79a"
+    },
+    {
+      "event_id": "8f2677ae-a0d6-4004-a310-9144e2a054c5",
+      "event": "ticket/title_changed",
+      "at": "2026-11-17T00:52:57.442512Z",
+      "actor": "human/owner",
+      "previous_title": "indigo_ccd_driver: setting CCD_LOCAL_MODE.DIR to a folder that does not exist yet fails, so scheduler tasks with a per-task folder fail",
+      "title": "indigo_ccd_driver: accept a CCD_LOCAL_MODE.DIR folder that does not exist yet when its parent is writable, the first saved frame creates it"
+    },
+    {
+      "event_id": "c8b2aa1c-dcd0-4de4-8e5a-51722038e48f",
+      "event": "ticket/closed",
+      "at": "2026-11-17T00:52:57.706206Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-17T00:52:57.706165Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "568c4fef6e8a2208882bd68f8bfa285c03bb8672"
+  },
+  "priority": "high",
+  "severity": "medium",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "60d7109012a18c7ea96d6412e19a48382abb58e6",
+        "tree": "da89c1995f07d858d2e36e92d523c5ea3e4b8b54",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T00:23:41.599411Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/10cdacd2-62bd-4a16-a222-884a5ef0483c/da89c1995f07-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "60d7109012a18c7ea96d6412e19a48382abb58e6",
+        "tree": "da89c1995f07d858d2e36e92d523c5ea3e4b8b54",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T00:25:04.270787Z",
+        "duration_s": 82.7,
+        "log": "/tmp/factory-flow/10cdacd2-62bd-4a16-a222-884a5ef0483c/da89c1995f07-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "551d3da39da4d81356230ed6645035d23f23b79a",
+        "tree": "0a2c356055c651ca0ed369f6f0cf3b3756e7a461",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T00:37:07.371323Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/10cdacd2-62bd-4a16-a222-884a5ef0483c/0a2c356055c6-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "551d3da39da4d81356230ed6645035d23f23b79a",
+        "tree": "0a2c356055c651ca0ed369f6f0cf3b3756e7a461",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T00:38:48.628641Z",
+        "duration_s": 101.3,
+        "log": "/tmp/factory-flow/10cdacd2-62bd-4a16-a222-884a5ef0483c/0a2c356055c6-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Code is correct and matches the owner decision; tests effective and pass (test_uni_io all; test_ccd_simulator new case; sequencer 'simulator imaging*' 2/2; test_agent_scheduler full suite 106/106 twice). Requested changes: (1) indigo_test/test_runner.h:156-160 comment is now false: it says the framework rejects a missing $HOME/indigo_image_cache and that an empty private home makes every CCD driver publish CCD_LOCAL_MODE in ALERT; with indigo_uni_is_creatable() a missing folder under a writable home is accepted. Reword it (the mkdir may stay, e.g. so saved frames have their folder / to keep the fixture like a real home) or drop the mkdir with the comment. (2) bugfixes rule and ticket description: no ticket note records the reproduction before the fix, the component that turns the CCD_LOCAL_MODE alert into the task failure, and the result after the fix; add it with flow note before close. Notes, no change required: indigo_ccd_driver.c:836 sandbox branch is consistent with the save paths (2266/2413/2499 skip mkdir when sandboxed); PROPERTIES.md CCD_LOCAL_MODE row does not describe the check, no update needed; no driver version bump applies (framework change). edit_of_running_task_is_deferred runs in its own forked child, never sets imager_checks_folder and does not touch CCD_LOCAL_MODE; its failure is pre-existing timing sensitivity (2 s task can end between the RUNNING observation and the edit under parallel load), not caused by this change. Minor/out of scope: test_agent_scheduler.c new case ASSERT_FALSE(created) only checks the stand-in, which never creates folders; Windows UNC path to a missing share walks up to '\\\\' (current drive root) and may be accepted, the save then reports the error; unit test returns without removing its temp dir if an early ASSERT fails.",
+        "reviewer": "human/owner",
+        "commit": "60d7109012a18c7ea96d6412e19a48382abb58e6",
+        "tree": "da89c1995f07d858d2e36e92d523c5ea3e4b8b54",
+        "at": "2026-11-17T00:36:33.992953Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2: both round-1 requests done (test_runner.h:156-158 comment reworded; owner-visible reproduction note naming Sequencer.js on_update, results and limitations). Re-verified independently: indigo_uni_is_creatable (indigo_uni_io.c:2673-2727) walks to nearest existing ancestor, accepts only a writable directory, creates nothing; CCD_LOCAL_MODE handler (indigo_ccd_driver.c:835-836) uses it except when sandboxed, matching the save path guards at 2266/2413/2499; existing-folder behaviour unchanged. Tests cover non-existent nested folder OK + not created, creation on first save, ALERT below regular file and read-only folder, sequencer real Sequencer.js+ccd_simulator, scheduler stand-in. PROPERTIES.md does not describe the check, no change needed. Reviewer runs on rebuilt worktree lib: test_uni_io pass, test_ccd_simulator all pass, test_agent_scripting_sequencer 68/68, test_agent_scheduler 106/106. Non-blocking: in test_agent_scheduler task_folder_that_does_not_exist_yet_runs a failing REQUIRE leaves imager_checks_folder true and the temp dir behind (failure path only); Windows branch unbuilt (documented).",
+        "reviewer": "human/owner",
+        "commit": "551d3da39da4d81356230ed6645035d23f23b79a",
+        "tree": "0a2c356055c651ca0ed369f6f0cf3b3756e7a461",
+        "at": "2026-11-17T00:50:27.893965Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-16T23:52:50.218492Z",
+        "actor": "human/owner",
+        "text": "Owner decision 2026-11-17 (replaces the proposed fix): do NOT create the folder when CCD_LOCAL_MODE.DIR is set and never remove folders. In the CCD_LOCAL_MODE handler: if DIR exists, keep the indigo_uni_is_writable() check; if it does not exist, walk up to the nearest existing ancestor and accept DIR (state OK) when that ancestor is a writable directory, otherwise ALERT with the existing message. The folder is created at the first save by the existing indigo_uni_mkdir() calls. Keep the indigo_is_sandboxed behaviour consistent with the save path. If a portable helper is needed (e.g. an exists/is-directory check), use or add it in indigo_uni_io (indigo_libs), not platform code in the CCD driver. Tests: DIR set to a non-existent nested folder under a writable dir -> OK and no folder created; first saved frame creates it; DIR under a non-writable or non-directory ancestor -> ALERT; scheduler integration test with a per-task folder that does not exist yet runs the task. Update indigo_docs/PROPERTIES.md CCD_LOCAL_MODE description if it describes the check.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-17T00:37:07.136970Z",
+        "actor": "human/owner",
+        "text": "Reproduction before the fix (old CCD code): test_agent_scripting_sequencer \"simulator imaging in a folder that does not exist\" (real Sequencer.js, Imager Agent, ccd_simulator) failed with 'Folder \".../Rosette Nebula/\" is not writtable', 'CCD_LOCAL_MODE reports alert', 'Sequence failed'. test_ccd_simulator simulator_local_mode_accepts_a_folder_that_can_be_created failed with 'Simulator timeout: CCD_LOCAL_MODE state 1'. Component that turned the alert into the task failure: Sequencer.js on_update, which waits for CCD_LOCAL_MODE on the Imager Agent after set_directory/set_object_name/set_file_template steps and fails the sequence with 'CCD_LOCAL_MODE reports alert'. The Scheduler Agent sets DIR fire-and-forget and ignores the state; the Imager Agent only mirrors it. After the fix: flow check passed; test_ccd_simulator 30/30, test_agent_scripting_sequencer 68/68, test_agent_scheduler 106/106 (one earlier full run had a flaky edit_of_running_task_is_deferred that passed alone 3/3 and in the next full run), test_uni_io passed. Limitation: the scheduler integration test uses a stand-in imager whose CCD_LOCAL_MODE check calls the production indigo_uni_is_creatable (flag-enabled only for that test); it fails the task with the old strict indigo_uni_is_writable check. Real Scheduler + Imager Agent + CCD together are not run in one test. The Windows branch of indigo_uni_is_creatable (GetFileAttributesA) was not built or run.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "568c4fef6e8a2208882bd68f8bfa285c03bb8672",
+      "tree": "0a2c356055c651ca0ed369f6f0cf3b3756e7a461",
+      "base": "master",
+      "at": "2026-11-17T00:52:57.626195Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-16T23:43:34.355326Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-16T23:52:50.104807Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 3448795.607,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 49,
+    "sha256": "82a70c60def8c0c8e011422c0446b80a219cca11666dd62d63b21a6a840b9e7e"
+  }
+}
