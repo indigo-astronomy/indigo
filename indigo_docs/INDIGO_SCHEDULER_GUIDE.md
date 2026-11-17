@@ -574,9 +574,9 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.STARTUP=Unpark;SHUTD
 The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFTER` minutes, unparked again before the next task, and parked when the scheduler stops.
 
 - Hooks name their tasks: renaming a hook task with an edit detaches it from the hook.
-- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it as `STARTUP HOOK`, `SHUTDOWN HOOK`, `IDLE HOOK`, `NIGHT START HOOK`, `NIGHT END HOOK` or `RESUME HOOK`.
+- A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it with the state `HOOK` and its hook in the priority column: `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, for example `Park | HOOK | hook shutdown | - | - | -`.
 - One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
-- Hook runs appear in the history, marked `(hook)`.
+- Hook runs appear in the history with `hook` in the kind column.
 - A task with the header key `@hook` is a hook only: it is never scheduled as an ordinary task, also while no hook names it. Upload the task with `@hook` first, so that it does not run at once on a running scheduler, then name it in `AGENT_SCHEDULER_HOOKS`. It has no priority and is not in the night plan.
 - To remove a hook, set its item to an empty value, for example `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task again and is scheduled like the others, unless it has `@hook`.
 
