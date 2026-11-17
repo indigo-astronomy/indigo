@@ -358,7 +358,7 @@ All properties belong to the device "Scheduler Agent". Task storage follows the 
 | `AGENT_SCHEDULER_STATE` | number | `DONE`, `FAILED`, `URGENT_DONE`, `URGENT_FAILED`, `TOTAL` | Task counters: `DONE` and `FAILED` (failed or expired) count the tasks of the list; `URGENT_DONE` and `URGENT_FAILED` count the one-off urgent tasks, which leave the list when they end; a deleted or aborted one-off task is not counted. The urgent counters are saved with the history and reset with it. `TOTAL` counts the tasks of the list. The property state is Idle before the first `START`, Busy while scheduling, Ok after `STOP` and the automatic stop, and Alert after `ABORT` (also while stopped), a failed `STARTUP`, `NIGHT_START`, `RESUME` or `SHUTDOWN` hook, or a `STOP_TIMEOUT` stop |
 | `AGENT_SCHEDULER_CURRENT` | text | `CURRENT`, `REASON` | The running task or hook, and why nothing is eligible when the scheduler waits. What comes next is in the [night plan](#night-plan-preview) |
 | `AGENT_SCHEDULER_PLAN` | light | one per planned run | The forecast of the rest of the night in expected run order, see [Night plan preview](#night-plan-preview) |
-| `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, newest first, see [Run history](#run-history) |
+| `AGENT_SCHEDULER_HISTORY` | light | one per finished run | The record of finished runs, oldest first, newest last, see [Run history](#run-history) |
 | `AGENT_SCHEDULER_CLEAR_HISTORY` | switch | `CLEAR` | Remove all entries from `AGENT_SCHEDULER_HISTORY` |
 | `AGENT_SCHEDULER_RESTORE_HISTORY` | text | `ENTRIES` | Used only to restore the run history from the configuration; published with an empty value, and changes from clients are rejected |
 | `AGENT_SCHEDULER_SETTINGS` | number | see below | Scheduler settings |
@@ -691,7 +691,7 @@ The item label has six columns joined by ` | `, `-` for an empty one:
 
 For example: `2026-11-12 20:15-21:02 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc`.
 
-Entries are newest first. Expiry is not a run, so an expired task gets no entry; its state remains visible in `AGENT_SCHEDULER_TASK_STATE`.
+Entries are oldest first, the newest is last. Expiry is not a run, so an expired task gets no entry; its state remains visible in `AGENT_SCHEDULER_TASK_STATE`.
 
 **Limits.**
 

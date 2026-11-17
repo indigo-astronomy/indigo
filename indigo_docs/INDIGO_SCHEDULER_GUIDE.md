@@ -790,13 +790,13 @@ The plan is a forecast. It assumes that every run succeeds and takes its expecte
 
 ### The history
 
-`AGENT_SCHEDULER_HISTORY` lists the finished runs, newest first, up to 200. The columns are when, name, run, kind (`task`, `urgent` or `hook`), result and reason:
+`AGENT_SCHEDULER_HISTORY` lists the finished runs, oldest first, newest last, up to 200. The columns are when, name, run, kind (`task`, `urgent` or `hook`), result and reason:
 
 ```
-2026-11-21 01:28-03:31 | NGC 7000 Ha | run 1 | task | SUCCEEDED | -
-2026-11-20 21:10-21:40 | SN 2026abc | run 1 | urgent | SUCCEEDED | -
-2026-11-20 20:44-21:10 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc
 2026-11-20 20:02-20:04 | Evening | run 1 | hook | SUCCEEDED | -
+2026-11-20 20:44-21:10 | M31 LRGB | run 1 | task | PREEMPTED | by SN 2026abc
+2026-11-20 21:10-21:40 | SN 2026abc | run 1 | urgent | SUCCEEDED | -
+2026-11-21 01:28-03:31 | NGC 7000 Ha | run 1 | task | SUCCEEDED | -
 ```
 
 | Result | Light | Meaning |

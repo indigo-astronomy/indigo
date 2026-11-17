@@ -1259,6 +1259,28 @@ static bool edit_saved_configuration(const char *from, const char *to) {
 	return true;
 }
 
+// puts the given history entries, one per line, into the saved configuration
+static bool set_saved_history(const char *entries) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/Scheduler_Agent.config", indigo_uni_config_folder());
+	FILE *file = fopen(path, "rb");
+	CHECK(file != NULL);
+	static char content[1048576];
+	size_t length = fread(content, 1, sizeof(content) - 1, file);
+	fclose(file);
+	content[length] = 0;
+	const char *empty = "<oneText name='ENTRIES'></oneText>";
+	char *found = strstr(content, empty);
+	CHECK(found != NULL);
+	file = fopen(path, "wb");
+	CHECK(file != NULL);
+	fwrite(content, 1, found - content, file);
+	fprintf(file, "<oneText name='ENTRIES'>%s</oneText>", entries);
+	fputs(found + strlen(empty), file);
+	fclose(file);
+	return true;
+}
+
 static void saved_task_that_no_longer_validates_is_skipped(void) {
 	REQUIRE(upload("// @task Broken\n// @priority high\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @priority low\n// @task Nameless\n" BODY_WAIT(1)));
@@ -2745,15 +2767,15 @@ static void history_records_runs(void) {
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(history_label("Good #1", 0, label) && strstr(label, "| SUCCEEDED | -"));
 	ASSERT_TRUE(history_label("Bad #1", 0, label) && strstr(label, "| FAILED | Error: broken"));
-	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "| PREEMPTED | by Rush"));
+	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "| PREEMPTED | by Rush"));
 	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1 | urgent | SUCCEEDED | -"));
-	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "| ABORTED | -"));
+	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "| ABORTED | -"));
 	ASSERT_EQ_INT(5, history_count());
-	// newest first
+	// oldest first, newest last
 	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
 	REQUIRE(history != NULL);
-	ASSERT_TRUE(strstr(history->items[0].label, "Victim") && strstr(history->items[0].label, "| ABORTED |"));
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, history->items[history->count - 2].light.value);
+	ASSERT_TRUE(strstr(history->items[history->count - 1].label, "Victim") && strstr(history->items[history->count - 1].label, "| ABORTED |"));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, history->items[1].light.value);
 	indigo_release_property(history);
 	stop_scheduler();
 	REQUIRE(start_scheduler());
@@ -2767,6 +2789,47 @@ static void history_records_runs(void) {
 	char message[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(change_text(AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Fake\t1\t0\t0\tsucceeded\t \t\n", INDIGO_ALERT_STATE, message));
 	ASSERT_EQ_INT(0, history_count());
+}
+
+static void history_lists_oldest_first(void) {
+	// 205 saved entries, the oldest ones of which no longer fit into the history of 200
+	static char entries[16384];
+	size_t used = 0;
+	for (int i = 1; i <= 205; i++) {
+		used += snprintf(entries + used, sizeof(entries) - used, "Run%d\t%d\t0\t0\t%s\t-\t \n", i, i, i % 2 ? "succeeded" : "failed");
+	}
+	REQUIRE(upload("// @task Seed\n" BODY_WAIT(1)));
+	stop_scheduler();
+	REQUIRE(set_saved_history(entries));
+	REQUIRE(start_scheduler());
+	ASSERT_EQ_INT(200, history_count());
+	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	REQUIRE(history != NULL);
+	// the oldest kept entry is the first, the newest the last, and the item names count the runs
+	for (int i = 0; i < history->count; i++) {
+		char expected[INDIGO_VALUE_SIZE];
+		snprintf(expected, sizeof(expected), " | Run%d | run %d | ", i + 6, i + 6);
+		ASSERT_TRUE(strstr(history->items[i].label, expected) != NULL);
+		snprintf(expected, sizeof(expected), AGENT_SCHEDULER_HISTORY_ITEM_NAME, i + 6);
+		ASSERT_STREQ(expected, history->items[i].name);
+		ASSERT_EQ_INT((i + 6) % 2 ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, history->items[i].light.value);
+	}
+	indigo_release_property(history);
+	// the new runs, Seed and Newest, are appended at the end and the oldest entries drop off the top
+	REQUIRE(upload("// @task Newest\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Newest' completed", 1, 30));
+	for (int i = 0; i < 500 && !history_label("Newest #1", 0, (char[INDIGO_VALUE_SIZE]){ 0 }); i++) {
+		indigo_usleep(20000);
+	}
+	ASSERT_EQ_INT(200, history_count());
+	history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	REQUIRE(history != NULL);
+	ASSERT_TRUE(strstr(history->items[0].label, " | Run8 | run 8 | ") != NULL);
+	ASSERT_TRUE(strstr(history->items[history->count - 3].label, " | Run205 | run 205 | ") != NULL);
+	ASSERT_TRUE(strstr(history->items[history->count - 2].label, " | Seed | run 1 | ") != NULL);
+	ASSERT_TRUE(strstr(history->items[history->count - 1].label, " | Newest | run 1 | ") != NULL);
+	indigo_release_property(history);
 }
 
 static void labels_have_uniform_columns(void) {
@@ -3566,6 +3629,7 @@ static const indigo_test_case cases[] = {
 	{ "abort_runs_the_shutdown_hook", abort_runs_the_shutdown_hook },
 	{ "start_during_shutdown_hook_continues", start_during_shutdown_hook_continues },
 	{ "history_records_runs", history_records_runs },
+	{ "history_lists_oldest_first", history_lists_oldest_first },
 	{ "labels_have_uniform_columns", labels_have_uniform_columns },
 	{ "duration_estimated_measured_and_set", duration_estimated_measured_and_set },
 	{ "library_without_estimate_uses_the_default", library_without_estimate_uses_the_default },

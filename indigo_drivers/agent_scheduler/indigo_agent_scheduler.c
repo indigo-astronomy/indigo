@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000012
+#define DRIVER_VERSION 0x03000013
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -672,16 +672,17 @@ static void history_label(history_entry *entry, char *label, size_t size) {
 	join_label(label, size, 6, columns);
 }
 
-// the history is a list of finished runs, newest first; its length changes, so it is defined again
+// the history is a list of finished runs, oldest first and newest last, while the array keeps the newest first; its length changes, so it is defined again
 static void update_history_property(indigo_device *device) {
 	indigo_delete_property(device, HISTORY_PROPERTY, NULL);
 	pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
-	for (int i = 0; i < PRIVATE_DATA->history_count; i++) {
+	for (int position = 0; position < PRIVATE_DATA->history_count; position++) {
+		int i = PRIVATE_DATA->history_count - 1 - position;
 		char name[INDIGO_NAME_SIZE];
 		char label[INDIGO_VALUE_SIZE];
 		snprintf(name, sizeof(name), AGENT_SCHEDULER_HISTORY_ITEM_NAME, PRIVATE_DATA->history_serial - i);
 		history_label(PRIVATE_DATA->history + i, label, sizeof(label));
-		indigo_init_light_item(HISTORY_PROPERTY->items + i, name, label, history_light(PRIVATE_DATA->history[i].result));
+		indigo_init_light_item(HISTORY_PROPERTY->items + position, name, label, history_light(PRIVATE_DATA->history[i].result));
 	}
 	HISTORY_PROPERTY->count = PRIVATE_DATA->history_count;
 	pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);

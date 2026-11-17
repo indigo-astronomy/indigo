@@ -460,7 +460,8 @@ class Sandbox:
 				count = int(arguments[0]) if arguments else 10
 				p = self.client.property(AGENT, "AGENT_SCHEDULER_HISTORY")
 				self.say("history:")
-				for i in (p or {}).get("items", [])[:count]:
+				items = (p or {}).get("items", [])
+				for i in items[max(len(items) - count, 0):]:
 					self.say("  %-5s %s" % (i.get("value", ""), i.get("label", "")))
 			elif verb == "wait":
 				deadline = time.monotonic() + float(arguments[0])
