@@ -256,16 +256,38 @@ static void test_data_header_keys(void) {
 	assert_rejected("// @task A\n// @project A\n// @project B\n" BODY, "repeated key");
 }
 
-static void test_hook_key(void) {
+static void test_hook_priority_class(void) {
 	ASSERT_TRUE(parse("// @task A\n" BODY));
-	ASSERT_FALSE(header.hook);
-	ASSERT_TRUE(parse("// @task A\n// @hook\n// @priority low 10\n" BODY));
-	ASSERT_TRUE(header.hook);
-	ASSERT_EQ_INT(SCHEDULER_PRIORITY_LOW, header.priority_class);
-	ASSERT_TRUE(parse("// @task A\n// @HOOK   \n" BODY));
-	ASSERT_TRUE(header.hook);
-	assert_rejected("// @task A\n// @hook yes\n" BODY, "line 2: @hook: expected no value");
-	assert_rejected("// @task A\n// @hook\n// @hook\n" BODY, "line 3: @hook: repeated key");
+	ASSERT_EQ_INT(SCHEDULER_PRIORITY_NORMAL, header.priority_class);
+	ASSERT_TRUE(parse("// @task A\n// @priority hook\n" BODY));
+	ASSERT_EQ_INT(SCHEDULER_PRIORITY_HOOK, header.priority_class);
+	ASSERT_STREQ("hook", indigo_scheduler_priority_name(header.priority_class));
+	ASSERT_TRUE(parse("// @task A\n// @PRIORITY  HOOK   \n" BODY));
+	ASSERT_EQ_INT(SCHEDULER_PRIORITY_HOOK, header.priority_class);
+	// keys a hook uses stay accepted
+	ASSERT_TRUE(parse("// @task A\n// @priority hook\n// @duration 5\n// @target 10:00:00 20:00:00\n// @enabled no\n// @folder none\n// @observer A\n" BODY));
+	ASSERT_EQ_INT(5, header.duration);
+	ASSERT_TRUE(header.has_target);
+	assert_rejected("// @task A\n// @priority hook 50\n" BODY, "line 2: @priority: expected");
+	assert_rejected("// @task A\n// @priority hook 0\n" BODY, "line 2: @priority: expected");
+	assert_rejected("// @task A\n// @priority hook\n// @priority low\n" BODY, "line 3: @priority: repeated key");
+	assert_rejected("// @task A\n// @hook\n" BODY, "line 2: @hook: unknown key");
+}
+
+static void test_hook_priority_rejects_scheduling_keys(void) {
+	assert_rejected("// @task A\n// @priority hook\n// @repeat 2\n" BODY, "line 3: @repeat: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @repeat 2\n// @priority hook\n" BODY, "line 3: @repeat: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @retry 1\n" BODY, "line 3: @retry: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @window 20:00 .. 04:00\n" BODY, "line 3: @window: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @twilight civil\n" BODY, "line 3: @twilight: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @preempted fail\n" BODY, "line 3: @preempted: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @target 10 20\n// @altitude > 30\n" BODY, "line 4: @altitude: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @target 10 20\n// @airmass < 2\n" BODY, "line 4: @airmass: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @target 10 20\n// @ha -2..2\n" BODY, "line 4: @ha: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @target 10 20\n// @moon > 30\n" BODY, "line 4: @moon: not allowed with @priority hook");
+	assert_rejected("// @task A\n// @priority hook\n// @target 10 20\n// @illumination < 50\n" BODY, "line 4: @illumination: not allowed with @priority hook");
+	// the same keys stay valid for the other classes
+	ASSERT_TRUE(parse("// @task A\n// @priority low\n// @repeat 2\n// @retry 1\n// @twilight civil\n" BODY));
 }
 
 int main(void) {
@@ -281,7 +303,8 @@ int main(void) {
 		{ "empty_body_and_size_limit", test_empty_body_and_size_limit },
 		{ "folder_key", test_folder_key },
 		{ "data_header_keys", test_data_header_keys },
-		{ "hook_key", test_hook_key },
+		{ "hook_priority_class", test_hook_priority_class },
+		{ "hook_priority_rejects_scheduling_keys", test_hook_priority_rejects_scheduling_keys },
 	};
 	return indigo_run_tests("test_agent_scheduler_header", cases, sizeof(cases) / sizeof(cases[0]));
 }

@@ -2249,13 +2249,13 @@ static void reset_all_keeps_running_task_and_urgent_order(void) {
 	ASSERT_TRUE(wait_task_state("Broken", "QUEUED", 5));
 }
 
-static void hook_header_key_keeps_a_task_from_running(void) {
+static void hook_priority_class_keeps_a_task_from_running(void) {
 	char label[INDIGO_VALUE_SIZE];
 	indigo_property_state light;
 	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	// uploaded to a running idle scheduler, the task is not started as an ordinary one
-	REQUIRE(upload("// @task Park\n// @hook\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Park\n// @priority hook\n" BODY_WAIT(1)));
 	ASSERT_TRUE(wait_task_state("Park", "| HOOK | hook | ", 5));
 	ASSERT_TRUE(task_label("Park", label, &light));
 	ASSERT_STREQ("Park | HOOK | hook | - | - | -", label);
@@ -2272,12 +2272,12 @@ static void hook_header_key_keeps_a_task_from_running(void) {
 	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
 }
 
-static void hook_header_key_task_is_not_planned_or_counted(void) {
+static void hook_priority_class_task_is_not_planned_or_counted(void) {
 	char message[INDIGO_VALUE_SIZE];
 	char label[INDIGO_VALUE_SIZE];
 	site_at_evening();
 	REQUIRE(upload("// @task Work\n// @duration 1\n" BODY_WAIT(1)));
-	REQUIRE(upload("// @task Hook only\n// @hook\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Hook only\n// @priority hook\n// @duration 1\n" BODY_WAIT(1)));
 	// neither planned nor listed as NOT TONIGHT
 	ASSERT_TRUE(wait_plan(1, "Work", 10));
 	ASSERT_TRUE(wait_plan_contains("Hook only", false, 2));
@@ -2298,7 +2298,7 @@ static void hook_header_key_task_is_not_planned_or_counted(void) {
 static void urgent_task_cannot_be_a_hook(void) {
 	char message[INDIGO_VALUE_SIZE];
 	char label[INDIGO_VALUE_SIZE];
-	REQUIRE(change_text(AGENT_SCHEDULER_URGENT_TASK_PROPERTY_NAME, AGENT_SCHEDULER_URGENT_TASK_TASK_ITEM_NAME, "// @task Urgent hook\n// @hook\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	REQUIRE(change_text(AGENT_SCHEDULER_URGENT_TASK_PROPERTY_NAME, AGENT_SCHEDULER_URGENT_TASK_TASK_ITEM_NAME, "// @task Urgent hook\n// @priority hook\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
 	ASSERT_TRUE(strstr(message, "an urgent task cannot be a hook") != NULL);
 	ASSERT_FALSE(task_label("Urgent hook", label, NULL));
 	ASSERT_EQ_INT(0, task_count());
@@ -3680,8 +3680,8 @@ static const indigo_test_case cases[] = {
 	{ "pending_rename_reserves_the_name", pending_rename_reserves_the_name },
 	{ "library_reload_keeps_scheduled_task", library_reload_keeps_scheduled_task },
 	{ "hooks_run_at_start_idle_and_stop", hooks_run_at_start_idle_and_stop },
-	{ "hook_header_key_keeps_a_task_from_running", hook_header_key_keeps_a_task_from_running },
-	{ "hook_header_key_task_is_not_planned_or_counted", hook_header_key_task_is_not_planned_or_counted },
+	{ "hook_priority_class_keeps_a_task_from_running", hook_priority_class_keeps_a_task_from_running },
+	{ "hook_priority_class_task_is_not_planned_or_counted", hook_priority_class_task_is_not_planned_or_counted },
 	{ "urgent_task_cannot_be_a_hook", urgent_task_cannot_be_a_hook },
 	{ "failed_startup_hook_stops_the_scheduler", failed_startup_hook_stops_the_scheduler },
 	{ "abort_runs_the_shutdown_hook", abort_runs_the_shutdown_hook },

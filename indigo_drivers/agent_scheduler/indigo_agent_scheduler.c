@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000014
+#define DRIVER_VERSION 0x03000015
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -418,9 +418,9 @@ static run_kind hook_kind(indigo_device *device, scheduler_task *task) {
 	return RUN_TASK;
 }
 
-// a task named in AGENT_SCHEDULER_HOOKS or marked @hook, neither is ever selected as an ordinary task
+// a task named in AGENT_SCHEDULER_HOOKS or of the hook priority class, neither is ever selected as an ordinary task
 static bool is_hook(indigo_device *device, scheduler_task *task) {
-	return task->header.hook || hook_kind(device, task) != RUN_TASK;
+	return task->header.priority_class == SCHEDULER_PRIORITY_HOOK || hook_kind(device, task) != RUN_TASK;
 }
 
 // effective duration in seconds: @duration, the measured duration, the estimate, or the default
@@ -850,7 +850,7 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 	if (kind != RUN_TASK) {
 		return hook_names[kind];
 	}
-	if (task->header.hook) {
+	if (task->header.priority_class == SCHEDULER_PRIORITY_HOOK) {
 		return "hook";
 	}
 	if (is_urgent(task)) {
@@ -2512,7 +2512,7 @@ static void urgent_task(indigo_device *device, indigo_property *request) {
 		reject(device, URGENT_TASK_PROPERTY, "Urgent task rejected: a task named '%s' already exists", header.name);
 		return;
 	}
-	if (header.hook) {
+	if (header.priority_class == SCHEDULER_PRIORITY_HOOK) {
 		reject(device, URGENT_TASK_PROPERTY, "Urgent task rejected: an urgent task cannot be a hook");
 		return;
 	}
@@ -2566,7 +2566,7 @@ static void reset_all_tasks(indigo_device *device) {
 	}
 }
 
-// every stored and urgent task but the hook tasks (named as hooks or marked @hook), only while the scheduler is stopped
+// every stored and urgent task but the hook tasks (named as hooks or of the hook class), only while the scheduler is stopped
 static void delete_all_tasks(indigo_device *device) {
 	if (PRIVATE_DATA->started || PRIVATE_DATA->phase != RUN_IDLE) {
 		reject(device, TASK_COMMAND_PROPERTY, "Tasks can be deleted all at once only while the scheduler is stopped");

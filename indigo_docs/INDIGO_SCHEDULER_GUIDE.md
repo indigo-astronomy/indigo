@@ -176,7 +176,7 @@ Before the body runs, the scheduler defines a `scheduler_task` object from the h
 | Key | Syntax | Meaning | Default |
 |---|---|---|---|
 | `@task` | `name` | Name of the task, 1–40 bytes, without `\|`, unique (not case-sensitive) | required |
-| `@priority` | `urgent`, `high`, `normal` or `low`, optionally followed by a level 0–100 | Importance, see [Priorities](#priorities) | `normal 50` |
+| `@priority` | `urgent`, `high`, `normal` or `low`, optionally followed by a level 0–100, or `hook` without a level | Importance, see [Priorities](#priorities) | `normal 50` |
 | `@target` | `ra dec` | J2000 coordinates. RA in hours (`hh:mm:ss.s` or decimal), Dec in degrees (`±dd:mm:ss` or decimal). A task with a target also needs the target above the horizon | none |
 | `@altitude` | `> degrees` | Minimum target altitude, 0–90 | off |
 | `@airmass` | `< value` | Maximum airmass, 1–100 | off |
@@ -194,7 +194,6 @@ Before the body runs, the scheduler defines a `scheduler_task` object from the h
 | `@observer` | text | The observer, written as the FITS header `OBSERVER` of the frames of the task, 1–56 characters (a quote counts as two), see [Where the data goes](#where-the-data-goes) | no header |
 | `@pi` | text | The principal investigator, written as the FITS header `PI_NAME`, same rules as `@observer` | no header |
 | `@project` | text | The project or proposal identifier, written as the FITS header `PROPID`, same rules as `@observer` | no header |
-| `@hook` | no value | Marks a hook-only task: it is never scheduled as an ordinary task, even before or without being named in `AGENT_SCHEDULER_HOOKS`, and runs only as a hook. A value or a repeated key is a script error. An urgent task cannot have it | ordinary task |
 
 `@altitude`, `@airmass`, `@ha`, `@moon` and `@illumination` need `@target`. The comparison signs are required: write `> 30`, not `30`. `>=` and `<=` are accepted and mean the same as `>` and `<`.
 
@@ -218,6 +217,8 @@ The check is made when the task starts, with the expected duration, in five-minu
 
   With the default weights of 1, the two bonuses together can add up to 200 points, more than the whole level range. A `normal 40` target that is high and about to set can therefore run before a `normal 60` target. To make the level decide strictly, set `SETTING_WEIGHT` and `ALTITUDE_WEIGHT` to 0 in [Settings](#settings); to make the sky position count more, raise them. The bonuses never cross a class: with the maximum weights of 4, the level and the bonuses together add at most 900 points, less than the 1000-point gap between classes.
 - When the scores are equal, the task higher in the task list wins. You can move tasks in the list, see [Changing the order](#changing-the-order).
+
+`hook` is a class of its own, without a level: `@priority hook` marks a hook-only task that is never scheduled as an ordinary task, see [Hooks](#hooks). `@priority hook 50` is a script error, and so are `@repeat`, `@retry`, `@window`, `@altitude`, `@airmass`, `@ha`, `@moon`, `@illumination`, `@twilight` and `@preempted` in the same header, because a hook never uses them. `@duration` (it places the hook in the night plan), `@target` and the data keys stay valid. A task submitted through `AGENT_SCHEDULER_URGENT_TASK` cannot be a hook.
 
 `urgent` is different from the other classes:
 
@@ -577,8 +578,8 @@ The mount is unparked on `START`, parked when nothing can run for `IDLE_PARK_AFT
 - A hook task is never scheduled as an ordinary task. Its header constraints are ignored, so they never keep it from running. The task list shows it with the state `HOOK` and its hook in the priority column: `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, for example `Park | HOOK | hook shutdown | - | - | -`.
 - One task may serve several hooks, for example `Park` as `SHUTDOWN`, `IDLE` and `NIGHT_END`. The task list shows the first of them. When two hooks naming the same task are due one right after the other, such as `STARTUP` and `NIGHT_START` on `START` during the night, the task runs once.
 - Hook runs appear in the history with `hook` in the kind column.
-- A task with the header key `@hook` is a hook only: it is never scheduled as an ordinary task, also while no hook names it. Upload the task with `@hook` first, so that it does not run at once on a running scheduler, then name it in `AGENT_SCHEDULER_HOOKS`. It has no priority and is not in the night plan.
-- To remove a hook, set its item to an empty value, for example `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task again and is scheduled like the others, unless it has `@hook`.
+- A task with `@priority hook` is a hook only: it is never scheduled as an ordinary task, also while no hook names it. Upload the task with `@priority hook` first, so that it does not run at once on a running scheduler, then name it in `AGENT_SCHEDULER_HOOKS`; the header does not name the hook role. It has no level and is not in the night plan.
+- To remove a hook, set its item to an empty value, for example `indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_HOOKS.IDLE="`. Its task then becomes an ordinary task again and is scheduled like the others, unless it has `@priority hook`.
 
 ### Several nights
 
@@ -753,7 +754,7 @@ SN 2026abc | RUNNING | urgent | run 0/1 | retries left 0 | 0h30 set
 Park | HOOK | hook shutdown | - | - | -
 ```
 
-The priority is `urgent`, the class and level of the task such as `normal 60`, or for a task that serves as a hook `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, and `hook` for a task with `@hook` that no hook names. The runs are `run <done>/<repeat>` and the retries `retries left <n>`, always shown. The duration is the hours and minutes followed by its source (`set`, `measured`, `estimated` or `default`). A hook has `-` for the runs, retries and duration.
+The priority is `urgent`, the class and level of the task such as `normal 60`, or for a task that serves as a hook `hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end` or `hook resume`, and `hook` for a task with `@priority hook` that no hook names. The runs are `run <done>/<repeat>` and the retries `retries left <n>`, always shown. The duration is the hours and minutes followed by its source (`set`, `measured`, `estimated` or `default`). A hook has `-` for the runs, retries and duration.
 
 | State | Light | Meaning |
 |---|---|---|
@@ -767,7 +768,7 @@ The priority is `urgent`, the class and level of the task such as `normal 60`, o
 | EXPIRED | Alert | The end of its `@window` passed before it completed |
 | DISABLED | Idle | `@enabled no`, or disabled by command |
 | SCRIPT ERROR | Alert | The body has an error; fix it with an edit |
-| HOOK | Idle | The task is named in `AGENT_SCHEDULER_HOOKS` or has `@hook`; its state is not tracked |
+| HOOK | Idle | The task is named in `AGENT_SCHEDULER_HOOKS` or has `@priority hook`; its state is not tracked |
 
 ### The night plan
 
@@ -882,7 +883,7 @@ indigo_prop_tool set "Scheduler Agent.AGENT_SCHEDULER_TASK_COMMAND.DISABLE=ON"
 | `ENABLE` | Undoes `DISABLE`. A task with `@enabled no` in its header stays disabled until you edit the header |
 | `MOVE_UP`, `MOVE_DOWN` | Moves the task in the list. The list order decides only between otherwise equal tasks |
 | `RESET_ALL` | Resets every task as `RESET` does. A running task is left alone, and the message says so. Pending urgent tasks keep their order |
-| `DELETE_ALL` | Deletes every stored and urgent task except the tasks named as hooks and the tasks with `@hook`, so the preparation and the parking at the end of the night stay. It is accepted only while the scheduler is stopped. To delete a hook task, use `AGENT_SCHEDULER_DELETE_TASK` |
+| `DELETE_ALL` | Deletes every stored and urgent task except the tasks named as hooks and the tasks with `@priority hook`, so the preparation and the parking at the end of the night stay. It is accepted only while the scheduler is stopped. To delete a hook task, use `AGENT_SCHEDULER_DELETE_TASK` |
 
 `RESET_ALL` and `DELETE_ALL` do not use the task name. They carry a `warn_on_set` hint, so clients that follow INDIGO hints ask for a confirmation first. Command-line tools and scripts do not ask:
 
