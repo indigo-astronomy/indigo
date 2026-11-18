@@ -26,7 +26,7 @@
  \file indigo_agent_scheduler.c
  */
 
-#define DRIVER_VERSION 0x03000012
+#define DRIVER_VERSION 0x03000018
 #define DRIVER_NAME	"indigo_agent_scheduler"
 
 #include <stdio.h>
@@ -418,8 +418,9 @@ static run_kind hook_kind(indigo_device *device, scheduler_task *task) {
 	return RUN_TASK;
 }
 
+// a task named in AGENT_SCHEDULER_HOOKS or of the hook priority class, neither is ever selected as an ordinary task
 static bool is_hook(indigo_device *device, scheduler_task *task) {
-	return hook_kind(device, task) != RUN_TASK;
+	return task->header.priority_class == SCHEDULER_PRIORITY_HOOK || hook_kind(device, task) != RUN_TASK;
 }
 
 // effective duration in seconds: @duration, the measured duration, the estimate, or the default
@@ -672,16 +673,17 @@ static void history_label(history_entry *entry, char *label, size_t size) {
 	join_label(label, size, 6, columns);
 }
 
-// the history is a list of finished runs, newest first; its length changes, so it is defined again
+// the history is a list of finished runs, oldest first and newest last, while the array keeps the newest first; its length changes, so it is defined again
 static void update_history_property(indigo_device *device) {
 	indigo_delete_property(device, HISTORY_PROPERTY, NULL);
 	pthread_mutex_lock(&PRIVATE_DATA->property_mutex);
-	for (int i = 0; i < PRIVATE_DATA->history_count; i++) {
+	for (int position = 0; position < PRIVATE_DATA->history_count; position++) {
+		int i = PRIVATE_DATA->history_count - 1 - position;
 		char name[INDIGO_NAME_SIZE];
 		char label[INDIGO_VALUE_SIZE];
 		snprintf(name, sizeof(name), AGENT_SCHEDULER_HISTORY_ITEM_NAME, PRIVATE_DATA->history_serial - i);
 		history_label(PRIVATE_DATA->history + i, label, sizeof(label));
-		indigo_init_light_item(HISTORY_PROPERTY->items + i, name, label, history_light(PRIVATE_DATA->history[i].result));
+		indigo_init_light_item(HISTORY_PROPERTY->items + position, name, label, history_light(PRIVATE_DATA->history[i].result));
 	}
 	HISTORY_PROPERTY->count = PRIVATE_DATA->history_count;
 	pthread_mutex_unlock(&PRIVATE_DATA->property_mutex);
@@ -848,6 +850,9 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 	if (kind != RUN_TASK) {
 		return hook_names[kind];
 	}
+	if (task->header.priority_class == SCHEDULER_PRIORITY_HOOK) {
+		return "hook";
+	}
 	if (is_urgent(task)) {
 		return "urgent";
 	}
@@ -856,11 +861,10 @@ static const char *task_priority_text(indigo_device *device, scheduler_task *tas
 }
 
 static void build_task_state_label(indigo_device *device, scheduler_task *task, char *label, size_t size) {
-	run_kind kind = hook_kind(device, task);
-	const char *state = kind != RUN_TASK ? "HOOK" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
+	const char *state = is_hook(device, task) ? is_enabled(task) ? "HOOK" : "DISABLED" : task->script_error ? "SCRIPT ERROR" : is_enabled(task) ? task_state_names[task->state] : "DISABLED";
 	char priority[48], runs[32] = "", retries[32] = "", duration[48] = "";
 	const char *priority_text = task_priority_text(device, task, priority, sizeof(priority));
-	if (kind == RUN_TASK) {
+	if (!is_hook(device, task)) {
 		const char *source;
 		snprintf(runs, sizeof(runs), "run %d/%d", task->runs, task->header.repeat);
 		snprintf(retries, sizeof(retries), "retries left %d", task->header.retry - task->retries_used);
@@ -1112,14 +1116,14 @@ static void sanitize_folder(const char *name, char *folder, size_t size) {
 	}
 }
 
-// the folder of the task: the @folder key decides, the FOLDER setting gives every task its own folder named after it
-static bool data_directory(indigo_device *device, scheduler_task *task, char *directory, size_t size) {
+// the folder of the task: the @folder key decides, the FOLDER setting gives every task its own folder named after it; a hook gets a folder only from @folder
+static bool data_directory(indigo_device *device, scheduler_task *task, bool hook, char *directory, size_t size) {
 	const char *name = task->header.name;
 	if (task->header.folder_none) {
 		return false;
 	} else if (*task->header.folder) {
 		name = task->header.folder;
-	} else if (!DATA_FOLDER_ITEM->sw.value) {
+	} else if (hook || !DATA_FOLDER_ITEM->sw.value) {
 		return false;
 	}
 	const char *base = indigo_get_text_item_value(DATA_DIR_BASE_ITEM);
@@ -1168,7 +1172,9 @@ static const struct {
 };
 
 // labels the data of a run with its task, before the script runs; nothing is applied when the Imager Agent is not known
+// a hook may deselect the camera, which takes CCD_LOCAL_MODE from the Imager Agent and loses the restore, so a hook is not labelled; only its @folder sets the folder
 static void apply_context(indigo_device *device, scheduler_task *task, int run_number) {
+	bool hook = PRIVATE_DATA->kind != RUN_TASK;
 	PRIVATE_DATA->context_applied = PRIVATE_DATA->context_fits = false;
 	PRIVATE_DATA->context_headers = 0;
 	if (!PRIVATE_DATA->original_valid) {
@@ -1181,11 +1187,11 @@ static void apply_context(indigo_device *device, scheduler_task *task, int run_n
 	const char *values[2];
 	int count = 0;
 	char directory[INDIGO_VALUE_SIZE];
-	if (DATA_OBJECT_ITEM->sw.value) {
+	if (DATA_OBJECT_ITEM->sw.value && !hook) {
 		items[count] = CCD_LOCAL_MODE_OBJECT_ITEM_NAME;
 		values[count++] = task->header.name;
 	}
-	if (data_directory(device, task, directory, sizeof(directory))) {
+	if (data_directory(device, task, hook, directory, sizeof(directory))) {
 		items[count] = CCD_LOCAL_MODE_DIR_ITEM_NAME;
 		values[count++] = directory;
 	}
@@ -1193,7 +1199,7 @@ static void apply_context(indigo_device *device, scheduler_task *task, int run_n
 		indigo_change_text_property(agent_client, IMAGER_AGENT, CCD_LOCAL_MODE_PROPERTY_NAME, count, items, values);
 		PRIVATE_DATA->context_applied = true;
 	}
-	if (DATA_FITS_ITEM->sw.value) {
+	if (DATA_FITS_ITEM->sw.value && !hook) {
 		char value[INDIGO_VALUE_SIZE];
 		char night[32];
 		fits_string(task->header.name, value, sizeof(value));
@@ -1766,10 +1772,21 @@ static void process_stopping(indigo_device *device) {
 	}
 }
 
-// the slot of a configured hook, -1 if it is not set or names no task
+// the slot of a configured hook, -1 if it is not set, names no task or names a disabled task
 static int hook_slot(indigo_device *device, indigo_item *item) {
 	const char *name = indigo_get_text_item_value(item);
-	return *name ? find_task(device, name) : -1;
+	int slot = *name ? find_task(device, name) : -1;
+	return slot >= 0 && is_enabled(PRIVATE_DATA->tasks + slot) ? slot : -1;
+}
+
+// tells why a configured hook has no task to run
+static void send_hook_notice(indigo_device *device, const char *role, indigo_item *item) {
+	const char *name = indigo_get_text_item_value(item);
+	if (find_task(device, name) < 0) {
+		indigo_send_message(device, NULL, "The %s hook '%s' names no task", role, name);
+	} else {
+		indigo_send_message(device, NULL, "The %s hook '%s' is disabled, skipped", role, name);
+	}
 }
 
 // -------------------------------------------------------------------------------- Night hooks
@@ -1842,9 +1859,9 @@ static bool start_night_hook(indigo_device *device, indigo_item *item, run_kind 
 	if (*name == 0) {
 		return false;
 	}
-	int slot = find_task(device, name);
+	int slot = hook_slot(device, item);
 	if (slot < 0) {
-		indigo_send_message(device, NULL, "The %s hook '%s' names no task", kind == RUN_NIGHT_START_HOOK ? "night start" : kind == RUN_NIGHT_END_HOOK ? "night end" : "resume", name);
+		send_hook_notice(device, kind == RUN_NIGHT_START_HOOK ? "night start" : kind == RUN_NIGHT_END_HOOK ? "night end" : "resume", item);
 		return false;
 	}
 	if (slot == PRIVATE_DATA->chain_slot) {
@@ -1933,7 +1950,7 @@ static void process_idle(indigo_device *device, time_t now) {
 			start_task(device, slot, RUN_SHUTDOWN_HOOK);
 		} else {
 			if (slot < 0 && *indigo_get_text_item_value(HOOKS_SHUTDOWN_ITEM)) {
-				indigo_send_message(device, NULL, "The shutdown hook '%s' names no task", indigo_get_text_item_value(HOOKS_SHUTDOWN_ITEM));
+				send_hook_notice(device, "shutdown", HOOKS_SHUTDOWN_ITEM);
 			} else if (slot >= 0 && !PRIVATE_DATA->shutdown_ran) {
 				indigo_send_message(device, NULL, "The shutdown hook '%s' could not run, %s", PRIVATE_DATA->tasks[slot].header.name, occupied ? "another sequence is running" : "the Scripting Agent or Sequencer.js is missing");
 			}
@@ -1966,7 +1983,7 @@ static void process_idle(indigo_device *device, time_t now) {
 			start_task(device, slot, RUN_STARTUP_HOOK);
 			return;
 		}
-		indigo_send_message(device, NULL, "The startup hook '%s' names no task", indigo_get_text_item_value(HOOKS_STARTUP_ITEM));
+		send_hook_notice(device, "startup", HOOKS_STARTUP_ITEM);
 	}
 	if (all_tasks_finished(device)) {
 		set_reason(device, "all tasks finished");
@@ -2017,7 +2034,7 @@ static void process_idle(indigo_device *device, time_t now) {
 			start_task(device, idle, RUN_IDLE_HOOK);
 		} else if (!PRIVATE_DATA->idle_hook_reported) {
 			PRIVATE_DATA->idle_hook_reported = true;
-			indigo_send_message(device, NULL, "The idle hook '%s' names no task", indigo_get_text_item_value(HOOKS_IDLE_ITEM));
+			send_hook_notice(device, "idle", HOOKS_IDLE_ITEM);
 		}
 	}
 }
@@ -2508,6 +2525,10 @@ static void urgent_task(indigo_device *device, indigo_property *request) {
 		reject(device, URGENT_TASK_PROPERTY, "Urgent task rejected: a task named '%s' already exists", header.name);
 		return;
 	}
+	if (header.priority_class == SCHEDULER_PRIORITY_HOOK) {
+		reject(device, URGENT_TASK_PROPERTY, "Urgent task rejected: an urgent task cannot be a hook");
+		return;
+	}
 	header.priority_class = SCHEDULER_PRIORITY_URGENT;
 	int slot = create_task(device, text, &header, false);
 	if (slot < 0) {
@@ -2558,7 +2579,7 @@ static void reset_all_tasks(indigo_device *device) {
 	}
 }
 
-// every stored and urgent task but the tasks named as hooks, only while the scheduler is stopped
+// every stored and urgent task but the hook tasks (named as hooks or of the hook class), only while the scheduler is stopped
 static void delete_all_tasks(indigo_device *device) {
 	if (PRIVATE_DATA->started || PRIVATE_DATA->phase != RUN_IDLE) {
 		reject(device, TASK_COMMAND_PROPERTY, "Tasks can be deleted all at once only while the scheduler is stopped");
@@ -2579,7 +2600,7 @@ static void delete_all_tasks(indigo_device *device) {
 	}
 	TASK_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
 	if (kept) {
-		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d, tasks named as hooks kept: %d", count, kept);
+		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d, hook tasks kept: %d", count, kept);
 	} else {
 		indigo_update_property(device, TASK_COMMAND_PROPERTY, "Tasks deleted: %d", count);
 	}

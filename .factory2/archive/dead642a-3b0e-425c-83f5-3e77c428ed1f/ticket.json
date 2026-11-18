@@ -1,0 +1,979 @@
+{
+  "schema_version": 1,
+  "ticket_id": "dead642a-3b0e-425c-83f5-3e77c428ed1f",
+  "revision": 52,
+  "title": "indigo_agent_scheduler: do not label hook runs, a hook that deselected the camera left its folder as the base of later task folders",
+  "description": "Owner report (2026-11-18): with per-task folders, hook folders accumulate after hook failures. A frame of task \"NGC 7000\" was saved as\n/home/rumen/indigo_image_cache/Shutdown/Shutdown/NGC 7000/NGC7000_2026-11-18_Light_Filter #1_idx004_....fits\ni.e. the Imager Agent's CCD_LOCAL_MODE.DIR was left at the folder of the Shutdown hook (twice), and the next START captured that as the original folder (capture_original()), so every later folder hangs off it. The owner observes it when hooks fail (\"the hooks do not restore the directory at failure\").\n\nReading the code, every finish path (finish_hook, finish_task, finish_stop, process_starting timeout, process_running \"Scripting Agent disappeared\", process_stopping timeout) calls restore_context(), which sends CCD_LOCAL_MODE DIR/OBJECT = original_dir/original_object. So the cause is not an obviously missing call. Candidates to check:\n- the restore request is sent but lost, rejected or overwritten afterwards (e.g. Sequencer.js failure/abort handling, the Imager Agent or the CCD driver while busy or in Alert, a CCD_LOCAL_MODE Alert after the failure);\n- capture_original() on START reads observed->imager_dir before the restore's update arrives, or the observed value is stale;\n- original_valid / context_applied handling across stop_scheduler(), restore_context() and a following hook (SHUTDOWN after a failed task/hook, STARTUP after a failed SHUTDOWN, START during SHUTDOWN, STOP_TIMEOUT path that stops without restore of a later hook);\n- a hook that fails before or right after its sequence starts.\n\nWork: reproduce first with an integration test in indigo_test/integration/test_agent_scheduler.c (a failing hook, then START again and a task, checking the Imager Agent DIR), find the real root cause, fix it in the scheduler (or where the cause is), and keep the Imager Agent DIR from ever being captured as an original folder when it is a folder the scheduler itself set. Add regression tests for the failing STARTUP and SHUTDOWN hooks and a failing task followed by the SHUTDOWN hook, each followed by a new START. Update SCHEDULER.md / INDIGO_SCHEDULER_GUIDE.md if the documented behaviour changes. Bump the version of every fixed driver.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-18T17:09:36.884723Z",
+  "status": "closed",
+  "branch": "ticket/dead642a-3b0e-425c-83f5-3e77c428ed1f",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "9e7c6b4a-586a-421a-8268-e014123aadc3",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T17:09:54.168387Z",
+          "last_activity_at": "2026-11-18T20:04:33.601295Z",
+          "ended_at": "2026-11-18T20:04:33.601295Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 10479432.908,
+          "tokens": null
+        },
+        {
+          "attempt_id": "cebbef08-d45e-46e4-a819-6ac728f75cd7",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-18T20:12:28.811911Z",
+          "last_activity_at": "2026-11-18T20:12:48.718789Z",
+          "ended_at": "2026-11-18T20:12:48.718789Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 19906.878,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T17:09:54.168387Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Ticket branch ticket/dead642a-3b0e-425c-83f5-3e77c428ed1f"
+        },
+        {
+          "at": "2026-11-18T20:04:33.601295Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-18T20:12:28.811911Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-18T20:12:48.718789Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 10499339.786,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "d56be7de-86d3-4e50-8292-7885b6ec4e32",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T20:04:33.601338Z",
+          "last_activity_at": "2026-11-18T20:09:19.949246Z",
+          "ended_at": "2026-11-18T20:09:19.949246Z",
+          "outcome": {
+            "summary": "Pass. apply_context() now treats every non-RUN_TASK run as a hook: no OBJECT, no SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID, and data_directory() gives a hook a folder only from an explicit @folder (folder_none still wins). kind is set in start_task() before the only apply_context() call. restore_context()/capture_original()/stop_scheduler() are unchanged from master. A hook that applies nothing leaves context_applied false, so restore is a no-op. A hook may still capture the original when it is invalid, as on master, and that only reads the current Imager Agent state. stop_scheduler() then invalidates the original because context_applied is false. Chained hooks, STOP->SHUTDOWN, START during SHUTDOWN (phase != IDLE, no recapture), ABORT via finish_stop->finish_hook and hook @folder restore on failure are all consistent. Task paths are unchanged because hook is false for RUN_TASK. Docs: SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md are consistent with the code. Version 0x03000017->0x03000018. git diff --check is clean. Tests: the 7 new or changed cases would fail on master, which labels hooks and loses the restore after a camera deselection. The stand-in models FILTER_CCD_LIST deletion of CCD_LOCAL_MODE, and indigo_property_match_changeable() rejects changes to an undefined property, so the lost restore is reproduced. Full test_agent_scheduler: 125 run, 125 passed, 0 failed. Minor, not blocking: the 'After every run ... DIR and OBJECT return to the original' sentences in SCHEDULER.md and the guide read as universal, but the hook bullet next to them qualifies this.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 286347.908,
+          "tokens": null
+        },
+        {
+          "attempt_id": "8ecdca25-598d-4af4-8ce9-2f06feef1d1d",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-18T20:11:53.704436Z",
+          "last_activity_at": "2026-11-18T20:12:28.811823Z",
+          "ended_at": "2026-11-18T20:12:28.811823Z",
+          "outcome": {
+            "summary": "Wording follow-up (HEAD daa901636). SCHEDULER.md:747 is accurate: restore_context() (indigo_agent_scheduler.c:1226-1233) runs whenever context_applied is set, which for a hook happens only when data_directory() returns a folder from an explicit @folder (apply_context() 1190-1200), and it then always sends both DIR and OBJECT = original_dir/original_object; a hook without @folder sets context_applied false, so nothing is restored. 'sets nothing, so nothing is restored' is correct, and the line is consistent with the hook bullet at SCHEDULER.md:745 and the Hooks bullet at :522. Defect: INDIGO_SCHEDULER_GUIDE.md:363, last sentence. (1) 'A hook run with @folder <name> gets its folder back in the same way' omits that the object name is put back too; the code restores OBJECT as well, so a hook with @folder whose script calls sequence.set_object_name() loses that name at the end of the hook, which the guide does not say. (2) 'any other hook run changes nothing, so there is nothing to put back' is not true as written: the scheduler changes nothing, but the hook script itself may call set_directory()/set_object_name(), and those stay after a hook without @folder (the preceding sentences only describe the revert for tasks). Suggested wording: 'A hook run with @folder <name> gets its folder and object name back in the same way. For any other hook run the scheduler sets nothing and puts nothing back, so a folder or object name that the hook script sets stays after the hook.' Rest of the branch diff unchanged from the passed review (data_directory hook flag, apply_context guards, DRIVER_VERSION 0x03000018, tests hooks_are_not_labelled / hook_folder_key_sets_only_the_folder / *_keeps_the_folder, PROPERTIES.md row, guide notes at :368 and :583) and still holds.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 35107.387,
+          "tokens": null
+        },
+        {
+          "attempt_id": "f0d978b5-5fb8-4a2b-8495-6ce344e81c0b",
+          "number": 3,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T20:12:48.718813Z",
+          "last_activity_at": "2026-11-18T20:13:19.139947Z",
+          "ended_at": "2026-11-18T20:13:19.139947Z",
+          "outcome": {
+            "summary": "Wording follow-up 2 verified against code. INDIGO_SCHEDULER_GUIDE.md:363: a hook with @folder <name> makes data_directory() return true, apply_context() sends DIR only and sets context_applied, and restore_context() sends both DIR and OBJECT back to original_dir/original_object, so 'gets its folder and object name back' is correct. For any other hook (no @folder or @folder none) count stays 0 and the FITS block is skipped (!hook), context_applied stays false and restore_context() returns early, so 'sets nothing and puts nothing back' and the remark that a folder/object set by the hook script stays are correct. kind is set in start_task() before apply_context(). SCHEDULER.md:747 ('A hook run with @folder <name> has DIR and OBJECT returned in the same way; any other hook run sets nothing, so nothing is restored') agrees. Rest of the branch diff (master...HEAD incl. wip commits): DRIVER_VERSION 0x03000018, data_directory()/apply_context() hook gating, PROPERTIES.md row, SCHEDULER.md and guide sections, tests hooks_are_not_labelled, hook_folder_key_sets_only_the_folder and the five regression cases remain consistent with the owner decision. No defects found; no tests run by the reviewer.",
+            "recorded_by": "human/Rumen G.Bogdanovski",
+            "source": "human_report"
+          },
+          "duration_ms": 30421.134,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T20:04:33.601338Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T20:09:19.949246Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Pass. apply_context() now treats every non-RUN_TASK run as a hook: no OBJECT, no SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID, and data_directory() gives a hook a folder only from an explicit @folder (folder_none still wins). kind is set in start_task() before the only apply_context() call. restore_context()/capture_original()/stop_scheduler() are unchanged from master. A hook that applies nothing leaves context_applied false, so restore is a no-op. A hook may still capture the original when it is invalid, as on master, and that only reads the current Imager Agent state. stop_scheduler() then invalidates the original because context_applied is false. Chained hooks, STOP->SHUTDOWN, START during SHUTDOWN (phase != IDLE, no recapture), ABORT via finish_stop->finish_hook and hook @folder restore on failure are all consistent. Task paths are unchanged because hook is false for RUN_TASK. Docs: SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md are consistent with the code. Version 0x03000017->0x03000018. git diff --check is clean. Tests: the 7 new or changed cases would fail on master, which labels hooks and loses the restore after a camera deselection. The stand-in models FILTER_CCD_LIST deletion of CCD_LOCAL_MODE, and indigo_property_match_changeable() rejects changes to an undefined property, so the lost restore is reproduced. Full test_agent_scheduler: 125 run, 125 passed, 0 failed. Minor, not blocking: the 'After every run ... DIR and OBJECT return to the original' sentences in SCHEDULER.md and the guide read as universal, but the hook bullet next to them qualifies this."
+        },
+        {
+          "at": "2026-11-18T20:11:53.704436Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T20:12:28.811823Z",
+          "status": "failed",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Wording follow-up (HEAD daa901636). SCHEDULER.md:747 is accurate: restore_context() (indigo_agent_scheduler.c:1226-1233) runs whenever context_applied is set, which for a hook happens only when data_directory() returns a folder from an explicit @folder (apply_context() 1190-1200), and it then always sends both DIR and OBJECT = original_dir/original_object; a hook without @folder sets context_applied false, so nothing is restored. 'sets nothing, so nothing is restored' is correct, and the line is consistent with the hook bullet at SCHEDULER.md:745 and the Hooks bullet at :522. Defect: INDIGO_SCHEDULER_GUIDE.md:363, last sentence. (1) 'A hook run with @folder <name> gets its folder back in the same way' omits that the object name is put back too; the code restores OBJECT as well, so a hook with @folder whose script calls sequence.set_object_name() loses that name at the end of the hook, which the guide does not say. (2) 'any other hook run changes nothing, so there is nothing to put back' is not true as written: the scheduler changes nothing, but the hook script itself may call set_directory()/set_object_name(), and those stay after a hook without @folder (the preceding sentences only describe the revert for tasks). Suggested wording: 'A hook run with @folder <name> gets its folder and object name back in the same way. For any other hook run the scheduler sets nothing and puts nothing back, so a folder or object name that the hook script sets stays after the hook.' Rest of the branch diff unchanged from the passed review (data_directory hook flag, apply_context guards, DRIVER_VERSION 0x03000018, tests hooks_are_not_labelled / hook_folder_key_sets_only_the_folder / *_keeps_the_folder, PROPERTIES.md row, guide notes at :368 and :583) and still holds."
+        },
+        {
+          "at": "2026-11-18T20:12:48.718813Z",
+          "status": "running",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T20:13:19.139947Z",
+          "status": "succeeded",
+          "actor": "human/Rumen G.Bogdanovski",
+          "reason": "Wording follow-up 2 verified against code. INDIGO_SCHEDULER_GUIDE.md:363: a hook with @folder <name> makes data_directory() return true, apply_context() sends DIR only and sets context_applied, and restore_context() sends both DIR and OBJECT back to original_dir/original_object, so 'gets its folder and object name back' is correct. For any other hook (no @folder or @folder none) count stays 0 and the FITS block is skipped (!hook), context_applied stays false and restore_context() returns early, so 'sets nothing and puts nothing back' and the remark that a folder/object set by the hook script stays are correct. kind is set in start_task() before apply_context(). SCHEDULER.md:747 ('A hook run with @folder <name> has DIR and OBJECT returned in the same way; any other hook run sets nothing, so nothing is restored') agrees. Rest of the branch diff (master...HEAD incl. wip commits): DRIVER_VERSION 0x03000018, data_directory()/apply_context() hook gating, PROPERTIES.md row, SCHEDULER.md and guide sections, tests hooks_are_not_labelled, hook_folder_key_sets_only_the_folder and the five regression cases remain consistent with the owner decision. No defects found; no tests run by the reviewer."
+        }
+      ],
+      "result": {
+        "summary": "Wording follow-up 2 verified against code. INDIGO_SCHEDULER_GUIDE.md:363: a hook with @folder <name> makes data_directory() return true, apply_context() sends DIR only and sets context_applied, and restore_context() sends both DIR and OBJECT back to original_dir/original_object, so 'gets its folder and object name back' is correct. For any other hook (no @folder or @folder none) count stays 0 and the FITS block is skipped (!hook), context_applied stays false and restore_context() returns early, so 'sets nothing and puts nothing back' and the remark that a folder/object set by the hook script stays are correct. kind is set in start_task() before apply_context(). SCHEDULER.md:747 ('A hook run with @folder <name> has DIR and OBJECT returned in the same way; any other hook run sets nothing, so nothing is restored') agrees. Rest of the branch diff (master...HEAD incl. wip commits): DRIVER_VERSION 0x03000018, data_directory()/apply_context() hook gating, PROPERTIES.md row, SCHEDULER.md and guide sections, tests hooks_are_not_labelled, hook_folder_key_sets_only_the_folder and the five regression cases remain consistent with the owner decision. No defects found; no tests run by the reviewer.",
+        "source": "review",
+        "recorded_by": "human/Rumen G.Bogdanovski"
+      },
+      "paths": [],
+      "difficulty": "high",
+      "metrics": {
+        "duration_ms": 351876.429,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 3
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "5758dbf1-2789-4685-8f4c-011cfda03fdd",
+      "event": "ticket/created",
+      "at": "2026-11-18T17:09:36.885484Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple"
+    },
+    {
+      "event_id": "ca427d74-e8bf-486e-abfb-f8d7e82dc2a3",
+      "event": "ticket/confirmed",
+      "at": "2026-11-18T17:09:44.920979Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "priority": "high",
+      "severity": "medium",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "fd00683c-9ec6-4dc8-9f56-049538f9c58d",
+      "event": "task/progress",
+      "at": "2026-11-18T17:09:54.168523Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Implementation started on branch ticket/dead642a-3b0e-425c-83f5-3e77c428ed1f"
+    },
+    {
+      "event_id": "6e85ad60-b831-45fb-b3e5-fc89d91e8e89",
+      "event": "ticket/started",
+      "at": "2026-11-18T17:09:54.169488Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "branch": "ticket/dead642a-3b0e-425c-83f5-3e77c428ed1f",
+      "base": "master"
+    },
+    {
+      "event_id": "37548ba2-3893-4b4d-8259-40b97100253a",
+      "event": "task/progress",
+      "at": "2026-11-18T17:10:11.041631Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Implementer launched",
+      "attempt_id": "9e7c6b4a-586a-421a-8268-e014123aadc3",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "188ecd83-1265-450d-b1d6-723ce4a81f7f",
+      "event": "task/progress",
+      "at": "2026-11-18T17:13:24.197100Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Root cause found: Shutdown hook deselects the camera, the restore is lost; writing reproducer"
+    },
+    {
+      "event_id": "cb5abfa1-a0ae-4f70-919b-05bf0b40d165",
+      "event": "task/progress",
+      "at": "2026-11-18T17:15:54.971576Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Running new scheduler cases against the unfixed scheduler"
+    },
+    {
+      "event_id": "a300cb9b-1de3-495f-93fc-c6b120ecc148",
+      "event": "ticket/note",
+      "at": "2026-11-18T17:17:20.013196Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Reproduction (before fix): the owner's Shutdown hook (Scheduler_Agent.config) ends with select_imager_camera(\"NONE\"). The Imager Agent then deselects and disconnects the CCD, which deletes CCD_LOCAL_MODE from the Imager Agent while the CCD keeps DIR=<orig>/Shutdown/. restore_context() at the end of the hook sends CCD_LOCAL_MODE to the Imager Agent, where the property no longer exists, so the restore is dropped. On the next START the Startup hook reselects the camera, CCD_LOCAL_MODE returns with the hook folder and the first task's capture_original() takes it as the original. New cases shutdown_hook_that_deselects_the_camera_restores_the_folder and failed_shutdown_hook_that_deselects_the_camera_restores_the_folder (stand-in Imager Agent now models FILTER_CCD_LIST deselection) fail on the unfixed scheduler with 'LOCAL OBJECT=Night 2 DIR=/data/Shutdown/Night 2/' and 'LOCAL OBJECT=Shutdown DIR=/data/Shutdown/Shutdown/', matching the owner's path. Failing STARTUP/SHUTDOWN hooks and a failing task + SHUTDOWN hook without a camera deselection pass before the fix: the failure itself is not the cause.",
+      "tokens": null
+    },
+    {
+      "event_id": "75f5dfef-7010-4c9f-a709-980a1dd47736",
+      "event": "task/progress",
+      "at": "2026-11-18T17:18:22.815586Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Running full test_agent_scheduler suite with the fix"
+    },
+    {
+      "event_id": "f3744f4f-ce30-4556-9b9d-6784eb57aa2c",
+      "event": "task/progress",
+      "at": "2026-11-18T17:21:55.334558Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4b253ce8-e0ef-45c7-b1e1-20841d753735",
+      "event": "task/progress",
+      "at": "2026-11-18T17:21:55.356273Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2efb8d7c-3ca7-472b-ae4e-298dace9de1a",
+      "event": "check/passed",
+      "at": "2026-11-18T17:21:55.361463Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "703a4ceaa8a3b15a6fa9e128d4b80e1dc9ab85ee",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "86922f07-6cea-4288-82f5-ba47948ee357",
+      "event": "task/progress",
+      "at": "2026-11-18T17:21:59.773791Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "2ce172b2-a17c-433e-a587-047b113d6c66",
+      "event": "task/progress",
+      "at": "2026-11-18T17:23:46.118891Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "0fccc485-8248-4212-8758-a7ff7502c92e",
+      "event": "check/passed",
+      "at": "2026-11-18T17:23:46.139878Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "703a4ceaa8a3b15a6fa9e128d4b80e1dc9ab85ee",
+      "checks": "unit passed"
+    },
+    {
+      "event_id": "35ed59a2-5131-4574-85c6-fc777704f330",
+      "event": "task/progress",
+      "at": "2026-11-18T17:24:43.051214Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d31eea2a-1750-45bb-ba3f-b819103ad9cf",
+      "event": "task/progress",
+      "at": "2026-11-18T17:24:43.072366Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "2d32b2bf-0a63-45d2-8978-ac8c18294fb6",
+      "event": "check/passed",
+      "at": "2026-11-18T17:24:43.077271Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f17efcfd9b09c5c673af184ad6c44c957f1782d7",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "8582fb5d-31ce-47e0-a9dc-fa3448c811d9",
+      "event": "task/progress",
+      "at": "2026-11-18T17:24:43.247074Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "4a28538c-bd32-43ea-9612-a87d4bda8949",
+      "event": "task/progress",
+      "at": "2026-11-18T17:26:08.267775Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "034d45bf-8dd9-477b-b580-5031be8d26d7",
+      "event": "check/passed",
+      "at": "2026-11-18T17:26:08.272903Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "f17efcfd9b09c5c673af184ad6c44c957f1782d7",
+      "checks": "unit passed"
+    },
+    {
+      "event_id": "0bec6104-e41d-48a9-8215-bf27f3684a10",
+      "event": "ticket/note",
+      "at": "2026-11-18T17:26:13.690632Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Fix (indigo_agent_scheduler 0x03000018): restore_context() sends the restore only when the Imager Agent has CCD_LOCAL_MODE; otherwise it remembers the last observed DIR/OBJECT of the camera (leftover) with the original values and the FITS headers of the run. restore_leftover() in every tick puts the original back when the camera returns with exactly those values and no run is labelled; capture_original() takes the remembered original instead of the leftover; apply_context() drops the leftover when its own restore will cover it. After the fix: full test_agent_scheduler 124 run, 124 passed (5 new cases), flow check whitespace and unit passed. Sequencer.js, the Imager Agent and the CCD driver are unchanged: they behave correctly; the restore was addressed to a property that no longer existed.",
+      "tokens": null
+    },
+    {
+      "event_id": "01d8e4a9-6270-45d3-93f5-607775fdf9d1",
+      "event": "ticket/note",
+      "at": "2026-11-18T19:54:14.603610Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Owner decision (2026-11-18): no pending-restore (leftover) mechanism. Instead a hook run does not touch the Imager Agent context: no OBJECT, no automatic folder from the FOLDER setting and no FITS labelling headers (SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID), because a hook may deselect the camera and the restore would be lost. Only an explicit @folder in a hook's header still sets DIR for that hook run (documented caveat: such a hook must not deselect the camera). Tasks are unchanged.",
+      "tokens": null
+    },
+    {
+      "event_id": "f9ab525b-9051-410e-b5e6-28bdfdec98d7",
+      "event": "task/progress",
+      "at": "2026-11-18T19:54:18.756330Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Reworking: hooks are not labelled, only an explicit @folder sets DIR"
+    },
+    {
+      "event_id": "76b391e0-dc1a-4735-960c-9ad7ab24a7f6",
+      "event": "task/progress",
+      "at": "2026-11-18T19:58:56.062706Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Running full test_agent_scheduler suite with the reworked fix"
+    },
+    {
+      "event_id": "e27053be-cb3e-4150-944f-9a89a39ab1e3",
+      "event": "task/progress",
+      "at": "2026-11-18T19:58:56.249728Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "1fe31ecf-0b0c-4695-8146-e5fa194515a0",
+      "event": "task/progress",
+      "at": "2026-11-18T19:58:56.272373Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "6c528d42-8912-42f9-a158-80553db34487",
+      "event": "check/passed",
+      "at": "2026-11-18T19:58:56.278294Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "a4164482cbe25c0f97df8226986dd03d55215204",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "d669cf04-d1a7-448f-a609-cefb1190cfd7",
+      "event": "task/progress",
+      "at": "2026-11-18T20:02:35.493797Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "8ad666c5-94da-4c9c-8d33-926efbca105d",
+      "event": "task/progress",
+      "at": "2026-11-18T20:04:00.276472Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "085936bb-18d2-4e7d-995e-11985779cba9",
+      "event": "check/passed",
+      "at": "2026-11-18T20:04:00.282339Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "a4164482cbe25c0f97df8226986dd03d55215204",
+      "checks": "unit passed"
+    },
+    {
+      "event_id": "e6bdf2e6-2717-4a4b-aa2d-c4d6c15516a2",
+      "event": "ticket/note",
+      "at": "2026-11-18T20:04:06.447523Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "text": "Rework per owner decision (supersedes the leftover fix note): the leftover mechanism is removed and restore_context()/capture_original() are as on master. apply_context() labels no hook run (kind != RUN_TASK): no OBJECT, no folder from FOLDER, no SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID; only an explicit @folder <name> sets DIR for the hook run and is restored as for a task. DRIVER_VERSION 0x03000017 -> 0x03000018. Tests: hooks_are_labelled_like_tasks replaced by hooks_are_not_labelled and hook_folder_key_sets_only_the_folder; the five regression cases adapted (deselect cases renamed *_keeps_the_folder). Docs: SCHEDULER.md (Observation data, Hooks), INDIGO_SCHEDULER_GUIDE.md (header keys, Where the data goes, Hooks), PROPERTIES.md AGENT_SCHEDULER_DATA row. Results: full test_agent_scheduler 125 run, 125 passed; flow check whitespace and unit passed.",
+      "tokens": null
+    },
+    {
+      "event_id": "441d2f8f-bb64-43d2-bc40-f4740d38f572",
+      "event": "task/progress",
+      "at": "2026-11-18T20:04:33.601408Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Review started"
+    },
+    {
+      "event_id": "b33433f5-faa1-477c-acc2-4f0d82bc8b60",
+      "event": "review/started",
+      "at": "2026-11-18T20:04:33.602101Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "0e7a2920-90cc-49cc-b500-80e4e193d285",
+      "event": "task/progress",
+      "at": "2026-11-18T20:04:37.240074Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Reviewer launched",
+      "attempt_id": "d56be7de-86d3-4e50-8292-7885b6ec4e32",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "ad462b6e-16ca-4c62-a333-664ecf6c198e",
+      "event": "task/progress",
+      "at": "2026-11-18T20:05:26.958843Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Running full test_agent_scheduler integration suite"
+    },
+    {
+      "event_id": "49163b81-dfd3-4c3f-9966-41f9a1cbca54",
+      "event": "task/progress",
+      "at": "2026-11-18T20:09:19.949322Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "5cf73ba1-aaf6-4b7b-a91f-2a9126d4a51f",
+      "event": "review/passed",
+      "at": "2026-11-18T20:09:19.949989Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "a4164482cbe25c0f97df8226986dd03d55215204"
+    },
+    {
+      "event_id": "4634f40a-e54c-40bf-a681-0294971729fd",
+      "event": "ticket/title_changed",
+      "at": "2026-11-18T20:09:39.509969Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "previous_title": "indigo_agent_scheduler: fix hook folders left in CCD_LOCAL_MODE.DIR after a failure, later folders nest under them",
+      "title": "indigo_agent_scheduler: do not label hook runs, a hook that deselected the camera left its folder as the base of later task folders"
+    },
+    {
+      "event_id": "efe9ee98-8823-4ecd-9226-daca5cad0c2c",
+      "event": "task/progress",
+      "at": "2026-11-18T20:11:43.110569Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4d2c9ed3-803d-4f4c-83c5-613e8d3a36ce",
+      "event": "task/progress",
+      "at": "2026-11-18T20:11:43.132788Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": null,
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e26f1694-a5e1-49d1-a763-c42a07e5b436",
+      "event": "check/passed",
+      "at": "2026-11-18T20:11:43.138234Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "daa901636121c235a665a0e2a221d14047ab97c9",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "2b7ee4b9-26f7-489e-904f-379e02b9057f",
+      "event": "task/progress",
+      "at": "2026-11-18T20:11:53.543449Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Coordinator reworded the after-every-run sentences in SCHEDULER.md and the guide (owner request)"
+    },
+    {
+      "event_id": "0a16dbee-3346-43ba-806d-a19e04f69161",
+      "event": "task/progress",
+      "at": "2026-11-18T20:11:53.704533Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Review started"
+    },
+    {
+      "event_id": "9ca7f33b-965c-4cda-9d46-659e9b8f967d",
+      "event": "review/started",
+      "at": "2026-11-18T20:11:53.705289Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "bad79a14-2902-4940-b4da-9a28cffbb5ad",
+      "event": "task/progress",
+      "at": "2026-11-18T20:11:57.323146Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Reviewer launched (wording follow-up)",
+      "attempt_id": "8ecdca25-598d-4af4-8ce9-2f06feef1d1d",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "5e415a1d-7932-4086-a2f1-d8898cd05df0",
+      "event": "task/progress",
+      "at": "2026-11-18T20:12:28.811902Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "39a9b735-2111-4b50-8bdb-f9be05cebe28",
+      "event": "task/progress",
+      "at": "2026-11-18T20:12:28.811940Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "ff4d2730-ffac-43f8-a276-ab49a77bfb3c",
+      "event": "review/changes_requested",
+      "at": "2026-11-18T20:12:28.812709Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "daa901636121c235a665a0e2a221d14047ab97c9"
+    },
+    {
+      "event_id": "525ea4b5-ad4e-440d-a39b-8f1aa48149fd",
+      "event": "task/progress",
+      "at": "2026-11-18T20:12:48.257017Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Coordinator applied the reviewer's wording for the guide hook sentence"
+    },
+    {
+      "event_id": "10a463e6-7d9d-4132-ab0b-681a9e5844d9",
+      "event": "task/progress",
+      "at": "2026-11-18T20:12:48.536898Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "02f63109-0f63-4df4-bce1-fe18a2e8d0fe",
+      "event": "task/progress",
+      "at": "2026-11-18T20:12:48.561697Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "0ba3298d-c1af-4ff0-b173-2e65d7cc002d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "4e72ed72-89c5-4ced-b6c4-7ae704055cb0",
+      "event": "check/passed",
+      "at": "2026-11-18T20:12:48.567686Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "commit": "1e568c7e95d7d36541a7c7ec2b06421897be1ecb",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "825f0068-5ace-4edd-b688-bfb730290764",
+      "event": "task/progress",
+      "at": "2026-11-18T20:12:48.718894Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ef097e3f-14dd-4326-9fac-621d208b9d54",
+      "event": "review/started",
+      "at": "2026-11-18T20:12:48.719686Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "kind": "code"
+    },
+    {
+      "event_id": "bf1ebed1-7f03-4297-bf4d-a72c4b1f5787",
+      "event": "task/progress",
+      "at": "2026-11-18T20:12:52.582852Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Reviewer launched (wording follow-up 2)",
+      "attempt_id": "f0d978b5-5fb8-4a2b-8495-6ce344e81c0b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "769a83f2-8e2c-4fc3-9a98-64af8dbe721e",
+      "event": "task/progress",
+      "at": "2026-11-18T20:13:19.140027Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "4ad596ca-17e0-4062-a6b2-c6bfea160b3a",
+      "event": "review/passed",
+      "at": "2026-11-18T20:13:19.140783Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "task_id": "322e4b78-6f00-42dc-b59e-dc51eaf714d6",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "1e568c7e95d7d36541a7c7ec2b06421897be1ecb"
+    },
+    {
+      "event_id": "4e0726d0-69fb-406c-b974-5d0cced50941",
+      "event": "ticket/closed",
+      "at": "2026-11-18T20:14:17.595698Z",
+      "actor": "human/Rumen G.Bogdanovski",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/Rumen G.Bogdanovski",
+    "at": "2026-11-18T20:14:17.595625Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "17815187e69e78c5b22026185db16e71792e6887"
+  },
+  "priority": "high",
+  "severity": "medium",
+  "difficulty": "high",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "703a4ceaa8a3b15a6fa9e128d4b80e1dc9ab85ee",
+        "tree": "aea0f02b90bf39fa968cc6f5ccf50ef5da82b558",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T17:21:55.355536Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/aea0f02b90bf-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "703a4ceaa8a3b15a6fa9e128d4b80e1dc9ab85ee",
+        "tree": "aea0f02b90bf39fa968cc6f5ccf50ef5da82b558",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T17:23:46.118078Z",
+        "duration_s": 106.3,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/aea0f02b90bf-unit.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "f17efcfd9b09c5c673af184ad6c44c957f1782d7",
+        "tree": "f93861b5cc90d6eb815621fd27e0cacfe679669e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T17:24:43.071598Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/f93861b5cc90-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "f17efcfd9b09c5c673af184ad6c44c957f1782d7",
+        "tree": "f93861b5cc90d6eb815621fd27e0cacfe679669e",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T17:26:08.266946Z",
+        "duration_s": 85.0,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/f93861b5cc90-unit.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "a4164482cbe25c0f97df8226986dd03d55215204",
+        "tree": "70f6cc1bceb45e3d24b329d8f670a749c7e8a7a6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T19:58:56.271289Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/70f6cc1bceb4-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "a4164482cbe25c0f97df8226986dd03d55215204",
+        "tree": "70f6cc1bceb45e3d24b329d8f670a749c7e8a7a6",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T20:04:00.275604Z",
+        "duration_s": 84.8,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/70f6cc1bceb4-unit.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "daa901636121c235a665a0e2a221d14047ab97c9",
+        "tree": "c2dd6e87783cfef8eb9159b276792ffc73a5dbf3",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T20:11:43.131682Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/c2dd6e87783c-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "1e568c7e95d7d36541a7c7ec2b06421897be1ecb",
+        "tree": "4bc25b339f3e13fa0af086ff92617fcf23994cfd",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T20:12:48.560504Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/dead642a-3b0e-425c-83f5-3e77c428ed1f/4bc25b339f3e-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Pass. apply_context() now treats every non-RUN_TASK run as a hook: no OBJECT, no SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID, and data_directory() gives a hook a folder only from an explicit @folder (folder_none still wins). kind is set in start_task() before the only apply_context() call. restore_context()/capture_original()/stop_scheduler() are unchanged from master. A hook that applies nothing leaves context_applied false, so restore is a no-op. A hook may still capture the original when it is invalid, as on master, and that only reads the current Imager Agent state. stop_scheduler() then invalidates the original because context_applied is false. Chained hooks, STOP->SHUTDOWN, START during SHUTDOWN (phase != IDLE, no recapture), ABORT via finish_stop->finish_hook and hook @folder restore on failure are all consistent. Task paths are unchanged because hook is false for RUN_TASK. Docs: SCHEDULER.md, INDIGO_SCHEDULER_GUIDE.md and PROPERTIES.md are consistent with the code. Version 0x03000017->0x03000018. git diff --check is clean. Tests: the 7 new or changed cases would fail on master, which labels hooks and loses the restore after a camera deselection. The stand-in models FILTER_CCD_LIST deletion of CCD_LOCAL_MODE, and indigo_property_match_changeable() rejects changes to an undefined property, so the lost restore is reproduced. Full test_agent_scheduler: 125 run, 125 passed, 0 failed. Minor, not blocking: the 'After every run ... DIR and OBJECT return to the original' sentences in SCHEDULER.md and the guide read as universal, but the hook bullet next to them qualifies this.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "a4164482cbe25c0f97df8226986dd03d55215204",
+        "tree": "70f6cc1bceb45e3d24b329d8f670a749c7e8a7a6",
+        "at": "2026-11-18T20:09:19.949221Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "Wording follow-up (HEAD daa901636). SCHEDULER.md:747 is accurate: restore_context() (indigo_agent_scheduler.c:1226-1233) runs whenever context_applied is set, which for a hook happens only when data_directory() returns a folder from an explicit @folder (apply_context() 1190-1200), and it then always sends both DIR and OBJECT = original_dir/original_object; a hook without @folder sets context_applied false, so nothing is restored. 'sets nothing, so nothing is restored' is correct, and the line is consistent with the hook bullet at SCHEDULER.md:745 and the Hooks bullet at :522. Defect: INDIGO_SCHEDULER_GUIDE.md:363, last sentence. (1) 'A hook run with @folder <name> gets its folder back in the same way' omits that the object name is put back too; the code restores OBJECT as well, so a hook with @folder whose script calls sequence.set_object_name() loses that name at the end of the hook, which the guide does not say. (2) 'any other hook run changes nothing, so there is nothing to put back' is not true as written: the scheduler changes nothing, but the hook script itself may call set_directory()/set_object_name(), and those stay after a hook without @folder (the preceding sentences only describe the revert for tasks). Suggested wording: 'A hook run with @folder <name> gets its folder and object name back in the same way. For any other hook run the scheduler sets nothing and puts nothing back, so a folder or object name that the hook script sets stays after the hook.' Rest of the branch diff unchanged from the passed review (data_directory hook flag, apply_context guards, DRIVER_VERSION 0x03000018, tests hooks_are_not_labelled / hook_folder_key_sets_only_the_folder / *_keeps_the_folder, PROPERTIES.md row, guide notes at :368 and :583) and still holds.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "daa901636121c235a665a0e2a221d14047ab97c9",
+        "tree": "c2dd6e87783cfef8eb9159b276792ffc73a5dbf3",
+        "at": "2026-11-18T20:12:28.811794Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Wording follow-up 2 verified against code. INDIGO_SCHEDULER_GUIDE.md:363: a hook with @folder <name> makes data_directory() return true, apply_context() sends DIR only and sets context_applied, and restore_context() sends both DIR and OBJECT back to original_dir/original_object, so 'gets its folder and object name back' is correct. For any other hook (no @folder or @folder none) count stays 0 and the FITS block is skipped (!hook), context_applied stays false and restore_context() returns early, so 'sets nothing and puts nothing back' and the remark that a folder/object set by the hook script stays are correct. kind is set in start_task() before apply_context(). SCHEDULER.md:747 ('A hook run with @folder <name> has DIR and OBJECT returned in the same way; any other hook run sets nothing, so nothing is restored') agrees. Rest of the branch diff (master...HEAD incl. wip commits): DRIVER_VERSION 0x03000018, data_directory()/apply_context() hook gating, PROPERTIES.md row, SCHEDULER.md and guide sections, tests hooks_are_not_labelled, hook_folder_key_sets_only_the_folder and the five regression cases remain consistent with the owner decision. No defects found; no tests run by the reviewer.",
+        "reviewer": "human/Rumen G.Bogdanovski",
+        "commit": "1e568c7e95d7d36541a7c7ec2b06421897be1ecb",
+        "tree": "4bc25b339f3e13fa0af086ff92617fcf23994cfd",
+        "at": "2026-11-18T20:13:19.139922Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-18T17:17:20.012668Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Reproduction (before fix): the owner's Shutdown hook (Scheduler_Agent.config) ends with select_imager_camera(\"NONE\"). The Imager Agent then deselects and disconnects the CCD, which deletes CCD_LOCAL_MODE from the Imager Agent while the CCD keeps DIR=<orig>/Shutdown/. restore_context() at the end of the hook sends CCD_LOCAL_MODE to the Imager Agent, where the property no longer exists, so the restore is dropped. On the next START the Startup hook reselects the camera, CCD_LOCAL_MODE returns with the hook folder and the first task's capture_original() takes it as the original. New cases shutdown_hook_that_deselects_the_camera_restores_the_folder and failed_shutdown_hook_that_deselects_the_camera_restores_the_folder (stand-in Imager Agent now models FILTER_CCD_LIST deselection) fail on the unfixed scheduler with 'LOCAL OBJECT=Night 2 DIR=/data/Shutdown/Night 2/' and 'LOCAL OBJECT=Shutdown DIR=/data/Shutdown/Shutdown/', matching the owner's path. Failing STARTUP/SHUTDOWN hooks and a failing task + SHUTDOWN hook without a camera deselection pass before the fix: the failure itself is not the cause.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-18T17:26:13.690052Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Fix (indigo_agent_scheduler 0x03000018): restore_context() sends the restore only when the Imager Agent has CCD_LOCAL_MODE; otherwise it remembers the last observed DIR/OBJECT of the camera (leftover) with the original values and the FITS headers of the run. restore_leftover() in every tick puts the original back when the camera returns with exactly those values and no run is labelled; capture_original() takes the remembered original instead of the leftover; apply_context() drops the leftover when its own restore will cover it. After the fix: full test_agent_scheduler 124 run, 124 passed (5 new cases), flow check whitespace and unit passed. Sequencer.js, the Imager Agent and the CCD driver are unchanged: they behave correctly; the restore was addressed to a property that no longer existed.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-18T19:54:14.602982Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Owner decision (2026-11-18): no pending-restore (leftover) mechanism. Instead a hook run does not touch the Imager Agent context: no OBJECT, no automatic folder from the FOLDER setting and no FITS labelling headers (SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID), because a hook may deselect the camera and the restore would be lost. Only an explicit @folder in a hook's header still sets DIR for that hook run (documented caveat: such a hook must not deselect the camera). Tasks are unchanged.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-18T20:04:06.446883Z",
+        "actor": "human/Rumen G.Bogdanovski",
+        "text": "Rework per owner decision (supersedes the leftover fix note): the leftover mechanism is removed and restore_context()/capture_original() are as on master. apply_context() labels no hook run (kind != RUN_TASK): no OBJECT, no folder from FOLDER, no SCHTASK/SCHRUN/SCHNIGHT/OBSERVER/PI_NAME/PROPID; only an explicit @folder <name> sets DIR for the hook run and is restored as for a task. DRIVER_VERSION 0x03000017 -> 0x03000018. Tests: hooks_are_labelled_like_tasks replaced by hooks_are_not_labelled and hook_folder_key_sets_only_the_folder; the five regression cases adapted (deselect cases renamed *_keeps_the_folder). Docs: SCHEDULER.md (Observation data, Hooks), INDIGO_SCHEDULER_GUIDE.md (header keys, Where the data goes, Hooks), PROPERTIES.md AGENT_SCHEDULER_DATA row. Results: full test_agent_scheduler 125 run, 125 passed; flow check whitespace and unit passed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "17815187e69e78c5b22026185db16e71792e6887",
+      "tree": "4bc25b339f3e13fa0af086ff92617fcf23994cfd",
+      "base": "master",
+      "at": "2026-11-18T20:14:17.370517Z"
+    }
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "medium",
+    "profile": "simple",
+    "at": "2026-11-18T17:09:36.884723Z",
+    "actor": "human/Rumen G.Bogdanovski",
+    "confirmed_at": "2026-11-18T17:09:44.920952Z",
+    "confirmed_by": "human/Rumen G.Bogdanovski"
+  },
+  "metrics": {
+    "duration_ms": 10851216.215,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 5
+    }
+  },
+  "journal": {
+    "entries": 69,
+    "sha256": "9d97560776a4b147ccee25b003c0e24aa9f7c54289e87da2adca67990d2f53e4"
+  }
+}

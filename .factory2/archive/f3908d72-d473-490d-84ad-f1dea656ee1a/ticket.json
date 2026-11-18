@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "ticket_id": "f3908d72-d473-490d-84ad-f1dea656ee1a",
+  "revision": 12,
+  "title": "indigo_agent_scheduler: fix the hook task list and history labels described in the scheduler guide",
+  "description": "INDIGO_SCHEDULER_GUIDE.md, section on hooks (around line 577-579), describes the task list and history labels of hook tasks incorrectly:\n- It says the task list shows a hook task as `STARTUP HOOK`, `SHUTDOWN HOOK`, ... but the AGENT_SCHEDULER_TASK_STATE label has the state `HOOK` and the hook kind in the priority column, e.g. `Park | HOOK | hook shutdown | - | - | -` (`hook startup`, `hook shutdown`, `hook idle`, `hook night start`, `hook night end`, `hook resume`, or `hook` for an unassigned @hook task).\n- It says hook runs appear in the history marked `(hook)`, but the history label has `hook` in its kind column.\nDocumentation-only fix; no code change.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-17T22:37:16.105747Z",
+  "status": "closed",
+  "branch": "ticket/f3908d72-d473-490d-84ad-f1dea656ee1a",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "14cc35d9-e4fc-4cbb-9442-2531f9eda897",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "4cced9d3-7ffb-40d4-90e8-bb1ce98aa5e0",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "low"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-17T22:37:28.424182Z",
+          "last_activity_at": "2026-11-17T22:37:45.913046Z",
+          "ended_at": "2026-11-17T22:37:45.913046Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 17488.864,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-17T22:37:28.424182Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/f3908d72-d473-490d-84ad-f1dea656ee1a"
+        },
+        {
+          "at": "2026-11-17T22:37:45.913046Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 17488.864,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "128be84e-0a04-47c3-af53-0f3f85b4497a",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "f65c685b-9b51-4dbd-b4b8-eb832b486519",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-17T22:37:45.913085Z",
+          "last_activity_at": "2026-11-17T22:38:11.729269Z",
+          "ended_at": "2026-11-17T22:38:11.729269Z",
+          "outcome": {
+            "summary": "Diff (INDIGO_SCHEDULER_GUIDE.md lines 577, 579) matches the code. Task list: build_task_state_label() sets state HOOK for is_hook() tasks and blank runs/retries/duration, which join_label() renders as '-'; task_priority_text() returns 'hook startup'..'hook resume' from hook_names[] in the listed order, so 'Park | HOOK | hook shutdown | - | - | -' is exact. History: history_label() puts 'hook' in the 4th (kind) column for mark 'H'. Wording agrees with the guide's task-list example and priority text (~753-758), the state table HOOK row (~776), the history section kind column (~795) and SCHEDULER.md Hooks (line 520, 522). Non-blocking note: line 577 lists only the named-hook priorities, not plain 'hook' for an unnamed @hook task; that case is documented at ~758 and in SCHEDULER.md:520, and the 577 bullet is about tasks named by hooks, so this is not a defect. No other findings.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 25816.184,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-17T22:37:45.913085Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-17T22:38:11.729269Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Diff (INDIGO_SCHEDULER_GUIDE.md lines 577, 579) matches the code. Task list: build_task_state_label() sets state HOOK for is_hook() tasks and blank runs/retries/duration, which join_label() renders as '-'; task_priority_text() returns 'hook startup'..'hook resume' from hook_names[] in the listed order, so 'Park | HOOK | hook shutdown | - | - | -' is exact. History: history_label() puts 'hook' in the 4th (kind) column for mark 'H'. Wording agrees with the guide's task-list example and priority text (~753-758), the state table HOOK row (~776), the history section kind column (~795) and SCHEDULER.md Hooks (line 520, 522). Non-blocking note: line 577 lists only the named-hook priorities, not plain 'hook' for an unnamed @hook task; that case is documented at ~758 and in SCHEDULER.md:520, and the 577 bullet is about tasks named by hooks, so this is not a defect. No other findings."
+        }
+      ],
+      "result": {
+        "summary": "Diff (INDIGO_SCHEDULER_GUIDE.md lines 577, 579) matches the code. Task list: build_task_state_label() sets state HOOK for is_hook() tasks and blank runs/retries/duration, which join_label() renders as '-'; task_priority_text() returns 'hook startup'..'hook resume' from hook_names[] in the listed order, so 'Park | HOOK | hook shutdown | - | - | -' is exact. History: history_label() puts 'hook' in the 4th (kind) column for mark 'H'. Wording agrees with the guide's task-list example and priority text (~753-758), the state table HOOK row (~776), the history section kind column (~795) and SCHEDULER.md Hooks (line 520, 522). Non-blocking note: line 577 lists only the named-hook priorities, not plain 'hook' for an unnamed @hook task; that case is documented at ~758 and in SCHEDULER.md:520, and the 577 bullet is about tasks named by hooks, so this is not a defect. No other findings.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 25816.184,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "03793ae6-0aa3-48f2-903d-58df1cc1f1c0",
+      "event": "ticket/created",
+      "at": "2026-11-17T22:37:16.106375Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "a16efc82-3985-4ad6-825a-f58ed7cc7d0e",
+      "event": "ticket/confirmed",
+      "at": "2026-11-17T22:37:19.567504Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "49de011a-44db-4722-848d-17b3db293eac",
+      "event": "task/progress",
+      "at": "2026-11-17T22:37:28.424287Z",
+      "actor": "human/owner",
+      "task_id": "14cc35d9-e4fc-4cbb-9442-2531f9eda897",
+      "text": "Implementation started on branch ticket/f3908d72-d473-490d-84ad-f1dea656ee1a"
+    },
+    {
+      "event_id": "fe1c8737-5e99-4bce-b897-88ad82ad9c18",
+      "event": "ticket/started",
+      "at": "2026-11-17T22:37:28.425260Z",
+      "actor": "human/owner",
+      "branch": "ticket/f3908d72-d473-490d-84ad-f1dea656ee1a",
+      "base": "master"
+    },
+    {
+      "event_id": "80aba6d5-5ff1-4bc1-bd7b-f0e618db3b66",
+      "event": "task/progress",
+      "at": "2026-11-17T22:37:34.125546Z",
+      "actor": "human/owner",
+      "task_id": "14cc35d9-e4fc-4cbb-9442-2531f9eda897",
+      "text": "Coordinator implements the two-line guide fix",
+      "attempt_id": "4cced9d3-7ffb-40d4-90e8-bb1ce98aa5e0",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "low"
+      }
+    },
+    {
+      "event_id": "408eb435-ea57-40bc-b069-9482142d448c",
+      "event": "task/progress",
+      "at": "2026-11-17T22:37:37.667257Z",
+      "actor": "human/owner",
+      "task_id": "14cc35d9-e4fc-4cbb-9442-2531f9eda897",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "45377c3b-638c-4b07-a4f6-3e34a71238c0",
+      "event": "task/progress",
+      "at": "2026-11-17T22:37:37.681738Z",
+      "actor": "human/owner",
+      "task_id": "14cc35d9-e4fc-4cbb-9442-2531f9eda897",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "e1cd1420-187b-4420-8a10-15ead49b562d",
+      "event": "check/passed",
+      "at": "2026-11-17T22:37:37.687332Z",
+      "actor": "human/owner",
+      "commit": "c66b5140a03d531e87d2b395fc26ca29f6facc00",
+      "checks": "whitespace passed"
+    },
+    {
+      "event_id": "52eee4a3-2527-4643-abf4-6c68de487aa9",
+      "event": "task/progress",
+      "at": "2026-11-17T22:37:45.913153Z",
+      "actor": "human/owner",
+      "task_id": "128be84e-0a04-47c3-af53-0f3f85b4497a",
+      "text": "Review started"
+    },
+    {
+      "event_id": "afdb7a49-585f-4a97-99d9-988124232f99",
+      "event": "review/started",
+      "at": "2026-11-17T22:37:45.913725Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "926c00a5-9f9f-4543-82cd-162ae3f290dd",
+      "event": "task/progress",
+      "at": "2026-11-17T22:37:48.978658Z",
+      "actor": "human/owner",
+      "task_id": "128be84e-0a04-47c3-af53-0f3f85b4497a",
+      "text": "Reviewer launched",
+      "attempt_id": "f65c685b-9b51-4dbd-b4b8-eb832b486519",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "8397b1a2-f18c-4522-b4ad-b5c175fda720",
+      "event": "task/progress",
+      "at": "2026-11-17T22:38:11.729344Z",
+      "actor": "human/owner",
+      "task_id": "128be84e-0a04-47c3-af53-0f3f85b4497a",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "fdb41c70-460d-4565-ba1b-1db7104fb4ca",
+      "event": "review/passed",
+      "at": "2026-11-17T22:38:11.729949Z",
+      "actor": "human/owner",
+      "task_id": "128be84e-0a04-47c3-af53-0f3f85b4497a",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "c66b5140a03d531e87d2b395fc26ca29f6facc00"
+    },
+    {
+      "event_id": "7bb3a1ec-2f78-4ce7-8dd0-fcff204587e3",
+      "event": "ticket/closed",
+      "at": "2026-11-17T22:46:14.147035Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-17T22:46:14.146980Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "33ff7c58da7febc002f1f217753b3ff9d6db34bb"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "c66b5140a03d531e87d2b395fc26ca29f6facc00",
+        "tree": "213a5c7177f1573727274313af55941e8c9d5efb",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-17T22:37:37.680943Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/f3908d72-d473-490d-84ad-f1dea656ee1a/213a5c7177f1-whitespace.log",
+        "selected": [
+          "whitespace"
+        ]
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Diff (INDIGO_SCHEDULER_GUIDE.md lines 577, 579) matches the code. Task list: build_task_state_label() sets state HOOK for is_hook() tasks and blank runs/retries/duration, which join_label() renders as '-'; task_priority_text() returns 'hook startup'..'hook resume' from hook_names[] in the listed order, so 'Park | HOOK | hook shutdown | - | - | -' is exact. History: history_label() puts 'hook' in the 4th (kind) column for mark 'H'. Wording agrees with the guide's task-list example and priority text (~753-758), the state table HOOK row (~776), the history section kind column (~795) and SCHEDULER.md Hooks (line 520, 522). Non-blocking note: line 577 lists only the named-hook priorities, not plain 'hook' for an unnamed @hook task; that case is documented at ~758 and in SCHEDULER.md:520, and the 577 bullet is about tasks named by hooks, so this is not a defect. No other findings.",
+        "reviewer": "human/owner",
+        "commit": "c66b5140a03d531e87d2b395fc26ca29f6facc00",
+        "tree": "213a5c7177f1573727274313af55941e8c9d5efb",
+        "at": "2026-11-17T22:38:11.729244Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "33ff7c58da7febc002f1f217753b3ff9d6db34bb",
+      "tree": "213a5c7177f1573727274313af55941e8c9d5efb",
+      "base": "master",
+      "at": "2026-11-17T22:46:14.049147Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-17T22:37:16.105747Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-17T22:37:19.567460Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 43305.048,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 18,
+    "sha256": "b0d91e9736c7203e919e66bc7a73020fc905800a8312bac4c24c828f471a499f"
+  }
+}

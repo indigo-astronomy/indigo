@@ -31,7 +31,7 @@
 #define MAX_PLAN_TASKS	256
 
 double indigo_scheduler_score(const scheduler_sky_grid *sky, const scheduler_target_grid *target, const scheduler_task_points *points, const scheduler_header *header, time_t t, double setting_weight, double altitude_weight) {
-	static const double class_base[] = { 0, 1000, 2000, 3000 };
+	static const double class_base[] = { 0, 1000, 2000, 3000, 0 };
 	double result = class_base[header->priority_class] + header->level;
 	int to_set = indigo_scheduler_points_time_to_set(sky, points, header, t);
 	result += setting_weight * 100 * (1 - (double)to_set / SCHEDULER_SETTING_HORIZON);

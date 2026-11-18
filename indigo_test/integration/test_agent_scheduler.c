@@ -82,6 +82,8 @@ static indigo_property *site_property, *guider_process_property, *guider_abort_p
 // the stand-in judges CCD_LOCAL_MODE.DIR like indigo_ccd_change_property() does, by indigo_uni_is_creatable()
 static atomic_bool imager_checks_folder;
 static indigo_property *imager_local_mode_property, *imager_set_fits_property, *imager_remove_fits_property;
+// FILTER_CCD_LIST of the stand-in: like the Imager Agent, deselecting the camera deletes its properties, the camera keeps their values and defines them again when it is selected
+static indigo_property *imager_ccd_list_property;
 // the changes the Imager Agent stand-in received, one event per line, each line preceded by a newline
 static char imager_log[65536] = "";
 static pthread_mutex_t imager_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -498,7 +500,17 @@ static indigo_result guider_change(indigo_device *device, indigo_client *client,
 static indigo_device mount_standin = INDIGO_DEVICE_INITIALIZER("Mount Agent", NULL, mount_enumerate, NULL, NULL, NULL);
 static indigo_device guider_standin = INDIGO_DEVICE_INITIALIZER("Guider Agent", NULL, guider_enumerate, guider_change, NULL, NULL);
 
+static bool imager_camera_selected(void) {
+	return !indigo_get_item(imager_ccd_list_property, FILTER_DEVICE_LIST_NONE_ITEM_NAME)->sw.value;
+}
+
 static indigo_result imager_enumerate(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(imager_ccd_list_property, property)) {
+		indigo_define_property(device, imager_ccd_list_property, NULL);
+	}
+	if (!imager_camera_selected()) {
+		return INDIGO_OK;
+	}
 	if (indigo_property_match(imager_local_mode_property, property)) {
 		indigo_define_property(device, imager_local_mode_property, NULL);
 	}
@@ -524,6 +536,25 @@ static void imager_record(const char *event) {
 static indigo_result imager_change(indigo_device *device, indigo_client *client, indigo_property *property) {
 	indigo_property *target = NULL;
 	char event[1024] = "";
+	if (indigo_property_match_changeable(imager_ccd_list_property, property)) {
+		indigo_property_copy_values(imager_ccd_list_property, property, false);
+		bool selected = imager_camera_selected();
+		snprintf(event, sizeof(event), "CAMERA %s", selected ? "SELECTED" : "NONE");
+		imager_record(event);
+		imager_ccd_list_property->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, imager_ccd_list_property, NULL);
+		indigo_property *camera_properties[] = { imager_local_mode_property, imager_set_fits_property, imager_remove_fits_property };
+		for (int i = 0; i < 3; i++) {
+			if (selected && !camera_properties[i]->defined) {
+				indigo_define_property(device, camera_properties[i], NULL);
+			} else if (!selected && camera_properties[i]->defined) {
+				indigo_delete_property(device, camera_properties[i], NULL);
+			}
+		}
+		imager_ccd_list_property->state = INDIGO_OK_STATE;
+		indigo_update_property(device, imager_ccd_list_property, NULL);
+		return INDIGO_OK;
+	}
 	if (indigo_property_match_changeable(imager_local_mode_property, property)) {
 		target = imager_local_mode_property;
 		strcpy(event, "LOCAL");
@@ -578,6 +609,14 @@ static long wait_imager_event(const char *event, long after, double timeout) {
 	fprintf(stderr, "Timeout waiting for the Imager Agent event '%s' after %ld, log:%s\n", event, after, imager_log);
 	pthread_mutex_unlock(&imager_mutex);
 	return -1;
+}
+
+// the offset at which the next event of the log starts
+static long imager_log_end(void) {
+	pthread_mutex_lock(&imager_mutex);
+	long end = (long)strlen(imager_log);
+	pthread_mutex_unlock(&imager_mutex);
+	return end;
 }
 
 static int imager_events(const char *prefix) {
@@ -868,6 +907,9 @@ static bool setup(void) {
 	indigo_init_text_item(imager_set_fits_property->items + 1, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME, "Value", "");
 	imager_remove_fits_property = indigo_init_text_property(NULL, imager_standin.name, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, "Imager", "Remove FITS header", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item(imager_remove_fits_property->items + 0, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
+	imager_ccd_list_property = indigo_init_switch_property(NULL, imager_standin.name, FILTER_CCD_LIST_PROPERTY_NAME, "Imager", "Camera", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	indigo_init_switch_item(imager_ccd_list_property->items + 0, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No camera", false);
+	indigo_init_switch_item(imager_ccd_list_property->items + 1, "CCD Imager Simulator", "CCD Imager Simulator", true);
 	CHECK(indigo_attach_device(&imager_standin) == INDIGO_OK);
 	imager_attached = true;
 	CHECK(indigo_agent_scripting(INDIGO_DRIVER_INIT, NULL) == INDIGO_OK);
@@ -901,6 +943,7 @@ static void cleanup(void) {
 	indigo_release_property(imager_local_mode_property);
 	indigo_release_property(imager_set_fits_property);
 	indigo_release_property(imager_remove_fits_property);
+	indigo_release_property(imager_ccd_list_property);
 }
 
 // -------------------------------------------------------------------------------- Cases
@@ -1259,6 +1302,28 @@ static bool edit_saved_configuration(const char *from, const char *to) {
 	return true;
 }
 
+// puts the given history entries, one per line, into the saved configuration
+static bool set_saved_history(const char *entries) {
+	char path[512];
+	snprintf(path, sizeof(path), "%s/Scheduler_Agent.config", indigo_uni_config_folder());
+	FILE *file = fopen(path, "rb");
+	CHECK(file != NULL);
+	static char content[1048576];
+	size_t length = fread(content, 1, sizeof(content) - 1, file);
+	fclose(file);
+	content[length] = 0;
+	const char *empty = "<oneText name='ENTRIES'></oneText>";
+	char *found = strstr(content, empty);
+	CHECK(found != NULL);
+	file = fopen(path, "wb");
+	CHECK(file != NULL);
+	fwrite(content, 1, found - content, file);
+	fprintf(file, "<oneText name='ENTRIES'>%s</oneText>", entries);
+	fputs(found + strlen(empty), file);
+	fclose(file);
+	return true;
+}
+
 static void saved_task_that_no_longer_validates_is_skipped(void) {
 	REQUIRE(upload("// @task Broken\n// @priority high\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @priority low\n// @task Nameless\n" BODY_WAIT(1)));
@@ -1446,6 +1511,68 @@ static void hooks_run_at_start_idle_and_stop(void) {
 	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 15));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
 	ASSERT_EQ_INT(0, count_messages("Starting task 'Later'"));
+}
+
+static void disabled_startup_hook_is_skipped_until_enabled(void) {
+	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(command("Prepare", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Prepare", "DISABLED | hook startup", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_TRUE(wait_message("The startup hook 'Prepare' is disabled, skipped", 1, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Prepare'"));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Prepare'"));
+	REQUIRE(command("Prepare", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Prepare", "HOOK | hook startup", 5));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 15));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 15));
+}
+
+static void disabled_idle_hook_is_skipped_and_reported_once(void) {
+	char future[32], text[256];
+	time_t now = time(NULL);
+	utc(now - now % 60 + 7200, future);
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_hooks("", "", "Park"));
+	REQUIRE(command("Park", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Park", "DISABLED | hook idle", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Work' completed", 1, 15));
+	ASSERT_TRUE(wait_message("The idle hook 'Park' is disabled, skipped", 1, 15));
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(1, count_messages("The idle hook 'Park' is disabled, skipped"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Park'"));
+	// the hook stays out of the ordinary tasks
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Park'"));
+}
+
+static void disabled_night_hook_is_not_planned(void) {
+	time_t dusk = minute_ahead(30);
+	char start[32], future[32], text[256];
+	utc(dusk, start);
+	utc(dusk + 2 * 86400, future);
+	REQUIRE(upload("// @task Evening\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
+	snprintf(text, sizeof(text), "// @task Work\n// @window %s ..\n" BODY_WAIT(1), start);
+	REQUIRE(upload(text));
+	snprintf(text, sizeof(text), "// @task Later\n// @window %s ..\n" BODY_WAIT(1), future);
+	REQUIRE(upload(text));
+	REQUIRE(set_night_hooks("Evening", "Morning", ""));
+	REQUIRE(command("Evening", AGENT_SCHEDULER_TASK_COMMAND_DISABLE_ITEM_NAME));
+	set_site(NIGHT_LATITUDE, night_longitude(dusk, false));
+	ASSERT_TRUE(wait_task_state("Evening", "DISABLED | hook night start", 5));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_plan_contains(" | Morning | - | hook night end | ", true, 15));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | ", false, 5));
+	REQUIRE(command("Evening", AGENT_SCHEDULER_TASK_COMMAND_ENABLE_ITEM_NAME));
+	ASSERT_TRUE(wait_plan_contains(" | Evening | - | hook night start | ", true, 15));
 }
 
 static void failed_startup_hook_stops_the_scheduler(void) {
@@ -2227,6 +2354,70 @@ static void reset_all_keeps_running_task_and_urgent_order(void) {
 	ASSERT_TRUE(wait_task_state("Broken", "QUEUED", 5));
 }
 
+static void hook_priority_class_keeps_a_task_from_running(void) {
+	char label[INDIGO_VALUE_SIZE];
+	indigo_property_state light;
+	REQUIRE(set_setting(AGENT_SCHEDULER_SETTINGS_IDLE_PARK_AFTER_ITEM_NAME, 0));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	// uploaded to a running idle scheduler, the task is not started as an ordinary one
+	REQUIRE(upload("// @task Park\n// @priority hook\n" BODY_WAIT(1)));
+	ASSERT_TRUE(wait_task_state("Park", "| HOOK | hook | ", 5));
+	ASSERT_TRUE(task_label("Park", label, &light));
+	ASSERT_STREQ("Park | HOOK | hook | - | - | -", label);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
+	indigo_usleep(3000000);
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Park'"));
+	ASSERT_EQ_INT(0, count_messages("Starting hook 'Park'"));
+	// named as a hook, it runs
+	REQUIRE(set_hooks("", "", "Park"));
+	ASSERT_TRUE(wait_message("Hook 'Park' completed", 1, 15));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Park'"));
+	ASSERT_TRUE(task_label("Park", label, &light));
+	ASSERT_TRUE(strstr(label, "Park | HOOK | hook idle | ") != NULL);
+	ASSERT_EQ_INT(INDIGO_IDLE_STATE, light);
+}
+
+static void hook_priority_class_rejects_a_level_and_scheduling_keys(void) {
+	char message[INDIGO_VALUE_SIZE];
+	REQUIRE(change_text(AGENT_SCHEDULER_ADD_TASK_PROPERTY_NAME, AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, "// @task Level\n// @priority hook 50\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "line 2: @priority: expected") != NULL);
+	REQUIRE(change_text(AGENT_SCHEDULER_ADD_TASK_PROPERTY_NAME, AGENT_SCHEDULER_ADD_TASK_TASK_ITEM_NAME, "// @task Disabled hook\n// @priority hook\n// @enabled no\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "line 3: @enabled: not allowed with @priority hook") != NULL);
+	ASSERT_EQ_INT(0, task_count());
+}
+
+static void hook_priority_class_task_is_not_planned_or_counted(void) {
+	char message[INDIGO_VALUE_SIZE];
+	char label[INDIGO_VALUE_SIZE];
+	site_at_evening();
+	REQUIRE(upload("// @task Work\n// @duration 1\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Hook only\n// @priority hook\n// @duration 1\n" BODY_WAIT(1)));
+	// neither planned nor listed as NOT TONIGHT
+	ASSERT_TRUE(wait_plan(1, "Work", 10));
+	ASSERT_TRUE(wait_plan_contains("Hook only", false, 2));
+	// the automatic stop does not wait for it
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("All tasks finished", 1, 30));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	ASSERT_EQ_INT(0, count_messages("Starting task 'Hook only'"));
+	ASSERT_TRUE(wait_task_state("Hook only", "HOOK | hook", 5));
+	// DELETE_ALL keeps it
+	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
+	ASSERT_STREQ("Tasks deleted: 1, hook tasks kept: 1", message);
+	ASSERT_FALSE(task_label("Work", label, NULL));
+	ASSERT_TRUE(task_label("Hook only", label, NULL));
+	ASSERT_EQ_INT(1, task_count());
+}
+
+static void urgent_task_cannot_be_a_hook(void) {
+	char message[INDIGO_VALUE_SIZE];
+	char label[INDIGO_VALUE_SIZE];
+	REQUIRE(change_text(AGENT_SCHEDULER_URGENT_TASK_PROPERTY_NAME, AGENT_SCHEDULER_URGENT_TASK_TASK_ITEM_NAME, "// @task Urgent hook\n// @priority hook\n" BODY_WAIT(1), INDIGO_ALERT_STATE, message));
+	ASSERT_TRUE(strstr(message, "an urgent task cannot be a hook") != NULL);
+	ASSERT_FALSE(task_label("Urgent hook", label, NULL));
+	ASSERT_EQ_INT(0, task_count());
+}
+
 static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(upload("// @task Long\n" BODY_WAIT(30)));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
@@ -2239,7 +2430,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_ABORT_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Long", "RETRY", 10));
 	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
-	// the tasks named as hooks are kept, stored and urgent tasks are deleted
+	// the hook tasks are kept, stored and urgent tasks are deleted
 	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Park\n" BODY_WAIT(1)));
 	REQUIRE(upload("// @task Morning\n" BODY_WAIT(1)));
@@ -2249,7 +2440,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	REQUIRE(set_night_hooks("", "Morning", ""));
 	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 6, 5));
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
-	ASSERT_STREQ("Tasks deleted: 3, tasks named as hooks kept: 3", message);
+	ASSERT_STREQ("Tasks deleted: 3, hook tasks kept: 3", message);
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_FALSE(task_label("Long", label, NULL));
 	ASSERT_FALSE(task_label("Other", label, NULL));
@@ -2261,7 +2452,7 @@ static void delete_all_keeps_hooks_and_needs_a_stopped_scheduler(void) {
 	ASSERT_TRUE(wait_counter(AGENT_SCHEDULER_STATE_TOTAL_ITEM_NAME, 3, 5));
 	// a list of hooks only, nothing more to delete
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
-	ASSERT_STREQ("Tasks deleted: 0, tasks named as hooks kept: 3", message);
+	ASSERT_STREQ("Tasks deleted: 0, hook tasks kept: 3", message);
 	// the deletion is saved and the hooks still name their tasks
 	stop_scheduler();
 	REQUIRE(start_scheduler());
@@ -2346,7 +2537,7 @@ static void delete_all_waits_for_the_shutdown_hook(void) {
 	ASSERT_STREQ("Long", task->label);
 	indigo_release_property(task);
 	REQUIRE(all_command(AGENT_SCHEDULER_TASK_COMMAND_DELETE_ALL_ITEM_NAME, INDIGO_OK_STATE, message));
-	ASSERT_STREQ("Tasks deleted: 1, tasks named as hooks kept: 1", message);
+	ASSERT_STREQ("Tasks deleted: 1, hook tasks kept: 1", message);
 	// the property of the deleted task goes, the history stays as it was
 	ASSERT_TRUE(snapshot("AGENT_SCHEDULER_TASK_1") == NULL);
 	task = snapshot("AGENT_SCHEDULER_TASK_0");
@@ -2745,15 +2936,15 @@ static void history_records_runs(void) {
 	char label[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(history_label("Good #1", 0, label) && strstr(label, "| SUCCEEDED | -"));
 	ASSERT_TRUE(history_label("Bad #1", 0, label) && strstr(label, "| FAILED | Error: broken"));
-	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "| PREEMPTED | by Rush"));
+	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "| PREEMPTED | by Rush"));
 	ASSERT_TRUE(history_label("Rush #1", 0, label) && strstr(label, "| Rush | run 1 | urgent | SUCCEEDED | -"));
-	ASSERT_TRUE(history_label("Victim #1", 0, label) && strstr(label, "| ABORTED | -"));
+	ASSERT_TRUE(history_label("Victim #1", 1, label) && strstr(label, "| ABORTED | -"));
 	ASSERT_EQ_INT(5, history_count());
-	// newest first
+	// oldest first, newest last
 	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
 	REQUIRE(history != NULL);
-	ASSERT_TRUE(strstr(history->items[0].label, "Victim") && strstr(history->items[0].label, "| ABORTED |"));
-	ASSERT_EQ_INT(INDIGO_ALERT_STATE, history->items[history->count - 2].light.value);
+	ASSERT_TRUE(strstr(history->items[history->count - 1].label, "Victim") && strstr(history->items[history->count - 1].label, "| ABORTED |"));
+	ASSERT_EQ_INT(INDIGO_ALERT_STATE, history->items[1].light.value);
 	indigo_release_property(history);
 	stop_scheduler();
 	REQUIRE(start_scheduler());
@@ -2767,6 +2958,47 @@ static void history_records_runs(void) {
 	char message[INDIGO_VALUE_SIZE];
 	ASSERT_TRUE(change_text(AGENT_SCHEDULER_RESTORE_HISTORY_PROPERTY_NAME, AGENT_SCHEDULER_RESTORE_HISTORY_ENTRIES_ITEM_NAME, "Fake\t1\t0\t0\tsucceeded\t \t\n", INDIGO_ALERT_STATE, message));
 	ASSERT_EQ_INT(0, history_count());
+}
+
+static void history_lists_oldest_first(void) {
+	// 205 saved entries, the oldest ones of which no longer fit into the history of 200
+	static char entries[16384];
+	size_t used = 0;
+	for (int i = 1; i <= 205; i++) {
+		used += snprintf(entries + used, sizeof(entries) - used, "Run%d\t%d\t0\t0\t%s\t-\t \n", i, i, i % 2 ? "succeeded" : "failed");
+	}
+	REQUIRE(upload("// @task Seed\n" BODY_WAIT(1)));
+	stop_scheduler();
+	REQUIRE(set_saved_history(entries));
+	REQUIRE(start_scheduler());
+	ASSERT_EQ_INT(200, history_count());
+	indigo_property *history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	REQUIRE(history != NULL);
+	// the oldest kept entry is the first, the newest the last, and the item names count the runs
+	for (int i = 0; i < history->count; i++) {
+		char expected[INDIGO_VALUE_SIZE];
+		snprintf(expected, sizeof(expected), " | Run%d | run %d | ", i + 6, i + 6);
+		ASSERT_TRUE(strstr(history->items[i].label, expected) != NULL);
+		snprintf(expected, sizeof(expected), AGENT_SCHEDULER_HISTORY_ITEM_NAME, i + 6);
+		ASSERT_STREQ(expected, history->items[i].name);
+		ASSERT_EQ_INT((i + 6) % 2 ? INDIGO_OK_STATE : INDIGO_ALERT_STATE, history->items[i].light.value);
+	}
+	indigo_release_property(history);
+	// the new runs, Seed and Newest, are appended at the end and the oldest entries drop off the top
+	REQUIRE(upload("// @task Newest\n" BODY_WAIT(1)));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Task 'Newest' completed", 1, 30));
+	for (int i = 0; i < 500 && !history_label("Newest #1", 0, (char[INDIGO_VALUE_SIZE]){ 0 }); i++) {
+		indigo_usleep(20000);
+	}
+	ASSERT_EQ_INT(200, history_count());
+	history = snapshot(AGENT_SCHEDULER_HISTORY_PROPERTY_NAME);
+	REQUIRE(history != NULL);
+	ASSERT_TRUE(strstr(history->items[0].label, " | Run8 | run 8 | ") != NULL);
+	ASSERT_TRUE(strstr(history->items[history->count - 3].label, " | Run205 | run 205 | ") != NULL);
+	ASSERT_TRUE(strstr(history->items[history->count - 2].label, " | Seed | run 1 | ") != NULL);
+	ASSERT_TRUE(strstr(history->items[history->count - 1].label, " | Newest | run 1 | ") != NULL);
+	indigo_release_property(history);
 }
 
 static void labels_have_uniform_columns(void) {
@@ -3400,19 +3632,165 @@ static void data_is_restored_when_the_scheduler_stops(void) {
 	ASSERT_TRUE(wait_imager_event("LOCAL DIR=/other/ OBJECT=" IMAGER_OBJECT, object, 5) > object);
 }
 
-static void hooks_are_labelled_like_tasks(void) {
-	REQUIRE(upload("// @task Prepare\n" BODY_WAIT(1)));
+#define SELECT_CAMERA(camera) "var sequence = new Sequence(scheduler_task.name);\nsequence.select_imager_camera(\"" camera "\");\nsequence.start();\n"
+#define FAILING_BODY "var sequence = new Sequence(scheduler_task.name);\nsequence.wait(1);\nsequence.select_filter(\"Nonexistent\");\nsequence.start();\n"
+
+// the folder the Imager Agent stand-in holds now, as the camera keeps it
+static void imager_dir(char *dir) {
+	strcpy(dir, indigo_get_text_item_value(indigo_get_item(imager_local_mode_property, CCD_LOCAL_MODE_DIR_ITEM_NAME)));
+}
+
+// a new START labels the task with a folder below the original one, not below a folder of an earlier run
+static void next_start_uses_the_original_folder(const char *hook) {
+	REQUIRE(upload("// @task Next\n" BODY_WAIT(1)));
+	long before = imager_log_end();
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Next", "DONE", 30));
+	ASSERT_TRUE(wait_imager_event("LOCAL OBJECT=Next DIR=" IMAGER_DIR "Next/", before, 5) >= 0);
+	char event[256];
+	snprintf(event, sizeof(event), "LOCAL OBJECT=Next DIR=" IMAGER_DIR "%s/", hook);
+	ASSERT_EQ_INT(0, imager_events(event));
+}
+
+// a hook without @folder leaves the Imager Agent alone, also when it fails
+static void failed_startup_hook_leaves_the_original_folder(void) {
+	REQUIRE(set_data(true, true, true));
+	REQUIRE(upload("// @task Bad start\n" FAILING_BODY));
+	REQUIRE(set_hooks("Bad start", "", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Bad start' failed", 1, 20));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	ASSERT_EQ_INT(0, imager_events(""));
+	REQUIRE(set_hooks("", "", ""));
+	next_start_uses_the_original_folder("Bad start");
+}
+
+// the folder a hook gets from @folder is restored also when the hook fails
+static void failed_shutdown_hook_leaves_the_original_folder(void) {
+	REQUIRE(set_data(true, true, true));
+	REQUIRE(upload("// @task Bad close\n// @folder Bad close\n" FAILING_BODY));
 	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
-	REQUIRE(set_hooks("Prepare", "", ""));
+	REQUIRE(set_hooks("", "Bad close", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Bad close' failed", 1, 30));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_ALERT_STATE, 5));
+	long hook = wait_imager_event("LOCAL DIR=" IMAGER_DIR "Bad close/", 0, 5);
+	ASSERT_TRUE(hook >= 0 && wait_imager_event(IMAGER_RESTORED, hook, 5) > hook);
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Bad close"));
+	REQUIRE(set_hooks("", "", ""));
+	next_start_uses_the_original_folder("Bad close");
+}
+
+static void failed_task_and_shutdown_hook_leave_the_original_folder(void) {
+	REQUIRE(set_data(true, true, true));
+	REQUIRE(upload("// @task Close\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Broken\n" FAILING_BODY));
+	REQUIRE(set_hooks("", "Close", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_task_state("Broken", "FAILED", 30));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 20));
+	ASSERT_TRUE(wait_scheduler_state(INDIGO_OK_STATE, 5));
+	long task = wait_imager_event("LOCAL OBJECT=Broken DIR=" IMAGER_DIR "Broken/", 0, 5);
+	ASSERT_TRUE(task >= 0 && wait_imager_event(IMAGER_RESTORED, task, 5) > task);
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Close"));
+	ASSERT_EQ_INT(0, imager_events("SET SCHTASK='Close'"));
+	next_start_uses_the_original_folder("Close");
+}
+
+// the shutdown hook deselects the camera, which takes CCD_LOCAL_MODE from the Imager Agent; the camera keeps its folder until the startup hook selects it again, so the hook must not have changed it
+static void shutdown_hook_that_deselects_the_camera(bool fails) {
+	REQUIRE(set_data(true, true, true));
+	REQUIRE(upload("// @task Startup\n" SELECT_CAMERA("CCD Imager Simulator")));
+	if (fails) {
+		// the step after the deselection finds no CCD_LOCAL_MODE on the Imager Agent and fails
+		REQUIRE(upload("// @task Shutdown\nvar sequence = new Sequence(scheduler_task.name);\nsequence.select_imager_camera(\"NONE\");\nsequence.set_object_name(\"Dark\");\nsequence.start();\n"));
+	} else {
+		REQUIRE(upload("// @task Shutdown\n" SELECT_CAMERA("NONE")));
+	}
+	REQUIRE(upload("// @task First\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Startup", "Shutdown", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message(fails ? "Hook 'Shutdown' failed" : "Hook 'Shutdown' completed", 1, 30));
+	ASSERT_TRUE(wait_scheduler_state(fails ? INDIGO_ALERT_STATE : INDIGO_OK_STATE, 5));
+	long task = wait_imager_event("LOCAL OBJECT=First DIR=" IMAGER_DIR "First/", 0, 5);
+	ASSERT_TRUE(task >= 0 && wait_imager_event(IMAGER_RESTORED, task, 5) > task);
+	ASSERT_TRUE(wait_imager_event("CAMERA NONE", task, 5) > task);
+	char dir[INDIGO_VALUE_SIZE];
+	imager_dir(dir);
+	ASSERT_STREQ(IMAGER_DIR, dir);
+	// two more nights: no folder hangs off a folder of a hook
+	for (int night = 2; night <= 3; night++) {
+		char name[32], event[256];
+		snprintf(name, sizeof(name), "Night %d", night);
+		snprintf(event, sizeof(event), "// @task %s\n" BODY_WAIT(1), name);
+		REQUIRE(upload(event));
+		long before = imager_log_end();
+		REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+		ASSERT_TRUE(wait_message(fails ? "Hook 'Shutdown' failed" : "Hook 'Shutdown' completed", night, 30));
+		long selected = wait_imager_event("CAMERA SELECTED", before, 5);
+		ASSERT_TRUE(selected >= before);
+		snprintf(event, sizeof(event), "LOCAL OBJECT=%s DIR=" IMAGER_DIR "%s/", name, name);
+		ASSERT_TRUE(wait_imager_event(event, selected, 5) > selected);
+		imager_dir(dir);
+		ASSERT_STREQ(IMAGER_DIR, dir);
+	}
+	// the hooks are not labelled
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Startup"));
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Shutdown"));
+	ASSERT_EQ_INT(0, imager_events("SET SCHTASK='Startup'"));
+	ASSERT_EQ_INT(0, imager_events("SET SCHTASK='Shutdown'"));
+}
+
+static void shutdown_hook_that_deselects_the_camera_keeps_the_folder(void) {
+	shutdown_hook_that_deselects_the_camera(false);
+}
+
+static void failed_shutdown_hook_that_deselects_the_camera_keeps_the_folder(void) {
+	shutdown_hook_that_deselects_the_camera(true);
+}
+
+// a hook sets no object name, no FITS header and no folder from the FOLDER setting, whatever its header gives
+static void hooks_are_not_labelled(void) {
+	REQUIRE(set_data(true, true, true));
+	REQUIRE(upload("// @task Prepare\n// @observer Jane Doe\n// @pi Prof. Smith\n// @project SURVEY-7\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Close\n// @folder none\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Prepare", "Close", ""));
+	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
+	ASSERT_TRUE(wait_message("Hook 'Close' completed", 1, 30));
+	ASSERT_TRUE(wait_message("Hook 'Prepare' completed", 1, 5));
+	ASSERT_TRUE(message_position("Hook 'Prepare' completed") < message_position("Starting task 'Work'"));
+	long work = wait_imager_event("LOCAL OBJECT=Work DIR=" IMAGER_DIR "Work/", 0, 5);
+	long restored = wait_imager_event(IMAGER_RESTORED, work, 5);
+	ASSERT_TRUE(work >= 0 && restored > work);
+	// the only changes are those of the task and its restore
+	ASSERT_EQ_INT(2, imager_events("LOCAL "));
+	ASSERT_EQ_INT(3, imager_events("SET "));
+	ASSERT_EQ_INT(1, imager_events("SET SCHTASK='Work'"));
+	ASSERT_EQ_INT(0, imager_events("SET OBSERVER"));
+	ASSERT_EQ_INT(0, imager_events("SET PI_NAME"));
+	ASSERT_EQ_INT(0, imager_events("SET PROPID"));
+	ASSERT_EQ_INT(3, imager_events("REMOVE "));
+}
+
+// @folder gives a hook its folder, which is restored after the hook; the object name and the headers stay untouched
+static void hook_folder_key_sets_only_the_folder(void) {
+	REQUIRE(set_data(true, true, false));
+	REQUIRE(upload("// @task Calibrate\n// @folder Calibration\n" BODY_WAIT(1)));
+	REQUIRE(upload("// @task Work\n" BODY_WAIT(1)));
+	REQUIRE(set_hooks("Calibrate", "", ""));
 	REQUIRE(control(AGENT_SCHEDULER_CONTROL_START_ITEM_NAME));
 	ASSERT_TRUE(wait_task_state("Work", "DONE", 30));
-	long hook = wait_imager_event("LOCAL OBJECT=Prepare", 0, 5);
-	long hook_run = wait_imager_event("SET SCHRUN=1", 0, 5);
+	long hook = wait_imager_event("LOCAL DIR=" IMAGER_DIR "Calibration/", 0, 5);
 	long restored = wait_imager_event(IMAGER_RESTORED, hook, 5);
 	long work = wait_imager_event("LOCAL OBJECT=Work", restored, 10);
-	ASSERT_TRUE(hook >= 0 && hook_run > hook && restored > hook_run && work > restored);
-	ASSERT_TRUE(wait_imager_event("SET SCHTASK='Prepare'", 0, 5) >= 0);
+	ASSERT_TRUE(hook >= 0 && restored > hook && work > restored);
 	ASSERT_TRUE(wait_imager_event("SET SCHTASK='Work'", restored, 5) > restored);
+	// nothing of the hook but its folder reaches the Imager Agent before its restore
+	ASSERT_EQ_INT(0, imager_events("LOCAL OBJECT=Calibrate"));
+	ASSERT_EQ_INT(0, imager_events("SET SCHTASK='Calibrate'"));
+	ASSERT_EQ_INT(1, imager_events("SET SCHRUN="));
+	ASSERT_EQ_INT(3, imager_events("REMOVE "));
 }
 
 static void data_quote_in_the_task_name_is_doubled(void) {
@@ -3562,10 +3940,18 @@ static const indigo_test_case cases[] = {
 	{ "pending_rename_reserves_the_name", pending_rename_reserves_the_name },
 	{ "library_reload_keeps_scheduled_task", library_reload_keeps_scheduled_task },
 	{ "hooks_run_at_start_idle_and_stop", hooks_run_at_start_idle_and_stop },
+	{ "disabled_startup_hook_is_skipped_until_enabled", disabled_startup_hook_is_skipped_until_enabled },
+	{ "disabled_idle_hook_is_skipped_and_reported_once", disabled_idle_hook_is_skipped_and_reported_once },
+	{ "disabled_night_hook_is_not_planned", disabled_night_hook_is_not_planned },
+	{ "hook_priority_class_keeps_a_task_from_running", hook_priority_class_keeps_a_task_from_running },
+	{ "hook_priority_class_rejects_a_level_and_scheduling_keys", hook_priority_class_rejects_a_level_and_scheduling_keys },
+	{ "hook_priority_class_task_is_not_planned_or_counted", hook_priority_class_task_is_not_planned_or_counted },
+	{ "urgent_task_cannot_be_a_hook", urgent_task_cannot_be_a_hook },
 	{ "failed_startup_hook_stops_the_scheduler", failed_startup_hook_stops_the_scheduler },
 	{ "abort_runs_the_shutdown_hook", abort_runs_the_shutdown_hook },
 	{ "start_during_shutdown_hook_continues", start_during_shutdown_hook_continues },
 	{ "history_records_runs", history_records_runs },
+	{ "history_lists_oldest_first", history_lists_oldest_first },
 	{ "labels_have_uniform_columns", labels_have_uniform_columns },
 	{ "duration_estimated_measured_and_set", duration_estimated_measured_and_set },
 	{ "library_without_estimate_uses_the_default", library_without_estimate_uses_the_default },
@@ -3637,7 +4023,13 @@ static const indigo_test_case cases[] = {
 	{ "data_is_restored_after_an_abort", data_is_restored_after_an_abort },
 	{ "data_is_restored_after_a_preemption", data_is_restored_after_a_preemption },
 	{ "data_is_restored_when_the_scheduler_stops", data_is_restored_when_the_scheduler_stops },
-	{ "hooks_are_labelled_like_tasks", hooks_are_labelled_like_tasks },
+	{ "hooks_are_not_labelled", hooks_are_not_labelled },
+	{ "hook_folder_key_sets_only_the_folder", hook_folder_key_sets_only_the_folder },
+	{ "failed_startup_hook_leaves_the_original_folder", failed_startup_hook_leaves_the_original_folder },
+	{ "failed_shutdown_hook_leaves_the_original_folder", failed_shutdown_hook_leaves_the_original_folder },
+	{ "failed_task_and_shutdown_hook_leave_the_original_folder", failed_task_and_shutdown_hook_leave_the_original_folder },
+	{ "shutdown_hook_that_deselects_the_camera_keeps_the_folder", shutdown_hook_that_deselects_the_camera_keeps_the_folder },
+	{ "failed_shutdown_hook_that_deselects_the_camera_keeps_the_folder", failed_shutdown_hook_that_deselects_the_camera_keeps_the_folder },
 	{ "data_quote_in_the_task_name_is_doubled", data_quote_in_the_task_name_is_doubled },
 	{ "data_headers_identify_the_observation", data_headers_identify_the_observation },
 	{ "data_headers_are_set_only_when_the_task_gives_them", data_headers_are_set_only_when_the_task_gives_them },

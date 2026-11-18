@@ -1,0 +1,710 @@
+{
+  "schema_version": 1,
+  "ticket_id": "0baf77fb-51f8-4819-a94c-2f4c74388e16",
+  "revision": 32,
+  "title": "indigo_agent_scheduler: replace the @hook header key with the @priority hook class",
+  "description": "The @hook task header key (added in 73479e844, not yet released) marks a hook-only task that is never scheduled as an ordinary task. It overlaps with @priority: the parser accepts @hook together with @priority high 70 and silently ignores the priority, a separate check forbids an urgent hook, and the task list already shows 'hook' in the priority column. Replace it with a fifth priority class.\n\nRequired behavior:\n- Remove the @hook key (KEY_HOOK, header->hook) and add 'hook' as a priority class: @priority urgent|high|normal|low|hook. A task is exactly one of them.\n- @priority hook takes no level; '@priority hook 50' is rejected with a line-numbered error.\n- @priority hook rejects the scheduling keys that do not apply to a hook (@repeat, @retry, @window, @altitude, @airmass, @ha, @moon, @illumination, @twilight, @duration, @best_effort, @preempted; confirm the final list against the code), with a line-numbered error, as @altitude without @target is rejected today.\n- The header does not name the hook role: AGENT_SCHEDULER_HOOKS stays the only place that assigns STARTUP, SHUTDOWN, IDLE, NIGHT_START, NIGHT_END and RESUME. A task named there without @priority hook keeps today's behavior (hook while named, ordinary task when no longer named).\n- is_hook(), the priority label in AGENT_SCHEDULER_TASK_STATE ('hook' for an unnamed hook-class task, 'hook <role>' when named), DELETE_ALL and the urgent submission check read the class instead of the flag. A task submitted through AGENT_SCHEDULER_URGENT_TASK with @priority hook is rejected as @hook is today.\n- MOVE_UP and MOVE_DOWN in AGENT_SCHEDULER_TASK_COMMAND stay unchanged.\n- Update indigo_docs/INDIGO_SCHEDULER_GUIDE.md (key table, priorities, hooks section, task list labels, DELETE_ALL), indigo_drivers/agent_scheduler/doc/SCHEDULER.md and indigo_docs/PROPERTIES.md if it mentions @hook.\n- Update the unit tests (indigo_test/unit/test_agent_scheduler_header.c) for the new class, the rejected level and the rejected keys, and the integration tests that use @hook.\n- Increment the scheduler agent driver version.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-18T11:51:05.373687Z",
+  "status": "closed",
+  "branch": "ticket/0baf77fb-51f8-4819-a94c-2f4c74388e16",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "804c4d95-b35d-4f99-ac93-3e552ab1e9fe",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-sonnet-5-5",
+            "reasoning": "medium"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T11:52:38.101679Z",
+          "last_activity_at": "2026-11-18T12:01:19.578486Z",
+          "ended_at": "2026-11-18T12:01:19.578486Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 521476.807,
+          "tokens": null
+        },
+        {
+          "attempt_id": "972f1384-4450-4601-bbfa-11ecea61573e",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T12:03:05.238113Z",
+          "last_activity_at": "2026-11-18T12:09:42.193822Z",
+          "ended_at": "2026-11-18T12:09:42.193822Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 396955.709,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T11:52:38.101679Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/0baf77fb-51f8-4819-a94c-2f4c74388e16"
+        },
+        {
+          "at": "2026-11-18T12:01:19.578486Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        },
+        {
+          "at": "2026-11-18T12:03:05.238113Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Changes requested by review"
+        },
+        {
+          "at": "2026-11-18T12:09:42.193822Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 918432.516,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    },
+    {
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "85286e63-dd99-44df-83af-f38c40d0318b",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "failed",
+          "started_at": "2026-11-18T12:01:19.578564Z",
+          "last_activity_at": "2026-11-18T12:03:05.238038Z",
+          "ended_at": "2026-11-18T12:03:05.238038Z",
+          "outcome": {
+            "summary": "One finding. The ticket requires the scheduling keys to be rejected under @priority hook 'with a line-numbered error'. indigo_agent_scheduler_header.c:596-598 gives an error with no line number that lists all ten keys and does not say which one is present: '@priority hook cannot be combined with @altitude, ... or @preempted'. The unit tests (test_agent_scheduler_header.c:278-290) only check that prefix, so a missing line number is not caught. Fix: in the parse loop, remember the line number and name of the first key in the incompatible mask. After the loop, when priority_class == SCHEDULER_PRIORITY_HOOK, report e.g. 'line N: @repeat: not allowed with @priority hook'. Use the @priority line instead when it comes after that key, so both orders work. Make the tests assert the line prefix in both orders. The ticket text is not fully consistent here: it compares this to '@altitude without @target', which has no line number today. If the owner accepts an error without a line number, this can pass as it is. Everything else checked out: is_hook, the label ('hook' and 'hook <role>'), the urgent rejection, DELETE_ALL (via is_hook), update_plan/update_task_states/select_task (via is_hook), score class_base[4] (index in bounds and never reached for hook tasks), priority_name and its switch, the level rejection with 'line 2: @priority: expected', the per-key decision matching how hooks run (finish_hook bypasses repeat/retry/preempted, eligible_now and the plan skip hooks, task_duration places running and planned hooks, apply_context passes ra/dec), docs (no stale @hook), and the version bump 0x03000014 -> 0x03000015.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 105659.474,
+          "tokens": null
+        },
+        {
+          "attempt_id": "14f88cdd-c1f1-43e3-b4be-384b69884d44",
+          "number": 2,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-18T12:09:42.193839Z",
+          "last_activity_at": "2026-11-18T12:10:13.030274Z",
+          "ended_at": "2026-11-18T12:10:13.030274Z",
+          "outcome": {
+            "summary": "Round 2 pass. Round-1 defect fixed: indigo_agent_scheduler_header.c records priority_line and the first HOOK_REJECTED_KEYS key (conflict_line/conflict_key, as written by the user) and after the loop reports 'line N: @<key>: not allowed with @priority hook' with N = max(key line, @priority line); conflict_key[32] matches key[32], strcpy is safe. Unit tests assert the full text for all ten rejected keys and for @repeat before @priority (line 3). Other header errors unchanged (target-required check still precedes; unknown/repeated/value errors keep their line numbers). Whole diff matches the ticket and owner notes: @hook/KEY_HOOK/header.hook removed, SCHEDULER_PRIORITY_HOOK added, level rejected, class_base extended for the new index, is_hook/task_priority_text/urgent_task/DELETE_ALL read the class, MOVE_UP/DOWN untouched, version 0x03000014->0x03000015, guide/SCHEDULER.md/PROPERTIES.md updated with no @hook leftovers, integration tests renamed to @priority hook. Formatting follows conventions; git diff --check clean. whitespace, unit and command-1 (integration test_agent_scheduler) passed at d7e9310ae = current HEAD, worktree clean. Limits: did not rerun builds/tests myself; relied on recorded checks.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 30836.435,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T12:01:19.578564Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T12:03:05.238038Z",
+          "status": "failed",
+          "actor": "human/owner",
+          "reason": "One finding. The ticket requires the scheduling keys to be rejected under @priority hook 'with a line-numbered error'. indigo_agent_scheduler_header.c:596-598 gives an error with no line number that lists all ten keys and does not say which one is present: '@priority hook cannot be combined with @altitude, ... or @preempted'. The unit tests (test_agent_scheduler_header.c:278-290) only check that prefix, so a missing line number is not caught. Fix: in the parse loop, remember the line number and name of the first key in the incompatible mask. After the loop, when priority_class == SCHEDULER_PRIORITY_HOOK, report e.g. 'line N: @repeat: not allowed with @priority hook'. Use the @priority line instead when it comes after that key, so both orders work. Make the tests assert the line prefix in both orders. The ticket text is not fully consistent here: it compares this to '@altitude without @target', which has no line number today. If the owner accepts an error without a line number, this can pass as it is. Everything else checked out: is_hook, the label ('hook' and 'hook <role>'), the urgent rejection, DELETE_ALL (via is_hook), update_plan/update_task_states/select_task (via is_hook), score class_base[4] (index in bounds and never reached for hook tasks), priority_name and its switch, the level rejection with 'line 2: @priority: expected', the per-key decision matching how hooks run (finish_hook bypasses repeat/retry/preempted, eligible_now and the plan skip hooks, task_duration places running and planned hooks, apply_context passes ra/dec), docs (no stale @hook), and the version bump 0x03000014 -> 0x03000015."
+        },
+        {
+          "at": "2026-11-18T12:09:42.193839Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T12:10:13.030274Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Round 2 pass. Round-1 defect fixed: indigo_agent_scheduler_header.c records priority_line and the first HOOK_REJECTED_KEYS key (conflict_line/conflict_key, as written by the user) and after the loop reports 'line N: @<key>: not allowed with @priority hook' with N = max(key line, @priority line); conflict_key[32] matches key[32], strcpy is safe. Unit tests assert the full text for all ten rejected keys and for @repeat before @priority (line 3). Other header errors unchanged (target-required check still precedes; unknown/repeated/value errors keep their line numbers). Whole diff matches the ticket and owner notes: @hook/KEY_HOOK/header.hook removed, SCHEDULER_PRIORITY_HOOK added, level rejected, class_base extended for the new index, is_hook/task_priority_text/urgent_task/DELETE_ALL read the class, MOVE_UP/DOWN untouched, version 0x03000014->0x03000015, guide/SCHEDULER.md/PROPERTIES.md updated with no @hook leftovers, integration tests renamed to @priority hook. Formatting follows conventions; git diff --check clean. whitespace, unit and command-1 (integration test_agent_scheduler) passed at d7e9310ae = current HEAD, worktree clean. Limits: did not rerun builds/tests myself; relied on recorded checks."
+        }
+      ],
+      "result": {
+        "summary": "Round 2 pass. Round-1 defect fixed: indigo_agent_scheduler_header.c records priority_line and the first HOOK_REJECTED_KEYS key (conflict_line/conflict_key, as written by the user) and after the loop reports 'line N: @<key>: not allowed with @priority hook' with N = max(key line, @priority line); conflict_key[32] matches key[32], strcpy is safe. Unit tests assert the full text for all ten rejected keys and for @repeat before @priority (line 3). Other header errors unchanged (target-required check still precedes; unknown/repeated/value errors keep their line numbers). Whole diff matches the ticket and owner notes: @hook/KEY_HOOK/header.hook removed, SCHEDULER_PRIORITY_HOOK added, level rejected, class_base extended for the new index, is_hook/task_priority_text/urgent_task/DELETE_ALL read the class, MOVE_UP/DOWN untouched, version 0x03000014->0x03000015, guide/SCHEDULER.md/PROPERTIES.md updated with no @hook leftovers, integration tests renamed to @priority hook. Formatting follows conventions; git diff --check clean. whitespace, unit and command-1 (integration test_agent_scheduler) passed at d7e9310ae = current HEAD, worktree clean. Limits: did not rerun builds/tests myself; relied on recorded checks.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "medium",
+      "metrics": {
+        "duration_ms": 136495.909,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 2
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "336eb7fd-39d5-4c2b-9a11-1b2387e4d3b2",
+      "event": "ticket/created",
+      "at": "2026-11-18T11:51:05.374895Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "7c19326d-e1d3-4eff-87ad-b37cfe1fef84",
+      "event": "ticket/confirmed",
+      "at": "2026-11-18T11:52:23.873622Z",
+      "actor": "human/owner",
+      "priority": "medium",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "8e726eb2-186b-4cd6-b91a-255794c1278b",
+      "event": "task/progress",
+      "at": "2026-11-18T11:52:38.102505Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Implementation started on branch ticket/0baf77fb-51f8-4819-a94c-2f4c74388e16"
+    },
+    {
+      "event_id": "9f4db9a4-3cf2-4a47-a940-e4dd5dde296e",
+      "event": "ticket/started",
+      "at": "2026-11-18T11:52:38.105564Z",
+      "actor": "human/owner",
+      "branch": "ticket/0baf77fb-51f8-4819-a94c-2f4c74388e16",
+      "base": "master"
+    },
+    {
+      "event_id": "5ed26316-ff28-4ead-bedb-cf7d8b843c18",
+      "event": "task/progress",
+      "at": "2026-11-18T11:53:09.787481Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Implementer launched",
+      "attempt_id": "804c4d95-b35d-4f99-ac93-3e552ab1e9fe",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "85c66058-54fa-4ca6-9fc2-e32e0006527f",
+      "event": "task/progress",
+      "at": "2026-11-18T11:54:19.823594Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Code, tests and docs edited; running flow check"
+    },
+    {
+      "event_id": "c2958cea-b98b-4659-bb8b-be7945d1b39a",
+      "event": "task/progress",
+      "at": "2026-11-18T11:54:20.052951Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "d420b507-0c95-46cb-9e35-15fd36e29ace",
+      "event": "task/progress",
+      "at": "2026-11-18T11:54:20.078709Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "1ad4dd15-5e5d-4513-affb-ca9eca945d7f",
+      "event": "task/progress",
+      "at": "2026-11-18T11:54:20.083096Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "2870c8b4-94f8-46fe-8861-5d8d47b23b7a",
+      "event": "task/progress",
+      "at": "2026-11-18T11:55:52.994583Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "ba45fb96-dc2f-4cb2-a88d-3291d284ee22",
+      "event": "check/passed",
+      "at": "2026-11-18T11:55:53.001144Z",
+      "actor": "human/owner",
+      "commit": "d8ced6617e32ed08365976ef3f7552b87487b057",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "727fd2bd-f0fd-40bb-ba72-9bfdc71cd45d",
+      "event": "task/progress",
+      "at": "2026-11-18T11:56:01.620377Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "66c231a8-1cc9-41f9-b8cb-982a04f4afc7",
+      "event": "task/progress",
+      "at": "2026-11-18T12:00:53.261488Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "47678b4f-6c27-4b44-8c4f-cbf80334f991",
+      "event": "check/passed",
+      "at": "2026-11-18T12:00:53.273680Z",
+      "actor": "human/owner",
+      "commit": "d8ced6617e32ed08365976ef3f7552b87487b057",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "02adffdf-4afa-432d-bf40-57c69f81f1fe",
+      "event": "ticket/note",
+      "at": "2026-11-18T12:01:04.304593Z",
+      "actor": "human/owner",
+      "text": "Rejected with @priority hook: @repeat, @retry, @window, @twilight, @preempted (hook runs bypass finish_task/update_task_states/eligible_now, so these never apply), and @altitude, @airmass, @ha, @moon, @illumination (sky constraints, only used by eligibility/plan of ordinary tasks). @best_effort does not exist. Kept: @duration (task_duration places the running/planned hook in AGENT_SCHEDULER_PLAN), @target (apply_context passes ra/dec to the hook body), @folder/@observer/@pi/@project (data keys used when the hook body runs), @enabled (not listed as a candidate; harmless, left alone). @priority hook with a level is rejected with a line-numbered error. Tests: unit test_agent_scheduler_header hook_priority_class (class parse, level rejected, kept keys, old @hook unknown key) and hook_priority_rejects_scheduling_keys (each rejected key, either order); integration test_agent_scheduler hook_priority_class_keeps_a_task_from_running, hook_priority_class_task_is_not_planned_or_counted (DELETE_ALL keeps it, label 'hook'), urgent_task_cannot_be_a_hook. Driver version 0x03000014 -> 0x03000015.",
+      "tokens": null
+    },
+    {
+      "event_id": "f2a6999f-39e8-4a13-89b6-41dfb28fa63a",
+      "event": "task/progress",
+      "at": "2026-11-18T12:01:19.578616Z",
+      "actor": "human/owner",
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "text": "Review started"
+    },
+    {
+      "event_id": "537245e8-2ae5-42da-ade5-7cbd03693400",
+      "event": "review/started",
+      "at": "2026-11-18T12:01:19.578897Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "ef95e4f3-82aa-418e-9025-2005071e2012",
+      "event": "task/progress",
+      "at": "2026-11-18T12:01:36.046428Z",
+      "actor": "human/owner",
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "text": "Reviewer launched",
+      "attempt_id": "85286e63-dd99-44df-83af-f38c40d0318b",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "1f3235da-0f0f-4a5c-8890-16c7767cb552",
+      "event": "task/progress",
+      "at": "2026-11-18T12:03:05.238109Z",
+      "actor": "human/owner",
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "text": "Review finished: changes requested"
+    },
+    {
+      "event_id": "bdf2caf7-dbbe-4d0b-97f9-ef67e8f7c7f2",
+      "event": "task/progress",
+      "at": "2026-11-18T12:03:05.238126Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Implementation resumed: the review requested changes"
+    },
+    {
+      "event_id": "58e2c061-0574-49b5-8ec4-a6131615577a",
+      "event": "review/changes_requested",
+      "at": "2026-11-18T12:03:05.238464Z",
+      "actor": "human/owner",
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "kind": "code",
+      "verdict": "changes",
+      "commit": "d8ced6617e32ed08365976ef3f7552b87487b057"
+    },
+    {
+      "event_id": "c05d44a2-1f33-48af-9b05-3e7d82175546",
+      "event": "task/progress",
+      "at": "2026-11-18T12:03:34.513373Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Fixing review finding: line-numbered hook key error"
+    },
+    {
+      "event_id": "f993df65-94bb-4bd2-a424-345e6bc09bea",
+      "event": "task/progress",
+      "at": "2026-11-18T12:03:43.319625Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "65dd4dfa-b193-4ead-bc38-73e385c7a7ef",
+      "event": "task/progress",
+      "at": "2026-11-18T12:03:43.343912Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "8ce75acd-910d-4eea-a19f-ff38d87230fa",
+      "event": "task/progress",
+      "at": "2026-11-18T12:03:43.347862Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "5891f975-40e2-404d-a38f-4180d68b7a12",
+      "event": "task/progress",
+      "at": "2026-11-18T12:04:32.198077Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "25a81480-c5f5-47a2-b1ed-3bc3ae26c12c",
+      "event": "check/passed",
+      "at": "2026-11-18T12:04:32.205321Z",
+      "actor": "human/owner",
+      "commit": "d7e9310aecc6872a1dc856b4766eb5316bbaa622",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "d81201a4-b88f-4410-ab78-5dbfd53b7dc6",
+      "event": "task/progress",
+      "at": "2026-11-18T12:04:36.835520Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check command-1 started: make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C i"
+    },
+    {
+      "event_id": "267a771a-aab9-4626-90ab-201438c2bbf6",
+      "event": "task/progress",
+      "at": "2026-11-18T12:09:24.019596Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "d7ea3f01-8fe8-4367-99c2-452082f08953",
+      "event": "check/passed",
+      "at": "2026-11-18T12:09:24.029278Z",
+      "actor": "human/owner",
+      "commit": "d7e9310aecc6872a1dc856b4766eb5316bbaa622",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "1e8a034a-e18e-4a90-8631-70d3519e65f6",
+      "event": "ticket/note",
+      "at": "2026-11-18T12:09:24.111836Z",
+      "actor": "human/owner",
+      "text": "Review fix: the hook-incompatible key error is now 'line N: @<key>: not allowed with @priority hook', N being the later of the key line and the @priority line, naming the first offending key; unit tests assert the full text in both orders.",
+      "tokens": null
+    },
+    {
+      "event_id": "50fb06ef-afe7-4ac8-8b2e-0ffdb0f9d06b",
+      "event": "task/progress",
+      "at": "2026-11-18T12:09:42.129605Z",
+      "actor": "human/owner",
+      "task_id": "611b89a8-8f5d-48c2-be26-f74ce071ee0c",
+      "text": "Reviewer launched (round 2)",
+      "attempt_id": "972f1384-4450-4601-bbfa-11ecea61573e",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "204df2e1-0b32-4a2d-9002-b484ba5e342d",
+      "event": "task/progress",
+      "at": "2026-11-18T12:09:42.193872Z",
+      "actor": "human/owner",
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "text": "Review started"
+    },
+    {
+      "event_id": "ebfdbca5-3920-4089-ae82-09f48bc7bfbb",
+      "event": "review/started",
+      "at": "2026-11-18T12:09:42.194105Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "ddb490c8-200c-4eae-a31a-7c002230d0cd",
+      "event": "task/progress",
+      "at": "2026-11-18T12:10:13.030331Z",
+      "actor": "human/owner",
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "22c8b398-55b9-4892-bff9-582dbf0dd924",
+      "event": "review/passed",
+      "at": "2026-11-18T12:10:13.030642Z",
+      "actor": "human/owner",
+      "task_id": "6df3c7a0-687c-4db4-b268-6e15fe4c5176",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "d7e9310aecc6872a1dc856b4766eb5316bbaa622"
+    },
+    {
+      "event_id": "0c87a526-caf9-4bae-98f7-d8f12ebdff93",
+      "event": "ticket/closed",
+      "at": "2026-11-18T12:16:00.145262Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-18T12:16:00.145225Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "c90c4ceee6a0edd4bd00a345a5ff162e9b5a8ed1"
+  },
+  "priority": "medium",
+  "severity": "low",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d8ced6617e32ed08365976ef3f7552b87487b057",
+        "tree": "2721e3d071ec7aa2a8afecd769fcd2cb18a81c28",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T11:54:20.078360Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/0baf77fb-51f8-4819-a94c-2f4c74388e16/2721e3d071ec-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "d8ced6617e32ed08365976ef3f7552b87487b057",
+        "tree": "2721e3d071ec7aa2a8afecd769fcd2cb18a81c28",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T11:55:52.992024Z",
+        "duration_s": 92.9,
+        "log": "/tmp/factory-flow/0baf77fb-51f8-4819-a94c-2f4c74388e16/2721e3d071ec-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && ./indigo_test/build/integration/test_agent_scheduler",
+        "commit": "d8ced6617e32ed08365976ef3f7552b87487b057",
+        "tree": "2721e3d071ec7aa2a8afecd769fcd2cb18a81c28",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:00:53.254244Z",
+        "duration_s": 291.6,
+        "log": "/tmp/factory-flow/0baf77fb-51f8-4819-a94c-2f4c74388e16/2721e3d071ec-command-1.log"
+      },
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d7e9310aecc6872a1dc856b4766eb5316bbaa622",
+        "tree": "75ff09d66c28cbccb835dcf8e99b10f5bd8589b2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:03:43.343492Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/0baf77fb-51f8-4819-a94c-2f4c74388e16/75ff09d66c28-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "d7e9310aecc6872a1dc856b4766eb5316bbaa622",
+        "tree": "75ff09d66c28cbccb835dcf8e99b10f5bd8589b2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:04:32.195824Z",
+        "duration_s": 48.8,
+        "log": "/tmp/factory-flow/0baf77fb-51f8-4819-a94c-2f4c74388e16/75ff09d66c28-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test build/integration/test_agent_scheduler && ./indigo_test/build/integration/test_agent_scheduler",
+        "commit": "d7e9310aecc6872a1dc856b4766eb5316bbaa622",
+        "tree": "75ff09d66c28cbccb835dcf8e99b10f5bd8589b2",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:09:24.016803Z",
+        "duration_s": 287.2,
+        "log": "/tmp/factory-flow/0baf77fb-51f8-4819-a94c-2f4c74388e16/75ff09d66c28-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "changes",
+        "notes": "One finding. The ticket requires the scheduling keys to be rejected under @priority hook 'with a line-numbered error'. indigo_agent_scheduler_header.c:596-598 gives an error with no line number that lists all ten keys and does not say which one is present: '@priority hook cannot be combined with @altitude, ... or @preempted'. The unit tests (test_agent_scheduler_header.c:278-290) only check that prefix, so a missing line number is not caught. Fix: in the parse loop, remember the line number and name of the first key in the incompatible mask. After the loop, when priority_class == SCHEDULER_PRIORITY_HOOK, report e.g. 'line N: @repeat: not allowed with @priority hook'. Use the @priority line instead when it comes after that key, so both orders work. Make the tests assert the line prefix in both orders. The ticket text is not fully consistent here: it compares this to '@altitude without @target', which has no line number today. If the owner accepts an error without a line number, this can pass as it is. Everything else checked out: is_hook, the label ('hook' and 'hook <role>'), the urgent rejection, DELETE_ALL (via is_hook), update_plan/update_task_states/select_task (via is_hook), score class_base[4] (index in bounds and never reached for hook tasks), priority_name and its switch, the level rejection with 'line 2: @priority: expected', the per-key decision matching how hooks run (finish_hook bypasses repeat/retry/preempted, eligible_now and the plan skip hooks, task_duration places running and planned hooks, apply_context passes ra/dec), docs (no stale @hook), and the version bump 0x03000014 -> 0x03000015.",
+        "reviewer": "human/owner",
+        "commit": "d8ced6617e32ed08365976ef3f7552b87487b057",
+        "tree": "2721e3d071ec7aa2a8afecd769fcd2cb18a81c28",
+        "at": "2026-11-18T12:03:05.237368Z"
+      },
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Round 2 pass. Round-1 defect fixed: indigo_agent_scheduler_header.c records priority_line and the first HOOK_REJECTED_KEYS key (conflict_line/conflict_key, as written by the user) and after the loop reports 'line N: @<key>: not allowed with @priority hook' with N = max(key line, @priority line); conflict_key[32] matches key[32], strcpy is safe. Unit tests assert the full text for all ten rejected keys and for @repeat before @priority (line 3). Other header errors unchanged (target-required check still precedes; unknown/repeated/value errors keep their line numbers). Whole diff matches the ticket and owner notes: @hook/KEY_HOOK/header.hook removed, SCHEDULER_PRIORITY_HOOK added, level rejected, class_base extended for the new index, is_hook/task_priority_text/urgent_task/DELETE_ALL read the class, MOVE_UP/DOWN untouched, version 0x03000014->0x03000015, guide/SCHEDULER.md/PROPERTIES.md updated with no @hook leftovers, integration tests renamed to @priority hook. Formatting follows conventions; git diff --check clean. whitespace, unit and command-1 (integration test_agent_scheduler) passed at d7e9310ae = current HEAD, worktree clean. Limits: did not rerun builds/tests myself; relied on recorded checks.",
+        "reviewer": "human/owner",
+        "commit": "d7e9310aecc6872a1dc856b4766eb5316bbaa622",
+        "tree": "75ff09d66c28cbccb835dcf8e99b10f5bd8589b2",
+        "at": "2026-11-18T12:10:13.030185Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-18T12:01:04.304275Z",
+        "actor": "human/owner",
+        "text": "Rejected with @priority hook: @repeat, @retry, @window, @twilight, @preempted (hook runs bypass finish_task/update_task_states/eligible_now, so these never apply), and @altitude, @airmass, @ha, @moon, @illumination (sky constraints, only used by eligibility/plan of ordinary tasks). @best_effort does not exist. Kept: @duration (task_duration places the running/planned hook in AGENT_SCHEDULER_PLAN), @target (apply_context passes ra/dec to the hook body), @folder/@observer/@pi/@project (data keys used when the hook body runs), @enabled (not listed as a candidate; harmless, left alone). @priority hook with a level is rejected with a line-numbered error. Tests: unit test_agent_scheduler_header hook_priority_class (class parse, level rejected, kept keys, old @hook unknown key) and hook_priority_rejects_scheduling_keys (each rejected key, either order); integration test_agent_scheduler hook_priority_class_keeps_a_task_from_running, hook_priority_class_task_is_not_planned_or_counted (DELETE_ALL keeps it, label 'hook'), urgent_task_cannot_be_a_hook. Driver version 0x03000014 -> 0x03000015.",
+        "tokens": null
+      },
+      {
+        "at": "2026-11-18T12:09:24.111533Z",
+        "actor": "human/owner",
+        "text": "Review fix: the hook-incompatible key error is now 'line N: @<key>: not allowed with @priority hook', N being the later of the key line and the @priority line, naming the first offending key; unit tests assert the full text in both orders.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "c90c4ceee6a0edd4bd00a345a5ff162e9b5a8ed1",
+      "tree": "75ff09d66c28cbccb835dcf8e99b10f5bd8589b2",
+      "base": "master",
+      "at": "2026-11-18T12:16:00.060806Z"
+    }
+  },
+  "proposal": {
+    "priority": "medium",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-18T11:51:05.373687Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-18T11:52:23.873544Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 1054928.425,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 4
+    }
+  },
+  "journal": {
+    "entries": 45,
+    "sha256": "63d242cb59414aababad69cc0bce4a64a696af61bb1525aa5fc59adbbc26bd1f"
+  }
+}

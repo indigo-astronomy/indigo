@@ -31,12 +31,13 @@ def fail(code, message):
     raise FactoryError(code, message)
 
 
-def git(cwd, *args, check=True):
-    result = core.run_git(cwd, *args)
+def git(cwd, *args, check=True, text=True):
+    result = core.run_git(cwd, *args, text=text)
     if check and result.returncode:
+        output = result.stderr or result.stdout
         fail("GIT_FAILED", "git " + " ".join(args) + " failed in " + str(cwd) + ":\n"
-             + (result.stderr or result.stdout).strip())
-    return result if not check else result.stdout.strip()
+             + (output if text else os.fsdecode(output)).strip())
+    return result if not check else (result.stdout.strip() if text else result.stdout)
 
 
 def python():
@@ -78,8 +79,12 @@ def test_counts(output):
         failed = sum(int(n) for part in re.findall(r"^FAILED \((.*)\)", output, re.M)
                      for n in re.findall(r"(?:failures|errors|unexpected successes)=(\d+)", part))
         skipped = sum(int(n) for part in re.findall(r"^(?:OK|FAILED) \((.*)\)", output, re.M)
-                      for n in re.findall(r"(?:skipped|expected failures)=(\d+)", part))
-        return {"executed": executed, "failed": failed, "skipped": skipped}
+                      for n in re.findall(r"skipped=(\d+)", part))
+        # Fixture and subtest skips do not increment testsRun. Verbose output
+        # identifies them; older/terse output can be ambiguous.
+        nested_skips = len(re.findall(
+            r"^(?:(?:setUpClass|setUpModule) \(.*\) \.\.\. |  .* \.\.\. )?skipped ", output, re.M))
+        return {"executed": max(0, executed - skipped + nested_skips), "failed": failed, "skipped": skipped}
     summary = re.findall(r"^=+ (.*) in [\d.]+s.*=+$", output, re.M)
     if summary:
         count = lambda word: sum(int(n) for n in re.findall(r"(\d+) " + word, summary[-1]))
@@ -383,7 +388,10 @@ class Flow:
     def changed(self, document):
         tree = self.worktree(document)
         base = git(tree, "merge-base", document["flow"]["base"], "HEAD")
-        return [line for line in git(tree, "diff", "--name-only", base, "HEAD").splitlines() if line]
+        # Binary NUL-delimited output preserves Git paths without display quoting,
+        # whitespace stripping or universal-newline conversion.
+        names = git(tree, "diff", "--name-only", "-z", base, "HEAD", text=False)
+        return [os.fsdecode(name) for name in names.split(b"\0") if name]
 
     # ---- commands ----------------------------------------------------------
 
@@ -721,19 +729,46 @@ class Flow:
         self.save(document, "stage/presented", actor, {"stage": stage, "file": relative})
         return {"ticket_id": ticket_id, "stage": stage, "file": relative}
 
-    def set_profile(self, ticket_id, name=None, actor="human/owner"):
-        document = self.load(ticket_id)
-        if name and name != document["flow"]["profile"]:
-            previous = document["flow"]["profile"]
-            document["flow"]["profile"] = name
-            self.profile(document)
-            # Changing the profile only changes what 'close' asks for; recorded facts stay valid.
-            self.save(document, "flow/profile_changed", actor, {"previous": previous or "simple", "profile": name})
-        current, required = self.profile(document)
-        profiles = {**DEFAULT_FLOWS, **self.config(document).get("flows", {})}
-        return {"ticket_id": ticket_id, "profile": current, "requires": required, "available": sorted(profiles),
-                "profiles": {name: {"approvals": list(profiles[name].get("approvals", [])),
-                                    "reviews": list(profiles[name].get("reviews", []))} for name in sorted(profiles)}}
+    def set_profile(self, ticket_id, name=None, actor="human/owner", expected_revision=None, mutation_id=None):
+        # Read, compare and save under one lock, including the retry receipt.
+        with self.tickets.lock():
+            document = self.load(ticket_id)
+            before = copy.deepcopy(document)
+            fingerprint = {"name": name, "expected_revision": expected_revision, "actor": actor}
+            if mutation_id is not None:
+                core.identifier(mutation_id)
+                if not name or type(expected_revision) is not int:
+                    fail("INVALID_ARGUMENT", "A profile mutation ID requires a profile and expected revision.")
+                receipt = document["flow"].get("profile_mutations", {}).get(mutation_id)
+                if receipt is not None:
+                    if receipt["arguments"] != fingerprint:
+                        fail("IDEMPOTENCY_CONFLICT", "The profile mutation ID belongs to a different edit.")
+                    return copy.deepcopy(receipt["result"])
+            if name:
+                if document["status"] == "closed":
+                    fail("CLOSED", "A closed ticket cannot change profile.")
+                if expected_revision is not None and (type(expected_revision) is not int
+                                                       or expected_revision != document["revision"]):
+                    fail("REVISION_CONFLICT", "The ticket changed meanwhile; refresh and choose again.")
+            changed = bool(name and name != document["flow"]["profile"])
+            if changed:
+                previous = document["flow"]["profile"]
+                document["flow"]["profile"] = name
+                self.profile(document)
+                core.event(document, "flow/profile_changed", actor, previous=previous or "simple", profile=name)
+            current, required = self.profile(document)
+            profiles = {**DEFAULT_FLOWS, **self.config(document).get("flows", {})}
+            result = {"ticket_id": ticket_id, "profile": current, "requires": required,
+                      "available": sorted(profiles),
+                      "profiles": {key: {"approvals": list(profiles[key].get("approvals", [])),
+                                         "reviews": list(profiles[key].get("reviews", []))} for key in sorted(profiles)},
+                      "revision": document["revision"] + int(changed or mutation_id is not None)}
+            if mutation_id is not None:
+                document["flow"].setdefault("profile_mutations", {})[mutation_id] = {
+                    "arguments": fingerprint, "result": copy.deepcopy(result)}
+            if changed or mutation_id is not None:
+                self.tickets.save(before, document, actor, "flow/profile")
+            return result
 
     def stage(self, ticket_id, stage, actor="human/owner", provider=None):
         """Start the analysis, design or mockup task and print its brief."""
@@ -1097,6 +1132,28 @@ class Flow:
             return {}
         # Only the ticket's own worktree is removed; any other directory at that path is never touched.
         tree, branch = self.own_tree(document), document.get("branch")
+        landed = document["closure"].get("change_commit")
+        base = document["flow"].get("base")
+        # Close resets the ticket branch to its squash commit before landing. Progress commits
+        # are not ancestors of that commit; compare the current branch with the landed base instead.
+        safe = branch == "ticket/" + document["ticket_id"] and landed and base
+        if safe:
+            safe = not git(self.primary, "merge-base", "--is-ancestor", landed, base, check=False).returncode
+        if safe and self.branch_exists(branch):
+            safe = not git(self.primary, "merge-base", "--is-ancestor", branch, base, check=False).returncode
+        if tree:
+            # Recheck ownership even if this Flow instance verified the path earlier.
+            self.own_worktree(tree, "ticket/" + document["ticket_id"])
+            common = git(tree, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False)
+            primary = git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")
+            status = git(tree, "status", "--porcelain", "--untracked-files=all", check=False)
+            safe = (safe and not common.returncode and common.stdout.strip() == primary
+                    and not status.returncode and not status.stdout.strip())
+        if not safe:
+            return {**({"kept_worktree": str(tree)} if tree else {}), "kept_branch": branch,
+                    "cleanup_hint": "The ticket is closed, but cleanup could not prove its work is safe to "
+                                    "remove. Preserve or integrate later changes and commits with Git, then "
+                                    "run 'flow close " + document["ticket_id"] + "' again."}
         if tree:
             git(self.primary, "worktree", "remove", "--force", str(tree), check=False)
             shutil.rmtree(tree, ignore_errors=True)
@@ -1157,6 +1214,8 @@ def add_arguments(groups):
             command.add_argument("--kind", default="code", help="Review kind for --role review, for example security")
         if name == "profile":
             command.add_argument("name", nargs="?", help="simple, full, full-ui or a profile from config.json")
+            command.add_argument("--expected-revision", type=int)
+            command.add_argument("--mutation-id", help="UUID identifying this profile edit for exact retry")
         if name in ("stage", "present", "approve"):
             command.add_argument("--stage", choices=STAGES, required=True)
         if name in ("present", "approve"):
@@ -1231,7 +1290,8 @@ def dispatch(flow, command, arguments, actor):
         return flow.brief(ticket, arguments.get("role", "implement"), actor, arguments.get("kind", "code"),
                           arguments.get("provider"))
     if command == "profile":
-        return flow.set_profile(ticket, arguments.get("name"), actor)
+        return flow.set_profile(ticket, arguments.get("name"), actor,
+                                arguments.get("expected_revision"), arguments.get("mutation_id"))
     if command == "stage":
         return flow.stage(ticket, arguments["stage"], actor, arguments.get("provider"))
     if command == "present":

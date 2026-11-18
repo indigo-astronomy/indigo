@@ -71,7 +71,7 @@ Tasks (the body only waits, so no equipment is needed):
   delete NAME
   reset | enable | disable | up | down NAME
   reset_all                       reset every task but a running one
-  delete_all                      delete every task not named as a hook; the scheduler must be
+  delete_all                      delete every task that is not a hook task; the scheduler must be
                                   stopped, and this prompt does not ask for a confirmation
 Scheduler:
   start | stop | abort
@@ -460,7 +460,8 @@ class Sandbox:
 				count = int(arguments[0]) if arguments else 10
 				p = self.client.property(AGENT, "AGENT_SCHEDULER_HISTORY")
 				self.say("history:")
-				for i in (p or {}).get("items", [])[:count]:
+				items = (p or {}).get("items", [])
+				for i in items[max(len(items) - count, 0):]:
 					self.say("  %-5s %s" % (i.get("value", ""), i.get("label", "")))
 			elif verb == "wait":
 				deadline = time.monotonic() + float(arguments[0])

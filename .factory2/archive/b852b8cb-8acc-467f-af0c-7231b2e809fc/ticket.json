@@ -1,0 +1,450 @@
+{
+  "schema_version": 1,
+  "ticket_id": "b852b8cb-8acc-467f-af0c-7231b2e809fc",
+  "revision": 19,
+  "title": "indigo_agent_scheduler: reject @enabled with @priority hook and test the rejected hook level in the integration suite",
+  "description": "Follow-up of 0baf77fb (commit c90c4ceee), requested by the owner.\n- @enabled has no effect on a task of the hook priority class (a hook start never checks it). Add it to the keys rejected with @priority hook (HOOK_REJECTED_KEYS in indigo_drivers/agent_scheduler/indigo_agent_scheduler_header.c), with the same 'line N: @enabled: not allowed with @priority hook' error, in either order. Verify first in indigo_agent_scheduler.c that ENABLE/DISABLE task commands and is_enabled() do not rely on a hook-class task carrying @enabled; if a DISABLE command on a hook-class task rewrites the header with @enabled, make that command rejected for hook-class tasks or otherwise keep the stored text valid, and say so in a note.\n- Add an integration case in indigo_test/integration/test_agent_scheduler.c: uploading a task with '@priority hook 50' through AGENT_SCHEDULER_ADD_TASK is rejected (property Alert, no task stored, message names the line), and one for @enabled with @priority hook.\n- Update the unit test for @enabled, the guide (INDIGO_SCHEDULER_GUIDE.md) and doc/SCHEDULER.md lists of rejected keys, and increment the scheduler agent DRIVER_VERSION.",
+  "type": "change",
+  "discovered_at": null,
+  "created_at": "2026-11-18T12:16:10.434255Z",
+  "status": "closed",
+  "branch": "ticket/b852b8cb-8acc-467f-af0c-7231b2e809fc",
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [
+    {
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "title": "Implement",
+      "type": "implementation",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "cff03bb2-c02c-46b0-b764-f4e4b43a19a5",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": {
+            "provider": "anthropic",
+            "model": "claude-opus-5-5",
+            "reasoning": "high"
+          },
+          "status": "succeeded",
+          "started_at": "2026-11-18T12:16:35.009561Z",
+          "last_activity_at": "2026-11-18T12:24:26.053869Z",
+          "ended_at": "2026-11-18T12:24:26.053869Z",
+          "outcome": {
+            "summary": "Handed to review",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 471044.308,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T12:16:35.009561Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Ticket branch ticket/b852b8cb-8acc-467f-af0c-7231b2e809fc"
+        },
+        {
+          "at": "2026-11-18T12:24:26.053869Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Handed to review"
+        }
+      ],
+      "result": null,
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 471044.308,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    },
+    {
+      "task_id": "deee8d86-1a7c-4af8-80a0-6770c4324424",
+      "title": "Review",
+      "type": "review",
+      "status": "succeeded",
+      "depends_on": [],
+      "attempts": [
+        {
+          "attempt_id": "69154bd8-f348-4980-8f68-704607710b92",
+          "number": 1,
+          "execution_mode": "manual",
+          "worker": null,
+          "status": "succeeded",
+          "started_at": "2026-11-18T12:24:26.053902Z",
+          "last_activity_at": "2026-11-18T12:25:01.143886Z",
+          "ended_at": "2026-11-18T12:25:01.143886Z",
+          "outcome": {
+            "summary": "Reviewed diff master...HEAD (d1c20e399). Header: HOOK_REJECTED_KEYS now includes KEY_ENABLED (indigo_agent_scheduler_header.c:59); conflict reporting at :586/:607-608 uses max(conflict_line, priority_line), so both orders report 'line 3: @enabled: not allowed with @priority hook'; unit test covers both orders and removes @enabled from the accepted-keys case. Claim verified: TASK_COMMAND ENABLE/DISABLE only set task->disabled (indigo_agent_scheduler.c:2627-2630), persisted as disabled=N in the status line (:604, :641-642); is_enabled() = header.enabled && !disabled (:395); no code writes @enabled into task text, so no stored hook task can become unloadable via the agent. Integration case hook_priority_class_rejects_a_level_and_scheduling_keys requires INDIGO_ALERT_STATE via change_text, checks the line-2 @priority and line-3 @enabled messages and task_count()==0; it is registered and PASSed in the command-1 log (116 run, 116 passed). Docs: guide line 221 and SCHEDULER.md line 175 list @enabled. DRIVER_VERSION 0x03000015 -> 0x03000016. whitespace, unit and command-1 recorded at HEAD d1c20e399 (tree 9b8bad657b, matches current tree). No defects. Coverage limits: I did not rerun the builds or tests; I relied on the recorded check logs.",
+            "recorded_by": "human/owner",
+            "source": "human_report"
+          },
+          "duration_ms": 35089.984,
+          "tokens": null
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-11-18T12:24:26.053902Z",
+          "status": "running",
+          "actor": "human/owner",
+          "reason": "Review started"
+        },
+        {
+          "at": "2026-11-18T12:25:01.143886Z",
+          "status": "succeeded",
+          "actor": "human/owner",
+          "reason": "Reviewed diff master...HEAD (d1c20e399). Header: HOOK_REJECTED_KEYS now includes KEY_ENABLED (indigo_agent_scheduler_header.c:59); conflict reporting at :586/:607-608 uses max(conflict_line, priority_line), so both orders report 'line 3: @enabled: not allowed with @priority hook'; unit test covers both orders and removes @enabled from the accepted-keys case. Claim verified: TASK_COMMAND ENABLE/DISABLE only set task->disabled (indigo_agent_scheduler.c:2627-2630), persisted as disabled=N in the status line (:604, :641-642); is_enabled() = header.enabled && !disabled (:395); no code writes @enabled into task text, so no stored hook task can become unloadable via the agent. Integration case hook_priority_class_rejects_a_level_and_scheduling_keys requires INDIGO_ALERT_STATE via change_text, checks the line-2 @priority and line-3 @enabled messages and task_count()==0; it is registered and PASSed in the command-1 log (116 run, 116 passed). Docs: guide line 221 and SCHEDULER.md line 175 list @enabled. DRIVER_VERSION 0x03000015 -> 0x03000016. whitespace, unit and command-1 recorded at HEAD d1c20e399 (tree 9b8bad657b, matches current tree). No defects. Coverage limits: I did not rerun the builds or tests; I relied on the recorded check logs."
+        }
+      ],
+      "result": {
+        "summary": "Reviewed diff master...HEAD (d1c20e399). Header: HOOK_REJECTED_KEYS now includes KEY_ENABLED (indigo_agent_scheduler_header.c:59); conflict reporting at :586/:607-608 uses max(conflict_line, priority_line), so both orders report 'line 3: @enabled: not allowed with @priority hook'; unit test covers both orders and removes @enabled from the accepted-keys case. Claim verified: TASK_COMMAND ENABLE/DISABLE only set task->disabled (indigo_agent_scheduler.c:2627-2630), persisted as disabled=N in the status line (:604, :641-642); is_enabled() = header.enabled && !disabled (:395); no code writes @enabled into task text, so no stored hook task can become unloadable via the agent. Integration case hook_priority_class_rejects_a_level_and_scheduling_keys requires INDIGO_ALERT_STATE via change_text, checks the line-2 @priority and line-3 @enabled messages and task_count()==0; it is registered and PASSed in the command-1 log (116 run, 116 passed). Docs: guide line 221 and SCHEDULER.md line 175 list @enabled. DRIVER_VERSION 0x03000015 -> 0x03000016. whitespace, unit and command-1 recorded at HEAD d1c20e399 (tree 9b8bad657b, matches current tree). No defects. Coverage limits: I did not rerun the builds or tests; I relied on the recorded check logs.",
+        "source": "review",
+        "recorded_by": "human/owner"
+      },
+      "paths": [],
+      "difficulty": "low",
+      "metrics": {
+        "duration_ms": 35089.984,
+        "duration_basis": "sum_of_completed_attempt_wall_times",
+        "running_attempts": 0,
+        "unknown_duration_attempts": 0,
+        "tokens": {
+          "input": null,
+          "known_input": null,
+          "output": null,
+          "known_output": null,
+          "total": null,
+          "known_total": null,
+          "complete": false,
+          "measured_attempts": 0,
+          "total_attempts": 1
+        }
+      }
+    }
+  ],
+  "history": [
+    {
+      "event_id": "9941ae4e-2040-461c-93d5-959017b6edad",
+      "event": "ticket/created",
+      "at": "2026-11-18T12:16:10.434647Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple"
+    },
+    {
+      "event_id": "dc02d435-94e5-4351-a0e0-4a8a4dfea466",
+      "event": "task/progress",
+      "at": "2026-11-18T12:16:35.012025Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Implementation started on branch ticket/b852b8cb-8acc-467f-af0c-7231b2e809fc"
+    },
+    {
+      "event_id": "bdef1529-8082-4c8a-b154-d6b8a998fb76",
+      "event": "ticket/started",
+      "at": "2026-11-18T12:16:35.021344Z",
+      "actor": "human/owner",
+      "branch": "ticket/b852b8cb-8acc-467f-af0c-7231b2e809fc",
+      "base": "master"
+    },
+    {
+      "event_id": "6880ae8f-3678-4334-b941-50452a08802b",
+      "event": "task/progress",
+      "at": "2026-11-18T12:16:49.606728Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Implementer launched",
+      "attempt_id": "cff03bb2-c02c-46b0-b764-f4e4b43a19a5",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-sonnet-5-5",
+        "reasoning": "medium"
+      }
+    },
+    {
+      "event_id": "e09cb7a6-5b70-4ec0-9379-5e5fcbab1693",
+      "event": "ticket/confirmed",
+      "at": "2026-11-18T12:17:11.149037Z",
+      "actor": "human/owner",
+      "priority": "low",
+      "severity": "low",
+      "profile": "simple",
+      "corrected": null
+    },
+    {
+      "event_id": "0b8dfb6a-e090-4edd-a690-81c96dc0ea01",
+      "event": "task/progress",
+      "at": "2026-11-18T12:17:18.816390Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Edits done; running unit check then scheduler integration"
+    },
+    {
+      "event_id": "a328dc00-32e3-4f35-b74c-6cd0618dc3dc",
+      "event": "task/progress",
+      "at": "2026-11-18T12:17:19.258290Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Check whitespace started"
+    },
+    {
+      "event_id": "4f42fa65-1d76-40ca-8de2-a83445919eaa",
+      "event": "task/progress",
+      "at": "2026-11-18T12:17:19.273847Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Check whitespace passed"
+    },
+    {
+      "event_id": "a2e0755e-c078-4f39-839d-1f566d0c8d64",
+      "event": "task/progress",
+      "at": "2026-11-18T12:17:19.277658Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Check unit started"
+    },
+    {
+      "event_id": "5a8c7ae7-cb76-4603-8186-a714a5a7d373",
+      "event": "task/progress",
+      "at": "2026-11-18T12:18:51.465546Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Check unit passed"
+    },
+    {
+      "event_id": "7a4ac939-d3cc-4f3d-a3d6-80d21717f705",
+      "event": "check/passed",
+      "at": "2026-11-18T12:18:51.472747Z",
+      "actor": "human/owner",
+      "commit": "d1c20e39946400902baaa37bb86a3c5e44f63faf",
+      "checks": "whitespace passed, unit passed"
+    },
+    {
+      "event_id": "49f46b58-2b56-4b5e-b6b6-c3d0e8b63706",
+      "event": "task/progress",
+      "at": "2026-11-18T12:19:03.683461Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Check command-1 started: make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler"
+    },
+    {
+      "event_id": "2f0f46a7-a3d7-4361-b515-8575daf0fc7c",
+      "event": "task/progress",
+      "at": "2026-11-18T12:23:53.130422Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Check command-1 passed"
+    },
+    {
+      "event_id": "7e956f9c-4874-43f3-addc-7641115583ba",
+      "event": "check/passed",
+      "at": "2026-11-18T12:23:53.138757Z",
+      "actor": "human/owner",
+      "commit": "d1c20e39946400902baaa37bb86a3c5e44f63faf",
+      "checks": "command-1 passed"
+    },
+    {
+      "event_id": "ce7957e7-53ba-4c0c-8a84-4428a9160de4",
+      "event": "ticket/note",
+      "at": "2026-11-18T12:24:06.934920Z",
+      "actor": "human/owner",
+      "text": "Decisions: HOOK_REJECTED_KEYS gains KEY_ENABLED (same 'line N: @enabled: not allowed with @priority hook' error, either order). ENABLE/DISABLE task commands only toggle the separate in-memory/status flag task->disabled (persisted as disabled=N in the status line, never written into the header text), and is_enabled() = header.enabled && !disabled; hook starts never call is_enabled (is_hook checked first), so a hook-class task never needs @enabled and no stored task text can acquire @enabled through a command. No code change to the commands was needed. Residual: pre-existing stored hook text that carries @enabled would now fail to parse on load, same trade as the previous ticket's other keys. Mapping: unit hook_priority_rejects_scheduling_keys (@enabled both orders; hook_priority_class no longer lists @enabled as accepted); integration hook_priority_class_rejects_a_level_and_scheduling_keys ('@priority hook 50' -> Alert, line 2 message; '@enabled no' with hook -> Alert, line 3 message; no task stored). Docs: INDIGO_SCHEDULER_GUIDE.md, doc/SCHEDULER.md. DRIVER_VERSION 0x03000015 -> 0x03000016. Checks: whitespace+unit passed (header unit suite 15 cases pass); scheduler integration via 'make -C indigo_test test-agent-scheduler': 116 run, 116 passed, 0 failed.",
+      "tokens": null
+    },
+    {
+      "event_id": "5a7e5eef-e26a-4618-8a17-7efa3266e86a",
+      "event": "task/progress",
+      "at": "2026-11-18T12:24:25.988021Z",
+      "actor": "human/owner",
+      "task_id": "a4164e79-f87f-4d1a-b292-505a187e535d",
+      "text": "Reviewer launched",
+      "attempt_id": "cff03bb2-c02c-46b0-b764-f4e4b43a19a5",
+      "worker": {
+        "provider": "anthropic",
+        "model": "claude-opus-5-5",
+        "reasoning": "high"
+      }
+    },
+    {
+      "event_id": "f586fdc9-8c82-43e7-bc6b-d052266a2bf0",
+      "event": "task/progress",
+      "at": "2026-11-18T12:24:26.053934Z",
+      "actor": "human/owner",
+      "task_id": "deee8d86-1a7c-4af8-80a0-6770c4324424",
+      "text": "Review started"
+    },
+    {
+      "event_id": "e7abc4d7-44db-40fc-b192-a1fe5668dbc6",
+      "event": "review/started",
+      "at": "2026-11-18T12:24:26.054134Z",
+      "actor": "human/owner",
+      "kind": "code"
+    },
+    {
+      "event_id": "84ee59fb-7d30-421b-a9a7-3e1d656e55b2",
+      "event": "task/progress",
+      "at": "2026-11-18T12:25:01.144142Z",
+      "actor": "human/owner",
+      "task_id": "deee8d86-1a7c-4af8-80a0-6770c4324424",
+      "text": "Review finished: passed"
+    },
+    {
+      "event_id": "874b7608-ca0f-4a92-a557-3c57c2c964f5",
+      "event": "review/passed",
+      "at": "2026-11-18T12:25:01.144957Z",
+      "actor": "human/owner",
+      "task_id": "deee8d86-1a7c-4af8-80a0-6770c4324424",
+      "kind": "code",
+      "verdict": "pass",
+      "commit": "d1c20e39946400902baaa37bb86a3c5e44f63faf"
+    },
+    {
+      "event_id": "e0e25376-ccc4-4a97-ac92-3bc8e5281ba8",
+      "event": "ticket/closed",
+      "at": "2026-11-18T12:33:42.731751Z",
+      "actor": "human/owner",
+      "reason": "Checks and review passed.",
+      "resolution": "resolved"
+    }
+  ],
+  "closure": {
+    "actor": "human/owner",
+    "at": "2026-11-18T12:33:42.731723Z",
+    "reason": "Checks and review passed.",
+    "resolution": "resolved",
+    "mode": "flow",
+    "verification": "checks_and_review",
+    "change_commit": "42c480ae985cc78a5a3c1790da20ec05c8db371e"
+  },
+  "priority": "low",
+  "severity": "low",
+  "difficulty": "low",
+  "flow": {
+    "profile": "simple",
+    "base": "master",
+    "checks": [
+      {
+        "name": "whitespace",
+        "command": "git diff --check master...HEAD",
+        "commit": "d1c20e39946400902baaa37bb86a3c5e44f63faf",
+        "tree": "9b8bad657b82965eda0d96a14778aa95b147797d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:17:19.273537Z",
+        "duration_s": 0.0,
+        "log": "/tmp/factory-flow/b852b8cb-8acc-467f-af0c-7231b2e809fc/9b8bad657b82-whitespace.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "unit",
+        "command": "make Makefile.inc && make init && make -j8 -C indigo_libs all && make -j8 -C indigo_drivers/agent_platesolver -f ../../Makefile.drv all && make -j8 -C indigo_drivers/agent_scheduler -f ../../Makefile.drv all && make -j8 -C indigo_drivers/system_alpaca -f ../../Makefile.drv all && make -C indigo_test test-unit",
+        "commit": "d1c20e39946400902baaa37bb86a3c5e44f63faf",
+        "tree": "9b8bad657b82965eda0d96a14778aa95b147797d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:18:51.462926Z",
+        "duration_s": 92.2,
+        "log": "/tmp/factory-flow/b852b8cb-8acc-467f-af0c-7231b2e809fc/9b8bad657b82-unit.log",
+        "selected": [
+          "whitespace",
+          "unit"
+        ]
+      },
+      {
+        "name": "command-1",
+        "command": "make -j8 -C indigo_drivers/agent_scripting -f ../../Makefile.drv all && make -C indigo_test test-agent-scheduler",
+        "commit": "d1c20e39946400902baaa37bb86a3c5e44f63faf",
+        "tree": "9b8bad657b82965eda0d96a14778aa95b147797d",
+        "exit_code": 0,
+        "counts": null,
+        "passed": true,
+        "at": "2026-11-18T12:23:53.128469Z",
+        "duration_s": 289.4,
+        "log": "/tmp/factory-flow/b852b8cb-8acc-467f-af0c-7231b2e809fc/9b8bad657b82-command-1.log"
+      }
+    ],
+    "reviews": [
+      {
+        "kind": "code",
+        "verdict": "pass",
+        "notes": "Reviewed diff master...HEAD (d1c20e399). Header: HOOK_REJECTED_KEYS now includes KEY_ENABLED (indigo_agent_scheduler_header.c:59); conflict reporting at :586/:607-608 uses max(conflict_line, priority_line), so both orders report 'line 3: @enabled: not allowed with @priority hook'; unit test covers both orders and removes @enabled from the accepted-keys case. Claim verified: TASK_COMMAND ENABLE/DISABLE only set task->disabled (indigo_agent_scheduler.c:2627-2630), persisted as disabled=N in the status line (:604, :641-642); is_enabled() = header.enabled && !disabled (:395); no code writes @enabled into task text, so no stored hook task can become unloadable via the agent. Integration case hook_priority_class_rejects_a_level_and_scheduling_keys requires INDIGO_ALERT_STATE via change_text, checks the line-2 @priority and line-3 @enabled messages and task_count()==0; it is registered and PASSed in the command-1 log (116 run, 116 passed). Docs: guide line 221 and SCHEDULER.md line 175 list @enabled. DRIVER_VERSION 0x03000015 -> 0x03000016. whitespace, unit and command-1 recorded at HEAD d1c20e399 (tree 9b8bad657b, matches current tree). No defects. Coverage limits: I did not rerun the builds or tests; I relied on the recorded check logs.",
+        "reviewer": "human/owner",
+        "commit": "d1c20e39946400902baaa37bb86a3c5e44f63faf",
+        "tree": "9b8bad657b82965eda0d96a14778aa95b147797d",
+        "at": "2026-11-18T12:25:01.142782Z"
+      }
+    ],
+    "approvals": [],
+    "notes": [
+      {
+        "at": "2026-11-18T12:24:06.934620Z",
+        "actor": "human/owner",
+        "text": "Decisions: HOOK_REJECTED_KEYS gains KEY_ENABLED (same 'line N: @enabled: not allowed with @priority hook' error, either order). ENABLE/DISABLE task commands only toggle the separate in-memory/status flag task->disabled (persisted as disabled=N in the status line, never written into the header text), and is_enabled() = header.enabled && !disabled; hook starts never call is_enabled (is_hook checked first), so a hook-class task never needs @enabled and no stored task text can acquire @enabled through a command. No code change to the commands was needed. Residual: pre-existing stored hook text that carries @enabled would now fail to parse on load, same trade as the previous ticket's other keys. Mapping: unit hook_priority_rejects_scheduling_keys (@enabled both orders; hook_priority_class no longer lists @enabled as accepted); integration hook_priority_class_rejects_a_level_and_scheduling_keys ('@priority hook 50' -> Alert, line 2 message; '@enabled no' with hook -> Alert, line 3 message; no task stored). Docs: INDIGO_SCHEDULER_GUIDE.md, doc/SCHEDULER.md. DRIVER_VERSION 0x03000015 -> 0x03000016. Checks: whitespace+unit passed (header unit suite 15 cases pass); scheduler integration via 'make -C indigo_test test-agent-scheduler': 116 run, 116 passed, 0 failed.",
+        "tokens": null
+      }
+    ],
+    "questions": [],
+    "presented": [],
+    "landing": {
+      "commit": "42c480ae985cc78a5a3c1790da20ec05c8db371e",
+      "tree": "9b8bad657b82965eda0d96a14778aa95b147797d",
+      "base": "master",
+      "at": "2026-11-18T12:33:42.662419Z"
+    }
+  },
+  "proposal": {
+    "priority": "low",
+    "severity": "low",
+    "profile": "simple",
+    "at": "2026-11-18T12:16:10.434255Z",
+    "actor": "human/owner",
+    "confirmed_at": "2026-11-18T12:17:11.148965Z",
+    "confirmed_by": "human/owner"
+  },
+  "metrics": {
+    "duration_ms": 506134.292,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 2
+    }
+  },
+  "journal": {
+    "entries": 25,
+    "sha256": "ebf51ae0dd64afa5d62e68c5b38517d01bc5c36adf5f72837de9a249fefbde9c"
+  }
+}

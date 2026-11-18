@@ -55,6 +55,9 @@
 #define KEY_PI						0x20000
 #define KEY_PROJECT				0x40000
 
+// the keys a hook never uses
+#define HOOK_REJECTED_KEYS (KEY_ENABLED | KEY_ALTITUDE | KEY_AIRMASS | KEY_HA | KEY_MOON | KEY_ILLUMINATION | KEY_TWILIGHT | KEY_WINDOW | KEY_REPEAT | KEY_RETRY | KEY_PREEMPTED)
+
 typedef struct {
 	const char *name;
 	int mask;
@@ -327,11 +330,14 @@ static bool parse_value(int key, char *value, scheduler_header *header, const ch
 			return true;
 		}
 		case KEY_PRIORITY: {
-			static const char *classes[] = { "low", "normal", "high", "urgent" };
+			static const char *classes[] = { "low", "normal", "high", "urgent", "hook" };
 			int priority_class;
-			*expected = "'urgent', 'high', 'normal' or 'low' optionally followed by a level 0-100";
+			*expected = "'urgent', 'high', 'normal' or 'low' optionally followed by a level 0-100, or 'hook' without a level";
 			count = tokenize(value, tokens, 2);
-			if (count < 1 || count > 2 || !parse_keyword(tokens[0], classes, 4, &priority_class)) {
+			if (count < 1 || count > 2 || !parse_keyword(tokens[0], classes, 5, &priority_class)) {
+				return false;
+			}
+			if (priority_class == SCHEDULER_PRIORITY_HOOK && count == 2) {
 				return false;
 			}
 			header->priority_class = priority_class;
@@ -511,6 +517,8 @@ bool indigo_scheduler_parse_header(const char *text, scheduler_header *header, s
 		s += 3;
 	}
 	int found = 0;
+	int priority_line = 0, conflict_line = 0;
+	char conflict_key[32] = "";
 	int line_number = 0;
 	while (*s) {
 		const char *end = strchr(s, '\n');
@@ -573,6 +581,12 @@ bool indigo_scheduler_parse_header(const char *text, scheduler_header *header, s
 			return false;
 		}
 		found |= mask;
+		if (mask == KEY_PRIORITY) {
+			priority_line = line_number;
+		} else if ((mask & HOOK_REJECTED_KEYS) && conflict_line == 0) {
+			conflict_line = line_number;
+			strcpy(conflict_key, key);
+		}
 		char value[LINE_SIZE];
 		strcpy(value, skip_blanks(c));
 		const char *expected = "a valid value";
@@ -588,6 +602,10 @@ bool indigo_scheduler_parse_header(const char *text, scheduler_header *header, s
 	}
 	if (!header->has_target && (found & (KEY_ALTITUDE | KEY_AIRMASS | KEY_HA | KEY_MOON | KEY_ILLUMINATION))) {
 		snprintf(error, error_size, "@altitude, @airmass, @ha, @moon and @illumination require @target");
+		return false;
+	}
+	if (header->priority_class == SCHEDULER_PRIORITY_HOOK && conflict_line) {
+		snprintf(error, error_size, "line %d: @%s: not allowed with @priority hook", conflict_line > priority_line ? conflict_line : priority_line, conflict_key);
 		return false;
 	}
 	const char *body = s;
@@ -622,6 +640,8 @@ const char *indigo_scheduler_priority_name(scheduler_priority_class priority_cla
 			return "high";
 		case SCHEDULER_PRIORITY_URGENT:
 			return "urgent";
+		case SCHEDULER_PRIORITY_HOOK:
+			return "hook";
 	}
 	return "normal";
 }
