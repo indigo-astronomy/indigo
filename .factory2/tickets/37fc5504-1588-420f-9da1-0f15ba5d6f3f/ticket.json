@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "ticket_id": "37fc5504-1588-420f-9da1-0f15ba5d6f3f",
+  "revision": 1,
+  "title": "indigo_mount_synscan: a sync in the home (pole) position sends later GoTos hours off since 3.0.0.22; keep the alignment model in the frame of the date",
+  "description": "Origin: a user who upgraded reported that the SynScan driver points the mount in a completely wrong, opposite direction. The report has no version, log or procedure, so the cause below is the most plausible one found by code reading; it was not reproduced on the simulator yet.\n\nCause: 3.0.0.22 (commit 8dd1ac0ee, released in 3.0-11) fixed J2000 targets being pointed at their place in 2000 by precessing at the axis boundary, after the framework alignment model. MOUNT_RAW_COORDINATES and the alignment points therefore became J2000. In the home position the axes are at Dec 90 of the date; precessed to J2000 this is always about RA 0h / Dec 89.85 regardless of the hour angle, while up to 3.0.0.21 the raw RA there was LST -/+ 6h. The NEAREST_POINT / SINGLE_POINT model stores raw_ra - ra and adds it to every target (indigo_translated_to_raw_with_lst in indigo_libs/indigo_mount_driver.c), so a sync made in the home position (for example RA = LST - 6h, Dec 90), which gave a zero offset before, now records an arbitrary offset of up to 12 hours and later GoTos go far from their targets. Commit d7f5c4e30 only adds a warning for syncs above 85 degrees and is not in 3.0-11.\n\nRequested change (the smaller variant, driver only):\n- Keep MOUNT_RAW_COORDINATES and the raw side of the alignment points in the frame of the date, as up to 3.0.0.21, so they are again a direct image of the axes (raw RA = LST - mechanical hour angle).\n- GoTo and sync target path in synscan_radec_to_steps: precess the J2000 target to the date first, then apply indigo_translated_to_raw, then form the hour angle.\n- Read-back in synscan_read_mount_coordinates: raw of the date from the encoders, through indigo_raw_to_translated_with_lst, then precess the result to J2000 for MOUNT_EQUATORIAL_COORDINATES; horizontal coordinates are computed from the coordinates of the date.\n- Keep the driver's MOUNT_PARK_SET / MOUNT_HOME_SET handlers that take CURRENT from the axis counters; they are needed in both variants.\n- Keep the 21' precession fix itself: a J2000 target must still be pointed at its place of the date.\n- Increment the driver version in the .driver source and regenerate the checked-in outputs.\n\nKnown limitation to state in the ticket result: the framework stores the alignment point's ra from the bus (J2000) and raw_ra from the driver (date), so a point's offset contains the local precession and is off by arcminutes for targets far from the point. Removing that needs a change of indigo_mount_driver.c (store the point's ra precessed to the date) and is out of scope unless the owner approves it separately. Do not change the generator or the mount base driver in this ticket.\n\nTests (simulator suite indigo_test/integration/test_mount_synscan_simulator.c):\n- new case: sync in the home position to RA = LST -/+ 6h, Dec 90, then a GoTo to a target at moderate declination ends within the usual tolerance of the target, not hours away; the case must fail on 3.0.0.22;\n- J2000 GoTo still lands on the place of the date (existing 3.0.0.22 cases adapted to raw coordinates of the date);\n- raw coordinates in the home position equal LST -/+ 6h, Dec +/-90, both hemispheres;\n- park/home CURRENT and DEFAULT cases remain green.\nFinal run recorded with python3 tools/run_driver_test.py mount_synscan; hardware coverage is not part of this ticket and stays a stated gap.\n\nAlso update CHANGELOG-relevant behaviour notes only through the normal release process; indigo_docs/PROPERTIES.md needs no change (no property added or removed).",
+  "type": "bug",
+  "discovered_at": null,
+  "created_at": "2026-11-18T17:50:20.533534Z",
+  "status": "open",
+  "branch": null,
+  "related_ticket_id": null,
+  "config_overrides": {},
+  "tasks": [],
+  "history": [
+    {
+      "event_id": "f6612e63-db8b-4d47-9f32-79ff67492c76",
+      "event": "ticket/created",
+      "at": "2026-11-18T17:50:20.535121Z",
+      "actor": "human/owner",
+      "priority": "high",
+      "severity": "high",
+      "profile": "simple"
+    }
+  ],
+  "closure": null,
+  "priority": "high",
+  "severity": "high",
+  "difficulty": "medium",
+  "flow": {
+    "profile": "simple"
+  },
+  "proposal": {
+    "priority": "high",
+    "severity": "high",
+    "profile": "simple",
+    "at": "2026-11-18T17:50:20.533534Z",
+    "actor": "human/owner",
+    "confirmed_at": null,
+    "confirmed_by": null
+  },
+  "metrics": {
+    "duration_ms": 0.0,
+    "duration_basis": "sum_of_completed_attempt_wall_times",
+    "running_attempts": 0,
+    "unknown_duration_attempts": 0,
+    "tokens": {
+      "input": null,
+      "known_input": null,
+      "output": null,
+      "known_output": null,
+      "total": null,
+      "known_total": null,
+      "complete": false,
+      "measured_attempts": 0,
+      "total_attempts": 0
+    }
+  },
+  "journal": {
+    "entries": 1,
+    "sha256": "1fb03ffdf47730c852cf66f3fde63285db42a7dd5b7101f78b0d916374a771d7"
+  }
+}
