@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from config import read_json
 from errors import FactoryError
+import factory_platform as platform_ops
 import flow
 import tickets
 from tickets import TASK_TYPES, TICKET_PRIORITIES, TICKET_SEVERITIES, TICKET_TYPES
@@ -19,7 +20,8 @@ from tickets import TASK_TYPES, TICKET_PRIORITIES, TICKET_SEVERITIES, TICKET_TYP
 def parser():
     cli = argparse.ArgumentParser(description="AI Factory 2 — tickets, tasks and the ticket flow")
     cli.add_argument("--project", default=".", help="Project directory (default: current directory)")
-    cli.add_argument("--actor", default="human/owner", help="Human recording the operation")
+    cli.add_argument("--actor", help="Who records the operation (default: human/NAME for the person logged in "
+                                      "on this host: Git user.name, then the OS account, else human/owner)")
     cli.add_argument("--request-id", help="Echoed in the response so a caller can match its acknowledgment")
     groups = cli.add_subparsers(dest="group", required=True)
     for name in ("init", "status"):
@@ -146,6 +148,8 @@ def main(argv=None):
     group = args.pop("group")
     command = args.pop("command", None)
     arguments = {key: value for key, value in args.items() if value is not None}
+    if actor is None and (group == "flow" or (group + "/" + command if command else group) not in tickets.READS):
+        actor = platform_ops.owner_actor(project)
     try:
         if group == "flow":
             result = flow.run(project, command, arguments, actor)

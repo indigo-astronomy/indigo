@@ -19,6 +19,7 @@ import sysconfig
 import tempfile
 import time
 from threading import Thread
+import unicodedata
 
 DWORD32 = c.c_uint32
 LONG32 = c.c_int32
@@ -704,6 +705,57 @@ def git_invocation(path, env=None, readonly=False, apply_trust=True):
     return [*argv, '-C', str(path)], environment
 
 
+def actor_name(text):
+    """A name usable as the last part of an actor; '' when nothing usable is left.
+
+    '/' separates actor parts and ':' is not allowed in an actor, so both become spaces, like
+    control and other non-printing characters. Whitespace runs collapse to one space."""
+    text = ''.join(' ' if char in '/:' or unicodedata.category(char)[0] in 'CZ' else char for char in text or '')
+    return ' '.join(text.split())[:200 - len('human/')].strip()
+
+
+def _git_user_name(project):
+    try:
+        argv, environment = git_invocation(project, readonly=True)
+        result = subprocess.run([*argv, 'config', '--get', 'user.name'], env=environment, stdin=subprocess.DEVNULL,
+                                capture_output=True, timeout=10)
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+        # No Git, or no readable configuration: the OS account names the person instead.
+        return ''
+    return result.stdout.decode('utf-8', 'replace') if result.returncode == 0 else ''
+
+
+def _account_names():
+    """The OS account's full name where the platform records one, then its login."""
+    names = []
+    if _is_windows():
+        with contextlib.suppress(OSError, AttributeError):
+            # EXTENDED_NAME_FORMAT NameDisplay; local accounts outside a domain often have none.
+            secur32, size = c.WinDLL('secur32'), c.c_ulong(0)
+            secur32.GetUserNameExW(3, None, c.byref(size))
+            if size.value:
+                buffer = c.create_unicode_buffer(size.value)
+                if secur32.GetUserNameExW(3, buffer, c.byref(size)):
+                    names.append(buffer.value)
+    else:
+        with contextlib.suppress(ImportError, KeyError, OSError):
+            import pwd
+            entry = pwd.getpwuid(os.getuid())
+            names += [entry.pw_gecos.split(',')[0], entry.pw_name]
+    with contextlib.suppress(ImportError, KeyError, OSError):
+        import getpass
+        names.append(getpass.getuser())
+    return names
+
+
+def owner_actor(project):
+    """human/NAME for the person logged in on this host: Git user.name, then the OS account, else human/owner."""
+    for name in (_git_user_name(project), *_account_names()):
+        if name := actor_name(name):
+            return 'human/' + name
+    return 'human/owner'
+
+
 def windows_display_path(path):
     name = os.fspath(path)
     if name.startswith('\\\\?\\UNC\\'):
@@ -892,6 +944,10 @@ def _posix_cleanup(process):
             os.killpg(process.pid, 0)
         except ProcessLookupError:
             return
+        except PermissionError:
+            # Darwin can deny signal-zero for a group containing only zombies.
+            # The successful state inspection below must still confirm no live members.
+            pass
         try:
             result = subprocess.run(['ps', '-axo', 'pgid=,stat='], capture_output=True, text=True, timeout=2)
         except OSError as error:
